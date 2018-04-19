@@ -256,7 +256,15 @@ namespace Objects
 			BYTE				numTriedPlottingOnMoveAutoMotion=0;
 			bool				jobStarted=false; //!< Tracks whether the currently front-most job has been started
 			bool				hasMoved=false;
-			BYTE				constructionActionLeft=MaxConstructionActionLeft;
+			BYTE				constructionActionLeft=MaxConstructionActionLeft;	
+
+
+			/**
+			Denotes the currently active mobile entity that is executing a job.
+			NULL if outside job execution
+			*/
+			static const MobileEntity* executingJob /*= nullptr*/;
+
 		#else
 		#endif
 
@@ -568,6 +576,7 @@ namespace Objects
 		virtual String			DescribeScanningRange() const override;
 		#ifndef CLIENT
 			virtual void		OnDestroy(RemovalType, float&atTime) override;	
+			virtual void		SignalTerrainChange(float atTime) override;
 		#endif
 
 	protected:

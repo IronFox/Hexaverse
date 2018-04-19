@@ -174,22 +174,8 @@ namespace Objects
 
 
 	public:
-		struct TRegisteredSensor
-		{
-			Grid::LCellIdI			location = Grid::LCellIdI::Invalid;
-			int						empDamageLevel=0;
+		typedef Buffer0<World::Sensor>		RegisteredSensorStorage;
 
-			/**/					TRegisteredSensor()	{}
-			/**/					TRegisteredSensor(const Grid::LCellIdI&loc, int empDamageLevel):location(loc),empDamageLevel(empDamageLevel){}
-
-			bool					IsSet() const {return location != Grid::LCellIdI::Invalid;}
-			bool					operator==(const TRegisteredSensor&other) const {return location == other.location && empDamageLevel == other.empDamageLevel;}
-			bool					operator!=(const TRegisteredSensor&other) const {return !operator==(other);}
-			friend String			ToString(const TRegisteredSensor&sensor) 
-			{ 
-				return ToString(sensor.location)+"_e"+String(sensor.empDamageLevel);
-			}
-		};
 		#ifndef CLIENT
 			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times
 			Random					entityRandom;
@@ -527,9 +513,9 @@ namespace Objects
 		*/
 		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const;
 
-		void					RegisterSensory(float&atTime) {registeredSensor = RegisterSensory(location,atTime);}
-		void					UnregisterSensory(float&atTime)  {UnregisterSensory(registeredSensor,atTime);}
-		bool					SensoryIsRegistered() const {return registeredSensor.IsSet();}
+		void					RegisterSensory(float&atTime) {RegisterSensory(registeredSensors,location,atTime);}
+		void					UnregisterSensory(float&atTime)  {UnregisterSensory(registeredSensors,atTime);}
+		bool					SensoryIsRegistered() const {return registeredSensors.IsNotEmpty();}
 
 		/**
 		Re-registers the current sensory with the faction.
@@ -540,8 +526,8 @@ namespace Objects
 		Inserts the all local sensors into the specified target world around the local entity location
 		*/
 		void					InsertSensoryInto(World::Data&target, float&atTime);
-		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
-		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
+		void					RegisterSensory(RegisteredSensorStorage&, const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					UnregisterSensory(RegisteredSensorStorage&, float&atTime);
 		void					MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#ifdef HAS_WINDOW
@@ -606,6 +592,7 @@ namespace Objects
 			*/
 			void					UpdateEMPDamage(int damageLevel, bool isCreated=true);
 		#else
+			virtual void			SignalTerrainChange(float atTime);
 
 
 			bool					HandleEMPDamage(const int newDamage, float&atTime)
@@ -645,17 +632,18 @@ namespace Objects
 				}
 			}
 
-			/**
-			Updates the locally registered sensor to the current entity location.
-			Called ONLY by factions when they repaint sensory.
-			Never call otherwise.
-			*/
-			void					OverrideSetRegisteredSensorToCurrentLocation();
 
 		#endif
 
-		private:
-			TRegisteredSensor		registeredSensor;
+		/**
+		Updates the locally registered sensor to the current entity location.
+		Called ONLY by factions or client side grid handling when they repaint sensory.
+		Never call otherwise.
+		*/
+		void					OverrideSetRegisteredSensorToCurrentLocation();
+
+	private:
+		RegisteredSensorStorage	registeredSensors;
 
 	};
 

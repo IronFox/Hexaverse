@@ -1,16 +1,26 @@
 v0.8.4
+	+ Added control console variable 'Game/winner' to determine the winner(s) of the local game (if any).
 	> Now also hiding state panel and resource list while HUD is hidden.
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
 	> Status panel now wraps long lines.
 	> Now disallowing alliance changes once game has ended.
 	> Increased opacity of plane location marker beams.
 	> Mechanic now keeps trying to repair the designated unit if insufficient minerals are available for full repair.
+	> If auto-spawned player bases are off, new factions receive a single full mineral container so they can build.
+	> Renamed 'Disconnect' to 'Return to Server List' to clarify what happens when in interactive configuration mode.
+	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
 	* Fixed handling and display of winning alliance when game ends.
 	* Fixed placement of plane location marker beams.
 	* Building bridges now correctly lists 'Build bridge here' micro task.
+	* Fixed various ghosts ownership issues.
+	* Fixed artillery/cannons sometimes choosing the wrong trajectory server-side and hitting friendly units.
+	* Savegames now correctly record when a game has ended, and the respective winner.
+	* Fixed Nexus spawning frequency when AI is on but Nexus bases are off.
+	* Fixed low wall building when already atop a wall.
+	* Fixed zero unit health loaded from file when health was heavily researched.
 
 v0.8.3	[Apr 8 2018]
 	+ Home key now toggles sub orbital grid visibility.

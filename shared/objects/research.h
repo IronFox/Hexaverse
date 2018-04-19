@@ -8,8 +8,10 @@
 #include "types.h"
 #include "../uniqueID.h"
 #include "../stringTable.h"
-#include "../luaInterface.h"
-#include "../scriptCache.h"
+#ifndef CLIENT
+	#include "../lua/luaInterface.h"
+	#include "../lua/scriptCache.h"
+#endif
 //#include "luaAttribute.h"
 #include <structure/observable.h>
 
@@ -225,10 +227,17 @@ namespace Objects
 		{
 			typedef TopicGroup	Super;
 		public:
-			typedef Lua::Function<void(Lua::Reference, int)>	FSetProgress;
-			typedef Lua::Function<int(Lua::Reference)>	FGetProgress;
-			typedef Lua::Function<bool(Lua::Reference)> FBool;
-			typedef Lua::Function<PTopic(Lua::Reference)> FResearchTopic;
+			#ifndef CLIENT
+				typedef Lua::Function<void(Lua::Reference, int)>	FSetProgress;
+				typedef Lua::Function<int(Lua::Reference)>	FGetProgress;
+				typedef Lua::Function<bool(Lua::Reference)> FBool;
+				typedef Lua::Function<PTopic(Lua::Reference)> FResearchTopic;
+			#else
+				typedef int	FSetProgress;
+				typedef int	FGetProgress;
+				typedef int FBool;
+				typedef int FResearchTopic;
+			#endif
 		
 			/**
 			Name of the icon to be used
@@ -348,9 +357,9 @@ namespace Objects
 		struct GlobalState
 		{
 			Attributes::Table	zeroTable;
-			Lua::Reference		zeroState;
 
 			#ifndef CLIENT
+				Lua::Reference		zeroState;
 				ScriptCache::PScript	script,	//currently loaded program
 									program0,	//absolute fallback program to be used if all fails
 									factoryDefault;	//program defined in install directory
@@ -439,7 +448,6 @@ namespace Objects
 			typedef std::function<float(float)>	ExtraModulationFunction;
 
 
-			typedef const SHA256::HashContainer&	TScriptID;
 
 
 
@@ -457,7 +465,6 @@ namespace Objects
 
 
 			TopicProgressVector		topicProgressVector;	//!< Progress of each research topic. Also represented in luaResearchState, but depends on what the Lua program actually does
-			Lua::Reference			luaResearchState;		//!< Server-only Lua research state to derive attributes from
 			Attributes::Table		attributeTable;			//!< Attributes retrieved from Lua research state
 
 
@@ -465,6 +472,8 @@ namespace Objects
 
 
 			#ifndef CLIENT
+				typedef const SHA256::HashContainer&	TScriptID;
+				Lua::Reference		luaResearchState;		//!< Server-only Lua research state to derive attributes from
 				static const TScriptID&	GetScriptIdentifier()	{return globalState.script->identifier;}
 			#endif
 

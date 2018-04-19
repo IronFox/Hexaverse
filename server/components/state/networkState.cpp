@@ -632,7 +632,7 @@ namespace Network
 				d.type = e->isInsertedIntoGrid ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage;
 				d.timestamp.rightNow = true;
 				Channels::destroyEntity.SendTo(server,d);
-			},false);
+			});
 
 		}
 
@@ -756,6 +756,9 @@ namespace Network
 				logConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 			if (FileIO::Config::saveWhenAllQuit)
 				logConfig(" -Auto-saves will be created when all quit.");
+
+			if (RuntimeConfig::GameHasEnded())
+				logConfig("This game has ENDED. Clients can connect to view statistics only.");
 		}
 
 

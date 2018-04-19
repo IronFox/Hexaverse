@@ -71,6 +71,24 @@ namespace Objects
 	}
 	#endif
 
+
+	String	ToString(const BasicBuffer<World::Sensor>&sensors)
+	{
+		static StringBuffer buffer;
+		buffer.Clear();
+		buffer << "["<<sensors.Count()<<"]{";
+		bool first = true;
+		foreach (sensors,sensor)
+		{
+			if (!first)
+				buffer << ',';
+			first = false;
+			buffer << ToString(sensor->gridCenter)<<"_r="<<sensor->radius;
+		}
+		buffer << '}';
+		return buffer.ToStringRef();
+	}
+
 	WorldEntity::~WorldEntity()
 	{
 		//#ifdef CLIENT
@@ -496,6 +514,15 @@ namespace Objects
 	#ifndef CLIENT
 
 	
+		/*virtual*/ void			WorldEntity::SignalTerrainChange(float atTime)
+		{
+			if (!ClearOccupiedTerrain(atTime))
+			{
+				Remove(shared_from_this(),Objects::RemovalType::UncontrolledExplosion,atTime);
+			}
+		}
+
+
 	
 
 		///*static*/ void WorldEntity::MapVisibilityBetween(const PWorldEntity&e, const PWorldEntity&other, float&atTime)
@@ -548,25 +575,47 @@ namespace Objects
 		//		}
 		//	}
 		//}
-		void		WorldEntity::OverrideSetRegisteredSensorToCurrentLocation()
-		{
-			registeredSensor = TRegisteredSensor(location,empDamageLevel);
-		}
 
 	#endif
+
+	void		WorldEntity::OverrideSetRegisteredSensorToCurrentLocation()
+	{
+		registeredSensors.Clear();
+		VisitSensors(location, [this](const World::Sensor&sensor)
+		{
+			registeredSensors << sensor;
+		});
+	}
 	
 
 	void		WorldEntity::MoveSensoryToCurrentLocation(float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 	{
-		if (registeredSensor.location == location && registeredSensor.empDamageLevel == empDamageLevel)
-			return;
 		#ifdef CLIENT
-			this->UnregisterSensory(registeredSensor,atTime);
-			registeredSensor = this->RegisterSensory(location,atTime,newContacts);
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+		#endif
+		index_t at = 0;
+		bool anyChanged = registeredSensors.IsEmpty();
+		if (!anyChanged)
+			VisitSensors(location,[this,&at,&anyChanged](const World::Sensor&s)
+			{
+				if (anyChanged)
+					return;
+
+				anyChanged = at >= registeredSensors.Count() || s != registeredSensors[at];
+				at++;
+			});
+		if (!anyChanged)
+			return;
+		
+		#ifdef CLIENT
+			this->UnregisterSensory(registeredSensors,atTime);
+			this->RegisterSensory(registeredSensors,location,atTime,newContacts);
 		#else
-			TRegisteredSensor sensor = this->RegisterSensory(location,atTime,newContacts);
-			this->UnregisterSensory(registeredSensor,atTime);
-			registeredSensor = sensor;
+			RegisteredSensorStorage newSensors;
+			this->RegisterSensory(newSensors,location,atTime,newContacts);
+			this->UnregisterSensory(registeredSensors,atTime);
+			registeredSensors.swap(newSensors);
 		#endif
 	}
 
@@ -600,7 +649,7 @@ namespace Objects
 
 	void					WorldEntity::ReapplySensory(float&atTime)
 	{
-		if (!registeredSensor.IsSet())
+		if (registeredSensors.IsEmpty())
 		{
 			LogEvent(EventClass::Preset::debug,this,"Cannot reapply entity sensory: None known. Registering new");
 			//DBG_FATAL__("Cannot reapply entity sensory: None known");	//this happens during loading
@@ -608,54 +657,43 @@ namespace Objects
 			return;
 		}
 
-		if (registeredSensor.empDamageLevel != empDamageLevel)
-		{
-			LogEvent(EventClass::Preset::debug,this,"Bad sensor reapplication detected (registeredSensor.empDamageLevel="+String(registeredSensor.empDamageLevel)+", empDamageLevel="+String(empDamageLevel)+")");
-			registeredSensor.empDamageLevel = empDamageLevel;
-		}
-
 		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+ToString(registeredSensor)+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventSignificance::Common,this,"Reapplying sensory (#="+String(registeredSensors.Count())+") at time "+String(atTime));
 
 		#ifdef CLIENT
 			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
 				return;
 		#endif
-
-		VisitSensors(registeredSensor.location, [&atTime, this](const World::Sensor&sensor)
+		foreach (registeredSensors,sensor)
 		{
 			#ifdef CLIENT
-				sensor.InsertInto(World::actual, atTime);
+				sensor->InsertInto(World::actual, atTime);
 			#else
-				owner->RegisterSensorCreation(sensor, location.height, atTime, nullptr);
+				owner->RegisterSensorCreation(*sensor, location.height, atTime, nullptr);
 			#endif
-		});
+		};
 
 	}
 
 
-	WorldEntity::TRegisteredSensor WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	void WorldEntity::RegisterSensory(RegisteredSensorStorage&sensors, const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		#ifdef CLIENT	//special constraint applied by client: strict register->unregister->register... order
-			if (registeredSensor.location != Grid::LCellIdI::Invalid)
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+			if (registeredSensors.IsNotEmpty())
 			{
-				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected (old="+ToString(registeredSensor)+", new="+ToString(loc)+"/emp "+String(empDamageLevel)+")");
-				DBG_FATAL__("Double sensor registration detected (old="+ToString(registeredSensor)+", new="+ToString(loc)+"/emp "+String(empDamageLevel)+")");
-				if (loc == registeredSensor.location && empDamageLevel == registeredSensor.empDamageLevel)
-					return registeredSensor;	//graceful exit
-				UnregisterSensory(registeredSensor,atTime);
+				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected");
+				DBG_FATAL__("Double sensor registration detected");
+				UnregisterSensory(registeredSensors,atTime);
 			}
 		#endif
-		TRegisteredSensor rs = TRegisteredSensor(loc,empDamageLevel);
+		sensors.Clear();
 
 		
 		this->SyncTime(atTime);
-		#ifdef CLIENT
-			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
-			{
-		#endif
 		LogEvent(EventSignificance::Debug,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
-		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
+		VisitSensors(loc, [&atTime, newContacts,&sensors,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
 				sensor.InsertInto(World::actual, atTime);
@@ -670,69 +708,53 @@ namespace Objects
 				else
 					owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
 			#endif
+			sensors << sensor;
 		});
-		#ifdef CLIENT
-			}
-		#endif
-		return rs;
+		LogEvent(EventSignificance::Debug,this,"Registered sensory ("+ToString(sensors)+") at time "+String(atTime));
+
 	}
 
-	void					WorldEntity::UnregisterSensory(TRegisteredSensor&sensor, float&atTime)
+	void					WorldEntity::UnregisterSensory(RegisteredSensorStorage&sensors, float&atTime)
 	{
-		if (sensor.location == Grid::LCellIdI::Invalid)
+		#ifdef CLIENT
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+		#endif
+		if (sensors.IsEmpty())
 		{
-			DBG_FATAL__("Double sensor unregistration detected (now="+ToString(sensor)+")");
+			DBG_FATAL__("Double sensor unregistration detected (now="+String(atTime)+"): "+ToString(id));
 			return;	//graceful exit
 		}
 		#ifdef CLIENT
-			if (registeredSensor != sensor)
+			if (&sensors != &registeredSensors)
 			{
-				DBG_FATAL__("Bad sensor unregistration detected (local="+ToString(registeredSensor)+", given="+ToString(sensor)+")");
-				UnregisterSensory(registeredSensor,atTime);
+				DBG_FATAL__("Bad sensor unregistration detected");
+				UnregisterSensory(registeredSensors,atTime);
 				return;
 			}
 		#endif
-
-		if (sensor.empDamageLevel != empDamageLevel)
-		{
-			DBG_FATAL__("Bad sensor unregistration detected (shouldBeEMP="+String(sensor.empDamageLevel)+", is="+String(empDamageLevel)+")");
-			int copy = empDamageLevel;
-			empDamageLevel = sensor.empDamageLevel;
-			UnregisterSensory(sensor,atTime);
-			empDamageLevel = copy;
-			return;
-		}
-
 		
 		this->SyncTime(atTime);	
 
-		#ifdef CLIENT
-			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
-			{
-		#endif
-		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensor.location)+", "+String(GetScanningRange())+") at time "+String(atTime));
-		VisitSensors(sensor.location, [&atTime, this](const World::Sensor&sensor)
+		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensors)+") at time "+String(atTime));
+		foreach (sensors,sensor)
 		{
 			#ifdef CLIENT
-				sensor.RemoveFrom(World::actual, atTime);
+				sensor->RemoveFrom(World::actual, atTime);
 			#else
 				if (owner->alliance->config.shareSensors)
 				{
 					owner->alliance->ForeachMember([&atTime,this,sensor](const PFaction&f)
 					{
-						f->RegisterSensorRemoval(sensor, location.height, atTime);
+						f->RegisterSensorRemoval(*sensor, location.height, atTime);
 					},true);
 				}
 				else
-					owner->RegisterSensorRemoval(sensor, location.height, atTime);
+					owner->RegisterSensorRemoval(*sensor, location.height, atTime);
 	
 			#endif
-		});
-		#ifdef CLIENT
-			}
-		#endif
-		sensor.empDamageLevel = 0;
-		sensor.location = Grid::LCellIdI::Invalid;
+		};
+		sensors.Clear();
 	}
 
 	#ifndef CLIENT

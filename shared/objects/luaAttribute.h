@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../luaInterface.h"
 #include "research.h"
 
 namespace Objects

@@ -17,6 +17,8 @@ namespace World
 	};
 
 
+	class Sensor;
+
 	/**
 	Planetary data container.
 	Describes content as well as visibility.
@@ -385,8 +387,34 @@ namespace World
 
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 
+
+		/**
+		Checks whether concurrent background sensor painting is currently in progress
+		*/
+		bool					PaintingConcurrently() const	{return concurrentPainting.IsActive();}
+		/**
+		Initiates concurrent background sensor painting using the specified sensor storage.
+		The content will be swapped out before painting begins.
+		*/
+		void					PaintConcurrently(BasicBuffer<Sensor>&sensors);
+
+
 	private:
 		friend class ChangeLock;
+
+		class ConcurrentPainting : public Sys::ThreadObject, public Sys::ParallelLoop::Operator
+		{
+		public:
+			Buffer0<Sensor>	sensors;
+			Data			*owner = nullptr;
+			Sys::ParallelLoop	workers;
+
+			virtual void	ThreadMain() override;
+			virtual void	ExecuteRange(index_t begin, index_t end, index_t worker_index) override;
+
+			/**/			ConcurrentPainting()	{}
+		}					concurrentPainting;
+		friend class ConcurrentPainting;
 
 		struct TChange
 		{
@@ -552,10 +580,21 @@ namespace World
 							gridCenter(Grid::ToLayered(center)),
 							radius(radius),type(t), terrainPenetration(terrainPenetration) {}
 
-		void			ApplyTo(World::Data&clientWorld, short change, float t, index_t processorIndex=0)	const;
-		void			InsertInto(World::Data&clientWorld, float t, index_t processorIndex=0) const;
-		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0) const;
+		void			ApplyTo(World::Data&clientWorld, short change, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false)	const;
+		void			InsertInto(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const;
+		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const;
 		bool			DetectsSubOrbitalObjects() const;
+
+		bool			operator==(const Sensor&other) const
+		{
+			return gridCenter == other.gridCenter && radius == other.radius;
+		}
+
+		bool			operator!=(const Sensor&other) const
+		{
+			return gridCenter != other.gridCenter || radius != other.radius;
+		}
+
 
 		/**
 		Determines whether the local sensor contains the specified location.

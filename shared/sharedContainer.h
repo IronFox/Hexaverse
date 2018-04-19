@@ -63,19 +63,25 @@ template <typename T>
 		}
 
 		template <typename T2>	//allow base types here
-		bool		FindAndErase(const std::shared_ptr<T2>&e)
-		{
-			index_t at = Super::GetIndexOf(e);
-			if (at == InvalidIndex)
-				return false;
-			Erase(at);
-			return true;
-		}
+			bool	FindAndErase(const std::shared_ptr<T2>&e)
+			{
+				index_t at = Super::GetIndexOf(e);
+				if (at == InvalidIndex)
+					return false;
+				Erase(at);
+				return true;
+			}
 
 		template <typename T2>	//allow base types here
-		bool		Contains(const std::shared_ptr<T2>&element) const
-		{
-			return Super::Contains(element);
-		}
+			bool	Contains(const std::shared_ptr<T2>&element) const
+			{
+				return Super::Contains(element);
+			}
+
+		template <typename T2>
+			void	CastAppendAllTo(BasicBuffer<std::shared_ptr<T2> >&outTarget) const
+			{
+				outTarget.AppendAll((const Super&)*this);
+			}
 		
 	};

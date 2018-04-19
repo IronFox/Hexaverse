@@ -53,6 +53,7 @@ namespace Objects
 		void						adoptData(Marker&other)
 		{
 			referenceEntity = other.referenceEntity;
+			referenceEntityOwner = other.referenceEntityOwner;
 			referencedType = other.referencedType;
 			type = other.type;
 			createdInRound = other.createdInRound;
@@ -120,8 +121,8 @@ namespace Objects
 			static void				GetOutdated(BasicBuffer<Marker>&outOudated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
-			static SharedContainer<Structure>		structureGhosts;
-			static SharedContainer<MobileEntity>	mobileGhosts;
+			static SharedContainer<Structure>		deadStructureGhosts,livingStructureGhosts;
+			static SharedContainer<MobileEntity>	deadMobileGhosts,livingMobileGhosts;
 			static Buffer0<TVisited>	visitedSystems;
 			static GenericHashTable<TUniqueID, index_t>	idMap, referenceIDMap,visitedSystemIDMap;
 		#endif
@@ -447,8 +448,11 @@ namespace Objects
 			friend struct TSensorLock;
 
 
-
-			static void	RecreateNexus(const TUniqueID&id=TUniqueID::Empty());	//!< Creates a fresh nexus faction and assigns it to @a nexus
+			/**
+			Creates a fresh nexus faction and assigns it to @a nexus.
+			The default parameter of this function was changed from Empty() to New() since empty owner guids are considered null when creating ghosts.
+			*/
+			static void	RecreateNexus(const TUniqueID&id=TUniqueID::New());	
 			TSensorLock LockSensorUpdates() {return this;}
 
 
@@ -613,6 +617,14 @@ namespace Objects
 		int		GetStorage(const MobileEntity&v, Resource res);
 	#endif
 
+	CONSTRUCT_ENUMERATION3(IncludeGhosts
+		, None
+		, Living
+		, All
+	);
+
+
+
 	/**
 	Iterates through all factions, including the nexus faction
 	*/
@@ -622,12 +634,12 @@ namespace Objects
 	Iterates through all entities that are located in the world, potentially including ghosts (ghosts on client only)
 	Stored mobiles are not iterated
 	*/
-	void			ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts);
+	void			ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, IncludeGhosts include = IncludeGhosts::None);
 	/**
 	Iterates through all entities that are located in the world, potentially including ghosts (ghosts on client only)
 	Stored mobiles are also iterated
 	*/
-	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts);
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, IncludeGhosts include = IncludeGhosts::None);
 
 	/**
 	Iterates through all mobile entities that are located in the world, potentially including ghosts (ghosts on client only).
@@ -635,14 +647,14 @@ namespace Objects
 	Note that this function is usually overkill since most loops can easily know whether they target ground
 	units or orbital units
 	*/
-	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts);
+	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts include = IncludeGhosts::None);
 
 	/**
 	Iterates through all mobile entities that are located in the world or in storage, potentially including ghosts (ghosts on client only).
 	Note that this function is usually overkill since most loops can easily know whether they target ground
 	units or orbital units
 	*/
-	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts);
+	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts include = IncludeGhosts::None);
 }
 
 #ifndef CLIENT

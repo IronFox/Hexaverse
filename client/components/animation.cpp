@@ -18,6 +18,7 @@
 #include <objects/structure/tower.h>
 #include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
+#include <expectedBehavior.h>
 
 namespace Animation
 {
@@ -103,7 +104,7 @@ namespace Animation
 				if (d < 2.f)
 					canDo = false;
 			}
-		},true);
+		},Objects::IncludeGhosts::Living);
 		return canDo;
 	}
 
@@ -1003,6 +1004,7 @@ namespace Animation
 	void					Primitive::Init(Protocol::NewMobileEntity&sc, const Objects::PMobileEntity&v)
 	{
 		type = NewMobileEntity;
+		ASSERT1__(v->IsAlive(),v->GetNameAndOwner());
 		allocatedTarget = v;
 		time.SetMinAndMax(sc.state.entityState.timestamp.atTime/*-0.01f*/);
 	}
@@ -1152,10 +1154,12 @@ namespace Animation
 			break;
 			case NewMobileEntity:
 			{
+				EXPECT(allocatedTarget);
+				EXPECT1(allocatedTarget->health > 0,allocatedTarget->id);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				if (v)
 				{
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity (health "+String(allocatedTarget->health)+") during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 					Objects::PWorldEntity existing = Objects::GetEntity(v->id);
 					if (existing)
 					{
@@ -1909,7 +1913,7 @@ namespace Animation
 						float t = 0.f;
 						e->MoveSensoryToCurrentLocation(t);
 					}
-				},false);
+				},Objects::IncludeGhosts::None);
 
 
 				Animation::insertIntoGridLater.VisitAllKeys([](const TUniqueID&key)
@@ -1931,7 +1935,7 @@ namespace Animation
 				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
 				{
 					e->isInMovementStream = false;	//just in case
-				},false);
+				},Objects::IncludeGhosts::None);
 
 				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)
 				{

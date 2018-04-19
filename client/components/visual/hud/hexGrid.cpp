@@ -1510,7 +1510,7 @@ namespace HexGrid
 				}
 				else
 					hostileGroups.collection.Set(key).Append(e);
-			},true);
+			},Objects::IncludeGhosts::All);
 			CollectionToCommands(cfg,friendlyGroups);
 			CollectionToCommands(cfg,hostileGroups);
 		}

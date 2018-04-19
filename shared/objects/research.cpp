@@ -3,10 +3,9 @@
 #include "prototypes.h"
 #include "structure.h"
 #include "../logEvent.h"
-#include "../scriptCache.h"
 #include "faction.h"
 #include "../runtimeConfig.h"
-#include "../luaGameAPI.h"
+#include <lua/luaGameAPI.h>
 #include <io/file_system.h>
 #include "structure/laboratory.h"
 #include <io/byte_stream.h>

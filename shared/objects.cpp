@@ -100,20 +100,9 @@ namespace Objects
 				{
 					if (e->IsAboveGrid())
 						return;
-					if (changed.IsSet( Grid::low.grid.GetCell(e->location.stackID).family ))
-					{
-						if (!e->ClearOccupiedTerrain(t))
-						{
-							float t2 = t;
-							Remove(e,Objects::RemovalType::UncontrolledExplosion,t2);
-						}
-						else
-						{
-							if (e->IsMobile())
-								To<MobileEntity>::Cast(e)->CheckGround(t);	//check if mobile entity should fall
-						}
-					}
-				},false);
+					if (changed.IsSet(Grid::low.grid.GetCell(e->location.stackID).family))
+						e->SignalTerrainChange(t);
+				});
 			};
 
 			//#ifdef _DEBUG
@@ -183,14 +172,14 @@ namespace Objects
 				ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 				{
 					e->owner.reset();
-				},true);
+				},Objects::IncludeGhosts::All);
 			}
 
 			#ifdef HAS_WINDOW
 				ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 				{
 					e->ambientSound.Destroy();
-				},false);
+				},Objects::IncludeGhosts::None);
 			#endif
 
 			storedMobileEntities.Clear();

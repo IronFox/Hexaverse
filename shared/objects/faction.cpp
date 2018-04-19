@@ -957,7 +957,7 @@ namespace Objects
 					if (e->owner.get() == this)
 						return;
 					HandlePotentialAppearance(e,t,shareSensors);
-				},false);
+				});
 
 				if (alliance->config.exposeEntityDetails)
 					storedMobileEntities.Foreach([this,&t,shareSensors](const PMobileEntity&m)
@@ -1598,8 +1598,8 @@ namespace Objects
 								Marker::referenceIDMap,
 								Marker::visitedSystemIDMap;
 		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;
-		/*static*/ SharedContainer<Structure>		Marker::structureGhosts;
-		/*static*/ SharedContainer<MobileEntity>	Marker::mobileGhosts;
+		/*static*/ SharedContainer<Structure>		Marker::livingStructureGhosts, Marker::deadStructureGhosts;
+		/*static*/ SharedContainer<MobileEntity>	Marker::livingMobileGhosts, Marker::deadMobileGhosts;
 
 		/*static*/ PFaction				Faction::FindByID(const TUniqueID&id)
 		{
@@ -1674,7 +1674,7 @@ namespace Objects
 			{
 				float t = 0;
 				e->UnregisterSensory(t);
-			},false);
+			},IncludeGhosts::None);
 		#endif
 
 		alliance->Leave(shared_from_this());
@@ -1686,7 +1686,7 @@ namespace Objects
 			{
 				float t = 0;
 				e->RegisterSensory(t);
-			},false);
+			},IncludeGhosts::None);
 		#endif
 	}
 
@@ -1713,7 +1713,7 @@ namespace Objects
 
 
 
-	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
+	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts include)
 	{
 		vehicles.Foreach(func);
 		#ifndef NO_SATELLITES
@@ -1721,31 +1721,43 @@ namespace Objects
 		#endif
 		SubOrbital::planes.Foreach(func);
 		#ifdef CLIENT
-			if (includeGhosts)
-				Marker::mobileGhosts.Foreach(func);
+			switch (include)
+			{
+				case IncludeGhosts::All:
+					Marker::deadMobileGhosts.Foreach(func);
+				case IncludeGhosts::Living:
+					Marker::livingMobileGhosts.Foreach(func);
+				break;
+			}
 		#endif
 	}
 
-	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
+	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts include)
 	{
-		ForeachMobileWorldEntity(func,includeGhosts);
+		ForeachMobileWorldEntity(func,include);
 		storedMobileEntities.Foreach(func);
 	}
 
 
-	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, IncludeGhosts include)
 	{
-		ForeachWorldEntity(func,includeGhosts);
+		ForeachWorldEntity(func,include);
 		storedMobileEntities.Foreach(func);
 	}
 
-	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
+	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, IncludeGhosts include)
 	{
-		ForeachMobileWorldEntity(func,includeGhosts);
+		ForeachMobileWorldEntity(func,include);
 		structures.Foreach(func);
 		#ifdef CLIENT
-			if (includeGhosts)
-				Marker::structureGhosts.Foreach(func);
+			switch (include)
+			{
+				case IncludeGhosts::All:
+					Marker::deadStructureGhosts.Foreach(func);
+				case IncludeGhosts::Living:
+					Marker::livingStructureGhosts.Foreach(func);
+				break;
+			}
 		#endif
 	}
 
@@ -1843,16 +1855,28 @@ namespace Objects
 				referenceIDMap.Set(referenceID,newIndex);
 				m.referencedType = referenceType;
 
+				const bool isDead = m.type == Type::EntityDeath;
+
 				PWorldEntity prototype = Objects::Prototypes::all.Find(referenceType);
 				if (prototype)
 				{
 					ASSERT1__(prototype, referenceType);
 					m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
 					if (prototype->IsStructure())
-						structureGhosts << To<Structure>::Cast(m.visualization);
+					{
+						if (isDead)
+							deadStructureGhosts << To<Structure>::Cast(m.visualization);
+						else
+							livingStructureGhosts << To<Structure>::Cast(m.visualization);
+					}
 					else
 						if (prototype->IsMobile())
-							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
+						{
+							if (isDead)
+								deadMobileGhosts << To<MobileEntity>::Cast(m.visualization);
+							else
+								livingMobileGhosts << To<MobileEntity>::Cast(m.visualization);
+						}
 						else
 							LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
 				}
@@ -1866,7 +1890,10 @@ namespace Objects
 						ASSERT1__(base, referenceType);
 						ASSERT1__(turret, referenceType);
 						m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-						mobileGhosts << To<MobileEntity>::Cast( m.visualization );
+						if (isDead)
+							deadMobileGhosts << To<MobileEntity>::Cast(m.visualization);
+						else
+							livingMobileGhosts << To<MobileEntity>::Cast(m.visualization);
 					}
 					else
 						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType.baseType));
@@ -1914,13 +1941,21 @@ namespace Objects
 				ASSERT__(referenceIDMap.Unset(m.referenceEntity));
 				if (m.visualization)
 				{
+					const bool isDead = m.type == Type::EntityDeath;
+
 					if (m.visualization->IsMobile())
 					{
-						mobileGhosts.FindAndErase(m.visualization);
+						if (isDead)
+							deadMobileGhosts.FindAndErase(m.visualization);
+						else
+							livingMobileGhosts.FindAndErase(m.visualization);
 					}
 					elif(m.visualization->IsStructure())
 					{
-						structureGhosts.FindAndErase(m.visualization);
+						if (isDead)
+							deadStructureGhosts.FindAndErase(m.visualization);
+						else
+							livingStructureGhosts.FindAndErase(m.visualization);
 					}
 					#ifdef HAS_WINDOW
 						ApplicationInterface::OnVanish(m.visualization,RemovalType::Vanished,true);
@@ -2010,8 +2045,10 @@ namespace Objects
 			all.Clear();
 			idMap.Clear();
 			referenceIDMap.Clear();
-			mobileGhosts.Clear();
-			structureGhosts.Clear();
+			livingMobileGhosts.Clear();
+			deadMobileGhosts.Clear();
+			livingStructureGhosts.Clear();
+			deadStructureGhosts.Clear();
 			visitedSystems.Clear();
 			visitedSystemIDMap.Clear();
 		}
@@ -2273,7 +2310,7 @@ namespace Objects
 				float t = 0;
 				if (e->owner == f)
 					Remove(e,e->isInserted ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage,t);
-			},false);
+			},IncludeGhosts::None);
 
 			
 			f->alliance->Leave(f);

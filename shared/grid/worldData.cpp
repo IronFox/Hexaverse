@@ -1417,6 +1417,7 @@ namespace World
 
 	void				Data::FlushAndValidateSensory(short initialValue/*=0*/)
 	{
+		ASSERT__(!PaintingConcurrently());
 		bool rs= false;
 		for (index_t i = 0; i < cellStack.Count(); i++)
 		{
@@ -1776,6 +1777,44 @@ namespace World
 	#endif*/
 
 
+	void					Data::PaintConcurrently(BasicBuffer<Sensor>&sensors)
+	{
+		ASSERT__(!PaintingConcurrently());
+
+		concurrentPainting.sensors.swap(sensors);
+		concurrentPainting.owner = this;
+		concurrentPainting.Start();
+	}
+
+	/*virtual override*/ void					Data::ConcurrentPainting::ExecuteRange(index_t begin, index_t end, index_t processorIndex)
+	{
+		for (index_t i = begin; i < end; i++)
+			sensors[i].InsertInto(*owner,0,processorIndex,true);
+	}
+
+
+	/*virtual override*/ void					Data::ConcurrentPainting::ThreadMain()
+	{
+		bool rs= false;
+		for (index_t i = 0; i < owner->cellStack.Count(); i++)
+		{
+			auto&stack = owner->cellStack[i];
+			for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
+			{
+				auto&cell = stack.volumeCell[k];
+				cell.visibility = 0;
+			}
+		}
+		foreach (owner->families,fam)
+			fam->structureOrSensory.Set(0);
+		
+		workers.Execute(this,sensors.Count(),4);
+		
+		owner->sensoryValid = true;
+	}
+
+
+
 	
 	/**/					Data::Data()
 	{
@@ -1971,6 +2010,28 @@ namespace World
 	}
 
 
+	template <count_t Depth>
+		struct Pow
+		{
+			static float Exec(float x)
+			{
+				float y = Pow<Depth-1>::Exec(x);
+				return y * y;
+			}
+		};
+
+	template <>
+		struct Pow<1>
+		{
+			static float Exec(float x)
+			{
+				return x*x;
+			}
+		};
+
+
+
+
 	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
 		enum
@@ -2017,7 +2078,8 @@ namespace World
 			d03 -= up * Vec::dot(d03,up);//bend around sphere
 			d03 += up * (Grid::ToRadius(Grid::CellStack::ToHeight(current.layer)) - centerRadius);
 		//		Grid::RawMeanLayerHeight * float((int)current.layer - (int)center.layer);
-			d03.Normalize0();
+			//d03.Normalize0();
+			FastNormalize(d03);
 				
 			u = Visited;
 			marked << current;
@@ -2046,7 +2108,8 @@ namespace World
 					//going inwards
 					if (translucent)
 					{
-						float w = pow(fabs(dot),64);
+						//float w = pow(fabs(dot),64);
+						float w = Pow<6>::Exec(fabs(dot));
 						totalWeight += w;
 						if ((nu & Visible))
 							visibleWeight += w;
@@ -2088,17 +2151,17 @@ namespace World
 	}
 
 
-	void			Sensor::InsertInto(World::Data&clientWorld, float t, index_t processorIndex/*=0*/) const
+	void			Sensor::InsertInto(World::Data&clientWorld, float t, index_t processorIndex/*=0*/, bool ignoreTargetSensorValidity/*=false*/) const
 	{
-		ApplyTo(clientWorld,+1,t,processorIndex);
+		ApplyTo(clientWorld,+1,t,processorIndex,ignoreTargetSensorValidity);
 		#ifdef CLIENT
 			if (this->gridCenter.layer >= Grid::CellStack::Range)
 				ApplicationInterface::SignalExtraGridSensorCreation(*this);
 		#endif
 	}
-	void			Sensor::RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex/*=0*/) const
+	void			Sensor::RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex/*=0*/, bool ignoreTargetSensorValidity/*=false*/) const
 	{
-		ApplyTo(clientWorld,-1,t,processorIndex);
+		ApplyTo(clientWorld,-1,t,processorIndex,ignoreTargetSensorValidity);
 		#ifdef CLIENT
 			if (this->gridCenter.layer >= Grid::CellStack::Range)
 				ApplicationInterface::SignalExtraGridSensorRemoval(*this);
@@ -2106,9 +2169,9 @@ namespace World
 	}
 
 
-	void		Sensor::ApplyTo(World::Data&v, short change, float t, index_t processorIndex)	const
+	void		Sensor::ApplyTo(World::Data&v, short change, float t, index_t processorIndex, bool ignoreTargetSensorValidity/*=false*/)	const
 	{
-		if (v.SensoryIsInvalid())
+		if (v.SensoryIsInvalid() && !ignoreTargetSensorValidity)
 			return;
 		Data::ChangeSequence seq = v.BeginChangeSequence(t);
 		const Timer::Time t0 = timer.Now();

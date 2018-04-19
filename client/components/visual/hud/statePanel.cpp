@@ -4,7 +4,6 @@
 #include <roundNumber.h>
 #include <runtimeConfig.h>
 #include "../../configurationMode.h"
-#include <luaInterface.h>
 #include <objects/vehicle.h>
 #include <objects/structure/tower.h>
 #include <objects/structure/vehicleStore.h>

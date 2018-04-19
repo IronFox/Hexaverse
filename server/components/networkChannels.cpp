@@ -53,17 +53,34 @@ namespace ResearchSerialization
 			{
 				const auto&stateIn = Objects::Research::globalState.allTopics[i];
 				auto&stateOut = outProg[i];
-				stateOut.dependentTopic = (stateIn->dependency.expired()) ? 0 : stateIn->dependency.lock()->serialIndex + 1;
+				stateOut.dependentTopic = int((stateIn->dependency.expired()) ? 0 : stateIn->dependency.lock()->serialIndex + 1);
 				stateOut.iconName = stateIn->iconName;
 				stateOut.maxProgress = stateIn->maxProgress;
 				stateOut.name = stateIn->name;
-				stateOut.parentTopic = stateIn->parent.expired() ? 0 : stateIn->parent.lock()->serialIndex + 1;
+				stateOut.parentTopic = int(stateIn->parent.expired() ? 0 : stateIn->parent.lock()->serialIndex + 1);
 			}
 		}
 		Channels::ResearchProgram.SendTo(peer,outProg,(UINT32)::Network::UserLevel::CommonFaction);
-
 	}
 
+	void	SendTopicProgressVectorTo( TCP::Destination&dest, const Objects::PFaction&f )
+	{
+		Protocol::ResearchFactionState state;
+		state.ownerID = f->id;
+		state.progressVector = f->researchState.topicProgressVector;
+		Channels::ResearchFactionState.SendTo(dest,state,(UINT32)::Network::UserLevel::CommonFaction);
+	}
+
+	void	SendResearchTo( TCP::Destination&dest )
+	{
+		SendResearchProgramTo(dest);
+		SendAttributeVectorTo(dest,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
+		Objects::ForeachFaction([&dest](const Objects::PFaction&f)
+		{
+			SendTopicProgressVectorTo(dest,f);
+			SendAttributeVectorTo(dest,f->researchState.attributeTable,f->id);
+		});
+	}
 
 	//void	SendAttributeDeltaVectorTo(TCP::Peer&peer, const Objects::Research::Attributes::Table&table, Protocol::ResearchAttributeVector&reference)
 	//{
@@ -491,7 +508,7 @@ namespace Receiver
 			Protocol::NewMobileEntity st;
 			Game::Network::Describe(st,*v,timestamp,Game::Network::ExposeAll);
 			Channels::newMobileEntity.SendTo(peer,st);
-		},false);
+		});
 
 
 		{
@@ -529,18 +546,7 @@ namespace Receiver
 
 		SendSessionConfigTo(peer, Objects::PFaction());
 
-		ResearchSerialization::SendResearchProgramTo(peer);
-		ResearchSerialization::SendAttributeVectorTo(peer,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
-
-		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
-		{
-			Protocol::ResearchFactionState state;
-			state.ownerID = f->id;
-			state.progressVector = f->researchState.topicProgressVector;
-
-			Channels::ResearchFactionState.SendTo(peer,state);
-			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
-		});
+		ResearchSerialization::SendResearchTo(peer);
 
 		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
@@ -840,6 +846,10 @@ namespace Receiver
 
 			client->faction->accessToken = response.factionToken;
 			Network::tokenMap.Set(response.factionToken,client->faction);
+
+			ResearchSerialization::SendTopicProgressVectorTo(Network::server,faction);	//since the user level hasn't been updated yet, this is not sent to the local client
+			ResearchSerialization::SendAttributeVectorTo(Network::server,faction->researchState.attributeTable,faction->id);
+
 		}
 		else
 		{
@@ -886,15 +896,7 @@ namespace Receiver
 			Channels::createMarker.SendTo(peer, outMarker);
 		}
 
-		ResearchSerialization::SendResearchProgramTo(peer);
-		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
-		{
-			Protocol::ResearchFactionState state;
-			state.ownerID = f->id;
-			state.progressVector = f->researchState.topicProgressVector;
-			Channels::ResearchFactionState.SendTo(peer,state);
-			ResearchSerialization::SendAttributeVectorTo(peer,f->researchState.attributeTable,f->id);
-		});
+		ResearchSerialization::SendResearchTo(peer);
 
 		if (newFaction)
 		{

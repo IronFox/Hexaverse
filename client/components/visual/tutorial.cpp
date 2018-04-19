@@ -7,7 +7,7 @@
 #include "../../version.h"
 #include "../clientRuntimeConfig.h"
 #include <objects/resource.h>
-#include <luaGameAPI.h>
+#include <lua/luaGameAPI.h>
 #include "../clientEvents.h"
 #include "../clientRuntimeConfig.h"
 #include <engine/interface/mouse.h>
@@ -317,7 +317,7 @@ namespace Tutorial
 				{
 					myUnits.AppendElement(RebuildEntity(e));
 				}
-			},false);
+			},Objects::IncludeGhosts::None);
 
 		}
 

@@ -26,7 +26,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
-#include <luaInterface.h>
+#include <lua/luaInterface.h>
 #include "components/nexusThreatHandling.h"
 
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
@@ -1143,18 +1143,7 @@ int main( int argc, const char* argv[])
 		Objects::Research::globalState.onScriptChange <<
 		[]()
 		{
-			ResearchSerialization::SendResearchProgramTo(Network::server);
-			ResearchSerialization::SendAttributeVectorTo(Network::server,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
-
-			Objects::ForeachFaction([](const Objects::PFaction&f)
-			{
-				Protocol::ResearchFactionState state;
-				state.ownerID = f->id;
-				state.progressVector = f->researchState.topicProgressVector;
-
-				Channels::ResearchFactionState.SendTo(Network::server,state);
-				ResearchSerialization::SendAttributeVectorTo(Network::server,f->researchState.attributeTable,f->id);
-			});
+			ResearchSerialization::SendResearchTo(Network::server);
 		};
 
 		while (!application_shutting_down && !quitMainLoop)
@@ -1222,7 +1211,7 @@ int main( int argc, const char* argv[])
 					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 					{
 						e->ReSeedRandom();
-					},false);
+					});
 
 					Nexus::ProcessCoverage();
 

@@ -358,9 +358,9 @@ namespace NexusPresence
 
 
 
-	void Create(World::Data&world, const Objects::PFaction&nexusFaction, bool & placeBases, bool & placeAllPorts, bool &placeSatellites, bool aiEnabled)
+	void Create( World::Data&world, const Objects::PFaction&nexusFaction, bool & placeBases, bool & placeAllPorts, bool &placeSatellites )
 	{
-		placeBases = placeBases && aiEnabled;
+		placeBases = placeBases;
 		placeAllPorts = placeAllPorts ||		//all ports by config
 			(
 				RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus && //game is conquer nexus, so we need some
@@ -391,9 +391,9 @@ namespace NexusPresence
 	}
 
 	#ifndef CLIENT
-		void Create(bool & placeBases, bool & placeAllPorts, bool &placeSatellites, bool aiEnabled)
+		void Create( bool & placeBases, bool & placeAllPorts, bool &placeSatellites )
 		{
-			Create(World::actual,Objects::Faction::nexus,placeBases,placeAllPorts,placeSatellites,aiEnabled);
+			Create(World::actual,Objects::Faction::nexus,placeBases,placeAllPorts,placeSatellites);
 		}
 	#endif
 	

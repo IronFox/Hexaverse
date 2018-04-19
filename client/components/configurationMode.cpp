@@ -218,11 +218,11 @@ namespace ConfigurationMode
 					config.BuildWorld(st.copy);
 
 					GlobalEvents::objectFlush();
-					bool bases = Rules::nexusBases;
+					bool bases = Rules::nexusBases && Detail::Rules::enableAI;
 					bool allNodes = Rules::allNexusPorts;
 					bool sat = true;
 					GlobalEvents::objectFlush();
-					NexusPresence::Create(st.copy, myNexus, bases,allNodes,sat,Detail::Rules::enableAI);
+					NexusPresence::Create(st.copy, myNexus, bases,allNodes,sat);
 
 					st.copy.FlushAndValidateSensory(1);
 //					ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
@@ -1044,7 +1044,7 @@ namespace ConfigurationMode
 									cfg.Change("Rules/basesRequired",Rules::basesRequired);
 									cfg.Change("Rules/gameGoal",RuntimeConfig::gameGoal.ToString());
 									cfg.Change("Rules/Nexus/enableAI",Rules::enableAI);
-									cfg.Change("Rules/Nexus/spawnBases",Rules::basesRequired);
+									cfg.Change("Rules/Nexus/spawnBases",Rules::nexusBases && Rules::enableAI);
 									cfg.Change("Rules/Nexus/spawnAllPorts",Rules::allNexusPorts);
 									if (!cfg.SaveToFile(Detail::outConfigPath.GetLocation(), PRODUCT_NAME))
 									{

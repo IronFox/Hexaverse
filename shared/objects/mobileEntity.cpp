@@ -35,6 +35,8 @@ namespace Objects
 			MobileEntity*const	entity;
 			const bool			wasBuilding;
 		};
+
+		/*static*/ const MobileEntity* MobileEntity::executingJob = nullptr;
 	#endif
 
 
@@ -51,7 +53,7 @@ namespace Objects
 				ASSERT2__(!m->owner->HasMobileInStorage(m),m->GetName(),m->owner->GetName());
 				ASSERT2__(m->owner->HasActiveMobile(m),m->GetName(),m->owner->GetName());
 			#endif
-		},false);
+		},Objects::IncludeGhosts::None);
 		
 		storedMobileEntities.Foreach([](const Objects::PMobileEntity&m)
 		{
@@ -480,6 +482,23 @@ namespace Objects
 			}	
 			this->UnlockTasks();
 			return TaskResult::AllDoneForThisRound;
+		}
+
+		/*virtual override*/ void			MobileEntity::SignalTerrainChange(float atTime)
+		{
+			if (executingJob == this)
+			{
+				/*
+				If we are here then this method was called as a result of terrain change which in turn is the result of some job executed by this entity.
+				We know job execution has not finished yet, which means the terrain may be temporarily inconsistent for this entity.
+				We assume that placement will be handled by the job itself and not do anything here as it may invalidate the operation
+				*/
+				return;
+			}
+			Super::SignalTerrainChange(atTime);
+			if (IsDeadOrGhost())
+				return;
+			CheckGround(atTime);	//check if mobile entity should fall
 		}
 
 
@@ -919,7 +938,9 @@ namespace Objects
 								*/
 								//bool terminal = !job->movesToFocusWhenDone && job->parent.expired();
 
+								executingJob = this;
 								auto rs = job->Continue(*this,myTasks.Peek().GetFocus(location),true);
+								executingJob = nullptr;
 								switch (rs)
 								{
 									case VehicleJob::BaseJob::ContinueJob:

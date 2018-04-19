@@ -8,9 +8,9 @@ namespace NexusPresence
 {
 	
 	#ifndef CLIENT
-		void Create(bool & placeBases, bool & placeAllPorts, bool &placeSatellites, bool aiEnabled);
+		void Create(bool & placeBases, bool & placeAllPorts, bool &placeSatellites);
 	#endif
-	void Create(World::Data&world, const Objects::PFaction&nexusFaction, bool & placeBases, bool & placeAllPorts, bool &placeSatellites, bool aiEnabled);
+	void Create(World::Data&world, const Objects::PFaction&nexusFaction, bool & placeBases, bool & placeAllPorts, bool &placeSatellites);
 	
 }
 

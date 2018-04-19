@@ -143,7 +143,25 @@ namespace Objects
 					#endif
 					)
 				{
-					auto lock = World::actual.LockOnChange();
+					/* FIXED:
+					Lock reason from git history:
+						...so that a vehicle does not undo the job's terrain change as a result of World::actual.onTerrainChange callbacks
+
+					Problem:
+						If terrain is locked, sensories will not be invalidated
+						-> movesToFocusWhenDone will indirectly attempt to relocate the sensor of the local entity to the new location
+						-> Will remove old sensor in updated terrain without knowing sensory is invalid (has not been invalidated)
+						-> Negative sensory paintaing screws up because terrain has actually changed
+
+					Solution:
+						New global variable const MobileEntity* MobileEntity::executingJob, which is set while a job's Continue() method is executed
+						-> Exclude from onTerrainChange handler in objects.cpp
+						-> Removed this lock as it might cause other problems
+
+					done. do not re-add:
+						auto lock = World::actual.LockOnChange();
+					*/
+
 					continue_t rs = Finish(v,focus);
 					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed)
 						return rs;
@@ -1237,9 +1255,7 @@ namespace Objects
 				}
 				case CursorMode::BuildLowWallChainMode:
 				{
-					const auto&stack = world.GetStack(Grid::low.grid.GetCell(cell.stackID).higherEquivalent);
-					Grid::Content c0 = Grid::Content::Reinterpret(stack.GetCellI(cell.height-1).content);
-					return c0 == Grid::Content::Foundation;
+					return false;
 				}
 			}
 			return true;

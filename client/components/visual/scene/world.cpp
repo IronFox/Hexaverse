@@ -9,6 +9,7 @@
 #include "terrain.h"
 #include "../hud/objectCommands.h"
 #include "../objectChoices.h"
+#include "../../gridControl.h"
 
 namespace World
 {
@@ -167,8 +168,13 @@ namespace World
 	void		RecompileIfNecessary()
 	{
 
-		if (allowRecompilation)
+		if (allowRecompilation && !World::actual.PaintingConcurrently())
 		{
+
+			ClientGrid::CheckSensory();
+			if (World::actual.PaintingConcurrently())
+				return;
+
 			if (World::actual.UpdateLighting())
 				VisualTerrain::Invalidate();
 

@@ -1,17 +1,16 @@
 steam: invites not working when already in game
 
-radar drives into range of rocket tower
-artillery auto attacks, but hits neighboring radar
 
 
-load ended game
-unit limits
-player bases off
-nexus bases off but ai on
+
+
 
 
 hard to reproduce/fix:
-	hostile ghost has no owner. Added more log message on server and client to track ther issue
+	Encountered hostile entity in global list of mobile entities with health=0. No entities had actually died. Creation seemed correct, but health should not have been zero.
+		Server data is okay. Client assert on received data did not trigger. Added more checks further down the pipeline
+	AI radar drives into range of rocket tower. this should never happen. player radar stops (verified)
+	hostile ghost has no owner. Added more log message on server and client to track ther issue. Fixed for nexus units. Possibly fixed
 	clicking on ghosts crashes client (hostile or friendly). Added more log entries to track issue. Removed remote possible cause
 	bug: clipped terrain sometimes does not rasterize correctly, 
 		with clip inconsistency between neighboring stacks.
@@ -27,8 +26,10 @@ should have (eventually):
 	icon floater for insufficient resources to continue job
 	base fog on average terrain height
 	setting for fog density
+	scriptable AI and regression testing (they are related)
 	
 nice to have:
+	vehicle stores repair contained vehicles
 	better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
 	at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
 	routing through vehicle stores
@@ -40,8 +41,11 @@ nice to have:
 	better clipping:
 		visually remove all solid terrain beneath clipping height,
 		in clipping range, that has no air/liquid above it, or next to it
-	
-
+	AI:
+		if dead ghost outside hostile sensory but in attack range of living hostile structure ghost, apply matching 'virtual' scanning range of given distance to that structure
+		if dead ghost outside hostile attack range but in scanning range of living hostile structure ghost, apply matching 'virtual' attack range of given distance to that structure
+		cache threat estimation
+		
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.
 	possible causes:
@@ -59,10 +63,7 @@ steam: find alternate server location service
 
 
 
-
-
-
-
+deactivate build buttons if unit limit is reached
 	
 
 	
@@ -178,6 +179,11 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: if research based sensor range expansion is the only 'terrain change' during round, fog of war is not updated
+improved: nexus bases off but ai on
+fixed: player bases off
+implemented: load ended game
+fixed: artillery auto attacks, but hits neighboring radar
 fixed: plane position markers are drawn atop planes instead below
 done: repairer should hold if repair has completed
 fixed: build bride to generates micro tasks incorrectly named 'build road to'

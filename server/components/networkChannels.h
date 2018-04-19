@@ -52,8 +52,12 @@ namespace Receiver
 
 namespace ResearchSerialization
 {
-	void	SendAttributeVectorTo(TCP::Destination&peer, const Objects::Research::Attributes::Table&table, const TUniqueID&originID);
-	void	SendResearchProgramTo(TCP::Destination&peer);
+	/**
+	Sends the entire research state of all factions to the specified destination.
+	No delta-compression is used, and all data is sent in an order that the client expects.
+	If destination is chosen to be all clients then faction level is required as minimum peer level.
+	*/
+	void	SendResearchTo(TCP::Destination&);
 }
 
 

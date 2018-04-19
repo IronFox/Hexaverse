@@ -41,36 +41,31 @@ namespace AI
 		float	unknownDistanceThreat = 0.f;
 	
 
-		float	ActualDamageThreat() const
+		bool	ShouldBlock(const TThreatEstimation&base) const
 		{
-			if (damageThreat == 0 && unknownDistanceThreat < 0.2f)
-				return 0;
-			if (!beingSeen && unknownDistanceThreat < 0.2f && currentIsOffensiveVehicle)
-				return 0;
-			return 20.f * unknownDistanceThreat +  damageThreat;
-		}
+			if (!beingSeen && currentIsOffensiveVehicle && unknownDistanceThreat < 0.2f)
+				return false;
 
+			if (damageThreat > base.damageThreat)
+				return true;
+			if (unknownDistanceThreat == base.unknownDistanceThreat)
+				return false;
 
-		bool	operator>(const TThreatEstimation&base) const
-		{
-			return ActualDamageThreat() > base.ActualDamageThreat();	
+			return unknownDistanceThreat * 0.8f > base.unknownDistanceThreat;
 		}
 	};
 
 
-
-	static void EstimateThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation &current)
+	static void EstimateDeadThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, TThreatEstimation &current)
 	{
-		if (e.isOwnedByMe)
-		{
-			if (e.IsDeadOrGhost())	//ghost
-			{
-				float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
+		float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
 
-				current.unknownDistanceThreat += 1.f / (1.f + distance);
-			}
-			return;
-		}
+		current.unknownDistanceThreat += 1.f / (1.f + distance);
+	}
+
+
+	static void EstimateLivingThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation &current)
+	{
 		if (ignoreHostiles || (canIgnoreThreat && e.ignoreThreatRounds))
 			return;
 		//Objects::PTurretBase b = e.GetTurretBase();
@@ -96,8 +91,17 @@ namespace AI
 		threat = TThreatEstimation();
 		Objects::ForeachWorldEntity([reference,ignoreHostiles,canIgnoreThreat,&threat](const Objects::PWorldEntity&e)
 		{
-			EstimateThreatLevelFrom(*e,reference,ignoreHostiles,canIgnoreThreat,threat);
-		},true);
+			EstimateLivingThreatLevelFrom(*e,reference,ignoreHostiles,canIgnoreThreat,threat);
+		},Objects::IncludeGhosts::Living);
+
+		Objects::Marker::deadMobileGhosts.Foreach([reference,&threat](const Objects::PWorldEntity&e)
+		{
+			EstimateDeadThreatLevelFrom(*e,reference,threat);
+		});
+		Objects::Marker::deadStructureGhosts.Foreach([reference,&threat](const Objects::PWorldEntity&e)
+		{
+			EstimateDeadThreatLevelFrom(*e,reference,threat);
+		});
 	}
 
 
@@ -112,7 +116,7 @@ namespace AI
 		TThreatEstimation threat;
 		EstimateThreatFromAll(reference,currentIsOverconfident,  currentCanIgnoreThreat,threat);
 
-		return threat > currentThreat;
+		return threat.ShouldBlock(currentThreat);
 	}
 
 
@@ -207,7 +211,7 @@ namespace AI
 				Objects::ForeachWorldEntity([&priority,explosionRadius,rs](const Objects::PWorldEntity&e)
 				{
 					priority += ProcessAttackPriority(*e,rs.impactAt,explosionRadius);
-				},true);
+				},Objects::IncludeGhosts::Living);
 				LogEvent(EventSignificance::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
@@ -305,7 +309,7 @@ namespace AI
 			Objects::ForeachWorldEntity([v](const Objects::PWorldEntity&e)
 			{
 				ProcessAttackTarget(*v,*e,attackTarget);
-			},true);
+			},Objects::IncludeGhosts::Living);
 
 			for(index_t at = 0; at < attackTarget.Count(); at++)
 			{
@@ -323,7 +327,7 @@ namespace AI
 							conflict = true;
 						}
 					}
-				},false);
+				},Objects::IncludeGhosts::None);
 
 				if (conflict)
 				{
@@ -359,7 +363,7 @@ namespace AI
 						radarProximity++;
 				}
 			}
-			,false);
+			,Objects::IncludeGhosts::None);
 			
 			currentIsOverconfident = proximityPresence > 5;
 			if (!attacker && radarProximity > 1 && random.NextFloat() < 0.3f)
@@ -413,7 +417,7 @@ namespace AI
 						badWeight += 20 / (1.f + distance);
 					else
 						goodWeight += fc / (1.f + distance);
-				},true);
+				},Objects::IncludeGhosts::Living);
 				//if (badWeight < 0.1f && goodWeight < 0.05f)
 				{
 					foreach (Objects::Marker::all,_m)
@@ -491,7 +495,7 @@ namespace AI
 						participants++;
 					}
 				}
-			},false);
+			},Objects::IncludeGhosts::None);
 
 			if (participants > 1)
 			{
@@ -546,7 +550,7 @@ namespace AI
 		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 		{
 			ProcessIgnorance(*e);
-		},true);
+		},Objects::IncludeGhosts::Living);
 
 
 	}

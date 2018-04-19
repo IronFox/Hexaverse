@@ -1,4 +1,3 @@
-#include <scriptCache.h>
 #include <grid/resources.h>
 #include <io/string_file.h>
 
@@ -612,6 +611,8 @@ namespace Network
 				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
+			EXPECT2(vs.entityState.health>0,vs.entityState.health,vs.entityState.id);
+
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
@@ -619,6 +620,7 @@ namespace Network
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
 				ASSERT1__(v,e->GetName());
 				Animation::ApplyState(v,vs,false,false);
+				ASSERT_EQUAL1__(v->health,vs.entityState.health,v->id);
 			}
 			else
 			{
@@ -660,6 +662,9 @@ namespace Network
 			{
 
 				Objects::PMobileEntity v;
+				
+				EXPECT2(vc.state.entityState.health>0,vc.state.entityState.health,vc.state.entityState.id);
+
 				auto m = vc.state.myMobileEntity.Get0();
 				const bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
 				if (place)
@@ -679,6 +684,7 @@ namespace Network
 
 				//v->id = vc.state.entityState.id;
 				Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
+				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
 				#ifdef HAS_WINDOW
 					if (v->isOwnedByMe && !amLocated)
 					{
@@ -699,6 +705,8 @@ namespace Network
 					LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
 
 				}
+				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
+
 			}
 			catch (const std::exception & ex)
 			{
@@ -1173,8 +1181,50 @@ namespace Network
 			bool brk = true;
 		}
 
-		static bool triggerScriptChange = false,
-			reallyTriggerScriptChange = false;
+		enum class ScriptChangeFlags
+		{
+			Empty = 0x0,
+			HaveNewTopics = 0x1,
+			HaveMyAttributes = 0x2,
+			HaveZeroAttributes = 0x4,
+			HaveMyResearchFactionState = 0x8,
+
+			ShouldLoad = HaveNewTopics | HaveMyAttributes | HaveZeroAttributes | HaveMyResearchFactionState
+
+		};
+
+		inline ScriptChangeFlags	operator|(ScriptChangeFlags a,ScriptChangeFlags b)
+		{
+			typedef std::underlying_type<ScriptChangeFlags>::type	T;
+			return static_cast<ScriptChangeFlags>( static_cast<T>(a) | static_cast<T>(b) );
+		}
+
+		inline void	operator|=(ScriptChangeFlags&a,ScriptChangeFlags b)
+		{
+			a = a | b;
+		}
+
+		inline bool	operator&(ScriptChangeFlags a,ScriptChangeFlags b)
+		{
+			typedef std::underlying_type<ScriptChangeFlags>::type	T;
+			return (static_cast<T>(a) & static_cast<T>(b) ) != 0;
+		}
+		
+		static ScriptChangeFlags scriptChangeFlags = ScriptChangeFlags::Empty;
+
+
+		void	CheckScriptChangeFlags()
+		{
+			if (scriptChangeFlags == ScriptChangeFlags::ShouldLoad)
+			{
+				scriptChangeFlags = ScriptChangeFlags::Empty;
+				#ifdef HAS_WINDOW
+					Objects::Command::CommandGroup::CollapseAll();	//some groups are reconfigured as a result of onScriptChange()
+				#endif
+				Objects::Research::globalState.onScriptChange();
+			}
+		}
+
 
 		void	ResearchFactionState(Protocol::ResearchFactionState&state)
 		{
@@ -1187,12 +1237,20 @@ namespace Network
 					Tutorial::SignalResearchChange();
 			#endif
 
-			if (f->isOwnedByMe && triggerScriptChange && f->researchState.topicProgressVector.Count() == Objects::Research::globalState.allTopics.Count())
+			if (f->isOwnedByMe && f->researchState.topicProgressVector.Count() == Objects::Research::globalState.allTopics.Count())
 			{
-				triggerScriptChange = false;
-				reallyTriggerScriptChange = true;
+				scriptChangeFlags |= ScriptChangeFlags::HaveMyResearchFactionState;
+
+				CheckScriptChangeFlags();
 			}
 
+		}
+
+		static index_t ImportIndex(const Protocol::SerialUnsigned&v)
+		{
+			if (v.value == 0)
+				return InvalidIndex;
+			return v.value - 1;
 		}
 
 		//research program updates must always preceed research states
@@ -1200,9 +1258,10 @@ namespace Network
 		{
 			Objects::Research::FactionState::BeginServerTopicUpdate();
 			foreach (program,prog)
-				Objects::Research::FactionState::DeclareServerTopic(prog->parentTopic -1, prog->name,prog->iconName, prog->maxProgress,prog->dependentTopic-1);
+				Objects::Research::FactionState::DeclareServerTopic(ImportIndex(prog->parentTopic), prog->name,prog->iconName, prog->maxProgress,ImportIndex(prog->dependentTopic));
 
-			triggerScriptChange = true;	//must wait for state
+
+			scriptChangeFlags = ScriptChangeFlags::HaveNewTopics; //must wait for state. Flush all other updates
 		}
 
 
@@ -1253,7 +1312,8 @@ namespace Network
 		{
 			Objects::Research::Attributes::Table*table0 = nullptr;
 			bool isMine = false;
-			if (attributes.faction.IsEmpty())
+			const bool zeroTable = attributes.faction.IsEmpty();
+			if (zeroTable)
 				table0 = &Objects::Research::globalState.zeroTable;
 			else
 			{
@@ -1269,26 +1329,39 @@ namespace Network
 			Import(attributes.floatAttributes,table.floats);
 
 
-			if (isMine && reallyTriggerScriptChange)
+			if (isMine)
 			{
-				reallyTriggerScriptChange = false;
-				Objects::Research::globalState.onScriptChange();
+				scriptChangeFlags |= ScriptChangeFlags::HaveMyAttributes;
+
+				World::actual.InvalidateSensory();
 			}
+			elif (zeroTable)
+				scriptChangeFlags |= ScriptChangeFlags::HaveZeroAttributes;
+
+			CheckScriptChangeFlags();
 
 		}
 
 		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
 		{
 			Objects::Research::Attributes::Table*table0 = nullptr;
+			bool isMine = false;
 			if (attributes.faction.IsEmpty())
 				table0 = &Objects::Research::globalState.zeroTable;
 			else
-				table0 = &ResolveFaction(attributes.faction)->researchState.attributeTable;
+			{
+				auto f = ResolveFaction(attributes.faction);
+				isMine = f->isOwnedByMe;
+				table0 = &f->researchState.attributeTable;
+			}
 			auto&table = *table0;
 
 			Import(attributes.boolAttributes,table.bools);
 			Import(attributes.intAttributes,table.ints);
 			Import(attributes.floatAttributes,table.floats);
+
+			if (isMine)
+				World::actual.InvalidateSensory();
 		}
 
 
@@ -1714,8 +1787,7 @@ namespace Network
 			break;
 			case TCP::Event::ConnectionLost:
 			{
-				Receiver::reallyTriggerScriptChange = false;
-				Receiver::triggerScriptChange = false;
+				Receiver::scriptChangeFlags = Receiver::ScriptChangeFlags::Empty;
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
 					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
@@ -2153,7 +2225,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 			{
 				m->isInMovementStream = false;	//just in case
-			},false);
+			},Objects::IncludeGhosts::None);
 			if (c.timeFactor > 0)
 				animationTimeFactor = c.timeFactor;
 		break;
@@ -2169,7 +2241,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
 					ObjectHelper::SignalMarkerDeletion(m->id);
-			},false);
+			},Objects::IncludeGhosts::None);
 
 			#ifdef HAS_WINDOW
 				Objects::structures.Foreach([](const Objects::PStructure&s)
