@@ -63,6 +63,8 @@ namespace HUD
 
 			index_t	FindWindowIndex(const Window*window)
 			{
+				if (!window)
+					return InvalidIndex;
 				foreach (Detail::visibleWindows,_w)
 					if (_w->window.get() == window)
 					{
