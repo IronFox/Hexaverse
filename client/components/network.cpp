@@ -1771,9 +1771,7 @@ namespace Network
 					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
 				//lastPong = timer.Now();
 
-
-
-
+				GlobalEvents::serverConnectionEstablished();
 			}
 			break;
 			case TCP::Event::ConnectionFailed:
@@ -1783,6 +1781,7 @@ namespace Network
 					World::allowRecompilation = true;
 					HUD::WindowStack::SignalSituationChange();
 				#endif
+				GlobalEvents::serverConnectionFailed();
 			}
 			break;
 			case TCP::Event::ConnectionLost:
@@ -1818,8 +1817,8 @@ namespace Network
 					HUD::WindowStack::Hide(HUD::Menu::login);
 					HUD::HostList::CheckVisibility(true);
 					HUD::WindowStack::SignalSituationChange();
-					Tutorial::SignalEnd();
 				#endif
+				GlobalEvents::serverConnectionLost();
 
 			}
 			break;
@@ -1847,10 +1846,7 @@ namespace Network
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
-				#ifdef HAS_WINDOW
-					if (RuntimeConfig::tutorialMode)
-						Tutorial::SignalStart();
-				#endif
+				GlobalEvents::beginGame();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();

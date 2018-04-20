@@ -1,6 +1,6 @@
 steam: invites not working when already in game
 
-
+check tutorial after introduction of new events
 
 
 

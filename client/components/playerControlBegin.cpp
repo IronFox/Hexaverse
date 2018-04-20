@@ -48,10 +48,7 @@ namespace PlayerControlBegin
 
 		pauseAutomaticRoundProgression = false;
 
-		#ifdef HAS_WINDOW
-			if (RuntimeConfig::tutorialMode)
-				Tutorial::SignalRoundStart();
-		#endif
+		GlobalEvents::playerControlBegin();
 	}
 
 

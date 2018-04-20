@@ -8,7 +8,13 @@ namespace GlobalEvents
 	Observable<>	frameBegin,
 					frameAfterCamera,
 					shadowQualityChanged,
-					uiScaleChanged;
+					uiScaleChanged,
+					serverConnectionEstablished,
+					serverConnectionLost,
+		serverConnectionFailed,
+		playerControlBegin,
+		beginGame
+		;
 
 	Observable<bool>	onFullscreenChange;
 
