@@ -197,6 +197,7 @@ namespace World
 
 		void					swap(Data&other)
 		{
+			ASSERT__(!PaintingConcurrently());
 			cellStack.swap(other.cellStack);
 			families.swap(other.families);
 			swp(sensoryValid,other.sensoryValid);
@@ -353,7 +354,7 @@ namespace World
 		*/
 		bool					IsGlobalInstance()	const;
 
-		void					InvalidateSensory() {sensoryValid = false;}
+		void					InvalidateSensory();
 		
 		/**
 		Validates the local sensory, and sets all sensory data to @a initialValue.
@@ -408,6 +409,7 @@ namespace World
 			Buffer0<Sensor>	sensors;
 			Data			*owner = nullptr;
 			Sys::ParallelLoop	workers;
+			volatile bool	done = false;
 
 			virtual void	ThreadMain() override;
 			virtual void	ExecuteRange(index_t begin, index_t end, index_t worker_index) override;
