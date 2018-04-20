@@ -1780,7 +1780,7 @@ namespace World
 	/*virtual override*/ void					Data::ConcurrentPainting::ExecuteRange(index_t begin, index_t end, index_t processorIndex)
 	{
 		for (index_t i = begin; i < end; i++)
-			sensors[i].InsertInto(*owner,0,processorIndex,true);
+			sensors[i].ApplyTo(*owner,1,0,processorIndex,true);
 	}
 
 
