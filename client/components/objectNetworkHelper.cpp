@@ -12,9 +12,64 @@
 #include "clientRuntimeConfig.h"
 #include "network.h"
 #include "visual/tutorial.h"
+#include "gridControl.h"
+#include "clientEvents.h"
 
 namespace ObjectHelper
 {
+	namespace MarkerCheck
+	{
+	
+		bool HandleOutdatedMarkers()
+		{
+			static Buffer0<Objects::Marker> outdated;
+			ClientGrid::CheckSensory();
+			if (!Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10))
+				return false;
+			LogEvent(EventSignificance::Common,"Successfully got "+String(outdated.Count())+" outdated markers. Cleaning up");
+			foreach(outdated, o)
+			{
+			
+				LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
+				ObjectHelper::SignalMarkerDeletion(o->id);
+				//Network::Channels::destroyMarker.SendTo(Network::client, *o);
+			}
+			outdated.Clear();
+			return true;
+		}
+
+
+
+		RuntimeConfig::RoundNumber	lastProcessedRoundNumber;
+
+		void	Retry()
+		{
+			if (DoneThisRound())
+				return;
+			if (HandleOutdatedMarkers())
+				lastProcessedRoundNumber = RuntimeConfig::roundNumber;
+		}
+
+
+		void	Reset()
+		{
+			lastProcessedRoundNumber = RuntimeConfig::RoundNumber(UNSIGNED_UNDEF);
+		}
+
+		bool	DoneThisRound()
+		{
+			return lastProcessedRoundNumber == RuntimeConfig::roundNumber;
+		}
+
+		
+
+		void	Create()
+		{
+			GlobalEvents::objectFlush << Reset;
+			GlobalEvents::playerControlBegin << Retry;
+			GlobalEvents::gridSensoryValid << Retry;
+		}
+	}
 
 	bool IsTerraformingOperation(ConstName jobName)
 	{

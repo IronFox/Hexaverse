@@ -118,7 +118,19 @@ namespace Objects
 			static Marker*			Find(const Grid::LCellIdI&);
 			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
 			static void				FlushAll();
-			static void				GetOutdated(BasicBuffer<Marker>&outOudated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
+
+			/**
+			Retrieves all markers that should be deleted because they are outdated or otherwise invalid.
+			Friendly tomestone markers are considered outdated if a given number of rounds have passed since their creation.
+			Hostile markers do not outdate as such, but are removed if the respective area is considered visible.
+			If grid visibility must be checked but cannot be retrieved right now, the method fails and returns false.
+			The caller should try again later if this happens.
+			@param[out] outOutdated List of resulting markers to erase. Empty if the method returns false
+			@param currentRoundNumber Round number to use for age checks
+			@param deathOutdatedAfterRounds Number of rounds that friendly tomestone markers should remain
+			@return True if a list could be produced, false otherwise. Unavailable grid sensory can cause this method to fail
+			*/
+			static bool				GetOutdated(BasicBuffer<Marker>&outOutdated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
 			static SharedContainer<Structure>		deadStructureGhosts,livingStructureGhosts;

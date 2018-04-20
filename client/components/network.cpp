@@ -2273,17 +2273,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
-		static Buffer0<Objects::Marker> outdated;
-		ClientGrid::CheckSensory();
-		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
-		foreach(outdated, o)
-		{
-			
-			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
-			ObjectHelper::SignalMarkerDeletion(o->id);
-			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
-		}
-
 		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + RuntimeConfig::roundNumber.ToString());
 
 

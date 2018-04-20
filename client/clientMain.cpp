@@ -235,7 +235,11 @@ namespace ApplicationInterface
 
 	bool	CanChangeRoundState()
 	{
-		return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !Network::amSpectator;
+		return Network::client.IsConnected() 
+			&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase 
+			&& !Network::amSpectator
+			&& 	ObjectHelper::MarkerCheck::DoneThisRound()
+			;
 	}
 
 
@@ -1681,6 +1685,9 @@ namespace ApplicationInterface
 		if (!CanChangeRoundState())
 			return false;
 
+		if (!ObjectHelper::MarkerCheck::DoneThisRound())
+			return false;
+
 		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
 		#if 0
@@ -2199,6 +2206,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("VoteList",HUD::VoteList::Create);
 		#endif
 
+		Loading::Stage("Marker Check",ObjectHelper::MarkerCheck::Create);
 		Loading::Stage("Client Grid",ClientGrid::Create);
 		Loading::Stage("Server Process",[]()
 		{
