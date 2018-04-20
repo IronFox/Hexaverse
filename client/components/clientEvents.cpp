@@ -13,7 +13,8 @@ namespace GlobalEvents
 					serverConnectionLost,
 		serverConnectionFailed,
 		playerControlBegin,
-		beginGame
+		beginGame,
+		gridSensoryValid
 		;
 
 	Observable<bool>	onFullscreenChange;

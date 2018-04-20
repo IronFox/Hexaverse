@@ -54,6 +54,9 @@ namespace ClientGrid
 			#ifdef HAS_WINDOW
 				VisualTerrain::Invalidate();
 			#endif
+
+			if (World::actual.SensoryIsInvalid())
+				GlobalEvents::gridSensoryValid();
 		}
 
 		if (World::actual.SensoryIsInvalid())

@@ -32,6 +32,11 @@ namespace GlobalEvents
 	extern Observable<>	playerControlBegin;
 
 	/**
+	Triggered when a previous initialized concurrent sensor painting operation has finished, and sensory is now valid
+	*/
+	extern Observable<>	gridSensoryValid;
+
+	/**
 	All server data has been received and the game may begin.
 	Triggered when the respective server signal has been received
 	*/
