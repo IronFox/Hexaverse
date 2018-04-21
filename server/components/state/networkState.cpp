@@ -137,7 +137,11 @@ namespace Network
 			if (s == INVALID_SOCKET)
 				return;
 
-			static const float timeOut = 3;
+			#ifdef _DEBUG
+				static const float timeOut = 30;
+			#else
+				static const float timeOut = 3;
+			#endif
 			if (timer.GetSecondsSince(lastBeat) > timeOut)
 			{
 				LogEvent(EventClass::Preset::fatal,"No heartbeat received in "+String(timeOut)+" seconds. Shutting down");
