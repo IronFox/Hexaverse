@@ -76,9 +76,6 @@ namespace ClientGrid
 				return;
 			LogEvent(EventSignificance::Debug,"Rebuilding sensory...");
 
-			#ifdef HAS_WINDOW
-				VisualTerrain::visibleSubOrbitGrid.Clear();
-			#endif
 			if (Network::amSpectator)
 				World::actual.FlushAndValidateSensory(1);
 			else
@@ -92,7 +89,18 @@ namespace ClientGrid
 						{
 							sensors << s;
 						});
+
+						foreach (e->GetRegisteredSensors(),sensor)
+						{
+							if (sensor->gridCenter.layer >= Grid::CellStack::Range)
+								ApplicationInterface::SignalExtraGridSensorRemoval(*sensor);
+						}
 						e->OverrideSetRegisteredSensorToCurrentLocation();
+						foreach (e->GetRegisteredSensors(),sensor)
+						{
+							if (sensor->gridCenter.layer >= Grid::CellStack::Range)
+								ApplicationInterface::SignalExtraGridSensorCreation(*sensor);
+						}
 					}
 				},Objects::IncludeGhosts::None);
 				World::actual.PaintSensorsConcurrently(sensors);

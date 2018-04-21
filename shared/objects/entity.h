@@ -637,6 +637,8 @@ namespace Objects
 		*/
 		void					OverrideSetRegisteredSensorToCurrentLocation();
 
+		const RegisteredSensorStorage&	GetRegisteredSensors() const {return registeredSensors;}
+
 	private:
 		RegisteredSensorStorage	registeredSensors;
 
