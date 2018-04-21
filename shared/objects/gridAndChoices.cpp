@@ -96,7 +96,7 @@ namespace Objects
 				if (base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),outTarget))
 				{
 					LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+e->GetName()+" (located at "+ToString(e->location)+") via closest viable trajectory target "+ToString(outTarget.cellTarget));
-					LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+e->GetNiceName());
+					LogEvent(EventClass( EventSignificance::Common, EventFlavor::Neutral),&source,"Auto-targeting "+e->GetNiceName());
 					return true;
 				}
 			};
