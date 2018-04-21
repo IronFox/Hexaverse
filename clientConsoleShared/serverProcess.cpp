@@ -126,7 +126,7 @@ namespace ServerProcess
 		PathString GetExecutablePath()
 		{
 			#ifdef _DEBUG
-				return "..\\server\\.projector\\Debug\\server.exe";
+				return "..\\server\\.projector\\Debug\\server" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
 			#else
 				return "..\\server\\server" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
 			#endif
