@@ -466,7 +466,7 @@ namespace ObjectHelper
 	}
 
 
-	bool	IsIdle(const Objects::PStructure&s)
+	bool	IsIdle( const Objects::PStructure&s )
 	{
 		if (s->IsDeadOrGhost())
 			return false;
@@ -490,7 +490,13 @@ namespace ObjectHelper
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
-			return !mine->IsEnabled() && mine->CouldEnable();
+		{
+			if (mine->IsEnabled() || !mine->CouldEnable())
+				return false;
+			auto vecCopy = mine->naturalResources;
+			vecCopy.fuel = 0;	//ignore fuel only
+			return vecCopy.IsNotEmpty();
+		}
 
 		auto lab = To<Objects::Laboratory>::DynamicCast(s);
 		if (lab)
