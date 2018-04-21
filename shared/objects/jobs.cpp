@@ -163,7 +163,7 @@ namespace Objects
 					*/
 
 					continue_t rs = Finish(v,focus);
-					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed)
+					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed || rs == JobDelayed)
 						return rs;
 					ASSERT__(rs != ContinueJob);
 					if (movesToFocusWhenDone)
