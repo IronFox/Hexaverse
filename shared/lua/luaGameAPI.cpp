@@ -141,7 +141,8 @@ namespace Lua
 				const auto o = (Objects::Component::operation_t)op;
 				const String os = String(Objects::Component::OperationToString(o));
 				t.SetField("can"+os,b.turret->CanDo(o));
-				t.SetField("speedOf"+os,b.turret->operationSpeed[o].GetValue(researchState));
+					
+				t.SetField("speedOf"+os,b.GetOperationSpeed(o));
 			}
 
 			return t;

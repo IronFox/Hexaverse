@@ -337,7 +337,17 @@ namespace Objects
 		return turret->explosionRadius.GetValue(GetResearchState());
 	}
 
+	/*virtual override*/ int			Tower::GetOperationSpeed(Component::operation_t op) const
+	{
+		return turret->operationSpeed[op].GetValue(GetResearchState());
+	}
+
+	/*virtual override*/ String			Tower::DescribeOperationSpeed(Component::operation_t op) const
+	{
+		return turret->operationSpeed[op].Describe(GetResearchState());
+	}
 	
+
 	/*virtual override*/ float			Tower::GetFlatAttackRange() const
 	{
 		if (!turret->CanAttack())

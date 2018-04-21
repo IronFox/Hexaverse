@@ -162,7 +162,6 @@ namespace Objects
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
 		virtual int				GetMovementStepsPerRound() const override;
 		virtual String			DescribeMovementStepsPerRound() const override;
-		virtual int				GetOperationSpeed(Component::operation_t op) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
 		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const override {return base->acceleration[op];}
 		#ifndef ONE_COMPOUND_PER_FACTION
@@ -174,6 +173,8 @@ namespace Objects
 		virtual float			GetFlatAttackRange() const override;
 		virtual String			DescribeFlatAttackRange() const override;
 		virtual float			GetZOffset() const override {return base->height;}
+		virtual int				GetOperationSpeed(Component::operation_t) const override;
+		virtual String			DescribeOperationSpeed(Component::operation_t) const override;
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION

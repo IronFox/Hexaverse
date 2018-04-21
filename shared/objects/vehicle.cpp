@@ -41,11 +41,6 @@ namespace Objects
 
 
 
-	
-	int						Vehicle::GetOperationSpeed(Component::operation_t op)  const
-	{
-		return (int)floor(turret->GetOperationSpeed(op,owner) * base->operationSpeedMultiplier(owner));
-	}
 
 
 	
@@ -211,6 +206,23 @@ namespace Objects
 	{
 		const auto& state = GetResearchState();
 		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
+	}
+
+
+	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op) const
+	{
+		return (int)floor(turret->GetOperationSpeed(op,owner) * base->operationSpeedMultiplier(owner));
+	}
+
+	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::operation_t op) const
+	{
+		const auto&state = GetResearchState();
+		String rs = turret->operationSpeed[op].Describe(state);
+		const auto multiplier = base->operationSpeedMultiplier.GetValue(state);
+		if (multiplier == 1)
+			return rs;
+		const auto final = (int)floor(turret->operationSpeed[op].GetValue(state) * multiplier);
+		return String(final)+"=["+rs+"*"+base->operationSpeedMultiplier.Describe(state)+"(base)]";
 	}
 
 

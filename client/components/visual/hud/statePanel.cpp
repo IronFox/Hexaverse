@@ -294,12 +294,12 @@ namespace StatePanel
 			}
 			if (m->turret->CanDo(Objects::Component::Construct))
 			{
-				String opSpeed = m->turret->operationSpeed[Objects::Component::Construct].Describe(m->GetResearchState());
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Construct);
 				cachedLines << " Converts "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
 			if (m->turret->CanDo(Objects::Component::Repair))
 			{
-				String opSpeed = m->turret->operationSpeed[Objects::Component::Repair].Describe(m->GetResearchState());
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Repair);
 				cachedLines << " Repairs "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
 	

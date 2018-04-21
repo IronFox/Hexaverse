@@ -512,11 +512,6 @@ namespace Objects
 		static void				UpdateSystem(M::TMatrix4<>&inOutSys, M::TMatrix4<>*outInverse,const Grid::LCellIdI&location);
 
 
-		/**
-		Retrieves the amount of minerals that can be converted into structure by the local entity
-		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
-		*/
-		virtual int				GetOperationSpeed(Component::operation_t op) const {return turret->GetOperationSpeed(op,owner);}
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
 		virtual int				GetMovementStepsPerRound() const =0;
