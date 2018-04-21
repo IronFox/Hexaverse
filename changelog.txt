@@ -8,6 +8,7 @@ v0.8.4	[Apr 21 2018]
 	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
 	> Switch off fuel-only mines are no longer considered idle.
 	> Added 'Start Interactive Tutorial' to 'Start Server' menu.
+	> Improved threat-reaction of automated surveyors already in hostile territory.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
