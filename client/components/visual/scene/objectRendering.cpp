@@ -1564,9 +1564,9 @@ namespace Objects
 	}
 
 
-	static void _RenderAttackRing(M::TMatrix4<>&sys, int i)
+	static void _RenderAttackRing(M::TMatrix4<>&sys, int i, float scale)
 	{
-		float fc = 1.f + float(i) * 0.175f;
+		float fc = (1.f + float(i) * 0.175f) * scale;
 		sys.x.xyz *= fc;
 		sys.y.xyz *= fc;
 		display.SetObjectMatrix(sys);
@@ -1834,12 +1834,14 @@ namespace Objects
 
 			int delta = at->IsMobile() ? -1 : 0;
 
+			const float scale = WorldEntity::GetScaleAtHeight(at->location.height);
+
 			if (activeRings)
 			{
 				overallTint.Update(at == selectedEntity ? float4(red,(float)sin(now*4.0)*0.2f + 0.6f) :   float4(at->owner->activeEntityColor,1.f));
 				for (int i = 0; i < activeRings; i++)
 				{
-					_RenderAttackRing(sys,i+delta);
+					_RenderAttackRing(sys,i+delta,scale);
 				}
 			}
 
@@ -1848,7 +1850,7 @@ namespace Objects
 				overallTint.Update(float4(float3(1),0.5f));
 				for (int i = activeRings; i < rings; i++)
 				{
-					_RenderAttackRing(sys,i+delta);
+					_RenderAttackRing(sys,i+delta,scale);
 				}
 			}
 
