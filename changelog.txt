@@ -7,6 +7,7 @@ v0.8.4
 	> Renamed 'Disconnect' to 'Return to Server List' to clarify what happens when in interactive configuration mode.
 	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
 	> Switch off fuel-only mines are no longer considered idle.
+	> Added 'Start Interactive Tutorial' to 'Start Server' menu.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
