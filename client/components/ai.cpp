@@ -570,7 +570,9 @@ namespace AI
 			if (timer.GetSecondsSince(started) > timeQuantum)
 				return;
 		}
-		if (!done && vehicles.IsEmpty())
+		
+		//we could be more strict, enforcing that markers be checked before processing units, but in practice the difference should be minimal
+		if (!done && vehicles.IsEmpty() && ObjectHelper::MarkerCheck::DoneThisRound())
 		{
 			done = true;
 			for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
