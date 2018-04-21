@@ -23,23 +23,15 @@ namespace AIProcess
 						workingDirectory = "..\\client\\";
 			#ifdef _DEBUG
 				path = "..\\client\\.projector\\Debug\\Visual Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			//#elif !defined _RELEASE
-			//	#ifdef PLATFORM_X64
-			//		path = "..\\client\\.projector\\x64\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			//	#else
-			//		path = "..\\client\\.projector\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			//	#endif
+			#elif defined _OPTIMIZED_DEBUG
+				#ifdef PLATFORM_X64
+					path = "..\\client\\.projector\\x64\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				#else
+					path = "..\\client\\.projector\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				#endif
 			#else
 				path = "..\\client\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
 			#endif
-			//#ifdef _DEBUG
-			//	path = "..\\client\\Debug\\client.exe";
-			//#else
-			//	path = "..\\client\\client.exe";
-			//#endif
-
-
-//			String executable = 
 
 			sprintf_s(parameterBuffer,"aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
 

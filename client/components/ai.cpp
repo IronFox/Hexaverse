@@ -64,9 +64,9 @@ namespace AI
 	}
 
 
-	static void EstimateLivingThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation &current)
+	static void EstimateLivingThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, bool canIgnoreThreat, TThreatEstimation &current)
 	{
-		if (ignoreHostiles || (canIgnoreThreat && e.ignoreThreatRounds))
+		if (canIgnoreThreat && e.ignoreThreatRounds)
 			return;
 		//Objects::PTurretBase b = e.GetTurretBase();
 		float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
@@ -89,10 +89,11 @@ namespace AI
 	static void EstimateThreatFromAll(const M::TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation&threat)
 	{
 		threat = TThreatEstimation();
-		Objects::ForeachWorldEntity([reference,ignoreHostiles,canIgnoreThreat,&threat](const Objects::PWorldEntity&e)
-		{
-			EstimateLivingThreatLevelFrom(*e,reference,ignoreHostiles,canIgnoreThreat,threat);
-		},Objects::IncludeGhosts::Living);
+		if (!ignoreHostiles)
+			Objects::ForeachWorldEntity([reference,canIgnoreThreat,&threat](const Objects::PWorldEntity&e)
+			{
+				EstimateLivingThreatLevelFrom(*e,reference,canIgnoreThreat,threat);
+			},Objects::IncludeGhosts::Living);
 
 		Objects::Marker::deadMobileGhosts.Foreach([reference,&threat](const Objects::PWorldEntity&e)
 		{
@@ -107,7 +108,17 @@ namespace AI
 
 	static TThreatEstimation	currentThreat;
 	static bool					currentCanIgnoreThreat,currentIsOverconfident=false;
-	bool BlockTest(const Grid::LCellIdI&location)
+
+
+	void	BeginBlockTest( const Objects::PVehicle&v, bool zeroThreatOnly, bool canIgnoreThreat, bool overConfident )
+	{
+		currentIsOffensiveVehicle = v->turret->CanAttack() && v->turret->independentAttackAndMotion;
+		currentCanIgnoreThreat = canIgnoreThreat;
+		currentIsOverconfident = overConfident;
+		EstimateThreatFromAll(v->system.w.xyz,zeroThreatOnly, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
+	}
+
+	bool BlockTest( const Grid::LCellIdI&location )
 	{
 		if (!(Grid::low.cells[location.stackID].cornerFlags & Grid::empZonesUnlocked))
 			return true;
@@ -349,7 +360,7 @@ namespace AI
 				return;
 		}
 
-		currentIsOverconfident = false;
+		bool overconfident = false;
 		{
 			count_t proximityPresence = 0,
 					radarProximity = 0;
@@ -365,7 +376,7 @@ namespace AI
 			}
 			,Objects::IncludeGhosts::None);
 			
-			currentIsOverconfident = proximityPresence > 5;
+			overconfident = proximityPresence > 5;
 			if (!attacker && radarProximity > 1 && random.NextFloat() < 0.3f)
 			{
 				ApplicationInterface::SignalRemoval(v);
@@ -375,20 +386,19 @@ namespace AI
 
 
 
-		currentIsOffensiveVehicle = attacker && v->turret->independentAttackAndMotion;
+		
 		static Objects::Pathfinding::ReachabilityMapper mapper(false);
-//		currentThreat = TThreatEstimation();
-		currentCanIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
-		//currentIsOverconfident = v->overconfident;
-		EstimateThreatFromAll(v->system.w.xyz,true, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
+
+		const bool canIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
+		BeginBlockTest(v,true,canIgnoreThreat,overconfident);	//force current to have no threat level, limiting motion to areas with zero threat
 
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
 
 		mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,true);
 		if (mapper.result.IsEmpty())
 		{
-			//no chance to get out of danger
-			EstimateThreatFromAll(v->system.w.xyz, false,currentCanIgnoreThreat,currentThreat);
+			//no chance to get out of danger, so try to reduce threat level
+			BeginBlockTest(v,false,canIgnoreThreat,overconfident);
 			mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,true);
 			if (mapper.result.IsEmpty())
 				mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,false);
@@ -559,21 +569,31 @@ namespace AI
 	{
 		if (done)
 			return;
-		LogEvent(EventSignificance::Debug,nullptr,"AI: Not done processing");
+		LogEvent(EventSignificance::Debug,nullptr,"AI: Resuming processing ("+String(timeQuantum)+")");
 		tempMarkers.Clear();
 		Timer::Time started = timer.Now();
 		for (index_t i = vehicles.Count() - 1; i < vehicles.Count(); i--)
 		{
-			done = false;
 			ProcessVehicle(vehicles[i]);
 			vehicles.EraseLast();
 			if (timer.GetSecondsSince(started) > timeQuantum)
 				return;
 		}
 		
-		//we could be more strict, enforcing that markers be checked before processing units, but in practice the difference should be minimal
-		if (!done && vehicles.IsEmpty() && ObjectHelper::MarkerCheck::DoneThisRound())
+		
+		
+
+		if (vehicles.IsEmpty())
 		{
+			LogEvent(EventSignificance::Debug,nullptr,"AI: Vehicle processing completed");
+			
+			if (!ObjectHelper::MarkerCheck::DoneThisRound())
+			{
+				//we could be more strict, enforcing that markers be checked before processing units, but in practice the difference should be minimal
+				LogEvent(EventSignificance::Debug,nullptr,"AI: Markers processing NOT completed");
+				return;
+			}
+
 			done = true;
 			for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
 			{

@@ -1155,7 +1155,15 @@ namespace ApplicationInterface
 	)
 	{
 		float3 center = Camera::scene.GetAbsoluteLocation() + Camera::scene.GetForwardDirection() * shadowRadius;
-		Vec::setLen(center,Grid::ToRadius(0));
+		Vec::setLen(center,Grid::MeanPlanetRadius);
+
+		float3 onSphere = float3(Camera::scene.GetAbsoluteLocation()).Normalized0() * Grid::MeanPlanetRadius;
+
+		const float d2 = Vec::quadraticDistance(center,onSphere);
+		if (d2 > M::Sqr(shadowRadius))
+		{
+			Vec::scale(onSphere,shadowRadius / sqrt(d2),center);
+		}
 
 		const float3&up = Lighting::GetSunDirection();
 		Mat::makeAxisSystem(center,-up,2,shadowCamera.viewInvert);

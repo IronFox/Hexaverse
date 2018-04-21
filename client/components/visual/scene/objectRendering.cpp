@@ -1465,7 +1465,9 @@ namespace Objects
 
 				if (isBuilding || v->health < maxHealth)
 				{
-					ProgressBar::SetLocation(v->GetWorldPosition() IF_SATELLITES_P(, v->IsSatellite() ? 3.f : 1.f));
+					float scale = WorldEntity::GetScaleAtHeight(v->location.height);
+					IF_SATELLITES(if (v->IsSatellite()) scale *= 3.f;)
+					ProgressBar::SetLocation(v->GetWorldPosition(),scale);
 					if (isBuilding)
 					{
 						std::pair<int,int>progress = v->GetBuildingProgress();
@@ -1490,9 +1492,10 @@ namespace Objects
 
 			if (s->health < maxHealth || isBuilding)
 			{
+				float scale = WorldEntity::GetScaleAtHeight(s->location.height);
 				ProgressBar::SetLocation(s->GetWorldPosition()
 				+ 
-				Grid::low.cells[s->location.stackID].centerVertex.xyz*(float(s->GetHeight()-1) * Grid::GetLayerHeight(s->location.height)));
+				Grid::low.cells[s->location.stackID].centerVertex.xyz*(float(s->GetHeight()-1) * Grid::GetLayerHeight(s->location.height)),scale);
 				{
 					if (isBuilding)
 					{

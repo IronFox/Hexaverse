@@ -9,6 +9,7 @@ v0.8.4	[Apr 21 2018]
 	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
 	> Switch off fuel-only mines are no longer considered idle.
 	> Added 'Start Interactive Tutorial' to 'Start Server' menu.
+	> Improved threat-reaction of automated surveyors already in hostile territory.
 	* Fixed crash when clicking on unit while HUD is hidden.
 	* Fixed missing tower attack action update.
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
@@ -24,6 +25,10 @@ v0.8.4	[Apr 21 2018]
 	* Fixed max repair speed enforcement of mechanics.
 	* Fixed state panel and resource list not being hidden when it's supposed to.
 	* Fixed state panel display of unit repair/build speed.
+	* Fixed shadow glitches when camera is considerably below planet mean radius.
+	* Fixed terraformer job 'Build wall up' while on bottom most height level.
+	* Fixed scale of job visualizations and progress bars on lower planet height levels.
+	* Fixed resource visualization atop mines on bottom most height level.
 
 v0.8.3	[Apr 8 2018]
 	+ Home key now toggles sub orbital grid visibility.

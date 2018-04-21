@@ -155,8 +155,12 @@ namespace Animation
 	//	static Buffer<Objects::MapNode>	nodes;
 		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
+		AI::BeginBlockTest(v,false,false,false);
 		mapper.Map(v.get(),v->location,AI::BlockTest,referenceSpeed*5,true);
 		Objects::Component::VehicleBase::canStandOnUnknown = true;
+
+		float dummy = 0;
+		const bool originGood = EstimateThreatLevel(v,v->location,dummy,dummy,dummy);;
 
 
 		float closestDistance = std::numeric_limits<float>::max();
@@ -185,7 +189,7 @@ namespace Animation
 					continue;
 
 
-				bool canDo = EstimateThreatLevel(v,node->cell,competition,ally,ghost);
+				bool canDo = !originGood || EstimateThreatLevel(v,node->cell,competition,ally,ghost);
 
 
 				if (!competition || !canDo || !ghost)
