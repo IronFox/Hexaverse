@@ -23,6 +23,7 @@ v0.8.4	[Apr 21 2018]
 	* Fixed max repair speed enforcement of mechanics.
 	* Fixed state panel and resource list not being hidden when it's supposed to.
 	* Fixed state panel display of unit repair/build speed.
+	* Fixed shadow glitches when camera is considerably below planet mean radius.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
