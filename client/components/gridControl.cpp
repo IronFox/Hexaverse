@@ -60,14 +60,21 @@ namespace ClientGrid
 				VisualTerrain::Invalidate();
 			#endif
 
-			if (!World::actual.SensoryIsInvalid())
+
+			if (World::actual.SensoryIsInvalid())
+				LogEvent(EventSignificance::Debug,"Sensor painting has completed but sensory still invalid");
+			else
+			{
+				LogEvent(EventSignificance::Debug,"Sensor painting is done; sensory is valid. Triggering callback");
 				GlobalEvents::gridSensoryValid();
+			}
 		}
 
 		if (World::actual.SensoryIsInvalid())
 		{
 			if (World::actual.PaintingSensorsConcurrently())
 				return;
+			LogEvent(EventSignificance::Debug,"Rebuilding sensory...");
 
 			if (Network::amSpectator)
 				World::actual.FlushAndValidateSensory(1);

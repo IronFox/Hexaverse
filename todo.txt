@@ -1,6 +1,7 @@
 steam: invites not working when already in game
 
 
+ai client: did not finish round. did not crash, finished next round with no problems (after timeout new round)
 
 
 

@@ -56,7 +56,13 @@ namespace ObjectHelper
 		{
 			if (DoneThisRound())
 				return;
-			HandleOutdatedMarkers();
+			LogEvent(EventSignificance::Debug,"Retrying marker processing...");
+			if (!HandleOutdatedMarkers())
+			{
+				const bool parallelPaintingIsActive = World::actual.PaintingSensorsConcurrently();
+				LogEvent(EventSignificance::Debug,"No luck (painting="+String(parallelPaintingIsActive)+")");
+			}
+
 		}
 
 
