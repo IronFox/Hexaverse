@@ -2,6 +2,8 @@ steam: invites not working when already in game
 
 
 ai client: did not finish round. did not crash, finished next round with no problems (after timeout new round)
+plane sensor range is not shown on sky grid
+server enters main thread infinite loop at round 100. last report (server and client before connection loss): <Nexus> is done thinking
 
 
 
