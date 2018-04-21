@@ -1,6 +1,4 @@
 v0.8.4
-	+ Added control console variable 'Game/winner' to determine the winner(s) of the local game (if any).
-	> Now also hiding state panel and resource list while HUD is hidden.
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
 	> Status panel now wraps long lines.
 	> Now disallowing alliance changes once game has ended.
@@ -20,6 +18,7 @@ v0.8.4
 	* Fixed low wall building when already atop a wall.
 	* Fixed zero unit health loaded from file when health was heavily researched.
 	* Fixed max repair speed enforcement of mechanics.
+	* Fixed state panel and resource list not being hidden when it's supposed to.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
