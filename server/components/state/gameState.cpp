@@ -752,7 +752,7 @@ namespace Game
 			//if (to == RuntimeConfig::Phase::CommandPhase)
 				//DebugCheckWorld();	//this assumes the world does not change. if it does, this will fail
 			if (RuntimeConfig::IsACommandPhase(to))
-				LogEvent(EventSignificance::Uncommon,"Begin round "+RuntimeConfig::roundNumber.ToString());
+				LogEvent(EventClass(EventSignificance::Uncommon, EventFlavor::ServerPrivate),"Begin round "+RuntimeConfig::roundNumber.ToString());
 		}
 
 
