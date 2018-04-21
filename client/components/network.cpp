@@ -2351,7 +2351,8 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = true;
 	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
+	if (!faction->isOwnedByMe)
+		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
 		HUD::FactionTable::Update();
 		HUD::HexGrid::RefreshButtonState();
@@ -2363,7 +2364,8 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = false;
 	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
+	if (!faction->isOwnedByMe)
+		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 	#ifdef HAS_WINDOW
 		HUD::FactionTable::Update();
 		HUD::HexGrid::RefreshButtonState();

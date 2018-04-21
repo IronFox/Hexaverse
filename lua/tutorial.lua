@@ -129,11 +129,22 @@ currentTask = 0;	--none
 tasks = {};
 
 
-function CreateTask(begin, checkFunc)
+function CreateTask(begin, endConditionFunc)
 	local t = {};
-	t.begin = begin;
-	if checkFunc ~= nil then
-		t.check = checkFunc;
+	t.begin = 
+		function() 
+			if (endConditionFunc == nil or not endConditionFunc()) then
+				begin();
+			else
+				NextTask();
+			end;
+		end;
+	if endConditionFunc ~= nil then
+		t.check = function()
+			if (endConditionFunc()) then
+				TaskDone();
+			end;
+		end;
 	end;
 	table.insert(tasks, t);
 end
@@ -161,95 +172,91 @@ CreateTask(function() Game.DisplayMessage(
 
 CreateTask(function() Game.DisplayMessage("Let's get you acquainted with the camera controls.") end);
 
-CreateTask(function() Game.DescribeTask("Zoom the camera by using the mouse-wheel or the up/down arrow-keys."); end, function() if cameraZoomed then TaskDone() end; end);
-CreateTask(function() Game.DescribeTask("Drag the camera by holding the right or middle mouse button and moving the mouse."); end, function() if cameraDragged then TaskDone() end; end);
-CreateTask(function() Game.DescribeTask("Rotate the camera around your current focus by pressing the ASDW keys."); end, function() if cameraRotated then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Zoom the camera by using the mouse-wheel or the up/down arrow-keys."); end, function() return cameraZoomed end);
+CreateTask(function() Game.DescribeTask("Drag the camera by holding the right or middle mouse button and moving the mouse."); end, function() return cameraDragged end);
+CreateTask(function() Game.DescribeTask("Rotate the camera around your current focus by pressing the ASDW keys."); end, function() return cameraRotated end);
 
 CreateTask(function() Game.DisplayMessage("Now that you have some understanding of camera control, let's explore your units.") end);
 
 --buildings:
-CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator' then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator'; end);
 CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy while consuming %Fuel%fuel. This generator is enough to support your Mine and one more consumer. After that you will need more.","generator.jpg") end);
 
-CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine' then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine'; end);
 CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the planet core underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out but they are also rarely enough.","mine.jpg") end);
 
 --build lab:
-CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer'; end);
 CreateTask(function() Game.DisplayMessage("Terraformers are your primary working force. While not all terraformers are equally manuverable, resilient, or productive, they can all shape the terrain and build new structures.\n Now, let's build something!","terraformer.png") end);
 CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
 	function() 
-		local done = false;
 		if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then 
 			for i = 1, #Game.selectedUnit.tasks do
 				local t = Game.selectedUnit.tasks[i];
 				if t.name == 'construct Laboratory' then
-					TaskDone();
-					done = true;
-					break;
+					return true;
 				end;
 			end;
 		end;
 		--also done when it already exists
-		if not done then
-			for i = 1, #Game.myUnits do
-				local u = Game.myUnits[i];
-				if u.typeName == 'Laboratory' then
-					TaskDone();
-					break;
-				end;
-			end;
-		end;
-	end);
-
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end);
-
-CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please request new rounds by using the 'End Round' command in the bottom left section of the screen, or by pressing the Enter/Return key."); end,
-	function()
 		for i = 1, #Game.myUnits do
 			local u = Game.myUnits[i];
 			if u.typeName == 'Laboratory' then
-				TaskDone();
-				break;
+				return true;
 			end;
 		end;
-	end
+		return false;
+	end);
+
+	
+function HaveLab()
+	for i = 1, #Game.myUnits do
+		local u = Game.myUnits[i];
+		if u.typeName == 'Laboratory' then
+			return true;
+		end;
+	end;
+	return false;
+end
+
+	
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end, HaveLab);
+
+CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please request new rounds by using the 'End Round' command in the bottom left section of the screen, or by pressing the Enter/Return key."); end,
+	HaveLab
 );
 
 CreateTask(function() Game.DisplayMessage("Laboratories allow two types of research: Unlocking and Improving. The more laboratories you have enabled, the faster the research will progress. It is also a good idea to build them next to each other, as they accelerate each other in close proximity.","laboratory.jpg"); end);
 CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type by selecting it and using the commands in the bottom section of the screen."); end,
 	function()
 		local res = Game.myResearch['Unlock:ReactorCore'];
-		--FindResearch('Unlock:ReactorCore');
-		if res ~= nil and (res.isQueued or res.isCompleted) then
-			TaskDone();
-		else
-			
-		end;
+		return res ~= nil and (res.isQueued or res.isCompleted);
 	end
 );
 
-CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, please find and select your Surveyor.") end, function() if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor' then TaskDone() end; end);
+CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, please find and select your Surveyor.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor'; end);
 
 CreateTask(function() Game.DisplayMessage("Surveyors automatically identify new natural resources in their yellow scanning sphere. The dark discs near your starting location indicate that there isn't anything there (except beneath your starting mine). Instruct your surveyor to move by right-clicking anywhere without discs.","surveyor.png") end);
 CreateTask(function() Game.DescribeTask("Please move your surveyor until it found some more %Fuel%fuel (a green bar atop the terrain). Request new rounds to execute movement operations") end, 
 		function() 
 			local at = Game.FindHighestAvailableResourceLocation('Fuel');
-			if (at ~= -1) then
-				--Game.FocusCameraAt(at);
-				TaskDone() 
-			end;
+			return (at ~= -1);
 		end
 		);
 
-CreateTask(function() Game.DisplayMessage("In some situations it may be smarter to survey the terrain manually, but for now let's instruct the unit to do so automatically.") end);
-CreateTask(function() Game.DescribeTask("Please automate your Surveyor by selecting it and clicking on the Automate button at the bottom screen section.") end, 
-		function() 
-			if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor' and Game.selectedUnit.isAutomated then 
-				TaskDone() 
-			end; 
-		end
-		);
+function SurveyorIsAutomated() 
+	for i = 1, #Game.myUnits do
+		local u = Game.myUnits[i];
+		if u.typeName == 'Hoversurveyor' and u.isAutomated then
+			return true;
+		end;
+	end;
+	return false;
+end;
+		
+		
+CreateTask(function() Game.DisplayMessage("In some situations it may be smarter to survey the terrain manually, but for now let's instruct the unit to do so automatically.") end, SurveyorIsAutomated);
+CreateTask(function() Game.DescribeTask("Please automate your Surveyor by selecting it and clicking on the Automate button at the bottom screen section.") end, SurveyorIsAutomated);
 
 CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly found fuel resource using your terraformer. In the bottom screen section, select Build->Resources->Mine, and click on the terrain cell with the green bar. Request new rounds until done.") end,
 	function()
@@ -260,13 +267,15 @@ CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly 
 				count = count + 1;
 			end;
 		end;
-		if (count >= 2) then
-			TaskDone();
-		end;
+		return (count >= 2);
 	end
 );
 
-CreateTask(function() Game.DisplayMessage("The list in the bottom left section of the screen shows your current resource output. With two mines and one laboratory we now require more %Energy%energy than a single generator can supply.") end);
+CreateTask(function() Game.DisplayMessage("The list in the bottom left section of the screen shows your current resource output. With two mines and one laboratory we now require more %Energy%energy than a single generator can supply.") end,
+	function()
+		return CountType('Generator') ~= 1;
+	end
+);
 
 CreateTask(function() Game.DescribeTask(
 	"Please construct a second generator using your terraformer. In the bottom screen section, select Build->Resources->Generator, and click anywhere on the terrain.\n"
@@ -280,13 +289,26 @@ CreateTask(function() Game.DescribeTask(
 				count = count + 1;
 			end;
 		end;
-		if (count >= 2) then
-			TaskDone();
-		end;
+		return (count >= 2);
 	end
 );
 
-CreateTask(function() Game.DisplayMessage("Both the new generator and mine are currently switched off, since they are not needed. Typically when requiring more %Energy%energy, available generators will be switched on automatically, which, in turn, may enable mines.") end);
+
+function SecondGeneratorIsEnabled()
+	local enabled = 0;
+	for i = 1, #Game.myUnits do
+		local u = Game.myUnits[i];
+		if (u.typeName == 'Generator' or u.typeName == 'Mine') and u.isEnabled then
+			enabled = enabled + 1;
+		end;
+	end;
+	return (enabled >= 4);
+end;
+
+
+CreateTask(function() Game.DisplayMessage("Both the new generator and mine are currently switched off, since they are not needed. Typically when requiring more %Energy%energy, available generators will be switched on automatically, which, in turn, may enable mines.") end,
+	SecondGeneratorIsEnabled
+);
 
 CreateTask(
 	function() 
@@ -298,32 +320,21 @@ CreateTask(
 		end;
 		Game.DescribeTask("Please enable either your new mine or your new generator by selecting either, and pressing the Enable button in the bottom screen section.") 
 	end,
-	function()
-		local enabled = 0;
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
-			if (u.typeName == 'Generator' or u.typeName == 'Mine') and u.isEnabled then
-				enabled = enabled + 1;
-			end;
-		end;
-		if (enabled >= 4) then
-			TaskDone();
-		end;
-	end
+	SecondGeneratorIsEnabled
 );
 
 
 CreateTask(function() Game.DisplayMessage("Notice how enabling either the generator or mine also enabled the other because your existing base did not supply enough resources. The two buildings now supply each other. If either is destroyed, the other may be forced to switch off.") end);
 
-CreateTask(function() Game.DescribeTask("Please construct a Vehicle Plant using your terraformer. In the bottom screen section, select Build->Factories->Vehicle Plant, and click anywhere on the terrain. Request new rounds until done.") end,
+CreateTask(function() Game.DescribeTask("Next, construct a Vehicle Plant using your terraformer. In the bottom screen section, select Build->Factories->Vehicle Plant, and click anywhere on the terrain. Request new rounds until done.") end,
 	function()
 		for i = 1, #Game.myUnits do
 			local u = Game.myUnits[i];
 			if u.typeName == 'Vehicle Plant' then
-				TaskDone();
-				break;
+				return true;
 			end;
 		end;
+		return false;
 	end
 );
 
@@ -344,32 +355,17 @@ CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to const
 				end;
 				
 				if (found) then
-					TaskDone();
-					break;
+					return true;
 				end;
 			end;
 		end;
+		return false;
 	end
 );
 
 CreateTask(function() Game.DisplayMessage("As long as it's enabled and has access to the required %Minerals%minerals, the vehicle plant will continue producing the items in its queue, left to right. You can abort any job by clicking on it in the list. To automate deployment you may also want to place a gathering point by selecting the vehicle plant in question and right-clicking at the desired destination.") end);
 
-CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core research to complete."); end,
-	function()
-		local res = Game.myResearch['Unlock:ReactorCore'];
-		--FindResearch('Unlock:ReactorCore');
-		if res ~= nil and (res.isCompleted) then
-			TaskDone();
-		else
-			
-		end;
-	end
-);
 
-
-CreateTask(function() Game.DisplayMessage("Reactor Cores cause neighboring Generators to produce twice as much %Energy%energy each round. They are a very useful thing to have. The catch is that you need %Uranium%uranium.") end);
-
-		
 
 CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and construct a mine atop using your terraformer. In the bottom screen section, select Build->Resources->Mine, and click on the terrain cell with the yellow bar. Request new rounds until done.") end,
 	function()
@@ -380,14 +376,20 @@ CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and 
 				count = count + 1;
 			end;
 		end;
-		if (count >= 1) then
-			TaskDone();
-		end;
+		return count >= 1;
+	end
+);
+
+CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core research to complete."); end,
+	function()
+		local res = Game.myResearch['Unlock:ReactorCore'];
+		--FindResearch('Unlock:ReactorCore');
+		return res ~= nil and (res.isCompleted);
 	end
 );
 
 
-
+--CreateTask(function() Game.DisplayMessage("Reactor Cores cause neighboring Generators to produce twice as much %Energy%energy each round. They are a very useful thing to have. The catch is that you need %Uranium%uranium.") end);
 
 CreateTask(function() Game.DescribeTask("Now, please construct a Reactor Core next to one of your Generators. It must be on the same level") end,
 	function()
@@ -402,18 +404,18 @@ CreateTask(function() Game.DescribeTask("Now, please construct a Reactor Core ne
 					Game.Log("Looking at "..n[j].index..", "..u.location.height);
 					local neighbor = FindUnitIn(n[j].index,u.location.height);
 					if (neighbor ~= nil and neighbor.typeName == 'Generator') then
-						TaskDone();
-						return;
+						return true;
 					end;
 				end;
 			end;
 		end;
+		return false;
 	end
 );
 
 
 
-CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the energy output of your compound. They do tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
+CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the %Energy%energy output of your compound. They require %Uranium%uranium, however, and do tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
 
 CreateTask(function() Game.DisplayMessage("This concludes the interactive tutorial.\n"..
 "With the basics covered, you will undoubtedly quickly master all other features as well.\n"..
@@ -429,6 +431,19 @@ CreateTask(function() Game.DisplayMessage("This concludes the interactive tutori
 
 
 --helper functions
+
+
+function CountType(strTypeName)
+	local cnt = 0;
+	for i = 1, #Game.myUnits do
+		local u = Game.myUnits[i];
+		if u.typeName == strTypeName then
+			cnt = cnt + 1;
+		end;
+	end;
+	return cnt;
+end
+
 
 function Current()	--table
 	if type(tasks[currentTask]) ~= nil then

@@ -620,8 +620,9 @@ namespace Menu
 			RefreshSaveGames();
 			WindowStack::Show(saveGames);
 		});
-
-
+		menu->AddCommand("Start Interactive Tutorial",
+			Tutorial::StartTutorialServer,
+			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 	}
 
 	void Create()
