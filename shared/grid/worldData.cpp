@@ -1408,7 +1408,7 @@ namespace World
 
 	void				Data::FlushAndValidateSensory(short initialValue/*=0*/)
 	{
-		ASSERT__(!PaintingConcurrently());
+		ASSERT__(!PaintingSensorsConcurrently());
 		bool rs= false;
 		for (index_t i = 0; i < cellStack.Count(); i++)
 		{
@@ -1772,17 +1772,29 @@ namespace World
 	{
 		concurrentPainting.done = false;
 		sensoryValid = false;
+		#ifdef CLIENT
+			LogEvent(EventSignificance::Debug,"Grid sensory invalidated");
+		#endif
 	}
 
-	void					Data::PaintConcurrently(BasicBuffer<Sensor>&sensors)
+	void					Data::PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors)
 	{
-		ASSERT__(!PaintingConcurrently());
+		ASSERT__(!PaintingSensorsConcurrently());
 
 		concurrentPainting.sensors.swap(sensors);
 		concurrentPainting.owner = this;
 		concurrentPainting.done = false;
+		concurrentPainting.abort = false;
 		concurrentPainting.Start();
 	}
+
+	void					Data::AbortConcurrentSensorPainting()
+	{
+		concurrentPainting.abort = true;
+		concurrentPainting.done = false;
+	}
+
+
 
 	/*virtual override*/ void					Data::ConcurrentPainting::ExecuteRange(index_t begin, index_t end, index_t processorIndex)
 	{
@@ -1793,8 +1805,13 @@ namespace World
 
 	/*virtual override*/ void					Data::ConcurrentPainting::ThreadMain()
 	{
-		while (!done)
+		const auto t0 = timer.Now();
+		while (!done && !abort)
 		{
+			#ifdef CLIENT
+				LogEvent(EventSignificance::Debug,"(Re)starting concurrent sensor painting");
+			#endif
+
 			done = true;	//set first so threads know when to stop
 
 			bool rs= false;
@@ -1813,8 +1830,14 @@ namespace World
 			if (done)
 				workers.Execute(this,sensors.Count(),4);
 		}
+		#ifdef CLIENT
+			if (!abort)
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting completed after "+String(timer.GetSecondsSince(t0))+" seconds");
+			else
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting aborted after "+String(timer.GetSecondsSince(t0))+" seconds");
+		#endif
 		
-		owner->sensoryValid = true;
+		owner->sensoryValid = !abort;
 	}
 
 
@@ -2176,7 +2199,6 @@ namespace World
 				FATAL__("Unsupported sensor type");
 		};
 
-		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 	}
 
 

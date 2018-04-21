@@ -658,6 +658,13 @@ namespace Objects
 		#endif
 		sensors.Clear();
 
+		#ifdef CLIENT
+			if (World::actual.SensoryIsInvalid())
+			{
+				ASSERT_IS_NULL__(newContacts);
+				World::actual.AbortConcurrentSensorPainting();	//this will leave the sensor in an invalid state (if active), but it will end painting faster so the client can restart it with new sensors
+			}
+		#endif
 		
 		this->SyncTime(atTime);
 		LogEvent(EventSignificance::Debug,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));

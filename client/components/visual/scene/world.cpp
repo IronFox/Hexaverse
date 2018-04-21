@@ -168,11 +168,11 @@ namespace World
 	void		RecompileIfNecessary()
 	{
 
-		if (allowRecompilation && !World::actual.PaintingConcurrently())
+		if (allowRecompilation && !World::actual.PaintingSensorsConcurrently())
 		{
 
 			ClientGrid::CheckSensory();
-			if (World::actual.PaintingConcurrently())
+			if (World::actual.PaintingSensorsConcurrently())
 				return;
 
 			if (World::actual.UpdateLighting())

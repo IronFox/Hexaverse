@@ -197,7 +197,7 @@ namespace World
 
 		void					swap(Data&other)
 		{
-			ASSERT__(!PaintingConcurrently());
+			ASSERT__(!PaintingSensorsConcurrently());
 			cellStack.swap(other.cellStack);
 			families.swap(other.families);
 			swp(sensoryValid,other.sensoryValid);
@@ -392,12 +392,19 @@ namespace World
 		/**
 		Checks whether concurrent background sensor painting is currently in progress
 		*/
-		bool					PaintingConcurrently() const	{return concurrentPainting.IsActive();}
+		bool					PaintingSensorsConcurrently() const	{return concurrentPainting.IsActive();}
 		/**
 		Initiates concurrent background sensor painting using the specified sensor storage.
 		The content will be swapped out before painting begins.
 		*/
-		void					PaintConcurrently(BasicBuffer<Sensor>&sensors);
+		void					PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors);
+
+		/**
+		Stops any ongoing sensor painting, and returns the concurrent thread(s) at the earliest possibility.
+		The grid may be left with a partially painted sensor presence.
+		Sensory will not be validated at the end.
+		*/
+		void					AbortConcurrentSensorPainting();
 
 
 	private:
@@ -409,7 +416,7 @@ namespace World
 			Buffer0<Sensor>	sensors;
 			Data			*owner = nullptr;
 			Sys::ParallelLoop	workers;
-			volatile bool	done = false;
+			volatile bool	done = false, abort=false;
 
 			virtual void	ThreadMain() override;
 			virtual void	ExecuteRange(index_t begin, index_t end, index_t worker_index) override;
