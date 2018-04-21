@@ -329,7 +329,7 @@ namespace Objects
 
 
 			const auto&stack = World::actual.GetStack(Grid::low.grid.GetCell(focus.stackID).higherEquivalent);
-			if (stack.GetCellI(v.location.height-1).IsClearOrWater() && focus == v.location+1)
+			if (v.location.height > Grid::CellStack::BottomHeight && stack.GetCellI(v.location.height-1).IsClearOrWater() && focus == v.location+1)
 			{
 				//focus --;
 				Grid::LCellIdI f2 = focus;
