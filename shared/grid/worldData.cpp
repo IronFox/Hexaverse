@@ -27,6 +27,16 @@ namespace World
 			initial.FlushAndValidateSensory();
 		#endif
 		actual.FlushTerrain();
+
+		if (actual.PaintingSensorsConcurrently())
+		{
+			LogEvent(EventSignificance::Common,"FlushAllWorldData: Concurrent sensor painting still in progress. Aborting painting...");
+			actual.AbortConcurrentSensorPainting();
+			while (actual.PaintingSensorsConcurrently())
+				Sleep(10);
+			LogEvent(EventSignificance::Common,"FlushAllWorldData: Aborted concurrent sensor painting");
+		}
+
 		actual.FlushAndValidateSensory();
 	}
 
