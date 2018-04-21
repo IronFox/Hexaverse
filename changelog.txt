@@ -26,6 +26,7 @@ v0.8.4	[Apr 21 2018]
 	* Fixed shadow glitches when camera is considerably below planet mean radius.
 	* Fixed terraformer job 'Build wall up' while on bottom most height level.
 	* Fixed scale of job visualizations and progress bars on lower planet height levels.
+	* Fixed resource visualization atop mines on bottom most height level.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.

@@ -90,8 +90,12 @@ namespace VisualTerrain
 			if (layer != 0)
 				layer++;
 			else
+			{
 				if (Grid::CellStack::bottom.content == Grid::Content::Clear || Grid::CellStack::bottom.content == Grid::Content::Lava)
 					continue;
+				while (layer+1 < Grid::CellStack::Range && fineStack.volumeCell[layer].structureCounter > 0)
+					layer++;
+			}
 		/*	else
 				if (CellStack::bottom.content == Content::Clear)
 					continue;*/
