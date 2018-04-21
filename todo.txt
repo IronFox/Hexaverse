@@ -1,6 +1,5 @@
 steam: invites not working when already in game
 
-check tutorial after introduction of new events
 
 
 
@@ -179,6 +178,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done and improved: check tutorial after introduction of new events
 fixed: if research based sensor range expansion is the only 'terrain change' during round, fog of war is not updated
 improved: nexus bases off but ai on
 fixed: player bases off
