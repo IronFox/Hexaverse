@@ -41,26 +41,33 @@ namespace ClientGrid
 	}
 
 
+	namespace SensorPainting
+	{
+		bool started = false;
+	}
+
+
 	/*
 	This is the client equivalent of server side Faction::CheckSensory()
 	*/
 	void CheckSensory()
 	{
-		static bool started = false;
 
-		if (started && !World::actual.PaintingConcurrently())
+		if (SensorPainting::started && !World::actual.PaintingSensorsConcurrently())
 		{
-			started = false;
+			SensorPainting::started = false;
 			#ifdef HAS_WINDOW
 				VisualTerrain::Invalidate();
 			#endif
+
+			if (!World::actual.SensoryIsInvalid())
+				GlobalEvents::gridSensoryValid();
 		}
 
 		if (World::actual.SensoryIsInvalid())
 		{
-			if (World::actual.PaintingConcurrently())
+			if (World::actual.PaintingSensorsConcurrently())
 				return;
-
 
 			#ifdef HAS_WINDOW
 				VisualTerrain::visibleSubOrbitGrid.Clear();
@@ -81,15 +88,13 @@ namespace ClientGrid
 						e->OverrideSetRegisteredSensorToCurrentLocation();
 					}
 				},Objects::IncludeGhosts::None);
-				World::actual.PaintConcurrently(sensors);
+				World::actual.PaintSensorsConcurrently(sensors);
 				sensors.Clear();
 
-				started = true;
-
+				SensorPainting::started = true;
 
 			}
 		}
 
 	}
 }
-

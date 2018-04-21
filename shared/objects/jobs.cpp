@@ -163,7 +163,7 @@ namespace Objects
 					*/
 
 					continue_t rs = Finish(v,focus);
-					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed)
+					if (rs == TerminalFailure || rs == TerminalFailureVehicleDestroyed || rs == JobDelayed)
 						return rs;
 					ASSERT__(rs != ContinueJob);
 					if (movesToFocusWhenDone)
@@ -826,18 +826,30 @@ namespace Objects
 				return JobDone;
 			}
 
-			int cost = (int)ceil(float(target->GetConstructionCost()) * relative);
+			const int fullCost = (int)ceil(float(target->GetConstructionCost()) * relative);
 
-			if (CanWithdrawFromStorage(v,this->GetConsumedResourceType(),cost))
+
+			const int speed = v.GetOperationSpeed(GetOperationAffinity());
+			if (!speed)
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": "+v.GetName()+" cannot repair");
+				return TerminalFailure;
+			}
+
+			const auto storage = GetStorage(v,this->GetConsumedResourceType());
+
+			if (speed >= fullCost && fullCost <= storage)
 			{
 				target->health = maxHealth;
 				target->RegisterChange(WorldEntity::HealthChanged,v.entityTime);
-				ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-cost);
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired");
+				ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-fullCost);
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired ("+String(fullCost)+")");
 				return JobDone;
 			}
 
-			int canRepair = (int)floor(float(maxHealth) * float(GetStorage(v,this->GetConsumedResourceType())) / float(target->GetConstructionCost()));
+			const int maxRepairRes = std::min(speed, storage);
+			const int canRepair = 
+				(int)floor(float(maxHealth) * float(maxRepairRes) / float(target->GetConstructionCost()));
 			if (!canRepair)
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to repair '"+target->GetNiceName()+"'");
@@ -848,7 +860,10 @@ namespace Objects
 
 				return JobDelayed;
 			}
-			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
+			if (speed < storage)
+				LogEvent(EventClass::Preset::important,&v,this->GetName()+ ": Partially repairing '"+target->GetNiceName()+"': +"+String(canRepair)+" health...");
+			else
+				LogEvent(EventClass::Preset::important,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
 
 			v.entityTime += timeEpsilon;
 			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);

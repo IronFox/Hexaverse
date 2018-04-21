@@ -381,7 +381,8 @@ namespace Objects
 									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
 										if (task.path.GetLength() <= 1 || (task.foci.IsNotEmpty() && task.foci.Peek().isDetailed))
 											dropRemaining = true;
-										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Permanent or harmful obstruction detected: Unable to complete movement.");
+										if (!IsDeadOrGhost())
+											LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Permanent or harmful obstruction detected: Unable to complete movement.");
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
@@ -750,7 +751,7 @@ namespace Objects
 								if (t->AttackNext(choice.cellTarget,true))
 								{
 									LogEvent(EventSignificance::Debug,&t->ToEntity(),"Auto-targeting moving "+GetName()+" (located at "+ToString(location)+", =>"+ToString(Grid::ToWorld(location))+",sys="+ToString(system.w.xyz)+") via closest viable attack target "+ToString(choice.cellTarget)+" at t="+String(entityTime));
-									LogEvent(EventSignificance::Important,&t->ToEntity(),"Auto-targeting moving "+GetNiceName());
+									LogEvent(EventSignificance::Common,&t->ToEntity(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(entityTime);
 									LogEvent(EventSignificance::Debug,&t->ToEntity(),"t is now "+String(entityTime));

@@ -1,12 +1,8 @@
 #include "playerControlBegin.h"
-//#include "network.h"
 #include "visual/hud/hexGrid.h"
 #include "visual/tutorial.h"
 #include "animation.h"
-//#include "clientRuntimeConfig.h"
-//#include "inputControl.h"
-//#include "visual/commandDefinitions.h"
-//#include "visual/objectChoices.h"
+#include "clientEvents.h"
 
 namespace PlayerControlBegin
 {
@@ -48,10 +44,7 @@ namespace PlayerControlBegin
 
 		pauseAutomaticRoundProgression = false;
 
-		#ifdef HAS_WINDOW
-			if (RuntimeConfig::tutorialMode)
-				Tutorial::SignalRoundStart();
-		#endif
+		GlobalEvents::playerControlBegin();
 	}
 
 

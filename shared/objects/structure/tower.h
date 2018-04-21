@@ -171,6 +171,9 @@ namespace Objects
 		virtual String				DescribeSubOrbitalScanningRange() const override;
 
 		virtual bool				AttacksMovingHostilesDuringMotionPhase() const {return true;}
+		virtual int					GetOperationSpeed(Component::operation_t) const override;
+		virtual String				DescribeOperationSpeed(Component::operation_t) const override;
+
 		#ifndef CLIENT
 			virtual void			FlushAutoAttacks() override;
 			virtual bool			AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;

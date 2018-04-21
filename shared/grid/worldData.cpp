@@ -1417,7 +1417,7 @@ namespace World
 
 	void				Data::FlushAndValidateSensory(short initialValue/*=0*/)
 	{
-		ASSERT__(!PaintingConcurrently());
+		ASSERT__(!PaintingSensorsConcurrently());
 		bool rs= false;
 		for (index_t i = 0; i < cellStack.Count(); i++)
 		{
@@ -1777,40 +1777,76 @@ namespace World
 	#endif*/
 
 
-	void					Data::PaintConcurrently(BasicBuffer<Sensor>&sensors)
+	void					Data::InvalidateSensory()
 	{
-		ASSERT__(!PaintingConcurrently());
+		concurrentPainting.done = false;
+		sensoryValid = false;
+		#ifdef CLIENT
+			LogEvent(EventSignificance::Debug,"Grid sensory invalidated");
+		#endif
+	}
+
+	void					Data::PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors)
+	{
+		ASSERT__(!PaintingSensorsConcurrently());
 
 		concurrentPainting.sensors.swap(sensors);
 		concurrentPainting.owner = this;
+		concurrentPainting.done = false;
+		concurrentPainting.abort = false;
 		concurrentPainting.Start();
 	}
 
+	void					Data::AbortConcurrentSensorPainting()
+	{
+		concurrentPainting.abort = true;
+		concurrentPainting.done = false;
+	}
+
+
+
 	/*virtual override*/ void					Data::ConcurrentPainting::ExecuteRange(index_t begin, index_t end, index_t processorIndex)
 	{
-		for (index_t i = begin; i < end; i++)
-			sensors[i].InsertInto(*owner,0,processorIndex,true);
+		for (index_t i = begin; i < end && done; i++)
+			sensors[i].ApplyTo(*owner,1,0,processorIndex,true);
 	}
 
 
 	/*virtual override*/ void					Data::ConcurrentPainting::ThreadMain()
 	{
-		bool rs= false;
-		for (index_t i = 0; i < owner->cellStack.Count(); i++)
+		const auto t0 = timer.Now();
+		while (!done && !abort)
 		{
-			auto&stack = owner->cellStack[i];
-			for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
+			#ifdef CLIENT
+				LogEvent(EventSignificance::Debug,"(Re)starting concurrent sensor painting");
+			#endif
+
+			done = true;	//set first so threads know when to stop
+
+			bool rs= false;
+			for (index_t i = 0; i < owner->cellStack.Count() && done; i++)
 			{
-				auto&cell = stack.volumeCell[k];
-				cell.visibility = 0;
+				auto&stack = owner->cellStack[i];
+				for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
+				{
+					auto&cell = stack.volumeCell[k];
+					cell.visibility = 0;
+				}
 			}
+			foreach (owner->families,fam)
+				fam->structureOrSensory.Set(0);
+		
+			if (done)
+				workers.Execute(this,sensors.Count(),4);
 		}
-		foreach (owner->families,fam)
-			fam->structureOrSensory.Set(0);
+		#ifdef CLIENT
+			if (!abort)
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting completed after "+String(timer.GetSecondsSince(t0))+" seconds");
+			else
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting aborted after "+String(timer.GetSecondsSince(t0))+" seconds");
+		#endif
 		
-		workers.Execute(this,sensors.Count(),4);
-		
-		owner->sensoryValid = true;
+		owner->sensoryValid = !abort;
 	}
 
 
@@ -2202,7 +2238,6 @@ namespace World
 				FATAL__("Unsupported sensor type");
 		};
 
-		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 	}
 
 

@@ -56,7 +56,7 @@ namespace Tutorial
 		bool				tutorialGameShown=false;
 
 		HUD::Dialog::WDialog	holdOn;
-		index_t				holdOnID;
+		index_t				holdOnID = InvalidIndex;
 		Timer::Time			holdOnCreated;
 
 
@@ -162,7 +162,7 @@ namespace Tutorial
 
 		Lua::PProgram		tutorialProgram;
 		Lua::Table			api,myUnits, myResearch;
-		bool				started = false;
+		bool				started = false, expectStart = false;
 
 		CameraEvent			drag,rotate,zoom;
 
@@ -430,7 +430,62 @@ namespace Tutorial
 			}
 		}
 
+		void	SignalStart()
+		{
+			if (!Interactive::expectStart)
+				return;
+			try
+			{
+				Interactive::started = true;
+				Interactive::RebuildFactionUnits();
+				Interactive::RebuildSelected();
+				Interactive::RebuildResearchState();
+				Interactive::Trigger::begin(Detail::progress);
+			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
+		}
 
+		void	SignalRoundStart()
+		{
+			if (!Interactive::started)
+				return;
+			try
+			{
+				Interactive::RebuildFactionUnits();
+				if (!Detail::WaitingForUserOkay())
+					Interactive::Trigger::checkTaskConditions();
+			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
+		
+		}
+		
+
+
+	
+		void	SignalEnd()
+		{
+			using namespace Interactive;
+			using namespace Detail;
+
+			expectStart = false;
+			started = false;
+			objectTables.Clear();
+
+			if (holdOnID != InvalidIndex)
+			{
+				GlobalEvents::frameBegin.Unregister(holdOnID);
+				holdOnID = InvalidIndex;
+			}
+
+			Detail::HideGUI();
+			Detail::progress = 1;
+		}
 
 
 		void Create()
@@ -469,6 +524,12 @@ namespace Tutorial
 
 				GlobalEvents::invalidateObjectCache << SignalEntitySelectionChange;	//something happend to the selected unit
 				Objects::onSelectionChanged << SignalEntitySelectionChange;
+
+
+				GlobalEvents::serverConnectionLost << SignalEnd;
+				GlobalEvents::serverConnectionFailed << SignalEnd;
+				GlobalEvents::playerControlBegin << SignalRoundStart;
+				GlobalEvents::beginGame << SignalStart;
 			}
 			catch (const std::exception&ex)
 			{
@@ -478,6 +539,22 @@ namespace Tutorial
 	}
 
 
+
+	void	SignalResearchChange()
+	{
+		if (!Interactive::started || !Objects::Faction::mine)
+			return;
+		try
+		{
+			Interactive::RebuildResearchState();
+			if (!Detail::WaitingForUserOkay())
+				Interactive::Trigger::checkTaskConditions();
+		}
+		catch (const Lua::Exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
+	}
 
 	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/, bool overrideMemory/*=false*/)
 	{
@@ -572,66 +649,8 @@ namespace Tutorial
 
 	}
 
-	void	SignalStart()
-	{
-		try
-		{
-			Interactive::started = true;
-			Interactive::RebuildFactionUnits();
-			Interactive::RebuildSelected();
-			Interactive::RebuildResearchState();
-			Interactive::Trigger::begin(Detail::progress);
-		}
-		catch (const Lua::Exception&ex)
-		{
-			LogEvent(EventClass::Preset::configurationError,ex.what());
-		}
-	}
-
-	void	SignalRoundStart()
-	{
-		if (!Interactive::started)
-			return;
-		try
-		{
-			Interactive::RebuildFactionUnits();
-			if (!Detail::WaitingForUserOkay())
-				Interactive::Trigger::checkTaskConditions();
-		}
-		catch (const Lua::Exception&ex)
-		{
-			LogEvent(EventClass::Preset::configurationError,ex.what());
-		}
-		
-	}
 
 
-
-
-	void	SignalResearchChange()
-	{
-		if (!Interactive::started || !Objects::Faction::mine)
-			return;
-		try
-		{
-			Interactive::RebuildResearchState();
-			if (!Detail::WaitingForUserOkay())
-				Interactive::Trigger::checkTaskConditions();
-		}
-		catch (const Lua::Exception&ex)
-		{
-			LogEvent(EventClass::Preset::configurationError,ex.what());
-		}
-	}
-
-	
-	void	SignalEnd()
-	{
-		Interactive::started = false;
-		Interactive::objectTables.Clear();
-		Detail::HideGUI();
-		Detail::progress = 1;
-	}
 
 
 	void	SetProgress(int at)
@@ -672,6 +691,11 @@ namespace Tutorial
 			return;
 		}
 
+		if (HUD::WindowStack::IsVisible(holdOn.lock()))
+			return;
+
+		Interactive::expectStart = true;
+
 
 		LogEvent(EventClass::Preset::uncommon,"Starting tutorial server...");
 		RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
@@ -686,28 +710,29 @@ namespace Tutorial
 		});
 		holdOnCreated = timer.Now();
 
-		holdOnID = GlobalEvents::frameBegin.Register([]()
-		{
-			HUD::Dialog::PDialog d = holdOn.lock();
-			if (!d || !HUD::WindowStack::IsVisible(d))
+		if (holdOnID == InvalidIndex)
+			holdOnID = GlobalEvents::frameBegin.Register([]()
 			{
-				GlobalEvents::frameBegin.Unregister(holdOnID);
-				holdOnID = InvalidIndex;
-				return;
-			}
-			if (timer.GetSecondsSince(holdOnCreated) > 30)
-			{
-				ServerProcess::End();
-				HUD::WindowStack::Hide(d);
-				GlobalEvents::frameBegin.Unregister(holdOnID);
-				holdOnID = InvalidIndex;
-				RuntimeConfig::serverAddress = Network::ServerAddress();
-				HUD::Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
-						+String(FileSystem::Folder( RuntimeConfig::myConfig.GetRoot()).ParentLocation()->GetLocation())
-					+"\nSorry about this :S");
-			}
+				HUD::Dialog::PDialog d = holdOn.lock();
+				if (!d || !HUD::WindowStack::IsVisible(d))
+				{
+					GlobalEvents::frameBegin.Unregister(holdOnID);
+					holdOnID = InvalidIndex;
+					return;
+				}
+				if (timer.GetSecondsSince(holdOnCreated) > 30)
+				{
+					ServerProcess::End();
+					HUD::WindowStack::Hide(d);
+					GlobalEvents::frameBegin.Unregister(holdOnID);
+					holdOnID = InvalidIndex;
+					RuntimeConfig::serverAddress = Network::ServerAddress();
+					HUD::Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
+							+String(FileSystem::Folder( RuntimeConfig::myConfig.GetRoot()).ParentLocation()->GetLocation())
+						+"\nSorry about this :S");
+				}
 
-		});
+			});
 			
 		ServerProcess::Begin(true,true,"");
 	}

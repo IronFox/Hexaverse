@@ -647,35 +647,6 @@ namespace Objects
 		});
 	}
 
-	void					WorldEntity::ReapplySensory(float&atTime)
-	{
-		if (registeredSensors.IsEmpty())
-		{
-			LogEvent(EventClass::Preset::debug,this,"Cannot reapply entity sensory: None known. Registering new");
-			//DBG_FATAL__("Cannot reapply entity sensory: None known");	//this happens during loading
-			RegisterSensory(atTime);
-			return;
-		}
-
-		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Reapplying sensory (#="+String(registeredSensors.Count())+") at time "+String(atTime));
-
-		#ifdef CLIENT
-			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
-				return;
-		#endif
-		foreach (registeredSensors,sensor)
-		{
-			#ifdef CLIENT
-				sensor->InsertInto(World::actual, atTime);
-			#else
-				owner->RegisterSensorCreation(*sensor, location.height, atTime, nullptr);
-			#endif
-		};
-
-	}
-
-
 	void WorldEntity::RegisterSensory(RegisteredSensorStorage&sensors, const Grid::LCellIdI&loc, float&atTime, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		#ifdef CLIENT	//special constraint applied by client: strict register->unregister->register... order
@@ -690,6 +661,13 @@ namespace Objects
 		#endif
 		sensors.Clear();
 
+		#ifdef CLIENT
+			if (World::actual.SensoryIsInvalid())
+			{
+				ASSERT_IS_NULL__(newContacts);
+				World::actual.AbortConcurrentSensorPainting();	//this will leave the sensor in an invalid state (if active), but it will end painting faster so the client can restart it with new sensors
+			}
+		#endif
 		
 		this->SyncTime(atTime);
 		LogEvent(EventSignificance::Debug,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));

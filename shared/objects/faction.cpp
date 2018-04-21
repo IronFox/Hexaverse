@@ -1779,9 +1779,9 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, const RuntimeConfig::RoundNumber& currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ bool				Marker::GetOutdated(BasicBuffer<Marker>&outOutdated, const RuntimeConfig::RoundNumber& currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
-			outOudated.Clear();
+			outOutdated.Clear();
 			foreach(all, m)
 			{
 				m->UpdateAge(currentRoundNumber);
@@ -1793,40 +1793,22 @@ namespace Objects
 						{
 							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
-							outOudated << *m;
+							outOutdated << *m;
 						}
 					break;
 					case Type::HostileContact:
 					{
-						//M::TVec3<> center = Grid::ToWorld(m->location);
-						//if ()
-						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
-									 m->visualization && World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
-						/*foreach(structures, s)
-							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
-							{
-								LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
-								seen = true;
-								break;
-							}
-						if (!seen)
-							foreach(vehicles, s)
-								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
-								{
-									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
-									seen = true;
-									break;
-								}
-						if (!seen)
-							foreach(satellites, s)
-								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
-								{
-									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
-									seen = true;
-									break;
-								}*/
-						if (seen)
-							outOudated << *m;
+						if (m->age < 2 || !m->visualization) //don't delete hostile markers in round < 2: grid sensory might be outdated
+							continue;
+						if (World::actual.SensoryIsInvalid())
+						{
+							//it's actually outdated and known to be outdated
+							outOutdated.Clear();
+							return false;
+						}
+
+						if (World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad()))	//I see you. Or should, anyway, but you're gone
+							outOutdated << *m;
 					}
 					break;
 
@@ -1834,6 +1816,7 @@ namespace Objects
 		
 
 			}
+			return true;
 		}
 
 
