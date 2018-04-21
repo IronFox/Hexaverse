@@ -1734,9 +1734,9 @@ namespace Journal
 			Channels::ResearchQueue.SendTo(cl->peer.lock(),queue);
 		}
 		if (drop)
-			LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" dropped");
+			LogEvent(EventSignificance::Common, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" dropped");
 		else
-			LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" appended");
+			LogEvent(EventSignificance::Common, GetPeerOfFaction(f), "Faction research "+topic->GetFullName()+" appended");
 	}
 
 	/*virtual override*/ void Round::QueueResearch::Decode(const Entry&e)
