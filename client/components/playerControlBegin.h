@@ -20,6 +20,12 @@ namespace PlayerControlBegin
 	Triggered when entering command mode and animations have finished (whichever of those events happens later)
 	*/
 	void		OnPlayerControlBegin();
+
+	/**
+	Re-checks whether a new round should be automatically requested
+	*/
+	void		CheckAutoNextRound();
+
 }
 
 

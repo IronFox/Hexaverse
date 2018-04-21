@@ -3,14 +3,12 @@
 #include "visual/tutorial.h"
 #include "animation.h"
 #include "clientEvents.h"
+#include "objectNetworkHelper.h"
 
 namespace PlayerControlBegin
 {
 	bool pauseAutomaticRoundProgression=false;
-
-
-
-
+	bool checked=false;
 
 
 	bool			SeeingHostileActivity()
@@ -21,7 +19,28 @@ namespace PlayerControlBegin
 			return false;
 		#endif
 	}
-																		
+		
+
+	void CheckAutoNextRound()
+	{
+		if (!ObjectHelper::MarkerCheck::DoneThisRound())
+			return;
+
+		if (checked)
+			return;
+
+		checked = true;
+
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
+		{
+			ApplicationInterface::SignalRoundEnd();
+		}
+
+		pauseAutomaticRoundProgression = false;
+	}
+
+
+																
 	/**
 	Triggered when entering command mode and animations have finished (whichever of those events happens later)
 	*/
@@ -39,12 +58,14 @@ namespace PlayerControlBegin
 		#endif
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
-			ApplicationInterface::SignalRoundEnd();
 
-		pauseAutomaticRoundProgression = false;
+		checked = false;
+
+		CheckAutoNextRound();
 
 		GlobalEvents::playerControlBegin();
+
+		CheckAutoNextRound();
 	}
 
 
