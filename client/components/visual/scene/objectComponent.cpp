@@ -380,12 +380,13 @@ namespace Objects
 	}
 	
 
-	void					TaskAttachment::RecompilePath(const MobileEntity::Task&t, int stepsPerRound, float structureSize/*=vehicleScale*/)
+	void					TaskAttachment::RecompilePath( const MobileEntity::Task&t, int stepsPerRound, float structureSize/*=vehicleScale*/ )
 	{
 		Geometry geo;
 
 		struct TNode
 		{
+			float	size;
 			float3	dir,
 					normal;
 			bool	stopHere;
@@ -421,11 +422,14 @@ namespace Objects
 			nb.normal += n*0.9f;
 			na.dir += d;
 			nb.dir += d*0.9f;
+			na.size = structureSize * WorldEntity::GetScaleAtHeight(a.height);
+			nb.size = structureSize * WorldEntity::GetScaleAtHeight(b.height);
 		}
 		foreach (nodes, n)
 		{
-			Vec::setLen0(n->dir,structureSize);
-			Vec::setLen0(n->normal,structureSize);
+			float size = n->size;
+			Vec::setLen0(n->dir,size);
+			Vec::setLen0(n->normal,size);
 		}
 
 
@@ -465,7 +469,8 @@ namespace Objects
 				//Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,d);
 				//Vec::cross(p,d,n);
 				Vec::interpolate(na.normal,nb.normal,fj,n);
-				Vec::setLen(n,structureSize);
+				float size = M::Interpolate(na.size,nb.size,fj);
+				Vec::setLen(n,size);
 				if (j > 0)
 				{
 					geo.MakeQuad(0,1,4,3);
