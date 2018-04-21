@@ -1,6 +1,3 @@
-steam: invites not working when already in game
-
-
 ai client: did not finish round. did not crash, finished next round with no problems (after timeout new round)
 server enters main thread infinite loop at round 100. last report (server and client before connection loss): <Nexus> is done thinking
 
@@ -180,6 +177,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+improved: steam: invites not working when already in game (unable to reproduce actual cause, but added better error handling)
 fixed: plane sensor range is not shown on sky grid
 done and improved: check tutorial after introduction of new events
 fixed: if research based sensor range expansion is the only 'terrain change' during round, fog of war is not updated
