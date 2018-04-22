@@ -1682,7 +1682,11 @@ namespace Objects
 			GetChoices(e,deployWhat,mode,movementChoices,vis);
 
 			if (!movementChoices.Contains(choice))
+			{
+				LogEvent(EventClass::Preset::commandRejected,e.get(),"Choice "+ToString(choice)+" doesn't appear to be an option.");
 				return false;
+			}
+
 
 
 			PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
