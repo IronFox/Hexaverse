@@ -171,10 +171,6 @@ namespace World
 		if (allowRecompilation && !World::actual.PaintingSensorsConcurrently())
 		{
 
-			ClientGrid::CheckSensory();
-			if (World::actual.PaintingSensorsConcurrently())
-				return;
-
 			if (World::actual.UpdateLighting())
 				VisualTerrain::Invalidate();
 
