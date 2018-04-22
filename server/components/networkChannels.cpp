@@ -1992,7 +1992,7 @@ namespace Receiver
 
 				if (!Network::AnyHumanPlayersActive())
 				{
-					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
+					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer (if any)");
 					Game::roundTimerPaused = true;
 
 
