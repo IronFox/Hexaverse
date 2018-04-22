@@ -1163,7 +1163,7 @@ namespace Animation
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				if (v)
 				{
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity (health "+String(allocatedTarget->health)+") during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity (@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health)+") during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
 					Objects::PWorldEntity existing = Objects::GetEntity(v->id);
 					if (existing)
 					{
@@ -1192,7 +1192,7 @@ namespace Animation
 					ASSERT1__(allocatedTarget,targetEntityID);
 					if (explode)
 						ExplodeEntity(allocatedTarget);
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation (@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health)+") at time "+String(Animation::atTime)+"/"+ToString(this->time));
 					//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 					{
 						Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
