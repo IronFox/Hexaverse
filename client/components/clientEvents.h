@@ -7,10 +7,12 @@ DECLARE_POINTER_CLASS(Vote);
 
 namespace GlobalEvents
 {
-	extern Observable<>	frameBegin,
-						frameAfterCamera,
-						shadowQualityChanged,
-						uiScaleChanged;
+	extern Observable<>	frameBegin;
+	#ifdef HAS_WINDOW
+		extern Observable<>	frameAfterCamera,
+							shadowQualityChanged,
+							uiScaleChanged;
+	#endif
 
 	/**
 	Triggered when the client successfully connected to a client (before receiving any game data or making faction choices)
@@ -42,7 +44,9 @@ namespace GlobalEvents
 	*/
 	extern Observable<>	beginGame;
 
-	extern Observable<bool>	onFullscreenChange;
+	#ifdef HAS_WINDOW
+		extern Observable<bool>	onFullscreenChange;
+	#endif
 
 	extern Observable<const Objects::PFaction&>	onAllianceChange;
 	extern Observable<const PVote&> voteCreated, voteClosed, voteCast;

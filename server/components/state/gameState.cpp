@@ -1130,10 +1130,11 @@ namespace Game
 			if (v.changeFlags)
 			{
 				//anythingChanged = true;
-				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
 				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeignerFlags()) != 0 && v.storedIn.expired();
 				const bool alliesNeedToKnow = (v.changeFlags & Network::NotifyAllies) != 0 && v.storedIn.expired();
+
+				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+",foreigners="+String(foreignersNeedToKnow)+",allies="+String(alliesNeedToKnow)+")");
 
 				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
 

@@ -7,7 +7,7 @@ v0.8.4	[Apr 22 2018]
 	> If auto-spawned player bases are off, new factions receive a single full mineral container so they can build.
 	> Renamed 'Disconnect' to 'Return to Server List' to clarify what happens when in interactive configuration mode.
 	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
-	> Switch off fuel-only mines are no longer considered idle.
+	> Switched off fuel-only mines are no longer considered idle.
 	> Added 'Start Interactive Tutorial' to 'Start Server' menu.
 	> Improved threat-reaction of automated surveyors already in hostile territory.
 	* Fixed crash when clicking on unit while HUD is hidden.
@@ -16,7 +16,7 @@ v0.8.4	[Apr 22 2018]
 	* Fixed handling and display of winning alliance when game ends.
 	* Fixed placement of plane location marker beams.
 	* Building bridges now correctly lists 'Build bridge here' micro task.
-	* Fixed various ghosts ownership issues.
+	* Fixed various ghost ownership issues.
 	* Fixed artillery/cannons sometimes choosing the wrong trajectory server-side and hitting friendly units.
 	* Savegames now correctly record when a game has ended, and the respective winner.
 	* Fixed Nexus spawning frequency when AI is on but Nexus bases are off.
@@ -29,6 +29,8 @@ v0.8.4	[Apr 22 2018]
 	* Fixed terraformer job 'Build wall up' while on bottom most height level.
 	* Fixed scale of job visualizations, attack rings, and progress bars on lower planet height levels.
 	* Fixed resource visualization atop mines on bottom most height level.
+	* Fixed EMP zone visualization when re-entering visual server configurator.
+	* Fixed health of repaired unit not always updating correctly.
 
 v0.8.3	[Apr 8 2018]
 	+ Home key now toggles sub orbital grid visibility.

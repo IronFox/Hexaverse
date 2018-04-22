@@ -840,10 +840,13 @@ namespace Objects
 
 			if (speed >= fullCost && fullCost <= storage)
 			{
+				target->SyncTime(v.entityTime,timeEpsilon);
 				target->health = maxHealth;
-				target->RegisterChange(WorldEntity::HealthChanged,v.entityTime);
+				target->RegisterChange(WorldEntity::HealthChanged,target->entityTime);
+				v.entityTime += timeEpsilon;
 				ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-fullCost);
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired ("+String(fullCost)+")");
+				v.entityTime += timeEpsilon;
 				return JobDone;
 			}
 
@@ -869,10 +872,12 @@ namespace Objects
 			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
 			v.entityTime += timeEpsilon;
 
+			target->SyncTime(v.entityTime,timeEpsilon);
 			target->health += canRepair;
-			target->RegisterChange(WorldEntity::HealthChanged,v.entityTime);
-
+			target->RegisterChange(WorldEntity::HealthChanged,target->entityTime);
+			v.entityTime += timeEpsilon;
 			ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
+			v.entityTime += timeEpsilon;
 			return JobDelayed;
 
 		}

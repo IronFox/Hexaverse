@@ -579,7 +579,7 @@ namespace HUD
 
 		void Show()
 		{
-			WindowStack::Show(window);
+			WindowStack::ShowBottom(window);
 		}
 
 		void Hide()
