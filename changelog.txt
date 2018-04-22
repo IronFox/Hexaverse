@@ -28,6 +28,7 @@ v0.8.4	[Apr 22 2018]
 	* Fixed scale of job visualizations, attack rings, and progress bars on lower planet height levels.
 	* Fixed resource visualization atop mines on bottom most height level.
 	* Fixed EMP zone visualization when re-entering visual server configurator.
+	* Fixed health of repaired unit not always updating correctly.
 
 v0.8.3	[Apr 8 2018]
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
