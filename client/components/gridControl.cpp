@@ -16,7 +16,7 @@ namespace ClientGrid
 {
 	void	Create()
 	{
-		GlobalEvents::frameAfterCamera << CheckSensory;
+		GlobalEvents::frameBegin << CheckSensory;
 		#ifdef HAS_WINDOW
 			GlobalEvents::frameAfterCamera << World::RecompileIfNecessary;
 		#endif
