@@ -1233,6 +1233,19 @@ namespace ConfigurationMode
 			myNexus = nullptr;
 			return;
 		}
+		if (RuntimeConfig::empZones)
+		{
+			Grid::empZonesUnlocked = 0x1;
+			Grid::empZonesLocked = ~0x1;
+		}
+		else
+		{
+			Grid::empZonesUnlocked = 0xffff;
+			Grid::empZonesLocked = 0x0;
+		}
+		VisualTerrain::Invalidate();
+
+
 		myNexus = Objects::Faction::GetOrCreate(TUniqueID::New());
 		Detail::Create();
 		HUD::HexGrid::Configure(Objects::selectedEntity);
