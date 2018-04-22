@@ -1566,7 +1566,7 @@ namespace HexGrid
 			}
 
 			FindAndDeleteCell(selectedFocus);
-			if (showControls)
+			if (showControlsAndContacts)
 			{
 				selectedFocus.reset(new Custom::EntityFocusCommand(e) );
 				selectedFocus->Refresh(true);//Network::ControlEnabled());

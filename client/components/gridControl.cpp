@@ -16,7 +16,7 @@ namespace ClientGrid
 {
 	void	Create()
 	{
-
+		GlobalEvents::frameAfterCamera << CheckSensory;
 		#ifdef HAS_WINDOW
 			GlobalEvents::frameAfterCamera << World::RecompileIfNecessary;
 		#endif
@@ -52,6 +52,10 @@ namespace ClientGrid
 	*/
 	void CheckSensory()
 	{
+		#ifdef HAS_WINDOW
+			if (!World::allowRecompilation)
+				return;
+		#endif
 
 		if (SensorPainting::started && !World::actual.PaintingSensorsConcurrently())
 		{

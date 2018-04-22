@@ -590,7 +590,8 @@ namespace AI
 			if (!ObjectHelper::MarkerCheck::DoneThisRound())
 			{
 				//we could be more strict, enforcing that markers be checked before processing units, but in practice the difference should be minimal
-				LogEvent(EventSignificance::Debug,nullptr,"AI: Markers processing NOT completed");
+				const bool painting = World::actual.PaintingSensorsConcurrently();
+				LogEvent(EventSignificance::Debug,nullptr,"AI: Markers processing NOT completed (painting="+String(painting)+")");
 				return;
 			}
 
