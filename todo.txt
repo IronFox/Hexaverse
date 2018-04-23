@@ -47,6 +47,7 @@ nice to have:
 		if dead ghost outside hostile sensory but in attack range of living hostile structure ghost, apply matching 'virtual' scanning range of given distance to that structure
 		if dead ghost outside hostile attack range but in scanning range of living hostile structure ghost, apply matching 'virtual' attack range of given distance to that structure
 		cache threat estimation
+		add health to markers. have non-mobile markers disappear only after they have take enough damage
 		
 steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
 	client manages to connect.
