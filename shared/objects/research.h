@@ -359,10 +359,12 @@ namespace Objects
 			Attributes::Table	zeroTable;
 
 			#ifndef CLIENT
-				Lua::Reference		zeroState;
+				/**
+				Minimal faction research state that owner-less prototypes may use
+				*/
+				Lua::Reference			zeroState;
 				ScriptCache::PScript	script,	//currently loaded program
-									program0,	//absolute fallback program to be used if all fails
-									factoryDefault;	//program defined in install directory
+										factoryDefault;	//program defined in install directory. Must load or server execution fails
 			#endif
 			Buffer0<PTopic>		allTopics;
 			TopicGroup			rootResearch;
