@@ -956,27 +956,27 @@ namespace Objects
 
 		void	DefineBomb(Component::Turret&component)
 		{
-
-			component.commands.Add( new Command::IconCommand("Self Detonate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Regular>
+			component.commands.Add(new Command::IconCommand("Self Detonate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Regular>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
-					resourceCostOut = 0;
 					ASSERT__(selectedMobileEntity);
+					resourceCostOut = Component::Bomb::regularUraniumCost(selectedMobileEntity->owner);
+					costTypeOut = Resource::Uranium;
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::RegularSelfDetonationCosts,Component::Nuclear);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);
 				}
 				));
 
-			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Doomsday>
+			component.commands.Add(new Command::IconCommand("Obliterate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Doomsday>
 				, &CommonCmd::IdleCheck
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
-					resourceCostOut = VehicleJob::DoomsdaySelfDetonationCosts;
-					costTypeOut = Resource::Uranium;
 					ASSERT__(selectedMobileEntity);
+					resourceCostOut = Component::Bomb::doomsdayUraniumCost(selectedMobileEntity->owner);
+					costTypeOut = Resource::Uranium;
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DoomsdaySelfDetonationCosts,Component::Nuclear);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);
 				}
 				));
 

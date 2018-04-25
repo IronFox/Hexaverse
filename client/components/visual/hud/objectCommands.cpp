@@ -231,7 +231,7 @@ namespace Objects
 
 
 
-		/*virtual override*/ void		EntityConstructionCommand::GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut)
+		/*virtual override*/ void		EntityConstructionCommand::GetCosts( int&costOut, Resource&costTypeOut, int&timeCostOut )
 		{
 			if (getCosts)
 				getCosts(costOut,costTypeOut,timeCostOut);

@@ -580,7 +580,16 @@ StructureConfig =
 }
 
 
-
+Jobs =
+{
+	Bomb = 
+	{
+		DoomsdayDamageLevel = TurretConfig.Bomb.DamageLevel * 5,
+		DoomsdayExplosionRadius = TurretConfig.Bomb.ExplosionRadius * 2,
+		DoomsdayUraniumCost = 200,
+		RegularUraniumCost = -100,	--negative means 'virtual' cost. Base of calculating how many rounds job takes, but no actual resources are consumed
+	}
+}
 
 unlockGroup = Game.CreateResearch(nil,"Unlock","Research_Unlock");
 improveGroup = Game.CreateResearch(nil,"Improve",'Increase');

@@ -549,11 +549,14 @@ namespace Objects
 
 		namespace Bomb
 		{
-
+			extern FScaledFunc	doomsdayExplosionRadius;
+			extern LuaAttribute<int,NoFilter,200>		doomsdayUraniumCost;
+			extern LuaAttribute<int,NoFilter,-100>		regularUraniumCost;
+			extern IFunc		doomsdayDamageLevel;
 
 			void		Configure(Turret&);
 
-
+			int			GetUraniumCost(bool doomsday, const PFaction&);
 			float		GetRadius(bool doomsday, const PFaction&);
 			int			GetDamageLevel(bool doomsday, const PFaction&);
 		};

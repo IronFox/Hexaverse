@@ -724,16 +724,28 @@ namespace Objects
 		{
 			inStream.ReadPrimitive(doomsday);
 		}		
+
+
+
+		/*static*/ bool				SelfDetonate::IsDoomsday(ConstName p)
+		{
+			return p == ConstName::DetonationSize_Doomsday && RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow;
+		}
+
 		
 		/**/					SelfDetonate::SelfDetonate(const MobileEntity&v, const Grid::LCellIdI&loc, ConstName p)	
 			: Super(
-				p == ConstName::DetonationSize_Doomsday && RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow 
-					? DoomsdaySelfDetonationCosts 
-					: RegularSelfDetonationCosts,
+				Objects::Component::Bomb::GetUraniumCost(IsDoomsday(p),v.owner),
 				v,loc,GetOperationAffinity(),Autocomplete::Always,false
 			),
-			doomsday(p == ConstName::DetonationSize_Doomsday && RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow)
+			doomsday(IsDoomsday(p))
 		{}
+
+		/*virtual override*/ void			SelfDetonate::UpdateEstimations(const MobileEntity&v) 
+		{
+			Super::ResetResourceAndRoundsLeft(Component::Bomb::GetUraniumCost(doomsday,v.owner),v,GetOperationAffinity());
+		}
+
 
 		/*virtual override*/ String			SelfDetonate::GetName() const
 		{

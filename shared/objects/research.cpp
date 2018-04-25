@@ -116,6 +116,9 @@ namespace Objects
 
 
 	static Array<BaseAttributeTable>	structureTables;
+	static String						attributeContext;
+
+	CONSTRUCT_ENUMERATION3(OnAttributeNotFound, Fail, Warn, Ignore);
 
 
 	template <typename T>
@@ -229,7 +232,7 @@ namespace Objects
 		public:
 
 			template <typename F>
-				static void Set(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
+				static void Set(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, OnAttributeNotFound onAttributeNotFound = OnAttributeNotFound::Fail)
 				{
 
 					a.Clear(list.Count());
@@ -238,11 +241,19 @@ namespace Objects
 					#ifndef CLIENT
 
 
-						Lua::NamedReference ref = source.GetField(name);
+						Lua::NamedReference ref;
+						if (source.IsSet())
+							ref = source.GetField(name);
 						if (ref.IsEmpty())
 						{
-							if (!allowEmpty)
-								throw Lua::Exception("Field '"+path+"."+name+"' is not defined");
+							switch (onAttributeNotFound)
+							{
+								case OnAttributeNotFound::Fail:
+									throw Lua::Exception("Field '"+path+"."+name+"' is not defined");
+								case OnAttributeNotFound::Warn:
+									LogEvent(EventClass::Preset::configurationError,attributeContext+": Field '"+path+"."+name+"' is not defined");
+									break;
+							}
 							return;
 						}
 
@@ -327,9 +338,9 @@ namespace Objects
 		/*static*/ Buffer0<typename LuaAttributes<T>::Attribute,Swap>	LuaAttributes<T>::list;
 
 	template <typename T, typename F>
-		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, bool allowEmpty = false)
+		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, OnAttributeNotFound onAttributeNotFound = OnAttributeNotFound::Fail)
 		{
-			LuaAttributes<T>::Set(source,path,name,a,allowEmpty);
+			LuaAttributes<T>::Set(source,path,name,a,onAttributeNotFound);
 		}
 
 
@@ -414,7 +425,7 @@ namespace Objects
 	#endif
 
 
-	static void InitTable(String baseName, BaseAttributeTable&t)
+	static void InitStructureTable(String baseName, BaseAttributeTable&t)
 	{
 		baseName.EraseCharacter(' ');
 		baseName.EraseCharacter('-');
@@ -442,22 +453,29 @@ namespace Objects
 	}
 
 
-	static Lua::Table InitComponent(const Lua::Table&parent, String&path, Component::Base&b)
+	static Lua::Table LookupComponentTable(const Lua::Table&parent, String&path, Component::Base&b)
 	{
-		String baseName = b.typeName;
-		baseName.EraseCharacter(' ');
-		baseName.EraseCharacter('-');
-
-		path += '.'+baseName;
 
 		Lua::Table baseTable;
 
 		#ifndef CLIENT
+			String baseName = b.typeName;
+			baseName.EraseCharacter(' ');
+			baseName.EraseCharacter('-');
+
+			path += '.'+baseName;
+
 			baseTable = parent.GetField(baseName);
 			if (baseTable.IsEmpty())
 				throw Lua::Exception("Table '"+path+"' is not defined");
 		#endif
+		return baseTable;
 
+	}
+
+	static Lua::Table InitComponent(const Lua::Table&parent, String&path, Component::Base&b)
+	{
+		auto baseTable = LookupComponentTable(parent,path,b);
 		InitAttrib(baseTable,path,"Cost",b.productionCosts);
 		InitAttrib(baseTable,path,"IsUnlocked",b.isUnlocked);
 		return baseTable;
@@ -506,21 +524,36 @@ namespace Objects
 
 		for (index_t i = 0; i < Component::OperationCount; i++)
 		{
-			InitAttrib(myTable,path,String("Op_")+Component::OperationToString((Component::operation_t)i),t.operationSpeed[i],true);
+			InitAttrib(myTable,path,String("Op_")+Component::OperationToString((Component::operation_t)i),t.operationSpeed[i], OnAttributeNotFound::Ignore);
 		}
 
-		InitAttrib(myTable,path,"GroundScannerPenetration",t.groundScannerPenetration,true);
-		InitAttrib(myTable,path,"GroundScanningRange",t.groundScanningRange,true);
+		InitAttrib(myTable,path,"GroundScannerPenetration",t.groundScannerPenetration, OnAttributeNotFound::Ignore);
+		InitAttrib(myTable,path,"GroundScanningRange",t.groundScanningRange, OnAttributeNotFound::Ignore);
 
-		InitAttrib(myTable,path,"AmmoConsumption",t.ammoNeedPerShot,true);
-		InitAttrib(myTable,path,"AttacksPerRound",t.attacksPerRound,true);
-		InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange,true);
-		InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius,true);	//can be independent
-		InitAttrib(myTable,path,"DamageLevel",t.damageLevel,true);
+		InitAttrib(myTable,path,"AmmoConsumption",t.ammoNeedPerShot, OnAttributeNotFound::Ignore);
+		InitAttrib(myTable,path,"AttacksPerRound",t.attacksPerRound, OnAttributeNotFound::Ignore);
+		InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange, OnAttributeNotFound::Ignore);
+		InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius, OnAttributeNotFound::Ignore);	//can be independent
+		InitAttrib(myTable,path,"DamageLevel",t.damageLevel, OnAttributeNotFound::Ignore);
 	}
 
-	static void RemapAttributes()
+	static void RemapAttributes( PathString filename )
 	{
+		const auto instDir = FileSystem::Folder().ParentLocation()->GetLocation();
+		const auto documents = RuntimeConfig::ConfigurationScope::GetMyDocuments();
+		if (filename.BeginsWith(instDir))
+		{
+			filename.EraseLeft(instDir.Length());
+			filename = "[InstallDir]" + filename;
+		}
+		elif (filename.BeginsWith(documents))
+		{
+			filename.EraseLeft(documents.Length());
+			filename = "[MyDocuments]" + filename;
+		}
+
+
+		attributeContext = FileSystem::PathToString(filename);
 		LuaAttributes<int>::Clear();
 		LuaAttributes<bool>::Clear();
 		LuaAttributes<float>::Clear();
@@ -529,13 +562,25 @@ namespace Objects
 		{
 			const PStructure&s = Prototypes::structures[i];
 			auto&t = structureTables[i];
-			InitTable(s->GetTypeName(),t);
+			InitStructureTable(s->GetTypeName(),t);
 		}
 
 		foreach (Component::allTurretComponents,turret)
 			InitTurret(**turret);
 		foreach (Component::baseComponents,base)
 			InitVehicleBase(**base);
+
+		Lua::Table jobs;
+		#ifndef CLIENT
+			jobs = Research::globalState.researchProgram->FindGlobal("Jobs");
+		#endif
+		Lua::Table bomb;
+		if (jobs.IsSet())
+			bomb = jobs.GetField("Bomb");
+		InitAttrib(bomb,"Jobs.Bomb","DoomsdayDamageLevel",Component::Bomb::doomsdayDamageLevel, OnAttributeNotFound::Warn);
+		InitAttrib(bomb,"Jobs.Bomb","DoomsdayExplosionRadius",Component::Bomb::doomsdayExplosionRadius, OnAttributeNotFound::Warn);
+		InitAttrib(bomb,"Jobs.Bomb","DoomsdayUraniumCost",Component::Bomb::doomsdayUraniumCost, OnAttributeNotFound::Warn);
+		InitAttrib(bomb,"Jobs.Bomb","RegularUraniumCost",Component::Bomb::regularUraniumCost, OnAttributeNotFound::Warn);
 	}
 
 
@@ -1179,7 +1224,7 @@ namespace Objects
 				LoadDefaultProgram();
 			#endif
 		#else
-			RemapAttributes();
+			RemapAttributes("");
 		#endif
 	}
 
@@ -1347,7 +1392,7 @@ namespace Objects
 				throw Lua::Exception("Method 'ResearchState:Import' is not defined");
 			}
 
-			RemapAttributes();
+			RemapAttributes(script->filename);
 
 
 			index_t at = 0;

@@ -1,4 +1,5 @@
 v0.8.5
+	+ Bomb detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
 
 v0.8.4	[Apr 22 2018]
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
