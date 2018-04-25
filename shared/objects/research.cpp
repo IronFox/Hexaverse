@@ -640,27 +640,28 @@ namespace Objects
 			//#endif
 			if (!script || script == globalState.script)
 				return;
-			LogEvent(EventClass::Preset::common,"Activating research script "+Bin2Str::ConvertPOD(script->identifier));
 
-
-
-		
-
-			ScriptCache::PScript current = globalState.script;
-			try
+			if (script != globalState.factoryDefault)	//otherwise force-load
 			{
-				InnerLoad(script);
-				return;
+				LogEvent(EventClass::Preset::common,"Activating research script "+Bin2Str::ConvertPOD(script->identifier));
+
+				ScriptCache::PScript current = globalState.script;
+				try
+				{
+					InnerLoad(script);
+					return;
+				}
+				catch (const std::exception&e)
+				{
+					if (script->filename.IsNotEmpty())
+						LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),String(script->filename)+": "+e.what());
+					else
+						LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),e.what());
+				};
+
+				//fall back
+				LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Unable to load script. Falling back to factory default");
 			}
-			catch (const std::exception&e)
-			{
-				if (script->filename.IsNotEmpty())
-					LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),String(script->filename)+": "+e.what());
-				else
-					LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),e.what());
-			};
-
-			LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),"Unable to load factory default. Falling back to emergency script");
 			RequireLoad(globalState.factoryDefault);
 		}
 
