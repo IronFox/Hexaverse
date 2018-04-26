@@ -1,3 +1,10 @@
+bug: generating new world does not undo gameHasEnded
+showPlanetTypes lists (user) instead of *
+sensory rarely flickers (recompiled despite being repainted)
+sharp shadow edge on pillars map
+air defense for nexus base
+tasks do not disappear on undo or clear but when next task is set (merge error?)
+
 steam: invites not working when already in game
 
 
