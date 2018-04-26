@@ -1,5 +1,4 @@
 bug: generating new world does not undo gameHasEnded
-showPlanetTypes lists (user) instead of *
 sensory rarely flickers (recompiled despite being repainted)
 sharp shadow edge on pillars map
 air defense for nexus base
@@ -189,6 +188,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: showPlanetTypes lists (user) instead of *
 probably fixed: ai client: did not finish round. did not crash, finished next round with no problems (after timeout new round)
 fixed: plane sensor range is not shown on sky grid
 done and improved: check tutorial after introduction of new events
