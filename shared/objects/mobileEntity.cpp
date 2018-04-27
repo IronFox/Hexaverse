@@ -360,6 +360,7 @@ namespace Objects
 											attackActionLeft = 0;
 
 										RegisterChange(ActionChanged,entityTime);
+										entityTime += timeEpsilon;
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.Last().movementCostsFromPrevNode : 1;
 									}
@@ -453,6 +454,7 @@ namespace Objects
 											attackActionLeft = 0;
 										movementActionLeft = 0;
 										RegisterChange(ActionChanged,entityTime);
+										entityTime += timeEpsilon;
 									}
 
 									hasMoved = true;
@@ -1276,6 +1278,49 @@ namespace Objects
 		
 
 	
+		void				MobileEntity::BeginMotionPhase(float timeOffset)
+		{
+			entityTime = std::max(entityTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
+			if (attackActionLeft < 1.f)
+			{
+				attackActionLeft = 1.f;
+				RegisterChange(ActionChanged,entityTime);
+				entityTime += timeEpsilon;
+			}
+
+			hasMoved = false;
+			numTriedPlottingOnMoveAutoMotion = 0;
+			if (MotionIgnoresAttack())
+			{
+				if (movementActionLeft < 1.f)
+				{
+					movementActionLeft = 1.f;
+					RegisterChange(ActionChanged,entityTime);
+					entityTime += timeEpsilon;
+				}
+			}
+		}
+		void				MobileEntity::BeginAttackPhase()	//executed before BeginMotionPhase this round
+		{
+			constructionActionLeft=MaxConstructionActionLeft;
+			if (movementActionLeft < 1.f)
+			{
+				movementActionLeft = 1.f;
+				RegisterChange(ActionChanged,entityTime);
+				entityTime += timeEpsilon;
+			}
+
+			if (AttackAndMotionAreIndependent())
+			{
+				if (attackActionLeft < 1.f)
+				{
+					attackActionLeft = 1.f;
+					RegisterChange(ActionChanged,entityTime);
+					entityTime += timeEpsilon;
+				}
+			}
+		}
+
 	
 		bool		MobileEntity::DropLastTask()
 		{
@@ -1384,6 +1429,7 @@ namespace Objects
 				if (!turret->independentAttackAndMotion)
 					movementActionLeft -= change;
 				RegisterChange(ActionChanged,entityTime);
+				entityTime += timeEpsilon;
 
 				float flightTime;
 

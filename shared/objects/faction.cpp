@@ -387,6 +387,7 @@ namespace Objects
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
+			LogEvent(EventSignificance::Common,"Recreating Nexus faction using ID "+ToString(id));
 			nexus.reset(new Faction(id, Faction::nexusName,true));
 			PAlliance alliance { new Alliance(TUniqueID::New()) };
 			alliance->Join(nexus);

@@ -23,10 +23,7 @@ namespace Objects
 							BuildFoundationMineralCosts = 14,
 							MinBuildRoadMineralCosts = 7,	//dynamic based on free space beneath road	(bridge)
 							MinBuildWallMineralCosts = 2,
-							HeightPeneltyMineralCosts = 5,
-							RegularSelfDetonationCosts = -100,
-							DoomsdaySelfDetonationCosts = 200,
-							DoomsdayBeamAttackCosts = 300;
+							HeightPeneltyMineralCosts = 5;
 
 
 		class BaseJob;
@@ -592,12 +589,15 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "SLFD";};
 				virtual PJob			Instantiate() const override {return PJob(new SelfDetonate());}
 
-				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(doomsday ? DoomsdaySelfDetonationCosts  : RegularSelfDetonationCosts,v,GetOperationAffinity());}
+				virtual void			UpdateEstimations(const MobileEntity&v) override;
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
 			
 				virtual	void			Serialize(IWriteStream&outStream) const override;
 				virtual	void			Deserialize(IReadStream&inStream) override;
+
+			private:
+				static bool				IsDoomsday(ConstName parameter);
 			};
 
 
@@ -619,7 +619,7 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "DDBA";};
 				virtual PJob			Instantiate() const override {return PJob(new DoomsdayBeamAttack());}
 
-				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DoomsdayBeamAttackCosts,v,GetOperationAffinity());}
+				virtual void			UpdateEstimations(const MobileEntity&v) override;
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
 			

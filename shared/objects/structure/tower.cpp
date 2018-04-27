@@ -87,6 +87,7 @@ namespace Objects
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
 				RegisterChange(ActionChanged,entityTime);
+				entityTime += timeEpsilon;
 
 				if (!IsBeam(turret->trajectoryType))
 				{

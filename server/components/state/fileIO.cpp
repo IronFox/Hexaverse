@@ -1709,7 +1709,7 @@ namespace FileIO
 
 	bool			IsValidSavePhase(RuntimeConfig::Phase p)
 	{
-		return RuntimeConfig::IsACommandPhase(p) || p == RuntimeConfig::Phase::AnimationPhase || p == RuntimeConfig::Phase::EndOfGame;
+		return RuntimeConfig::IsACommandPhase(p) || p == RuntimeConfig::Phase::AnimationPhase || RuntimeConfig::GameHasEnded();
 	}
 
 	bool			CanSaveRightNow(RuntimeConfig::Phase overridePhase)

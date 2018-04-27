@@ -309,8 +309,9 @@ namespace ApplicationInterface
 
 	void	SignalNexusControlChange( const Objects::PAlliance&a )
 	{
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		if (RuntimeConfig::GameHasEnded() || !Network::SessionIsStarted())
 			return;
+		LogEvent(EventSignificance::Common,"SignalNexusControlChange("+ToString(a->id)+")");
 		{
 			auto stats  = a->GetNexusStats();
 
@@ -1012,7 +1013,15 @@ int main( int argc, const char* argv[])
 
 			CLI::println("-");
 			foreach (planetIniFiles,f)
-				CLI::println(f->name+(f->userDefined.GetLocation().IsNotEmpty()? ( f->factoryDefault.GetLocation().IsNotEmpty() ? " (user override)" :" (user)"): ""));
+			{
+				if (f->userDefined.GetLocation().IsNotEmpty())
+					CLI::println("*"+f->name);
+			}
+			foreach (planetIniFiles,f)
+			{
+				if (f->factoryDefault.GetLocation().IsNotEmpty())
+					CLI::println(f->name);
+			}
 			CLI::println("-");
 		},CLI::NoCompletion);
 

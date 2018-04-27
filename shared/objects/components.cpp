@@ -887,16 +887,38 @@ namespace Objects
 
 
 
+		namespace Bomb
+		{
+			FScaledFunc	doomsdayExplosionRadius;
+			IFunc		doomsdayDamageLevel;
+
+			LuaAttribute<int,NoFilter,200>		doomsdayUraniumCost;
+			LuaAttribute<int,NoFilter,-100>		regularUraniumCost;
+
+		}
+
+
+		int			Bomb::GetUraniumCost(bool doomsday, const PFaction&owner)
+		{
+			//used to be: 200 : -100 (virtual)
+			return doomsday ? doomsdayUraniumCost(owner) : regularUraniumCost(owner);
+		}
+
+
 		float		Bomb::GetRadius(bool doomsday, const PFaction& owner)
 		{
-			//return doomsday ? 7*Grid::UnitScale : artillery.explosionRadius*2;
-			return bomb.GetExplosionRadius(owner) * (doomsday ? 2 : 1);
+			//	return bomb.GetExplosionRadius(owner) * (doomsday ? 2 : 1);
+			return doomsday ? 
+				(doomsdayExplosionRadius.IsSet() ? doomsdayExplosionRadius(owner) : bomb.GetExplosionRadius(owner) * 2)
+				: bomb.GetExplosionRadius(owner);
 		}
 
 		int			Bomb::GetDamageLevel(bool doomsday, const PFaction& owner)
 		{
-			//return doomsday ? 50 : artillery.damageLevel*2;
-			return bomb.GetDamageLevel(owner) * (doomsday ? 5 : 1);
+			//return bomb.GetDamageLevel(owner) * (doomsday ? 5 : 1);
+			return doomsday ? 
+				(doomsdayDamageLevel.IsSet() ? doomsdayDamageLevel(owner) : bomb.GetDamageLevel(owner) * 5)
+				: bomb.GetDamageLevel(owner);
 		}
 
 	
@@ -1401,6 +1423,9 @@ namespace Objects
 				component.trajectoryType = TrajectoryType::Missile;
 
 			}
+
+
+			LuaAttribute<int,NoFilter,300>		Bomber::doomsdayBeamAttackCosts;
 
 			void			Bomber::Configure(Turret&component)
 			{

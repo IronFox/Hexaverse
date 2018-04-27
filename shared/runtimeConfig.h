@@ -96,6 +96,8 @@ namespace RuntimeConfig
 		*/
 		void		InitConfigDir(const String&subDir);
 
+		static PathString	GetMyDocuments()	{return myDocuments.GetLocation();}
+
 
 	private:
 		static void	InitMyDocuments();
