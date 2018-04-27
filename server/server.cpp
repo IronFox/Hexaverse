@@ -309,7 +309,7 @@ namespace ApplicationInterface
 
 	void	SignalNexusControlChange( const Objects::PAlliance&a )
 	{
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		if (RuntimeConfig::GameHasEnded())
 			return;
 		{
 			auto stats  = a->GetNexusStats();

@@ -371,7 +371,7 @@ namespace Network
 	{
 		Protocol::GameProgress progress;
 		const bool dead = !faction || faction->isDead;
-		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
+		progress.gameOver = dead || RuntimeConfig::GameHasEnded();
 		auto winner = Game::winner.lock();
 		progress.gameWon = faction && faction->alliance == winner;
 		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : AllianceStatus(faction ? faction->alliance : nullptr,stats);
@@ -383,14 +383,14 @@ namespace Network
 			return;
 		{
 			auto&peer = *ppeer;
-			if (progress.gameOver && faction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+			if (progress.gameOver && faction && !RuntimeConfig::GameHasEnded())
 			{
 				//send only statistics of local faction
 				Game::Network::SendStatisticsTo(peer,faction);
 			}
 
 
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			if (RuntimeConfig::GameHasEnded())
 			{
 				//game over: send statistics of all factions
 				Objects::ForeachFaction([&peer](const Objects::PFaction&f)

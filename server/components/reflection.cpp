@@ -116,7 +116,7 @@ namespace Reflection
 
 			bool			GetState() const
 			{
-				return RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
+				return RuntimeConfig::GameHasEnded();
 			}
 
 			virtual String	ConvertToString()		const	override	{return GetState();}

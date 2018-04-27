@@ -548,7 +548,7 @@ namespace Receiver
 
 		ResearchSerialization::SendResearchTo(peer);
 
-		//if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		//if (RuntimeConfig::GameHasEnded())
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
 			Game::Network::SendStatisticsTo(peer,f);
@@ -621,7 +621,7 @@ namespace Receiver
 		//response.info = CompileWorldInfo();
 
 
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		if (RuntimeConfig::GameHasEnded())
 			response.startFactionTypes = Protocol::FactionType::SpectatorFaction;	//automatic spectator status
 
 
@@ -654,7 +654,7 @@ namespace Receiver
 		}
 
 		if (!RuntimeConfig::IsInAnyCommandPhase()
-			&& RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame
+			&& !RuntimeConfig::GameHasEnded()
 			&& RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase
 			)
 		{
@@ -679,7 +679,7 @@ namespace Receiver
 			break;
 			case Protocol::FactionType::SpectatorFaction:
 			{
-				factionTypeNotSupported =	RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame &&
+				factionTypeNotSupported =	!RuntimeConfig::GameHasEnded() &&
 											(
 												!peer.IsLocalhost()
 												|| !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions)
@@ -798,7 +798,7 @@ namespace Receiver
 			newFaction = true;
 		}
 
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		if (RuntimeConfig::GameHasEnded())
 		{
 			FATAL__("Should not be here");
 			return;

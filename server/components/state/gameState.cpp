@@ -593,7 +593,7 @@ namespace Game
 			if (!allowSpectatorFactions)
 				rs &= ~Protocol::GameFlag::SupportSpectatorFactions;
 
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			if (RuntimeConfig::GameHasEnded())
 			{
 				rs |= Protocol::GameFlag::GameHasEnded | Protocol::GameFlag::SupportSpectatorFactions;	//always support spectator in this case
 			}
@@ -637,7 +637,7 @@ namespace Game
 
 		void	ChangePhase( RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+			if (RuntimeConfig::GameHasEnded())
 			{
 				DBG_FATAL__("Trying to change from end-of-game to "+String(to.ToString()));
 				return;
@@ -719,7 +719,7 @@ namespace Game
 
 
 
-			if (to == RuntimeConfig::Phase::EndOfGame)
+			if (RuntimeConfig::GameHasEnded())
 			{
 				if (winner.expired())
 				{
@@ -1348,7 +1348,7 @@ namespace Game
 	}
 
 
-	void	DeclareWinner(const Objects::PAlliance&w)
+	void	DeclareWinner( const Objects::PAlliance&w )
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(winner.expired());
@@ -1375,12 +1375,12 @@ namespace Game
 
 		winner = w;
 		Channels::winningAlliance.SendTo(::Network::server,w->id,Channels::Level::Faction);
-		if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+		if (!RuntimeConfig::GameHasEnded())
 			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 	}
 
 
-	void PerformNewRoundLogic(float&atTime)
+	void PerformNewRoundLogic( float&atTime )
 	{
 		if (Config::basesRequired)
 		{
@@ -1529,7 +1529,7 @@ namespace Game
 				}
 			}
 
-			if (Config::closedGame && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+			if (Config::closedGame && !RuntimeConfig::GameHasEnded())
 			{
 				const count_t livingPlayerAlliances = CountLivingPlayerAlliances();
 				if (livingPlayerAlliances == 0)
