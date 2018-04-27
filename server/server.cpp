@@ -309,8 +309,9 @@ namespace ApplicationInterface
 
 	void	SignalNexusControlChange( const Objects::PAlliance&a )
 	{
-		if (RuntimeConfig::GameHasEnded())
+		if (RuntimeConfig::GameHasEnded() || !Network::SessionIsStarted())
 			return;
+		LogEvent(EventSignificance::Common,"SignalNexusControlChange("+ToString(a->id)+")");
 		{
 			auto stats  = a->GetNexusStats();
 

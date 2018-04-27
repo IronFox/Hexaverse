@@ -1352,6 +1352,12 @@ namespace Game
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(winner.expired());
+		if (!::Network::SessionIsStarted())
+		{
+			LogEvent(EventSignificance::NonFatalError,"Trying to declare winner while session is closed.");
+			DBG_FATAL__("Bad state");
+			return;
+		}
 		if (evolverActive)
 		{
 			postEvolutionWinner = w;
