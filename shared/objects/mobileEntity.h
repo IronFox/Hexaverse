@@ -351,37 +351,8 @@ namespace Objects
 
 			bool				DropLastTask();
 
-			void				BeginMotionPhase(float timeOffset)
-			{
-				entityTime = std::max(entityTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
-				if (attackActionLeft < 1.f)
-					RegisterChange(ActionChanged,entityTime);
-				attackActionLeft = 1.f;
-
-				hasMoved = false;
-				numTriedPlottingOnMoveAutoMotion = 0;
-				if (MotionIgnoresAttack())
-				{
-					if (movementActionLeft < 1.f)
-						RegisterChange(ActionChanged,entityTime);
-					movementActionLeft = 1.f;
-				}
-			}
-			void				BeginAttackPhase()	//executed before BeginMotionPhase this round
-			{
-				constructionActionLeft=MaxConstructionActionLeft;
-				if (movementActionLeft < 1.f)
-					RegisterChange(ActionChanged,entityTime);
-				movementActionLeft = 1.f;
-
-				if (AttackAndMotionAreIndependent())
-				{
-					if (attackActionLeft < 1.f)
-						RegisterChange(ActionChanged,entityTime);
-					attackActionLeft = 1.f;
-
-				}
-			}
+			void				BeginMotionPhase(float timeOffset);
+			void				BeginAttackPhase();
 
 
 			/**

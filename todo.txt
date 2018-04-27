@@ -35,6 +35,12 @@ hard to reproduce/fix:
 			appears to happen if the respective attack(s) were (partially?) executed.
 			cannot be reproduced by explicitly scheduling and undoing/clearing attack tasks.
 			possibly, the error only occurs if the attack is removed from the front of the queue (executed)
+		cause:
+			recent optimization made mobile entity tasks optional content of state updates.
+			if the tasks did not change, then they are not part of the update.
+			the client checks for presence of such, and leaves the target entity's tasks unchanged if not specified.
+			the 'Rewrote...' strategy replaced the existing update, which did contain tasks, with a simple action-update which did not.
+			the updated tasks were therefor lost.
 		possible causes:
 			task merge optimization issue (merging should but does not remove task)
 			missing server update
