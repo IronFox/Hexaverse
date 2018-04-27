@@ -568,6 +568,8 @@ namespace Protocol
 		, NET(float), atTime
 	)
 
+	String ToString(const Timestamp&t);
+
 	typedef Package::NetString<32>	ClientName,Hello;
 
 	//NETSTRUCT2(ClientState
