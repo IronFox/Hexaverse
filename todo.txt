@@ -9,7 +9,7 @@ air defense for nexus base
 
 
 hard to reproduce/fix:
-	vehicle task merging appears to fail
+	lingering vehicle attack task
 		symptoms:
 			lingering client attack tasks that cannot be undone or cleared as the server no longer knows them.
 			tasked attack(s) presumed executed during previous rounds.
