@@ -1125,9 +1125,9 @@ namespace Game
 				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeignerFlags()) != 0 && v.storedIn.expired();
 				const bool alliesNeedToKnow = (v.changeFlags & Network::NotifyAllies) != 0 && v.storedIn.expired();
 
-				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+",foreigners="+String(foreignersNeedToKnow)+",allies="+String(alliesNeedToKnow)+")");
-
 				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
+				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+",#tasks="+String(v.myTasks.Count())+",foreigners="+String(foreignersNeedToKnow)+",allies="+String(alliesNeedToKnow)+",t="+ToString(timestamp)+")");
+
 
 				TCP::Serial<Protocol::MobileState>	foreign,allied,owned;
 				Network::Describe(foreign.Ref(),v,timestamp,Network::ExposeToForeigners,v.changeFlags);

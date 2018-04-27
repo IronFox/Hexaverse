@@ -14,6 +14,23 @@ hard to reproduce/fix:
 			lingering client attack tasks that cannot be undone or cleared as the server no longer knows them.
 			tasked attack(s) presumed executed during previous rounds.
 			scheduling a new motion task removes them.
+			
+			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Attacking (3.12574, 40.21748, -9.62003) in 0.44308 seconds
+			Debug	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Commencing attack at t=3.06975
+			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Handling regular explosion at (3.12574, 40.21748, -9.62003), radius=4
+			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Tracing rough trajectory to (3.12574, 40.21748, -9.62003) in 0.44308 seconds
+			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	State change detected (12,foreigners=true,allies=true)			
+			Common	2018 04 26. 16:38:33	135	MovementPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	State change detected (4,foreigners=true,allies=true)
+			
+			Debug	2018 04 26. 16:38:33	135	AttackPhase							Appended 'mobile state(b4641d0d)' primitive to animation sequence at t=0
+			Debug	2018 04 26. 16:38:33	135	AttackPhase							Appended 'mobile state(b4641d0d)' primitive to animation sequence at t=3.83883
+			Debug	2018 04 26. 16:38:33	135	MovementPhase							Rewrote 'mobile state(b4641d0d)' primitive to animation sequence at t=3.83883 n=1
+			
+			Common	2018 04 26. 16:38:56	136	CommandPhase	1bdd0703:'IronFox'	localhost:26726					Begin: Drop tasks (LastTask) of entity b4641d0d
+			Common	2018 04 26. 16:38:56	136	CommandPhase	1bdd0703:'IronFox'	localhost:26726	Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Nothing to undo			
+			
+			
+			
 		interpretation:
 			appears to happen if the respective attack(s) were (partially?) executed.
 			cannot be reproduced by explicitly scheduling and undoing/clearing attack tasks.
