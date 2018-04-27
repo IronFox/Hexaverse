@@ -3,7 +3,8 @@ sharp shadow edge on pillars map
 air defense for nexus base
 
 
-
+construction finish->move directly into storage seems to drop constructed lab
+progress line wrap
 
 
 
