@@ -575,13 +575,15 @@ namespace Objects
 		#ifndef CLIENT
 			jobs = Research::globalState.researchProgram->FindGlobal("Jobs");
 		#endif
-		Lua::Table bomb;
-		if (jobs.IsSet())
-			bomb = jobs.GetField("Bomb");
-		InitAttrib(bomb,"Jobs.Bomb","DoomsdayDamageLevel",Component::Bomb::doomsdayDamageLevel, OnAttributeNotFound::Warn);
-		InitAttrib(bomb,"Jobs.Bomb","DoomsdayExplosionRadius",Component::Bomb::doomsdayExplosionRadius, OnAttributeNotFound::Warn);
-		InitAttrib(bomb,"Jobs.Bomb","DoomsdayUraniumCost",Component::Bomb::doomsdayUraniumCost, OnAttributeNotFound::Warn);
-		InitAttrib(bomb,"Jobs.Bomb","RegularUraniumCost",Component::Bomb::regularUraniumCost, OnAttributeNotFound::Warn);
+		{
+			Lua::Table bomb;
+			if (jobs.IsSet())
+				bomb = jobs.GetField("Bomb");
+			InitAttrib(bomb,"Jobs.Bomb","DoomsdayDamageLevel",Component::Bomb::doomsdayDamageLevel, OnAttributeNotFound::Warn);
+			InitAttrib(bomb,"Jobs.Bomb","DoomsdayExplosionRadius",Component::Bomb::doomsdayExplosionRadius, OnAttributeNotFound::Warn);
+			InitAttrib(bomb,"Jobs.Bomb","DoomsdayUraniumCost",Component::Bomb::doomsdayUraniumCost, OnAttributeNotFound::Warn);
+			InitAttrib(bomb,"Jobs.Bomb","RegularUraniumCost",Component::Bomb::regularUraniumCost, OnAttributeNotFound::Warn);
+		}
 		{
 			Lua::Table bomber;
 			if (jobs.IsSet())

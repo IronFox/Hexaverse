@@ -653,7 +653,7 @@ Jobs =
 		DoomsdayExplosionRadius = TurretConfig.Bomb.ExplosionRadius * 2,
 		DoomsdayUraniumCost = 200,
 		RegularUraniumCost = -100,	--negative means 'virtual' cost. Base of calculating how many rounds job takes, but no actual resources are consumed
-	}
+	},
 	
 	Bomber =
 	{
