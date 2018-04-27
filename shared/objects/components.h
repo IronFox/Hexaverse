@@ -683,7 +683,11 @@ namespace Objects
 			namespace Bomber
 			{
 				extern LuaAttribute<int,NoFilter,300>		doomsdayBeamAttackCosts;
+				extern FScaledFunc	doomsdayExplosionRadius;
+				extern IFunc		doomsdayDamageLevel;
 
+				int		GetDoomsdayDamageLevel(const PFaction&);
+				float	GetDoomsdayExplosionRadius(const PFaction&);
 				void	Configure(Turret&);
 			}
 

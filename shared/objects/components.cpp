@@ -1425,7 +1425,23 @@ namespace Objects
 			}
 
 
-			LuaAttribute<int,NoFilter,300>		Bomber::doomsdayBeamAttackCosts;
+			namespace Bomber
+			{
+				LuaAttribute<int,NoFilter,300>		doomsdayBeamAttackCosts;
+				FScaledFunc			doomsdayExplosionRadius;
+				IFunc				doomsdayDamageLevel;
+
+				int		GetDoomsdayDamageLevel(const PFaction&f)
+				{
+					return doomsdayDamageLevel.IsEmpty() ? Bomb::GetDamageLevel(true,f) : doomsdayDamageLevel(f);
+				}
+
+				float	GetDoomsdayExplosionRadius(const PFaction&f)
+				{
+					return doomsdayExplosionRadius.IsEmpty() ? Bomb::GetRadius(true,f) : doomsdayExplosionRadius(f);
+				}
+
+			}
 
 			void			Bomber::Configure(Turret&component)
 			{

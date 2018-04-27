@@ -769,8 +769,8 @@ namespace Objects
 		/*virtual override*/ BaseJob::continue_t	DoomsdayBeamAttack::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
 
-			float radius = Component::Bomb::GetRadius(true,v.owner);
-			int damageLevel = Component::Bomb::GetDamageLevel(true,v.owner);
+			const float radius = Component::SubOrbital::Bomber::GetDoomsdayExplosionRadius(v.owner);
+			const int damageLevel = Component::SubOrbital::Bomber::GetDoomsdayDamageLevel(v.owner);
 
 			v.OverrideExecuteAttackNow(focus,radius,damageLevel,false,true, v.entityTime);
 

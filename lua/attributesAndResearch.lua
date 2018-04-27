@@ -657,6 +657,8 @@ Jobs =
 	
 	Bomber =
 	{
+		DoomsdayDamageLevel = TurretConfig.Bomb.DamageLevel * 5,
+		DoomsdayExplosionRadius = TurretConfig.Bomb.ExplosionRadius * 2,
 		DoomsdayBeamAttackCosts = 300,
 	},
 }

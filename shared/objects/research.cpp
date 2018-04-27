@@ -589,6 +589,8 @@ namespace Objects
 			if (jobs.IsSet())
 				bomber = jobs.GetField("Bomber");
 			InitAttrib(bomber,"Jobs.Bomber","DoomsdayBeamAttackCosts",Component::SubOrbital::Bomber::doomsdayBeamAttackCosts, OnAttributeNotFound::Warn);
+			InitAttrib(bomber,"Jobs.Bomber","DoomsdayExplosionRadius",Component::SubOrbital::Bomber::doomsdayExplosionRadius, OnAttributeNotFound::Warn);
+			InitAttrib(bomber,"Jobs.Bomber","DoomsdayDamageLevel",Component::SubOrbital::Bomber::doomsdayDamageLevel, OnAttributeNotFound::Warn);
 		}
 	}
 
