@@ -167,7 +167,7 @@ namespace World
 
 	void		RecompileIfNecessary()
 	{
-
+		ClientGrid::CheckSensory();
 		if (allowRecompilation && !World::actual.PaintingSensorsConcurrently())
 		{
 

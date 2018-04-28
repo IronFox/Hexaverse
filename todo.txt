@@ -1,4 +1,3 @@
-sensory rarely flickers (recompiled despite being repainted)
 sharp shadow edge on pillars map
 air defense for nexus base
 
@@ -230,6 +229,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: sensory rarely flickers (recompiled despite being repainted)
 presumed fixed: steam: invites not working when already in game (maybe fixed)
 presumed fixed: hostile ghost has no owner. Added more log message on server and client to track ther issue. Fixed for nexus units. Possibly fixed
 done: showPlanetTypes lists (user) instead of *
