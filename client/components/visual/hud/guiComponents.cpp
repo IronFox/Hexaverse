@@ -967,24 +967,24 @@ namespace Component
 	}
 
 
-	/*virtual override*/ WheelRs	Slider::OnMouseWheel(short delta)
-	{
-		if (this->ContainsMouse())
-		{
-			if (!dragging)
-			{
-				//constexpr float speed = -1.f / 5.f;
-				current = M::Clamp(current + slideStep * delta,0,max);
-				if (onChange)
-					onChange(current);
-				return WheelRs::Processed;
-			}
-			return WheelRs::Ignored;
-		}
-		else
-			return WheelRs::NotContained;
-		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
-	}
+	///*virtual override*/ WheelRs	Slider::OnMouseWheel(short delta)
+	//{
+	//	if (this->ContainsMouse())
+	//	{
+	//		if (!dragging)
+	//		{
+	//			//constexpr float speed = -1.f / 5.f;
+	//			current = M::Clamp(current + slideStep * delta,0,max);
+	//			if (onChange)
+	//				onChange(current);
+	//			return WheelRs::Processed;
+	//		}
+	//		return WheelRs::Ignored;
+	//	}
+	//	else
+	//		return WheelRs::NotContained;
+	//	//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
+	//}
 
 	/*virtual override*/ void		Slider::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{

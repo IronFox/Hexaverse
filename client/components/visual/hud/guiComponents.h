@@ -1194,7 +1194,7 @@ namespace Component
 
 		/**/				Slider();
 		virtual PComponent	OnMouseDown() override;
-		virtual WheelRs		OnMouseWheel(short) override;
+		//virtual WheelRs	OnMouseWheel(short) override;
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 		virtual void		Render(float opacity) override;
