@@ -338,7 +338,7 @@ namespace FileIO
 			ASSERT__(source->Stream(flags));
 			e.unstable = (flags & EntityFlag::IsUnstable) != 0;
 			float t = 0;
-			e.SetSleep((flags&EntityFlag::IsSleeping) !=0,t,false);
+			e.OverrideSetSleeping((flags&EntityFlag::IsSleeping) !=0);
 		}
 		ASSERT__(source->CloseStream());
 

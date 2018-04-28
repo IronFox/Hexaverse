@@ -1168,7 +1168,7 @@ namespace Objects
 			else
 			{
 				Compound::lastDisabled = nullptr;
-				SetSleep(false,atTime,false);
+				UpdateSleepState(false,atTime);
 			}
 			SyncTime(atTime);
 			LogEvent(EventClass::Preset::common,this,"Enabled-state changed "+String(isEnabled)+"->"+String(b)+" at t="+String(atTime)+", given signalStructure="+String(signalStructure)+", refreshNetwork="+String(refreshNetwork));

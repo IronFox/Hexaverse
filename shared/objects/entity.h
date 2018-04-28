@@ -281,20 +281,27 @@ namespace Objects
 			}
 
 
-			//Buffer0<PWorldEntity>	seenBy,
-				//					seeing;
-			void					SetSleep(bool doSleep, float&t, bool signalToStructure=true)
+			/**
+			Alters the sleep-state of the local entity, typically as a result to client action
+			@param doSleep Set true if the entity is supposed to sleep, false if it is supposed wake
+			@param[in,out] Processing time to signal changes at. Often but not always irrelevant (0'ish)
+			*/
+			void					SetSleep( bool doSleep, float&t )
 			{
-				if (sleeping == doSleep)
-					return;
-				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
-
-				sleeping = doSleep;
-				if (signalToStructure)
+				if (UpdateSleepState(doSleep,t))
 					OnSleepChange(t);
-				SignalChangeByExternalCause(SleepChange,t);
 			}
 			
+			/**
+			Direct set method called by IO state deserialization.
+			No callbacks or other state changes are performed.
+			Entity and change time remain unchanged.
+			Do NOT call under non-IO runtime conditions
+			*/
+			void					OverrideSetSleeping( bool doSleep )
+			{
+				sleeping = doSleep;
+			}
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
@@ -619,6 +626,25 @@ namespace Objects
 		*/
 		void					OverrideSetRegisteredSensorToCurrentLocation();
 
+	protected:
+		#ifndef CLIENT
+			/**
+			Alters the sleep-state of the local entity, typically as a result to client action.
+			OnSleepChange() is NOT called.
+			@param doSleep Set true if the entity is supposed to sleep, false if it is supposed wake
+			@param[in,out] Processing time to signal changes at. Often but not always irrelevant (0'ish)
+			*/
+			bool					UpdateSleepState( bool doSleep, float&t )
+			{
+				if (sleeping == doSleep)
+					return false;
+				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
+
+				sleeping = doSleep;
+				SignalChangeByExternalCause(SleepChange,t);
+				return true;
+			}
+		#endif
 	private:
 		RegisteredSensorStorage	registeredSensors;
 
