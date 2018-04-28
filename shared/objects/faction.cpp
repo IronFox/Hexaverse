@@ -180,7 +180,7 @@ namespace Objects
 				{
 					f->VisitMyEntities([](const PWorldEntity&e)
 					{
-						e->SignalChange(Objects::WorldEntity::CompleteChange,0);
+						e->RegisterChange(Objects::WorldEntity::CompleteChange);
 					},config.exposeEntityDetails);
 				},true);
 			ApplicationInterface::SignalAllianceConfigChange(shared_from_this());
@@ -413,17 +413,17 @@ namespace Objects
 		}
 
 
-		void ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change)
+		void ChangeStorage(WorldEntity&e, float&atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change)
 		{
 			if (change == 0)
 				return;
 			storage.level[res] += change;
 			LogEvent(EventSignificance::Common,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
-			e.RegisterChange(WorldEntity::StorageChanged,atTime);
+			e.SignalChangeByExternalCause(WorldEntity::StorageChanged,atTime);
 			ASSERT_IS_CONSTRAINED__(storage.level[res] , 0, max.level[res]);
 		}
 
-		void ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change)
+		void ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change)
 		{
 			if (change == 0)
 				return;
@@ -438,7 +438,7 @@ namespace Objects
 			#endif
 		}
 
-		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change)
+		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource res, int change)
 		{
 			ResourceVector demand;
 
@@ -456,7 +456,7 @@ namespace Objects
 		}
 
 
-		void ChangeStorage(MobileEntity&v, float atTime, Resource res, int change)
+		void ChangeStorage(MobileEntity&v, float&atTime, Resource res, int change)
 		{
 			if (change == 0)
 				return;
@@ -1067,7 +1067,7 @@ namespace Objects
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = true;
 			ASSERT__(CurrentlyVisible());
-			e->SyncTime(t,timeEpsilon);
+			e->SyncTime(t);
 			reference = e;
 		}
 
@@ -1093,7 +1093,7 @@ namespace Objects
 			t += timeEpsilon;
 			reverseVisibilityChange[-t] = false;
 			ASSERT__(!CurrentlyVisible());
-			e->SyncTime(t,timeEpsilon);
+			e->SyncTime(t);
 		}
 
 		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/)
@@ -1110,7 +1110,7 @@ namespace Objects
 			if (cascade)
 				ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
-			e->SyncTime(t,timeEpsilon);
+			e->SyncTime(t);
 
 			return true;
 		}
@@ -1126,7 +1126,7 @@ namespace Objects
 			if (signalConnectedClient)
 				ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
-			e->SyncTime(t,timeEpsilon);
+			e->SyncTime(t);
 		}
 
 		//void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)

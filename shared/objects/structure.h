@@ -500,7 +500,7 @@ namespace Objects
 			@param v Resources to store. If any are stored this vector must be updated accordingly
 			@param iteration Update iteration (0 to @a FinalLeftoverIteration ), indicates the storage iteration. High significance demand should be filled at iteration=0 or 1, other at 2 or 3. iteration=4 should always be consumed
 			*/
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)	{}
+			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)	{}
 			/**
 			Signals that a new round has started and production should commence. Tick() is not executed if the local structure is disabled or unstable
 			@param v Current resource balance vector. Supply should be added, demand subraced. No checks to the current values should be performed
@@ -873,7 +873,7 @@ namespace Objects
 
 	
 
-	void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);	//defined in faction.h/.cpp
+	void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change);	//defined in faction.h/.cpp
 
 	
 

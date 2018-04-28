@@ -352,7 +352,7 @@ namespace Objects
 
 	/*virtual*/ void	WorldEntity::OnInsert( float&atTime, bool freshConstruction )
 	{
-		atTime += timeEpsilon;
+		SyncTime(atTime);
 	}
 
 	#ifdef HAS_WINDOW

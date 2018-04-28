@@ -148,7 +148,7 @@ namespace Objects
 		}
 
 
-		void				Compound::FeedLeftovers(ResourceVector&vector, float atTime)
+		void				Compound::FeedLeftovers( ResourceVector&vector, float&atTime )
 		{
 			if (vector.IsNotEmpty())
 			{
@@ -215,7 +215,7 @@ namespace Objects
 		}
 
 
-		void				Compound::TickEnd(float atTime)
+		void				Compound::TickEnd( float&atTime )
 		{
 			//#ifdef ONE_COMPOUND_PER_FACTION
 				if (stable)
@@ -266,7 +266,8 @@ namespace Objects
 				
 				ResourceVector localDemand,overproduction;
 				vector.SeparateBySign(overproduction,localDemand);
-				FeedLeftovers(localDemand,0);
+				float t0 = 0;
+				FeedLeftovers(localDemand,t0);
 				DistributeOverproduction(overproduction);
 				vector = localDemand;
 				
@@ -288,7 +289,7 @@ namespace Objects
 
 
 		}
-		void			Compound::ChangeStorage(ResourceVector&change, float atTime)
+		void			Compound::ChangeStorage( ResourceVector&change, float&atTime )
 		{
 			ASSERT__(total.balance.IsStable());
 

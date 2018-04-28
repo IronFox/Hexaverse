@@ -108,7 +108,7 @@ namespace Objects
 		//WorkingStructure overrides:
 		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = GetMaxStorageCapacity();}
 		#ifndef CLIENT
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
+			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime) override;
 		#endif
 		virtual void				SetResourceStorage(const ResourceVector&storage)override
 		{

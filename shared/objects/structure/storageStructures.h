@@ -35,7 +35,7 @@ namespace Objects
 
 		#ifndef CLIENT
 
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override
+			virtual void			ProcessLeftovers( ResourceVector&v, index_t iteration, float&atTime ) override
 			{
 				if (iteration != LeftoverUpdateIteration && iteration != FinalLeftoverIteration)
 					return;

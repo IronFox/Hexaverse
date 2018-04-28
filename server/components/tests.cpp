@@ -970,7 +970,7 @@ namespace Test
 		fuelContainer1->SetEnabled(false, t, false);
 
 		net.TickBegin();
-		net.TickEnd(0);
+		net.TickEnd(t);
 
 		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
@@ -981,7 +981,7 @@ namespace Test
 		for (int i = 0; i < 100; i++)
 		{
 			net.TickBegin();
-			net.TickEnd(0);
+			net.TickEnd(t);
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
 			expectedMinerals += mineralsPerRound;
@@ -1060,7 +1060,7 @@ namespace Test
 
 
 		net.TickBegin();
-		net.TickEnd(0);
+		net.TickEnd(t);
 
 		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
@@ -1082,7 +1082,7 @@ namespace Test
 			while (plant->IsBuilding(progress))
 			{
 				net.TickBegin();
-				net.TickEnd(0);
+				net.TickEnd(t);
 				if (plant->AwaitsUserInteraction())
 				{
 					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);

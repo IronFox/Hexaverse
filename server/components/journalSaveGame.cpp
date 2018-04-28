@@ -487,7 +487,7 @@ namespace Journal
 		}
 		Objects::PMobileEntity m = To<Objects::MobileEntity>::Cast(e);
 		m->isAutomated = isNowAutomated;
-		m->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
+		m->RegisterChange(Objects::WorldEntity::AutomationChanged);
 		LogEvent(EventSignificance::Common,e.get(),"Modified automation-state to "+String(m->isAutomated));
 	}
 

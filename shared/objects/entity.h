@@ -189,29 +189,18 @@ namespace Objects
 		const Research::Attributes::Table&GetResearchState() const;
 		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
-		inline void					SyncTime(float&remoteTime, float timeOffset)
+		
+		inline void				SyncTime(float&remoteTime)
 		{
 			#ifndef CLIENT
-				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeOffset;
-			#endif
-		}
-		inline void					SyncTime(float&remoteTime)
-		{
-			#ifndef CLIENT
-				remoteTime = entityTime = std::max(entityTime,remoteTime);
+				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeEpsilon;
 			#endif
 		}
 
-		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
-		{
-			#ifndef CLIENT
-				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeOffset;
-			#endif
-		}
 		inline void					SyncTime(WorldEntity&other, float&remoteTime)
 		{
 			#ifndef CLIENT
-				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime));
+				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeEpsilon;
 			#endif
 		}
 
@@ -278,12 +267,18 @@ namespace Objects
 				changeTimer = -std::numeric_limits<float>::max();
 			}
 
-			void					RegisterChange(changeType_t type, float timeAt)
+			void					SignalChangeByExternalCause(changeType_t type, float&timeAt)
 			{
 				changeFlags |= type;
-				changeTimer = std::max(changeTimer,timeAt);
+				SyncTime(timeAt);
+				changeTimer = entityTime;
 			}
-			void					SignalChange(changeType_t type, float timeAt)	{RegisterChange(type,timeAt);}
+			void					RegisterChange(changeType_t type)
+			{
+				changeFlags |= type;
+				entityTime += timeEpsilon;
+				changeTimer = entityTime;
+			}
 
 
 			//Buffer0<PWorldEntity>	seenBy,
@@ -295,9 +290,9 @@ namespace Objects
 				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
 
 				sleeping = doSleep;
-				RegisterChange(SleepChange,t);
 				if (signalToStructure)
 					OnSleepChange(t);
+				SignalChangeByExternalCause(SleepChange,t);
 			}
 			
 
@@ -584,8 +579,8 @@ namespace Objects
 				UnregisterSensory(atTime);
 				LogEvent(EventSignificance::Common,this,"Altering EMP damage level "+String(empDamageLevel)+"->"+String(newDamage));
 				empDamageLevel = newDamage;
-				RegisterChange(EMPDamageChanged,atTime);
 				RegisterSensory(atTime);
+				SignalChangeByExternalCause(EMPDamageChanged,atTime);
 				return true;
 			}
 			/**
@@ -598,8 +593,8 @@ namespace Objects
 					LogEvent(EventSignificance::Common,this,"Healing all EMP damage");
 					UnregisterSensory(atTime);
 					empDamageLevel = 0;
-					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
+					SignalChangeByExternalCause(EMPDamageChanged,atTime);
 				}
 			}
 			void					HealEMPDamage(float&atTime)
@@ -608,8 +603,8 @@ namespace Objects
 				{
 					UnregisterSensory(atTime);
 					empDamageLevel--;
-					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
+					SignalChangeByExternalCause(EMPDamageChanged,atTime);
 					LogEvent(EventSignificance::Common,this,"Healing EMP damage level ->"+String(empDamageLevel));
 				}
 			}

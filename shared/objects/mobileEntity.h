@@ -378,7 +378,7 @@ namespace Objects
 				attackActionLeft = 0.f;
 				hasMoved = true;
 				constructionActionLeft=MaxConstructionActionLeft;
-				RegisterChange(ActionChanged,0);
+				RegisterChange(ActionChanged);
 			}
 
 			/**

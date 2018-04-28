@@ -55,7 +55,7 @@ namespace Objects
 				naturalResources *= GetEfficiency();
 			}
 			if (success)
-				RegisterChange(WorldEntity::CanEnableChanged,atTime);
+				SignalChangeByExternalCause(WorldEntity::CanEnableChanged,atTime);
 			return success;
 		#endif
 	}

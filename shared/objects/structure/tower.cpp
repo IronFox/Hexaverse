@@ -85,8 +85,7 @@ namespace Objects
 				
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
-				RegisterChange(ActionChanged,entityTime);
-				entityTime += timeEpsilon;
+				RegisterChange(ActionChanged);
 
 				if (!IsBeam(turret->trajectoryType))
 				{
@@ -127,7 +126,7 @@ namespace Objects
 					Explode(at,
 							rs.impactCell,rs.impactAt, explosionRadius, damageLevel,turret->isDoomsday, entityTime);
 
-				RegisterChange((changeType_t)(TasksChanged),entityTime);
+				RegisterChange(TasksChanged);
 				//stateChangedAt = attackTime;	//problematic
 				attackTime = entityTime;
 			}
@@ -153,7 +152,7 @@ namespace Objects
 			return false;
 		}
 
-		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
+		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)
 		{
 			ResourceVector maxStorage = GetMaxStorageCapacity();
 			index_t targetIteration = 1;
@@ -220,12 +219,11 @@ namespace Objects
 				}
 			}
 
-			entityTime += timeEpsilon;
 			AttackTask&cmd = attackQueue.Push();
 //			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,entityTime);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 
@@ -250,7 +248,7 @@ namespace Objects
 			if (attackQueue.IsEmpty())
 				return false;
 			attackQueue.Clear();
-			SignalChange(TasksChanged,0);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 
@@ -259,7 +257,7 @@ namespace Objects
 			if (attackQueue.IsEmpty())
 				return false;
 			attackQueue.EraseBack();
-			SignalChange(TasksChanged,0);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 	#else

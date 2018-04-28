@@ -82,7 +82,7 @@ namespace Objects
 						this->SetEnabled(false,atTime,false);
 					}
 					else
-						RegisterChange(this->EnableChanged,atTime);
+						SignalChangeByExternalCause(EnableChanged,atTime);
 					isLinkedToCore = linked;
 				}
 			#endif

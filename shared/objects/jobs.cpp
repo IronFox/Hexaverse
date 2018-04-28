@@ -821,13 +821,10 @@ namespace Objects
 
 			if (speed >= fullCost && fullCost <= storage)
 			{
-				target->SyncTime(v.entityTime,timeEpsilon);
 				target->health = maxHealth;
-				target->RegisterChange(WorldEntity::HealthChanged,target->entityTime);
-				v.entityTime += timeEpsilon;
+				target->SignalChangeByExternalCause(WorldEntity::HealthChanged,v.entityTime);
 				ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-fullCost);
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired ("+String(fullCost)+")");
-				v.entityTime += timeEpsilon;
 				return JobDone;
 			}
 
@@ -838,9 +835,7 @@ namespace Objects
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to repair '"+target->GetNiceName()+"'");
 
-				v.entityTime += timeEpsilon;
 				ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
-				v.entityTime += timeEpsilon;
 
 				return JobDelayed;
 			}
@@ -849,16 +844,11 @@ namespace Objects
 			else
 				LogEvent(EventClass::Preset::important,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
 
-			v.entityTime += timeEpsilon;
 			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
-			v.entityTime += timeEpsilon;
 
-			target->SyncTime(v.entityTime,timeEpsilon);
+			target->SignalChangeByExternalCause(WorldEntity::HealthChanged,v.entityTime);
 			target->health += canRepair;
-			target->RegisterChange(WorldEntity::HealthChanged,target->entityTime);
-			v.entityTime += timeEpsilon;
 			ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
-			v.entityTime += timeEpsilon;
 			return JobDelayed;
 
 		}

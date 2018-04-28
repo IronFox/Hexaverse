@@ -371,7 +371,7 @@ namespace Objects
 					if (constructionActionCounter)
 					{
 						constructionActionCounter = 0;
-						RegisterChange(WorldEntity::TasksChanged,entityTime);
+						RegisterChange(WorldEntity::TasksChanged);
 					}
 				}
 
@@ -474,7 +474,7 @@ namespace Objects
 
 				myTasks << Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode);
 				myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged,-1);
+				RegisterChange(TasksChanged);
 			}
 			else
 			{
@@ -488,7 +488,7 @@ namespace Objects
 				{
 					myTasks.GetNewest().foci.Push().target = destination;
 					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
-					RegisterChange(TasksChanged,-1);
+					RegisterChange(TasksChanged);
 				}
 			}
 			return true;
@@ -508,7 +508,7 @@ namespace Objects
 
 				myTasks.PushFront(Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode));
 				myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged,-1);
+				RegisterChange(TasksChanged);
 			}
 			else
 			{
@@ -521,7 +521,7 @@ namespace Objects
 				{
 					myTasks.GetOldest().foci.PushFront().target = destination;
 					myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
-					RegisterChange(TasksChanged,-1);
+					RegisterChange(TasksChanged);
 				}
 			}
 			return true;
@@ -612,7 +612,7 @@ namespace Objects
 									ASSERT__(!TasksAreLocked());
 
 									myTasks << Task("Move To",node->cell,true,Task::MoveTo);
-									RegisterChange(TasksChanged,-1);
+									RegisterChange(TasksChanged);
 									myTasks.GetNewest().Replot(pointOfOrigin, this,FocusChangeType::FullChange,true);
 								}
 

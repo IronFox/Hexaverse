@@ -68,7 +68,7 @@ namespace Objects
 	{
 		auto&self = ToEntity();
 		ASSERT1__(v,self.GetName());
-		v->SyncTime(self,atTime,timeEpsilon);
+		v->SyncTime(self,atTime);
 
 		#ifndef CLIENT
 		{
@@ -109,7 +109,7 @@ namespace Objects
 			else
 			{
 				doInsert = rs != MobilePlacementResult::EnteredHangar;
-				v->RegisterChange(WorldEntity::PositionChanged,atTime);
+				v->RegisterChange(WorldEntity::PositionChanged);
 				//as it turns out, inserting into a hangar does not guarantee it actually ends up in the hangar directly selected,
 				//but is relocated to some other connected hangar. So only check if we do not insert into the grid
 				DBG_ASSERT4__(!doInsert || v->location.stackID == targetLocation.stackID,self.GetName(),v->GetName(),targetLocation, v->location);
@@ -135,6 +135,7 @@ namespace Objects
 		#endif
 
 		OnStorageChanged();
+		v->SyncTime(self,atTime);
 	}
 
 
@@ -144,9 +145,7 @@ namespace Objects
 		if (!e || !CanStoreType(*e) || stored.Count() >= GetMaxStorage())
 			return false;
 
-		#ifndef CLIENT
-			e->SyncTime(ToEntity(),atTime,timeEpsilon);
-		#endif
+		e->SyncTime(ToEntity(),atTime);
 
 		if (e->isInserted)
 		{
@@ -177,7 +176,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
-			e->RegisterChange(WorldEntity::changeType_t(  WorldEntity::StorageChanged | WorldEntity::PositionChanged | WorldEntity::StoredInChanged),atTime);
+			e->RegisterChange(WorldEntity::changeType_t(  WorldEntity::StorageChanged | WorldEntity::PositionChanged | WorldEntity::StoredInChanged));
 		#endif
 
 		ASSERT2__(!e->isInsertedIntoGrid,ToEntity().GetName(), e->GetName());
@@ -188,6 +187,8 @@ namespace Objects
 
 		onStored(*this,stored.Last());
 		OnStorageChanged();
+
+		e->SyncTime(ToEntity(),atTime);
 
 		return true;
 	}
