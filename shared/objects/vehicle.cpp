@@ -53,9 +53,9 @@ namespace Objects
 		}
 	#endif
 
-	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret, const PFaction&owner)
+	/*static*/ int					Vehicle::GetPrice(Component::VehicleBase*base, Component::Turret*turret, const Research::Attributes::Table&table)
 	{
-		return (turret ? turret->productionCosts(owner) : 0) + (base ? base->productionCosts(owner) : 0);
+		return (turret ? turret->productionCosts.GetValue(table) : 0) + (base ? base->productionCosts.GetValue(table) : 0);
 	}
 
 
@@ -70,7 +70,7 @@ namespace Objects
 	{
 		const auto& state = GetResearchState();
 		String rs = turret->scanningRange.Describe(state);
-		if (!turret->CanAttack() && base->turretRangeModifier.GetUnfilteredValue(state) != 0)
+		if (!turret->CanAttack() && base->turretRangeModifier.GetValue(state) != 0)
 		{
 			rs += "+"+base->turretRangeModifier.Describe(state);
 		}
@@ -165,7 +165,8 @@ namespace Objects
 
 	int						Vehicle::GetTurretOverweight() const
 	{
-		return std::max(0, (int)floor((turret->weight(owner) - base->GetCarryingCapacity(owner))));
+		const auto& state = GetResearchState();
+		return std::max(0, (int)floor((turret->weight.GetValue(state) - base->GetCarryingCapacity(state))));
 	}
 
 	float					Vehicle::GetTurretOverweightFactor() const
@@ -179,7 +180,7 @@ namespace Objects
 	/*virtual override*/int			Vehicle::GetMovementStepsPerRound()	const
 	{
 		return (int)ceil(EMPModify(
-				base->GetBaseMovementSpeed(owner) 
+				base->GetBaseMovementSpeed(GetResearchState()) 
 				* GetTurretOverweightFactor(),
 				1.f));
 	}
@@ -211,7 +212,8 @@ namespace Objects
 
 	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op) const
 	{
-		return (int)floor(turret->GetOperationSpeed(op,owner) * base->operationSpeedMultiplier(owner));
+		const auto&state = GetResearchState();
+		return (int)floor(turret->GetOperationSpeed(op,state) * base->operationSpeedMultiplier.GetValue(state));
 	}
 
 	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::operation_t op) const
@@ -407,11 +409,13 @@ namespace Objects
 			base->DescribeType(outResult,true,true,owner);
 			outResult.BeginBrief();
 
-			const float capacity = floor(base->GetCarryingCapacity(owner));
-			const float weight = turret->weight(owner);
+			const auto&state = GetResearchState();
+
+			const float capacity = floor(base->GetCarryingCapacity(state));
+			const float weight = turret->weight.GetValue(state);
 			if (weight > capacity)
 				outResult << "Overweight: "+String(weight - capacity);
-			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(owner));
+			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(state));
 			if (baseMovement > 0)
 			{
 				String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());

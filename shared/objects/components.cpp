@@ -96,62 +96,61 @@ namespace Objects
 		}
 
 
-		float							VehicleBase::GetBaseMovementSpeed(const OwnerParameter&owner) const
+		float							VehicleBase::GetBaseMovementSpeed(const Research::Attributes::Table&state) const
 		{
-			return movementSpeed.GetValue(ResearchStateOf(owner));
+			return movementSpeed.GetValue(state);
 		}
-		float							VehicleBase::GetCarryingCapacity(const OwnerParameter&owner) const
+		float							VehicleBase::GetCarryingCapacity(const Research::Attributes::Table&state) const
 		{
-			return carryingCapacity.GetValue(ResearchStateOf(owner));
-			//return owner ? owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity : baseCarryingCapacity;
+			return carryingCapacity.GetValue(state);
 		}
-		float							VehicleBase::GetBaseHealth(const OwnerParameter&owner) const
+		float							VehicleBase::GetBaseHealth(const Research::Attributes::Table&state) const
 		{
-			return health.GetValue(ResearchStateOf(owner));
-		}
-
-
-
-		float							Turret::GetOperationSpeed(operation_t op, const OwnerParameter&owner) const
-		{
-			return operationSpeed[op](owner);
+			return health.GetValue(state);
 		}
 
-		int							Turret::GetDamageLevel(const PFaction&owner) const
+
+
+		float							Turret::GetOperationSpeed(operation_t op, const Research::Attributes::Table&researchState) const
 		{
-			return damageLevel(owner);
+			return operationSpeed[op].GetValue(researchState);
 		}
 
-		float							Turret::GetExplosionRadius(const PFaction&owner) const
+		int							Turret::GetDamageLevel(const Research::Attributes::Table&researchState) const
 		{
-			return  explosionRadius(owner);
+			return damageLevel.GetValue(researchState);
 		}
 
-		int								Turret::GetAttacksPerRound(const PFaction&owner) const
+		float							Turret::GetExplosionRadius(const Research::Attributes::Table&researchState) const
 		{
-			return  attacksPerRound(owner);
+			return  explosionRadius.GetValue(researchState);
+		}
+
+		int								Turret::GetAttacksPerRound(const Research::Attributes::Table&researchState) const
+		{
+			return  attacksPerRound.GetValue(researchState);
 		}		
 
-		int								Turret::GetAmmoNeedPerShot(const PFaction&owner) const
+		int								Turret::GetAmmoNeedPerShot(const Research::Attributes::Table&researchState) const
 		{
-			return ammoNeedPerShot(owner);
+			return ammoNeedPerShot.GetValue(researchState);
 		}
 
-		float							Turret::GetHorizontalAttackRange(const PFaction&owner, const FFunc&bonus/*=FFunc()*/) const
+		float							Turret::GetHorizontalAttackRange(const Research::Attributes::Table&researchState, const FFunc&bonus/*=FFunc()*/) const
 		{
 			if (horizontalAttackRange.IsEmpty())
 				return 0;
-			return (horizontalAttackRange(owner) + bonus(owner));
+			return (horizontalAttackRange.GetValue(researchState) + bonus.GetValue(researchState));
 		}
 
-		float							Turret::GetScanningRange(const PFaction&owner, int bonus/*=0*/) const
+		float							Turret::GetScanningRange(const Research::Attributes::Table&researchState, int bonus/*=0*/) const
 		{
-			return (scanningRange(owner) + bonus);
+			return (scanningRange.GetValue(researchState) + bonus);
 		}
 
-		float							Turret::GetGroundScanningRange(const PFaction&owner) const
+		float							Turret::GetGroundScanningRange(const Research::Attributes::Table&researchState) const
 		{
-			return groundScanningRange(owner);
+			return groundScanningRange.GetValue(researchState);
 		}
 
 
@@ -168,7 +167,7 @@ namespace Objects
 		}
 
 
-		bool							Turret::ConsumesResources(ResourceFlagSet&res, const PFaction&owner) const
+		bool							Turret::ConsumesResources(ResourceFlagSet&res, const Research::Attributes::Table&researchState) const
 		{
 			bool rs = false;
 			if (this->mountType == Component::Turret::MountType::Satellite)
@@ -178,7 +177,7 @@ namespace Objects
 			}
 			if (CanAttack())
 			{
-				int demand = GetAmmoNeedPerShot(owner);
+				int demand = GetAmmoNeedPerShot(researchState);
 				if ( demand > 0)
 				{
 					res |= ammoType;
@@ -870,36 +869,36 @@ namespace Objects
 
 		namespace Bomb
 		{
-			FScaledFunc	doomsdayExplosionRadius;
+			FFunc		doomsdayExplosionRadius;
 			IFunc		doomsdayDamageLevel;
 
-			LuaAttribute<int,NoFilter,200>		doomsdayUraniumCost;
-			LuaAttribute<int,NoFilter,-100>		regularUraniumCost;
+			LuaAttributeWithDefault<int,200>		doomsdayUraniumCost;
+			LuaAttributeWithDefault<int,-100>		regularUraniumCost;
 
 		}
 
 
-		int			Bomb::GetUraniumCost(bool doomsday, const PFaction&owner)
+		int			Bomb::GetUraniumCost(bool doomsday, const Research::Attributes::Table&researchState)
 		{
 			//used to be: 200 : -100 (virtual)
-			return doomsday ? doomsdayUraniumCost(owner) : regularUraniumCost(owner);
+			return doomsday ? doomsdayUraniumCost.GetValue(researchState) : regularUraniumCost.GetValue(researchState);
 		}
 
 
-		float		Bomb::GetRadius(bool doomsday, const PFaction& owner)
+		float		Bomb::GetRadius(bool doomsday, const Research::Attributes::Table&researchState)
 		{
 			//	return bomb.GetExplosionRadius(owner) * (doomsday ? 2 : 1);
 			return doomsday ? 
-				(doomsdayExplosionRadius.IsSet() ? doomsdayExplosionRadius(owner) : bomb.GetExplosionRadius(owner) * 2)
-				: bomb.GetExplosionRadius(owner);
+				(doomsdayExplosionRadius.IsSet() ? doomsdayExplosionRadius.GetValue(researchState) : bomb.GetExplosionRadius(researchState) * 2)
+				: bomb.GetExplosionRadius(researchState);
 		}
 
-		int			Bomb::GetDamageLevel(bool doomsday, const PFaction& owner)
+		int			Bomb::GetDamageLevel(bool doomsday, const Research::Attributes::Table&researchState)
 		{
 			//return bomb.GetDamageLevel(owner) * (doomsday ? 5 : 1);
 			return doomsday ? 
-				(doomsdayDamageLevel.IsSet() ? doomsdayDamageLevel(owner) : bomb.GetDamageLevel(owner) * 5)
-				: bomb.GetDamageLevel(owner);
+				(doomsdayDamageLevel.IsSet() ? doomsdayDamageLevel.GetValue(researchState) : bomb.GetDamageLevel(researchState) * 5)
+				: bomb.GetDamageLevel(researchState);
 		}
 
 	

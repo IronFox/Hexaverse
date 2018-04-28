@@ -524,7 +524,7 @@ namespace Objects
 
 
 	
-	void						TaskAttachment::SetLocalizableShape(EntityType shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
+	void						TaskAttachment::SetLocalizableShape(EntityType shape, const Grid::LCellIdI&location, const Research::Attributes::Table&researchState)
 	{
 		localizableShapes.Clear();
 		if (shape == ConstName::DetonationSize_Regular)
@@ -538,7 +538,7 @@ namespace Objects
 			shape.preRenderDepth = false;
 			shape.selectedOnly = true;
 
-			float r = Component::Bomb::GetRadius(false,owner);
+			float r = Component::Bomb::GetRadius(false,researchState);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}
@@ -554,7 +554,7 @@ namespace Objects
 			shape.preRenderDepth = false;
 			shape.selectedOnly = true;
 
-			float r = Component::Bomb::GetRadius(true,owner);
+			float r = Component::Bomb::GetRadius(true,researchState);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}

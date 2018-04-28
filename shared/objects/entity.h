@@ -138,10 +138,10 @@ namespace Objects
 	{
 	public:
 		//all functions here take the research state of an owning faction into account
-		LuaAttribute<int,NoFilter>			maxHealth,
-											constructionCost;
-		LuaAttribute<float,UnitScaleFilter>	maxScanningRange;
-		LuaAttribute<bool,NoFilter>			isUnlocked;
+		LuaAttribute<int>			maxHealth,
+									constructionCost;
+		LuaAttribute<float>			maxScanningRange;
+		LuaAttribute<bool>			isUnlocked;
 	};
 
 	
@@ -651,27 +651,6 @@ namespace Objects
 	};
 
 
-
-//				return WorldEntity::StaticEMPModify(cached,2.f * Grid::UnitScale,e.empDamageLevel);;
-
-
-	/*template <typename T>
-		template <typename T2,typename F1, typename F2>
-			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum)
-			{
-				if (versionCounter != Super::versionCounter)
-				{
-					versionCounter = Super::versionCounter;
-					T val = source.GetValue(researchState);
-					if (multiplier.IsSet())
-						val*=multiplier.GetValue(researchState);
-					
-					val = Math::Max(val, minimum);
-					cached = val;
-				}
-				return cached;
-			}
-*/
 
 	PWorldEntity							GetEntity(const TUniqueID&id);
 

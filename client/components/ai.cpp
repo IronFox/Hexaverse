@@ -73,15 +73,13 @@ namespace AI
 		if (distance < M::Sqr(e.GetScanningRange()))
 			current.beingSeen = true;
 
-		//if (!b)
-			//return;
+		
+		const auto&state = e.GetResearchState();
 
-		//if (b->CanHit(e.owner,e.location,))
 		if (e.CanHit(reference))
-		//if (distance < M::Sqr(b->GetAttackRange() + b->turret->GetExplosionRadius(e.owner) - 1))
 		{
 			Objects::PTurretBase b = e.GetTurretBase();
-			current.damageThreat += b->turret->GetDamageLevel(e.owner) * b->GetAttacksPerRound();
+			current.damageThreat += b->turret->GetDamageLevel(state) * b->GetAttacksPerRound();
 		}
 	}
 
@@ -207,14 +205,12 @@ namespace AI
 					return;
 				}
 			}
-			//Objects::Turret::TraceTrajectory(
-			//Objects::Turret::MaxRangeToVelocity(source.GetFlatAttackRange()),
-				//									World::actual, source.location,target,detonationAt);
-			//if (rs == Objects::TurretTrajectory::ReachesTarget
-			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->GetExplosionRadius(e.owner) > 1 && !source.turret->dealsEMPDamage))
+	
+			const auto&state = source.GetResearchState();
+
 			{
 				LogEvent(EventSignificance::Debug,&source,"Trajectory checks out");
-				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->GetDamageLevel(source.owner));
+				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->GetDamageLevel(state));
 				if (rs != Objects::TraceResult::ReachesTarget)
 					needAttacks ++;
 				//if (rs == Objects::Turret::ReachesTarget)
@@ -347,7 +343,7 @@ namespace AI
 				}
 			}
 			std::sort(attackTarget.begin(),attackTarget.end());
-			attackTarget.Truncate(v->turret->GetAttacksPerRound(v->owner));
+			attackTarget.Truncate(v->GetAttacksPerRound());
 			static Array<Grid::LCellIdI>	targets;
 			targets.SetSize(attackTarget.Count());
 			foreach (attackTarget,t)

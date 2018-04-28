@@ -13,6 +13,7 @@ namespace ApplicationInterface
 		{
 			enum version_t : UINT32
 			{
+				RemovedArtilleryTowers = 1039,
 				HasUUIDInConstructionJobs = 1041,
 				FirstVersionWithVariables = 1042,
 				MarkersHaveOwner = 1043,

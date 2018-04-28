@@ -21,10 +21,7 @@ Handle	Game.CreateResearch(Handle group, String name, String iconName, advance(R
 	
 void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
 
-bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
-float	Game.UnitScale					Set to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be
-										applied too units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
-
+bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of horizontal cells)
 
 Hexaverse expects the following classes and methods to be defined:
 	ResearchState - table, arbitrary content. Expected but not required to mimic a class
@@ -584,8 +581,8 @@ Jobs =
 {
 	Bomb = 
 	{
-		DoomsdayDamageLevel = TurretConfig.Bomb.DamageLevel * 5,
 		DoomsdayExplosionRadius = TurretConfig.Bomb.ExplosionRadius * 2,
+		DoomsdayDamageLevel = 50,
 		DoomsdayUraniumCost = 200,
 		RegularUraniumCost = -100,	--negative means 'virtual' cost. Base of calculating how many rounds job takes, but no actual resources are consumed
 	},

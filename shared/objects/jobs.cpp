@@ -698,8 +698,9 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	SelfDetonate::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
-			float radius = Component::Bomb::GetRadius(doomsday,v.owner);
-			int damageLevel = Component::Bomb::GetDamageLevel(doomsday,v.owner);
+			const auto&state = v.GetResearchState();
+			float radius = Component::Bomb::GetRadius(doomsday,state);
+			int damageLevel = Component::Bomb::GetDamageLevel(doomsday,state);
 
 			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.entityTime);
 			v.entityTime += timeEpsilon;
@@ -735,7 +736,7 @@ namespace Objects
 		
 		/**/					SelfDetonate::SelfDetonate(const MobileEntity&v, const Grid::LCellIdI&loc, ConstName p)	
 			: Super(
-				Objects::Component::Bomb::GetUraniumCost(IsDoomsday(p),v.owner),
+				Objects::Component::Bomb::GetUraniumCost(IsDoomsday(p),v.GetResearchState()),
 				v,loc,GetOperationAffinity(),Autocomplete::Always,false
 			),
 			doomsday(IsDoomsday(p))
@@ -743,7 +744,7 @@ namespace Objects
 
 		/*virtual override*/ void			SelfDetonate::UpdateEstimations(const MobileEntity&v) 
 		{
-			Super::ResetResourceAndRoundsLeft(Component::Bomb::GetUraniumCost(doomsday,v.owner),v,GetOperationAffinity());
+			Super::ResetResourceAndRoundsLeft(Component::Bomb::GetUraniumCost(doomsday,v.GetResearchState()),v,GetOperationAffinity());
 		}
 
 

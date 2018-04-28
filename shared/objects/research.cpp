@@ -231,52 +231,51 @@ namespace Objects
 
 		public:
 
-			template <typename F>
-				static void Set(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, OnAttributeNotFound onAttributeNotFound = OnAttributeNotFound::Fail)
-				{
+			static void Set(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T>&a, OnAttributeNotFound onAttributeNotFound = OnAttributeNotFound::Fail)
+			{
 
-					a.Clear(list.Count());
-					auto&attrib = list.Append();
+				a.Clear(list.Count());
+				auto&attrib = list.Append();
 
-					#ifndef CLIENT
+				#ifndef CLIENT
 
 
-						Lua::NamedReference ref;
-						if (source.IsSet())
-							ref = source.GetField(name);
-						if (ref.IsEmpty())
+					Lua::NamedReference ref;
+					if (source.IsSet())
+						ref = source.GetField(name);
+					if (ref.IsEmpty())
+					{
+						switch (onAttributeNotFound)
 						{
-							switch (onAttributeNotFound)
-							{
-								case OnAttributeNotFound::Fail:
-									throw Lua::Exception("Field '"+path+"."+name+"' is not defined");
-								case OnAttributeNotFound::Warn:
-									LogEvent(EventClass::Preset::configurationError,attributeContext+": Field '"+path+"."+name+"' is not defined");
-									break;
-							}
-							return;
+							case OnAttributeNotFound::Fail:
+								throw Lua::Exception("Field '"+path+"."+name+"' is not defined");
+							case OnAttributeNotFound::Warn:
+								LogEvent(EventClass::Preset::configurationError,attributeContext+": Field '"+path+"."+name+"' is not defined");
+								break;
 						}
+						return;
+					}
 
-						if (ref.IsTable())
-						{
-							Lua::Table t = ref;
+					if (ref.IsTable())
+					{
+						Lua::Table t = ref;
 			
-							attrib.luaGetValue = t.GetField("Get");
-							if (attrib.luaGetValue.IsEmpty())
-								throw Lua::Exception("Function '"+path+"."+name+".Get' is not defined");
+						attrib.luaGetValue = t.GetField("Get");
+						if (attrib.luaGetValue.IsEmpty())
+							throw Lua::Exception("Function '"+path+"."+name+".Get' is not defined");
 
-							attrib.luaDescribeValue = t.GetField("Describe");
-						}
-						elif (ref.IsFunction())
-						{
-							attrib.luaGetValue = ref;
-						}
-						else
-						{
-							attrib.SetConst(ref.GetAs<T>());
-						}
-					#endif
-				}
+						attrib.luaDescribeValue = t.GetField("Describe");
+					}
+					elif (ref.IsFunction())
+					{
+						attrib.luaGetValue = ref;
+					}
+					else
+					{
+						attrib.SetConst(ref.GetAs<T>());
+					}
+				#endif
+			}
 
 			static void Clear()
 			{
@@ -337,8 +336,8 @@ namespace Objects
 	template <typename T>
 		/*static*/ Buffer0<typename LuaAttributes<T>::Attribute,Swap>	LuaAttributes<T>::list;
 
-	template <typename T, typename F>
-		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T,F>&a, OnAttributeNotFound onAttributeNotFound = OnAttributeNotFound::Fail)
+	template <typename T>
+		static void InitAttrib(const Lua::Table&source, const String&path, const String&name, LuaAttribute<T>&a, OnAttributeNotFound onAttributeNotFound = OnAttributeNotFound::Fail)
 		{
 			LuaAttributes<T>::Set(source,path,name,a,onAttributeNotFound);
 		}

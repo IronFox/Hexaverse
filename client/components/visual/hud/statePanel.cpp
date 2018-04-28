@@ -246,7 +246,7 @@ namespace StatePanel
 			if (e.IsVehicle())
 			{
 				const Objects::Vehicle*veh = (const Objects::Vehicle*)(m);
-				cachedLines << " Turret-Overweight: "+String((int)M::Max(0,veh->turret->weight(e.owner) - floor(veh->base->GetCarryingCapacity(e.owner))));
+				cachedLines << " Turret-Overweight: "+String((int)M::Max(0,veh->turret->weight.GetValue(researchState) - floor(veh->base->GetCarryingCapacity(researchState))));
 			}
 			cachedLines << " Movement Initiative: "+String((int)m->GetMovementInitiative())+"/"+String((int)m->GetBaseMovementInitiative());
 			#ifndef NO_SATELLITES
@@ -280,8 +280,8 @@ namespace StatePanel
 				}
 				elif (m->turret->explosionRadius.IsFunctionOrConstNonZero())
 					cachedLines << " Explosion Radius: "+m->turret->explosionRadius.Describe(researchState);
-				cachedLines << " Damage: "+String(m->turret->GetDamageLevel(e.owner));
-				int ammoNeed = m->turret->GetAmmoNeedPerShot(e.owner);
+				cachedLines << " Damage: "+String(m->turret->GetDamageLevel(researchState));
+				int ammoNeed = m->turret->GetAmmoNeedPerShot(researchState);
 				if (ammoNeed > 0)
 					cachedLines << " "+String((char)(tagOffset+m->turret->ammoType))+"Ammo-Usage: "+String(ammoNeed);
 	

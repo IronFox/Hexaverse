@@ -131,9 +131,8 @@ namespace Objects
 				const M::TVec3<>&dir = Grid::low.cells[c.stackID].cornerCenter;
 				float h = Grid::ToRadiusf(float(c.height));
 				Mat::makeAxisSystem(dir*h,dir,2,sys);
-				sys.x.xyz *= 0.75f * Grid::UnitScale;
-				sys.y.xyz *= 0.75f * Grid::UnitScale;
-				sys.z.xyz *= Grid::UnitScale;
+				sys.x.xyz *= 0.75f;
+				sys.y.xyz *= 0.75f;
 				selectedVisual = sys;
 			}
 			else
@@ -558,7 +557,7 @@ namespace Objects
 				ASSERT_NOT_NULL1__(turret, (int)type.turretType);
 				ASSERT_NOT_NULL1__(base, (int)type.baseType);
 
-				price = Vehicle::GetPrice(base,turret,parent->owner);
+				price = Vehicle::GetPrice(base,turret,parent->GetResearchState());
 				name = Vehicle::GetTypeName(base,turret);
 			}
 			

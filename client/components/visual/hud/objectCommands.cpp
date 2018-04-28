@@ -246,7 +246,8 @@ namespace Objects
 				}
 				else if (turret && base)
 				{
-					costOut = Vehicle::GetPrice(*base,*turret,OwnerParameter());
+					const auto&state = Objects::selectedEntity->GetResearchState();
+					costOut = Vehicle::GetPrice(*base,*turret,state);
 					timeCostOut = 0;
 					costTypeOut = Resource::Minerals;
 				}
@@ -258,12 +259,6 @@ namespace Objects
 		/*static*/ void		EntityConstructionCommand::UpdateTexture(VisualCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 		{
 			float distanceFactor = 1.f;
-			//if (base)
-			{
-				#ifdef LOWER_RESOLUTION_PLANET
-					distanceFactor *= 2.f;
-				#endif
-			}
 
 			GeometryImage::BeginRendering(backgroundColor,distanceFactor);
 
@@ -325,9 +320,7 @@ namespace Objects
 			float distanceFactor = 1.f;
 			if (e->IsMobile())
 			{
-				#ifndef LOWER_RESOLUTION_PLANET
-					distanceFactor *= 0.5f;
-				#endif
+				distanceFactor *= 0.5f;
 			}
 			if (e->IsStructure())
 				distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
@@ -361,7 +354,7 @@ namespace Objects
 			//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
 			PWorldEntity ref = reference.lock();
-			int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret,OwnerParameter());
+			int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret,selectedEntity->GetResearchState());
 			int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
 
 			//if (ref || (base && turret))

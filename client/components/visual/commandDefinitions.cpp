@@ -201,7 +201,7 @@ namespace Objects
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedBase == c)
 						rs |= Objects::CommandFlags::IsPermaActive;
-					if (!plant || !c->isUnlocked(plant->owner))
+					if (!plant || !c->isUnlocked.GetValue(plant->GetResearchState()))
 						rs = Objects::CommandFlags::None;
 					return rs;
 				}));
@@ -238,7 +238,7 @@ namespace Objects
 					if (plant)
 					{
 						Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
-						if (!c->isUnlocked(plant->owner))
+						if (!c->isUnlocked.GetValue(plant->GetResearchState()))
 							rs = Objects::CommandFlags::None;
 
 						return rs;
@@ -256,7 +256,7 @@ namespace Objects
 						timeCostOut = 0;
 						return;
 					}
-					mineralCostOut = Vehicle::GetPrice(p->selectedBase,c,p->owner);
+					mineralCostOut = Vehicle::GetPrice(p->selectedBase,c,p->GetResearchState());
 					timeCostOut = p->ProductionRounds(mineralCostOut,false);
 				}));
 				To<Objects::Command::VisualCommand>::Cast(commands.GetLast())->RasterizeImage();
@@ -961,7 +961,7 @@ namespace Objects
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
 					ASSERT__(selectedMobileEntity);
-					resourceCostOut = Component::Bomb::regularUraniumCost(selectedMobileEntity->owner);
+					resourceCostOut = Component::Bomb::regularUraniumCost.GetValue(selectedMobileEntity->GetResearchState());
 					costTypeOut = Resource::Uranium;
 					//PVehicle v = To<Vehicle>::Cast(e);
 					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);
@@ -973,7 +973,7 @@ namespace Objects
 				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
 					ASSERT__(selectedMobileEntity);
-					resourceCostOut = Component::Bomb::doomsdayUraniumCost(selectedMobileEntity->owner);
+					resourceCostOut = Component::Bomb::doomsdayUraniumCost.GetValue(selectedMobileEntity->GetResearchState());
 					costTypeOut = Resource::Uranium;
 					//PVehicle v = To<Vehicle>::Cast(e);
 					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);

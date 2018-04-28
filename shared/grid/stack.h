@@ -12,7 +12,11 @@
 #include "../fileVersion.h"
 
 
-static const constexpr float WorldScale = 40.f;
+#ifdef LOWER_RESOLUTION_PLANET
+	static const constexpr float WorldScale = 20.f;
+#else
+	static const constexpr float WorldScale = 40.f;
+#endif
 
 namespace Grid
 {
@@ -48,13 +52,7 @@ namespace Grid
 								empZonesUnlocked;
 
 
-	static const constexpr float RawMeanLayerHeight = 0.025f;
-	#ifdef LOWER_RESOLUTION_PLANET
-		static const constexpr float UnitScale = 2.f;
-	#else
-		static const constexpr float UnitScale = 1.f;
-	#endif
-	static const constexpr float VerticalScale = 0.7f * UnitScale * WorldScale;
+	static const constexpr float RadiusDeltaRatio = 0.033f;	//mean layer height relative to planet mean radius
 
 	static const constexpr float MeanPlanetRadius = WorldScale;
 
@@ -62,8 +60,7 @@ namespace Grid
 	Buffer<Volume::Blob>	blobs;
 #endif
 
-	static const constexpr float SingleMeanLayerHeight = RawMeanLayerHeight * VerticalScale;
-	static const constexpr float RadiusDeltaRatio = SingleMeanLayerHeight / MeanPlanetRadius;
+	static const constexpr float SingleMeanLayerHeight = RadiusDeltaRatio * WorldScale;
 
 	inline float ToRadiusf(float height)
 	{

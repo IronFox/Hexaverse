@@ -234,7 +234,9 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,owner),Component::Bomb::GetDamageLevel(false,owner),false,atTime);
+				const auto&state = GetResearchState();
+
+				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,state),Component::Bomb::GetDamageLevel(false,state),false,atTime);
 			}
 
 		}
@@ -1451,7 +1453,7 @@ namespace Objects
 				at.traceTo = rs.impactAt;
 
 				ApplicationInterface::SignalAttack(at);
-				ChangeStorage(*this,entityTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
+				ChangeStorage(*this,entityTime,turret->ammoType,-turret->GetAmmoNeedPerShot(GetResearchState()));
 				
 				entityTime += flightTime;
 
@@ -1477,7 +1479,7 @@ namespace Objects
 
 			Task&task = LockedPeekTask();
 
-			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(owner)),turret->dealsEMPDamage, turret->isDoomsday, attackTime);
+			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(GetResearchState())),turret->dealsEMPDamage, turret->isDoomsday, attackTime);
 
 			if (task.foci.IsEmpty())
 			{
@@ -1856,7 +1858,7 @@ namespace Objects
 
 	/*virtual override*/bool				MobileEntity::HasAmmoForShot() 
 	{
-		int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+		int ammoNeed = turret->GetAmmoNeedPerShot(GetResearchState());
 		if (!ammoNeed)
 			return true;
 

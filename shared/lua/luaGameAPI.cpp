@@ -166,7 +166,6 @@ namespace Lua
 		#else
 			api.SetField("LowerResolutionPlanet",false);
 		#endif
-		api.SetField("UnitScale",Grid::UnitScale);
 	}
 
 	Lua::Table CreateGeneralAPI(const Lua::PProgram&p)

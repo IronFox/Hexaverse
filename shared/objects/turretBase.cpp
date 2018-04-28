@@ -101,7 +101,16 @@ namespace Objects
 	
 	}
 
+	int						TurretBase::GetAttacksPerRound() const
+	{
+		return turret->GetAttacksPerRound(ToEntity().GetResearchState());
+	}
 
+	int						TurretBase::GetDamagePotentialPerRound() const
+	{
+		const auto&state = ToEntity().GetResearchState(); 
+		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
+	}
 
 	/*static*/ bool TurretBase::IsSafeHit( const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult )
 	{

@@ -1,5 +1,7 @@
 #include "solidTerrain.h"
 
+#include <grid/worldData.h>
+
 namespace VisualTerrain
 {
 	
@@ -528,7 +530,6 @@ namespace VisualTerrain
 			hulls[i].Clear();
 			covers[i].Clear();
 		}
-
 	}
 
 
