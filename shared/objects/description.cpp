@@ -60,11 +60,11 @@ namespace Objects
 				wrappedLines << *l;
 				continue;
 			}
-			Ctr::Array<String>	split;
-			wrap(l->first,60,split);
+			Array<StringRef>	split;
+			Wrap(l->first,60,split);
 			foreach (split,s)
 			{
-				wrappedLines.Append().first.adoptData(*s);
+				wrappedLines.Append().first = *s;
 				wrappedLines.Last().second = l->second;
 			}
 		}

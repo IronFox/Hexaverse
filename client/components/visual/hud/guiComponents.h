@@ -787,7 +787,7 @@ namespace Component
 		#endif
 
 		Array<String>	rawText;
-		Buffer0<String>	wrappedText;
+		Buffer0<StringRef>	wrappedText;
 		Array<float2>	lineAt;
 		float4			color = float4(1,1,1,1);
 		float			textHeight = 1.f;

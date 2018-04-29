@@ -66,10 +66,8 @@ namespace StatePanel
 	struct TCachedLine
 	{
 		float4		color;
-		String		text;
 
 		float		indent = 0.f;
-		Array<String>	wrapped;
 
 		/**/		TCachedLine()	{}
 		/**/		TCachedLine(const String&str):text(str),color(currentColor){}
@@ -85,7 +83,7 @@ namespace StatePanel
 			wrapped.swap(other.wrapped);
 		}
 
-		static float	CharLen(char c)
+		static float	CharLen(const char c)
 		{
 			return textout.GetScaledWidth(StringRef(&c,1));
 		}
@@ -97,8 +95,31 @@ namespace StatePanel
 				numSpaces++;
 			indent = textout.GetScaledWidth(text.SubStringRef(0,numSpaces));
 
-			wrapf(text.c_str() + numSpaces,width,CharLen,wrapped);
+			Wrap(text.SubStringRef(numSpaces),width,CharLen,wrapped);
 		}
+
+
+		void		Render(float panelWidth, float lineHeight, float&at) const
+		{
+			//const index_t i = l - cachedLines.pointer();
+			textout.SetColor(color);
+			textout.MoveTo(1.f - panelWidth + indent,at);
+			foreach (wrapped,str)
+				textout << *str << nl;
+			at -= lineHeight * std::max<count_t>(1,wrapped.Count());
+		}
+
+
+		template <typename T>
+			void		operator+=(const T&stringLikeAppendix)
+			{
+				text += stringLikeAppendix;
+				wrapped.Clear();
+			}
+	private:
+		String				text;
+		Array<StringRef>	wrapped;
+
 	};
 	static Buffer0<TCachedLine,Swap>	cachedLines;
 	static bool doRewrap = false;
@@ -319,11 +340,11 @@ namespace StatePanel
 				{
 					cachedLines << "  * "+t->name;
 					if (t->IsMode(Objects::CursorMode::AttackMode) && t->foci.Count() > 1)
-						cachedLines.Last().text+= " (x"+String(t->foci.Count())+')';
+						cachedLines.Last() += " (x"+String(t->foci.Count())+')';
 					if (t->job && t->job->continuationsToJobCompletion)
 					{
 						int rounds = ceil(m->ContinuationsToRounds(t->job->continuationsToJobCompletion,t->job->GetOperationAffinity()));
-						cachedLines.Last().text+= " ("+String(rounds)+" round"+(rounds != 1 ? "s)" : ")");
+						cachedLines.Last() += " ("+String(rounds)+" round"+(rounds != 1 ? "s)" : ")");
 					}
 				}
 				PopCurrentColor();
@@ -470,7 +491,7 @@ namespace StatePanel
 	
 					cachedLines << "  UNSTABLE";
 					if (!ownedByMe)
-						cachedLines.Last().text += " (?)";
+						cachedLines.Last() += " (?)";
 					PopCurrentColor();
 				}
 				cachedLines << "  Resource consumption:";
@@ -551,7 +572,7 @@ namespace StatePanel
 						currentColor.rgb &= float3(0.75,0.8,1);
 						cachedLines << "  * Attack";
 						if (t->attackQueue.Count() > 1)
-							cachedLines.Last().text+= " (x"+String(t->attackQueue.Count())+')';
+							cachedLines.Last() += " (x"+String(t->attackQueue.Count())+')';
 						PopCurrentColor();
 					}
 				}
@@ -572,7 +593,7 @@ namespace StatePanel
 								currentColor.rgb &= float3(1,0.5,0.4);
 							cachedLines << "  Disconnected from Core";
 							if (!ownedByMe)
-								cachedLines.Last().text += " (?)";
+								cachedLines.Last() += " (?)";
 							PopCurrentColor();
 						}
 					}
@@ -606,8 +627,8 @@ namespace StatePanel
 				{
 					cachedLines << " Consumes";
 					if (!isEnabled)
-						cachedLines.Last().text += " (if enabled)";
-					cachedLines.Last().text +=':';
+						cachedLines.Last() += " (if enabled)";
+					cachedLines.Last() +=':';
 					if (!isEnabled)
 						cachedLines << "    (demand/compound supply)";
 						
@@ -627,9 +648,9 @@ namespace StatePanel
 									
 								if (net)
 								{
-									cachedLines.Last().text += " / " + String( net->total.balance.level[i] );
+									cachedLines.Last() += " / " + String( net->total.balance.level[i] );
 									if (net->total.storage.level[i])
-										cachedLines.Last().text += " (" + String(net->total.storage.level[i])+ " stored)";
+										cachedLines.Last() += " (" + String(net->total.storage.level[i])+ " stored)";
 								}
 								//cachedLines << nl;
 								PopCurrentColor();
@@ -648,8 +669,8 @@ namespace StatePanel
 					cachedLines << " Produces";
 					bool isEnabled = ws->IsEnabled();
 					if (!isEnabled)
-						cachedLines.Last().text += " (if enabled)";
-					cachedLines.Last().text +=':';
+						cachedLines.Last() += " (if enabled)";
+					cachedLines.Last() +=':';
 					if (lab)
 						cachedLines << "  Research: "+String(lab->GetTotalResearchOutput());
 				}
@@ -730,12 +751,7 @@ namespace StatePanel
 
 		foreach (cachedLines,l)
 		{
-			const index_t i = l - cachedLines.pointer();
-			textout.SetColor(l->color);
-			textout.MoveTo(1.f - len + l->indent,at);
-			foreach (l->wrapped,str)
-				textout << *str << nl;
-			at -= h * std::max<count_t>(1,l->wrapped.Count());
+			l->Render(len,h,at);
 		}
 
 		textout.PopState();

@@ -1904,10 +1904,33 @@ namespace Component
 	
 
 		wrappedText.Clear();
-		Array<String>	wrapped;
+		Array<StringRef>	wrapped;
 		for (const String&raw : rawText)
 		{
-			wrapf(raw,width,CharWidth,wrapped);
+			Wrap(raw,width,CharWidth,wrapped);
+			if (width > CharWidth('X'))
+				foreach (wrapped,w)
+				{
+					float accum = 0;
+					Buffer0<float> widths,lengths;
+					foreach (*w, c)
+					{
+						float w = CharWidth(*c);
+						widths << w;
+						accum += w;
+						lengths << accum;
+					}
+					const float swidth = textout.GetScaledWidth(*w);
+					ASSERT__(M::Similar(swidth,accum));
+					if (accum > width)
+					{
+						const index_t atWord = w - wrapped.pointer();
+						const char*const word = w->begin();
+						Array<StringRef>	wrapped2;
+						Wrap(raw,width,CharWidth,wrapped2);
+					}
+					ASSERT_LESS_OR_EQUAL__(accum,width);
+				}
 			wrappedText.MoveAppendAll(wrapped);
 		}
 		if (wrappedText.IsEmpty())
