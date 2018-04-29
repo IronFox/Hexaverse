@@ -1,5 +1,6 @@
 v0.8.5
 	+ Bomb detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
+	+ Added checkbox to disable terrain camera clipping.
 	> Removed internal emergency program in favor of install-directory factory default.
 	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.

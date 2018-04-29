@@ -27,7 +27,8 @@ namespace Camera
 	Engine::VectorCamera<>				scene;
 	Engine::OrthographicAspect<>		hud;
 	bool								autoRotation = false,
-										locked = false;
+										locked = false,
+										terrainIntersectionTest = true;
 	Observable<>						onZoom,onRotate,onDrag;
 
 	namespace Detail
@@ -522,25 +523,14 @@ namespace Camera
 
 		float dist = Detail::cameraDistance;
 
+		if (terrainIntersectionTest)
 		{
 			M::TVec3<> normal;
 
 			const float3 dir = scene.GetForwardDirection();
 			const float3 pos = scene.location - dir * dist;
 
-			float boxedDist = dist;
-			float sphereDist = dist;
-			float noCheckDist = dist;
-
-			//bool boxed = TestHull(pos,dir,boxedDist,VisualTerrain::BoxCheck,Statistics::boxCheckFamilies);
-			bool sphere = TestHull(pos,dir,sphereDist,VisualTerrain::SphereCheck,Statistics::sphereCheckFamilies);
-			//bool noCheck = TestHull(pos,dir,noCheckDist,VisualTerrain::NoCheck,Statistics::noCheckFamilies);
-			//ASSERT_EQUAL__(noCheck,sphere);
-			//ASSERT_EQUAL__(noCheck,boxed);
-			//ASSERT_EQUAL__(noCheckDist,sphereDist);
-			//ASSERT_EQUAL__(noCheckDist,boxedDist);
-
-			dist = sphereDist;
+			TestHull(pos,dir,dist,VisualTerrain::SphereCheck,Statistics::sphereCheckFamilies);
 		}
 
 		if (scene.retraction.z != -dist)
@@ -548,7 +538,6 @@ namespace Camera
 			scene.retraction.z = -dist;
 			updateView = true;
 		}
-
 
 		if (updateView)
 			scene.UpdateView();

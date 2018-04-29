@@ -5,6 +5,7 @@ air defense for nexus base
 construction finish->move directly into storage seems to drop constructed lab
 progress line wrap
 
+optimize camera terrain intersection test
 
 
 

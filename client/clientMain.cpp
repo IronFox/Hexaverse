@@ -2055,7 +2055,7 @@ int main( int argc, const char* argv[])
 				UI::SetScale(StartConfig::GetFloat("runtime/uiScale",1.f));
 
 				Explosions::maxConcurrentParticles = StartConfig::GetFloat("runtime/maxExplosionParticles",2000);
-
+				Camera::terrainIntersectionTest = StartConfig::GetBool("runtime/terrainCameraIntersectionCorrection",true);
 
 				if (!RuntimeConfig::aiMode && StartConfig::GetBool("runtime/soundEnabled",true))
 				{

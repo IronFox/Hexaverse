@@ -43,6 +43,12 @@ namespace Camera
 	extern Engine::OrthographicAspect<>	hud;
 
 	extern bool					autoRotation, locked;
+	
+	/**
+	If true, per-frame geometry intersection tests are performed to determine and handle if the camera is inside the terrain.
+	Defaults to true
+	*/
+	extern bool					terrainIntersectionTest;
 
 
 	extern Observable<>			onZoom, onRotate, onDrag;
