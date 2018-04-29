@@ -1399,8 +1399,8 @@ namespace Reflection
 			outBuffer <<'.'<<nl;
 		}
 
-		static Ctr::Array<String>	lines;
-		wrap(outBuffer.CopyToString(),80,lines);
+		static Ctr::Array<StringRef>	lines;
+		Wrap(outBuffer.ToRef(),80,lines);
 		foreach (lines,line)
 		{
 			String trimmed = line->Trim();
