@@ -19,17 +19,16 @@ namespace HUD
 		//Buffer0<PButton>	overviewMetrics, overviewFactions;
 		PointerTable<PButton>	factionButtonMap;
 		PCheckbox				excludeNexusFromOverview;
+		PButton					closeButton;
 
 		#if 0
 		overview:
-		+---------------+
-		|	overview	|
 		+-----------+---+---------------------------+-----------+
-		| [metric0]	|								| [user0]	|
-		| [metric1]	|						-----	| [user1]	|
-		| [metric2]	|					----		| [user2]	|
-		| [metric3]	|		-		----			| [user3]	|
-		| [metric4]	|	---	 ------					| [user4]	|
+		| [metric0]	|								| [close]	|
+		| [metric1]	|						-----	| [X]n.excl	|
+		| [metric2]	|					----		| [user0]	|
+		| [metric3]	|		-		----			| [user1]	|
+		| [metric4]	|	---	 ------					| [user2]	|
 		|			|---							|			|
 		|			+-------------------------------+			|
 		|			|				stats			|			|
@@ -473,6 +472,15 @@ namespace HUD
 					RebuildStackedGraphAndStats();
 				}});
 
+
+
+				closeButton.reset(new Button{"Close (Esc)",[]()
+				{
+					WindowStack::Hide(window);
+				}});
+				closeButton->SetVerticalPadding(0.5f);
+				closeButton->SetLocalFontScale(0.8f);
+
 				overviewGraph.reset(new MultiPlot{});
 
 				metricPanel.reset(new Panel{});
@@ -540,6 +548,7 @@ namespace HUD
 			}
 
 			factionPanel->ClearComponents();
+			factionPanel->AnchorBelowPrevious(CLOCATION,closeButton);
 			factionPanel->AnchorBelowPrevious(CLOCATION,excludeNexusFromOverview);
 			factionButtonMap.Clear();
 			Objects::ForeachFaction([](const Objects::PFaction&f)
