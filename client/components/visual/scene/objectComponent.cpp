@@ -242,7 +242,7 @@ namespace Objects
 
 	/*static*/ void				StructureHull::LoadFor(Objects::SubOrbital::Plane&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
 	{
-		LoadFor(prototype.GetTypeName(), staticGeometry, staticShape);
+		LoadFor(prototype.GetTypeName(), vehicleScale, staticGeometry, staticShape);
 		prototype.shape = staticShape;
 	}
 
