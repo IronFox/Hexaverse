@@ -217,7 +217,7 @@ namespace Objects
 		LoadFor<Objects::Generator>();
 		LoadFor<Objects::ReactorCore>();
 		LoadFor<Objects::NexusPort>();
-		LoadFor("tower",Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
+		LoadFor("tower",1.f,Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
 		foreach (Objects::Tower::globalPrototypes,p)
 			(*p)->instance->shape = Objects::Tower::staticShape;
 
@@ -234,11 +234,11 @@ namespace Objects
 
 	/*static*/ void				StructureHull::LoadFor(Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
 	{
-		LoadFor(prototype.GetTypeName(),staticGeometry,staticShape);
+		LoadFor(prototype.GetTypeName(), 1.f, staticGeometry,staticShape);
 		prototype.shape = staticShape;
 	}
 
-	/*static*/ void				StructureHull::LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
+	/*static*/ void				StructureHull::LoadFor( const String&geometryName, float scale, Objects::Geometry&staticGeometry, PClientAttachment&staticShape )
 	{
 		std::shared_ptr<StructureHull> shape(new StructureHull());
 		staticShape = shape;
@@ -247,6 +247,9 @@ namespace Objects
 		name.FindAndReplace(' ',"");
 		staticGeometry.Clear();
 		staticGeometry.LoadFromObj(PathString("objects/"+name+".obj"));
+
+		if (scale != 1.f)
+			staticGeometry.Scale(scale);
 
 		if (shape->constShape.shader.IsEmpty())
 			shape->constShape = standardLocalizableShader;
