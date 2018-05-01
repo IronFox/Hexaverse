@@ -1,3 +1,4 @@
+since plane scale now matches vehicle scale: rescale plane geometries to something larger
 
 menu button in configuration mode
 
