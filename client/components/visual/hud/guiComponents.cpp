@@ -967,24 +967,24 @@ namespace Component
 	}
 
 
-	/*virtual override*/ WheelRs	Slider::OnMouseWheel(short delta)
-	{
-		if (this->ContainsMouse())
-		{
-			if (!dragging)
-			{
-				//constexpr float speed = -1.f / 5.f;
-				current = M::Clamp(current + slideStep * delta,0,max);
-				if (onChange)
-					onChange(current);
-				return WheelRs::Processed;
-			}
-			return WheelRs::Ignored;
-		}
-		else
-			return WheelRs::NotContained;
-		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
-	}
+	///*virtual override*/ WheelRs	Slider::OnMouseWheel(short delta)
+	//{
+	//	if (this->ContainsMouse())
+	//	{
+	//		if (!dragging)
+	//		{
+	//			//constexpr float speed = -1.f / 5.f;
+	//			current = M::Clamp(current + slideStep * delta,0,max);
+	//			if (onChange)
+	//				onChange(current);
+	//			return WheelRs::Processed;
+	//		}
+	//		return WheelRs::Ignored;
+	//	}
+	//	else
+	//		return WheelRs::NotContained;
+	//	//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
+	//}
 
 	/*virtual override*/ void		Slider::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
@@ -1904,10 +1904,33 @@ namespace Component
 	
 
 		wrappedText.Clear();
-		Array<String>	wrapped;
+		Array<StringRef>	wrapped;
 		for (const String&raw : rawText)
 		{
-			wrapf(raw,width,CharWidth,wrapped);
+			Wrap(raw,width,CharWidth,wrapped);
+			if (width > CharWidth('X'))
+				foreach (wrapped,w)
+				{
+					float accum = 0;
+					Buffer0<float> widths,lengths;
+					foreach (*w, c)
+					{
+						float w = CharWidth(*c);
+						widths << w;
+						accum += w;
+						lengths << accum;
+					}
+					const float swidth = textout.GetScaledWidth(*w);
+					ASSERT__(M::Similar(swidth,accum));
+					if (accum > width)
+					{
+						const index_t atWord = w - wrapped.pointer();
+						const char*const word = w->begin();
+						Array<StringRef>	wrapped2;
+						Wrap(raw,width,CharWidth,wrapped2);
+					}
+					ASSERT_LESS_OR_EQUAL__(accum,width);
+				}
 			wrappedText.MoveAppendAll(wrapped);
 		}
 		if (wrappedText.IsEmpty())

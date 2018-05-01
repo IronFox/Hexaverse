@@ -517,7 +517,7 @@ namespace Animation
 						}
 					#endif
 					
-					Objects::TaskAttachment::Allocate(t1).SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
+					Objects::TaskAttachment::Allocate(t1).SetLocalizableShape(sourceTask.visualizationName,loc,e.GetResearchState());
 				}
 			#endif
 		}

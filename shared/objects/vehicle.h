@@ -124,9 +124,9 @@ namespace Objects
 			virtual const CC*	GetCommands(CC&dynamicStorage) const override;
 		#endif
 
-		int						GetPrice() const	{return GetPrice(base,turret, owner);}
-		static int				GetPrice(Component::VehicleBase*, Component::Turret*, const PFaction&);
-		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t, const PFaction&owner)	{return GetPrice(&b,&t,owner);}
+		int						GetPrice() const	{return GetPrice(base,turret, GetResearchState());}
+		static int				GetPrice(Component::VehicleBase*, Component::Turret*, const Research::Attributes::Table&);
+		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t, const Research::Attributes::Table&table)	{return GetPrice(&b,&t,table);}
 		int						GetMaxClimbingHeight() const {return base->maxClimbUp;}
 		int						GetMaxFallingHeight() const {return -base->minClimbDown;}
 

@@ -81,7 +81,7 @@ namespace Objects
 			float c2 = std::numeric_limits<float>::max();
 			Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 			PWorldEntity closestEntity;
-			if (base.turret->GetAmmoNeedPerShot(source.owner) > munitionStorage || base.turret->dealsEMPDamage || base.turret->isDoomsday)
+			if (base.turret->GetAmmoNeedPerShot(source.GetResearchState()) > munitionStorage || base.turret->dealsEMPDamage || base.turret->isDoomsday)
 				return false;
 			const World::Data&world = source.owner->knownWorld;
 
@@ -206,7 +206,6 @@ namespace Objects
 					}
 
 
-					atTime = std::max(atTime,e->entityTime);
 					e->health -= damageLevel;
 					if (e->IsDeadOrGhost())
 					{
@@ -222,7 +221,7 @@ namespace Objects
 					}
 					else
 					{
-						e->RegisterChange(WorldEntity::HealthChanged,atTime);
+						e->SignalChangeByExternalCause(WorldEntity::HealthChanged,atTime);
 					}
 				}
 				allLivingAffected << e;
@@ -1122,7 +1121,7 @@ namespace Objects
 			float signalTime = atTime;
 			if (restored)
 			{
-				v->RegisterChange(WorldEntity::StoredInChanged,signalTime);
+				v->SignalChangeByExternalCause(WorldEntity::StoredInChanged,signalTime);
 				v->owner->RegisterStoredMobileLoss(v);
 			}
 			v->owner->RegisterActiveMobileGain(v);
@@ -1302,7 +1301,7 @@ namespace Objects
 			auto lock = e-> owner->LockSensorUpdates();
 		#endif
 
-		e->SyncTime(timestamp,timeEpsilon);
+		e->SyncTime(timestamp);
 		ASSERT_NOT_EQUAL1__(e->isInserted, ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT
 			if (t != RemovalType::DestroyedInStorage)

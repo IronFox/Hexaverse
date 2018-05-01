@@ -133,15 +133,15 @@ namespace Objects
 		#ifdef CLIENT
 			// make some base selected by default
 			ASSERT__(baseComponents.IsNotEmpty())
-
+			const auto&state = GetResearchState();
 			foreach (baseComponents,c)
-				if (!owner || (*c)->isUnlocked(owner))
+				if (!owner || (*c)->isUnlocked.GetValue(state))
 				{
 					selectedBase = *c;
 					break;
 				}
 			foreach (turretComponents,c)
-				if (!owner || (*c)->isUnlocked(owner))
+				if (!owner || (*c)->isUnlocked.GetValue(state))
 				{
 					selectedTurret = *c;
 					break;

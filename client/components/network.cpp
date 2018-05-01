@@ -628,21 +628,19 @@ namespace Network
 					Animation::whenDone.Append().Init(vs);
 				else
 				{
-					foreach (Animation::primitives,p)
-					{
-						if (p->type == Animation::Primitive::MobileState
-							&&
-							p->targetEntityID == vs.entityState.id
-							&&
-							p->time.min == vs.entityState.timestamp.atTime)
+					#ifdef _DEBUG
+						foreach (Animation::primitives,p)
 						{
-							p->Init(vs);
-							p->overwritten++;
-							if (p->overwritten==1 || !(p->overwritten %100000))
-								LogEvent(EventSignificance::Debug, "Rewrote 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime)+" n="+String(p->overwritten));
-							return;
+							if (p->type == Animation::Primitive::MobileState
+								&&
+								p->targetEntityID == vs.entityState.id
+								&&
+								p->time.min == vs.entityState.timestamp.atTime)
+							{
+								FATAL__("Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+							}
 						}
-					}
+					#endif
 					Animation::primitives.Append().Init(vs);
 					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
 				}

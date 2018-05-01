@@ -86,8 +86,7 @@ namespace Objects
 				
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
-				RegisterChange(ActionChanged,entityTime);
-				entityTime += timeEpsilon;
+				RegisterChange(ActionChanged);
 
 				if (!IsBeam(turret->trajectoryType))
 				{
@@ -104,7 +103,8 @@ namespace Objects
 				at.traceTo = rs.impactAt;
 				ApplicationInterface::SignalAttack(at);
 
-				const int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+				const auto&state = GetResearchState();
+				const int ammoNeed = turret->GetAmmoNeedPerShot(state);
 				if (storage.level[turret->ammoType] >= ammoNeed)
 					ChangeStorage(*this,attackTime, turret->ammoType,-ammoNeed);
 				else
@@ -119,7 +119,7 @@ namespace Objects
 
 				
 				entityTime += flightTime;
-				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
+				const int damageLevel = (int)floor(turret->GetDamageLevel(state));
 				const float explosionRadius = GetAttackExplosionRadius();
 
 				if (turret->dealsEMPDamage)
@@ -128,7 +128,7 @@ namespace Objects
 					Explode(at,
 							rs.impactCell,rs.impactAt, explosionRadius, damageLevel,turret->isDoomsday, entityTime);
 
-				RegisterChange((changeType_t)(TasksChanged),entityTime);
+				RegisterChange(TasksChanged);
 				//stateChangedAt = attackTime;	//problematic
 				attackTime = entityTime;
 			}
@@ -154,7 +154,7 @@ namespace Objects
 			return false;
 		}
 
-		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
+		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)
 		{
 			ResourceVector maxStorage = GetMaxStorageCapacity();
 			index_t targetIteration = 1;
@@ -221,12 +221,11 @@ namespace Objects
 				}
 			}
 
-			entityTime += timeEpsilon;
 			AttackTask&cmd = attackQueue.Push();
 //			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,entityTime);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 
@@ -251,7 +250,7 @@ namespace Objects
 			if (attackQueue.IsEmpty())
 				return false;
 			attackQueue.Clear();
-			SignalChange(TasksChanged,0);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 
@@ -260,7 +259,7 @@ namespace Objects
 			if (attackQueue.IsEmpty())
 				return false;
 			attackQueue.EraseBack();
-			SignalChange(TasksChanged,0);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 	#else
@@ -373,7 +372,7 @@ namespace Objects
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState())+2.f * Grid::UnitScale,2.f);
+		return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState())+2.f,2.f);
 	}
 
 	/*virtual override*/ String			Tower::DescribeFlatAttackRange() const
@@ -381,14 +380,14 @@ namespace Objects
 		if (!turret->CanAttack())
 			return 0.f;
 		String rs = turret->horizontalAttackRange.Describe(GetResearchState());
-		const auto final = turret->horizontalAttackRange.GetValue(GetResearchState())+2.f * Grid::UnitScale;
-		return String(M::Round(final*10.f)/10.f)+"=["+rs+"]+"+String(2.f * Grid::UnitScale)+" (Tower Bonus)";
+		const auto final = turret->horizontalAttackRange.GetValue(GetResearchState())+2.f;
+		return String(M::Round(final*10.f)/10.f)+"=["+rs+"]+2 (Tower Bonus)";
 	}
 
 
 	bool	Tower::HasAmmoForShot()
 	{
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
+		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(GetResearchState());
 		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 	}
 

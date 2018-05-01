@@ -18,10 +18,12 @@ namespace Objects
 				auto cause = currentExplosionAttack ? currentExplosionAttack->attackFrom : nullptr;
 				
 				const bool doomsday = RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow;
-				const float bombExplosionRadius = Component::Bomb::GetRadius(false,nullptr);
-				const float nukeExplosionRadius = Component::Bomb::GetRadius(doomsday,nullptr);
-				const float bombDamage = Component::Bomb::GetDamageLevel(false,nullptr);
-				const float nukeDamage = Component::Bomb::GetDamageLevel(doomsday,nullptr);
+				const auto&state = Research::globalState.zeroTable;;
+
+				const float bombExplosionRadius = Component::Bomb::GetRadius(false,state);
+				const float nukeExplosionRadius = Component::Bomb::GetRadius(doomsday,state);
+				const float bombDamage = Component::Bomb::GetDamageLevel(false,state);
+				const float nukeDamage = Component::Bomb::GetDamageLevel(doomsday,state);
 
 				const float ff = float(storage.level[Resource::Fuel]) / MaxStorage;
 				const float uf = float(storage.level[Resource::Uranium]) / MaxStorage;
@@ -32,7 +34,7 @@ namespace Objects
 				const float myRadius =
 						ff * bombExplosionRadius
 					+	uf * nukeExplosionRadius;
-				if (myRadius < 2 * Grid::UnitScale)
+				if (myRadius < 2)
 					return;
 
 				atTime += timeEpsilon;

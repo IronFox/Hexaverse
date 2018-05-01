@@ -330,7 +330,7 @@ namespace Objects
 
 	const Research::Attributes::Table& WorldEntity::GetResearchState() const
 	{
-		return owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
+		return this && owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
 	}
 
 
@@ -353,7 +353,7 @@ namespace Objects
 
 	/*virtual*/ void	WorldEntity::OnInsert( float&atTime, bool freshConstruction )
 	{
-		atTime += timeEpsilon;
+		SyncTime(atTime);
 	}
 
 	#ifdef HAS_WINDOW
@@ -623,7 +623,7 @@ namespace Objects
 	/*virtual*/ void			WorldEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
 	{
 		float range = GetScanningRange();
-		static const float MinSolid = 2.f * Grid::UnitScale;
+		static const float MinSolid = 2.f;
 		const auto center = GetScanningCenter(loc);
 		if (range > MinSolid && !appearance)
 		{

@@ -622,6 +622,7 @@ namespace Test
 
 		Objects::PFaction	faction0 = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New()),
 							faction1 = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
+		const auto&state = Objects::Research::globalState.zeroTable;
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
@@ -650,7 +651,7 @@ namespace Test
 			#ifdef ONE_COMPOUND_PER_FACTION
 				//draw from filled container:
 				Objects::PWorldEntity storage;
-				if (turret->ammoNeedPerShot(faction1) != 0)
+				if (turret->ammoNeedPerShot.GetValue(state) != 0)
 				{
 					Grid::LCellIdI	munitionStoreAt;
 					int tries = 0;
@@ -689,7 +690,7 @@ namespace Test
 			int tries = 0;
 			do
 			{
-				vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(faction0) + turret->explosionRadius(faction0) * 2));	//allow out-of-range
+				vehicleAt = RandomCellAtRange(random, generatorAt, M::FloatRange(0.f, turret->GetHorizontalAttackRange(state) + turret->explosionRadius.GetValue(state) * 2));	//allow out-of-range
 				vehicleAt.height = Objects::FindApplicableGround(vehicleAt,true,true);
 
 				if (++tries > 100)
@@ -970,7 +971,7 @@ namespace Test
 		fuelContainer1->SetEnabled(false, t, false);
 
 		net.TickBegin();
-		net.TickEnd(0);
+		net.TickEnd(t);
 
 		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
@@ -981,7 +982,7 @@ namespace Test
 		for (int i = 0; i < 100; i++)
 		{
 			net.TickBegin();
-			net.TickEnd(0);
+			net.TickEnd(t);
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
 			expectedMinerals += mineralsPerRound;
@@ -1060,7 +1061,7 @@ namespace Test
 
 
 		net.TickBegin();
-		net.TickEnd(0);
+		net.TickEnd(t);
 
 		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
@@ -1082,7 +1083,7 @@ namespace Test
 			while (plant->IsBuilding(progress))
 			{
 				net.TickBegin();
-				net.TickEnd(0);
+				net.TickEnd(t);
 				if (plant->AwaitsUserInteraction())
 				{
 					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);

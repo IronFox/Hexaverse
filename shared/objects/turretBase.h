@@ -82,8 +82,8 @@ namespace Objects
 
 		virtual float			GetAttackActionLeft() const=0;
 
-		int						GetAttacksPerRound() const	{return turret->GetAttacksPerRound(GetOwner());}
-		int						GetDamagePotentialPerRound() const {PFaction owner = GetOwner(); return std::max(1,turret->GetAttacksPerRound(owner)) * turret->GetDamageLevel(owner);}
+		int						GetAttacksPerRound() const;
+		int						GetDamagePotentialPerRound() const;
 		float					GetAttackInitiative()const	{return turret->initiative * GetAttackActionLeft();}
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
@@ -103,7 +103,6 @@ namespace Objects
 		Must not persistently alter the local entity, however.
 		*/
 		virtual bool			HasAmmoForShot() = 0;
-		virtual OwnerParameter	GetOwner() const = 0;
 
 		/**
 		Retrieves the amount of resources that can be converted into the specified operation per action by the local entity

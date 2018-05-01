@@ -281,7 +281,7 @@ namespace Objects
 						if (constructionActionCounter)
 						{
 							constructionActionCounter = 0;
-							RegisterChange(WorldEntity::TasksChanged,entityTime);
+							RegisterChange(WorldEntity::TasksChanged);
 						}
 					}
 					Super::HandleMotion(result,signalEvent,old,timeCost);
@@ -501,7 +501,7 @@ namespace Objects
 
 					myTasks.PushFront(Task("Attack Position",target,false,Task::Mode,CursorMode::AttackMode));
 					myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
-					RegisterChange(TasksChanged,-1);
+					RegisterChange(TasksChanged);
 				}
 				else
 				{
@@ -515,7 +515,7 @@ namespace Objects
 					{
 						myTasks.GetOldest().foci.PushFront().target = target;
 						myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
-						RegisterChange(TasksChanged,-1);
+						RegisterChange(TasksChanged);
 					}
 				}
 				return true;

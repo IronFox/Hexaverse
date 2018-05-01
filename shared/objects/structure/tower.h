@@ -59,7 +59,7 @@ namespace Objects
 
 
 		static float				foundationHeight;	//unscaled height of the base geometry, and vertical offset to position turret
-		static float				GetEffectiveFoundationHeight() {return foundationHeight * Grid::UnitScale;}
+		static float				GetEffectiveFoundationHeight() {return foundationHeight;}
 
 
 
@@ -108,7 +108,7 @@ namespace Objects
 		//WorkingStructure overrides:
 		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = GetMaxStorageCapacity();}
 		#ifndef CLIENT
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
+			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime) override;
 		#endif
 		virtual void				SetResourceStorage(const ResourceVector&storage)override
 		{
@@ -157,7 +157,6 @@ namespace Objects
 		virtual Category			GetCategory() const override {return Category::Defense;}
 
 		//TurretBase overrides:
-		virtual OwnerParameter		GetOwner() const override {return owner;};
 		virtual bool				NextTaskIsAttack() const override {return IsAlive() && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual float				GetFlatAttackRange() const override;

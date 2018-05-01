@@ -129,7 +129,7 @@ namespace Objects
 		{
 			isEnabled = b;
 			if (registerChange)
-				RegisterChange(EnableChanged,0);
+				RegisterChange(EnableChanged);
 		
 		}
 
@@ -477,7 +477,7 @@ namespace Objects
 	
 	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float&atTime)
 	{
-		atTime += timeEpsilon;
+		SyncTime(atTime);
 		if (RemoveConnectionTo(other))
 		{
 			LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
@@ -852,7 +852,7 @@ namespace Objects
 		{
 			if (owner != Faction::nexus && resistance > 0)
 			{
-				RegisterChange(NexusControlChanged,0);
+				RegisterChange(NexusControlChanged);
 				resistance --;
 				if (!resistance)
 				{
@@ -898,7 +898,7 @@ namespace Objects
 
 					}
 					resistance = ResistanceRounds;
-					RegisterChange(NexusControlChanged,0);
+					RegisterChange(NexusControlChanged);
 					ApplicationInterface::SignalNexusControlChange(owner->alliance);
 				}
 			}
@@ -1120,13 +1120,13 @@ namespace Objects
 			if (isEnabled == b)
 			{
 				LogEvent(EventSignificance::Debug,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
-				RegisterChange(EnableChanged,atTime);	//some state error, must be corrected
+				SignalChangeByExternalCause(EnableChanged,atTime);	//some state error, must be corrected
 				return true;
 			}
 			if (b && (force==EnableIfPossible && !CanEnable()))
 			{
 				LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable at this time");
-				RegisterChange(CanEnableChanged,atTime);	//might be off...
+				SignalChangeByExternalCause(CanEnableChanged,atTime);	//might be off...
 				return false;
 			}
 			if (b && refreshNetwork)
@@ -1155,18 +1155,16 @@ namespace Objects
 				//	return false;
 				//}
 			}
-			atTime += timeEpsilon;
 			if (!b)
 				Compound::lastDisabled = this;
 			else
 			{
 				Compound::lastDisabled = nullptr;
-				SetSleep(false,atTime,false);
+				UpdateSleepState(false,atTime);
 			}
-			atTime = entityTime = std::max(entityTime,atTime)+timeEpsilon;
+			SyncTime(atTime);
 			LogEvent(EventClass::Preset::common,this,"Enabled-state changed "+String(isEnabled)+"->"+String(b)+" at t="+String(atTime)+", given signalStructure="+String(signalStructure)+", refreshNetwork="+String(refreshNetwork));
 			isEnabled = b;
-			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)
 				OnEnabledChange();
 			if (refreshNetwork)
@@ -1180,6 +1178,7 @@ namespace Objects
 				//	LogEvent(EventClass::Preset::error,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
 				//}
 			}
+			SignalChangeByExternalCause(EnableChanged,atTime);
 			return true;
 		}
 	#else

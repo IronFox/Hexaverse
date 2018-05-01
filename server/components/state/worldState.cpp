@@ -412,7 +412,7 @@ namespace World
 					{
 						Objects::PTurretBase base = e->GetTurretBase();
 						if (base)
-							d2 = M::sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
+							d2 = M::sqr(sqrt(d2) - base->turret->horizontalAttackRange.GetValue(e->GetResearchState()));
 
 						dist2 = std::min(dist2, d2);
 					}

@@ -95,7 +95,8 @@ namespace Evolver
 					if (t.attackActionLeft != 1.f)
 					{
 						t.attackActionLeft = 1.f;
-						t.SignalChange(Objects::WorldEntity::ActionChanged,atTime);
+						float tc = atTime;
+						t.SignalChangeByExternalCause(Objects::WorldEntity::ActionChanged,tc);
 					}
 				});
 			});
@@ -281,7 +282,7 @@ namespace Evolver
 					{
 						LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to attack right now. Attacks canceled");
 						v->EraseFirstTask();
-						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->entityTime);
+						v->RegisterChange(Objects::WorldEntity::TasksChanged);
 					}
 					//ref.initiative = v->GetAttackInitiative();
 					//ref.attacksLeft = v->CountPossibleAttacks();
@@ -315,7 +316,7 @@ namespace Evolver
 					{
 						LogEvent(EventClass::Preset::commandRejected,t.get(),"Unable to attack right now. Attacks canceled");
 						t->attackQueue.Clear();
-						t->RegisterChange(Objects::WorldEntity::TasksChanged,t->entityTime);
+						t->RegisterChange(Objects::WorldEntity::TasksChanged);
 						return;
 					}
 
@@ -335,11 +336,11 @@ namespace Evolver
 			Game::Network::ChangePhase(RuntimeConfig::Phase::AttackPhase);
 		}
 
-		void ProcessStructures1(float atTime)
+		void ProcessStructures1( float&atTime )
 		{
 			//#ifdef ONE_COMPOUND_PER_FACTION
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
-				Objects::ForeachCompound([atTime](Objects::Compound&c)
+				Objects::ForeachCompound([&atTime](Objects::Compound&c)
 				{
 					c.TickEnd(atTime);
 				});

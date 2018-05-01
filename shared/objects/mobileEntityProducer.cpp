@@ -148,9 +148,8 @@ namespace Objects
 				const M::TVec3<>&dir = Grid::low.cells[c.stackID].cornerCenter;
 				float h = Grid::ToRadiusf(float(c.height));
 				Mat::makeAxisSystem(dir*h,dir,2,sys);
-				sys.x.xyz *= 0.75f * Grid::UnitScale;
-				sys.y.xyz *= 0.75f * Grid::UnitScale;
-				sys.z.xyz *= Grid::UnitScale;
+				sys.x.xyz *= 0.75f;
+				sys.y.xyz *= 0.75f;
 				selectedVisual = sys;
 			}
 			else
@@ -314,7 +313,7 @@ namespace Objects
 				}
 			}
 
-			parent->RegisterChange(WorldEntity::TasksChanged,0);
+			parent->RegisterChange(WorldEntity::TasksChanged);
 
 		}
 
@@ -340,9 +339,7 @@ namespace Objects
 			ASSERT__(v);
 			ASSERT_EQUAL__(0,ProductionRounds(v,true));
 			v->health = v->GetMaxHealth();	//must set to max here, or positioning will fail
-			t+= timeEpsilon;
-			v->entityTime = t;
-			t+= timeEpsilon;
+			v->SyncTime(t);
 
 			queue.Erase(0);
 			productionDone = 0;	//must be before ProductionRounds() or calculation will produce invalid results
@@ -357,7 +354,7 @@ namespace Objects
 
 //			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
-			parent->SignalChange(WorldEntity::TasksChanged, -1);
+			parent->SignalChangeByExternalCause(WorldEntity::TasksChanged, t);
 			return v;
 		}
 
@@ -430,7 +427,7 @@ namespace Objects
 			item.producing = e;
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
-			parent->RegisterChange(WorldEntity::TasksChanged,-1);
+			parent->RegisterChange(WorldEntity::TasksChanged);
 			return &item;
 		}
 
@@ -455,7 +452,7 @@ namespace Objects
 				WorkItem*rs = EnqueueProductionOf(vehicle);
 				if (rs)
 				{
-					parent->RegisterChange(WorldEntity::TasksChanged,-1);
+					parent->RegisterChange(WorldEntity::TasksChanged);
 					SignalNewProductionEnqueued();
 				}
 				return rs;
@@ -486,7 +483,7 @@ namespace Objects
 						float t = 0;
 						SignalLastProductionDone(t);
 					}
-					parent->RegisterChange(WorldEntity::TasksChanged,-1);
+					parent->RegisterChange(WorldEntity::TasksChanged);
 					return true;
 				}
 			}
@@ -506,7 +503,7 @@ namespace Objects
 				LogEvent(EventSignificance::Common, parent, "Unset gathering point");
 				gatheringPoint.current = Grid::LCellIdI::Invalid;
 			}
-			parent->RegisterChange(Objects::WorldEntity::GatheringPointChanged,0);
+			parent->RegisterChange(Objects::WorldEntity::GatheringPointChanged);
 		}
 
 		PMobileEntity			MobileEntityProducer::WorkItem::GetPrototype() const
@@ -586,7 +583,7 @@ namespace Objects
 				ASSERT_NOT_NULL1__(turret, (int)type.turretType);
 				ASSERT_NOT_NULL1__(base, (int)type.baseType);
 
-				price = Vehicle::GetPrice(base,turret,parent->owner);
+				price = Vehicle::GetPrice(base,turret,parent->GetResearchState());
 				name = Vehicle::GetTypeName(base,turret);
 			}
 			

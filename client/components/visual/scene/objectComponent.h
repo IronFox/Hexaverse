@@ -136,7 +136,7 @@ namespace Objects
 		Buffer0<Shape>					localizableShapes;
 		bool							wasJob=false;
 
-		void							SetLocalizableShape(EntityType structureIdentifier, const Grid::LCellIdI&location, const OwnerParameter&);
+		void							SetLocalizableShape(EntityType structureIdentifier, const Grid::LCellIdI&location, const Research::Attributes::Table&researchState);
 		static void						Recompile(const MobileEntity&e, MobileEntity::Task&t,const Grid::LCellIdI&pointOfOrigin);
 		void							RecompilePath(const MobileEntity::Task&t, int stepsPerRound, float structureSize=vehicleScale);
 

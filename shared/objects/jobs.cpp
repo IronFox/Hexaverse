@@ -698,8 +698,9 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	SelfDetonate::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
-			float radius = Component::Bomb::GetRadius(doomsday,v.owner);
-			int damageLevel = Component::Bomb::GetDamageLevel(doomsday,v.owner);
+			const auto&state = v.GetResearchState();
+			float radius = Component::Bomb::GetRadius(doomsday,state);
+			int damageLevel = Component::Bomb::GetDamageLevel(doomsday,state);
 
 			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.entityTime);
 			v.entityTime += timeEpsilon;
@@ -735,7 +736,7 @@ namespace Objects
 		
 		/**/					SelfDetonate::SelfDetonate(const MobileEntity&v, const Grid::LCellIdI&loc, ConstName p)	
 			: Super(
-				Objects::Component::Bomb::GetUraniumCost(IsDoomsday(p),v.owner),
+				Objects::Component::Bomb::GetUraniumCost(IsDoomsday(p),v.GetResearchState()),
 				v,loc,GetOperationAffinity(),Autocomplete::Always,false
 			),
 			doomsday(IsDoomsday(p))
@@ -743,7 +744,7 @@ namespace Objects
 
 		/*virtual override*/ void			SelfDetonate::UpdateEstimations(const MobileEntity&v) 
 		{
-			Super::ResetResourceAndRoundsLeft(Component::Bomb::GetUraniumCost(doomsday,v.owner),v,GetOperationAffinity());
+			Super::ResetResourceAndRoundsLeft(Component::Bomb::GetUraniumCost(doomsday,v.GetResearchState()),v,GetOperationAffinity());
 		}
 
 
@@ -756,7 +757,7 @@ namespace Objects
 		
 		/*virtual override*/ void			DoomsdayBeamAttack::UpdateEstimations(const MobileEntity&v) 
 		{
-			Super::ResetResourceAndRoundsLeft(Component::SubOrbital::Bomber::doomsdayBeamAttackCosts(v.owner),v,GetOperationAffinity());
+			Super::ResetResourceAndRoundsLeft(Component::SubOrbital::Bomber::doomsdayBeamAttackCosts.GetValue(v.GetResearchState()),v,GetOperationAffinity());
 		}
 
 
@@ -769,8 +770,9 @@ namespace Objects
 		/*virtual override*/ BaseJob::continue_t	DoomsdayBeamAttack::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
 
-			const float radius = Component::SubOrbital::Bomber::GetDoomsdayExplosionRadius(v.owner);
-			const int damageLevel = Component::SubOrbital::Bomber::GetDoomsdayDamageLevel(v.owner);
+			const auto&state = v.GetResearchState();
+			const float radius = Component::SubOrbital::Bomber::GetDoomsdayExplosionRadius(state);
+			const int damageLevel = Component::SubOrbital::Bomber::GetDoomsdayDamageLevel(state);
 
 			v.OverrideExecuteAttackNow(focus,radius,damageLevel,false,true, v.entityTime);
 
@@ -778,7 +780,7 @@ namespace Objects
 		}
 
 		/**/					DoomsdayBeamAttack::DoomsdayBeamAttack(const MobileEntity&v, const Grid::LCellIdI&loc)	
-			: Super(Component::SubOrbital::Bomber::doomsdayBeamAttackCosts(v.owner),
+			: Super(Component::SubOrbital::Bomber::doomsdayBeamAttackCosts.GetValue(v.GetResearchState()),
 				v,loc,GetOperationAffinity(),Autocomplete::Always,false
 			)
 		{}
@@ -857,13 +859,10 @@ namespace Objects
 
 			if (speed >= fullCost && fullCost <= storage)
 			{
-				target->SyncTime(v.entityTime,timeEpsilon);
 				target->health = maxHealth;
-				target->RegisterChange(WorldEntity::HealthChanged,target->entityTime);
-				v.entityTime += timeEpsilon;
+				target->SignalChangeByExternalCause(WorldEntity::HealthChanged,v.entityTime);
 				ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-fullCost);
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired ("+String(fullCost)+")");
-				v.entityTime += timeEpsilon;
 				return JobDone;
 			}
 
@@ -874,9 +873,7 @@ namespace Objects
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to repair '"+target->GetNiceName()+"'");
 
-				v.entityTime += timeEpsilon;
 				ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
-				v.entityTime += timeEpsilon;
 
 				return JobDelayed;
 			}
@@ -885,16 +882,11 @@ namespace Objects
 			else
 				LogEvent(EventClass::Preset::important,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
 
-			v.entityTime += timeEpsilon;
 			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
-			v.entityTime += timeEpsilon;
 
-			target->SyncTime(v.entityTime,timeEpsilon);
+			target->SignalChangeByExternalCause(WorldEntity::HealthChanged,v.entityTime);
 			target->health += canRepair;
-			target->RegisterChange(WorldEntity::HealthChanged,target->entityTime);
-			v.entityTime += timeEpsilon;
 			ChangeStorage(v,v.entityTime, this->GetConsumedResourceType(),-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
-			v.entityTime += timeEpsilon;
 			return JobDelayed;
 
 		}

@@ -15,6 +15,7 @@
 #include <io/monitoredProcess.h>
 #include "../../configurationMode.h"
 #include "../../io.h"
+#include "../../cameraControl.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -131,11 +132,7 @@ namespace Menu
 
 		l->SetBackgroundTransparent();
 		l->alignCenter = false;
-		{
-			auto mod = l->Anchor();
-			//mod.Top().Set(0);
-			mod.CenterVertically().Left(0,MinTextWidth);
-		}
+		l->Anchor().CenterVertically().Left(0,MinTextWidth);
 		c->Anchor().FillHorizontally(MinTextWidth,0.01f).CenterVertically();
 
 		p->SetAutomaticHeight(true);
@@ -285,6 +282,16 @@ namespace Menu
 				return Explosions::maxConcurrentParticles;
 			}
 		);
+
+		AddCheckBox("Terrain Camera Intersection Correction (slow)",Camera::terrainIntersectionTest,[](bool enabled)
+		{
+			bool old = Camera::terrainIntersectionTest;
+			if (old != enabled)
+			{
+				Camera::terrainIntersectionTest = enabled;
+				Configuration::Update("runtime/terrainCameraIntersectionCorrection",enabled);
+			}
+		});
 
 		if (AudioInterface::isActive)
 		{

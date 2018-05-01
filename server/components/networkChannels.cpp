@@ -1380,7 +1380,7 @@ namespace Receiver
 
 		if (e->IsSleeping() == a.doSet)
 		{
-			e->RegisterChange(Objects::WorldEntity::SleepChange,0.f);
+			e->RegisterChange(Objects::WorldEntity::SleepChange);
 			return;
 		}
 		Journal::currentRound.RegisterSleepChange(true,e,a.doSet);

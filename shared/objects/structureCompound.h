@@ -74,12 +74,12 @@ namespace Objects
 		void				AppendStructure(Structure*s);
 		#ifndef CLIENT
 			void			TickBegin();
-			void			TickEnd(float atTime);
+			void			TickEnd(float&atTime);
 
-			void			FeedLeftovers(ResourceVector&vector, float atTime);
+			void			FeedLeftovers(ResourceVector&vector, float&atTime);
 
 
-			void			ChangeStorage(ResourceVector&supply, float atTime);
+			void			ChangeStorage(ResourceVector&supply, float&atTime);
 			FullResourceVector	GetVector(const Ctr::Array<bool>&virtualEnabled) const;
 		#endif
 		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Ctr::Array<Resource>*outMissedResources=nullptr, bool ignoreCanEnable=false) const;

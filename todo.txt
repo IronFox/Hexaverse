@@ -1,51 +1,20 @@
-sensory rarely flickers (recompiled despite being repainted)
+
+menu button in configuration mode
+
+
+
 sharp shadow edge on pillars map
 air defense for nexus base
 
 
-construction finish->move directly into storage seems to drop constructed lab
-progress line wrap
+wrap progress line
 
+optimize camera terrain intersection test
 
 
 
 hard to reproduce/fix:
-	lingering vehicle attack task
-		symptoms:
-			lingering client attack tasks that cannot be undone or cleared as the server no longer knows them.
-			tasked attack(s) presumed executed during previous rounds.
-			scheduling a new motion task removes them.
-			
-			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Attacking (3.12574, 40.21748, -9.62003) in 0.44308 seconds
-			Debug	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Commencing attack at t=3.06975
-			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Handling regular explosion at (3.12574, 40.21748, -9.62003), radius=4
-			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Tracing rough trajectory to (3.12574, 40.21748, -9.62003) in 0.44308 seconds
-			Common	2018 04 26. 16:38:33	135	AttackPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	State change detected (12,foreigners=true,allies=true)			
-			Common	2018 04 26. 16:38:33	135	MovementPhase			Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	State change detected (4,foreigners=true,allies=true)
-			
-			Debug	2018 04 26. 16:38:33	135	AttackPhase							Appended 'mobile state(b4641d0d)' primitive to animation sequence at t=0
-			Debug	2018 04 26. 16:38:33	135	AttackPhase							Appended 'mobile state(b4641d0d)' primitive to animation sequence at t=3.83883
-			Debug	2018 04 26. 16:38:33	135	MovementPhase							Rewrote 'mobile state(b4641d0d)' primitive to animation sequence at t=3.83883 n=1
-			
-			Common	2018 04 26. 16:38:56	136	CommandPhase	1bdd0703:'IronFox'	localhost:26726					Begin: Drop tasks (LastTask) of entity b4641d0d
-			Common	2018 04 26. 16:38:56	136	CommandPhase	1bdd0703:'IronFox'	localhost:26726	Cat Artillery	b4641d0d	1bdd0703:'IronFox'	659[h=1]	Nothing to undo			
-			
-			
-			
-		interpretation:
-			appears to happen if the respective attack(s) were (partially?) executed.
-			cannot be reproduced by explicitly scheduling and undoing/clearing attack tasks.
-			possibly, the error only occurs if the attack is removed from the front of the queue (executed)
-		cause:
-			recent optimization made mobile entity tasks optional content of state updates.
-			if the tasks did not change, then they are not part of the update.
-			the client checks for presence of such, and leaves the target entity's tasks unchanged if not specified.
-			the 'Rewrote...' strategy replaced the existing update, which did contain tasks, with a simple action-update which did not.
-			the updated tasks were therefor lost.
-		possible causes:
-			task merge optimization issue (merging should but does not remove task)
-			missing server update
-			multiple, ill ordered server updates on the same entity
+	construction finish->move directly into storage seems to drop constructed lab
 	bug: generate... ends new game in round 0 if executed after previous match has ended
 		does not happen if forced on uncompleted matches (gameHasEnded=true, generate, ...)
 		configuration was (supposedly)
@@ -230,6 +199,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+added: escape text or close button in statistics
+probably fixed (check 15cc1a1f4554405cad52829e3be8b58c3c192814 for details): lingering client attack tasks that cannot be undone or cleared as the server no longer knows them.
+fixed: sensory rarely flickers (recompiled despite being repainted)
 presumed fixed: steam: invites not working when already in game (maybe fixed)
 presumed fixed: hostile ghost has no owner. Added more log message on server and client to track ther issue. Fixed for nexus units. Possibly fixed
 done: showPlanetTypes lists (user) instead of *

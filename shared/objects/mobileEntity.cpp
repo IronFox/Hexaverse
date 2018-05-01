@@ -26,9 +26,9 @@ namespace Objects
 			{
 				const bool isBuilding = entity->IsBuilding();
 				if (!wasBuilding && isBuilding)
-					entity->RegisterChange(WorldEntity::StartedBuilding,entity->entityTime);
+					entity->RegisterChange(WorldEntity::StartedBuilding);
 				elif (wasBuilding && !isBuilding)
-					entity->RegisterChange(WorldEntity::StoppedBuilding,entity->entityTime);
+					entity->RegisterChange(WorldEntity::StoppedBuilding);
 			}
 
 		private:
@@ -240,7 +240,9 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,owner),Component::Bomb::GetDamageLevel(false,owner),false,atTime);
+				const auto&state = GetResearchState();
+
+				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,state),Component::Bomb::GetDamageLevel(false,state),false,atTime);
 			}
 
 		}
@@ -359,8 +361,7 @@ namespace Objects
 										if (AttackIsStationary())
 											attackActionLeft = 0;
 
-										RegisterChange(ActionChanged,entityTime);
-										entityTime += timeEpsilon;
+										RegisterChange(ActionChanged);
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.Last().movementCostsFromPrevNode : 1;
 									}
@@ -438,9 +439,7 @@ namespace Objects
 										myTasks.Peek().Replot(location,this,FocusChangeType::SituationChanged,true);
 									}
 								}
-								#ifndef CLIENT
-									RegisterChange(TasksChanged,entityTime);
-								#endif
+								RegisterChange(TasksChanged);
 								return remaining == 0 || isObstructed ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
 							}
 							else
@@ -453,8 +452,7 @@ namespace Objects
 										if (!AttackAndMotionAreIndependent())
 											attackActionLeft = 0;
 										movementActionLeft = 0;
-										RegisterChange(ActionChanged,entityTime);
-										entityTime += timeEpsilon;
+										RegisterChange(ActionChanged);
 									}
 
 									hasMoved = true;
@@ -598,7 +596,7 @@ namespace Objects
 				auto copy = target;
 				myTasks << Task(prefix + "Attack Position",copy,false,Task::Mode,CursorMode::AttackMode);
 				myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged,-1);
+				RegisterChange(TasksChanged);
 			}
 			else
 			{
@@ -612,7 +610,7 @@ namespace Objects
 				{
 					myTasks.GetNewest().foci.Push().target = target;
 					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
-					RegisterChange(TasksChanged,-1);
+					RegisterChange(TasksChanged);
 				}
 			}
 			return true;
@@ -696,8 +694,7 @@ namespace Objects
 										}
 										if (anyChanged)
 										{
-											entityTime += timeEpsilon;
-											v2->RegisterChange(TasksChanged,entityTime);
+											v2->SignalChangeByExternalCause(TasksChanged,entityTime);
 										}
 									}
 									break;
@@ -720,7 +717,7 @@ namespace Objects
 					#ifndef CLIENT
 						LogEvent(EventSignificance::Common,this,"Time cost is "+String(timeCost)+". Warping mobile entity at time "+String(oldTime));
 					#endif
-					RegisterChange(PositionChanged,oldTime);
+					RegisterChange(PositionChanged);
 				}
 				//motionTime += timeCost;
 
@@ -849,7 +846,7 @@ namespace Objects
 					LogEvent(EventClass::Preset::operationAborted,this,"EMP damage: Unable to continue job at this time.");
 					return TaskResult::AllDoneForThisRound;
 				}
-				RegisterChange(TasksChanged,entityTime);
+				RegisterChange(TasksChanged);
 				if (!jobStarted)
 				{
 					//jobStarted = true;
@@ -894,7 +891,7 @@ namespace Objects
 									else
 										LogEvent(EventClass::Preset::error,this,"Cannot find parent job '"+parent->GetName()+"'");
 								}
-								RegisterChange(TasksChanged,entityTime);
+								RegisterChange(TasksChanged);
 
 								if (completeOnMove && !HasTasks())
 									return AutoMoveComplete();
@@ -957,7 +954,7 @@ namespace Objects
 										LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 
 										EraseFirstTask();
-										RegisterChange(TasksChanged,entityTime);
+										RegisterChange(TasksChanged);
 										while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
 										{
 											LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
@@ -1001,7 +998,7 @@ namespace Objects
 				if (HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode))
 					return TaskResult::AllDoneForThisRound;
 
-				RegisterChange(TasksChanged,entityTime);
+				RegisterChange(TasksChanged);
 				return HandleNormalTask();
 			}
 			
@@ -1021,7 +1018,7 @@ namespace Objects
 			BuildChecker checker(this);
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
-			RegisterChange(TasksChanged,entityTime);
+			RegisterChange(TasksChanged);
 
 			if (myTasks.IsEmpty())
 			{
@@ -1062,7 +1059,7 @@ namespace Objects
 			}
 
 
-			RegisterChange(TasksChanged,entityTime);
+			RegisterChange(TasksChanged);
 			Task&task = myTasks.PushFront();
 			task.type = Task::Job;
 			task.name = job->GetName();
@@ -1183,7 +1180,7 @@ namespace Objects
 					myTasks.EraseBack();
 					return false;
 				}
-				RegisterChange(TasksChanged,-1);
+				RegisterChange(TasksChanged);
 			}
 			else
 			{
@@ -1233,7 +1230,7 @@ namespace Objects
 							myTasks.GetNewest().foci.EraseBack();
 						return false;
 					}
-					RegisterChange(TasksChanged,-1);
+					RegisterChange(TasksChanged);
 				}
 			}
 
@@ -1270,7 +1267,7 @@ namespace Objects
 
 				myTasks.PushFront(Task("Move To",destination,detailedPath,Task::MoveTo));
 				myTasks.GetOldest().Replot(location, this, FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged,entityTime);
+				RegisterChange(TasksChanged);
 			}
 
 			return true;
@@ -1284,8 +1281,7 @@ namespace Objects
 			if (attackActionLeft < 1.f)
 			{
 				attackActionLeft = 1.f;
-				RegisterChange(ActionChanged,entityTime);
-				entityTime += timeEpsilon;
+				RegisterChange(ActionChanged);
 			}
 
 			hasMoved = false;
@@ -1295,8 +1291,7 @@ namespace Objects
 				if (movementActionLeft < 1.f)
 				{
 					movementActionLeft = 1.f;
-					RegisterChange(ActionChanged,entityTime);
-					entityTime += timeEpsilon;
+					RegisterChange(ActionChanged);
 				}
 			}
 		}
@@ -1306,8 +1301,7 @@ namespace Objects
 			if (movementActionLeft < 1.f)
 			{
 				movementActionLeft = 1.f;
-				RegisterChange(ActionChanged,entityTime);
-				entityTime += timeEpsilon;
+				RegisterChange(ActionChanged);
 			}
 
 			if (AttackAndMotionAreIndependent())
@@ -1315,8 +1309,7 @@ namespace Objects
 				if (attackActionLeft < 1.f)
 				{
 					attackActionLeft = 1.f;
-					RegisterChange(ActionChanged,entityTime);
-					entityTime += timeEpsilon;
+					RegisterChange(ActionChanged);
 				}
 			}
 		}
@@ -1352,7 +1345,7 @@ namespace Objects
 				else
 					myTasks.EraseBack();
 			}
-			RegisterChange(TasksChanged,entityTime);
+			RegisterChange(TasksChanged);
 			if (!HasTasks())
 				jobStarted = false;
 			return true;
@@ -1375,11 +1368,10 @@ namespace Objects
 			if (myTasks.IsNotEmpty() || completeOnMove)
 			{
 				BuildChecker checker(this);
-				entityTime += timeEpsilon;
 				jobStarted = false;
 				if (!isReaction)
 					completeOnMove.reset();
-				RegisterChange(TasksChanged,entityTime);
+				RegisterChange(TasksChanged);
 				//tasksChanged = true;
 				myTasks.Clear();
 				LogEvent(EventSignificance::Debug,this," ...cleared");
@@ -1402,7 +1394,7 @@ namespace Objects
 			}
 			else
 				myTasks.Clear();
-			RegisterChange(TasksChanged,entityTime);
+			RegisterChange(TasksChanged);
 		}
 
 		void	MobileEntity::OverrideExecuteAttackNow(const Grid::LCellIdI target, float explosionSize, int damageLevel, bool dealsEMPDamage, bool isDoomsday, float&attackTime)
@@ -1414,7 +1406,7 @@ namespace Objects
 			}
 
 			LogEvent(EventSignificance::Debug,this,"Setting local time ("+String(entityTime)+") to attack time="+String(attackTime));
-			SyncTime(attackTime,timeEpsilon);
+			SyncTime(attackTime);
 
 			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
@@ -1428,8 +1420,7 @@ namespace Objects
 				attackActionLeft -= change;
 				if (!turret->independentAttackAndMotion)
 					movementActionLeft -= change;
-				RegisterChange(ActionChanged,entityTime);
-				entityTime += timeEpsilon;
+				RegisterChange(ActionChanged);
 
 				float flightTime;
 
@@ -1468,7 +1459,7 @@ namespace Objects
 				at.traceTo = rs.impactAt;
 
 				ApplicationInterface::SignalAttack(at);
-				ChangeStorage(*this,entityTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
+				ChangeStorage(*this,entityTime,turret->ammoType,-turret->GetAmmoNeedPerShot(GetResearchState()));
 				
 				entityTime += flightTime;
 
@@ -1494,7 +1485,7 @@ namespace Objects
 
 			Task&task = LockedPeekTask();
 
-			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(owner)),turret->dealsEMPDamage, turret->isDoomsday, attackTime);
+			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(GetResearchState())),turret->dealsEMPDamage, turret->isDoomsday, attackTime);
 
 			if (task.foci.IsEmpty())
 			{
@@ -1506,9 +1497,8 @@ namespace Objects
 				task.Replot(location,this,FocusChangeType::FirstFocusDropped,true);
 				UnlockTasks();
 			}
-			RegisterChange(TasksChanged,entityTime);
-			//stateChangedAt = attackTime;	//problematic
 			attackTime = entityTime;
+			RegisterChange(TasksChanged);
 		}
 
 
@@ -1895,7 +1885,7 @@ namespace Objects
 
 	/*virtual override*/bool				MobileEntity::HasAmmoForShot() 
 	{
-		int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+		int ammoNeed = turret->GetAmmoNeedPerShot(GetResearchState());
 		if (!ammoNeed)
 			return true;
 

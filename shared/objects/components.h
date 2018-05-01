@@ -16,7 +16,7 @@
 
 namespace Objects
 {
-	static const constexpr float			vehicleScale = 0.01f * Grid::UnitScale * WorldScale;
+	static const constexpr float			vehicleScale = 0.4f;
 	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
@@ -157,15 +157,16 @@ namespace Objects
 
 
 
-		template <typename T, typename Filter, int EmptyDefault=0>
-			class LuaAttribute : public Objects::LuaAttribute<T,Filter>
+		template <typename T, int EmptyDefault=0>
+			class LuaAttributeWithDefault : public Objects::LuaAttribute<T>
 			{
+				typedef Objects::LuaAttribute<T>	Super;
 			public:
-				T						operator()(const OwnerParameter&p) const
+				T						GetValue(const Research::Attributes::Table&researchState) const
 				{
 					if (this->IsEmpty())
 						return (T)EmptyDefault;
-					return this->GetValue(ResearchStateOf(p));
+					return Super::GetValue(researchState);
 				}
 			};
 
@@ -203,8 +204,8 @@ namespace Objects
 			String							typeName,shortName;
 			ConstName						constName;
 			int								initiative;
-			LuaAttribute<int,NoFilter>			productionCosts /*=1*/;
-			LuaAttribute<bool,NoFilter,true>	isUnlocked;
+			LuaAttribute<int>				productionCosts /*=1*/;
+			LuaAttributeWithDefault<bool,true>	isUnlocked;
 											
 
 
@@ -221,9 +222,8 @@ namespace Objects
 		};
 
 
-		typedef LuaAttribute<float,NoFilter>		FFunc;
-		typedef LuaAttribute<int,NoFilter>			IFunc;
-		typedef LuaAttribute<float,UnitScaleFilter>	FScaledFunc;
+		typedef LuaAttribute<float>			FFunc;
+		typedef LuaAttribute<int>			IFunc;
 
 
 	
@@ -264,7 +264,7 @@ namespace Objects
 											isDoomsday = false;	//server may reject their deployment
 
 			MountType						mountType = MountType::Vehicle;
-			FScaledFunc						explosionRadius;
+			FFunc							explosionRadius;
 			TrajectoryType					trajectoryType;
 			//int								fuelSupplyRadius = 0;	//!< Satellites only (in fact, SkyHub only): Maximum radius that friendly satellites will be supplied in
 
@@ -277,7 +277,7 @@ namespace Objects
 			//	Linear,
 			//	Missile,
 			//}								trajectory;
-			FScaledFunc						horizontalAttackRange,	//geometric firing range
+			FFunc							horizontalAttackRange,	//geometric firing range
 											scanningRange /*= 10*/,	//geometric scanning range
 											subOrbitalScanningRange /*=-1*/,	//>0 indicates that this turret features an additional scanning bubble in sub orbit
 											groundScanningRange /*= -1.f*/;//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
@@ -311,14 +311,14 @@ namespace Objects
 			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outTrajectory);
 
 
-			float							GetOperationSpeed(operation_t op, const OwnerParameter&owner) const;
-			int								GetDamageLevel(const PFaction&owner) const;
-			float							GetExplosionRadius(const PFaction&owner) const;
-			int								GetAttacksPerRound(const PFaction&owner) const;
-			int								GetAmmoNeedPerShot(const PFaction&owner) const;
-			float							GetHorizontalAttackRange(const PFaction&owner, const FFunc&bonus=FFunc()) const;
-			float							GetScanningRange(const PFaction&owner, int bonus=0) const;
-			float							GetGroundScanningRange(const PFaction&owner) const;
+			float							GetOperationSpeed(operation_t op, const Research::Attributes::Table&researchState) const;
+			int								GetDamageLevel(const Research::Attributes::Table&researchState) const;
+			float							GetExplosionRadius(const Research::Attributes::Table&researchState) const;
+			int								GetAttacksPerRound(const Research::Attributes::Table&researchState) const;
+			int								GetAmmoNeedPerShot(const Research::Attributes::Table&researchState) const;
+			float							GetHorizontalAttackRange(const Research::Attributes::Table&researchState, const FFunc&bonus=FFunc()) const;
+			float							GetScanningRange(const Research::Attributes::Table&researchState, int bonus=0) const;
+			float							GetGroundScanningRange(const Research::Attributes::Table&researchState) const;
 
 			static float					MaxRangeToVelocity(float range)
 			{
@@ -440,7 +440,7 @@ namespace Objects
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources(ResourceFlagSet&res, const PFaction&) const;
+			bool							ConsumesResources(ResourceFlagSet&res, const Research::Attributes::Table&researchState) const;
 
 		};
 
@@ -459,7 +459,7 @@ namespace Objects
 				int							storageMultiplier = 1;
 			#endif
 
-			FScaledFunc						turretRangeModifier /*= 0*/;
+			FFunc							turretRangeModifier /*= 0*/;
 			FFunc							operationSpeedMultiplier /*= 1*/,
 											movementSpeed,		//ideal movement speed (if not encumbered)
 											carryingCapacity;		//turret weight tolerance before movement speed is reduced
@@ -496,9 +496,9 @@ namespace Objects
 
 
 
-			float							GetBaseMovementSpeed(const OwnerParameter&owner) const;
-			float							GetCarryingCapacity(const OwnerParameter&owner) const;
-			float							GetBaseHealth(const OwnerParameter&owner) const;
+			float							GetBaseMovementSpeed(const Research::Attributes::Table&state) const;
+			float							GetCarryingCapacity(const Research::Attributes::Table&state) const;
+			float							GetBaseHealth(const Research::Attributes::Table&state) const;
 
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}
@@ -551,16 +551,16 @@ namespace Objects
 
 		namespace Bomb
 		{
-			extern FScaledFunc	doomsdayExplosionRadius;
-			extern LuaAttribute<int,NoFilter,200>		doomsdayUraniumCost;
-			extern LuaAttribute<int,NoFilter,-100>		regularUraniumCost;
+			extern FFunc		doomsdayExplosionRadius;
+			extern LuaAttributeWithDefault<int,200>		doomsdayUraniumCost;
+			extern LuaAttributeWithDefault<int,-100>	regularUraniumCost;
 			extern IFunc		doomsdayDamageLevel;
 
 			void		Configure(Turret&);
 
-			int			GetUraniumCost(bool doomsday, const PFaction&);
-			float		GetRadius(bool doomsday, const PFaction&);
-			int			GetDamageLevel(bool doomsday, const PFaction&);
+			int			GetUraniumCost(bool doomsday, const Research::Attributes::Table&researchState);
+			float		GetRadius(bool doomsday, const Research::Attributes::Table&researchState);
+			int			GetDamageLevel(bool doomsday, const Research::Attributes::Table&researchState);
 		};
 
 	
@@ -682,12 +682,12 @@ namespace Objects
 
 			namespace Bomber
 			{
-				extern LuaAttribute<int,NoFilter,300>		doomsdayBeamAttackCosts;
-				extern FScaledFunc	doomsdayExplosionRadius;
+				extern LuaAttributeWithDefault<int,300>		doomsdayBeamAttackCosts;
+				extern FFunc		doomsdayExplosionRadius;
 				extern IFunc		doomsdayDamageLevel;
 
-				int		GetDoomsdayDamageLevel(const PFaction&);
-				float	GetDoomsdayExplosionRadius(const PFaction&);
+				int		GetDoomsdayDamageLevel(const Research::Attributes::Table&);
+				float	GetDoomsdayExplosionRadius(const Research::Attributes::Table&);
 				void	Configure(Turret&);
 			}
 

@@ -5,23 +5,7 @@
 namespace Objects
 {
 
-
-	struct NoFilter
-	{
-		template <typename T>
-			static void	Filter(T&){}
-	};
-
-	struct UnitScaleFilter
-	{
-		template <typename T>
-			static void	Filter(T&v)
-			{
-				v *= Grid::UnitScale;
-			}
-	};
-
-	template <typename T, typename Filter= NoFilter>
+	template <typename T>
 		struct LuaAttribute
 		{
 			bool		isInvariant = false;
@@ -64,18 +48,11 @@ namespace Objects
 				this->linearIndex = linearIndex;
 			}
 
-			T			GetUnfilteredValue(const Research::Attributes::Table&researchState)	const
+			T			GetValue(const Research::Attributes::Table&researchState)	const
 			{
 				if (isInvariant)
 					return invariantValue;
 				return researchState.Get<T>(linearIndex);
-			}
-
-			T			GetValue(const Research::Attributes::Table&researchState)	const
-			{
-				T rs = GetUnfilteredValue(researchState);
-				Filter::Filter(rs);
-				return rs;
 			}
 
 			String		Describe(const Research::Attributes::Table&researchState)	const

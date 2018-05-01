@@ -138,10 +138,10 @@ namespace Objects
 	{
 	public:
 		//all functions here take the research state of an owning faction into account
-		LuaAttribute<int,NoFilter>			maxHealth,
-											constructionCost;
-		LuaAttribute<float,UnitScaleFilter>	maxScanningRange;
-		LuaAttribute<bool,NoFilter>			isUnlocked;
+		LuaAttribute<int>			maxHealth,
+									constructionCost;
+		LuaAttribute<float>			maxScanningRange;
+		LuaAttribute<bool>			isUnlocked;
 	};
 
 	
@@ -189,29 +189,18 @@ namespace Objects
 		const Research::Attributes::Table&GetResearchState() const;
 		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
-		inline void					SyncTime(float&remoteTime, float timeOffset)
+		
+		inline void				SyncTime(float&remoteTime)
 		{
 			#ifndef CLIENT
-				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeOffset;
-			#endif
-		}
-		inline void					SyncTime(float&remoteTime)
-		{
-			#ifndef CLIENT
-				remoteTime = entityTime = std::max(entityTime,remoteTime);
+				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeEpsilon;
 			#endif
 		}
 
-		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
-		{
-			#ifndef CLIENT
-				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeOffset;
-			#endif
-		}
 		inline void					SyncTime(WorldEntity&other, float&remoteTime)
 		{
 			#ifndef CLIENT
-				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime));
+				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeEpsilon;
 			#endif
 		}
 
@@ -278,28 +267,41 @@ namespace Objects
 				changeTimer = -std::numeric_limits<float>::max();
 			}
 
-			void					RegisterChange(changeType_t type, float timeAt)
+			void					SignalChangeByExternalCause(changeType_t type, float&timeAt)
 			{
 				changeFlags |= type;
-				changeTimer = std::max(changeTimer,timeAt);
+				SyncTime(timeAt);
+				changeTimer = entityTime;
 			}
-			void					SignalChange(changeType_t type, float timeAt)	{RegisterChange(type,timeAt);}
-
-
-			//Buffer0<PWorldEntity>	seenBy,
-				//					seeing;
-			void					SetSleep(bool doSleep, float&t, bool signalToStructure=true)
+			void					RegisterChange(changeType_t type)
 			{
-				if (sleeping == doSleep)
-					return;
-				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
+				changeFlags |= type;
+				entityTime += timeEpsilon;
+				changeTimer = entityTime;
+			}
 
-				sleeping = doSleep;
-				RegisterChange(SleepChange,t);
-				if (signalToStructure)
+
+			/**
+			Alters the sleep-state of the local entity, typically as a result to client action
+			@param doSleep Set true if the entity is supposed to sleep, false if it is supposed wake
+			@param[in,out] Processing time to signal changes at. Often but not always irrelevant (0'ish)
+			*/
+			void					SetSleep( bool doSleep, float&t )
+			{
+				if (UpdateSleepState(doSleep,t))
 					OnSleepChange(t);
 			}
 			
+			/**
+			Direct set method called by IO state deserialization.
+			No callbacks or other state changes are performed.
+			Entity and change time remain unchanged.
+			Do NOT call under non-IO runtime conditions
+			*/
+			void					OverrideSetSleeping( bool doSleep )
+			{
+				sleeping = doSleep;
+			}
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
@@ -597,8 +599,8 @@ namespace Objects
 				UnregisterSensory(atTime);
 				LogEvent(EventSignificance::Common,this,"Altering EMP damage level "+String(empDamageLevel)+"->"+String(newDamage));
 				empDamageLevel = newDamage;
-				RegisterChange(EMPDamageChanged,atTime);
 				RegisterSensory(atTime);
+				SignalChangeByExternalCause(EMPDamageChanged,atTime);
 				return true;
 			}
 			/**
@@ -611,8 +613,8 @@ namespace Objects
 					LogEvent(EventSignificance::Common,this,"Healing all EMP damage");
 					UnregisterSensory(atTime);
 					empDamageLevel = 0;
-					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
+					SignalChangeByExternalCause(EMPDamageChanged,atTime);
 				}
 			}
 			void					HealEMPDamage(float&atTime)
@@ -621,8 +623,8 @@ namespace Objects
 				{
 					UnregisterSensory(atTime);
 					empDamageLevel--;
-					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
+					SignalChangeByExternalCause(EMPDamageChanged,atTime);
 					LogEvent(EventSignificance::Common,this,"Healing EMP damage level ->"+String(empDamageLevel));
 				}
 			}
@@ -639,33 +641,31 @@ namespace Objects
 
 		const RegisteredSensorStorage&	GetRegisteredSensors() const {return registeredSensors;}
 
+	protected:
+		#ifndef CLIENT
+			/**
+			Alters the sleep-state of the local entity, typically as a result to client action.
+			OnSleepChange() is NOT called.
+			@param doSleep Set true if the entity is supposed to sleep, false if it is supposed wake
+			@param[in,out] Processing time to signal changes at. Often but not always irrelevant (0'ish)
+			*/
+			bool					UpdateSleepState( bool doSleep, float&t )
+			{
+				if (sleeping == doSleep)
+					return false;
+				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
+
+				sleeping = doSleep;
+				SignalChangeByExternalCause(SleepChange,t);
+				return true;
+			}
+		#endif
 	private:
 		RegisteredSensorStorage	registeredSensors;
 
 	};
 
 
-
-//				return WorldEntity::StaticEMPModify(cached,2.f * Grid::UnitScale,e.empDamageLevel);;
-
-
-	/*template <typename T>
-		template <typename T2,typename F1, typename F2>
-			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum)
-			{
-				if (versionCounter != Super::versionCounter)
-				{
-					versionCounter = Super::versionCounter;
-					T val = source.GetValue(researchState);
-					if (multiplier.IsSet())
-						val*=multiplier.GetValue(researchState);
-					
-					val = Math::Max(val, minimum);
-					cached = val;
-				}
-				return cached;
-			}
-*/
 
 	PWorldEntity							GetEntity(const TUniqueID&id);
 

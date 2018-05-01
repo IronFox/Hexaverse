@@ -378,7 +378,7 @@ namespace Objects
 				attackActionLeft = 0.f;
 				hasMoved = true;
 				constructionActionLeft=MaxConstructionActionLeft;
-				RegisterChange(ActionChanged,0);
+				RegisterChange(ActionChanged);
 			}
 
 			/**
@@ -508,7 +508,6 @@ namespace Objects
 
 
 		//TurretBase overrides:
-		virtual OwnerParameter	GetOwner() const override {return owner;};
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual bool			NextTaskIsAttack() const override {return IsAlive() && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
 		virtual WorldEntity&	ToEntity() override {return *this;}

@@ -1074,6 +1074,8 @@ namespace Game
 
 	void	ResetFactionStartMineralValue()
 	{
+		const auto&state = Objects::Research::globalState.zeroTable;;
+
 		if (Config::startBases)
 		{
 			factionStartMineralValue = Objects::Mine::globalPrototype->GetConstructionCost()
@@ -1082,22 +1084,22 @@ namespace Game
 			+ 
 			Objects::MineralContainer::globalPrototype->GetConstructionCost()
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,state)
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter());
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,state);
 		}
 		else
 		{
 			factionStartMineralValue = 
-				2 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
+				2 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,state)
 				+ 
 				Objects::MineralContainer::globalPrototype->GetConstructionCost()
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar,Objects::OwnerParameter())
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar,state)
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter())
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,state)
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery,Objects::OwnerParameter());
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery,state);
 		}
 		//if (State::Config::Nexus::haveBases)
 		//{

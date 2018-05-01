@@ -787,7 +787,7 @@ namespace Component
 		#endif
 
 		Array<String>	rawText;
-		Buffer0<String>	wrappedText;
+		Buffer0<StringRef>	wrappedText;
 		Array<float2>	lineAt;
 		float4			color = float4(1,1,1,1);
 		float			textHeight = 1.f;
@@ -1194,7 +1194,7 @@ namespace Component
 
 		/**/				Slider();
 		virtual PComponent	OnMouseDown() override;
-		virtual WheelRs		OnMouseWheel(short) override;
+		//virtual WheelRs	OnMouseWheel(short) override;
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 		virtual void		Render(float opacity) override;

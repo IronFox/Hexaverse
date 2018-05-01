@@ -338,7 +338,7 @@ namespace FileIO
 			ASSERT__(source->Stream(flags));
 			e.unstable = (flags & EntityFlag::IsUnstable) != 0;
 			float t = 0;
-			e.SetSleep((flags&EntityFlag::IsSleeping) !=0,t,false);
+			e.OverrideSetSleeping((flags&EntityFlag::IsSleeping) !=0);
 		}
 		ASSERT__(source->CloseStream());
 
@@ -946,7 +946,7 @@ namespace FileIO
 		GetPOD(parent,RID::location,location);
 		Objects::PStructure proto = Objects::Prototypes::structures.FindByName(typeName);
 
-		if (globalVersionOfCurrentFile <= 1038)
+		if (globalVersionOfCurrentFile < FileVersions::RemovedArtilleryTowers)
 		{
 			if (!proto)
 			{
@@ -1208,6 +1208,8 @@ namespace FileIO
 				else
 					Objects::Research::LoadDefaultProgram();
 			}
+			else
+				Objects::Research::LoadDefaultProgram();
 		}
 		catch (const std::exception&ex)
 		{
