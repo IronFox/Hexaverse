@@ -66,7 +66,7 @@ namespace Objects
 
 
 
-		static void					LoadFor(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
+		static void					LoadFor(const String&geometryName, float scale, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 		static void					LoadFor(Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 		static void					LoadFor(Objects::SubOrbital::Plane&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 

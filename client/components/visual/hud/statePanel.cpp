@@ -172,10 +172,10 @@ namespace StatePanel
 			cachedLines << " Location: "+ToString(e.location);
 			if (e.IsMobile())
 				cachedLines << " Last point of origin: "+ToString(((const Objects::MobileEntity&)e).GetLastPointOfOrigin());
-			cachedLines << " x: "+Vec::toString(e.system.x.xyz);
-			cachedLines << " y: "+Vec::toString(e.system.y.xyz);
-			cachedLines << " z: "+Vec::toString(e.system.z.xyz);
-			cachedLines << " w: "+Vec::toString(e.system.w.xyz);
+			cachedLines << " x: "+Vec::toString(e.system.x.xyz)+" ("+String(Vec::length(e.system.x.xyz))+")";
+			cachedLines << " y: "+Vec::toString(e.system.y.xyz)+" ("+String(Vec::length(e.system.y.xyz))+")";
+			cachedLines << " z: "+Vec::toString(e.system.z.xyz)+" ("+String(Vec::length(e.system.z.xyz))+")";
+			cachedLines << " w: "+Vec::toString(e.system.w.xyz)+" ("+String(Vec::length(e.system.w.xyz))+")";
 			M::TVec3<> wz = e.system.w.xyz;
 			Vec::normalize(wz);
 			cachedLines << " w1: "+Vec::toString(wz);
