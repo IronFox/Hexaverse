@@ -1,5 +1,3 @@
-since plane scale now matches vehicle scale: rescale plane geometries to something larger
-
 menu button in configuration mode
 
 
@@ -199,6 +197,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: since plane scale now matches vehicle scale: rescale plane geometries to something larger
 added: nexus tower (defensive tower surrounding each nexus port)
 added: escape text or close button in statistics
 probably fixed (check 15cc1a1f4554405cad52829e3be8b58c3c192814 for details): lingering client attack tasks that cannot be undone or cleared as the server no longer knows them.
