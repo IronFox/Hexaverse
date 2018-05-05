@@ -222,7 +222,7 @@ namespace Objects
 				DX11::InstructionBlock32&trail = smokeTrails.Append();
 				static Geometry geo;
 				geo.Clear();
-				Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,1.f);
+				Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,0.5f);
 				((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
 				trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 				trail.ibo.Create(geo.GetLOD(0).indices);
@@ -2089,7 +2089,7 @@ namespace Objects
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
 				RenderBeam(e->GetWorldPosition(),Grid::ToRadius(e->location.height) - bottom,
-								0.1f
+								0.05f
 								);
 			}
 			bool first = true;
@@ -2107,7 +2107,7 @@ namespace Objects
 					for (const auto&waypoint : t.foci)
 					{
 						RenderBeam(Grid::ToWorld(waypoint.target),Grid::ToRadius(waypoint.target.height) - bottom,
-										0.05f);
+										0.025f);
 					}
 
 				}
@@ -2208,7 +2208,7 @@ namespace Objects
 					color= float3(0.5,0.6,1.0);
 				SetBeamColor(float4(color,0.75),
 							float4(color,0.75));
-				RenderPoleBeam(i,0.2f);
+				RenderPoleBeam(i,0.1f);
 			}
 		}
 		
