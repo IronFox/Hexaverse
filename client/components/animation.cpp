@@ -877,7 +877,9 @@ namespace Animation
 					t->attackQueue.Clear();
 					foreach (state->attackTasks,at)
 					{
-						Grid::AssertIsValid(*at,CLOCATION);
+						Grid::AssertIsHorizontallyValid(*at,CLOCATION);
+						if (at->height != Objects::SubOrbital::Height)
+							Grid::AssertIsVerticallyValid(*at,CLOCATION);
 						auto&task = t->AppendTask(*at);
 						#ifdef HAS_WINDOW
 							Objects::TowerAttackVisualization::Allocate(task).Recompile(*t,*at);

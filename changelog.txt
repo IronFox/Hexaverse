@@ -9,6 +9,7 @@ v0.8.5
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.
 	* Fixed DPI awareness manifest.
+	* Fixed client warning/mishandling of anti-aircraft attack targets.
 	* Fixed bad fog of war at round beginning.
 
 v0.8.4	[Apr 22 2018]
