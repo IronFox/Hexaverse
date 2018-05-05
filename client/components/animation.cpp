@@ -1347,7 +1347,7 @@ namespace Animation
 						#ifdef _DEBUG
 							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(trajectoryAnimation->activeTrajectory.Count())+" steps, starting from "+Vec::toString(trajectoryAnimation->activeTrajectory.First())+", ending "+Vec::toString(trajectoryAnimation->activeTrajectory.Last()));
 						#endif
-						trajectoryAnimation->maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(trajectoryAnimation->activeTrajectory,Objects::Component::Turret::Animation,trajectoryAnimation->trajectoryGeometry,0.5f);
+						trajectoryAnimation->maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(trajectoryAnimation->activeTrajectory,Objects::Component::Turret::Animation,trajectoryAnimation->trajectoryGeometry,0.25f);
 						trajectoryAnimation->instruction.vbo.CreateFromStructs(trajectoryAnimation->trajectoryGeometry.GetLOD(0).vertices);
 						trajectoryAnimation->instruction.ibo.Create(trajectoryAnimation->trajectoryGeometry.GetLOD(0).indices);
 
@@ -1532,7 +1532,7 @@ namespace Animation
 					else
 					{
 						const float f = trajectoryAnimation->projectileAt;
-						static const float maxWidth = 0.25f;
+						static const float maxWidth = 0.125f;
 						float w = maxWidth * (1.f - M::Sqr(1.f - f));
 						float4 color = float4(1,f,f,f);
 						Objects::Renderer::RenderBeam(trajectoryAnimation->beamBase,trajectoryAnimation->beamHeight,w,color,color);

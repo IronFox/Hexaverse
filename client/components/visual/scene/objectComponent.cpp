@@ -185,7 +185,7 @@ namespace Objects
 			static Geometry geo;
 			geo.Clear();
 
-			Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
+			Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.125f);
 
 			if (trajectoryVisualization.shader.IsEmpty())
 				(DX11::BaseInstructionBlock&)trajectoryVisualization = pathShader;
@@ -633,7 +633,7 @@ namespace Objects
 							trajectory.Clear();
 							if (e.TraceTrajectoryFrom(pointOfOrigin,TrajectoryEndPoint( f->target,0), true,trajectory) != TraceResult::InvalidTrajectory)
 							{
-								Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
+								Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.125f);
 
 								Shape&shape = attach.localizableShapes.Append();
 								((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
