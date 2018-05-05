@@ -59,6 +59,7 @@ namespace Objects
 	{
 		Turret			terraformer,mechanic,
 						artillery,launcher,rockets,emp,armored,
+						nexusTurret,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -1012,6 +1013,27 @@ namespace Objects
 			component.independentAttackAndMotion = true;
 		}
 
+		void			NexusTurret::Configure(Turret&component)
+		{
+			#ifdef HAS_WINDOW		
+				component.parts.SetSize(1);
+				component.parts.First().LoadFromObj("objects/nexusTurret.obj");
+			#endif
+
+
+			component.mountType = Turret::MountType::TowerOnly;
+			component.typeName = "Nexus";
+			component.shortName = "nexus";
+			component.constName = ConstName::Turret_Nexus;
+			component.trajectoryType = TrajectoryType::Missile;
+			component.detectsResources = true;
+			component.attacksMovingHostilesDuringMotionPhase = true;
+			
+
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
+				component.baseStorageCapacity.level[Resource::Munitions] = 20;
+			#endif
+		}
 
 	
 		void			EMP::Configure(Turret&component)

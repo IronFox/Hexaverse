@@ -203,6 +203,18 @@ end
 --[[ Turret configurations ]]
 TurretConfig = 
 {
+	Nexus = 
+	{
+		Cost = 5,
+		Weight = 13,
+		HealthMultiplier = 2.5,
+		ScanningRange = 10,	--gets -2 for being a tower that attacks, so 8, +1 more than mobile radar, equal to catamaran radar, -1 less than stationary radar
+		AttacksPerRound = 1,
+		DamageLevel = 10,	--same like missile launcher
+		ExplosionRadius = 1,
+		HorizontalAttackRange = 8,	--can't be much less due to catamaran artillery firing 7+2, so minimal research exceeds tower attack range. these towers should fire the farthest short of emp
+		IsUnlocked = false,
+	},
 	MissileLauncher = 
 	{
 		Cost = 40,
@@ -547,7 +559,7 @@ Constructs a tower structure configuration from a given turret entry.
 Defines both Get and Describe functions.
 It is declared as locked
 ]]
-function DeprecatedTower(turret--[[Table]]) --Table
+function LockedTower(turret--[[Table]]) --Table
 	local rs = Tower(turret);
 	rs.IsUnlocked = false;	--make sure it's not a function. If it's a function, the game assumes it can be unlocked, and displays it as a construction choice
 	return rs;
@@ -569,10 +581,11 @@ StructureConfig =
 	UraniumStorage = DefaultStructure(10),
 	MunitionStorage = DefaultStructure(10),
 	NexusPort = ExplicitStructure(0,1,2,false),
+	NexusTower = LockedTower(TurretConfig.Nexus),
 	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),
 	RocketLauncherTower = Tower(TurretConfig.RocketLauncher),
 	RadarTower = Tower(TurretConfig.Radar),
-	CannonTower = DeprecatedTower(TurretConfig.Cannon),
+	CannonTower = LockedTower(TurretConfig.Cannon),
 	SurveyorTower = Tower(TurretConfig.Surveyor),
 }
 

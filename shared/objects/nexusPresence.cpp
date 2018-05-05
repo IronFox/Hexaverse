@@ -65,7 +65,7 @@ namespace NexusPresence
 
 
 
-	void SpawnNexusBaseAtPoleWithPort(World::Data&world, const Objects::PFaction&nexusFaction, int pole)
+	void SpawnNexusBaseAtPoleWithPort( World::Data&world, const Objects::PFaction&nexusFaction, int pole, bool useNexusTowers )
 	{
 		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
 
@@ -102,13 +102,13 @@ namespace NexusPresence
 				Grid::LowSetup::TDistanceField field;
 				#ifdef LOWER_RESOLUTION_PLANET
 					static const int R = 4;
-					static const int MissileDistance = 4;
+					static const int OffensiveDistance = 4;
 					static const int RadarDistance = 3;
 					static const int OuterFactoryDistance = 2;
 					static const int MaxFactories = 3;
 				#else
 					static const int R = 5;
-					static const int MissileDistance = 5;
+					static const int OffensiveDistance = 5;
 					static const int RadarDistance = 4;
 					static const int OuterFactoryDistance = 3;
 					static const int MaxFactories = 4;
@@ -194,10 +194,24 @@ namespace NexusPresence
 				int generatorCount = 0,
 					connectorCount = 0;
 				float t = 0;
+
+
 				const auto radarPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Radar});
 				ASSERT__(radarPrototype);
 				const auto launcherPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Launcher});
 				ASSERT__(launcherPrototype);
+				const auto nexusPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Nexus});
+				ASSERT__(nexusPrototype);
+
+				const auto offensivePrototype = useNexusTowers ? nexusPrototype : radarPrototype;
+
+
+				#ifndef _DEBUG
+					static const bool placeOffensiveTowers = true;
+				#else
+					static const bool placeOffensiveTowers = true;	//change if this behavior is desirable
+				#endif
+
 				for (index_t i : distances)
 				{
 					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -206,13 +220,11 @@ namespace NexusPresence
 					#if 1
 					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
 					{
-						if (field.distance[i] == MissileDistance)
+						if (field.distance[i] == OffensiveDistance && placeOffensiveTowers)
 						{
-							#ifndef _DEBUG
-								Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),launcherPrototype);
-							#endif
+							Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),offensivePrototype);
 						}
-						if (field.distance[i] == RadarDistance)
+						if (field.distance[i] == RadarDistance && !useNexusTowers)
 						{
 							Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),radarPrototype);
 						}
@@ -358,9 +370,8 @@ namespace NexusPresence
 
 
 
-	void Create( World::Data&world, const Objects::PFaction&nexusFaction, bool & placeBases, bool & placeAllPorts, bool &placeSatellites )
+	void Create( World::Data&world, const Objects::PFaction&nexusFaction, bool placeBases, bool & placeAllPorts, bool placeSatellites, bool placeNexusTowers )
 	{
-		placeBases = placeBases;
 		placeAllPorts = placeAllPorts ||		//all ports by config
 			(
 				RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus && //game is conquer nexus, so we need some
@@ -384,16 +395,16 @@ namespace NexusPresence
 				for (int pole = 0; pole < 12; pole++)
 					if (BaseGrid::IsIsolatedCorner(pole))
 					{
-						SpawnNexusBaseAtPoleWithPort(world,nexusFaction, pole);
+						SpawnNexusBaseAtPoleWithPort(world,nexusFaction, pole, placeNexusTowers);
 					}
 			}
 		}
 	}
 
 	#ifndef CLIENT
-		void Create( bool & placeBases, bool & placeAllPorts, bool &placeSatellites )
+		void Create( bool placeBases, bool & placeAllPorts, bool placeSatellites, bool placeNexusTowers )
 		{
-			Create(World::actual,Objects::Faction::nexus,placeBases,placeAllPorts,placeSatellites);
+			Create(World::actual,Objects::Faction::nexus,placeBases,placeAllPorts,placeSatellites,placeNexusTowers);
 		}
 	#endif
 	

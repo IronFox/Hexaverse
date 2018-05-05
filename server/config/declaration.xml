@@ -220,7 +220,9 @@
 			<variable name="spawnBases" default="true">If enabled, then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
 			<variable name="haveBases" default="true">True if the local world has spawned Nexus bases.</variable>
 			<variable name="spawnAllPorts" default="false">If enabled, then Nexus Ports are spawned at all 12 pole locations. This setting is forcefully applied if gameGoal is set to ConquerNexus and empZones are on.</variable>
-			<variable name="haveAllPorts" default="true">True if the local world has spawned Nexus Ports on all 12 poles.</variable>
+			<variable name="haveAllPorts" default="false">True if the local world has spawned Nexus Ports on all 12 poles.</variable>
+			<variable name="spawnNexusTowers" default="true">If enabled, then Nexus bases feature special Nexus-only tower types replacing their regular towers.</variable>
+			<variable name="haveNexusTowers" default="true">True if the local world has spawned Nexus towers.</variable>
 			<variable name="enableAI" default="true">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).

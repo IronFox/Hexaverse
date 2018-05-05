@@ -429,7 +429,8 @@ namespace Game
 		{
 			Placement	bases,
 						allPorts,
-						satellitesAtopBases
+						satellitesAtopBases,
+						nexusTowers
 						;
 
 			bool		enableAI = false;

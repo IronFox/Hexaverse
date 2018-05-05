@@ -1,6 +1,7 @@
 v0.8.5
 	+ Bomb detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
 	+ Added checkbox to disable terrain camera clipping.
+	+ Introduced new configurable nexus tower that unifies offense and sensory, and can scan into the ground.
 	> Removed internal emergency program in favor of install-directory factory default.
 	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
 	> Added close-button to game-end statistics (still closeable via Escape).

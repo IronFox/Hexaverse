@@ -233,6 +233,11 @@ namespace Game
 			*/
 			extern Placement	satellitesAtopBases;
 
+			/**
+			Replaces player towers with nexus towers
+			*/
+			extern Placement	nexusTowers;
+
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;

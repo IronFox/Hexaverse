@@ -564,6 +564,7 @@ namespace Objects
 	
 		extern Turret	terraformer,mechanic,
 						artillery,launcher,rockets,emp,armored,
+						nexusTurret,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -622,6 +623,11 @@ namespace Objects
 		#endif
 
 		namespace Armored
+		{
+			void		Configure(Turret&);
+		}
+
+		namespace NexusTurret
 		{
 			void		Configure(Turret&);
 		}

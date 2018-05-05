@@ -59,7 +59,8 @@ namespace ConfigurationMode
 								basesRequired = true,
 								simulateLiquids = true,
 								nexusBases = true,
-								allNexusPorts = false;
+								allNexusPorts = false,
+								nexusTowers = true;
 		}
 
 		void					LoadPlanetFrom(const Configuration&cfg);
@@ -218,11 +219,9 @@ namespace ConfigurationMode
 					config.BuildWorld(st.copy);
 
 					GlobalEvents::objectFlush();
-					bool bases = Rules::nexusBases && Detail::Rules::enableAI;
 					bool allNodes = Rules::allNexusPorts;
-					bool sat = true;
 					GlobalEvents::objectFlush();
-					NexusPresence::Create(st.copy, myNexus, bases,allNodes,sat);
+					NexusPresence::Create(st.copy, myNexus, Rules::nexusBases && Detail::Rules::enableAI,allNodes,true,Rules::nexusTowers);
 
 					st.copy.FlushAndValidateSensory(1);
 //					ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
@@ -1046,6 +1045,7 @@ namespace ConfigurationMode
 									cfg.Change("Rules/Nexus/enableAI",Rules::enableAI);
 									cfg.Change("Rules/Nexus/spawnBases",Rules::nexusBases && Rules::enableAI);
 									cfg.Change("Rules/Nexus/spawnAllPorts",Rules::allNexusPorts);
+									//cfg.Change("Rules/Nexus/spawnNexusTowers",Rules::nexusTowers);	//leave as configured by server
 									if (!cfg.SaveToFile(Detail::outConfigPath.GetLocation(), PRODUCT_NAME))
 									{
 										LogEvent(EventClass::Preset::fileError,"Unable to save generated server configuration file at "+String(Detail::outConfigPath.GetLocation()));

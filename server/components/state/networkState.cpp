@@ -711,7 +711,12 @@ namespace Network
 			else
 				logConfig(" -Open: Players can join any time. Game is endless.");
 			if (Game::Config::Nexus::bases.havePlaced)
-				logConfig(" -Nexus-Bases: Nexus bases have been randomly created during world creation");
+			{
+				if (Game::Config::Nexus::nexusTowers.havePlaced)
+					logConfig(" -Nexus-Bases: Nexus bases with Nexus towers have been randomly created during world creation");
+				else
+					logConfig(" -Nexus-Bases: Nexus bases have been randomly created during world creation");
+			}
 			else
 				logConfig(" -No Nexus-Bases: Nexus bases have not been created");
 

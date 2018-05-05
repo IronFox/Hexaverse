@@ -1221,6 +1221,8 @@ namespace Reflection
 				Variable::Set("haveBases",Game::Config::Nexus::bases.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
 				Variable::Set("spawnAllPorts",Game::Config::Nexus::allPorts.doPlace,false,true,Variable::Persistence::ConfigOnly);
 				Variable::Set("haveAllPorts",Game::Config::Nexus::allPorts.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
+				Variable::Set("spawnNexusTowers",Game::Config::Nexus::nexusTowers.doPlace,false,true,Variable::Persistence::ConfigOnly);
+				Variable::Set("haveNexusTowers",Game::Config::Nexus::nexusTowers.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
 				#ifndef NO_SATELLITES
 					Variable::Set("spawnSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.doPlace,false,true,Variable::Persistence::ConfigOnly);
 					Variable::Set("haveSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.havePlaced,false,true,Variable::Persistence::GameInvariant);
