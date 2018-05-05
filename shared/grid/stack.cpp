@@ -119,12 +119,22 @@ namespace Grid
 		}
 	}
 
-	void			AssertIsValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
+	void			AssertIsHorizontallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
 	{
 		if (location.stackID >= LowSetup::GridType::CellCount)
 			throw Except::Program::UnsupportedRequest(loc,"StackID "+String(location.stackID)+" exceeds valid range [0,"+String(LowSetup::GridType::CellCount)+")");
+	}
+	void			AssertIsVerticallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
+	{
 		if (location.height < CellStack::BottomHeight || location.height > CellStack::TopHeight)
 			throw Except::Program::UnsupportedRequest(loc,"Location height "+String(location.height)+" falls outside valid range ["+String(CellStack::BottomHeight)+ "," +String(CellStack::TopHeight)+"]");
+	}
+
+
+	void			AssertIsValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
+	{
+		AssertIsHorizontallyValid(location,loc);
+		AssertIsVerticallyValid(location,loc);
 	}
 
 

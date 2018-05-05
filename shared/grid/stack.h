@@ -954,7 +954,28 @@ namespace Grid
 		void		RemapToLowStacks(BYTE family);
 	#endif
 
-
+	/**
+	Asserts that the specified location falls within the horizontal cell range.
+	Throws Except::Program::UnsupportedRequest if not
+	@param location Location to check
+	@param loc Caller
+	*/
+	void			AssertIsHorizontallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc);
+	/**
+	Asserts that the specified location falls within the vertical stack range.
+	Throws Except::Program::UnsupportedRequest if not.
+	Extra height levels such as orbital or sub orbital are not respected and lead to failure.
+	@param location Location to check
+	@param loc Caller
+	*/
+	void			AssertIsVerticallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc);
+	/**
+	Asserts that the specified location falls both in the horizontal and vertical valid coordinate range.
+	Throws Except::Program::UnsupportedRequest if not.
+	Extra height levels such as orbital or sub orbital are not respected and lead to failure.
+	@param location Location to check
+	@param loc Caller
+	*/
 	void			AssertIsValid(const Grid::LCellIdI&location, const TCodeLocation&loc);
 
 
