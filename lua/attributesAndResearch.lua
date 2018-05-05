@@ -224,7 +224,7 @@ TurretConfig =
 		AttacksPerRound = 1,
 		DamageLevel = 10,
 		ExplosionRadius = 1,
-		HorizontalAttackRange = 8,
+		HorizontalAttackRange = 7,
 		IsUnlocked = true,
 	},
 	RocketLauncher = 

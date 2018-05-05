@@ -5,6 +5,7 @@ v0.8.5
 	> Removed internal emergency program in favor of install-directory factory default.
 	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
 	> Added close-button to game-end statistics (still closeable via Escape).
+	> Reduced default launcher attack range.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.
