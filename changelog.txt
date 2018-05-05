@@ -3,6 +3,7 @@ v0.8.5
 	+ Added checkbox to disable terrain camera clipping.
 	> Removed internal emergency program in favor of install-directory factory default.
 	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
+	> Improved anti-aircraft geometry.
 	> Added close-button to game-end statistics (still closeable via Escape).
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
 	* Fixed random auto-ending of newly generated games.
