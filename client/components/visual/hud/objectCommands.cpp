@@ -26,9 +26,8 @@ extern Engine::Display<Engine::DirectX11>	display;
 
 namespace Objects
 {
-	
-	Command::Container	globalCommands;
-	Command::PCommandGroup		viewCommands;
+	Command::Container		globalCommands;
+	Command::PCommandGroup	viewCommands;
 
 	namespace Command
 	{
@@ -53,20 +52,6 @@ namespace Objects
 			{
 				cmd->Refresh(ControlEnabled);
 			}
-
-
-		//void		RefreshCommands(bool controlEnabled)
-		//{
-		//	controlIsEnabled = controlEnabled;
-		//	globalCommands.Refresh(controlEnabled);
-	
-		//	if (selectedEntity)
-		//	{
-		//		CC*cmds = selectedEntity->GetCommands();
-
-		//		selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>,false);
-		//	}
-		//}
 
 
 		/*static*/ Buffer0<WCommandGroup>		CommandGroup::activeGroupPath;

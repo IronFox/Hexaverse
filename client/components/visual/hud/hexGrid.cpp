@@ -472,7 +472,8 @@ namespace HexGrid
 	namespace BottomRightPanel
 	{
 		typedef std::shared_ptr<Icon>	PIcon;
-		Buffer0<PIcon >				commands;
+		Buffer0<PIcon>				commands;
+		PIcon						menuCommand;
 
 		/*static*/ index_t			Icon::indexCounter = 0;
 			/**/					Icon::Icon(const String&name) : Super(name)
@@ -495,7 +496,7 @@ namespace HexGrid
 
 		void Create()
 		{
-			commands << PIcon( new MenuCommand() );
+			commands << (menuCommand = PIcon( new MenuCommand() ));
 			commands << PIcon( new TutorialCommand() );
 			commands << PIcon( new VoteCommand() );
 
@@ -520,6 +521,17 @@ namespace HexGrid
 		{
 			GridCell*cell = AllocateCell(cmd,coords,Anchor::BottomRight);
 			cmd->Refresh(Network::ControlEnabled());
+		}
+
+		void			RefreshMenuButtonOnly( )
+		{
+			if (!showControlsAndContacts)
+			{
+				foreach (commands,c)
+					FindAndDeleteCell(*c);
+				return;
+			}
+			Add(menuCommand->gridCoords,menuCommand);
 		}
 
 		void			Refresh( )
@@ -1541,12 +1553,15 @@ namespace HexGrid
 
 	void					Configure(const Objects::PWorldEntity&e)
 	{
-		if (ConfigurationMode::ReconfigureVisualCommands())	//configuration mode has its own buttons; should not be removed while active
-			return;
-		const auto cfg = GetGridConfig();
 		ClearCommands();
+		if (ConfigurationMode::DefineHexCommands())	//configuration mode has its own buttons; should not be removed while active
+		{
+			BottomRightPanel::RefreshMenuButtonOnly();
+			return;
+		}
+		const auto cfg = GetGridConfig();
 
-		bool showControls = showControlsAndContacts && e
+		const bool showControls = showControlsAndContacts && e
 				#ifndef DEBUG_ACCESS_RESTRICTIONS
 					&& e->isOwnedByMe && e->IsAlive()
 				#endif

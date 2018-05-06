@@ -17,12 +17,13 @@ namespace ConfigurationMode
 	UINT32	GetServerSeed();
 
 	/**
-	Clears all visual commands and rebuilds their configuration, depending on command group expansion,
+	Rebuilds the local command configuration, depending on command group expansion,
 	and only if configuration mode is active.
-	Automatically called by UI::Configure().
+	Expects all commands to have been removed.
+	Automatically called by UI::Configure(). Do not call manually, unless you know what you are doing.
 	@return True if configuration mode is active, and visual commands were rebuilt, false otherwise.
 	*/
-	bool	ReconfigureVisualCommands();
+	bool	DefineHexCommands();
 
 	/**
 	Executed if the user enters the Ctrl+C key combination

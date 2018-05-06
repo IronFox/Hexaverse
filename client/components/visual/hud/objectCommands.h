@@ -385,7 +385,13 @@ namespace Objects
 
 	}
 
+	/**
+	All commands listed left of entity commands (end round, auto end round, view)
+	*/
 	extern Command::Container		globalCommands;
+	/**
+	Separate list containing all view commands (nested in globalCommands)
+	*/
 	extern Command::PCommandGroup	viewCommands;
 
 	namespace GlobalCmd

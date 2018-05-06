@@ -1258,12 +1258,11 @@ namespace ConfigurationMode
 		return isActive;
 	}
 
-	bool	ReconfigureVisualCommands()
+	bool	DefineHexCommands()
 	{
 		using namespace Detail;
 		if (!isActive)
 			return false;
-		HUD::HexGrid::ClearCommands();
 		foreach (buttons,b)
 			HUD::HexGrid::AddCommand(b->first+int2(2,1),b->second);
 		return true;
