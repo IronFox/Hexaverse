@@ -15,7 +15,12 @@
 
 namespace Objects
 {
-	
+	CONSTRUCT_ENUMERATION3(MarkerType, 
+		EntityDeath,		//friendly entity has died here. usually preserved for 2-5 rounds. AI may preserve them longer to establish statistics 
+		HostileContact,		//hostile entity was detected here when radar contact was lost. Usually preserved until radar contact is re-established
+		Visited				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
+		);	
+
 	/**
 	Persistent scene markers added/removed by the client.
 	Markers are visible only to the owning faction, and do not hinder movement or construction.
@@ -27,11 +32,7 @@ namespace Objects
 		#endif
 	{
 	public:
-		CONSTRUCT_ENUMERATION3(Type, 
-			EntityDeath,		//friendly entity has died here. usually preserved for 2-5 rounds. AI may preserve them longer to establish statistics 
-			HostileContact,		//hostile entity was detected here when radar contact was lost. Usually preserved until radar contact is re-established
-			Visited				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
-			);
+		typedef MarkerType			Type;
 
 		TUniqueID					referenceEntity = TUniqueID::Empty(),	//!< Usage depends on type
 									referenceEntityOwner = TUniqueID::Empty();

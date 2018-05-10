@@ -83,6 +83,7 @@ namespace Objects
 
 	class Compound;
 	class Marker;
+	struct MarkerType;
 	struct TrajectoryEndPoint;
 	struct TChoiceVisualization;
 
