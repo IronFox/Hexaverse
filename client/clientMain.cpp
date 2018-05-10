@@ -193,31 +193,34 @@ namespace ApplicationInterface
 		Network::Channels::automate.SendTo(Network::client,Protocol::EntityStateUpdate(e->id,doAutomate));
 	}
 
-	void	SignalRemoval(const Objects::PWorldEntity&entity)
+	void	SignalRemoval( const Objects::PWorldEntity&entity, bool allowConfirmation )
 	{
 		TUniqueID id = entity->id;
 		#ifdef HAS_WINDOW
-			HUD::Dialog::Confirm("Confirm destruction of "+entity->GetNiceName()+". This operation cannot be undone.",[id]()
+			if (allowConfirmation)
 			{
-				Network::Channels::removeEntity.SendTo(Network::client,id);
+				HUD::Dialog::Confirm("Confirm destruction of "+entity->GetNiceName()+". This operation cannot be undone.",[id]()
+				{
+					Network::Channels::removeEntity.SendTo(Network::client,id);
 	
-			},
-			[id]()->HUD::Dialog::CheckResult
-			{
-				if (!Network::client.IsConnected())
-					return HUD::Dialog::CheckResult::Abort;
-				Objects::PWorldEntity e = Objects::GetEntity(id);
-				if (!e || !e->isOwnedByMe)
-					return HUD::Dialog::CheckResult::Abort;
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
-					return HUD::Dialog::CheckResult::OkayNotRightNow;
-				return HUD::Dialog::CheckResult::OkayContinue;
+				},
+				[id]()->HUD::Dialog::CheckResult
+				{
+					if (!Network::client.IsConnected())
+						return HUD::Dialog::CheckResult::Abort;
+					Objects::PWorldEntity e = Objects::GetEntity(id);
+					if (!e || !e->isOwnedByMe)
+						return HUD::Dialog::CheckResult::Abort;
+					if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
+						return HUD::Dialog::CheckResult::OkayNotRightNow;
+					return HUD::Dialog::CheckResult::OkayContinue;
+				}
+				);
+				return;
 			}
-			);
-		#else
-
-			Network::Channels::removeEntity.SendTo(Network::client,entity->id);
+			else
 		#endif
+		Network::Channels::removeEntity.SendTo(Network::client,entity->id);
 	}
 
 	void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component::Turret*&newTurret)
@@ -413,10 +416,10 @@ namespace ApplicationInterface
 		ObjectHelper::InnerUndoTask(e,false);
 	}
 
-	void	SignalDropAllTasks(const Objects::PWorldEntity&e)
+	void	SignalDropAllTasks( const Objects::PWorldEntity&e, bool allowConfirmation )
 	{
 		#ifdef HAS_WINDOW
-			if (e->IsMobile())
+			if (allowConfirmation && e->IsMobile())
 			{
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
 				if (v->constructionActionCounter > 0 
@@ -439,11 +442,6 @@ namespace ApplicationInterface
 					});
 					return;
 				}
-				else
-				{
-			
-				}
-		
 			}
 		#endif
 		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::AllTasks));

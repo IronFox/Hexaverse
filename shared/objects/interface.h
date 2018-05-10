@@ -33,12 +33,24 @@ namespace ApplicationInterface
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, Objects::EntityType parameterName);
 	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode activeCursorMode,const Array<Grid::HCellIdI>&selection);
 	void	SignalDropLastTask(const Objects::PWorldEntity&v);
-	void	SignalDropAllTasks(const Objects::PWorldEntity&v);
+	/**
+	Causes the client to send a task drop request to the server.
+	This function is thread-safe ONLY IF allowConfirmation is set to false.
+	@param e Entity to attempt destruction of
+	@param allowConfirmation Set true to allow a visual client to ask the user in case resource loss is detected. If true, function is NOT thread safe.
+	*/
+	void	SignalDropAllTasks(const Objects::PWorldEntity&v, bool allowConfirmation=true);
 	void	SignalDropSafeTasks(const Objects::PWorldEntity&v);
 	void	SignalRestoreCoreLink(const TUniqueID&mineId);
 	void	SignalConstructionAbort(const TUniqueID&plantId,const TUniqueID&taskId);
 	void	SignalConstructionBegin(const TUniqueID&plantId,Objects::EntityType);
-	void	SignalRemoval(const Objects::PWorldEntity&);
+	/**
+	Causes the client to send a deletion request to the server.
+	This function is thread-safe ONLY IF allowConfirmation is set to false.
+	@param e Entity to attempt destruction of
+	@param allowConfirmation Set true to allow a visual client to ask the user if this deletion should commence. If true, function is NOT thread safe.
+	*/
+	void	SignalRemoval(const Objects::PWorldEntity&e, bool allowConfirmation=true);
 	void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component::Turret*&newTurret);
 	void	SignalAutomation(const Objects::PWorldEntity&e, bool doAutomate);
 	void	SignalSleep(const Objects::PWorldEntity&v, bool doSleep);
