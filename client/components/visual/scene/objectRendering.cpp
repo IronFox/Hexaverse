@@ -249,7 +249,7 @@ namespace Objects
 
 	Engine::OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, EntityType entityType)
 	{
-		static GenericHashTable<EntityType, Engine::OpenAL::Wave>	waveTable;
+		static HashTable<EntityType, Engine::OpenAL::Wave>	waveTable;
 		Engine::OpenAL::WaveBuffer result;
 		if (waveTable.Query(entityType,result))
 			return result;

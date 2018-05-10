@@ -1513,11 +1513,11 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
-		/*static*/ GenericHashTable<TUniqueID,PFaction>	Faction::idMap;
+		/*static*/ HashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
-		/*static*/ GenericHashTable<TUniqueID, index_t>	Marker::idMap,
+		/*static*/ HashTable<TUniqueID, index_t>	Marker::idMap,
 								Marker::referenceIDMap,
 								Marker::visitedSystemIDMap;
 		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;

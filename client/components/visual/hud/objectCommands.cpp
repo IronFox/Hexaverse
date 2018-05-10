@@ -57,7 +57,7 @@ namespace Objects
 		/*static*/ Buffer0<WCommandGroup>		CommandGroup::activeGroupPath;
 
 
-		/*static*/ GenericHashTable<PathString, DX11::Texture>	VisualCommand::textureMap;
+		/*static*/ HashTable<PathString, DX11::Texture>	VisualCommand::textureMap;
 
 
 

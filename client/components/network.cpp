@@ -48,7 +48,7 @@ namespace Network
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
 	INT32			uplinkBandwidth = -1;
 	
-	GenericHashTable<TUniqueID,CryptographicID>	accessMap;
+	HashTable<TUniqueID,CryptographicID>	accessMap;
 
 
 	Protocol::GameProgress	gameProgress;
@@ -60,7 +60,7 @@ namespace Network
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
 
-	GenericHashSet<TUniqueID>	visitedWorldMap;
+	HashSet<TUniqueID>	visitedWorldMap;
 
 
 	bool	IsValidNickname(const String&candidate)
@@ -2025,7 +2025,7 @@ namespace Network
 
 
 	Buffer0<ServerInfo,Swap>	servers;
-	GenericHashTable<TUniqueID,index_t>	serverMap;
+	HashTable<TUniqueID,index_t>	serverMap;
 
 	Timer::Time		lastPing = timer.Now(),lastServerTableUpdate=timer.Now();
 

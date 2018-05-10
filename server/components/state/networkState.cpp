@@ -57,9 +57,9 @@ namespace ApplicationInterface
 
 namespace Network
 {
-	Ctr::Buffer<PClient>	activePlayersAndSpectators,spectators;
-	Ctr::GenericHashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
-	Ctr::GenericHashTable<CryptographicID,Objects::PFaction>		tokenMap;
+	Buffer0<PClient>	activePlayersAndSpectators,spectators;
+	HashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
+	HashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 	namespace Heartbeat

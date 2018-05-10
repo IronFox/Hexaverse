@@ -269,7 +269,7 @@ namespace FileIO
 		};
 	}
 
-	static void Export(Riff::Chunk*parent, const Objects::WorldEntity&e, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, const Objects::WorldEntity&e, HashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		factions.Set(e.owner);
 		static ByteStreamBuffer stream;
@@ -294,7 +294,7 @@ namespace FileIO
 	}
 
 
-	typedef GenericHashTable<TUniqueID,Objects::PFaction>	FactionMap;
+	typedef HashTable<TUniqueID,Objects::PFaction>	FactionMap;
 	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const FactionMap&ownerMap)
 	{
 		using namespace ApplicationInterface;
@@ -726,7 +726,7 @@ namespace FileIO
 
 	Ctr::Buffer0<Objects::PMobileEntity>	insertIntoHangar;
 
-	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, HashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		Objects::PHangar store = v.storedIn.lock();
 		if (store)
@@ -894,7 +894,7 @@ namespace FileIO
 
 
 
-	static void Export(Riff::Chunk*parent, Objects::Structure&s, Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
+	static void Export(Riff::Chunk*parent, Objects::Structure&s, HashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		Export(parent,(Objects::WorldEntity&)s,factions);
 		Export(parent,RID::structureType,s.GetTypeName());
@@ -1832,7 +1832,7 @@ namespace FileIO
 		//general->AppendBlock(RID::exposeActionLeftToHostileFactions )->SetPODData(State::Config::exposeActionLeftToHostileFactions );
 		//general->AppendBlock(RID::doomsdayWeapons)->SetPODData((UINT8)RuntimeConfig::doomsdayWeapons);
 
-		Ctr::GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
+		HashSet<Objects::PFaction,SharedPtrHash>	allFactions;
 
 		WriteActualWorldToContainer(container);
 

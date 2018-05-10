@@ -779,7 +779,7 @@ namespace HexGrid
 	class Region
 	{
 	public:
-		GenericHashTable<int2,ScrollArea>	scrollAreas;
+		HashTable<int2,ScrollArea>	scrollAreas;
 		IndexTable<M::TFloatRange<> >	rowRanges;
 		M::TIntRange<int>				yRanges;
 		/**

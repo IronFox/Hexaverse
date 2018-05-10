@@ -137,7 +137,7 @@ namespace Objects
 			static SharedContainer<Structure>		deadStructureGhosts,livingStructureGhosts;
 			static SharedContainer<MobileEntity>	deadMobileGhosts,livingMobileGhosts;
 			static Buffer0<TVisited>	visitedSystems;
-			static GenericHashTable<TUniqueID, index_t>	idMap, referenceIDMap,visitedSystemIDMap;
+			static HashTable<TUniqueID, index_t>	idMap, referenceIDMap,visitedSystemIDMap;
 		#endif
 	};
 
@@ -338,7 +338,7 @@ namespace Objects
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
-			static GenericHashTable<TUniqueID,PFaction>	idMap;
+			static HashTable<TUniqueID,PFaction>	idMap;
 
 			static PFaction				mine;
 
@@ -430,7 +430,7 @@ namespace Objects
 			UnitClass			hasUnitClasses = UnitClass::None;
 
 			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;
-			Ctr::GenericHashTable<TUniqueID, index_t>	markerMap,referenceMap;
+			Ctr::HashTable<TUniqueID, index_t>	markerMap,referenceMap;
 
 
 

@@ -70,7 +70,7 @@ namespace Journal
 
 			ASSERT__(f);
 
-			static Ctr::GenericHashSet<TUniqueID>	processed;
+			static HashSet<TUniqueID>	processed;
 			processed.Clear();
 
 			for (index_t retry = 0; retry < fstrand.entityStrands.Count(); retry++)

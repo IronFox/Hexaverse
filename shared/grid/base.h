@@ -925,7 +925,7 @@ template <unsigned Exponent>
 	{
 		cells.SetSize(CellCount);
 		Ctr::Buffer<TCellVertex>	vtx;
-		Ctr::GenericHashTable<TriangleKey, UINT32>	vtxMap;
+		Ctr::HashTable<TriangleKey, UINT32>	vtxMap;
 		for (index_t i = 0; i < CellCount; i++)
 		{
 			TCellVertex&v = vtx.Append();

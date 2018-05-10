@@ -158,8 +158,8 @@ namespace Objects
 		class AreaHelper
 		{
 		public:
-			Ctr::Queue<Grid::LCellIdI>	queue;
-			Ctr::GenericHashSet<Grid::LCellIdI>	visited;
+			Queue<Grid::LCellIdI>	queue;
+			HashSet<Grid::LCellIdI>	visited;
 
 			bool				operator>>(Grid::LCellIdI&next)
 			{

@@ -34,7 +34,7 @@ namespace Objects
 			typedef	Base	Super;
 		public:
 			#undef LoadIcon
-			static GenericHashTable<PathString, DX11::Texture>	textureMap;
+			static HashTable<PathString, DX11::Texture>	textureMap;
 
 			/**/			VisualCommand(const String&name):Super(name) {}
 			/**/			VisualCommand() {}

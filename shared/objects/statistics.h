@@ -89,7 +89,7 @@ namespace Objects
 		private:
 			UINT64&					FetchOptional(Metric metric);
 
-			GenericHashTable<K,UINT64>	map;
+			HashTable<K,UINT64>	map;
 		};
 
 
