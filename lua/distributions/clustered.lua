@@ -7,9 +7,7 @@ void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-pri
 int		Game.RandomInt(int min, int max)		Generates a pseudo random value in the range [min,max]
 float	Game.Simplex(float x, float y, float z)	Samples a raw OpenSimplex noise value for the specified coordinates. The result is in the range [-1,+1], smooth, and semi-normaly distributed
 
-bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
-float	Game.UnitScale					Set to a global unit scale corresponding to [Game.LowerResolutionPlanet]. This scale value is to be
-										applied too units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
+bool	Game.lowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
 
 Cell[]		Game.lowCells				Ordered table of all planar cells in the world, with:
 Cell
