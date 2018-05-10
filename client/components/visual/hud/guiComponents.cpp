@@ -1908,29 +1908,31 @@ namespace Component
 		for (const String&raw : rawText)
 		{
 			Wrap(raw,width,CharWidth,wrapped);
-			if (width > CharWidth('X'))
-				foreach (wrapped,w)
-				{
-					float accum = 0;
-					Buffer0<float> widths,lengths;
-					foreach (*w, c)
+			#ifdef _DEBUG
+				if (width > CharWidth('X'))
+					foreach (wrapped,w)
 					{
-						float w = CharWidth(*c);
-						widths << w;
-						accum += w;
-						lengths << accum;
+							float accum = 0;
+						Buffer0<float> widths,lengths;
+						foreach (*w, c)
+						{
+							float w = CharWidth(*c);
+							widths << w;
+							accum += w;
+							lengths << accum;
+						}
+						//const float swidth = textout.GetScaledWidth(*w);
+						//ASSERT__(M::Similar(swidth,accum));	//<- this may fail if the string contains special icons, since they are considered by CharWidth() but not by GetScaledWidth()
+						if (accum > width)
+						{
+							const index_t atWord = w - wrapped.pointer();
+							const char*const word = w->begin();
+							Array<StringRef>	wrapped2;
+							Wrap(raw,width,CharWidth,wrapped2);
+						}
+						ASSERT_LESS_OR_EQUAL__(accum,width);
 					}
-					const float swidth = textout.GetScaledWidth(*w);
-					ASSERT__(M::Similar(swidth,accum));
-					if (accum > width)
-					{
-						const index_t atWord = w - wrapped.pointer();
-						const char*const word = w->begin();
-						Array<StringRef>	wrapped2;
-						Wrap(raw,width,CharWidth,wrapped2);
-					}
-					ASSERT_LESS_OR_EQUAL__(accum,width);
-				}
+			#endif
 			wrappedText.MoveAppendAll(wrapped);
 		}
 		if (wrappedText.IsEmpty())
