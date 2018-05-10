@@ -259,7 +259,7 @@ public:
 		int		height;
 
 		/**/	CellIdI()	{}
-		/**/	CellIdI(index_t cellID, int height) :stackID((UINT32)cellID), height(height){}
+		/**/	CellIdI(index_t stackID, int height) :stackID((UINT32)stackID), height(height){}
 		bool	operator==(const CellIdI&other)const { return stackID == other.stackID && height == other.height; }
 		bool	operator!=(const CellIdI&other)const { return stackID != other.stackID || height != other.height; }
 		CellIdI	operator+(int heightDelta) const { return CellIdI(stackID, height + heightDelta); }
