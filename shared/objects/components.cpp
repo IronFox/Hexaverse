@@ -872,8 +872,8 @@ namespace Objects
 			FFunc		doomsdayExplosionRadius;
 			IFunc		doomsdayDamageLevel;
 
-			LuaAttributeWithDefault<int,200>		doomsdayUraniumCost;
-			LuaAttributeWithDefault<int,-100>		regularUraniumCost;
+			AttributeWithDefault<int,200>		doomsdayUraniumCost;
+			AttributeWithDefault<int,-100>		regularUraniumCost;
 
 		}
 

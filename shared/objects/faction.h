@@ -8,10 +8,11 @@
 #include "../stringTable.h"
 #include "../roundNumber.h"
 #include "../sharedContainer.h"
-#include "research.h"
+#include "research/factionState.h"
 #include "../grid/resources.h"
 #include "statistics.h"
 #include <map>
+
 
 namespace Objects
 {

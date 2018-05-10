@@ -3,7 +3,6 @@
 #include "hud/objectCommands.h"
 #include <objects/structure.h>
 #include "objectSelection.h"
-#include <objects/research.h>
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>
 #include <objects/prototypes.h>

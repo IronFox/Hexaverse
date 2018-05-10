@@ -5,11 +5,12 @@
 #include "cursorMode.h"
 #include "types.h"
 #include "componentAttribute.h"
-#include "luaAttribute.h"
+#include "research/attributes.h"
 #include "description.h"
 #include "entityCommand.h"
 #include "clientAttachment.h"
 #include "geometry.h"
+#include "projectileImpact.h"
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
 #endif
@@ -29,53 +30,6 @@ namespace Objects
 	};
 
 
-	CONSTRUCT_ENUMERATION3(
-		TraceResult,
-			InvalidTrajectory,
-			ReachesTarget,
-			MidFlightImpact
-	);
-
-	struct ImpactDetails
-	{
-		TraceResult			result;
-		M::TVec3<>			impactAt;	//!< World location of any detected impact. Valid only if result!=TrajectoryResult::InvalidTrajectory
-		Grid::HCellIdI		impactCell;	//!< High resolution cell location of any detected impact. Valid only if result!=TrajectoryResult::InvalidTrajectory
-		float				artilleryAngle=0;	//!< Used artillery angle for this impact. Valid only if result!=TrajectoryResult::InvalidTrajectory, and used weapon is artillery
-		/**
-		Geometric distance to the given destination.
-		Valid only if result != TrajectoryResult::InvalidTrajectory
-		*/
-		float				distanceToTarget=0;
-
-		friend String		ToString(const ImpactDetails&det)
-		{
-			if (det.result == TraceResult::InvalidTrajectory)
-				return "No Impact";
-			return String(det.result.ToString())+": @"+ToString(det.impactAt)+"/"+ToString(det.impactCell)+", dist="+String(det.distanceToTarget);
-		}
-
-		operator TraceResult() const {return result;}
-		bool				operator==(const TraceResult&rs) const {return result == rs;}
-		bool				operator!=(const TraceResult&rs) const {return result != rs;}
-
-		bool				operator!=(const ImpactDetails&other) const	{return !operator==(other);}
-		bool				operator==(const ImpactDetails&other) const
-		{
-			return result == other.result
-					&& Vec::equal(impactAt,other.impactAt)
-					&& artilleryAngle == other.artilleryAngle
-					&& distanceToTarget == other.distanceToTarget;
-		}
-
-		void				AssertEquality(const ImpactDetails&other) const
-		{
-			ASSERT2__(result == other.result,result.ToString(),other.result.ToString());
-			ASSERT2__(Vec::equal(impactAt,other.impactAt),impactAt,other.impactAt);
-			ASSERT_EQUAL__(artilleryAngle,other.artilleryAngle);
-			ASSERT_EQUAL__(distanceToTarget,other.distanceToTarget);
-		}
-	};
 
 
 
@@ -159,9 +113,9 @@ namespace Objects
 
 
 		template <typename T, int EmptyDefault=0>
-			class LuaAttributeWithDefault : public Objects::LuaAttribute<T>
+			class AttributeWithDefault : public Objects::Research::Attribute<T>
 			{
-				typedef Objects::LuaAttribute<T>	Super;
+				typedef Objects::Research::Attribute<T>	Super;
 			public:
 				T						GetValue(const Research::Attributes::Table&researchState) const
 				{
@@ -205,8 +159,8 @@ namespace Objects
 			String							typeName,shortName;
 			ConstName						constName;
 			int								initiative;
-			LuaAttribute<int>				productionCosts /*=1*/;
-			LuaAttributeWithDefault<bool,true>	isUnlocked;
+			Research::Attribute<int>		productionCosts /*=1*/;
+			AttributeWithDefault<bool,true>	isUnlocked;
 											
 
 
@@ -223,8 +177,8 @@ namespace Objects
 		};
 
 
-		typedef LuaAttribute<float>			FFunc;
-		typedef LuaAttribute<int>			IFunc;
+		typedef Research::Attribute<float>	FFunc;
+		typedef Research::Attribute<int>	IFunc;
 
 
 	
@@ -550,8 +504,8 @@ namespace Objects
 		namespace Bomb
 		{
 			extern FFunc		doomsdayExplosionRadius;
-			extern LuaAttributeWithDefault<int,200>		doomsdayUraniumCost;
-			extern LuaAttributeWithDefault<int,-100>	regularUraniumCost;
+			extern AttributeWithDefault<int,200>	doomsdayUraniumCost;
+			extern AttributeWithDefault<int,-100>	regularUraniumCost;
 			extern IFunc		doomsdayDamageLevel;
 
 			void		Configure(Turret&);

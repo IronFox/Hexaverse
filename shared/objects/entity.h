@@ -7,7 +7,7 @@
 #include "turretBase.h"
 #include "types.h"
 #include "hibernating.h"
-#include "luaAttribute.h"
+#include "research/attributes.h"
 #include "description.h"
 #include "entityCommand.h"
 #include "geometry.h"
@@ -138,10 +138,10 @@ namespace Objects
 	{
 	public:
 		//all functions here take the research state of an owning faction into account
-		LuaAttribute<int>			maxHealth,
+		Research::Attribute<int>	maxHealth,
 									constructionCost;
-		LuaAttribute<float>			maxScanningRange;
-		LuaAttribute<bool>			isUnlocked;
+		Research::Attribute<float>	maxScanningRange;
+		Research::Attribute<bool>	isUnlocked;
 	};
 
 	

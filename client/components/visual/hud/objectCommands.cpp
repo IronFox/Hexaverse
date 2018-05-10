@@ -15,7 +15,6 @@
 #include <objects/gridAndChoices.h>
 #include <objects/components.h>
 #include <image/converter/magic.h>
-#include <objects/research.h>
 #include "../../network.h"
 #include "../scene/terrain.h"
 
