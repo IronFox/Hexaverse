@@ -569,6 +569,13 @@ namespace Lua
 		/**/		Reference(){}
 		virtual		~Reference() {};
 		void		operator=(const Reference&other);
+		/**
+		Reference comparison. Does not compare content
+		*/
+		bool		operator==(const Reference&other) const	{return GetProgram() == other.GetProgram() && GetRefID() == other.GetRefID();}
+		bool		operator!=(const Reference&other) const {return !operator==(other);}
+
+		bool		operator!() const {return IsEmpty();}
 
 		/**
 		Clears any locally held Lua references
@@ -660,6 +667,10 @@ namespace Lua
 		void			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
 
 		void			DeserializeMerge(IReadStream&stream);
+
+		/**
+		Assigns this reference to a new (or existing) global variable by the given name
+		*/
 		void			SetGlobal(const String&name);
 
 	};
