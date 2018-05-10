@@ -176,7 +176,6 @@ namespace Tutorial
 
 		void	CheckTaskConditions()
 		{
-			ASSERT__(scriptAPI.myEntityList.GetLength() > 0);
 			Trigger::checkTaskConditions();
 		}
 

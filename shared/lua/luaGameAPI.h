@@ -18,11 +18,11 @@ namespace Lua
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
 							gridTable;	//Game.Grid.X
-		Lua::Table			entityList,
-							factionList,
-							allianceList;
+		Lua::Table			entityIDMap,
+							factionIDMap,
+							allianceIDMap;
 		#ifdef CLIENT	
-			Lua::Table		myEntityList,
+			Lua::Table		myEntityIDMap,
 							myMarkerList,
 							myResearch;
 		#endif

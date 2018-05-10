@@ -327,12 +327,12 @@ namespace Lua
 
 	void		API::FlushAllObjects(bool clearCaches/*=false*/)
 	{
-		entityList.ClearTable();
-		factionList.ClearTable();
-		allianceList.ClearTable();
+		entityIDMap.ClearTable();
+		factionIDMap.ClearTable();
+		allianceIDMap.ClearTable();
 		entityMap.Clear();
 		#ifdef CLIENT
-			myEntityList.ClearTable();
+			myEntityIDMap.ClearTable();
 			myMarkerList.ClearTable();
 			myResearch.ClearTable();
 			gameTable.UnsetField("myCurrentResearch");
@@ -388,18 +388,18 @@ namespace Lua
 		gameTable.SetField("Grid",gridTable);
 		gameTable.SetGlobal("Game");
 
-		entityList = program->CreateTable();
-		gameTable.SetField("units",entityList);
+		entityIDMap = program->CreateTable();
+		gameTable.SetField("units",entityIDMap);
 		#ifdef CLIENT
-			myEntityList = program->CreateTable();
-			gameTable.SetField("myUnits",myEntityList);
+			myEntityIDMap = program->CreateTable();
+			gameTable.SetField("myUnits",myEntityIDMap);
 		#endif
 
-		factionList = program->CreateTable();
-		gameTable.SetField("factions",factionList);
+		factionIDMap = program->CreateTable();
+		gameTable.SetField("factions",factionIDMap);
 
-		allianceList = program->CreateTable();
-		gameTable.SetField("alliances",allianceList);
+		allianceIDMap = program->CreateTable();
+		gameTable.SetField("alliances",allianceIDMap);
 
 
 		String name = program->GetName();
@@ -563,7 +563,7 @@ namespace Lua
 		if (found)
 		{
 			if (allianceMappedToTable.SetNew(a->id))
-				allianceList.AppendElement(found->table);
+				allianceIDMap.SetField(a->id.ToFullString(),found->table);
 			if (!updateIfFound)
 				return found;
 			t = found->table;
@@ -577,7 +577,7 @@ namespace Lua
 			t.SetField("members",found->factionTable);
 
 			allianceMappedToTable.Set(a->id);
-			allianceList.AppendElement(t);
+			allianceIDMap.SetField(a->id.ToFullString(),t);
 		}
 		found->factionTable.ClearTable();
 		a->VisitMembers([found,this](const Objects::PFaction&f)
@@ -601,7 +601,7 @@ namespace Lua
 		if (found)
 		{
 			if (factionMappedToTable.SetNew(f->id))
-				factionList.AppendElement(found->table);
+				factionIDMap.SetField(f->id.ToFullString(),found->table);
 
 			if (!updateIfFound)
 				return found;
@@ -616,7 +616,7 @@ namespace Lua
 			t.SetField("units",found->entityTable);
 
 			factionMappedToTable.Set(f->id);
-			factionList.AppendElement(t);
+			factionIDMap.SetField(f->id.ToFullString(),t);
 		}
 
 		t.SetField("name",f->name);
@@ -644,10 +644,11 @@ namespace Lua
 			t = found->first;
 			if (actual && entityMappedToTable.SetNew(e->id))
 			{
-				entityList.AppendElement(t);
+				const String sid = e->id.ToFullString();
+				entityIDMap.SetField(sid,t);
 				#ifdef CLIENT
 					if (e->isOwnedByMe)
-						myEntityList.AppendElement(t);
+						myEntityIDMap.SetField(sid,t);
 				#endif
 			}
 			if (!updateIfFound && actual == found->second)
@@ -661,11 +662,13 @@ namespace Lua
 			
 			if (actual)
 			{
+				const String sid = e->id.ToFullString();
+
 				entityMappedToTable.Set(e->id);
-				entityList.AppendElement(t);
+				entityIDMap.SetField(sid,t);
 				#ifdef CLIENT
 					if (e->isOwnedByMe)
-						myEntityList.AppendElement(t);
+						myEntityIDMap.SetField(sid,t);
 				#endif
 			}
 			loadedEntityTableMap.Set(e->id,std::make_pair(t,actual));
