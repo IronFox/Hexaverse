@@ -4,6 +4,7 @@
 #include "grid/stack.h"
 #include "grid/resources.h"
 #include "objects.h"
+#include "../objects/faction.h"
 
 namespace Lua
 {
@@ -12,6 +13,44 @@ namespace Lua
 		void LogLua(const String&msg, const String&programName)
 		{
 			LogEvent(EventClass::Preset::important,programName+"(Lua): "+msg);
+		}
+		
+
+		index_t	LuaCellToStack( const Lua::Table&cellTable, const String&parameterName )
+		{
+			if (cellTable.IsEmpty())
+				throw Lua::Exception(parameterName + " is nil.");
+			auto luaIndex = cellTable.GetField("index");
+			if (luaIndex.IsEmpty())
+				throw Lua::Exception(parameterName + " has no entry 'index'.");
+
+			const int stackID = luaIndex.GetAs<int>();
+
+			if (stackID < 1 || stackID > Grid::LowSetup::GridType::CellCount)
+				throw Lua::Exception(parameterName + " is invalid cell location (#"+String(stackID)+" not in [1,"+String(Grid::LowSetup::GridType::CellCount)+"]).");
+
+			return index_t(stackID-1);
+		}
+
+		Grid::LCellIdI CellHToLGridCell( const Lua::Table&luaCell, int h, const String&parameterName)
+		{
+			return Grid::LCellIdI(LuaCellToStack(luaCell,parameterName),h);
+
+		}
+
+		Grid::LCellIdI ToLGridCell( const Lua::Table&loc, const String&parameterName )
+		{
+			if (loc.IsEmpty())
+				throw Lua::Exception(parameterName+" is nil");
+			Lua::Table luaHeight = loc.GetField("height");
+			if (!luaHeight)
+				throw Lua::Exception(parameterName+".height is nil");
+			const int h = luaHeight.GetAs<int>();
+			if (h < Grid::CellStack::BottomHeight)
+				throw Lua::Exception(parameterName+".height ("+String(h)+") falls below minimum height ("+String(Grid::CellStack::BottomHeight)+")");
+			//_might_ test top limit here, but not for now
+
+			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
 		#ifdef CLIENT
@@ -64,11 +103,9 @@ namespace Lua
 				throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
 			}
 
-			int GetResourceCoverage(const String&resourceName, int luaStackID)
+			int GetResourceCoverage(const String&resourceName, Lua::Table cellTable)
 			{
-				const int stackID = luaStackID -1;
-				if (stackID < 0 || stackID >= Grid::LowSetup::GridType::CellCount)
-					throw Lua::Exception("GetResourceCoverage(): Invalid location ("+String(luaStackID)+" in [1,"+String(Grid::LowSetup::GridType::CellCount)+"]).");
+				const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)");
 				foreach (Grid::Resource::all,r)
 					if (r->GetName() == resourceName)
 					{
@@ -78,9 +115,42 @@ namespace Lua
 					}
 				throw Lua::Exception("GetResourceCoverage(): Resource '"+resourceName+"' does not exist.");
 			}
+
+
+			//Lua::Table	CreateMarker( const Lua::Table&entity, const String&type )
+			//{
+			//	Objects::Marker::Type t;
+			//	if (!t.Decode(type.c_str()))
+			//		throw Lua::Exception("CreateMarker(): Marker type '"+type+"' is not supported");
+			//	Objects::Marker m = ApplicationInterface::CreateMarker(ToLGridCell(loc,"CreateMarker(): location parameter #1"),t);
+			//	Protocol::Marker marker;
+			//	marker.id.Generate();
+			//	marker.location = v->location;
+			//	tempMarkers << v->system.w.xyz;
+			//	static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
+			//	marker.data.Set2();
+			//	ObjectHelper::SignalMarkerCreation(marker);
+
+			//}
+
+
 		#endif
 
-		Lua::Reference ToTable(Lua::PProgram&p, const M::TVec3<>&v)
+
+
+
+
+		float GetDistance(const Lua::Table&locA, const Lua::Table&locB)
+		{
+			if (locA == locB)
+				return 0;
+			auto loc0 = ToLGridCell(locA,"GetDistance(): parameter #1");
+			auto loc1 = ToLGridCell(locB,"GetDistance(): parameter #2");
+			return Grid::GetGeometricDistance(loc0,loc1);
+		}
+
+
+		Lua::Reference ToTable(const Lua::PProgram&p, const M::TVec3<>&v)
 		{
 			Lua::Table c = p->CreateTable();
 
@@ -91,130 +161,582 @@ namespace Lua
 			return c;
 		}
 
-		Lua::Reference ToTable(Lua::PProgram&p, const Grid::LCellIdI&cell)
+	
+	}
+
+
+	Lua::Table API::ToTable(const Grid::LCellIdI&cell)
+	{
+		Lua::Table*t = locationMap.QueryPointer(cell);
+		if (t)
+			return *t;
+		Lua::Table c = program->CreateTable();
+
+		c.SetField("height" ,cell.height);
+		c.SetField("cell",lowCellGrid[cell.stackID]);
+		c.SetField("world",Detail::ToTable(program,Grid::ToWorld(cell)));
+
+		locationMap.Set(cell,c);
+
+		return c;
+	}
+
+	Lua::Table API::ToTable(const Objects::MobileEntity::Task&task)
+	{
+		Lua::Table taskOut = program->CreateTable();
+		taskOut.SetField("name",task.name);
+		taskOut.SetField("isJob",task.IsJob());
+
+		Lua::Table foci = program->CreateTable();
+		foreach (task.foci,f)
+			foci.AppendElement(ToTable(f->target));
+		taskOut.SetField("foci",foci);
+
+		return taskOut;
+	}
+
+	Lua::Table API::ToTable(const Objects::TurretBase&b, const Objects::Research::Attributes::Table&researchState)
+	{
+
+		Lua::Table t = program->CreateTable();
+		//b.
+		t.SetField("typeName",b.turret->typeName);
+		t.SetField("weight",b.turret->weight.GetValue(researchState));
+		t.SetField("detectsResources",b.turret->detectsResources);
+		t.SetField("canAttack",b.turret->CanAttack());
+		if (b.turret->CanAttack())
 		{
-			Lua::Table c = p->CreateTable();
-
-			c.SetField("height" ,cell.height);
-			c.SetField("stackID" ,cell.stackID+1);
-
-			return c;
+			t.SetField("trajectoryType",b.turret->trajectoryType.ToString());
+			t.SetField("independentAttackAndMotion",b.turret->independentAttackAndMotion);
+			t.SetField("ammoType",b.turret->ammoType.ToString());
+			t.SetField("ammoDemandPerShot",b.turret->ammoNeedPerShot.GetValue(researchState));
+			#ifdef ONE_COMPOUND_PER_FACTION
+				const auto&compound = b.ToEntity().owner->compound;
+				const int ammo = compound.total.storage.level[b.turret->ammoType];
+			#else
+				const int ammo = b.ToEntity().currentStorage.level[b.turret->ammoType];
+			#endif
+			t.SetField("ammoAvailability",ammo);
+			t.SetField("possibleAttacks",b.CountPossibleAttacks());
+			t.SetField("attackActionLeft",b.GetAttackActionLeft());
+			t.SetField("attackInitiative",b.GetAttackInitiative());
+			t.SetField("attacksPerRound",b.GetAttacksPerRound());
+			t.SetField("flatAttackRange",b.GetFlatAttackRange());
+			t.SetField("explosionRadius",b.GetAttackExplosionRadius());
+			t.SetField("damageLevel",b.turret->GetDamageLevel(researchState));
+			t.SetField("dealsEMPDamage",b.turret->dealsEMPDamage);
 		}
 
-		Lua::Reference ToTable(Lua::PProgram&p, const Objects::MobileEntity::Task&task)
+		for (index_t op = 0; op < Objects::Component::OperationCount; op++)
 		{
-			Lua::Table taskOut = p->CreateTable();
-			taskOut.SetField("name",task.name);
-			taskOut.SetField("isJob",task.IsJob());
-
-			Lua::Table foci = p->CreateTable();
-			foreach (task.foci,f)
-				foci.AppendElement(Detail::ToTable(p,f->target));
-			taskOut.SetField("foci",foci);
-
-			return taskOut;
-		}
-
-		Lua::Table ToTable(Lua::PProgram&p, const Objects::TurretBase&b, const Objects::Research::Attributes::Table&researchState)
-		{
-
-			Lua::Table t = p->CreateTable();
-			//b.
-			t.SetField("typeName",b.turret->typeName);
-			t.SetField("weight",b.turret->weight.GetValue(researchState));
-
-			t.SetField("canAttack",b.turret->CanAttack());
-			if (b.turret->CanAttack())
-			{
-				t.SetField("trajectoryType",b.turret->trajectoryType.ToString());
-				t.SetField("ammoType",b.turret->ammoType.ToString());
-				t.SetField("possibleAttacks",b.CountPossibleAttacks());
-				t.SetField("attackActionLeft",b.GetAttackActionLeft());
-				t.SetField("attackInitiative",b.GetAttackInitiative());
-				t.SetField("attacksPerRound",b.GetAttacksPerRound());
-				t.SetField("flatAttackRange",b.GetFlatAttackRange());
-				t.SetField("explosionRadius",b.GetAttackExplosionRadius());
-			}
-
-			for (index_t op = 0; op < Objects::Component::OperationCount; op++)
-			{
-				const auto o = (Objects::Component::operation_t)op;
-				const String os = String(Objects::Component::OperationToString(o));
-				t.SetField("can"+os,b.turret->CanDo(o));
+			const auto o = (Objects::Component::operation_t)op;
+			const String os = String(Objects::Component::OperationToString(o));
+			t.SetField("can"+os,b.turret->CanDo(o));
 					
-				t.SetField("speedOf"+os,b.GetOperationSpeed(o));
+			t.SetField("speedOf"+os,b.GetOperationSpeed(o));
+		}
+
+		return t;
+	}
+
+	#ifdef CLIENT
+		void		API::AddMyMarker(const Objects::Marker&m)
+		{
+			Lua::Table t = program->CreateTable();
+			if (!myMarkerList)
+			{
+				myMarkerList = program->CreateTable();
+				gameTable.SetField("myMarkers",myMarkerList);
+			}
+			myMarkerList.AppendElement(t);
+			t.SetField("location",ToTable(m.location));
+			t.SetField("type",m.type.ToString());
+			t.SetField("confirmed", true);
+			t.SetField("age",m.age);
+			t.SetField("id",m.id.ToFullString());
+			if (m.visualization)
+				t.SetField("unitReference",MapEntity(m.visualization,false,false));
+			auto id = m.id;
+			index_t at = t.GetLength();
+			t.SetFunction("Touch",[id,this,at]()
+			{
+				if (onMarkerTouch)
+					onMarkerTouch(id);
+				Lua::Table t = myMarkerList.GetElement(at);
+				ASSERT_EQUAL__(t.GetField("id").GetAs<String>(),id.ToFullString());
+				t.SetField("age",0);
+			});
+		}	
+		void	API::SetSelectedUnit( const Objects::PWorldEntity&e, bool updateIfFound )
+		{
+			if (e)
+				gameTable.SetField("selectedUnit",MapEntity(e,true,updateIfFound));
+			else
+				gameTable.UnsetField("selectedUnit");
+		}
+
+		void	API::UpdateMyResearch()
+		{
+			
+			if (myResearch.IsEmpty())
+			{
+				myResearch = program->CreateTable();
+				gameTable.SetField("myResearch",myResearch);
+			}
+			else
+				myResearch.ClearTable();
+
+			Lua::Reference current;
+			const auto&st = Objects::Faction::mine->researchState.topicProgressVector;
+			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
+			Array<UINT32> q;
+			Objects::Faction::mine->researchState.ExportResearchQueue(q);
+			for (index_t i = 0; i < Objects::Research::globalState.allTopics.Count(); i++)
+			{
+				auto t = Objects::Research::GetTopic(i);
+				if (t->IsGroup())
+					continue;
+				String key = t->GetFullName();
+
+				Lua::Table outT = program->CreateTable();
+				myResearch.SetField(key,outT);
+
+				outT.SetField("fullName",key);
+				outT.SetField("name",t->name);
+				outT.SetField("max",t->maxProgress);
+				outT.SetField("isEndless",t->maxProgress <= 0);
+				
+				const int prog = st[t->serialIndex];
+				outT.SetField("progress",prog);
+				outT.SetField("isCompleted",t->ResearchCompleted(st));
+
+				bool isActive = q.IsNotEmpty() && q.First() == i;
+				outT.SetField("isActive",isActive);
+				outT.SetField("isQueued",q.Contains((UINT32)i));
+
+				if (isActive)
+					current = outT;
 			}
 
-			return t;
+
+			gameTable.SetField("myCurrentResearch",current);
+		}
+
+	#endif
+
+
+	void		API::FlushAllObjects(bool clearCaches/*=false*/)
+	{
+		entityList.ClearTable();
+		factionList.ClearTable();
+		allianceList.ClearTable();
+		entityMap.Clear();
+		#ifdef CLIENT
+			myEntityList.ClearTable();
+			myMarkerList.ClearTable();
+			myResearch.ClearTable();
+			gameTable.UnsetField("myCurrentResearch");
+			gameTable.UnsetField("selectedUnit");
+		#endif
+
+		entityMappedToTable.Clear();
+		factionMappedToTable.Clear();
+		allianceMappedToTable.Clear();
+
+		if (clearCaches)
+		{
+			loadedAllianceTableMap.Clear();
+			loadedEntityTableMap.Clear();
+			loadedFactionTableMap.Clear();
 		}
 	}
 
 
-	void DefineGeneralAPI(Lua::Table&api)
+	void API::Create(const String&programNameToCreate)
 	{
-		String name = api.GetProgram()->GetName();
-		api.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
+		ASSERT__(!IsCreated());
+		program = Lua::Program::Create(programNameToCreate);
+		Setup();
+	}
+
+	void API::Create(const Lua::PProgram&p)
+	{
+		ASSERT__(!IsCreated());
+		program = p;
+		Setup();
+	}
+
+	void	API::Destroy()
+	{
+		if (program)
+			program->SetGlobal("Game",Lua::Reference{});
+		program.reset();
+		FlushAllObjects(true);
+		gameTable.ClearReference();
+		gridTable.ClearReference();
+		lowCellGrid.Clear();
+		locationMap.Clear();
+	}
+
+
+	void	API::Setup()
+	{
+		const auto p = program;
+		ASSERT__(p);
+		gameTable = p->CreateTable();
+		gridTable = p->CreateTable();
+		gameTable.SetField("Grid",gridTable);
+		gameTable.SetGlobal("Game");
+
+		entityList = program->CreateTable();
+		gameTable.SetField("units",entityList);
 		#ifdef CLIENT
-			api.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
-			api.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
-			api.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
-			api.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
+			myEntityList = program->CreateTable();
+			gameTable.SetField("myUnits",myEntityList);
 		#endif
+
+		factionList = program->CreateTable();
+		gameTable.SetField("factions",factionList);
+
+		allianceList = program->CreateTable();
+		gameTable.SetField("alliances",allianceList);
+
+
+		String name = program->GetName();
+		gameTable.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
+		#ifdef CLIENT
+			gameTable.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
+			gameTable.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
+			gameTable.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
+			gameTable.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
+			gameTable.SetFunction("CreateMarker",[this](const Lua::Table&luaEntity, const String&markerType)
+			{
+				Objects::Marker::Type t;
+				if (!t.Decode(markerType.c_str()))
+					throw Lua::Exception("CreateMarker(): Type parameter #2 cannot be decoded to a marker type");
+
+				auto luaID = luaEntity.GetField("id");
+				if (!luaID)
+					throw Lua::Exception("CreateMarker(): Entity parameter #1 does not contain an id field");
+				TUniqueID id;
+				if (!id.Decode(luaID.GetAs<String>()))
+					throw Lua::Exception("CreateMarker(): Entity parameter #1 does not contain a decodeable id field");
+
+				const Lua::Table loc = luaEntity.GetField("location");
+
+				Lua::Table mt = program->CreateTable();
+				if (!myMarkerList)
+				{
+					myMarkerList = program->CreateTable();
+					gameTable.SetField("myMarkers",myMarkerList);
+				}
+				myMarkerList.AppendElement(mt);
+				mt.SetField("location",loc);
+				mt.SetField("type",luaEntity.GetField("type"));
+				mt.SetField("confirmed", false);
+				mt.SetField("age",0);
+				mt.SetField("id","");
+				mt.SetField("unitReference",luaEntity);
+				mt.SetFunction("Touch",[]()
+				{
+					//do nothing
+				});
+
+				if (onMarkerCreate)
+					onMarkerCreate(t,id,Detail::ToLGridCell(loc,"Entity parameter #1.location"));
+				
+			});
+		#endif
+
+		gameTable.SetFunction("GetUnitReach",[this](const Lua::Table&entityTable,const Lua::Function<bool(Lua::Table)>&isBlocked,int maxReach,bool forceReversible,bool allowAccessibleHangars,bool ignoreFriendlyVehiclesOnRoute,bool cannotStandOnUnknown)->Lua::Table
+		{
+			if (!entityTable)
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1 is nil");
+			const auto luaID = entityTable.GetField("id");
+			if (!luaID)
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1.id is nil");
+			const String sid = luaID.GetAs<String>();
+			TUniqueID id;
+			if (!id.Decode(sid))
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1.id is no valid unique id");
+			auto ptr = this->entityMap.QueryPointer(id);
+			if (ptr == nullptr)
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1.id is unknown");
+			Objects::PWorldEntity e = ptr->lock();
+			if (!e)
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1 points to an expired entity");
+			if (!e->IsVehicle())
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1 '"+e->GetName()+"' is not routeable");
+			const Grid::LCellIdI loc = Detail::ToLGridCell(entityTable.GetField("location"),"GetUnitReach(): Unit parameter #1.location");
+			
+			if (loc.height > Grid::CellStack::TopHeight)
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1 '"+e->GetName()+"' is located above maximum height");
+
+			const auto v = To<Objects::Vehicle>::Cast(e);
+			Lua::Table result = program->CreateTable();
+			Array<Lua::Table>	 tables;
+
+			if (cannotStandOnUnknown)
+				Objects::Component::VehicleBase::canStandOnUnknown = false;
+				
+
+			if (!isBlocked)
+				mapper.Map(v.get(),loc,nullptr,maxReach,forceReversible,allowAccessibleHangars,ignoreFriendlyVehiclesOnRoute);
+			else
+			{
+				mapper.Map(v.get(),loc,[&isBlocked,this](const Grid::LCellIdI&loc)->bool
+				{
+					return isBlocked(ToTable(loc));
+				},maxReach,forceReversible,allowAccessibleHangars,ignoreFriendlyVehiclesOnRoute);
+			}
+
+			if (cannotStandOnUnknown)
+				Objects::Component::VehicleBase::canStandOnUnknown = true;
+			
+
+
+			tables.SetSize(mapper.result.Count());
+			for (index_t i = 0; i < mapper.result.Count(); i++)
+			{
+				const auto&in = mapper.result[i];
+				Lua::Table luaReachable  = program->CreateTable();
+				tables[i] = luaReachable; 
+				luaReachable.SetField("location",ToTable(in.cell));
+				luaReachable.SetField("movementCostsFromRoot",in.movementCostsFromRoot);
+				if (allowAccessibleHangars)
+					luaReachable.SetField("isHangarHere",Objects::AccessibleHangarHere(in.cell,*v));
+				result.AppendElement(luaReachable);
+			}
+
+			for (index_t i = 0; i < mapper.result.Count(); i++)
+			{
+				const auto&in = mapper.result[i];
+				if (in.predecessor != InvalidIndex)
+					tables[i].SetField("predecessor",tables[in.predecessor]);
+			}
+
+
+			return result;
+		});
+	//			Reachable[]	Game.MapUnitReach(Unit unit,func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute);
+	//
+
+	//Reachable	
+	//{
+	//	Loc		location;				Grid/world location
+	//	int		movementCostsFromRoot;	Costs to reach this location from the current unit location
+	//	Reachable	predecessor;		nil if this is root (the current unit location)
+	//	bool	isHangarHere;			True if accessible hangars were included and there is a hangar here
+	//}
+
+
+		gameTable.SetFunction("GetDistance",Detail::GetDistance);
 
 		#ifdef LOWER_RESOLUTION_PLANET
-			api.SetField("LowerResolutionPlanet",true);
+			gridTable.SetField("lowerResolutionPlanet",true);
 		#else
-			api.SetField("LowerResolutionPlanet",false);
+			gridTable.SetField("lowerResolutionPlanet",false);
 		#endif
+
+		gridTable.SetFunction("ToLocation",[this](const Lua::Table&cell, int height)
+		{
+			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1");
+			if (height < Grid::CellStack::BottomHeight)
+				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
+			return this->ToTable(Grid::LCellIdI(stack,height));
+		});
+
+		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
+		gridTable.SetField("topHeight",Grid::CellStack::TopHeight);
 	}
 
-	Lua::Table CreateGeneralAPI(const Lua::PProgram&p)
+
+
+
+	API::TAlliance*	API::AddAlliance( const Objects::PAlliance&a, bool updateIfFound )
 	{
-		if (!p)
-			return Lua::Table();
-		Lua::Table api = p->CreateTable();
-		DefineGeneralAPI(api);
-		api.SetGlobal("Game");
-		return api;
+		if (!a)
+			return nullptr;
+		Lua::Table t;
+
+		auto found = loadedAllianceTableMap.QueryPointer(a->id);
+		if (found)
+		{
+			if (allianceMappedToTable.SetNew(a->id))
+				allianceList.AppendElement(found->table);
+			if (!updateIfFound)
+				return found;
+			t = found->table;
+		}
+		else
+		{
+			t = program->CreateTable();
+			found = loadedAllianceTableMap.SetNew(a->id);
+			found->table = t;
+			found->factionTable = program->CreateTable();
+			t.SetField("members",found->factionTable);
+
+			allianceMappedToTable.Set(a->id);
+			allianceList.AppendElement(t);
+		}
+		found->factionTable.ClearTable();
+		a->VisitMembers([found,this](const Objects::PFaction&f)
+		{
+			auto luaFaction = AddFaction(f,false);
+			found->factionTable.AppendElement(luaFaction->table);
+		},true);
+
+		t.SetField("id",a->id.ToFullString());
+		return found;
+	}
+	
+
+	API::TFaction*	API::AddFaction( const Objects::PFaction&f, bool updateIfFound )
+	{
+		if (!f)
+			return nullptr;
+		Lua::Table t;
+
+		auto found = loadedFactionTableMap.QueryPointer(f->id);
+		if (found)
+		{
+			if (factionMappedToTable.SetNew(f->id))
+				factionList.AppendElement(found->table);
+
+			if (!updateIfFound)
+				return found;
+			t = found->table;
+		}
+		else
+		{
+			t = program->CreateTable();
+			found = loadedFactionTableMap.SetNew(f->id);
+			found->table = t;
+			found->entityTable = program->CreateTable();
+			t.SetField("units",found->entityTable);
+
+			factionMappedToTable.Set(f->id);
+			factionList.AppendElement(t);
+		}
+
+		t.SetField("name",f->name);
+		t.SetField("id",f->id.ToFullString());
+		const auto*const alliance = AddAlliance(f->alliance,false);
+		t.SetField("alliance",alliance->table);
+
+		return found;
 	}
 
 
-
-	void		EntityToTable(const Objects::PWorldEntity&e, Lua::Table&t)
+	void			API::TFaction::AddEntity(const Lua::Table&e)
 	{
-		Lua::PProgram p = t.GetProgram();
-		if (!p)
-			return;
+		entityTable.AppendElement(e);
+	}
+
+
+	Lua::Table	API::MapEntity( const Objects::PWorldEntity&e, bool actual, bool updateIfFound )
+	{
+		auto found = loadedEntityTableMap.QueryPointer(e->id);
+		Lua::Table t;
+		bool outIsNew = false;
+		if (found)
+		{
+			t = found->first;
+			if (actual && entityMappedToTable.SetNew(e->id))
+			{
+				entityList.AppendElement(t);
+				#ifdef CLIENT
+					if (e->isOwnedByMe)
+						myEntityList.AppendElement(t);
+				#endif
+			}
+			if (!updateIfFound && actual == found->second)
+				return t;
+		}
+		else
+		{
+			entityMap.Set(e->id,e);
+			t = program->CreateTable();
+			outIsNew = true;
+			
+			if (actual)
+			{
+				entityMappedToTable.Set(e->id);
+				entityList.AppendElement(t);
+				#ifdef CLIENT
+					if (e->isOwnedByMe)
+						myEntityList.AppendElement(t);
+				#endif
+			}
+			loadedEntityTableMap.Set(e->id,std::make_pair(t,actual));
+		}
+
+
+
 
 		t.SetField("name",e->GetName());
 		t.SetField("niceName",e->GetNiceName());
 		t.SetField("id",e->id.ToFullString());
 		t.SetField("typeName",e->GetTypeName());
 		t.SetField("isMobile",e->IsMobile());
+		t.SetField("constructionCost",e->GetConstructionCost());
 		t.SetField("isStructure",e->IsStructure());
 		#ifdef CLIENT
 			t.SetField("isOwnedByMe",e->isOwnedByMe);
 		#endif
-
-		t.SetField("location",Detail::ToTable(p,e->location));
+		if (e->owner)
+		{
+			auto faction = AddFaction(e->owner,false);
+			if (outIsNew)
+				faction->AddEntity(t);
+			t.SetField("owner",faction->table);
+		}
+		else
+			t.UnsetField("owner");
+		t.SetField("location",ToTable(e->location));
 		t.SetField("isSleeping",e->IsSleeping());
 		t.SetField("health",e->health);
 		t.SetField("maxHealth",e->GetMaxHealth());
 		t.SetField("empDamageLevel",e->empDamageLevel);
 		t.SetField("scanningRange",e->GetScanningRange());
+
+		const TUniqueID id = e->id;
+
+		if (actual)
+		{
+			t.SetFunction("Destroy", [id,this]()
+			{
+				onRemove(id);
+
+				//#ifdef CLIENT
+				//	ApplicationInterface::SignalRemoval(e,false);
+				//#else
+				//	float t= 0;
+				//	Objects::Remove(e,Objects::RemovalType::ControlledExplosion,t);
+				//#endif
+
+			});
+		}
+		else
+			t.UnsetField("Destroy");
+
 		if (e->IsWorkingStructure())
 		{
 			t.SetField("isWorkingStructure",true);
 			t.SetField("isEnabled",To<Objects::WorkingStructure>::Cast(e)->IsEnabled());
-			t.SetFunction("Enable", (std::function<void(bool)>) [e](bool doEnable)
-			{
-				#ifdef CLIENT
-					ApplicationInterface::SignalEnableStructure(*To<Objects::WorkingStructure>::Cast(e),doEnable);
-				#else
-					float t= 0;
-					To<Objects::WorkingStructure>::Cast(e)->SetEnabled(doEnable, t);
-				#endif
-			});
+			if (actual)
+			t.SetFunction("Enable", [id,this](bool doEnable)
+				{
+					onEnableWorkingStructure(id,doEnable);
+					//#ifdef CLIENT
+					//	ApplicationInterface::SignalEnableStructure(*To<Objects::WorkingStructure>::Cast(e),doEnable);
+					//#else
+					//	float t= 0;
+					//	To<Objects::WorkingStructure>::Cast(e)->SetEnabled(doEnable, t);
+					//#endif
+				});
+			else
+				t.UnsetField("Enable");
 		}
 		else
 			t.SetField("isWorkingStructure",false);
@@ -223,7 +745,7 @@ namespace Lua
 		t.SetField("isMobileEntityProducer",prod != nullptr);
 		if (prod)
 		{
-			Lua::Table queue = p->CreateTable();
+			Lua::Table queue = program->CreateTable();
 			foreach (prod->queue,w)
 			{
 				queue.AppendElement(w->GetName());
@@ -236,57 +758,148 @@ namespace Lua
 		const auto base = e->GetTurretBase(zOffset);
 		if (base)
 		{
-			Lua::Table sub = Detail::ToTable(p, *base, e->GetResearchState());
+			Lua::Table sub = ToTable(*base, e->GetResearchState());
 			sub.SetField("zOffset",zOffset);
-			t.SetField("turretBase",sub);
+			t.SetField("turret",sub);
+
+			if (actual)
+			{
+				t.SetFunction("ScheduleAttacks",[id,this](const Lua::Table&t)
+				{
+					Array<Grid::LCellIdI> targets(t.GetLength());
+					for (index_t i = 0; i < t.GetLength(); i++)
+					{
+						Lua::Table element = t.GetElement(i+1);
+						if (element.IsEmpty())
+							throw Lua::Exception("ScheduleAttacks(): Element #"+String(i+1)+" is nil.");
+						Grid::LCellIdI loc = Detail::ToLGridCell(element,"table.#"+String(i+1));
+						targets[i] = loc;
+					}
+
+					onAttackTargets(id,targets);
+				});
+			}
+			else
+				t.UnsetField("ScheduleAttacks");
 		}
 
 
 
 		if (e->IsMobile())
 		{
-			Lua::Table tasks = p->CreateTable();
+			Lua::Table tasks = program->CreateTable();
 			const auto&m = To<Objects::MobileEntity>::Cast(e);
 			t.SetField("isAutomated",m->isAutomated);
+			if (!m->storedIn.expired())
+			{
+				t.SetField("storedIn",MapEntity(m->storedIn.lock()->ToEntity().shared_from_this(),actual,false));
+			}
 			foreach (m->myTasks,task)
 			{
-				tasks.AppendElement(Detail::ToTable(p,*task));
+				tasks.AppendElement(ToTable(*task));
 			}
 			t.SetField("tasks",tasks);
+
+
+
+			t.SetField("movementSpeed",m->GetMovementStepsPerRound());
+
+			t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
+
+			if (actual)
+			{
+				t.SetFunction("ClearTasks",[id,this]()
+				{
+					onDropAllTasks(id);
+					//#ifdef CLIENT
+					//	ApplicationInterface::SignalDropAllTasks(e,false);
+					//#else
+					//	ApplicationInterface::SignalDropAllTasks(e);
+					//#endif
+				});
+
+				t.SetFunction("DirectTo",[id,this](const Lua::Table&luaReachable)
+				{
+					Buffer0<Grid::LCellIdI>	path;
+					Lua::Table at = luaReachable;
+					while (at.IsSet())
+					{
+						path << Detail::ToLGridCell(at.GetField("location"),"DirectTo(): destination.location");
+						at = at.GetField("predecessor");
+					}
+					path.Revert();
+					onDetailedDirectTo(id,path.ToRef());
+				});
+			}
+			else
+			{
+				t.UnsetField("DirectTo");
+				t.UnsetField("ClearTasks");
+			}
 		}
+		return t;
 	}
 
 
-	void		DefineLowGridCells(Lua::Table&targetTable)
+	void		API::AddEntity( const Objects::PWorldEntity&e )
 	{
-		Lua::PProgram p = targetTable.GetProgram();
-		if (!p)
+		if (!program)
 			return;
-		Ctr::Array<Lua::Table>	cells(Grid::LowSetup::GridType::CellCount);
-		Lua::Table cellTable = p->CreateTable();
-		targetTable.SetField("lowCells",cellTable);
+
+		ASSERT__(lowCellGrid.IsNotEmpty());
+		Lua::Table t = MapEntity(e,true,true);
+
+	}
+
+	void		API::AddFactionEntities( const Objects::PFaction&f )
+	{
+		Objects::ForeachWorldEntityIncludingStored([this,f](const Objects::PWorldEntity&e)
+		{
+			if (e->owner == f)
+				AddEntity(e);
+		});
+	}
+
+	void		API::AddAllEntities( )
+	{
+		Objects::ForeachWorldEntityIncludingStored([this](const Objects::PWorldEntity&e)
+		{
+			AddEntity(e);
+		});
+	}
+
+
+	void		API::AddGrid()
+	{
+		if (!program)
+		{
+			lowCellGrid.Clear();
+			return;
+		}
+		lowCellGrid.SetSize(Grid::LowSetup::GridType::CellCount);
+		Lua::Table cellTable = program->CreateTable();
+		gridTable.SetField("unitCells",cellTable);
+
 		for (UINT32 i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 		{
-			Lua::Table t = p->CreateTable();
+			Lua::Table t = program->CreateTable();
 			cellTable.SetElement(i+1,t);
-			cells[i] = t;
+			lowCellGrid[i] = t;
 
 			t.SetField("index",i+1);
-
-			t.SetField("center",Detail::ToTable(p, Grid::low.cells[i].cornerCenter));
+			t.SetField("center",Detail::ToTable(program, Grid::low.cells[i].cornerCenter));
 		}
 
 		for (UINT32 i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 		{
-			Lua::Table t = cells[i];
-			Lua::Table nt = p->CreateTable();
+			Lua::Table t = lowCellGrid[i];
+			Lua::Table nt = program->CreateTable();
 			t.SetField("neighbors",nt);
 
 			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
 			for (BYTE k = 0; k < n.numNeighbors; k++)
-				nt.AppendElement(cells[n.neighborID[k]]);
+				nt.AppendElement(lowCellGrid[n.neighborID[k]]);
 		}
-
 	}
 
 

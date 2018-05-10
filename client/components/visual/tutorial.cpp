@@ -160,8 +160,6 @@ namespace Tutorial
 			}
 		};
 
-		Lua::PProgram		tutorialProgram;
-		Lua::Table			api,myUnits, myResearch;
 		bool				started = false, expectStart = false;
 
 		CameraEvent			drag,rotate,zoom;
@@ -173,9 +171,17 @@ namespace Tutorial
 			Lua::Function<void(int)>	begin;
 		}
 
+		Lua::API scriptAPI;
+
+
+		void	CheckTaskConditions()
+		{
+			ASSERT__(scriptAPI.myEntityList.GetLength() > 0);
+			Trigger::checkTaskConditions();
+		}
+
 		namespace API
 		{
-
 
 			struct TTrigger
 			{
@@ -215,7 +221,7 @@ namespace Tutorial
 					messageWindow = nullptr;
 					Trigger::onMessageConfirm();
 					if (!Detail::WaitingForUserOkay())
-						Interactive::Trigger::checkTaskConditions();
+						Interactive::CheckTaskConditions();
 				};
 				messageWindow->canBeImplicitlyClosed = false;
 				messageWindow->isTutorial = false;	//prevent tutorial message from opening the next message automatically
@@ -248,12 +254,12 @@ namespace Tutorial
 
 					taskWindow->AddNewComponent(new Label(msg),CLOCATION)->AnchorTop(0).FillHorizontally(0);
 					taskWindow->SetAutomaticHeight(true);
-					taskWindow->Anchor().Bottom(0.1f,0.25f).Right(0.1f,0.25f);
+					taskWindow->Anchor().Bottom(0.15f,0.25f).Right(0.05f,0.25f);
 
 					taskWindow->isModal = false;
 				}
 				HUD::WindowStack::Show(taskWindow);
-				Trigger::checkTaskConditions();
+				CheckTaskConditions();
 			}
 
 			void	ClearDelayed()
@@ -278,94 +284,18 @@ namespace Tutorial
 		}
 
 
-		PointerTable<Lua::Reference,Swap>	objectTables;
-
-
-		Lua::Table RebuildEntity(const Objects::PWorldEntity&e)
-		{
-			ASSERT__(e);
-			Lua::Table t;
-			if (!objectTables.Query(e.get(),t))
-			{
-				t = tutorialProgram->CreateTable();
-				objectTables.Set(e.get(),t);
-			}
-
-			t.ClearTable();
-			Lua::EntityToTable(e,t);
-			return t;
-		}
-
-		void RebuildSelected()
-		{
-			const auto&e = Objects::selectedEntity;
-			if (!e)
-			{
-				api.SetField("selectedUnit",Lua::Reference());
-				return;
-			}
-			
-			api.SetField("selectedUnit",RebuildEntity(e));
-		}
-
 		void RebuildFactionUnits()
 		{
-			myUnits.ClearTable();
-			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
-			{
-				if (e->isOwnedByMe)
-				{
-					myUnits.AppendElement(RebuildEntity(e));
-				}
-			},Objects::IncludeGhosts::None);
-
+			scriptAPI.FlushAllObjects();
+			scriptAPI.AddFactionEntities(Objects::Faction::mine);
+			scriptAPI.SetSelectedUnit(Objects::selectedEntity,false);
+			scriptAPI.UpdateMyResearch();
 		}
 
 
 		void RebuildResearchState()
 		{
-			if (myResearch.IsEmpty())
-			{
-				myResearch = tutorialProgram->CreateTable();
-				api.SetField("myResearch",myResearch);
-			}
-			else
-				myResearch.ClearTable();
-
-			Lua::Reference current;
-			const auto&st = Objects::Faction::mine->researchState.topicProgressVector;
-			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
-			Array<UINT32> q;
-			Objects::Faction::mine->researchState.ExportResearchQueue(q);
-			for (index_t i = 0; i < Objects::Research::globalState.allTopics.Count(); i++)
-			{
-				auto t = Objects::Research::GetTopic(i);
-				if (t->IsGroup())
-					continue;
-				String key = t->GetFullName();
-
-				Lua::Table outT = tutorialProgram->CreateTable();
-				myResearch.SetField(key,outT);
-
-				outT.SetField("fullName",key);
-				outT.SetField("name",t->name);
-				outT.SetField("max",t->maxProgress);
-				outT.SetField("isEndless",t->maxProgress <= 0);
-				
-				const int prog = st[t->serialIndex];
-				outT.SetField("progress",prog);
-				outT.SetField("isCompleted",t->ResearchCompleted(st));
-
-				bool isActive = q.IsNotEmpty() && q.First() == i;
-				outT.SetField("isActive",isActive);
-				outT.SetField("isQueued",q.Contains((UINT32)i));
-
-				if (isActive)
-					current = outT;
-			}
-
-
-			api.SetField("myCurrentResearch",current);
+			scriptAPI.UpdateMyResearch();
 		}
 
 		void	ProcessTriggers()
@@ -420,9 +350,8 @@ namespace Tutorial
 			try
 			{
 				Interactive::RebuildFactionUnits();
-				Interactive::RebuildSelected();
 				if (!Detail::WaitingForUserOkay())
-					Interactive::Trigger::checkTaskConditions();
+					Interactive::CheckTaskConditions();
 			}
 			catch (const Lua::Exception&ex)
 			{
@@ -438,7 +367,6 @@ namespace Tutorial
 			{
 				Interactive::started = true;
 				Interactive::RebuildFactionUnits();
-				Interactive::RebuildSelected();
 				Interactive::RebuildResearchState();
 				Interactive::Trigger::begin(Detail::progress);
 			}
@@ -456,7 +384,7 @@ namespace Tutorial
 			{
 				Interactive::RebuildFactionUnits();
 				if (!Detail::WaitingForUserOkay())
-					Interactive::Trigger::checkTaskConditions();
+					Interactive::CheckTaskConditions();
 			}
 			catch (const Lua::Exception&ex)
 			{
@@ -475,7 +403,7 @@ namespace Tutorial
 
 			expectStart = false;
 			started = false;
-			objectTables.Clear();
+			scriptAPI.FlushAllObjects(true);
 
 			if (holdOnID != InvalidIndex)
 			{
@@ -492,29 +420,22 @@ namespace Tutorial
 		{
 			try
 			{
-				objectTables.Clear();
-				tutorialProgram = Lua::Program::Create("Tutorial");
-				api = Lua::CreateGeneralAPI(tutorialProgram);
-				Lua::DefineLowGridCells(api);
-				myUnits = tutorialProgram->CreateTable();
-				api.SetField("myUnits",myUnits);
+				scriptAPI.Create("Tutorial");
+				scriptAPI.AddGrid();
+				scriptAPI.gameTable.SetFunction("DisplayMessage",API::DisplayMessage);
+				scriptAPI.gameTable.SetFunction("DescribeTask",API::DescribeTask);
+				scriptAPI.gameTable.SetFunction("CallDelayed",API::CallDelayed);
+				scriptAPI.gameTable.SetFunction("ClearAllDelayed",API::ClearDelayed);
+				scriptAPI.gameTable.SetFunction("FocusCameraAt",API::FocusCameraAt);
+				scriptAPI.gameTable.SetFunction("SignalTaskStart",API::SignalTaskStart);
+				scriptAPI.program->ExecuteFile("../lua/tutorial.lua");
 
-				api.SetFunction("DisplayMessage",API::DisplayMessage);
-				api.SetFunction("DescribeTask",API::DescribeTask);
-				api.SetFunction("CallDelayed",API::CallDelayed);
-				api.SetFunction("ClearAllDelayed",API::ClearDelayed);
-				api.SetFunction("FocusCameraAt",API::FocusCameraAt);
-				api.SetFunction("SignalTaskStart",API::SignalTaskStart);
-
-
-				tutorialProgram->ExecuteFile("../lua/tutorial.lua");
-
-				Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
-				Trigger::checkTaskConditions = tutorialProgram->RequireGlobal("CheckTaskConditions");
-				Trigger::onMessageConfirm = tutorialProgram->RequireGlobal("OnMessageConfirm");
-				drag.trigger = tutorialProgram->RequireGlobal("OnCameraDrag");
-				rotate.trigger = tutorialProgram->RequireGlobal("OnCameraRotate");
-				zoom.trigger = tutorialProgram->RequireGlobal("OnCameraZoom");
+				Trigger::begin = scriptAPI.program->RequireGlobal("OnBegin");
+				Trigger::checkTaskConditions = scriptAPI.program->RequireGlobal("CheckTaskConditions");
+				Trigger::onMessageConfirm = scriptAPI.program->RequireGlobal("OnMessageConfirm");
+				drag.trigger = scriptAPI.program->RequireGlobal("OnCameraDrag");
+				rotate.trigger = scriptAPI.program->RequireGlobal("OnCameraRotate");
+				zoom.trigger = scriptAPI.program->RequireGlobal("OnCameraZoom");
 
 
 				Camera::onZoom << SignalZoom;
@@ -548,7 +469,7 @@ namespace Tutorial
 		{
 			Interactive::RebuildResearchState();
 			if (!Detail::WaitingForUserOkay())
-				Interactive::Trigger::checkTaskConditions();
+				Interactive::CheckTaskConditions();
 		}
 		catch (const Lua::Exception&ex)
 		{

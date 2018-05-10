@@ -33,17 +33,17 @@ namespace Grid
 		{
 			try
 			{
-				Lua::PProgram prog = Lua::Program::Create("Resources");
-				Lua::Table api = Lua::CreateGeneralAPI(prog);
-				Lua::DefineLowGridCells(api);
+				Lua::API api;
+				api.Create("Resources:"+distribution);
+				api.AddGrid();
 				
 				SimplexNoise n(random.MaxNext());
-				api.SetFunction("Simplex",[&n](double x, double y, double z)->double
+				api.gameTable.SetFunction("Simplex",[&n](double x, double y, double z)->double
 				{
 					return n.Get(x,y,z);
 				});
 
-				api.SetFunction("RandomInt",[&random](int min, int max)->int
+				api.gameTable.SetFunction("RandomInt",[&random](int min, int max)->int
 				{
 					return random.Next(min,max);
 				});
@@ -51,9 +51,9 @@ namespace Grid
 
 				LogEvent(EventClass::Preset::configurationPrint,"Executing resource distribution program '"+distribution+"'");
 				Timer::Time t0 = timer.Now();
-				prog->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
+				api.program->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
 
-				Lua::Function<Lua::Table()> compute = prog->RequireGlobal("Compute");
+				Lua::Function<Lua::Table()> compute = api.program->RequireGlobal("Compute");
 				Lua::Table result = compute();
 				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+String(timer.GetSecondsSince(t0))+" seconds");
 

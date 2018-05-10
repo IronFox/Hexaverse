@@ -7,14 +7,14 @@ void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-pri
 int		Game.RandomInt(int min, int max)		Generates a pseudo random value in the range [min,max]
 float	Game.Simplex(float x, float y, float z)	Samples a raw OpenSimplex noise value for the specified coordinates. The result is in the range [-1,+1], smooth, and semi-normaly distributed
 
-bool	Game.lowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
+bool	Game.Grid.lowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
 
-Cell[]		Game.lowCells				Ordered table of all planar cells in the world, with:
+Cell[]		Game.Grid.unitCells				Ordered table of all planar cells in the world, with:
 Cell
 {
 	Vector	center;			Normalized center vector of the cell
 	Cell[]	neighbors;		Ordered table of all planar neighbor cells
-	int		index;			Linear index of this cell in Game.Cells in [1,#Game.lowCells]
+	int		index;			Linear index of this cell in Game.Cells in [1,#Game.Grid.unitCells]
 };
 Vector
 {
@@ -87,7 +87,7 @@ Result:
 	Uranium = {...}
 }
 
-Each resource table must be an ordered array of non-negative integers, of length #Game.lowCells
+Each resource table must be an ordered array of non-negative integers, of length #Game.Grid.unitCells
 The number corresponds the amount of resources found in the respective location.
 Reference numbers are:
 0 implies that the resource does not exist in that spot.
@@ -102,12 +102,12 @@ function Compute()
 	
 	local foci = {};
 	
-	for i=1,#Game.lowCells do
+	for i=1,#Game.Grid.unitCells do
 		rs.Minerals[i] = 0;
 		rs.Fuel[i] = 0;
 		rs.Uranium[i] = 0;
 	
-		local cell = Game.lowCells[i];
+		local cell = Game.Grid.unitCells[i];
 		local good = true;
 		for j=1,#foci do
 			local dist = QuadraticDistance(cell.center,foci[j].center);
