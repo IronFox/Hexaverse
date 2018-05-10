@@ -779,8 +779,29 @@ namespace Objects{ namespace Pathfinding
 		}
 	#endif
 
+
+	bool	ReachabilityMapper::CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked)
+	{
+		if (!isBlocked)
+			return false;
+		if (!cacheIsBlocked)
+			return isBlocked(cell);
+
+		{
+			const bool*b = blockedCache.QueryPointer(cell);
+			if (b)
+				return *b;
+		}
+		bool rs = isBlocked(cell);
+		blockedCache.Set(cell,rs);
+		return rs;
+	}
+
 	void ReachabilityMapper::Map( const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/, bool allowAccessibleHangars/*=false*/, bool ignoreFriendlyVehiclesOnRoute/*=false*/ )
 	{
+		ASSERT_NOT_NULL__(vehicle);
+		ASSERT1__(vehicle->owner,vehicle->GetName());
+
 		const World::Data&world = 
 		#ifdef CLIENT
 			World::actual;
@@ -788,15 +809,13 @@ namespace Objects{ namespace Pathfinding
 			vehicle->owner->knownWorld;
 		#endif
 		//Timer::Time t0 = timer.Now();
-		ASSERT_NOT_NULL__(vehicle);
-		ASSERT1__(vehicle->owner,vehicle->GetName());
 		const THindranceVector&hindrance = vehicle->base->hindrance;
 		const int speed = vehicle->GetMovementStepsPerRound();
 		TWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
-
+		blockedCache.Clear();
 
 		buffer.SetSize(cellCount);
 		TReachableNode empty = {0xFFFFFFFF,0xFFFFFFFF,0,false,InvalidIndex};
@@ -830,7 +849,7 @@ namespace Objects{ namespace Pathfinding
 			TReachableNode&tn = buffer[current];
 			if (!tn.nodeCosts)
 			{
-				tn.isBlocked = isBlocked && isBlocked(cellID);
+				tn.isBlocked = CheckIsBlocked(cellID,isBlocked);
 				tn.nodeCosts = tn.isBlocked ? 1000000 :
 								GetCellMovementCosts(world,cellID,hindrance);
 			}

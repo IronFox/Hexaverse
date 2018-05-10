@@ -103,14 +103,16 @@ namespace Objects
 		
 			Buffer<MapNode>	result;
 
-			typedef bool (*FBlockTest)(const Grid::LCellIdI&);
 
+			typedef std::function<bool(const Grid::LCellIdI&)>FBlockTest;
 
-			/**/			ReachabilityMapper(bool logPerformance) :logPerformance(logPerformance)	{}
+			/**/			ReachabilityMapper(bool logPerformance, bool cacheIsBlocked=true) :logPerformance(logPerformance),cacheIsBlocked(cacheIsBlocked)	{}
 		
 			/**
-			@brief Maps all server-reachable cells of the given vehicle from the specified location
-			@param vehicle Vehicle to use for reference. Must not be NULL
+			@brief Maps all reachable cells of the given vehicle from the specified location.
+			Uses known world on client, and client-specific world (derived from the vehicle parameter) on server.
+			Clears this->result before filling it with the new outcome
+			@param vehicle Vehicle to use for reference. Must not be NULL. Must have a non-NULL owner
 			@param from Specifies the starting location
 			@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
 			@param forceRevertible Forces that only steps are considered that are possible in both directions
@@ -127,9 +129,12 @@ namespace Objects
 				bool	isBlocked;
 				index_t	mapped;
 			};
-			bool					logPerformance;
+			bool					logPerformance,cacheIsBlocked;
 			Buffer<index_t>			touched;
 			Array<TReachableNode>	buffer;
+			HashTable<Grid::LCellIdI,bool>	blockedCache;
+
+			bool					CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked);
 		};
 
 
