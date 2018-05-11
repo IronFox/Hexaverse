@@ -43,6 +43,7 @@ Unit
 	string	typeName;					String representation of the type. May be a compound type if isMovile is true
 	Faction	owner;						Entity owner
 	int		constructionCost;			Amount of resources necessary to build this type
+	float	scanningRange;				Regular grid scanning range
 	bool	isMobile;					True if this is a mobile entity
 	bool	isStructure;				True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
 	Loc		location;					Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
