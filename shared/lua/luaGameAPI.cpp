@@ -195,7 +195,7 @@ namespace Lua
 		return taskOut;
 	}
 
-	Lua::Table API::ToTable(const Objects::TurretBase&b, const Objects::Research::Attributes::Table&researchState)
+	Lua::Table API::TurretToTable( const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState )
 	{
 
 		Lua::Table t = program->CreateTable();
@@ -225,6 +225,20 @@ namespace Lua
 			t.SetField("explosionRadius",b.GetAttackExplosionRadius());
 			t.SetField("damageLevel",b.turret->GetDamageLevel(researchState));
 			t.SetField("dealsEMPDamage",b.turret->dealsEMPDamage);
+			
+			const float flatAttackRange = b.GetFlatAttackRange();
+			const auto origin = Objects::TrajectoryEndPoint(b.ToEntity().location,zOffset);
+			const auto trajectory = b.turret->trajectoryType;
+			t.SetFunction("CanHit",[trajectory,flatAttackRange,origin](const Lua::Table&vector)
+			{
+				if (vector.IsEmpty())
+					return false;
+				M::TVec3<>	dest;
+				vector.GetField("x",dest.x);
+				vector.GetField("y",dest.y);
+				vector.GetField("z",dest.z);
+				return Objects::Component::Turret::CanHit(trajectory,flatAttackRange,origin,dest);
+			});
 		}
 
 		for (index_t op = 0; op < Objects::Component::OperationCount; op++)
@@ -761,7 +775,7 @@ namespace Lua
 		const auto base = e->GetTurretBase(zOffset);
 		if (base)
 		{
-			Lua::Table sub = ToTable(*base, e->GetResearchState());
+			Lua::Table sub = TurretToTable(*base, zOffset, e->GetResearchState());
 			sub.SetField("zOffset",zOffset);
 			t.SetField("turret",sub);
 

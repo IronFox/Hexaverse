@@ -88,7 +88,7 @@ namespace Lua
 		#endif
 
 		Lua::Table ToTable(const Grid::LCellIdI&cell);
-		Lua::Table ToTable(const Objects::TurretBase&b, const Objects::Research::Attributes::Table&researchState);
+		Lua::Table TurretToTable(const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState);
 		Lua::Table ToTable(const Objects::MobileEntity::Task&task);
 
 
