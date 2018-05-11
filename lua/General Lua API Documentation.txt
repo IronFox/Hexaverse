@@ -138,6 +138,7 @@ Research
 
 bool		Game.Grid.lowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells)
 
+bool		Game.Grid.AffectedByEMP(Cell);		Returns true if EMP zones affect the given cell
 Loc			Game.Grid.ToLocation(Cell cell, int height)
 int			Game.Grid.bottomHeight;		Minimum grid height
 int			Game.Grid.topHeight;		Maximum grid height
