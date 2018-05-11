@@ -14,6 +14,83 @@ function QuadraticDistance(u,v)
 	return Sqr(u.x - v.x) + Sqr(u.y - v.y) + Sqr(u.z - v.z);
 end;
 
+--[[
+TheatEstimation
+{
+	bool	beingSeen;
+	int		damageThreat;
+	float	unknownDistanceThreat;
+}
+]]
+
+function ShouldBlockAtThreat(offensiveVehicle--[[bool]], estimation--[[ThreatEstimation]], reference--[[ThreatEstimation]])	-- bool
+	if (not estimation.beingSeen and offensiveVehicle and unknownDistanceThreat < 0.2f) then
+		return false;
+	end;
+	if (estimation.damageThreat > reference.damageThreat) then
+		return true;
+	end;
+	if (estimation.unknownDistanceThreat == reference.unknownDistanceThreat) then
+		return false;
+	end;
+
+	return estimation.unknownDistanceThreat * 0.8f > reference.unknownDistanceThreat;
+end;
+
+
+
+function EstimateDeadThreatLevelFrom(u --[[Unit]], estimateAt --[[Loc]], estimation --[[ThreatEstimation]])
+	local distance = QuadraticDistance(u.location.world,estimateAt.world);
+	estimation.unknownDistanceThreat = estimation.unknownDistanceThreat + 1.f / (1.f + distance);
+end;
+
+function EstimateLivingThreatLevelFrom(u --[[Unit]], estimateAt --[[Loc]], canIgnoreThreat --[[bool]], estimation --[[ThreadEstimation]])
+	if (canIgnoreThreat and u.ignoreThreatRounds > 0) then
+		return;
+	end;
+	local distance = QuadraticDistance(u.location.world,estimateAt.world);
+	if (distance < Sqr(u.scanningRange)) then
+		estimation.beingSeen = true;	--this is not necessarily true anymore, but a more extensive test will be added later
+	end;
+
+	if (u.turret and u.turret.CanHit(estimateAt.world)) then
+		estimation.damageThreat = estimation.damageThreat + 
+			u.turret.damageLevel * u.turret.attacksPerRound;
+	end;
+end;
+
+function EstimateThreatFromAll(estimateAt --[[Loc]], ignoreHostiles --[[bool]], canIgnoreThreat --[[bool]])
+	local threat = {beingSeen = false, damageThreat = 0, unknownDistanceThreat = 0};
+	if (not ignoreHostiles) then
+		for _,u in pairs(Game.units) do
+			EstimateLivingThreatLevelFrom(u,estimateAt,canIgnoreThreat,threat);
+		end;
+		for _,m in pairs(Game.myMarkers) do
+			if m.type == 'HostileContact' then
+				EstimateLivingThreatLevelFrom(m.unitReference,estimateAt,canIgnoreThreat,threat);
+			end;
+		end;
+	end;
+	for _,m in pairs(Game.myMarkers) do
+		if my.type == 'EntityDeath' then
+			EstimateDeadThreatLevelFrom(m.unitReference,estimateAt,threat);
+		end;
+	end;
+end;
+
+function BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat)
+	return function(loc)
+		if (Game.Grid.AffectedByEMP(loc)) then
+			return true;
+		end;
+		local estimation = EstimateThreatFromAll(loc,overconfident,  canIgnoreThreat);
+		return ShouldBlockAtThreat(hunter,estimation,referenceThreat);
+	end;
+end;
+
+
+
+
 
 function ProcessVehicle(v)
 	
@@ -23,7 +100,7 @@ function ProcessVehicle(v)
 	end;
 	
 	if (t.detectsResources or t->can["Construct"]) then
-		Game.Log("AI: Skipping unsupported vehicle type "..v.niceName);
+		Game.Log("Skipping unsupported vehicle type "..v.niceName);
 		return;
 	end;
 
@@ -31,11 +108,9 @@ function ProcessVehicle(v)
 	local minMotion = v.movementSpeed;
 	local attacker = t.canAttack;
 	local bestScore = 0.f;
-	
-	//Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr;
 
 	if (attacker and t.ammoDemandPerShot > t.ammoAvailability) then
-		Game.Log("AI: Out of ammo: destroying vehicle "..v.niceName);
+		Game.Log("Out of ammo: destroying vehicle "..v.niceName);
 		v.Destroy();
 		return;
 	end;
@@ -46,7 +121,7 @@ function ProcessVehicle(v)
 	local haveMarker = false;
 	
 
-	for _,m in ipairs(Game.myMarkers) do
+	for _,m in pairs(Game.myMarkers) do
 		if (m.type == "Visited") then
 			local distance = Game.GetDistance(m.location,v.location);
 			if (distance < 5.f) then
@@ -67,11 +142,11 @@ function ProcessVehicle(v)
 		local id = v.id;
 		local attackTarget = {};
 
-		for _,u in ipairs(Game.units) do
+		for _,u in pairs(Game.units) do
 			ProcessAttackTarget(v,u,attackTarget);
 		end;
 		
-		for _,m in ipairs(Game.myMarkers) do
+		for _,m in pairs(Game.myMarkers) do
 			if m.type == 'HostileContact' then
 				ProcessAttackTarget(v,m.unitReference,attackTarget);
 			end;
@@ -103,7 +178,7 @@ function ProcessVehicle(v)
 		end;
 		
 		local targets = {};
-		for _,t in ipairs(attackTarget) do
+		for _,t in pairs(attackTarget) do
 			targets[#targets] = t.target;
 		end;
 		
@@ -116,7 +191,7 @@ function ProcessVehicle(v)
 
 	local proximityPresence = 0;
 	local radarProximity = 0;
-	for _,u in ipairs(Game.units) do
+	for _,u in pairs(Game.units) do
 		if u.isOwnedByMe and QuadraticDistance(v.location.world,u.location.world) < 25.f then
 			if u.turret.damageLevel > 0 then
 				proximityPresence = proximityPresence+ 1;
@@ -137,16 +212,21 @@ function ProcessVehicle(v)
 	
 
 	local canIgnoreThreat = (attacker or math.random() < 0.5f) and not t.dealsEMPDamage;
-	BeginBlockTest(v,true,canIgnoreThreat,overconfident);	//force current to have no threat level, limiting motion to areas with zero threat
 	
-	local reach = Game.GetUnitReach(v,BlockTest,referenceSpeed,true,false,false,false);
+	local hunter = attacker and t.independentAttackAndMotion;
+	local referenceThreat = EstimateThreatFromAll(v.location,true, canIgnoreThreat,overconfident);
+	
+	
+	local reach = Game.GetUnitReach(v,BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat)
+		,referenceSpeed,true,false,false,false);
 	
 	if (#reach == 0) then
 		--no chance to get out of danger, so try to reduce threat level
-		BeginBlockTest(v,false,canIgnoreThreat,overconfident);
-		reach = Game.GetUnitReach(v,BlockTest,referenceSpeed,true,false,false,false);
+		referenceThreat = EstimateThreatFromAll(v.location,false, canIgnoreThreat,overconfident);
+		local test = BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat);
+		reach = Game.GetUnitReach(v,test,referenceSpeed,true,false,false,false);
 		if (#reach == 0) then
-			reach = Game.GetUnitReach(v,BlockTest,referenceSpeed,false,false,false,false);
+			reach = Game.GetUnitReach(v,test,referenceSpeed,false,false,false,false);
 		end;
 	end;
 
@@ -165,7 +245,7 @@ function ProcessVehicle(v)
 			end;
 		end;
 		
-		for _,m in ipairs(Game.myMarkers) do
+		for _,m in pairs(Game.myMarkers) do
 			if m.type == 'HostileContact' then
 				local distance = QuadraticDistance(e.location.world,reference);
 				local fc = EstimateInterest(t,e.location.height,e.constructionCost,distance);
@@ -176,7 +256,7 @@ function ProcessVehicle(v)
 			end;
 		end;
 		
-		for _,m in ipairs(Game.myMarkers) do
+		for _,m in pairs(Game.myMarkers) do
 			if m.type == 'Visited' then
 				local distance = QuadraticDistance(m.location.world,reference);
 				if (distance < 49.f or (n.movementCostsFromRoot >= minMotion and distance < 16.f))
@@ -226,7 +306,7 @@ function ProcessIgnorance(e)
 		local r = e.turret.flatAttackRange + e.turret.explosionRadius;
 		local damagePotentialPerRound = 0.f;
 		local participants = 0;
-		for _,u in ipairs(Game.myUnits) do
+		for _,u in pairs(Game.myUnits) do
 			if (u.isMobile and u.canAttack and not u.turret.dealsEMPDamage) then
 				local d2 = QuadraticDistance(u.location.world,ref);
 				if (d2 < Sqr(r*1.2f)) then	--might be okay anyway
@@ -256,93 +336,35 @@ end;
 
 
 function	ExecuteAI()
-	f
+	for _,m in pairs(Game.myMarkers) do
+		if (m.type == 'HostileContact') then
+			if (m.age >= 10 and m.unitReference and m.unitReference.isMobile) then	--after 10 rounds, assume vehicle has moved
+				Game.Log("Deleting marker "..m.id.." since hostile vehicle markers are considered outdated after 10 rounds (age="..tostring(m.age)..")");
+				m.Destroy();
+			end;
+		elseif (m.type == 'EntityDeath') then
+			local estimation = EstimateThreatFromAll(m.location,false,false);
+			if (estimation.damageThreat > 0) then	--knowing cause, dropping ghost
+				Game.Log("Deleting marker "..m.id.." because cause of destruction is considered known");
+				m.Destroy();
+			end;
+		end;
+	end;
+	for _,u in pairs(Game.units) do
+		ProcessIgnorance(u);
+	end;
 
-	for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-	{
-		const Objects::Marker&m = Objects::Marker::all[i];
-		switch (m.type)
-		{
-			case Objects::Marker::Type::HostileContact:
-				if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
-				{
-					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
-					ObjectHelper::SignalMarkerDeletion(m.id);
-					i--;
-				}
-			break;
-			case Objects::Marker::Type::EntityDeath:
-			{
-				TThreatEstimation estimation;
-				EstimateThreatFromAll(Grid::ToWorld(m.location),false,false,estimation);
-				if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
-				{
-					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
-					ObjectHelper::SignalMarkerDeletion(m.id);
-					i--;
-				}
-			}
-			break;
-		}
-	}
+	for _,u in pairs(Game.units) do
+		if (u.isMobile) then
+			ProcessVehicle(u);
+		end;
+	end;
 
-
-	Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
-	{
-		ProcessIgnorance(*e);
-	},Objects::IncludeGhosts::Living);
-
-
-}
-
-void	Process(float timeQuantum)
-{
-	if (done)
-		return;
-	LogEvent(EventSignificance::Debug,nullptr,"AI: Resuming processing ("+String(timeQuantum)+")");
-	tempMarkers.Clear();
-	Timer::Time started = timer.Now();
-	for (index_t i = vehicles.Count() - 1; i < vehicles.Count(); i--)
-	{
-		ProcessVehicle(vehicles[i]);
-		vehicles.EraseLast();
-		if (timer.GetSecondsSince(started) > timeQuantum)
-			return;
-	}
-	
-	
-	
-
-	if (vehicles.IsEmpty())
-	{
-		LogEvent(EventSignificance::Debug,nullptr,"AI: Vehicle processing completed");
-		
-		if (!ObjectHelper::MarkerCheck::DoneThisRound())
-		{
-			//we could be more strict, enforcing that markers be checked before processing units, but in practice the difference should be minimal
-			const bool painting = World::actual.PaintingSensorsConcurrently();
-			LogEvent(EventSignificance::Debug,nullptr,"AI: Markers processing NOT completed (painting="+String(painting)+")");
-			return;
-		}
-
-		done = true;
-		for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-		{
-			const Objects::Marker&m = Objects::Marker::all[i];
-			if (m.type == Objects::Marker::Type::Visited && m.age > 100)
-			{
-				LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
-
-				ObjectHelper::SignalMarkerDeletion(m.id);
-				i--;
-			}
-		}
-
-		ASSERT__(done);
-		LogEvent(EventSignificance::Debug,nullptr,"AI: all done. requesting new round");
-		ApplicationInterface::SignalRoundEnd();
-		
-	}
-
-}
+	for (_,m in pairs(Game.myMarkers)) do
+		if (m.type == 'Visited' and m.age > 100) then
+			Game.Log("Deleting marker "..m.GetName()..". Reached end-of-life after 100 rounds");
+			m.Destroy();
+		end;
+	end;
+end;
 
