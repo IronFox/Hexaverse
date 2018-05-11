@@ -257,12 +257,12 @@ namespace Lua
 		void		API::AddMyMarker(const Objects::Marker&m)
 		{
 			Lua::Table t = program->CreateTable();
-			if (!myMarkerList)
+			if (!myMarkerIDMap)
 			{
-				myMarkerList = program->CreateTable();
-				gameTable.SetField("myMarkers",myMarkerList);
+				myMarkerIDMap = program->CreateTable();
+				gameTable.SetField("myMarkers",myMarkerIDMap);
 			}
-			myMarkerList.AppendElement(t);
+			myMarkerIDMap.SetField(m.id.ToFullString(), t);
 			t.SetField("location",ToTable(m.location));
 			t.SetField("type",m.type.ToString());
 			t.SetField("confirmed", true);
@@ -276,9 +276,20 @@ namespace Lua
 			{
 				if (onMarkerTouch)
 					onMarkerTouch(id);
-				Lua::Table t = myMarkerList.GetElement(at);
+				else
+					throw Lua::Exception("AddMyMarker(): onMarkerTouch not set");
+				Lua::Table t = myMarkerIDMap.GetField(id.ToFullString());
+				ASSERT__(t);
 				ASSERT_EQUAL__(t.GetField("id").GetAs<String>(),id.ToFullString());
 				t.SetField("age",0);
+			});
+			t.SetFunction("Destroy",[id,this]()
+			{
+				if (onMarkerDestroy)
+					onMarkerDestroy(id);
+				else
+					throw Lua::Exception("AddMyMarker(): onMarkerDestroy not set");
+				myMarkerIDMap.UnsetField(id.ToFullString());
 			});
 		}	
 		void	API::SetSelectedUnit( const Objects::PWorldEntity&e, bool updateIfFound )
@@ -347,7 +358,7 @@ namespace Lua
 		entityMap.Clear();
 		#ifdef CLIENT
 			myEntityIDMap.ClearTable();
-			myMarkerList.ClearTable();
+			myMarkerIDMap.ClearTable();
 			myResearch.ClearTable();
 			gameTable.UnsetField("myCurrentResearch");
 			gameTable.UnsetField("selectedUnit");
@@ -432,19 +443,22 @@ namespace Lua
 				auto luaID = luaEntity.GetField("id");
 				if (!luaID)
 					throw Lua::Exception("CreateMarker(): Entity parameter #1 does not contain an id field");
-				TUniqueID id;
-				if (!id.Decode(luaID.GetAs<String>()))
+				TUniqueID entityID;
+				if (!entityID.Decode(luaID.GetAs<String>()))
 					throw Lua::Exception("CreateMarker(): Entity parameter #1 does not contain a decodeable id field");
 
 				const Lua::Table loc = luaEntity.GetField("location");
 
+				TUniqueID id;
+				id.Generate();
+
 				Lua::Table mt = program->CreateTable();
-				if (!myMarkerList)
+				if (!myMarkerIDMap)
 				{
-					myMarkerList = program->CreateTable();
-					gameTable.SetField("myMarkers",myMarkerList);
+					myMarkerIDMap = program->CreateTable();
+					gameTable.SetField("myMarkers",myMarkerIDMap);
 				}
-				myMarkerList.AppendElement(mt);
+				myMarkerIDMap.SetField(id.ToFullString(), mt);
 				mt.SetField("location",loc);
 				mt.SetField("type",luaEntity.GetField("type"));
 				mt.SetField("confirmed", false);
@@ -457,7 +471,9 @@ namespace Lua
 				});
 
 				if (onMarkerCreate)
-					onMarkerCreate(t,id,Detail::ToLGridCell(loc,"Entity parameter #1.location"));
+					onMarkerCreate(id,t,entityID,Detail::ToLGridCell(loc,"Entity parameter #1.location"));
+				else
+					throw Lua::Exception("CreateMarker(): onMarkerCreate() not set");
 				
 			});
 		#endif

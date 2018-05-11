@@ -156,7 +156,7 @@ Vector
 };
 
 [client only]
-	Marker[]	Game.myMarkers			All client-created markers. Since this is a client-private feature, server does not provide this
+	{id->Marker}Game.myMarkers			All client-created markers, mapped by marker id (string). Since this is a client-private feature, server does not provide this
 
 
 	Marker
@@ -167,6 +167,7 @@ Vector
 		int		age;					Number of rounds since this marker was created
 		Unit	unitReference;			Referenced unit. May be nil
 		func	Touch();				Resets marker age to 0. Instantly updates local record, even if server update should fail
+		func	Destroy();				Destroys the local marker. The marker is removed from Game.myMarkers regardless of whether the operation succeeds
 	}
 
 	Marker		Game.CreateMarker(Unit ref, string type)			Creates a new marker, and immediately adds it to markers, as though the operation had succeeded even if it fails
