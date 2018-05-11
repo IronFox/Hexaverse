@@ -1179,7 +1179,7 @@ namespace Lua
 			throw Exception("Trying to assigning non-table Lua reference '"+name+"' to table reference variable");
 	}
 
-	void	Table::Pop(int cnt)
+	void	Table::Pop(int cnt)	const
 	{
 		lua_State*st = GetState();
 		lua_pop(st,cnt);

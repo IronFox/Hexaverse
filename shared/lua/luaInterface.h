@@ -703,7 +703,7 @@ namespace Lua
 		bool			AppendTopElement();
 		bool			PushField(const String&name) const;
 		bool			PushElement(index_t) const;
-		void			Pop(int cnt);
+		void			Pop(int cnt) const;
 	protected:
 		virtual void	SignalChange(const String&) override;
 	public:
