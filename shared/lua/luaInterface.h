@@ -706,6 +706,7 @@ namespace Lua
 		void			SetTopElement(index_t at);
 		bool			AppendTopElement();
 		bool			PushField(const String&name) const;
+		bool			PushField(const char*name) const;
 		bool			PushElement(index_t) const;
 		void			Pop(int cnt) const;
 	protected:
@@ -738,12 +739,23 @@ namespace Lua
 		template <typename T>
 			bool		GetField(const String&name, T&rs) const
 			{
+				return GetField(name.c_str(), rs);
+			}
+		/**
+		Fetches the value of the specified field in the local table.
+		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
+		@return true on success
+		*/
+		template <typename T>
+			bool		GetField(const char*name, T&rs) const
+			{
 				if (!PushField(name))
 					return false;
 				rs = Detail::StackedT<T,false>::Get(GetProgram(),-1);
 				Pop(2);
 				return true;
 			}
+
 		/**
 		Fetches the value of the specified index element in the local table.
 		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too

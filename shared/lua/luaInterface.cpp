@@ -1245,17 +1245,23 @@ namespace Lua
 
 	bool Table::PushField(const String & name)	const
 	{
+		return PushField(name.c_str());
+	}
+
+	bool Table::PushField(const char* name)	const
+	{
 		if (!Super::Push())
 			return false;
 		lua_State*st = GetState();
-		lua_getfield(st,-1,name.c_str());
-		if (lua_isnil(st,-1))
+		lua_getfield(st, -1, name);
+		if (lua_isnil(st, -1))
 		{
-			lua_pop(st,2);
+			lua_pop(st, 2);
 			return false;
 		}
 		return true;
 	}
+
 
 	bool Table::PushElement(index_t at)	const
 	{
