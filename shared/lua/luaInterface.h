@@ -588,7 +588,7 @@ namespace Lua
 
 
 		/**
-		Updates the local reference to the top-most entry of the current lua stack associated with the specified program.
+		Updates the local reference to the specified entry of the current lua stack associated with the specified program.
 		The stack remains unchanged by the operation (the referenced element remains in the stack)
 		The method fails if the given program is empty, its stack does not contain the addressed element, or the addressed element is nil.
 		@return true if the local reference was updated
