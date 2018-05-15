@@ -653,6 +653,22 @@ static int pmain (lua_State *L) {
 namespace Lua
 {
 
+	void	Reference::ResetFromStackTopPop(const PProgram&st)
+	{
+		lua_State*state = st->GetState();
+		int ref = luaL_ref(state, LUA_REGISTRYINDEX);
+		try
+		{
+			SetReference(st, ref, "");
+		}
+		catch (...)
+		{
+			luaL_unref(state, LUA_REGISTRYINDEX, ref);
+			throw;
+		}
+	}
+
+
 	bool Reference::ResetFromStack(const PProgram&st, int at)
 	{
 		if (!st)
@@ -661,16 +677,7 @@ namespace Lua
 		if (lua_gettop(state)< abs(at) || lua_isnil(state,at))
 			return false;
 		lua_pushvalue(state,at);
-		int ref = luaL_ref(state, LUA_REGISTRYINDEX);
-		try
-		{
-			SetReference(st,ref,"");
-		}
-		catch (...)
-		{
-			luaL_unref(state,LUA_REGISTRYINDEX,ref);
-			throw;
-		}
+		ResetFromStackTopPop(st);
 		return true;
 	}
 
@@ -1276,6 +1283,29 @@ namespace Lua
 		}
 		return true;
 	}
+
+	void		Table::Foreach(const std::function<void(const String&, const Lua::Reference&)>&visitor) const
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
+		Detail::StackChecker chk(st);
+		Super::Push();
+		String key;
+		lua_pushnil(st);
+		//..., table, nil
+		while (lua_next(st, -2) != 0)
+		{
+			//..., table, key, value
+			Lua::Reference ref;
+			ref.ResetFromStackTopPop(GetProgram()); //pop value -> ..., table, key
+			key = lua_tostring(st, -1);
+			visitor(key, ref);
+		}
+		//..., table
+		lua_pop(st, 1);
+	}
+
 
 	void		Table::ClearTable()
 	{

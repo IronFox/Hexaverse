@@ -596,6 +596,12 @@ namespace Lua
 		@param idx Stack address in the ranges [1,top] and [-top,-1]. 0 is invalid
 		*/
 		bool		ResetFromStack(const PProgram&prog, int idx);
+		
+		/**
+		Special purpose constructor that uses the top most entry from the current lua stack associated with the specified program.
+		The top most element is removed in the process.
+		*/
+		void		ResetFromStackTopPop(const PProgram&prog);
 		/**
 		Updates the local reference to the given program and name
 		The method fails if the specified program is not set, or the name does not exist
@@ -731,6 +737,8 @@ namespace Lua
 		void			ClearTable();
 		void			UnsetField(const String&name);
 		void			UnsetElement(index_t at);
+
+		void			Foreach(const std::function<void(const String&, const Lua::Reference&)>&visitor) const;
 		/**
 		Fetches the value of the specified field in the local table.
 		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
