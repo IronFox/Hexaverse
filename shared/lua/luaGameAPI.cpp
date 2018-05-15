@@ -458,6 +458,35 @@ namespace Lua
 				if (t != Objects::Marker::Type::Visited)
 					unitReference = luaEntity;
 
+				/*
+				bool matchFound = false;
+
+				myMarkerIDMap.Foreach([&matchFound, &loc, &unitReference, &markerType](const String&key, const Lua::Reference&member)
+				{
+					if (matchFound)
+						return;
+					if (member.IsTable())
+					{
+						Lua::Table t = member;
+						if (t.GetField("location") != loc) //reference-equal should be 
+							return;
+						String type;
+						if (!t.GetField("type", type) || type != markerType)
+							return;
+						Lua::Reference luaEntity;
+						if (unitReference.IsSet())
+							if (!t.GetField("unitReference", luaEntity) || luaEntity != unitReference)
+								return;
+						matchFound = true;
+					}
+					else
+						FATAL__("Got non-table for key " + key);
+
+				});
+				if (matchFound)
+					return;
+					*/
+
 				TUniqueID id;
 				id.Generate();
 
