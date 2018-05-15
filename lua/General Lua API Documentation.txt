@@ -51,6 +51,7 @@ Unit
 	bool	isSleeping;					True if the local entity is currently sleeping
 	int		health;						Current entity health. <= 0 for ghosts
 	int		maxHealth;					Maximum possible health of the local entity. May change over time
+	bool	isIndestructible;			True if the local unit is indestructible, false otherwise
 	int		empDamageLevel;				Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
 	bool	isWorkingStructure;			True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
 	bool	isMobileEntityProducer;		True if this entity can produce mobile entities. Does not necessarily imply that this is a building

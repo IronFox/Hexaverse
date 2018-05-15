@@ -774,6 +774,7 @@ namespace Lua
 		t.SetField("isSleeping",e->IsSleeping());
 		t.SetField("health",e->health);
 		t.SetField("maxHealth",e->GetMaxHealth());
+		t.SetField("isIndestructible", e->IsIndestructible());
 		t.SetField("empDamageLevel",e->empDamageLevel);
 		t.SetField("scanningRange",e->GetScanningRange());
 
