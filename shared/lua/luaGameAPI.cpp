@@ -213,7 +213,7 @@ namespace Lua
 			const float flatAttackRange = b.GetFlatAttackRange();
 			const auto origin = Objects::TrajectoryEndPoint(b.ToEntity().location,zOffset);
 			const auto trajectory = b.turret->trajectoryType;
-			t.SetFunction("CanHit",[trajectory,flatAttackRange,origin](const Lua::Table&vector)
+			t.SetFunction("IsInRange",[trajectory,flatAttackRange,origin](const Lua::Table&vector)
 			{
 				if (vector.IsEmpty())
 					return false;

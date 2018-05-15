@@ -113,7 +113,7 @@ Turret
 		float	explosionRadius;		Spherical explosion radius
 		int		damageLevel;			Damage inflicted by the local turret
 		bool	dealsEMPDamage;			True if the local turret deals EMP damage as opposed to permanent health damage
-		bool	CanHit(Vector);			True if the given location could be hit. Ignores potentially blocking terrain
+		bool	IsInRange(Vector);		True if the given location could be hit. Ignores potentially blocking terrain
 	bool	can[Operation];				True if the respective operation can be performed by this turret, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. canConstruct)
 	int		speedOf[Operation];			Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. speedOfConstruct)
 }
