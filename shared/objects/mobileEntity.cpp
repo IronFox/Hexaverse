@@ -1559,7 +1559,7 @@ namespace Objects
 			{
 				if (!Pathfinding::shortestPath.SelectiveUpdate((const Vehicle&)*v,prev,target.target))
 					return false;
-				this->path.swap(Pathfinding::shortestPath.result);
+				this->path.AppendAll(Pathfinding::shortestPath.result);
 			}
 		}
 		else
