@@ -379,15 +379,13 @@ namespace Lua
 
 	void	API::Destroy()
 	{
-		if (program)
-			program->SetGlobal("Game",Lua::Reference{});
-		program.reset();
 		FlushAllObjects(true);
 		gameTable.ClearReference();
 		gridTable.ClearReference();
 		pathfindingTable.ClearReference();
 		lowCellGrid.Clear();
 		locationMap.Clear();
+		program.reset();
 	}
 
 	void	API::AddObjectAndPathfindingFunctions()
