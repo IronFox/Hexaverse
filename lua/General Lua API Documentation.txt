@@ -182,12 +182,25 @@ Vector
 	@param maxReach Maximum distance (in terms of mobile movementSpeed) to consider. Larger values increase time necessary to complete
 	@param forceReversible If true only consider paths that the specified unit can return on (as opposed to e.g. falling safely from a cliff, but not being able to climb back up)
 	@param allowAccessibleHangars If true also include possible destination hangars of the local unit, false to consider those areas blocked
-	@param ignoreFriendlyVehiclesOnRoute If true, owned mobile units will be ignored, otherwise considered blocking
+	@param ignoreFriendlyVehiclesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 	@param cannotStandOnUnknown Set true to disallow relocation onto unknown terrain
 	@return Array of reachable locations
 	
-	Reachable[]	Game.GetUnitReach(Unit unit,func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute, bool cannotStandOnUnknown);
+	Reachable[]	Game.Pathfinding.GetUnitReach(Unit unit,func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute, bool cannotStandOnUnknown);
 	
+
+	@brief Finds the shortest grid path for the specified unit to the specified target location
+	@param unit Unit to find the path for
+	@param target Target location
+	@param costModifer Optional function ((Loc location, int regularCosts)->int modifiedCosts) that can modify the cost associated with a cell.
+		Invoked once per path candidate as encountered. May be nil, using just the default costs.
+		Setting this function such that it reduces costs of a given node will cause pathfinding to favor paths across that location.
+		Conversely, increasing the returned value will cause the routing mechanism to avoid the location (assuming it's not the target).
+		Note that the returned value will be factored in the calculation of Reachable.movementCostsFromRoot
+	@param ignoreFriendlyVehiclesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
+	@return Array of path nodes, in order along the route. The current unit location is omitted, making the first entry the first step to take.
+	
+	Reachable[]	Game.Pathfinding.FindShortestPath(Unit unit, Loc target, int(Loc,int) costModifier,  bool ignoreFriendlyVehiclesOnRoute)
 
 	Reachable	
 	{

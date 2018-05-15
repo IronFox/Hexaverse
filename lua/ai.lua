@@ -217,7 +217,7 @@ function ProcessVehicle(v)
 	local referenceThreat = EstimateThreatFromAll(v.location,true, canIgnoreThreat,overconfident);
 	
 	
-	local reach = Game.GetUnitReach(v,BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat)
+	local reach = Game.Pathfinding.GetUnitReach(v,BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat)
 		,referenceSpeed,true,false,false,false);
 	
 	if (#reach == 0) then

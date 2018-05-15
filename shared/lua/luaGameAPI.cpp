@@ -399,6 +399,7 @@ namespace Lua
 		FlushAllObjects(true);
 		gameTable.ClearReference();
 		gridTable.ClearReference();
+		pathfindingTable.ClearReference();
 		lowCellGrid.Clear();
 		locationMap.Clear();
 	}
@@ -411,6 +412,8 @@ namespace Lua
 		gameTable = p->CreateTable();
 		gridTable = p->CreateTable();
 		gameTable.SetField("Grid",gridTable);
+		pathfindingTable = p->CreateTable();
+		gameTable.SetField("Pathfinding", pathfindingTable);
 		gameTable.SetGlobal("Game");
 
 		entityIDMap = program->CreateTable();
@@ -478,33 +481,48 @@ namespace Lua
 			});
 		#endif
 
-		gameTable.SetFunction("GetUnitReach",[this](const Lua::Table&entityTable,const Lua::Function<bool(Lua::Table)>&isBlocked,int maxReach,bool forceReversible,bool allowAccessibleHangars,bool ignoreFriendlyVehiclesOnRoute,bool cannotStandOnUnknown)->Lua::Table
+		
+		pathfindingTable.SetFunction("FindShortestPath", [this](const Lua::Table&entityTable, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table,int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
 		{
-			if (!entityTable)
-				throw Lua::Exception("GetUnitReach(): Unit parameter #1 is nil");
-			const auto luaID = entityTable.GetField("id");
-			if (!luaID)
-				throw Lua::Exception("GetUnitReach(): Unit parameter #1.id is nil");
-			const String sid = luaID.GetAs<String>();
-			TUniqueID id;
-			if (!id.Decode(sid))
-				throw Lua::Exception("GetUnitReach(): Unit parameter #1.id is no valid unique id");
-			auto ptr = this->entityMap.QueryPointer(id);
-			if (ptr == nullptr)
-				throw Lua::Exception("GetUnitReach(): Unit parameter #1.id is unknown");
-			Objects::PWorldEntity e = ptr->lock();
-			if (!e)
-				throw Lua::Exception("GetUnitReach(): Unit parameter #1 points to an expired entity");
-			if (!e->IsVehicle())
-				throw Lua::Exception("GetUnitReach(): Unit parameter #1 '"+e->GetName()+"' is not routeable");
-			const Grid::LCellIdI loc = Detail::ToLGridCell(entityTable.GetField("location"),"GetUnitReach(): Unit parameter #1.location");
+			Grid::LCellIdI loc;
+			const auto v = ParameterToVehicle(entityTable, loc, "FindShortestPath(): Unit parameter #1");
+			const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPath(): Target parmater #2");
 			
-			if (loc.height > Grid::CellStack::TopHeight)
-				throw Lua::Exception("GetUnitReach(): Unit parameter #1 '"+e->GetName()+"' is located above maximum height");
+			bool success = true;
+			Objects::Pathfinding::FCellCostModifier costMod;
+			if (costModifier.IsSet())
+				costMod = [&costModifier, this](const Grid::LCellIdI&loc, int&costs)
+				{
+					costs = costModifier(ToTable(loc), costs);
+				};
+			success = shortestPath.Update(*v, loc, dest, ignoreFriendlyMobilesOnRoute, false, nullptr, costMod);
+			if (!success)
+				return Lua::Table{};
+			
+			Lua::Table result = program->CreateTable(),pred;
+			int cost = 0;
+			for (index_t i = 0; i < shortestPath.result.Count(); i++)
+			{
+				const auto&in = shortestPath.result[i];
+				Lua::Table luaNode = program->CreateTable();
+				luaNode.SetField("location", ToTable(in.cell));
+				cost += in.movementCostsFromPrevNode;
+				luaNode.SetField("movementCostsFromRoot", cost);
+				if (pred.IsSet())
+					luaNode.SetField("predecessor", pred);
 
-			const auto v = To<Objects::Vehicle>::Cast(e);
-			Lua::Table result = program->CreateTable();
-			Array<Lua::Table>	 tables;
+				result.AppendElement(luaNode);
+				pred = luaNode;
+			}
+			return result;
+		});
+
+		pathfindingTable.SetFunction("GetUnitReach",[this](const Lua::Table&entityTable,const Lua::Function<bool(Lua::Table)>&isBlocked,int maxReach,bool forceReversible,bool allowAccessibleHangars,bool ignoreFriendlyVehiclesOnRoute,bool cannotStandOnUnknown)->Lua::Table
+		{
+			Grid::LCellIdI loc;
+			const auto v = ParameterToVehicle(entityTable, loc,"GetUnitReach(): Unit parameter #1");
+			if (loc.height > Grid::CellStack::TopHeight)
+				throw Lua::Exception("GetUnitReach(): Unit parameter #1 '" + v->GetName() + "' is located above maximum height");
 
 			if (cannotStandOnUnknown)
 				Objects::Component::VehicleBase::canStandOnUnknown = false;
@@ -525,6 +543,8 @@ namespace Lua
 			
 
 
+			Lua::Table result = program->CreateTable();
+			Array<Lua::Table>	 tables;
 			tables.SetSize(mapper.result.Count());
 			for (index_t i = 0; i < mapper.result.Count(); i++)
 			{
@@ -586,6 +606,29 @@ namespace Lua
 	}
 
 
+	Objects::PVehicle	API::ParameterToVehicle(const Lua::Table&entityTable, Grid::LCellIdI&outLoc, const String&parameterName) const
+	{
+		if (!entityTable)
+			throw Lua::Exception(parameterName+" is nil");
+		const auto luaID = entityTable.GetField("id");
+		if (!luaID)
+			throw Lua::Exception(parameterName + ".id is nil");
+		const String sid = luaID.GetAs<String>();
+		TUniqueID id;
+		if (!id.Decode(sid))
+			throw Lua::Exception(parameterName + ".id is no valid unique id");
+		auto ptr = this->entityMap.QueryPointer(id);
+		if (ptr == nullptr)
+			throw Lua::Exception(parameterName + ".id is unknown");
+		Objects::PWorldEntity e = ptr->lock();
+		if (!e)
+			throw Lua::Exception(parameterName + " points to an expired entity");
+		if (!e->IsVehicle())
+			throw Lua::Exception(parameterName + " '" + e->GetName() + "' is not a vehicle");
+		outLoc = Detail::ToLGridCell(entityTable.GetField("location"), parameterName+".location");
+
+		return To<Objects::Vehicle>::Cast(e);
+	}
 
 
 	API::TAlliance*	API::AddAlliance( const Objects::PAlliance&a, bool updateIfFound )

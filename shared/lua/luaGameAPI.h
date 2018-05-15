@@ -17,6 +17,7 @@ namespace Lua
 	{
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
+							pathfindingTable, //Game.Pathfinding.X
 							gridTable;	//Game.Grid.X
 		Lua::Table			entityIDMap,
 							factionIDMap,
@@ -53,6 +54,7 @@ namespace Lua
 		HashTable<TUniqueID,std::pair<Lua::Table,bool> >	loadedEntityTableMap;
 		HashTable<TUniqueID,Objects::WWorldEntity>	entityMap;
 		HashSet<TUniqueID>	entityMappedToTable, factionMappedToTable, allianceMappedToTable;
+		Objects::Pathfinding::ShortestPath	shortestPath;
 
 		//feedback functions:
 		std::function<void(const TUniqueID&)>	onMarkerTouch,onMarkerDestroy, onRemove,onDropAllTasks;
@@ -90,7 +92,7 @@ namespace Lua
 		Lua::Table ToTable(const Grid::LCellIdI&cell);
 		Lua::Table TurretToTable(const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState);
 		Lua::Table ToTable(const Objects::MobileEntity::Task&task);
-
+		Objects::PVehicle	ParameterToVehicle(const Lua::Table&luaEntity, Grid::LCellIdI&outLoc, const String&parameterName) const;
 
 		void	AddFactionEntities(const Objects::PFaction&);
 		void	AddAllEntities();
