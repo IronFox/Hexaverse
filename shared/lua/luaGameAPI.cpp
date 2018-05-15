@@ -213,6 +213,7 @@ namespace Lua
 			const float flatAttackRange = b.GetFlatAttackRange();
 			const auto origin = Objects::TrajectoryEndPoint(b.ToEntity().location,zOffset);
 			const auto trajectory = b.turret->trajectoryType;
+			const auto explosionRadius = b.GetAttackExplosionRadius();
 			t.SetFunction("IsInRange",[trajectory,flatAttackRange,origin](const Lua::Table&vector)
 			{
 				if (vector.IsEmpty())
@@ -222,6 +223,20 @@ namespace Lua
 				vector.GetField("y",dest.y);
 				vector.GetField("z",dest.z);
 				return Objects::Component::Turret::CanHit(trajectory,flatAttackRange,origin,dest);
+			});
+
+			const Objects::WFaction owner = b.ToEntity().owner;
+			t.SetFunction("FindTarget", [this,trajectory, flatAttackRange, origin, explosionRadius,owner](const Lua::Table&location)->Lua::Table
+			{
+				Objects::TurretBase::TargetChoice choice;
+				const auto dest = Objects::TrajectoryEndPoint(Detail::ToLGridCell(location,"FindTarget(): Target parameter"),0);
+				Objects::PFaction myFaction = owner.lock();
+				if (!myFaction)
+					throw Lua::Exception(CLOCATION,"FindTarget(): Owning faction unknown or expired");
+				bool rs = Objects::TurretBase::FindTarget(myFaction, trajectory, flatAttackRange, explosionRadius, origin, dest, choice);
+				if (!rs)
+					return Lua::Reference();
+				return ToTable(choice.cellTarget);
 			});
 		}
 

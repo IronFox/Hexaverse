@@ -123,6 +123,7 @@ namespace Objects
 		*/
 		bool					ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const;
 
+		static bool				FindTarget(const PFaction&myFaction, TrajectoryType trajectoryType, float flatAttackRange, float explosionRadius, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult);
 
 
 

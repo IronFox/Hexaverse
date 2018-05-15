@@ -156,42 +156,31 @@ namespace Objects
 	}
 
 
-	bool					TurretBase::ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const
+	/*static*/ bool					TurretBase::FindTarget(const PFaction&myFaction, TrajectoryType trajectoryType, float flatAttackRange, float explosionRadius, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)
 	{
 		using M::Sqr;
-		//const float velocity = Turret::MaxRangeToVelocity(GetFlatAttackRange());
-		const float range = GetFlatAttackRange();
-		//const float extRange = range + (turret->explosionRadius);
-		//const float range2 = M::Sqr(range);
-		//const float extRange2 = M::Sqr(extRange);
-		//const M::TVec3<> source3 = Grid::ToWorld(source);
-		//M::TVec3<> dest3 = Grid::ToWorld(destIn);
-		//float distance2 = Vec::quadraticDistance(source3,dest3);
-		//if (Turret::GetAngleForDistance(velocity,source,destIn))
-		//if (distance2 > extRange2)
-		//	return false;
-		const float explosionRadius = GetAttackExplosionRadius();
+		const float range = flatAttackRange;
 		const float explosionRadius2 = M::Sqr(explosionRadius);
 
-		if (!Component::Turret::CanHit(turret->trajectoryType, range+explosionRadius*2,source,destIn))
+		if (!Component::Turret::CanHit(trajectoryType, range + explosionRadius * 2, source, destIn))
 			return false;
-	
-		const auto&visibleWorld = 
+
+		const auto&visibleWorld =
 			#ifdef CLIENT
-				World::actual;
+						World::actual;
 			#else
-				myFaction->knownWorld;
+						myFaction->knownWorld;
 			#endif
-		if (IsSafeHit(myFaction, turret->trajectoryType,range,visibleWorld,World::actual,source,destIn,explosionRadius,outExtResult))
+		if (IsSafeHit(myFaction, trajectoryType, range, visibleWorld, World::actual, source, destIn, explosionRadius, outExtResult))
 			return true;
 
-	
+
 		AreaHelper	helper;
 		//queue << destIn;
 		{
 			const auto&n = Grid::low.grid.GetCell(destIn.cellLocation.stackID).neighborhood;
 			for (int i = 0; i < n.numNeighbors; i++)
-				helper << Grid::LCellIdI(n.neighborID[i],destIn.cellLocation.height);
+				helper << Grid::LCellIdI(n.neighborID[i], destIn.cellLocation.height);
 			if (destIn.cellLocation.height < Grid::CellStack::TopHeight)
 				helper << destIn.cellLocation + 1;
 			if (destIn.cellLocation.height <= Grid::CellStack::TopHeight)
@@ -201,25 +190,22 @@ namespace Objects
 		while (helper >> current)
 		{
 			M::TVec3<> w3 = Grid::ToWorld(current);
-			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation,w3);
+			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation, w3);
 			if (fromDest2 > explosionRadius2)
 				continue;
-			const auto target2 = TrajectoryEndPoint( current,0);
-			if (!World::actual.LowCellIsClear(current) || 
-				!Component::Turret::CanHit(turret->trajectoryType, range,source,target2)
+			const auto target2 = TrajectoryEndPoint(current, 0);
+			if (!World::actual.LowCellIsClear(current) ||
+				!Component::Turret::CanHit(trajectoryType, range, source, target2)
 				)
 				continue;
-			//float fromSource2 = Vec::quadraticDistance(source3,world);
-			//if (fromSource2 > extRange2)
-				//continue;
 
-			if (IsSafeHit(myFaction, turret->trajectoryType,range,visibleWorld,World::actual,source,target2,explosionRadius,outExtResult))
+			if (IsSafeHit(myFaction, trajectoryType, range, visibleWorld, World::actual, source, target2, explosionRadius, outExtResult))
 				return true;
 
 			{
 				const auto&n = Grid::low.grid.GetCell(current.stackID).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
-					helper << Grid::LCellIdI(n.neighborID[i],current.height);
+					helper << Grid::LCellIdI(n.neighborID[i], current.height);
 				if (current.height < Grid::CellStack::TopHeight)
 					helper << current + 1;
 				if (current.height <= Grid::CellStack::TopHeight)
@@ -227,6 +213,12 @@ namespace Objects
 			}
 		}
 		return false;
+
+	}
+
+	bool					TurretBase::ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const
+	{
+		return FindTarget(myFaction, turret->trajectoryType, GetFlatAttackRange(), GetAttackExplosionRadius(), source, destIn, outExtResult);
 	}
 
 
