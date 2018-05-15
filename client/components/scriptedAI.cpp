@@ -128,7 +128,7 @@ namespace ScriptedAI
 			touchedMarkers.Clear();
 		}
 
-		void	MarkerCreate( const TUniqueID&mID, Objects::MarkerType, const Objects::PWorldEntity&e, const Grid::LCellIdI&loc )
+		void	MarkerCreate( const TUniqueID&mID, Objects::MarkerType t, const Objects::PWorldEntity&e, const Grid::LCellIdI&loc )
 		{
 			Protocol::Marker&marker = createdMarkers.Append();
 			marker.id = mID;
@@ -136,15 +136,18 @@ namespace ScriptedAI
 			static_assert(Objects::MarkerType::EntityDeath==0, "MarkerTyp expectation violation");
 			static_assert(Objects::MarkerType::HostileContact==1, "MarkerTyp expectation violation");
 			static_assert(Objects::MarkerType::Visited == 2, "MarkerTyp expectation violation");
-			if (e)
+			switch (t)
 			{
-				if (e->isOwnedByMe)
+				case Objects::MarkerType::EntityDeath:
 					ObjectHelper::FillMarker(marker, e, marker.data.Set0());
-				else
+				break;
+				case Objects::MarkerType::HostileContact:
 					ObjectHelper::FillMarker(marker, e, marker.data.Set1());
+					break;
+				case Objects::MarkerType::Visited:
+					marker.data.Set2();
+					break;
 			}
-			else
-				marker.data.Set2();
 			marker.location = loc;
 		}
 

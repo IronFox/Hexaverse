@@ -420,11 +420,11 @@ namespace Lua
 				Lua::Table mt = program->CreateTable();
 				myMarkerIDMap.SetField(id.ToFullString(), mt);
 				mt.SetField("location", loc);
-				mt.SetField("type", luaEntity.GetField("type"));
+				mt.SetField("type", markerType);
 				mt.SetField("confirmed", false);
 				mt.SetField("age", 0);
-				mt.SetField("id", "");
 				mt.SetField("unitReference", luaEntity);
+				mt.SetField("id", id.ToFullString());
 				mt.SetFunction("Touch", []()
 				{
 					//do nothing
@@ -434,7 +434,6 @@ namespace Lua
 					onMarkerCreate(id, t, e, Detail::ToLGridCell(loc, "Entity parameter #1.location"));
 				else
 					throw Lua::Exception("CreateMarker(): onMarkerCreate() not set");
-
 			});
 			#endif
 
