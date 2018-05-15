@@ -117,22 +117,6 @@ namespace Lua
 			}
 
 
-			//Lua::Table	CreateMarker( const Lua::Table&entity, const String&type )
-			//{
-			//	Objects::Marker::Type t;
-			//	if (!t.Decode(type.c_str()))
-			//		throw Lua::Exception("CreateMarker(): Marker type '"+type+"' is not supported");
-			//	Objects::Marker m = ApplicationInterface::CreateMarker(ToLGridCell(loc,"CreateMarker(): location parameter #1"),t);
-			//	Protocol::Marker marker;
-			//	marker.id.Generate();
-			//	marker.location = v->location;
-			//	tempMarkers << v->system.w.xyz;
-			//	static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
-			//	marker.data.Set2();
-			//	ObjectHelper::SignalMarkerCreation(marker);
-
-			//}
-
 
 		#endif
 
@@ -424,6 +408,14 @@ namespace Lua
 
 				const Lua::Table loc = luaEntity.GetField("location");
 
+				auto ptr = this->entityMap.QueryPointer(entityID);
+				if (ptr == nullptr)
+					throw Lua::Exception("CreateMarker(): Entity parameter #1.id is unknown");
+				Objects::PWorldEntity e = ptr->lock();
+				if (!e)
+					throw Lua::Exception("CreateMarker(): Entity parameter #1 points to an expired entity");
+
+
 				TUniqueID id;
 				id.Generate();
 
@@ -441,7 +433,7 @@ namespace Lua
 				});
 
 				if (onMarkerCreate)
-					onMarkerCreate(id, t, entityID, Detail::ToLGridCell(loc, "Entity parameter #1.location"));
+					onMarkerCreate(id, t, e, Detail::ToLGridCell(loc, "Entity parameter #1.location"));
 				else
 					throw Lua::Exception("CreateMarker(): onMarkerCreate() not set");
 

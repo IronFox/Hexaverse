@@ -59,7 +59,7 @@ namespace Lua
 		//feedback functions:
 		std::function<void(const TUniqueID&)>	onMarkerTouch,onMarkerDestroy, onRemove,onDropAllTasks;
 		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure;
-		std::function<void(const TUniqueID&mID,Objects::MarkerType,const TUniqueID&eID, const Grid::LCellIdI&)> onMarkerCreate;
+		std::function<void(const TUniqueID&mID,Objects::MarkerType,const Objects::PWorldEntity&, const Grid::LCellIdI&)> onMarkerCreate;
 		std::function<void(const TUniqueID&, Array<Grid::LCellIdI>&)> onAttackTargets;	//!< Given array is fleeting
 		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
 
