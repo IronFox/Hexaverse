@@ -858,7 +858,11 @@ namespace Lua
 		{
 			t.SetFunction("Destroy", [id,this]()
 			{
-				onRemove(id);
+				if (onRemove)
+					onRemove(id);
+				else
+					throw Lua::Exception("Destroy(): onRemove not set");
+
 
 				//#ifdef CLIENT
 				//	ApplicationInterface::SignalRemoval(e,false);
@@ -879,7 +883,10 @@ namespace Lua
 			if (actual)
 			t.SetFunction("Enable", [id,this](bool doEnable)
 				{
-					onEnableWorkingStructure(id,doEnable);
+					if (onEnableWorkingStructure)
+						onEnableWorkingStructure(id,doEnable);
+					else
+						throw Lua::Exception("Enable(): onEnableWorkingStructure not set");
 					//#ifdef CLIENT
 					//	ApplicationInterface::SignalEnableStructure(*To<Objects::WorkingStructure>::Cast(e),doEnable);
 					//#else
