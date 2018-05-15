@@ -1,0 +1,40 @@
+#pragma once
+
+#include <io/file_system.h>
+#include <structure/observable.h>
+
+namespace ScriptedAI
+{
+	namespace D = DeltaWorks;
+
+	/**
+	AI script completion event.
+	Triggered during GlobalEvents::frameBegin once completion has been detected
+	*/
+	extern D::Observable<>	onExecutionFinished;
+
+	/**
+	(Re)loads a Lua AI script from the given path to be used during AI computation.
+	May throw exceptions if loading fails due to IO or syntactical reasons.
+	AI execution must not be currently active.
+	@param scriptPath File path of the Lua script to load
+	@param freshState Set true to disregard any previously exported AI script state.
+		Otherwise if such was exported, the ImportState() function is called.
+	*/
+	void	Load(const D::PathString&scriptPath, bool freshState);
+
+	/**
+	Starts asynchronous execution of the loaded AI script.
+	Fails silently if already active.
+	Hooks itself in GlobalEvents::frameBegin to re-check completion, and possibly invoke
+	cleanup.
+	*/
+	void	Start();
+
+	/**
+	Checks whether or not AI is still running or has completed.
+	@return True if the AI is still busy, false if it has terminated.
+	*/
+	bool	IsRunning();
+}
+
