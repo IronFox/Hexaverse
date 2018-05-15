@@ -41,5 +41,8 @@ namespace ScriptedAI
 	@return True if the AI is still busy, false if it has terminated.
 	*/
 	bool	IsRunning();
+
+
+	void	CreateTemplateAt(const D::PathString&);
 }
 

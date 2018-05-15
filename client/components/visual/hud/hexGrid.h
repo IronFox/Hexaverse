@@ -118,6 +118,16 @@ namespace HexGrid
 			}
 		};
 
+		class AICommand : public Icon
+		{
+			typedef Icon			Super;
+		public:
+			/**/					AICommand() : Super("Reload and run AI", "Enable Nexus AI") {}
+
+			virtual void			Refresh(bool) override;
+			virtual void			Execute() override;
+		};
+
 		class VoteCommand : public Icon
 		{
 			typedef Icon			Super;
@@ -290,6 +300,14 @@ namespace HexGrid
 		Updates state and presence of all buttons of this panel
 		*/
 		void		Refresh();
+		void		RefreshMenuButtonOnly();
+
+		/**
+		Erases all commands and allocates them anew, using the current runtime configuration to determine which commands to allocate.
+		The caller must subsequently call Refresh() or RefreshMenuButtonOnly().
+		Better, yet Configure(*), which automatically calls the correct version
+		*/
+		void		RecreateCommands();
 	}
 
 

@@ -80,6 +80,7 @@
 #include "components/objectNetworkHelper.h"
 #include "components/playerControlBegin.h"
 #include "components/visual/scene/vehicleAccessibilityMesh.h"
+#include "components/scriptedAI.h"
 
 #include "rc/Resource.h"
 
@@ -2036,6 +2037,7 @@ int main( int argc, const char* argv[])
 				}
 
 				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
+				ScriptedAI::visualDebugActive = StartConfig::GetBool("runtime/aiDebugMode");
 
 				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 

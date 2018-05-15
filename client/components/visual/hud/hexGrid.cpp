@@ -9,6 +9,7 @@
 #include "resourceGauges.h"
 #include "../../configurationMode.h"
 #include "menu.h"
+#include "../../scriptedAI.h"
 
 namespace HUD
 {
@@ -473,7 +474,7 @@ namespace HexGrid
 	{
 		typedef std::shared_ptr<Icon>	PIcon;
 		Buffer0<PIcon>				commands;
-		PIcon						menuCommand;
+		PIcon						menuCommand,tutorialCommand,aiCommand;
 
 		/**/						Icon::Icon(const String&name) : Super(name)
 		{
@@ -489,25 +490,84 @@ namespace HexGrid
 			HUD::WindowStack::Show(HUD::Menu::main);
 		}
 
+		/*virtual override*/ void			AICommand::Refresh(bool controlsAreEnabled)
+		{
+			this->state = Flags::None;
+
+			if (ScriptedAI::IsRunning())
+				state |= Flags::IsPermaActive | Flags::IsFlashing | Flags::SoftFlashing;
+			elif (controlsAreEnabled)
+				state |= Flags::IsEnabled;
+		}
+
+		/*virtual override*/ void			AICommand::Execute()
+		{
+			if (ScriptedAI::IsRunning())
+				return;
+			FileSystem::Folder scripts = RuntimeConfig::myConfig.Lookup("AIScripts");
+			if (!scripts.IsValidLocation())
+				FileSystem::CreateDirectory(scripts.GetLocation());
+			ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
+
+			FileSystem::File debugLua;
+			scripts.FindFile("debug.lua", debugLua, false);
+			if (!debugLua.DoesExist())
+			{
+				ScriptedAI::CreateTemplateAt(debugLua);
+				Dialog::ShowMessage("It appears you have activated the AI for the first time."
+						" A new Lua script has been created at "+FileSystem::PathToString(debugLua)+"."
+						" Edit the file to define the desired behavior.\n"
+						"Whenever you press the AI button, the script will be reloaded, and applied to your current set of units.");
+			}
+
+			try
+			{
+				ScriptedAI::Load(debugLua, Engine::input.pressed[Key::Shift]);
+				ScriptedAI::Start();
+			}
+			catch (const Lua::Exception&ex)
+			{
+				LogEvent(EventClass::Preset::scriptError, ex.what());
+				Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + String(ex.GetRawMessage()));
+			}
+		}
+
 
 		static void VoteRefresh(const PVote&)
 		{
 			RefreshButtonState();
 		}
 
-		void Create()
+		void	RecreateCommands( )
 		{
-			commands << (menuCommand = PIcon( new MenuCommand() ));
-			commands << PIcon( new TutorialCommand() );
-			commands << PIcon( new VoteCommand() );
+			foreach(commands, c)
+				FindAndDeleteCell(*c);
+			commands.Clear();
 
-			commands << PIcon( new DemolishCommand() );
-			commands << PIcon( new SleepCommand() );
-			commands << PIcon( new AbortCommand() );
-			commands << PIcon( new UndoCommand() );
+			commands << (menuCommand);
+			if (ScriptedAI::visualDebugActive)
+				commands << aiCommand;
+			else
+				commands << tutorialCommand;
+			commands << PIcon(new VoteCommand());
+
+			commands << PIcon(new DemolishCommand());
+			commands << PIcon(new SleepCommand());
+			commands << PIcon(new AbortCommand());
+			commands << PIcon(new UndoCommand());
 
 			for (index_t i = 0; i < commands.Count(); i++)
-				commands[i]->gridCoords = int2(1 + i, 1);
+				commands[i]->gridCoords = int2(1+i, 1);
+		}
+
+		void Create()
+		{
+			aiCommand = PIcon(new AICommand());
+			tutorialCommand = PIcon(new TutorialCommand());
+			menuCommand = menuCommand = PIcon(new MenuCommand());
+
+			RecreateCommands();
+
 
 			GlobalEvents::voteCast << VoteRefresh;
 			GlobalEvents::voteClosed << VoteRefresh;

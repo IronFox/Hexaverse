@@ -4,6 +4,8 @@
 #include "clientEvents.h"
 #include "objectNetworkHelper.h"
 #include "network.h"
+#include "visual/hud/windowStack.h"
+#include "visual/hud/hexGrid.h"
 
 namespace ScriptedAI
 {
@@ -123,10 +125,17 @@ namespace ScriptedAI
 		
 		if (thread.api.IsCreated())
 		{
-			Lua::Reference ref = exportFunction();
-			ByteStreamBuffer stream;
-			ref.Serialize(stream);
-			exportedState = stream.GetWrittenData();
+			Lua::Reference ref;
+			if (exportFunction.IsSet())
+				ref = exportFunction();
+			if (!ref)
+				exportedState.Clear();
+			else
+			{
+				ByteStreamBuffer stream;
+				ref.Serialize(stream);
+				exportedState = stream.GetWrittenData();
+			}
 			exportFunction.ClearReference();
 			importFunction.ClearReference();
 			execute.ClearReference();
@@ -165,6 +174,10 @@ namespace ScriptedAI
 			frameBeginRegistration = InvalidIndex;
 			Callback::Submit();
 			onExecutionFinished();
+			#ifdef CLIENT
+				HUD::WindowStack::SignalSituationChange();
+				HUD::HexGrid::RefreshButtonState();
+			#endif
 		}
 	}
 
@@ -187,5 +200,58 @@ namespace ScriptedAI
 	{
 		return thread.isRunning;
 	}
+
+
+	void	CreateTemplateAt(const D::PathString&path)
+	{
+		StringFile f;
+		f.Create(path);
+
+		f << "--[[" << nl
+			<< "Generated Lua AI file. Fill out the details to define what the AI is supposed to do." << nl
+			<< "You have access to a set of API functions to examine units and instruct them," << nl
+			<< "documented in " <<
+			FileSystem::PathToString(FileSystem::Folder().FindFile("../Lua/General Lua API Documentation.txt")->GetLocation()) << nl
+			<< "]]" << nl
+			<< nl
+			<< "--[[" << nl
+			<< "@brief State export" << nl << nl
+			<< "This function is expected to export any persistent AI state." << nl
+			<< "Whatever you return (unless nil) will be fed to ImportState() when resuming interrupted execution." << nl
+			<< "Anything you keep in the local Lua state but don't export here will be lost during discontinuities" << nl
+			<< "(e.g. save game loading, client crash, AI script reloading during debug)." << nl
+			<< "@return Exported state. May be any regular Lua type, including recursive tables, or nil." << nl
+			<< "]]" << nl
+			<< "function ExportState()" << nl
+			<< "\treturn nil;" << nl
+			<< "end;" << nl
+			<< nl
+			<< "--[[" << nl
+			<< "@brief State import" << nl << nl
+			<< "This function is expected to import any previously exported state. Whatever you are getting," << nl
+			<< "SOME ExportState() function has produced it. Usually your own, but who knows..." << nl
+			<< "Not invoked if there was no state." << nl
+			<< "@param state Some previously exported state." << nl
+			<< "]]" << nl
+			<< "function ImportState(state)" << nl
+			<< "end;" << nl << nl
+			<< nl
+			<< "--[[" << nl
+			<< "@brief AI execution entry point" << nl << nl
+			<< "This function is executed whenever the AI is supposed to do something." << nl
+			<< "During production runs, this function will be called exactly once at the beginning of a round." << nl
+			<< "Executed asynchronously. Take as much time as you need, though bad things _will_ happen if you" << nl
+			<< "take longer than the server permits any player. Try to not produce endless loops as those will" << nl
+			<< "force the client to restart." << nl
+			<< "]]" << nl
+			<< "function Execute()" << nl
+			<< "\t-- Your stuff here" << nl
+			<< "\t-- Check the API documentation: " <<
+			FileSystem::PathToString(FileSystem::Folder().FindFile("../Lua/General Lua API Documentation.txt")->GetLocation()) << nl
+			<< "end;" << nl << nl
+			;
+
+	}
+
 }
 

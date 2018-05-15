@@ -16,6 +16,8 @@
 #include "../../configurationMode.h"
 #include "../../io.h"
 #include "../../cameraControl.h"
+#include "../../scriptedAI.h"
+#include "hexGrid.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -177,11 +179,11 @@ namespace Menu
 
 	static void CreateOptionsMenu()
 	{
-		options = Component::Window::Create();
-		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(options.get()));
-		options->logFullAutoLayout = true;
-		options->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f);
-		options->AnchorBelowPrevious(CLOCATION,new Component::Label("Options",2.f));
+		auto menu = options = Component::Window::Create();
+		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(menu.get()));
+		menu->logFullAutoLayout = true;
+		menu->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f);
+		menu->AnchorBelowPrevious(CLOCATION,new Component::Label("Options",2.f));
 		
 		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
 		{
@@ -345,6 +347,18 @@ namespace Menu
 			{
 				Objects::SetShiftMeansQueue(!enabled);
 				Configuration::Update("runtime/alwaysQueueUnitCommands",enabled);
+			}
+		});
+
+		AddCheckBox("Debug AI", ScriptedAI::visualDebugActive, [](bool enabled)
+		{
+			bool old = ScriptedAI::visualDebugActive;
+			if (old != enabled)
+			{
+				ScriptedAI::visualDebugActive = enabled;
+				Configuration::Update("runtime/aiDebugMode", enabled);
+				HUD::HexGrid::BottomRightPanel::RecreateCommands();
+				HUD::HexGrid::Configure(Objects::selectedEntity);
 			}
 		});
 
