@@ -254,14 +254,16 @@ namespace Lua
 	}
 
 	#ifdef CLIENT
+
+		void		API::AddMyMarkers()
+		{
+			foreach(Objects::Marker::all, m)
+				AddMyMarker(*m);
+		}
+
 		void		API::AddMyMarker(const Objects::Marker&m)
 		{
 			Lua::Table t = program->CreateTable();
-			if (!myMarkerIDMap)
-			{
-				myMarkerIDMap = program->CreateTable();
-				gameTable.SetField("myMarkers",myMarkerIDMap);
-			}
 			myMarkerIDMap.SetField(m.id.ToFullString(), t);
 			t.SetField("location",ToTable(m.location));
 			t.SetField("type",m.type.ToString());
@@ -404,40 +406,10 @@ namespace Lua
 		locationMap.Clear();
 	}
 
-
-	void	API::Setup()
+	void	API::AddObjectAndPathfindingFunctions()
 	{
-		const auto p = program;
-		ASSERT__(p);
-		gameTable = p->CreateTable();
-		gridTable = p->CreateTable();
-		gameTable.SetField("Grid",gridTable);
-		pathfindingTable = p->CreateTable();
-		gameTable.SetField("Pathfinding", pathfindingTable);
-		gameTable.SetGlobal("Game");
-
-		entityIDMap = program->CreateTable();
-		gameTable.SetField("units",entityIDMap);
 		#ifdef CLIENT
-			myEntityIDMap = program->CreateTable();
-			gameTable.SetField("myUnits",myEntityIDMap);
-		#endif
-
-		factionIDMap = program->CreateTable();
-		gameTable.SetField("factions",factionIDMap);
-
-		allianceIDMap = program->CreateTable();
-		gameTable.SetField("alliances",allianceIDMap);
-
-
-		String name = program->GetName();
-		gameTable.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
-		#ifdef CLIENT
-			gameTable.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
-			gameTable.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
-			gameTable.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
-			gameTable.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
-			gameTable.SetFunction("CreateMarker",[this](const Lua::Table&luaEntity, const String&markerType)
+			gameTable.SetFunction("CreateMarker", [this](const Lua::Table&luaEntity, const String&markerType)
 			{
 				Objects::Marker::Type t;
 				if (!t.Decode(markerType.c_str()))
@@ -456,50 +428,45 @@ namespace Lua
 				id.Generate();
 
 				Lua::Table mt = program->CreateTable();
-				if (!myMarkerIDMap)
-				{
-					myMarkerIDMap = program->CreateTable();
-					gameTable.SetField("myMarkers",myMarkerIDMap);
-				}
 				myMarkerIDMap.SetField(id.ToFullString(), mt);
-				mt.SetField("location",loc);
-				mt.SetField("type",luaEntity.GetField("type"));
+				mt.SetField("location", loc);
+				mt.SetField("type", luaEntity.GetField("type"));
 				mt.SetField("confirmed", false);
-				mt.SetField("age",0);
-				mt.SetField("id","");
-				mt.SetField("unitReference",luaEntity);
-				mt.SetFunction("Touch",[]()
+				mt.SetField("age", 0);
+				mt.SetField("id", "");
+				mt.SetField("unitReference", luaEntity);
+				mt.SetFunction("Touch", []()
 				{
 					//do nothing
 				});
 
 				if (onMarkerCreate)
-					onMarkerCreate(id,t,entityID,Detail::ToLGridCell(loc,"Entity parameter #1.location"));
+					onMarkerCreate(id, t, entityID, Detail::ToLGridCell(loc, "Entity parameter #1.location"));
 				else
 					throw Lua::Exception("CreateMarker(): onMarkerCreate() not set");
-				
-			});
-		#endif
 
-		
-		pathfindingTable.SetFunction("FindShortestPath", [this](const Lua::Table&entityTable, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table,int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
+			});
+			#endif
+
+
+		pathfindingTable.SetFunction("FindShortestPath", [this](const Lua::Table&entityTable, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
 		{
 			Grid::LCellIdI loc;
 			const auto v = ParameterToVehicle(entityTable, loc, "FindShortestPath(): Unit parameter #1");
 			const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPath(): Target parmater #2");
-			
+
 			bool success = true;
 			Objects::Pathfinding::FCellCostModifier costMod;
 			if (costModifier.IsSet())
 				costMod = [&costModifier, this](const Grid::LCellIdI&loc, int&costs)
-				{
-					costs = costModifier(ToTable(loc), costs);
-				};
+			{
+				costs = costModifier(ToTable(loc), costs);
+			};
 			success = shortestPath.Update(*v, loc, dest, ignoreFriendlyMobilesOnRoute, false, nullptr, costMod);
 			if (!success)
 				return Lua::Table{};
-			
-			Lua::Table result = program->CreateTable(),pred;
+
+			Lua::Table result = program->CreateTable(), pred;
 			int cost = 0;
 			for (index_t i = 0; i < shortestPath.result.Count(); i++)
 			{
@@ -517,30 +484,30 @@ namespace Lua
 			return result;
 		});
 
-		pathfindingTable.SetFunction("GetUnitReach",[this](const Lua::Table&entityTable,const Lua::Function<bool(Lua::Table)>&isBlocked,int maxReach,bool forceReversible,bool allowAccessibleHangars,bool ignoreFriendlyVehiclesOnRoute,bool cannotStandOnUnknown)->Lua::Table
+		pathfindingTable.SetFunction("GetUnitReach", [this](const Lua::Table&entityTable, const Lua::Function<bool(Lua::Table)>&isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute, bool cannotStandOnUnknown)->Lua::Table
 		{
 			Grid::LCellIdI loc;
-			const auto v = ParameterToVehicle(entityTable, loc,"GetUnitReach(): Unit parameter #1");
+			const auto v = ParameterToVehicle(entityTable, loc, "GetUnitReach(): Unit parameter #1");
 			if (loc.height > Grid::CellStack::TopHeight)
 				throw Lua::Exception("GetUnitReach(): Unit parameter #1 '" + v->GetName() + "' is located above maximum height");
 
 			if (cannotStandOnUnknown)
 				Objects::Component::VehicleBase::canStandOnUnknown = false;
-				
+
 
 			if (!isBlocked)
-				mapper.Map(v.get(),loc,nullptr,maxReach,forceReversible,allowAccessibleHangars,ignoreFriendlyVehiclesOnRoute);
+				mapper.Map(v.get(), loc, nullptr, maxReach, forceReversible, allowAccessibleHangars, ignoreFriendlyVehiclesOnRoute);
 			else
 			{
-				mapper.Map(v.get(),loc,[&isBlocked,this](const Grid::LCellIdI&loc)->bool
+				mapper.Map(v.get(), loc, [&isBlocked, this](const Grid::LCellIdI&loc)->bool
 				{
 					return isBlocked(ToTable(loc));
-				},maxReach,forceReversible,allowAccessibleHangars,ignoreFriendlyVehiclesOnRoute);
+				}, maxReach, forceReversible, allowAccessibleHangars, ignoreFriendlyVehiclesOnRoute);
 			}
 
 			if (cannotStandOnUnknown)
 				Objects::Component::VehicleBase::canStandOnUnknown = true;
-			
+
 
 
 			Lua::Table result = program->CreateTable();
@@ -549,12 +516,12 @@ namespace Lua
 			for (index_t i = 0; i < mapper.result.Count(); i++)
 			{
 				const auto&in = mapper.result[i];
-				Lua::Table luaReachable  = program->CreateTable();
-				tables[i] = luaReachable; 
-				luaReachable.SetField("location",ToTable(in.cell));
-				luaReachable.SetField("movementCostsFromRoot",in.movementCostsFromRoot);
+				Lua::Table luaReachable = program->CreateTable();
+				tables[i] = luaReachable;
+				luaReachable.SetField("location", ToTable(in.cell));
+				luaReachable.SetField("movementCostsFromRoot", in.movementCostsFromRoot);
 				if (allowAccessibleHangars)
-					luaReachable.SetField("isHangarHere",Objects::AccessibleHangarHere(in.cell,*v));
+					luaReachable.SetField("isHangarHere", Objects::AccessibleHangarHere(in.cell, *v));
 				result.AppendElement(luaReachable);
 			}
 
@@ -562,12 +529,51 @@ namespace Lua
 			{
 				const auto&in = mapper.result[i];
 				if (in.predecessor != InvalidIndex)
-					tables[i].SetField("predecessor",tables[in.predecessor]);
+					tables[i].SetField("predecessor", tables[in.predecessor]);
 			}
 
 
 			return result;
 		});
+
+	}
+
+
+	void	API::Setup()
+	{
+		const auto p = program;
+		ASSERT__(p);
+		gameTable = p->CreateTable();
+		gridTable = p->CreateTable();
+		gameTable.SetField("Grid",gridTable);
+		pathfindingTable = p->CreateTable();
+		gameTable.SetField("Pathfinding", pathfindingTable);
+		gameTable.SetGlobal("Game");
+
+		entityIDMap = program->CreateTable();
+		gameTable.SetField("units",entityIDMap);
+		#ifdef CLIENT
+			myEntityIDMap = program->CreateTable();
+			gameTable.SetField("myUnits",myEntityIDMap);
+			myMarkerIDMap = program->CreateTable();
+			gameTable.SetField("myMarkers", myMarkerIDMap);
+		#endif
+
+		factionIDMap = program->CreateTable();
+		gameTable.SetField("factions",factionIDMap);
+
+		allianceIDMap = program->CreateTable();
+		gameTable.SetField("alliances",allianceIDMap);
+
+
+		String name = program->GetName();
+		gameTable.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
+		#ifdef CLIENT
+			gameTable.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
+			gameTable.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
+			gameTable.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
+			gameTable.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
+		#endif
 	//			Reachable[]	Game.MapUnitReach(Unit unit,func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute);
 	//
 
@@ -940,6 +946,15 @@ namespace Lua
 				AddEntity(e);
 		});
 	}
+
+	void		API::AddAllAlliances()
+	{
+		Objects::Alliance::Foreach([this](const Objects::PAlliance&a)
+		{
+			AddAlliance(a, false);
+		});
+	}
+
 
 	void		API::AddAllEntities( )
 	{

@@ -83,8 +83,10 @@ namespace Lua
 		Lua::Table	MapEntity(const Objects::PWorldEntity&e, bool isReal, bool updateIfFound);
 		TFaction*	AddFaction(const Objects::PFaction&f, bool updateIfFound);
 		TAlliance*	AddAlliance(const Objects::PAlliance&a, bool updateIfFound);
+		void		AddObjectAndPathfindingFunctions();
 		#ifdef CLIENT
 			void	AddMyMarker(const Objects::Marker&m);
+			void	AddMyMarkers();
 			void	SetSelectedUnit(const Objects::PWorldEntity&e, bool updateIfFound);
 			void	UpdateMyResearch();
 		#endif
@@ -96,7 +98,7 @@ namespace Lua
 
 		void	AddFactionEntities(const Objects::PFaction&);
 		void	AddAllEntities();
-
+		void	AddAllAlliances();
 	private:
 		void	Setup();
 	};
