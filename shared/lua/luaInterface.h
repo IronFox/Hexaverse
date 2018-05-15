@@ -884,6 +884,10 @@ namespace Lua
 					int numParameters = Detail::PushParameters(state,parameters...);
 					CallPushedFunction(state,numParameters,0);
 				}
+				catch (const Lua::Exception&ex)
+				{
+					throw Exception(CLOCATION, "Failed to call void function '" + this->GetName() + "': '" + String(ex.GetRawMessage()));
+				}
 				catch (const std::exception&ex)
 				{
 					throw Exception(CLOCATION,"Failed to call void function '"+this->GetName()+"': '"+String(ex.what()));
@@ -929,6 +933,10 @@ namespace Lua
 					}
 					Detail::PopStacked(state);
 					return rs;
+				}
+				catch (const Lua::Exception&ex)
+				{
+					throw Exception(CLOCATION, "Failed to call " + String(typeid(return_t).name()) + " function '" + this->GetName() + "': '" + String(ex.GetRawMessage()));
 				}
 				catch (const std::exception&ex)
 				{
