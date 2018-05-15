@@ -454,6 +454,9 @@ namespace Lua
 				if (!e)
 					throw Lua::Exception("CreateMarker(): Entity parameter #1 points to an expired entity");
 
+				Lua::Reference unitReference;
+				if (t != Objects::Marker::Type::Visited)
+					unitReference = luaEntity;
 
 				TUniqueID id;
 				id.Generate();
@@ -464,8 +467,9 @@ namespace Lua
 				mt.SetField("type", markerType);
 				mt.SetField("confirmed", false);
 				mt.SetField("age", 0);
-				mt.SetField("unitReference", luaEntity);
 				mt.SetField("id", id.ToFullString());
+				if (unitReference.IsSet())
+					mt.SetField("unitReference", unitReference);
 				mt.SetFunction("Touch", []()
 				{
 					//do nothing
