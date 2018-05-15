@@ -45,6 +45,7 @@ Unit
 	int		constructionCost;			Amount of resources necessary to build this type
 	float	scanningRange;				Regular grid scanning range
 	bool	isMobile;					True if this is a mobile entity
+	bool	isVehicle;					True if this is a vehicle (implies isMobile)
 	bool	isStructure;				True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
 	Loc		location;					Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
 	bool	isSleeping;					True if the local entity is currently sleeping
@@ -78,6 +79,10 @@ Unit
 		func	ClearTasks();			Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
 		int		movementSpeed;			Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
 		bool	motionIgnoresAttack;	True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
+	
+	[isVehicle]
+		int		maxClimbUp;				Maximum climbing height difference. Typically 1
+		int		minClimbDown;			Minimum down-climbing heigh difference. Negative. Typically -1 or less
 }
 
 Loc

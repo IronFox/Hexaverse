@@ -765,7 +765,8 @@ namespace Lua
 		t.SetField("niceName",e->GetNiceName());
 		t.SetField("id",e->id.ToFullString());
 		t.SetField("typeName",e->GetTypeName());
-		t.SetField("isMobile",e->IsMobile());
+		t.SetField("isMobile", e->IsMobile());
+		t.SetField("isVehicle",e->IsVehicle());
 		t.SetField("constructionCost",e->GetConstructionCost());
 		t.SetField("isStructure",e->IsStructure());
 		#ifdef CLIENT
@@ -893,6 +894,12 @@ namespace Lua
 
 			t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
 
+			if (m->IsVehicle())
+			{
+				auto v = To<Objects::Vehicle>::Cast(m);
+				t.SetField("maxClimbUp", v->base->maxClimbUp);
+				t.SetField("minClimbDown", v->base->minClimbDown);
+			}
 			if (actual)
 			{
 				t.SetFunction("ClearTasks",[id,this]()
