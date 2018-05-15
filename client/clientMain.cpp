@@ -748,13 +748,6 @@ namespace ApplicationInterface
 
 
 
-void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE)
-{
-	marker.location = e->location;
-	outE.id = e->id;
-	outE.owner = e->owner->id;
-	outE.type = e->GetType();
-}
 
 
 
@@ -794,7 +787,7 @@ namespace ApplicationInterface
 			Protocol::Marker marker;
 			static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
 			marker.id.Generate();
-			FillMarker(marker, e, marker.data.Set0());
+			ObjectHelper::FillMarker(marker, e, marker.data.Set0());
 			ObjectHelper::SignalMarkerCreation(marker);
 			LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 		}
@@ -811,7 +804,7 @@ namespace ApplicationInterface
 					Protocol::Marker marker;
 					marker.id.Generate();
 					static_assert(Objects::Marker::Type::HostileContact == 1, "Please update marker logic");
-					FillMarker(marker, e, marker.data.Set1());
+					ObjectHelper::FillMarker(marker, e, marker.data.Set1());
 					ObjectHelper::SignalMarkerCreation(marker);
 
 					LogEvent(EventSignificance::Debug,e.get(),"Created hostile contact marker for "+e->GetName()+" since original disappeared");

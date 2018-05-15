@@ -19,6 +19,15 @@
 
 namespace ObjectHelper
 {
+	void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE)
+	{
+		marker.location = e->location;
+		outE.id = e->id;
+		outE.owner = e->owner->id;
+		outE.type = e->GetType();
+	}
+
+
 	namespace MarkerCheck
 	{
 		RuntimeConfig::RoundNumber	lastProcessedRoundNumber;
