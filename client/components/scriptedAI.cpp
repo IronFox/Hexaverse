@@ -8,6 +8,7 @@
 namespace ScriptedAI
 {
 	using namespace DeltaWorks;
+	bool			visualDebugActive = false;
 	index_t			frameBeginRegistration = InvalidIndex;
 	Observable<>	onExecutionFinished;
 	Array<BYTE>		exportedState;

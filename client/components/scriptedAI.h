@@ -14,6 +14,11 @@ namespace ScriptedAI
 	extern D::Observable<>	onExecutionFinished;
 
 	/**
+	If set, client will show special AI controls
+	*/
+	extern bool	visualDebugActive;
+
+	/**
 	(Re)loads a Lua AI script from the given path to be used during AI computation.
 	May throw exceptions if loading fails due to IO or syntactical reasons.
 	AI execution must not be currently active.
