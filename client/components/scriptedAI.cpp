@@ -6,27 +6,67 @@
 #include "network.h"
 #include "visual/hud/windowStack.h"
 #include "visual/hud/hexGrid.h"
+#include "visual/hud/dialog.h"
 
 namespace ScriptedAI
 {
 	using namespace DeltaWorks;
 	bool			visualDebugActive = false;
-	index_t			frameBeginRegistration = InvalidIndex;
 	Observable<>	onExecutionFinished;
-	Array<BYTE>		exportedState;
-	Lua::Function<Lua::Reference()> exportFunction;
-	Lua::Function<void(Lua::Reference)> importFunction;
-	Lua::Function<void()> execute;
+	
+	namespace Detail
+	{
+		index_t			frameBeginRegistration = InvalidIndex;
+		Array<BYTE>		exportedState;
+		PathString		scriptPath;
+		bool			freshState = false, reloadScript = true;
+	}
 
 	class Thread : public Sys::ThreadObject
 	{
 	public:
 		Lua::API		api;
+		Lua::Function<Lua::Reference()> exportFunction;
+		Lua::Function<void(Lua::Reference)> importFunction;
+		Lua::Function<void()> execute;
+
+		String			error;
+
 		volatile bool	isRunning = false;
 		virtual void ThreadMain() override
 		{
-			execute();
+			error = "";
+			try
+			{
+				if (Detail::reloadScript)
+				{
+					Detail::reloadScript = false;
+					api.program->ExecuteFile(Detail::scriptPath);
+					exportFunction = api.program->RequireGlobal("ExportState");
+					importFunction = api.program->RequireGlobal("ImportState");
+					execute = api.program->RequireGlobal("Execute");
+				}
+				if (!Detail::freshState && Detail::exportedState.IsNotEmpty())
+				{
+					auto state = api.program->DeserializeToReference(
+						MemReadStream(
+							Detail::exportedState.GetPointer(),
+							Detail::exportedState.GetContentSize()
+						)
+					);
+					importFunction(state);
+				}
 
+				execute();
+			}
+			catch (const Lua::Exception&ex)
+			{
+				error = ex.GetRawMessage();
+			}
+			catch (const std::exception&ex)
+			{
+				error = ex.what();
+			}
 		}
 	}	thread;
 
@@ -126,21 +166,23 @@ namespace ScriptedAI
 		if (thread.api.IsCreated())
 		{
 			Lua::Reference ref;
-			if (exportFunction.IsSet())
-				ref = exportFunction();
+			if (thread.exportFunction.IsSet())
+				ref = thread.exportFunction();
 			if (!ref)
-				exportedState.Clear();
+				Detail::exportedState.Clear();
 			else
 			{
 				ByteStreamBuffer stream;
 				ref.Serialize(stream);
-				exportedState = stream.GetWrittenData();
+				Detail::exportedState = stream.GetWrittenData();
 			}
-			exportFunction.ClearReference();
-			importFunction.ClearReference();
-			execute.ClearReference();
+			thread.exportFunction.ClearReference();
+			thread.importFunction.ClearReference();
+			thread.execute.ClearReference();
 			thread.api.Destroy();
 		}
+		
+		Detail::reloadScript = true;
 
 		auto&api = thread.api;
 
@@ -154,15 +196,9 @@ namespace ScriptedAI
 
 		api.Create("ScriptedAI");
 		api.AddGrid();
-		api.program->ExecuteFile(scriptPath);
-		exportFunction = api.program->RequireGlobal("ExportState");
-		importFunction = api.program->RequireGlobal("ImportState");
-		execute = api.program->RequireGlobal("Execute");
-		if (!freshState && exportedState.IsNotEmpty())
-		{
-			auto state = api.program->DeserializeToReference(MemReadStream(exportedState.GetPointer(), exportedState.GetContentSize()));
-			importFunction(state);
-		}
+		Detail::scriptPath = scriptPath;
+		Detail::freshState = freshState;
+
 	}
 	
 	static void Check()
@@ -170,9 +206,17 @@ namespace ScriptedAI
 		if (!thread.IsActive())
 		{
 			thread.isRunning = false;
-			GlobalEvents::frameBegin.Unregister(frameBeginRegistration);
-			frameBeginRegistration = InvalidIndex;
+			GlobalEvents::frameBegin.Unregister(Detail::frameBeginRegistration);
+			Detail::frameBeginRegistration = InvalidIndex;
 			Callback::Submit();
+			if (thread.error.IsNotEmpty())
+			{
+				LogEvent(EventClass::Preset::scriptError, thread.error);
+				#ifdef CLIENT
+					HUD::Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + thread.error);
+				#endif
+			}
+
 			onExecutionFinished();
 			#ifdef CLIENT
 				HUD::WindowStack::SignalSituationChange();
@@ -192,8 +236,8 @@ namespace ScriptedAI
 		thread.api.AddObjectAndPathfindingFunctions();
 		thread.isRunning = true;
 		thread.Start();
-		if (frameBeginRegistration == InvalidIndex)
-			frameBeginRegistration = GlobalEvents::frameBegin.Register(Check);
+		if (Detail::frameBeginRegistration == InvalidIndex)
+			Detail::frameBeginRegistration = GlobalEvents::frameBegin.Register(Check);
 	}
 
 	bool	IsRunning()

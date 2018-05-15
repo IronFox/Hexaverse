@@ -520,16 +520,8 @@ namespace HexGrid
 						"Whenever you press the AI button, the script will be reloaded, and applied to your current set of units.");
 			}
 
-			try
-			{
-				ScriptedAI::Load(debugLua, Engine::input.pressed[Key::Shift]);
-				ScriptedAI::Start();
-			}
-			catch (const Lua::Exception&ex)
-			{
-				LogEvent(EventClass::Preset::scriptError, ex.what());
-				Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + String(ex.GetRawMessage()));
-			}
+			ScriptedAI::Load(debugLua, Engine::input.pressed[Key::Shift]);
+			ScriptedAI::Start();
 		}
 
 
