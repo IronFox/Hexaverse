@@ -637,7 +637,12 @@ namespace Network
 								&&
 								p->time.min == vs.entityState.timestamp.atTime)
 							{
-								FATAL__("Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+								auto entity = Objects::GetEntity(p->targetEntityID);
+								if (entity)
+									LogEvent(EventSignificance::ClientFatal, entity.get(), "Got multiple mobile entity updates on this entity at time " + ToString(vs.entityState.timestamp));
+								else
+									LogEvent(EventSignificance::ClientFatal,"Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+								FATAL__("Stop");
 							}
 						}
 					#endif
