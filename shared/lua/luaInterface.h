@@ -526,11 +526,15 @@ namespace Lua
 		*/
 		Table			CreateTable();
 		/**
-		Associates the specified name with the given reference
-		@return true if the given reference is not empty, false otherwise
+		Associates the specified name with the given reference.
+		An exception is thrown if the specified reference is empty
+		@param ref Reference to assign to the specified global identifier. Must not be empty
 		*/
-		void			SetGlobal(const String&name, const Reference&);
-
+		void			SetGlobal(const String&name, const Reference&ref);
+		/**
+		Unsets the specified global variable
+		*/
+		void			UnsetGlobal(const String&name);
 		/**
 		Queries a global variable.
 		The resulting reference may be empty if the requested global does not exist
