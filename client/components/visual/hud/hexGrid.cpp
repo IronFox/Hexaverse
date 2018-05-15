@@ -475,13 +475,14 @@ namespace HexGrid
 		Buffer0<PIcon>				commands;
 		PIcon						menuCommand;
 
-		/*static*/ index_t			Icon::indexCounter = 0;
-			/**/					Icon::Icon(const String&name) : Super(name)
-									{
-										LoadIcon();
-										indexCounter++;
-										gridCoords = int2(/*1+*/indexCounter,1);
-									}
+		/**/						Icon::Icon(const String&name) : Super(name)
+		{
+			LoadIconByName(name);
+		}
+		/**/						Icon::Icon(const String&name, const String&iconName) : Super(name)
+		{
+			LoadIconByName(iconName);
+		}
 
 		/*virtual override*/ void			MenuCommand::Execute()
 		{
@@ -505,6 +506,8 @@ namespace HexGrid
 			commands << PIcon( new AbortCommand() );
 			commands << PIcon( new UndoCommand() );
 
+			for (index_t i = 0; i < commands.Count(); i++)
+				commands[i]->gridCoords = int2(1 + i, 1);
 
 			GlobalEvents::voteCast << VoteRefresh;
 			GlobalEvents::voteClosed << VoteRefresh;

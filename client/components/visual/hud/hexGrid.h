@@ -93,9 +93,9 @@ namespace HexGrid
 			typedef Objects::Command::VisualCommand	Super;
 		public:
 			int2					gridCoords;
-			static index_t			indexCounter;
 
 			/**/					Icon(const String&name);
+			/**/					Icon(const String&name, const String&iconName);
 		};
 
 		#pragma region PanelButtonImplementations
