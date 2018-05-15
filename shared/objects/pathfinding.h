@@ -62,7 +62,62 @@ namespace Objects
 			NoPath
 		};
 
+
+		typedef std::function<void(const Grid::LCellIdI&, int&)> FCellCostModifier;
+
 		inline bool		Okay(Result r)	{return r == Result::DestinationReached;}
+
+		/**
+		Container structure to calculate the shortest path respecting the particular limitations of the given vehicle.
+		Thread safety:
+		Should not cause crashes when used asynchronously (one thread per container).
+		Inconsistencies may occur if entities or grid are changed during execution.
+		*/
+		class ShortestPath
+		{
+		public:
+			/**
+			Resulting path (if any), not including the origin location
+			*/
+			Buffer<PathNode>	result;
+
+			/**
+			Updates @a result.
+			@param vehicle Vehicle to plot for
+			@param from Location to plot from (excluded from result)
+			@param to Location to plot to (included in result if found)
+			@param ignoreFriendlyVehiclesOnRoute Set true to ignore friendly vehicles, false to route around them
+			@param failIfLimitReached Set true to apply server-side work limit of 2000 routing steps (radially, following Dijkstra), false to take until done or no ways left
+			@param[out] outWouldFailDueToLimitReached Set if failIfLimitReached is set false, and the limit has been reached (and ignored)
+			@param cellCostModifer Custom cell modifier function, that receives the input cell ID, and determined terrain costs, and can alter this value. Must not be set negative
+			@return True if the destination was reached, false otherwise
+			*/
+			bool Update(const Vehicle&vehicle, const Grid::LCellIdI&from,
+				const Grid::LCellIdI&to, 
+				bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached = true, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
+
+
+			/**
+			Smart update function that tries to determine friendly vehicle ignorance by comparing the two options.
+			If the route without ignorance is less than 4x longer than the one with ignorance, the non-ignoring will be copied to result.
+			Otherwise the ignoring will be copied
+			*/
+			bool SelectiveUpdate(const Vehicle&vehicle, const Grid::LCellIdI&from,
+				const Grid::LCellIdI&to,
+				bool failIfLimitReached = true, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
+
+		private:
+			struct TNode
+			{
+				UINT32	backLink, minDistance;
+				int		nodeCosts;
+			};
+			Array<TNode>	buffer;
+			Buffer0<PathNode>	routeIgnore;
+		};
+
+		extern ShortestPath	shortestPath;
+
 
 		bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 		#ifndef NO_SATELLITES

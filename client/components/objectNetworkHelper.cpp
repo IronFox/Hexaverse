@@ -340,14 +340,13 @@ namespace ObjectHelper
 	{
 		if (prev == target)
 			return true;
-		Buffer0<Objects::PathNode>		path;
 		{
 			bool tooLong;
 			bool foundPath;
 
 			if (v->IsVehicle())
 			{
-				foundPath = Objects::Pathfinding::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
+				foundPath = Objects::Pathfinding::shortestPath.SelectiveUpdate((const Objects::Vehicle&)*v, prev, target, false, &tooLong);
 			}
 			else
 			{
@@ -377,6 +376,7 @@ namespace ObjectHelper
 				static Buffer0<Grid::LCellIdI>	waypoints;
 				waypoints.Clear();
 				bool open = true;
+				const auto&path = Objects::Pathfinding::shortestPath.result;
 				for (index_t i = 0; i < path.GetLength(); i++)
 				{
 					if (!((i+1)%5))

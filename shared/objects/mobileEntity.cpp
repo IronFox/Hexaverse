@@ -1557,8 +1557,9 @@ namespace Objects
 			//}
 			//else
 			{
-				if (!Pathfinding::AppendShortestPathI((const Vehicle*)v,prev,target.target,path))
+				if (!Pathfinding::shortestPath.SelectiveUpdate((const Vehicle&)*v,prev,target.target))
 					return false;
+				this->path.swap(Pathfinding::shortestPath.result);
 			}
 		}
 		else

@@ -176,7 +176,7 @@ namespace Objects{ namespace Pathfinding
 				const Grid::LCellIdI	cell(n.neighborID[i], location.height + j);
 
 				{
-					bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
+					bool okay = cell.height <= Grid::CellStack::TopHeight && cell.height >= Grid::CellStack::BottomHeight;
 					if (!okay)
 						continue;
 				}
@@ -472,43 +472,31 @@ namespace Objects{ namespace Pathfinding
 	}
 
 
-	bool AppendShortestPath(const Vehicle*vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath,
-							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
-
-	bool AppendShortestPathI( const Vehicle*vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
+	bool ShortestPath::SelectiveUpdate( const Vehicle&vehicle, const Grid::LCellIdI&from,
+							const Grid::LCellIdI&to, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
 	{
-		static Ctr::Buffer0<PathNode>	routeI, route;
-		routeI.Clear();
-		route.Clear();
-		bool hasI = AppendShortestPath(vehicle,from,to,routeI,true,failIfLimitReached,outWouldFailDueToLimitReached);
+		routeIgnore.Clear();
+		bool hasI = Update(vehicle,from,to,true,failIfLimitReached,outWouldFailDueToLimitReached, cellCostModifer);
 		if (!hasI)
 			return false;
-		bool has = AppendShortestPath(vehicle,from,to,route,false,failIfLimitReached,outWouldFailDueToLimitReached);
-		//foreach (routeI,r)
-		//	ASSERT__(*r != Grid::LCellIdI::Invalid);
-		//if (has)
-		//	foreach (route,r)
-		//		ASSERT__(*r != Grid::LCellIdI::Invalid);
+		routeIgnore.swap(result);
+		bool has = Update(vehicle,from,to,false,failIfLimitReached,outWouldFailDueToLimitReached, cellCostModifer);
 		if (!has)
 		{
-			oPath.AppendAll(routeI);
+			swap(routeIgnore, result);
 			return true;
 		}
 
 		count_t lenI = 0, len = 0;
-		foreach (routeI,n)
+		foreach (routeIgnore,n)
 			lenI += n->movementCostsFromPrevNode;
-		foreach (route,n)
+		foreach (result,n)
 			len += n->movementCostsFromPrevNode;
 		if (len < lenI * 4)	//less than 400% more
 		{
-			oPath.AppendAll(route);
 			return true;
 		}
-
-		oPath.AppendAll(routeI);		//else: use the one that ignores friendly vehicles
+		swap(routeIgnore, result);	//else: use the one that ignores friendly vehicles
 		return true;
 
 	}
@@ -560,12 +548,13 @@ namespace Objects{ namespace Pathfinding
 
 
 
-		
-	bool AppendShortestPath( const Vehicle*vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath,
-							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
+	ShortestPath	shortestPath;
+
+	bool ShortestPath::Update( const Vehicle&vehicle, const Grid::LCellIdI&from,
+							const Grid::LCellIdI&to,  
+							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
 	{
-		bool inRange = true;
+		result.Clear();
 		if (outWouldFailDueToLimitReached)
 			(*outWouldFailDueToLimitReached) = false;
 
@@ -573,35 +562,24 @@ namespace Objects{ namespace Pathfinding
 		#ifdef CLIENT
 			World::actual;
 		#else
-			vehicle->owner->knownWorld;
+			vehicle.owner->knownWorld;
 		#endif
 		
-		const auto destHangar = AccessibleHangarHere(to,*vehicle);
+		const auto destHangar = AccessibleHangarHere(to,vehicle);
 
-		if (!ValidDestinationOf<false>(world,*vehicle,to,to,destHangar,false, false))
+		if (!ValidDestinationOf<false>(world,vehicle,to,to,destHangar,false, false))
 			return false;
-
-		//if (!vehicle->CanStandOn(world,to -1,false) || 
-		//	(!world.LowCellIsClear(to) && !VehicleDestinationStructureHere(to) ))// || !NothingHere(destination))
-		//		return false;
-	//	Timer::Time t0 = timer.Now();
-		const THindranceVector&hindrance = vehicle->base->hindrance;
-		//const int speed = vehicle->GetMovementStepsPerRound();
+		const THindranceVector&hindrance = vehicle.base->hindrance;
 		TWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
-		struct TNode
-		{
-			UINT32	backLink, minDistance;
-			int		nodeCosts;
-		};
 
-		static Ctr::Array<TNode>	buffer(cellCount);
 		TNode empty = {0xFFFFFFFF,0xFFFFFFFF,0};
+		buffer.SetSize(cellCount);
 		buffer.Fill(empty);
 
-		Ctr::PriorityQueue<index_t,int>	queue;
+		PriorityQueue<index_t,int>	queue;
 		#undef IDOF
 		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
 		#undef DESCOF
@@ -627,7 +605,6 @@ namespace Objects{ namespace Pathfinding
 				{
 					if (outWouldFailDueToLimitReached)
 						(*outWouldFailDueToLimitReached) = true;
-					inRange = false;
 				}
 			}
 
@@ -636,13 +613,13 @@ namespace Objects{ namespace Pathfinding
 			if (!tn.nodeCosts)
 			{
 				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
+				if (cellCostModifer)
+					cellCostModifer(cellID, tn.nodeCosts);
 			}
 
 
 			if (cellID == to)
 			{
-				static Ctr::Buffer<PathNode>	outPath;
-				outPath.Clear();
 
 				while (current < cellCount)
 				{
@@ -650,18 +627,14 @@ namespace Objects{ namespace Pathfinding
 					int nextCosts = next < buffer.Count() ? buffer[next].nodeCosts : 0;
 					//GetCellMovementCosts(next, vehicle);
 					int hCosts = next < buffer.Count() ?  std::max(0, DESCOF(current).height - DESCOF(next).height ) : 0;
-					outPath << PathNode(DESCOF(current), std::max(nextCosts, buffer[current].nodeCosts) + hCosts);
-//					outPath.Last().reachedInProcessingLimit = inRange;
+					result << PathNode(DESCOF(current), std::max(nextCosts, buffer[current].nodeCosts) + hCosts);
 					current = next;
 				}
-				outPath.EraseLast();	//dont need entry point
-				outPath.Revert();
-				oPath.AppendAll(outPath);
-				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				result.EraseLast();	//dont need entry point
+				result.Revert();
 				return true;
 			}
-			GetWays(world,vehicle,  cellID, possibilities, to, destHangar, true, ignoreFriendlyVehiclesOnRoute,false);
+			GetWays(world,&vehicle,  cellID, possibilities, to, destHangar, true, ignoreFriendlyVehiclesOnRoute,false);
 
 
 			for (index_t i = 0; i < possibilities.numWays; i++)
@@ -669,7 +642,11 @@ namespace Objects{ namespace Pathfinding
 				UINT32 option = IDOF(possibilities.way[i]);
 				TNode&n = buffer[option];
 				if (!n.nodeCosts)
-					n.nodeCosts = GetCellMovementCosts(world,possibilities.way[i],hindrance);
+				{
+					n.nodeCosts = GetCellMovementCosts(world, possibilities.way[i], hindrance);
+					if (cellCostModifer)
+						cellCostModifer(possibilities.way[i], n.nodeCosts);
+				}
 				int cost = std::max(tn.nodeCosts,n.nodeCosts);
 				int hCosts = std::max(0, possibilities.way[i].height - cellID.height );
 				cost += hCosts;
