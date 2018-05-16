@@ -7,6 +7,7 @@
 #include "visual/hud/windowStack.h"
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/dialog.h"
+#include <io/string_file.h>
 
 namespace ScriptedAI
 {
@@ -215,13 +216,13 @@ namespace ScriptedAI
 			if (thread.error.IsNotEmpty())
 			{
 				LogEvent(EventClass::Preset::scriptError, thread.error);
-				#ifdef CLIENT
+				#ifdef HAS_WINDOW
 					HUD::Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + thread.error);
 				#endif
 			}
 
 			onExecutionFinished();
-			#ifdef CLIENT
+			#ifdef HAS_WINDOW
 				HUD::WindowStack::SignalSituationChange();
 				HUD::HexGrid::RefreshButtonState();
 			#endif
