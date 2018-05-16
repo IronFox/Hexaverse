@@ -518,34 +518,20 @@ namespace Lua
 			const auto v = ParameterToVehicle(entityTable, loc, "FindShortestPath(): Unit parameter #1");
 			const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPath(): Target parmater #2");
 
-			bool success = true;
-			Objects::Pathfinding::FCellCostModifier costMod;
-			if (costModifier.IsSet())
-				costMod = [&costModifier, this](const Grid::LCellIdI&loc, int&costs)
-			{
-				costs = costModifier(ToTable(loc), costs);
-			};
-			success = shortestPath.Update(*v, loc, dest, ignoreFriendlyMobilesOnRoute, false, nullptr, costMod);
-			if (!success)
-				return Lua::Table{};
-
-			Lua::Table result = program->CreateTable(), pred;
-			int cost = 0;
-			for (index_t i = 0; i < shortestPath.result.Count(); i++)
-			{
-				const auto&in = shortestPath.result[i];
-				Lua::Table luaNode = program->CreateTable();
-				luaNode.SetField("location", ToTable(in.cell));
-				cost += in.movementCostsFromPrevNode;
-				luaNode.SetField("movementCostsFromRoot", cost);
-				if (pred.IsSet())
-					luaNode.SetField("predecessor", pred);
-
-				result.AppendElement(luaNode);
-				pred = luaNode;
-			}
-			return result;
+			return this->LuaFindShortestPathFrom(v,loc,dest,costModifier,ignoreFriendlyMobilesOnRoute);
 		});
+
+		pathfindingTable.SetFunction("FindShortestPathFrom", [this](const Lua::Table&entityTable, const Lua::Table&originLocation, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
+		{
+			Grid::LCellIdI loc;
+			const auto v = ParameterToVehicle(entityTable, loc, "FindShortestPathFrom(): Unit parameter #1");
+			const auto origin = Detail::ToLGridCell(originLocation, "FindShortestPathFrom(): Origin parmater #2");
+			const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPathFrom(): Target parmater #3");
+
+			return this->LuaFindShortestPathFrom(v,origin,dest,costModifier,ignoreFriendlyMobilesOnRoute);
+		});
+
+
 
 		pathfindingTable.SetFunction("GetUnitReach", [this](const Lua::Table&entityTable, const Lua::Function<bool(Lua::Table)>&isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute, bool cannotStandOnUnknown)->Lua::Table
 		{
@@ -673,6 +659,37 @@ namespace Lua
 		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
 		gridTable.SetField("topHeight",Grid::CellStack::TopHeight);
 	}
+
+	Lua::Table	API::LuaFindShortestPathFrom(const Objects::PVehicle&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)
+	{
+		bool success = true;
+		Objects::Pathfinding::FCellCostModifier costMod;
+		if (costModifier.IsSet())
+			costMod = [&costModifier, this](const Grid::LCellIdI&loc, int&costs)
+		{
+			costs = costModifier(ToTable(loc), costs);
+		};
+		success = shortestPath.Update(*v, origin, dest, ignoreFriendlyMobilesOnRoute, false, nullptr, costMod);
+		if (!success)
+			return Lua::Table{};
+
+		Lua::Table result = program->CreateTable(), pred;
+		int cost = 0;
+		for (index_t i = 0; i < shortestPath.result.Count(); i++)
+		{
+			const auto&in = shortestPath.result[i];
+			Lua::Table luaNode = program->CreateTable();
+			luaNode.SetField("location", ToTable(in.cell));
+			cost += in.movementCostsFromPrevNode;
+			luaNode.SetField("movementCostsFromRoot", cost);
+			if (pred.IsSet())
+				luaNode.SetField("predecessor", pred);
+
+			result.AppendElement(luaNode);
+			pred = luaNode;
+		}
+		return result;
+	};
 
 
 	Objects::PVehicle	API::ParameterToVehicle(const Lua::Table&entityTable, Grid::LCellIdI&outLoc, const String&parameterName) const

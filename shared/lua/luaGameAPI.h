@@ -100,6 +100,9 @@ namespace Lua
 		void	AddAllEntities();
 		void	AddAllAlliances();
 	private:
+
+		Lua::Table	LuaFindShortestPathFrom(const Objects::PVehicle&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute);
+
 		void	Setup();
 	};
 }
