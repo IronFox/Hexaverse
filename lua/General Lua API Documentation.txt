@@ -113,13 +113,13 @@ Turret
 		float	flatAttackRange;		Horizontal attack range. Increased by explosionRadius. Vertical range depends on trajectoryType
 		float	explosionRadius;		Spherical explosion radius
 		int		damageLevel;			Damage inflicted by the local turret
-		bool	dealsEMPDamage;			True if the local turret deals EMP damage as opposed to permanent health damage
-		bool	IsInRange(Vector);		True if the given coordinates could be hit. Ignores potentially blocking terrain. Fast
-		bool	IsInRangeFrom(Loc,Vec);	True if the given coordinates could be hit from the specified origin location. Ignores potentially blocking terrain. Fast
-		Loc		FindTarget(Loc);		Finds the closest attack target in range, that hits the given location, but does not hit friendly units
-		Hit		TraceTrajectory(Loc);	Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
-	bool	can[Operation];				True if the respective operation can be performed by this turret, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. canConstruct)
-	int		speedOf[Operation];			Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. speedOfConstruct)
+		bool	dealsEMPDamage;					True if the local turret deals EMP damage as opposed to permanent health damage
+		bool	IsInRange(Vector);				True if the given coordinates could be hit. Ignores potentially blocking terrain. Fast
+		bool	IsInRangeFrom(Loc,Vector);			True if the given coordinates could be hit from the specified origin location. Ignores potentially blocking terrain. Fast
+		Loc		FindTarget(Loc);					Finds the closest attack target in range, that hits the given location, but does not hit friendly units
+		Hit		TraceTrajectory(Loc);				Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
+	bool	can[Operation];							True if the respective operation can be performed by this turret, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. canConstruct)
+	int		speedOf[Operation];					Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. speedOfConstruct)
 }
 
 Hit
