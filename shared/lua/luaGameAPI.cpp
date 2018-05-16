@@ -249,6 +249,20 @@ namespace Lua
 					return Lua::Reference();
 				return ToTable(choice.cellTarget);
 			});
+			t.SetFunction("FindTargetFrom", [this,trajectory, flatAttackRange, explosionRadius,owner, zOffset](const Lua::Table&org,const Lua::Table&location)->Lua::Table
+			{
+				Objects::TurretBase::TargetChoice choice;
+				const auto dest = Objects::TrajectoryEndPoint(Detail::ToLGridCell(location,"FindTargetFrom(): Target parameter #2"),0);
+				const auto origin = Objects::TrajectoryEndPoint(Detail::ToLGridCell(org,"FindTargetFrom(): Location parameter #1"),zOffset);
+				Objects::PFaction myFaction = owner.lock();
+				if (!myFaction)
+					throw Lua::Exception(CLOCATION,"FindTarget(): Owning faction unknown or expired");
+				bool rs = Objects::TurretBase::FindTarget(myFaction, trajectory, flatAttackRange, explosionRadius, origin, dest, choice);
+				if (!rs)
+					return Lua::Reference();
+				return ToTable(choice.cellTarget);
+			});
+
 
 			t.SetFunction("TraceTrajectory", [this, trajectory, flatAttackRange, origin, owner](const Lua::Table&location)->Lua::Table
 			{
