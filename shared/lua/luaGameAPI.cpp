@@ -224,6 +224,17 @@ namespace Lua
 				vector.GetField("z",dest.z);
 				return Objects::Component::Turret::CanHit(trajectory,flatAttackRange,origin,dest);
 			});
+			t.SetFunction("IsInRangeFrom",[trajectory,flatAttackRange,zOffset](const Lua::Table&loc, const Lua::Table&vector)
+			{
+				if (vector.IsEmpty())
+					return false;
+				M::TVec3<>	dest;
+				vector.GetField("x",dest.x);
+				vector.GetField("y",dest.y);
+				vector.GetField("z",dest.z);
+				const auto origin = Objects::TrajectoryEndPoint(Detail::ToLGridCell(loc,"IsInRangeFrom(): Location parameter #1"),zOffset);
+				return Objects::Component::Turret::CanHit(trajectory,flatAttackRange,origin,dest);
+			});
 
 			const Objects::WFaction owner = b.ToEntity().owner;
 			t.SetFunction("FindTarget", [this,trajectory, flatAttackRange, origin, explosionRadius,owner](const Lua::Table&location)->Lua::Table
