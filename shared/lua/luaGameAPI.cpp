@@ -53,6 +53,17 @@ namespace Lua
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
+		void UpdateResourceTable(Lua::Table&t,const Objects::ResourceVector&v)
+		{
+			for (index_t i = 0; i < Objects::Resource::N; i++)
+			{
+				String name = Objects::Resource::Reinterpret(i).ToString();
+				name.Set(0,CharFunctions::tolower(name.GetFirstChar()));
+				t.SetField(name,v.level[i]);
+			}
+		}
+			
+
 		#ifdef CLIENT
 
 			int	GetCompoundResourceChange(const String&resourceName)
@@ -832,8 +843,12 @@ namespace Lua
 			t = program->CreateTable();
 			found = loadedFactionTableMap.SetNew(f->id);
 			found->table = t;
-			found->entityTable = program->CreateTable();
-			t.SetField("units",found->entityTable);
+			found->entityTable = t.SetSubTable("units");
+			found->balanceTable = t.SetSubTable("balance");
+			found->storageTable = t.SetSubTable("storage");
+			found->demandTable = t.SetSubTable("demand");
+			found->supplyTable = t.SetSubTable("supply");
+			found->maxStorageTable = t.SetSubTable("maxStorage");
 
 			factionMappedToTable.Set(f->id);
 			factionIDMap.SetField(f->id.ToFullString(),t);
@@ -843,6 +858,13 @@ namespace Lua
 		t.SetField("id",f->id.ToFullString());
 		const auto*const alliance = AddAlliance(f->alliance,false,true);
 		t.SetField("alliance",alliance->table);
+
+		auto vec = f->compound.GetVector();
+		Detail::UpdateResourceTable(found->balanceTable,vec.balance);
+		Detail::UpdateResourceTable(found->demandTable,vec.demand);
+		Detail::UpdateResourceTable(found->storageTable,vec.storage);
+		Detail::UpdateResourceTable(found->maxStorageTable,vec.storageMax);
+		Detail::UpdateResourceTable(found->supplyTable,vec.supply);
 
 		return found;
 	}

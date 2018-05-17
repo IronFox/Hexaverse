@@ -49,7 +49,7 @@ namespace Lua
 		struct TFaction
 		{
 			Lua::Table		table;
-			Lua::Table		entityTable;
+			Lua::Table		entityTable, storageTable, balanceTable, demandTable, supplyTable, maxStorageTable;
 
 			void			AddEntity(const Lua::Table&);
 		};
