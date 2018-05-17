@@ -54,24 +54,24 @@ Table-Type: ResVec
 	
 Table-Type: Unit
 {
-	string	name;						Full entity name (for logging purposes). Includes type and unique ID
-	string 	niceName;					Full entity name (as presented to the player). Includes type and nice representation of unique ID
-	string	id;							Entity unique ID
-	string	typeName;					String representation of the type. May be a compound type if isMovile is true
-	Faction	owner;						Entity owner
-	int		constructionCost;			Amount of resources necessary to build this type
-	float	scanningRange;				Regular grid scanning range
-	bool	isMobile;					True if this is a mobile entity
-	bool	isVehicle;					True if this is a vehicle (implies isMobile)
-	bool	isStructure;				True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
-	Loc		location;					Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
-	bool	isSleeping;					True if the local entity is currently sleeping
-	int		health;						Current entity health. <= 0 for ghosts
-	int		maxHealth;					Maximum possible health of the local entity. May change over time
-	bool	isIndestructible;			True if the local unit is indestructible, false otherwise
-	int		empDamageLevel;				Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
-	bool	isWorkingStructure;			True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
-	bool	isMobileEntityProducer;		True if this entity can produce mobile entities. Does not necessarily imply that this is a building
+	string		name;					Full entity name (for logging purposes). Includes type and unique ID
+	string 		niceName;				Full entity name (as presented to the player). Includes type and nice representation of unique ID
+	string		id;						Entity unique ID
+	string		typeName;				String representation of the type. May be a compound type if isMovile is true
+	Faction		owner;					Entity owner
+	int			constructionCost;		Amount of resources necessary to build this type
+	float		scanningRange;			Regular grid scanning range
+	bool		isMobile;				True if this is a mobile entity
+	bool		isVehicle;				True if this is a vehicle (implies isMobile)
+	bool		isStructure;			True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
+	Loc			location;				Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
+	bool		isSleeping;				True if the local entity is currently sleeping
+	int			health;					Current entity health. <= 0 for ghosts
+	int			maxHealth;				Maximum possible health of the local entity. May change over time
+	bool		isIndestructible;		True if the local unit is indestructible, false otherwise
+	int			empDamageLevel;			Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
+	bool		isWorkingStructure;		True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
+	bool		isMobileEntityProducer;	True if this entity can produce mobile entities. Does not necessarily imply that this is a building
 	
 	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
 	void		Destroy();				Attempts to destroy the local entity
@@ -83,7 +83,7 @@ Table-Type: Unit
 		void	ClearTasks();			Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
 		void	DropLastTask();			Drops only the last queued task.
 		void	Construct(string type);	Schedules the construction of the specified type at the end of the local queue, using the last queued location
-	[isStructure]
+	[isWorkingStructure]
 		void 	Enable(bool);			Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
 	[isMobileEntityProducer]
 		void	BuildMobile(string type);	Schedules the construction of the specified type at the end of the local queue
@@ -94,8 +94,10 @@ Table-Type: Unit
 	[Client only]
 		bool	isOwnedByMe;			true if the local player owns this entity
 		
-	[isStructure]
+	[isWorkingStructure]
 		bool	isEnabled;				True if the local structure is active
+		ResVec	storage;				Resource vector containing all locally stored resources. All values are >= 0
+		ResVec	balance;				Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
 		
 	[isMobileEntityProducer]
 		Prod[]	productionQueue;		String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production
