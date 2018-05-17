@@ -173,6 +173,9 @@ Research
 	bool	isCompleted;				True if research is completed. Always false if endless
 	bool	isActive;					True if this topic is currently being researched. If true, implies isQueued
 	bool	isQueued;					True if this topic is or will be researched
+	
+	void	Enqueue();		Schedules this topic to be researched. Appended to the end of the research queue. Effect is delayed
+	void	Dequeue();		Unschedules this topic from the research queue. Uncompleted research is not lost. Effect is delayed
 };
 
 

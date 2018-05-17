@@ -70,6 +70,7 @@ namespace Lua
 		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
 		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginConstruction;
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
+		std::function<void(UINT32,bool)>	onQueueResearch;
 
 		/**/		API():mapper(true)	{}
 

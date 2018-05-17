@@ -411,6 +411,22 @@ namespace Lua
 				outT.SetField("isActive",isActive);
 				outT.SetField("isQueued",q.Contains((UINT32)i));
 
+				
+				outT.SetFunction("Dequeue",[this,i]()
+				{
+					if (onQueueResearch)
+						onQueueResearch(i,false);
+					else
+						throw Lua::Exception(CLOCATION,"Dequeue(): onQueueResearch not set");
+				});
+				outT.SetFunction("Enqueue",[this,i]()
+				{
+					if (onQueueResearch)
+						onQueueResearch(i,true);
+					else
+						throw Lua::Exception(CLOCATION,"Enqueue(): onQueueResearch not set");
+				});
+
 				if (isActive)
 					current = outT;
 			}
