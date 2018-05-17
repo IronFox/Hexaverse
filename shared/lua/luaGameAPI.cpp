@@ -967,6 +967,17 @@ namespace Lua
 				Lua::Table production = program->CreateTable();
 				production.SetField("name",w->GetName());
 				production.SetField("id",w->id.ToFullString());
+
+				TUniqueID tID = w->id;
+				production.SetFunction("Abort",[this,id,tID]()
+				{
+					if (onAbortProduction)
+						onAbortProduction(id,tID);
+					else
+						throw Lua::Exception(CLOCATION,"Abort(): onAbortProduction not set");
+
+				});
+
 				queue.AppendElement(production);
 			}
 			t.SetField("productionQueue",queue);

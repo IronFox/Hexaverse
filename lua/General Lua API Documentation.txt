@@ -101,6 +101,7 @@ Prod
 {
 	string	id;							Unique production ID
 	string	name;						Production name
+	void	Abort();					Aborts this production. Effect is delayed, item will remain until next incovation
 }
 
 Loc
