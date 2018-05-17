@@ -18,7 +18,6 @@ namespace Lua
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
 							researchTable,	//Game.Research.X
-							pathfindingTable, //Game.Pathfinding.X
 							terrainTable, //Game.Terrain.X
 							terrainContentTable,	//Game.Terrain.Content.X
 							gridTable;	//Game.Grid.X
