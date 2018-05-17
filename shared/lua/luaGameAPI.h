@@ -27,6 +27,8 @@ namespace Lua
 		
 		#ifdef CLIENT	
 			Lua::Table		myEntityIDMap,
+							alliedEntityIDMap,
+							hostileEntityIDMap,
 							myMarkerIDMap,
 							myResearchQueue;
 		#endif

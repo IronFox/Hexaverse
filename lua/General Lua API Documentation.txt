@@ -7,12 +7,14 @@ void		Game.Log(msg)					Prints any message to Hexaverse log (client or server-pr
 	void	Game.FocusCameraAt(Cell cell)									Smoothly focuses the camera on the specified stack index
 	int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
 	int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative
-float	Game.GetDistance(Loc a, Loc b)				Retrieves the geometric distance between the two specified locations
+float		Game.GetDistance(Loc a, Loc b)				Retrieves the geometric distance between the two specified locations
 
 
 
 [client only]
-	{id->Unit}	Game.myUnits			Table of all player-owned units currently known to the client, mapped by id (string) to unit
+	{id->Unit}	Game.myUnits				Table of all player-owned units currently known to the client, mapped by id (string) to unit
+	{id->Unit}	Game.alliedUnits			Table of all allied units currently known to the client, mapped by id (string) to unit
+	{id->Unit}	Game.hostileUnits			Table of all hostile units currently known to the client, mapped by id (string) to unit
 	Unit		Game.selectedUnit			Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
 
 {id->Unit}		Game.units					Table of all (player-known on client) units, mapped by id (string) to unit

@@ -452,6 +452,9 @@ namespace Lua
 		researchTopicList.ClearTable();
 		#ifdef CLIENT
 			myEntityIDMap.ClearTable();
+			alliedEntityIDMap.ClearTable();
+			hostileEntityIDMap.ClearTable();
+
 			myMarkerIDMap.ClearTable();
 			myResearchQueue.ClearTable();
 			gameTable.UnsetField("selectedUnit");
@@ -681,6 +684,11 @@ namespace Lua
 		#ifdef CLIENT
 			myEntityIDMap = program->CreateTable();
 			gameTable.SetField("myUnits",myEntityIDMap);
+			alliedEntityIDMap = program->CreateTable();
+			gameTable.SetField("alliedUnits",alliedEntityIDMap);
+			hostileEntityIDMap = program->CreateTable();
+			gameTable.SetField("hostileUnits",hostileEntityIDMap);
+
 			myMarkerIDMap = program->CreateTable();
 			gameTable.SetField("myMarkers", myMarkerIDMap);
 		#endif
@@ -898,6 +906,10 @@ namespace Lua
 				#ifdef CLIENT
 					if (e->isOwnedByMe)
 						myEntityIDMap.SetField(sid,t);
+					elif (e->owner && e->owner->IsAlliedWithMe())
+						alliedEntityIDMap.SetField(sid,t);
+					else
+						hostileEntityIDMap.SetField(sid,t);
 				#endif
 			}
 			if (!updateIfFound && actual == found->second)
