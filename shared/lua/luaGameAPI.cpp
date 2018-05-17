@@ -964,7 +964,10 @@ namespace Lua
 			Lua::Table queue = program->CreateTable();
 			foreach (prod->queue,w)
 			{
-				queue.AppendElement(w->GetName());
+				Lua::Table production = program->CreateTable();
+				production.SetField("name",w->GetName());
+				production.SetField("id",w->id.ToFullString());
+				queue.AppendElement(production);
 			}
 			t.SetField("productionQueue",queue);
 		}

@@ -76,7 +76,7 @@ Unit
 		bool	isEnabled;				True if the local structure is active
 		
 	[isMobileEntityProducer]
-		Table	productionQueue;		String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production
+		Prod[]	productionQueue;		String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production
 
 	[has turret (tower, mobile)]
 		Turret	turret;					Table containing turret information. May be set for structures or mobile entities
@@ -91,6 +91,12 @@ Unit
 	[isVehicle]
 		int		maxClimbUp;				Maximum climbing height difference. Typically 1
 		int		minClimbDown;			Minimum down-climbing heigh difference. Negative. Typically -1 or less
+}
+
+Prod
+{
+	string	id;							Unique production ID
+	string	name;						Production name
 }
 
 Loc

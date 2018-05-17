@@ -246,7 +246,7 @@ CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to const
 				local found = false;
 
 				for _,t in ipairs(u.productionQueue) do
-					if t == "Hoverformer" then
+					if t.name == "Hoverformer" then
 						found = true;
 						break;
 					end;
