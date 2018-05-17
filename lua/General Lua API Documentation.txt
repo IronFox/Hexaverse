@@ -1,3 +1,9 @@
+All functions and global contants are located in the Game table.
+E.g. Game.units
+
+
+
+
 
 void		Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
 
@@ -24,13 +30,13 @@ float		Game.GetDistance(Loc a, Loc b)				Retrieves the geometric distance betwee
 Unit			Game.GetMobileAt(Loc);		Gets the mobile unit at the given location. nil if none. Can be used to quickly check if there is anything there
 Unit			Game.GetStructureAt(Loc);	Gets the structure unit at the given location. nil if none. Can be used to quickly check if there is anything there
 	
-Alliance
+Table-Type: Alliance
 {
 	string	id;
 	Faction[]	members;
 }
 	
-Faction
+Table-Type: Faction
 {
 	string	name;
 	string	id;
@@ -38,7 +44,7 @@ Faction
 	Unit[]	units;
 }
 	
-Unit
+Table-Type: Unit
 {
 	string	name;						Full entity name (for logging purposes). Includes type and unique ID
 	string 	niceName;					Full entity name (as presented to the player). Includes type and nice representation of unique ID
@@ -102,14 +108,14 @@ Unit
 		bool	CanStandAt(Loc);		Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
 }
 
-Prod
+Table-Type: Prod (Production)
 {
 	string	id;							Unique production ID
 	string	name;						Production name
 	void	Abort();					Aborts this production. Effect is delayed, item will remain until next incovation
 }
 
-Loc
+Table-Type: Loc (Location)
 {
 	int		height;						Layer difference from mean planetary height. Usually in the range [-16,15], though some units may be located above the regular grid
 	Cell	cell;						Horizontal cell
@@ -117,7 +123,7 @@ Loc
 }
 
 
-Turret
+Table-Type: Turret
 {
 	string	typeName;					Turret type name
 	int		weight;						Weight affecting mobile entity speed
@@ -147,14 +153,14 @@ Turret
 	int		speedOf[Operation];					Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. speedOfConstruct)
 }
 
-Hit
+Table-Type: Hit
 {
 	bool	midFlightImpact;			True if destination was not reached
 	float	distanceToTarget;			Geometric distance between point of impact and target
 	Vector	impactAt;
 }
 
-Task
+Table-Type: Task
 {
 	string	name;						Task name
 	bool	isJob;						True if this is a construction job (e.g. by a terraformer), as opposed to motion or attack
@@ -166,7 +172,7 @@ int					Game.Research.maxQueueLength	Maximum research queue length
 [client only]
 	Topic[]			Game.Research.myQueue		Queue of all scheduled research items, starting with the one currently active topic
 	
-Topic
+Table-Type: Topic
 {
 	string	fullName;			Full path to the entry. Unique
 	string	name;				Name of this entry. Not unique
@@ -187,11 +193,12 @@ bool		Game.Grid.lowerResolutionPlanet		Set to true if the planet has reduced gri
 
 bool		Game.Grid.AffectedByEMP(Cell);		Returns true if EMP zones affect the given cell
 Loc			Game.Grid.ToLocation(Cell, int);	Constructs a location at the given cell and height
-int			Game.Grid.bottomHeight;		Minimum grid height
-int			Game.Grid.topHeight;		Maximum grid height
+int			Game.Grid.bottomHeight;		Minimum grid height (also applies to terrain)
+int			Game.Grid.topHeight;		Maximum grid height (also applies to terrain)
 bool		Game.Grid.IsClear(Loc);		Checks if all terrain cells affecting the specified location are clear
 
 Cell[]		Game.Grid.unitCells			Ordered table of all planar unit cells in the world. These are larger than terrain cells
+
 Cell		Game.Terrain.TranslateUnitCell(Cell);	Maps the specified UNIT cell to the matching (central) TERRAIN cell
 int			Game.Terrain.GetContent(Cell, int);	Gets the terrain content at the given TERRAIN cell and height, starting from 0
 string		Game.Terrain.Content.ToString(int);	Converts the respective type to string
@@ -204,14 +211,14 @@ Cell[]		Game.Terrain.cells			Ordered table of all planar terrain cells in the wo
 -- This type is used both for UNIT cells (large) and TERRAIN cells (small)
 -- For each Unit cell, there is one Terrain cell at its center
 -- Between each two Unit cells, one Terrain cell is shared, crossing the respective border
-Cell
+Table-Type: Cell
 {
 	Vector	center;						Normalized center vector of the cell
 	Cell[]	neighbors;					Ordered table of all planar neighbor cells
 	int		index;						Linear index of this cell in Game.Cells in [1,#Game.unitCells]
 };
 
-Vector
+Table-Type: Vector
 {
 	float	x,y,z;
 };
@@ -220,7 +227,7 @@ Vector
 	{id->Marker}Game.myMarkers			All client-created markers, mapped by marker id (string). Since this is a client-private feature, server does not provide this
 
 
-	Marker
+	Table-Type: Marker
 	{
 		Loc		location;				World location
 		string	type;					'Visited','EntityDeath','HostileContact'
@@ -263,7 +270,7 @@ Reachable[]	Game.Pathfinding.GetUnitReach(Unit unit,func isBlocked, int maxReach
 Reachable[]	Game.Pathfinding.FindShortestPath(Unit unit, Loc target, int(Loc,int) costModifier,  bool ignoreFriendlyVehiclesOnRoute)
 Reachable[]	Game.Pathfinding.FindShortestPathFrom(Unit unit, Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreFriendlyVehiclesOnRoute)
 
-Reachable	
+Table-Type: Reachable
 {
 	Loc		location;				Grid/world location
 	int		movementCostsFromRoot;	Costs to reach this location from the current unit location
