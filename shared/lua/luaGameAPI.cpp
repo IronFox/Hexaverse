@@ -585,7 +585,32 @@ namespace Lua
 				else
 					throw Lua::Exception("CreateMarker(): onMarkerCreate() not set");
 			});
-			#endif
+		#endif
+
+		gameTable.SetFunction("GetMobileAt",[this](const Lua::Table&location)
+		{
+			auto loc = Detail::ToLGridCell(location,"GetMobileAt(): Location parameter");
+			auto entity = Objects::GetMobileEntity(loc);
+			if (!entity)
+				return Lua::Table{};
+			auto ptr = loadedEntityTableMap.QueryPointer(entity->id);
+			if (!ptr)
+				return Lua::Table{};
+			return ptr->first;
+		});
+
+		gameTable.SetFunction("GetStructureAt",[this](const Lua::Table&location)
+		{
+			auto loc = Detail::ToLGridCell(location,"GetStructureAt(): Location parameter");
+			auto entity = Objects::GetStructure(loc);
+			if (!entity)
+				return Lua::Table{};
+			auto ptr = loadedEntityTableMap.QueryPointer(entity->id);
+			if (!ptr)
+				return Lua::Table{};
+			return ptr->first;
+		});
+
 
 
 		pathfindingTable.SetFunction("FindShortestPath", [this](const Lua::Table&entityTable, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table

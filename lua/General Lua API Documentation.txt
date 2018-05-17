@@ -21,6 +21,8 @@ float		Game.GetDistance(Loc a, Loc b)				Retrieves the geometric distance betwee
 {id->Faction}	Game.factions				List of all (player-known on client) factions, mapped by id (string) to faction
 {id->Alliance}	Game.alliances				List of all (player-known on client) alliances, mapped by id (string) to alliance
 	
+Unit			Game.GetMobileAt(Loc);		Gets the mobile unit at the given location. nil if none. Can be used to quickly check if there is anything there
+Unit			Game.GetStructureAt(Loc);	Gets the structure unit at the given location. nil if none. Can be used to quickly check if there is anything there
 	
 Alliance
 {
