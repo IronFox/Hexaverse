@@ -200,6 +200,7 @@ namespace ScriptedAI
 
 		api.Create("ScriptedAI");
 		api.AddGrid();
+		api.AddTerrain();
 		Detail::scriptPath = scriptPath;
 		Detail::freshState = freshState;
 

@@ -191,13 +191,22 @@ int			Game.Grid.bottomHeight;		Minimum grid height
 int			Game.Grid.topHeight;		Maximum grid height
 bool		Game.Grid.IsClear(Loc);		Checks if all terrain cells affecting the specified location are clear
 
-Cell[]		Game.Grid.unitCells			Ordered table of all planar cells in the world, with:
+Cell[]		Game.Grid.unitCells			Ordered table of all planar unit cells in the world. These are larger than terrain cells
+Cell[]		Game.Terrain.cells			Ordered table of all planar terrain cells in the world. These are smaller than unit cells
+
+
+
+@brief Planar cell type. The cell is replicated up and down to form a stack of locations, or terrain volume cells
+-- This type is used both for UNIT cells (large) and TERRAIN cells (small)
+-- For each Unit cell, there is one Terrain cell at its center
+-- Between each two Unit cells, one Terrain cell is shared, crossing the respective border
 Cell
 {
 	Vector	center;						Normalized center vector of the cell
 	Cell[]	neighbors;					Ordered table of all planar neighbor cells
 	int		index;						Linear index of this cell in Game.Cells in [1,#Game.unitCells]
 };
+
 Vector
 {
 	float	x,y,z;

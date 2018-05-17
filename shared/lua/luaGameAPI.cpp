@@ -493,6 +493,7 @@ namespace Lua
 		gameTable.ClearReference();
 		gridTable.ClearReference();
 		pathfindingTable.ClearReference();
+		terrainTable.ClearReference();
 		researchTable.ClearReference();
 		researchTopicList.ClearReference();
 		#ifdef CLIENT
@@ -501,6 +502,7 @@ namespace Lua
 			myResearchQueue.ClearReference();
 		#endif
 		lowCellGrid.Clear();
+		highCellGrid.Clear();
 		locationMap.Clear();
 		program.reset();
 	}
@@ -696,8 +698,13 @@ namespace Lua
 		gameTable = p->CreateTable();
 		gridTable = p->CreateTable();
 		gameTable.SetField("Grid",gridTable);
+		
 		pathfindingTable = p->CreateTable();
 		gameTable.SetField("Pathfinding", pathfindingTable);
+		
+		terrainTable = p->CreateTable();
+		gameTable.SetField("Terrain", terrainTable);
+
 		researchTable = p->CreateTable();
 		gameTable.SetField("Research",researchTable);
 		researchTopicList = p->CreateTable();
@@ -758,6 +765,8 @@ namespace Lua
 			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1");
 			if (height < Grid::CellStack::BottomHeight)
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
+			if (height > Grid::CellStack::TopHeight)
+				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") exceeds maximum grid height ("+String(Grid::CellStack::TopHeight)+")");
 			return this->ToTable(Grid::LCellIdI(stack,height));
 		});
 		gridTable.SetFunction("AffectedByEMP",[](const Lua::Table&loc)
@@ -1279,38 +1288,47 @@ namespace Lua
 		});
 	}
 
+	template <typename Setup>
+		static void MapCells(const Lua::PProgram&program, Lua::Table&cellTable, const Setup&setup, Array<Lua::Table>&grid)
+		{
+			grid.SetSize(Setup::GridType::CellCount);
+			for (UINT32 i = 0; i < Setup::GridType::CellCount; i++)
+			{
+				Lua::Table t = program->CreateTable();
+				cellTable.SetElement(i+1,t);
+				grid[i] = t;
+
+				t.SetField("index",i+1);
+				t.SetField("center",Detail::ToTable(program, setup.cells[i].cornerCenter));
+			}
+
+			for (UINT32 i = 0; i < Setup::GridType::CellCount; i++)
+			{
+				Lua::Table t = grid[i];
+				Lua::Table nt = program->CreateTable();
+				t.SetField("neighbors",nt);
+
+				const auto&n = setup.grid.GetCell(i).neighborhood;
+				for (BYTE k = 0; k < n.numNeighbors; k++)
+					nt.AppendElement(grid[n.neighborID[k]]);
+			}
+		}
+
+	void		API::AddTerrain()
+	{
+		Lua::Table cellTable = program->CreateTable();
+		terrainTable.SetField("cells",cellTable);
+
+		MapCells(program,cellTable,Grid::high,highCellGrid);
+	}
+
 
 	void		API::AddGrid()
 	{
-		if (!program)
-		{
-			lowCellGrid.Clear();
-			return;
-		}
-		lowCellGrid.SetSize(Grid::LowSetup::GridType::CellCount);
 		Lua::Table cellTable = program->CreateTable();
 		gridTable.SetField("unitCells",cellTable);
 
-		for (UINT32 i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
-		{
-			Lua::Table t = program->CreateTable();
-			cellTable.SetElement(i+1,t);
-			lowCellGrid[i] = t;
-
-			t.SetField("index",i+1);
-			t.SetField("center",Detail::ToTable(program, Grid::low.cells[i].cornerCenter));
-		}
-
-		for (UINT32 i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
-		{
-			Lua::Table t = lowCellGrid[i];
-			Lua::Table nt = program->CreateTable();
-			t.SetField("neighbors",nt);
-
-			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-			for (BYTE k = 0; k < n.numNeighbors; k++)
-				nt.AppendElement(lowCellGrid[n.neighborID[k]]);
-		}
+		MapCells(program,cellTable,Grid::low,lowCellGrid);
 	}
 
 

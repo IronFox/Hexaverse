@@ -19,6 +19,7 @@ namespace Lua
 		Lua::Table			gameTable,//Game.X
 							researchTable,	//Game.Research.X
 							pathfindingTable, //Game.Pathfinding.X
+							terrainTable, //Game.Terrain.X
 							gridTable;	//Game.Grid.X
 		Lua::Table			entityIDMap,
 							factionIDMap,
@@ -32,7 +33,8 @@ namespace Lua
 							myMarkerIDMap,
 							myResearchQueue;
 		#endif
-		Array<Lua::Table>	lowCellGrid;
+		Array<Lua::Table>	lowCellGrid,
+							highCellGrid;
 
 
 		Objects::Pathfinding::ReachabilityMapper	mapper;
@@ -83,8 +85,16 @@ namespace Lua
 		void		Destroy();
 		bool		IsCreated() const {return program != nullptr;}
 
-
+		/**
+		Adds the regular unit (low) grid cells, and functions
+		*/
 		void		AddGrid();
+
+		/**
+		Adds the high resolution terrain grid cells, and functions
+		*/
+		void		AddTerrain();
+
 		/**
 		Clears Game.units, Game.myUnits, Game.myMarkers, Game.factions, Game.alliances, Game.selectedUnit, Game.myResearch, Game.myResearchQueue, Game.myCurrentResearch
 		Unless clearCaches is set, locally cached Lua tables are left unchanged, and will be reused if an entity, faction, marker, or alliance is re-added.
