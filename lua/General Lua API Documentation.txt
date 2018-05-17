@@ -56,8 +56,8 @@ Unit
 	bool	isWorkingStructure;			True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
 	bool	isMobileEntityProducer;		True if this entity can produce mobile entities. Does not necessarily imply that this is a building
 	
-	-- control:	These functions are not immediately reflected by the local state, as the client does not immeditealy know whether the operation succeeded
-	void	Destroy();					Attempts to destroy the local entity
+	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
+	void		Destroy();				Attempts to destroy the local entity
 	
 	[has turret (tower,mobile) and can attack]
 		void	Attack(Loc[]);			Schedules one or more attacks at the end of the task queue
