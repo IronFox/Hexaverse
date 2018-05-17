@@ -1,6 +1,5 @@
 
-void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
-void	Game.DisplayMessage(string msg[,string imageName])		Prints a persistent message on screen. Once the user has pressed 'Got it', OnMessageConfirm() is invoked
+void		Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
 
 [client only]
 	int		Game.GetResourceCoverage(string resourceName, Cell cell)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet.
