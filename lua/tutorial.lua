@@ -279,9 +279,8 @@ CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and 
 
 CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core research to complete."); end,
 	function()
-		local res = Game.myResearch['Unlock:ReactorCore'];
-		--FindResearch('Unlock:ReactorCore');
-		return res ~= nil and (res.isCompleted);
+		local res = Game.Research.topics['Unlock:ReactorCore'];
+		return res and res.isCompleted;
 	end
 );
 

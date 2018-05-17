@@ -365,44 +365,46 @@ namespace Lua
 				gameTable.UnsetField("selectedUnit");
 		}
 
-		void	API::UpdateMyResearch()
-		{
-			
-			if (myResearch.IsEmpty())
+	#endif
+
+
+	void	API::UpdateResearch()
+	{
+		researchTopicList.ClearTable();
+		#ifdef CLIENT		
+			if (myResearchQueue.IsEmpty())
 			{
-				myResearch = program->CreateTable();
-				gameTable.SetField("myResearch",myResearch);
 				myResearchQueue = program->CreateTable();
-				gameTable.SetField("myResearchQueue",myResearchQueue);
+				researchTable.SetField("myQueue",myResearchQueue);
 			}
 			else
 			{
-				myResearch.ClearTable();
 				myResearchQueue.ClearTable();
 			}
 
-			Lua::Reference current;
 			const auto&st = Objects::Faction::mine->researchState.topicProgressVector;
-			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
 			Array<UINT32> q;
-			Array<Lua::Table> res (Objects::Research::globalState.allTopics.Count());
 			Objects::Faction::mine->researchState.ExportResearchQueue(q);
-			for (index_t i = 0; i < Objects::Research::globalState.allTopics.Count(); i++)
-			{
-				auto t = Objects::Research::GetTopic(i);
-				if (t->IsGroup())
-					continue;
-				String key = t->GetFullName();
+		#endif
 
-				Lua::Table outT = program->CreateTable();
-				res[i] = outT;
-				myResearch.SetField(key,outT);
+		Array<Lua::Table> res (Objects::Research::globalState.allTopics.Count());
+		for (index_t i = 0; i < Objects::Research::globalState.allTopics.Count(); i++)
+		{
+			auto t = Objects::Research::GetTopic(i);
+			if (t->IsGroup())
+				continue;
+			String key = t->GetFullName();
 
-				outT.SetField("fullName",key);
-				outT.SetField("name",t->name);
-				outT.SetField("max",t->maxProgress);
-				outT.SetField("isEndless",t->maxProgress <= 0);
+			Lua::Table outT = program->CreateTable();
+			res[i] = outT;
+			researchTopicList.SetField(key,outT);
+
+			outT.SetField("fullName",key);
+			outT.SetField("name",t->name);
+			outT.SetField("max",t->maxProgress);
+			outT.SetField("isEndless",t->maxProgress <= 0);
 				
+			#ifdef CLIENT
 				const int prog = st[t->serialIndex];
 				outT.SetField("progress",prog);
 				outT.SetField("isCompleted",t->ResearchCompleted(st));
@@ -426,21 +428,19 @@ namespace Lua
 					else
 						throw Lua::Exception(CLOCATION,"Enqueue(): onQueueResearch not set");
 				});
+			#endif
 
-				if (isActive)
-					current = outT;
-			}
-
-
-			foreach (q,queued)
-				myResearchQueue.AppendElement(res[*queued]);
-
-			gameTable.SetField("maxResearchQueueLength",Objects::Research::MaxResearchQueueLength);
-
-			gameTable.SetField("myCurrentResearch",current);
 		}
 
-	#endif
+
+		#ifdef CLIENT
+			foreach (q,queued)
+				myResearchQueue.AppendElement(res[*queued]);
+		#endif
+
+		researchTable.SetField("maxQueueLength",Objects::Research::MaxResearchQueueLength);
+	}
+
 
 
 	void		API::FlushAllObjects(bool clearCaches/*=false*/)
@@ -449,12 +449,11 @@ namespace Lua
 		factionIDMap.ClearTable();
 		allianceIDMap.ClearTable();
 		entityMap.Clear();
+		researchTopicList.ClearTable();
 		#ifdef CLIENT
 			myEntityIDMap.ClearTable();
 			myMarkerIDMap.ClearTable();
-			myResearch.ClearTable();
 			myResearchQueue.ClearTable();
-			gameTable.UnsetField("myCurrentResearch");
 			gameTable.UnsetField("selectedUnit");
 		#endif
 
@@ -491,6 +490,13 @@ namespace Lua
 		gameTable.ClearReference();
 		gridTable.ClearReference();
 		pathfindingTable.ClearReference();
+		researchTable.ClearReference();
+		researchTopicList.ClearReference();
+		#ifdef CLIENT
+			myEntityIDMap.ClearReference();
+			myMarkerIDMap.ClearReference();
+			myResearchQueue.ClearReference();
+		#endif
 		lowCellGrid.Clear();
 		locationMap.Clear();
 		program.reset();
@@ -664,6 +670,10 @@ namespace Lua
 		gameTable.SetField("Grid",gridTable);
 		pathfindingTable = p->CreateTable();
 		gameTable.SetField("Pathfinding", pathfindingTable);
+		researchTable = p->CreateTable();
+		gameTable.SetField("Research",researchTable);
+		researchTopicList = p->CreateTable();
+		researchTable.SetField("Topics",researchTopicList);
 		gameTable.SetGlobal("Game");
 
 		entityIDMap = program->CreateTable();

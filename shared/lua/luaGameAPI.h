@@ -17,15 +17,17 @@ namespace Lua
 	{
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
+							researchTable,	//Game.Research.X
 							pathfindingTable, //Game.Pathfinding.X
 							gridTable;	//Game.Grid.X
 		Lua::Table			entityIDMap,
 							factionIDMap,
-							allianceIDMap;
+							allianceIDMap,
+							researchTopicList;
+		
 		#ifdef CLIENT	
 			Lua::Table		myEntityIDMap,
 							myMarkerIDMap,
-							myResearch,
 							myResearchQueue;
 		#endif
 		Array<Lua::Table>	lowCellGrid;
@@ -97,8 +99,8 @@ namespace Lua
 			void	AddMyMarker(const Objects::Marker&m);
 			void	AddMyMarkers();
 			void	SetSelectedUnit(const Objects::PWorldEntity&e, bool updateIfFound);
-			void	UpdateMyResearch();
 		#endif
+		void		UpdateResearch();
 
 		Lua::Table ToTable(const Grid::LCellIdI&cell);
 		Lua::Table TurretToTable(const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState);

@@ -157,25 +157,25 @@ Task
 	Loc[]	foci;						List of location tables, representing each one stage in the task (movement waypoints, construction destinations, and so forth, most tasks only have one focus point)
 }
 
+{fullName->Topic}	Game.Research.topics			Table of all researchable topics, keyed by fullName (string)
+int					Game.Research.maxQueueLength	Maximum research queue length
 [client only]
-	Research[]	Game.myResearch				Table of all researchable topics, both completed, and open, as well as endless
-	Research	Game.myCurrentResearch		Currently active research topic. May be nil. Otherwise also contained by Game.myResearch
-	Research[]	Game.myResearchQueue		Queue of all scheduled research items, starting with the one currently researched
-	int			Game.maxResearchQueueLength	Maximum research queue length
+	Topic[]			Game.Research.myQueue		Queue of all scheduled research items, starting with the one currently active topic
 	
-Research
+Topic
 {
-	string	fullName;					Full path to the entry. Unique
-	string	name;						Name of this entry. Not unique
-	bool	isEndless;					True if the research can run indefinitely
-	int		max;						Max research needed to complete research. -1 if endless
-	int		progress;					Current research progress. >= 0
-	bool	isCompleted;				True if research is completed. Always false if endless
-	bool	isActive;					True if this topic is currently being researched. If true, implies isQueued
-	bool	isQueued;					True if this topic is or will be researched
+	string	fullName;			Full path to the entry. Unique
+	string	name;				Name of this entry. Not unique
+	bool	isEndless;			True if the research can run indefinitely
+	int		max;				Max research needed to complete research. -1 if endless
+	[client only]
+		int		progress;		Current research progress. >= 0
+		bool	isCompleted;	True if research is completed. Always false if endless
+		bool	isActive;		True if this topic is currently being researched. If true, implies isQueued
+		bool	isQueued;		True if this topic is or will be researched
 	
-	void	Enqueue();		Schedules this topic to be researched. Appended to the end of the research queue. Effect is delayed
-	void	Dequeue();		Unschedules this topic from the research queue. Uncompleted research is not lost. Effect is delayed
+		void	Enqueue();		Schedules this topic to be researched. Appended to the end of the research queue. Effect is delayed
+		void	Dequeue();		Unschedules this topic from the research queue. Uncompleted research is not lost. Effect is delayed
 };
 
 
