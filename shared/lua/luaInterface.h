@@ -784,9 +784,14 @@ namespace Lua
 		Works for primitive values as well as references
 		*/
 		template <typename T>
-			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
+			void		SetField(const String&name, const T&value)	{return SetField(name.c_str(),value);}
 		template <typename T>
 			void		SetField(const char*name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
+		/**
+		Creates a new table and sets it as a field with the given name
+		*/
+		Table			SetSubTable(const String&name)			{return SetSubTable(name.c_str());}
+		Table			SetSubTable(const char*name);
 		/**
 		Sets an index element in the local table.
 		Works for primitive values as well as references

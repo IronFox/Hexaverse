@@ -1179,6 +1179,13 @@ namespace Lua
 
 	}
 
+	Table		Table::SetSubTable(const char*name)
+	{
+		auto t = GetProgram()->CreateTable();
+		SetField(name,t);
+		return t;
+	}
+
 
 	/*virtual override*/ void Table::SignalChange(const String&name)
 	{
