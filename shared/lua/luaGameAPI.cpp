@@ -1345,7 +1345,8 @@ namespace Lua
 			return String(c.ToString());
 		});
 
-
+		for (index_t i = 0; i < Grid::Content::N; i++)
+			terrainContentTable.SetField(Grid::Content::Reinterpret(i).ToString(),i);
 	}
 
 
