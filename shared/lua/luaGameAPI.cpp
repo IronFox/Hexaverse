@@ -727,11 +727,17 @@ namespace Lua
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
 			return this->ToTable(Grid::LCellIdI(stack,height));
 		});
-		gridTable.SetFunction("AffectedByEMP",[this](const Lua::Table&loc)
+		gridTable.SetFunction("AffectedByEMP",[](const Lua::Table&loc)
 		{
-			auto cell = Detail::ToLGridCell(loc,"AffectedByEMP(): Parameter");
+			auto cell = Detail::ToLGridCell(loc,"AffectedByEMP(): Location parameter");
 			return Grid::AffectedByEMP(cell);
 		});
+		gridTable.SetFunction("IsClear",[](const Lua::Table&loc)
+		{
+			auto location = Detail::ToLGridCell(loc,"IsClear(): Location parameter");
+			return World::actual.LowCellIsClearIgnoreStructure(location);
+		});
+
 
 		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
 		gridTable.SetField("topHeight",Grid::CellStack::TopHeight);

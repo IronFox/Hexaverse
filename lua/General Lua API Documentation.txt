@@ -185,7 +185,7 @@ bool		Game.Grid.AffectedByEMP(Cell);		Returns true if EMP zones affect the given
 Loc			Game.Grid.ToLocation(Cell cell, int height)
 int			Game.Grid.bottomHeight;		Minimum grid height
 int			Game.Grid.topHeight;		Maximum grid height
-
+bool		Game.Grid.IsClear(Loc);		Checks if all terrain cells affecting the specified location are clear
 
 Cell[]		Game.Grid.unitCells			Ordered table of all planar cells in the world, with:
 Cell
