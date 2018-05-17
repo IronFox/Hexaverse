@@ -3,8 +3,6 @@
 void	Game.CallDelayed(float seconds, function func)					Waits the specified number of seconds, then calls the given function without parameters
 void	Game.ClearAllDelayed()											Drops all non-executed delayed function calls
 void	Game.FocusCameraAt(int stackID)									Smoothly focuses the camera on the specified stack index
-int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
-int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative
 void	Game.SignalTaskStart(int)									Signals that a new task was started at the given index (>0)
 
 Check General Lua API Documentation.txt for general purpose functions and tables
@@ -131,7 +129,7 @@ function HaveLab()
 end
 
 	
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end, HaveLab);
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.myFaction.resourceBalance.minerals .." per round, "..Game.myFaction.resourceStorage.minerals.." in storage. So let's press on.") end, HaveLab);
 
 CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please request new rounds by using the 'End Round' command in the bottom left section of the screen, or by pressing the Enter/Return key."); end,
 	HaveLab

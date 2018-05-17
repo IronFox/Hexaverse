@@ -20,6 +20,7 @@ float		Game.GetDistance(Loc a, Loc b)				Retrieves the geometric distance betwee
 	{id->Unit}	Game.alliedUnits			Table of all allied units currently known to the client, mapped by id (string) to unit
 	{id->Unit}	Game.hostileUnits			Table of all hostile units currently known to the client, mapped by id (string) to unit
 	Unit		Game.selectedUnit			Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
+	Faction		Game.myFaction
 
 {id->Unit}		Game.units					Table of all (player-known on client) units, mapped by id (string) to unit
 {id->Faction}	Game.factions				List of all (player-known on client) factions, mapped by id (string) to faction

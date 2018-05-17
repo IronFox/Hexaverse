@@ -62,39 +62,6 @@ namespace Lua
 				t.SetField(name,v.level[i]);
 			}
 		}
-			
-
-		#ifdef CLIENT
-
-			int	GetCompoundResourceChange(const String&resourceName)
-			{
-				Objects::Resource resource;
-				if (!resource.Decode(resourceName.c_str()))
-					throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
-				#ifndef ONE_COMPOUND_PER_FACTION
-					return 0;
-				#else
-					return Objects::Faction::mine->compound.total.supply.level[resource] - Objects::Faction::mine->compound.total.demand.level[resource];
-				#endif
-			}
-
-			int GetCompoundResourceStorage(const String&resourceName)
-			{
-				Objects::Resource resource;
-				if (!resource.Decode(resourceName.c_str()))
-					throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
-				#ifndef ONE_COMPOUND_PER_FACTION
-					return 0;
-				#else
-					return Objects::Faction::mine->compound.total.storage.level[resource];
-				#endif
-			}
-
-		
-
-
-		#endif
-
 
 
 		int GetNaturalResourceAt(const String&resourceName, Lua::Table cellTable)
@@ -289,7 +256,9 @@ namespace Lua
 				int highestAt = -1;
 				Grid::Resource::coverage_t highest = 0;
 				for (index_t i = 0; i < Grid::Resource::NumEntries; i++)
+					#ifdef CLIENT
 					if (Grid::ResourceDiscovery::client.resourcesDiscovered[i])
+					#endif
 					{
 						if (r->coverage[i] > highest)
 						{
@@ -473,6 +442,7 @@ namespace Lua
 			myMarkerIDMap.ClearTable();
 			myResearchQueue.ClearTable();
 			gameTable.UnsetField("selectedUnit");
+			gameTable.UnsetField("myFaction");
 		#endif
 
 		entityMappedToTable.Clear();
@@ -674,24 +644,6 @@ namespace Lua
 		gameTable.SetField("alliances",allianceIDMap);
 
 
-		String name = program->GetName();
-		gameTable.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
-		#ifdef CLIENT
-			gameTable.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
-			gameTable.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
-		#endif
-	//			Reachable[]	Game.MapUnitReach(Unit unit,func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute);
-	//
-
-	//Reachable	
-	//{
-	//	Loc		location;				Grid/world location
-	//	int		movementCostsFromRoot;	Costs to reach this location from the current unit location
-	//	Reachable	predecessor;		nil if this is root (the current unit location)
-	//	bool	isHangarHere;			True if accessible hangars were included and there is a hangar here
-	//}
-
-
 		gameTable.SetFunction("GetDistance",Detail::GetDistance);
 
 		#ifdef LOWER_RESOLUTION_PLANET
@@ -853,6 +805,11 @@ namespace Lua
 			factionMappedToTable.Set(f->id);
 			factionIDMap.SetField(f->id.ToFullString(),t);
 		}
+
+		#ifdef CLIENT
+			if (f->isOwnedByMe)
+				gameTable.SetField("myFaction",t);
+		#endif
 
 		t.SetField("name",f->name);
 		t.SetField("id",f->id.ToFullString());
