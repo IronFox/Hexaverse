@@ -55,9 +55,18 @@ Unit
 	int		empDamageLevel;				Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
 	bool	isWorkingStructure;			True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
 	bool	isMobileEntityProducer;		True if this entity can produce mobile entities. Does not necessarily imply that this is a building
-	func	Destroy();					Attempts to destroy the local entity. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
-	func	ScheduleAttacks(Loc[]);		Schedules one or more attacks
-	func	DirectTo(Reachable);		Schedules a motion to the specified location along the path defined by the Reachable
+	
+	-- control:	These functions are not immediately reflected by the local state, as the client does not immeditealy know whether the operation succeeded
+	void	Destroy();					Attempts to destroy the local entity
+	
+	[has turret (tower,mobile) and can attack]
+		void	Attack(Loc[]);			Schedules one or more attacks at the end of the task queue
+	[isMobile]
+		void	DirectTo(Reachable);	Schedules a motion to the specified location along the path defined by the Reachable
+		void	ClearTasks();			Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
+	[isStructure]
+		void 	Enable(bool);			Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
+	
 	-- optional stuff:
 	
 	[Client only]
@@ -65,7 +74,6 @@ Unit
 		
 	[isStructure]
 		bool	isEnabled;				True if the local structure is active
-		function Enable(bool);			Change enable state of the local structure. No effect if not owned by the local player, or outside command phase. Change will not affect isEnabled until next invocation
 		
 	[isMobileEntityProducer]
 		Table	productionQueue;		String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production
@@ -77,7 +85,6 @@ Unit
 		bool	isAutomated;			True if the local entity has some behavior logic attached. Currently used by surveyor only
 		Unit	storedIn;				Set if this unit is stored in some other unit. May be nil
 		Task[]	tasks;					Task queue, in order of execution (first will be executed next, or is already being executed if taking more than one round)
-		func	ClearTasks();			Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
 		int		movementSpeed;			Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
 		bool	motionIgnoresAttack;	True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	

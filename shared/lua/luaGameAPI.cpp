@@ -980,23 +980,26 @@ namespace Lua
 
 			if (actual)
 			{
-				t.SetFunction("ScheduleAttacks",[id,this](const Lua::Table&t)
+				if (base->turret->CanAttack())
 				{
-					Array<Grid::LCellIdI> targets(t.GetLength());
-					for (index_t i = 0; i < t.GetLength(); i++)
+					t.SetFunction("Attack",[id,this](const Lua::Table&t)
 					{
-						Lua::Table element = t.GetElement(i+1);
-						if (element.IsEmpty())
-							throw Lua::Exception("ScheduleAttacks(): Element #"+String(i+1)+" is nil.");
-						Grid::LCellIdI loc = Detail::ToLGridCell(element,"table.#"+String(i+1));
-						targets[i] = loc;
-					}
+						Array<Grid::LCellIdI> targets(t.GetLength());
+						for (index_t i = 0; i < t.GetLength(); i++)
+						{
+							Lua::Table element = t.GetElement(i+1);
+							if (element.IsEmpty())
+								throw Lua::Exception("Attack(): Element #"+String(i+1)+" is nil.");
+							Grid::LCellIdI loc = Detail::ToLGridCell(element,"table.#"+String(i+1));
+							targets[i] = loc;
+						}
 
-					onAttackTargets(id,targets);
-				});
+						onAttackTargets(id,targets);
+					});
+				}
 			}
 			else
-				t.UnsetField("ScheduleAttacks");
+				t.UnsetField("Attack");
 		}
 
 
