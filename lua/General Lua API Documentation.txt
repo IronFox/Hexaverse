@@ -96,8 +96,9 @@ Table-Type: Unit
 		
 	[isWorkingStructure]
 		bool	isEnabled;				True if the local structure is active
-		ResVec	storage;				Resource vector containing all locally stored resources. All values are >= 0
-		ResVec	balance;				Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
+		ResVec	resourceStorage;		Resource vector containing all locally stored resources. All values are >= 0
+		ResVec	maxResourceStorage;		Resource vector describing the maximum storage capacity. All values are >= 0
+		ResVec	resourceBalance;		Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
 		
 	[isMobileEntityProducer]
 		Prod[]	productionQueue;		String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production

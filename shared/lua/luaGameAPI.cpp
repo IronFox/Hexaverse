@@ -977,10 +977,18 @@ namespace Lua
 
 		if (e->IsWorkingStructure())
 		{
+			const auto ws = To<Objects::WorkingStructure>::Cast(e);
+			Objects::ResourceVector balance,storage,storageMax;
+			ws->GetResourceVector(balance,storage,storageMax);
+
+			Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);
+			Detail::UpdateResourceTable(t.SetSubTable("resourceStorage"),storage);
+			Detail::UpdateResourceTable(t.SetSubTable("maxResourceStorage"),storageMax);
+
 			t.SetField("isWorkingStructure",true);
-			t.SetField("isEnabled",To<Objects::WorkingStructure>::Cast(e)->IsEnabled());
+			t.SetField("isEnabled",ws->IsEnabled());
 			if (actual)
-			t.SetFunction("Enable", [id,this](bool doEnable)
+				t.SetFunction("Enable", [id,this](bool doEnable)
 				{
 					if (onEnableWorkingStructure)
 						onEnableWorkingStructure(id,doEnable);
