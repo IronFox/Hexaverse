@@ -64,8 +64,12 @@ Unit
 	[isMobile]
 		void	DirectTo(Reachable);	Schedules a motion to the specified location along the path defined by the Reachable
 		void	ClearTasks();			Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
+		void	Construct(string type);	Schedules the construction of the specified type at the end of the local queue, using the last queued location
 	[isStructure]
 		void 	Enable(bool);			Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
+	[isMobileEntityProducer]
+		void	Build(string type);		Schedules the construction of the specified type at the end of the local queue
+	
 	
 	-- optional stuff:
 	

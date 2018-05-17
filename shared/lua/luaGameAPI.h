@@ -62,6 +62,7 @@ namespace Lua
 		std::function<void(const TUniqueID&mID,Objects::MarkerType,const Objects::PWorldEntity&, const Grid::LCellIdI&)> onMarkerCreate;
 		std::function<void(const TUniqueID&, Array<Grid::LCellIdI>&)> onAttackTargets;	//!< Given array is fleeting
 		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
+		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginConstruction;
 
 		/**/		API():mapper(true)	{}
 

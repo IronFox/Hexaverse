@@ -970,6 +970,29 @@ namespace Lua
 				queue.AppendElement(production);
 			}
 			t.SetField("productionQueue",queue);
+
+			if (actual)
+			{
+				Objects::WFaction owner = e->owner;
+				Objects::WWorldEntity w = e;
+				t.SetFunction("Build",[this,w,owner](const String&type)
+				{
+					Objects::PWorldEntity e= w.lock();
+					if (!e)
+						throw Lua::Exception(CLOCATION,"Build(): Entity has expired");
+					auto prod = e->CastToProducer();
+					ASSERT_NOT_NULL1__(prod,e->GetName());
+					Objects::EntityType t = Objects::DecodeType(type);
+					if (t.IsEmpty())
+						throw Lua::Exception(CLOCATION,"Build(): Given type is empty");
+					if (onBeginProduction)
+						onBeginProduction(e->id,t);
+					else
+						throw Lua::Exception(CLOCATION,"Build(): onBeginProduction not set");
+				});
+			}
+			else
+				t.UnsetField("Build");
 		}
 
 
@@ -1058,11 +1081,30 @@ namespace Lua
 					path.Revert();
 					onDetailedDirectTo(id,path.ToRef());
 				});
+
+
+				if (m->turret->CanDo(Objects::Component::Construct))
+					t.SetFunction("Construct",[this,id](const String&type)
+					{
+						Objects::EntityType t = Objects::DecodeType(type);
+						if (t.IsEmpty())
+							throw Lua::Exception(CLOCATION,"Construct(): Given type is empty: "+type);
+						auto proto = Objects::Prototypes::Find(t);
+						if (!proto)
+							throw Lua::Exception(CLOCATION,"Construct(): Unable to find prototype for "+ToString(t));
+						if (!proto->IsStructure())
+							throw Lua::Exception(CLOCATION,"Construct(): Chosen type '"+ToString(t)+"' is no structure");
+						if (onBeginConstruction)
+							onBeginConstruction(id,t);
+						else
+							throw Lua::Exception(CLOCATION,"Construct(): onBeginConstruction not set");
+					});
 			}
 			else
 			{
 				t.UnsetField("DirectTo");
 				t.UnsetField("ClearTasks");
+				t.UnsetField("Construct");
 			}
 		}
 		return t;
