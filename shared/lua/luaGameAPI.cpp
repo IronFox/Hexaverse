@@ -844,11 +844,11 @@ namespace Lua
 			found = loadedFactionTableMap.SetNew(f->id);
 			found->table = t;
 			found->entityTable = t.SetSubTable("units");
-			found->balanceTable = t.SetSubTable("balance");
-			found->storageTable = t.SetSubTable("storage");
-			found->demandTable = t.SetSubTable("demand");
-			found->supplyTable = t.SetSubTable("supply");
-			found->maxStorageTable = t.SetSubTable("maxStorage");
+			found->balanceTable = t.SetSubTable("resourceBalance");
+			found->storageTable = t.SetSubTable("resourceStorage");
+			found->demandTable = t.SetSubTable("resourceDemand");
+			found->supplyTable = t.SetSubTable("resourceSupply");
+			found->maxStorageTable = t.SetSubTable("maxResourceStorage");
 
 			factionMappedToTable.Set(f->id);
 			factionIDMap.SetField(f->id.ToFullString(),t);

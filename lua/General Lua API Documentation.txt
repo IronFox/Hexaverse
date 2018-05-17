@@ -39,11 +39,11 @@ Table-Type: Faction
 	string		id;
 	Alliance	alliance;
 	Unit[]		units;
-	ResVec		storage;				Total resource storage. All values are >= 0
-	ResVec		maxStorage;
-	ResVec		balance;				Sum of supply and demand among all working structures. All values are >= 0
-	ResVec		demand;
-	ResVec		supply;
+	ResVec		resourceStorage;		Total resource storage. All values are >= 0
+	ResVec		maxResourceStorage;
+	ResVec		resourceBalance;		Sum of supply and demand among all enabled working structures. All values are >= 0
+	ResVec		resourceDemand;			Sum of all enabled working structure demand. All values are >= 0
+	ResVec		resourceSupply;			Sum of all enabled working structure supply. All values are >= 0
 }
 	
 Table-Type: ResVec
