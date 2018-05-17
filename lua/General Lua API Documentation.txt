@@ -192,6 +192,7 @@ int			Game.Grid.topHeight;		Maximum grid height
 bool		Game.Grid.IsClear(Loc);		Checks if all terrain cells affecting the specified location are clear
 
 Cell[]		Game.Grid.unitCells			Ordered table of all planar unit cells in the world. These are larger than terrain cells
+Cell		Game.Terrain.TranslateUnitCell(Cell);	Maps the specified UNIT cell to the matching (central) TERRAIN cell
 Cell[]		Game.Terrain.cells			Ordered table of all planar terrain cells in the world. These are smaller than unit cells
 
 

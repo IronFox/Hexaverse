@@ -1320,6 +1320,12 @@ namespace Lua
 		terrainTable.SetField("cells",cellTable);
 
 		MapCells(program,cellTable,Grid::high,highCellGrid);
+
+		terrainTable.SetFunction("TranslateUnitCell",[this](const Lua::Table&cell)
+		{
+			auto stack = Detail::LuaCellToStack(cell, "TranslateUnitCell(): Cell parameter");
+			return highCellGrid[Grid::low.grid.GetCell(stack).higherEquivalent];
+		});
 	}
 
 
