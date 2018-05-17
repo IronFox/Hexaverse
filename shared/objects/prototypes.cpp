@@ -62,7 +62,7 @@ namespace Objects
 		else
 			rs = Prototypes::all.ToType(base);
 		if (rs.IsInvalid())
-			throw Except::Program::ParameterFault(CLOCATION,"Final type declaration '"+ToString(rs)+"' is not valid");
+			throw Except::Program::ParameterFault(CLOCATION,"Decoded type declaration '"+ToString(rs)+"' is not valid, trying to decode '"+combined+"'");
 		return rs;
 	}
 
