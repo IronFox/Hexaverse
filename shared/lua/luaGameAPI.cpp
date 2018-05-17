@@ -16,7 +16,7 @@ namespace Lua
 		}
 		
 
-		index_t	LuaCellToStack( const Lua::Table&cellTable, const String&parameterName )
+		index_t	LuaCellToStack( const Lua::Table&cellTable, const String&parameterName, const int cellCount )
 		{
 			if (cellTable.IsEmpty())
 				throw Lua::Exception(parameterName + " is nil.");
@@ -26,15 +26,15 @@ namespace Lua
 
 			const int stackID = luaIndex.GetAs<int>();
 
-			if (stackID < 1 || stackID > Grid::LowSetup::GridType::CellCount)
-				throw Lua::Exception(parameterName + " is invalid cell location (#"+String(stackID)+" not in [1,"+String(Grid::LowSetup::GridType::CellCount)+"]).");
+			if (stackID < 1 || stackID > cellCount)
+				throw Lua::Exception(parameterName + " is invalid cell location (#"+String(stackID)+" not in [1,"+String(cellCount)+"]).");
 
 			return index_t(stackID-1);
 		}
 
 		Grid::LCellIdI CellHToLGridCell( const Lua::Table&luaCell, int h, const String&parameterName)
 		{
-			return Grid::LCellIdI(LuaCellToStack(luaCell,parameterName),h);
+			return Grid::LCellIdI(LuaCellToStack(luaCell,parameterName,Grid::LowSetup::GridType::CellCount),h);
 
 		}
 
@@ -105,7 +105,7 @@ namespace Lua
 
 			int GetResourceCoverage(const String&resourceName, Lua::Table cellTable)
 			{
-				const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)");
+				const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
 				foreach (Grid::Resource::all,r)
 					if (r->GetName() == resourceName)
 					{
@@ -762,7 +762,7 @@ namespace Lua
 
 		gridTable.SetFunction("ToLocation",[this](const Lua::Table&cell, int height)
 		{
-			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1");
+			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1",Grid::LowSetup::GridType::CellCount);
 			if (height < Grid::CellStack::BottomHeight)
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
 			if (height > Grid::CellStack::TopHeight)
@@ -1323,9 +1323,17 @@ namespace Lua
 
 		terrainTable.SetFunction("TranslateUnitCell",[this](const Lua::Table&cell)
 		{
-			auto stack = Detail::LuaCellToStack(cell, "TranslateUnitCell(): Cell parameter");
+			auto stack = Detail::LuaCellToStack(cell, "TranslateUnitCell(): Cell parameter",Grid::LowSetup::GridType::CellCount);
 			return highCellGrid[Grid::low.grid.GetCell(stack).higherEquivalent];
 		});
+
+		terrainTable.SetFunction("GetContent",[](const Lua::Table&cell, int height)
+		{
+			auto stack = Detail::LuaCellToStack(cell, "GetContent(): Cell parameter #1",Grid::HighSetup::GridType::CellCount);
+			return int(World::actual.GetCell(Grid::HCellIdI(stack,height)).content);
+		});
+
+
 	}
 
 
