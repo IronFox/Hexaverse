@@ -68,7 +68,7 @@ Unit
 	[isStructure]
 		void 	Enable(bool);			Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
 	[isMobileEntityProducer]
-		void	Build(string type);		Schedules the construction of the specified type at the end of the local queue
+		void	BuildMobile(string type);	Schedules the construction of the specified type at the end of the local queue
 	
 	
 	-- optional stuff:

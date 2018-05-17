@@ -975,24 +975,24 @@ namespace Lua
 			{
 				Objects::WFaction owner = e->owner;
 				Objects::WWorldEntity w = e;
-				t.SetFunction("Build",[this,w,owner](const String&type)
+				t.SetFunction("BuildMobile",[this,w,owner](const String&type)
 				{
 					Objects::PWorldEntity e= w.lock();
 					if (!e)
-						throw Lua::Exception(CLOCATION,"Build(): Entity has expired");
+						throw Lua::Exception(CLOCATION,"BuildMobile(): Entity has expired");
 					auto prod = e->CastToProducer();
 					ASSERT_NOT_NULL1__(prod,e->GetName());
 					Objects::EntityType t = Objects::DecodeType(type);
 					if (t.IsEmpty())
-						throw Lua::Exception(CLOCATION,"Build(): Given type is empty");
+						throw Lua::Exception(CLOCATION,"BuildMobile(): Given type is empty");
 					if (onBeginProduction)
 						onBeginProduction(e->id,t);
 					else
-						throw Lua::Exception(CLOCATION,"Build(): onBeginProduction not set");
+						throw Lua::Exception(CLOCATION,"BuildMobile(): onBeginProduction not set");
 				});
 			}
 			else
-				t.UnsetField("Build");
+				t.UnsetField("BuildMobile");
 		}
 
 
