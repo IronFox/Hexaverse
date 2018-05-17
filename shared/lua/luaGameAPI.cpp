@@ -1072,12 +1072,11 @@ namespace Lua
 			{
 				t.SetFunction("ClearTasks",[id,this]()
 				{
-					onDropAllTasks(id);
-					//#ifdef CLIENT
-					//	ApplicationInterface::SignalDropAllTasks(e,false);
-					//#else
-					//	ApplicationInterface::SignalDropAllTasks(e);
-					//#endif
+					if (onDropAllTasks)
+						onDropAllTasks(id);
+					else
+						throw Lua::Exception(CLOCATION,"ClearTasks(): onDropAllTasks not set");
+				});
 				});
 
 				t.SetFunction("DirectTo",[id,this](const Lua::Table&luaReachable)
