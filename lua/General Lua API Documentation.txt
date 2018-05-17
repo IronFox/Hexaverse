@@ -194,6 +194,7 @@ bool		Game.Grid.IsClear(Loc);		Checks if all terrain cells affecting the specifi
 Cell[]		Game.Grid.unitCells			Ordered table of all planar unit cells in the world. These are larger than terrain cells
 Cell		Game.Terrain.TranslateUnitCell(Cell);	Maps the specified UNIT cell to the matching (central) TERRAIN cell
 int			Game.Terrain.GetContent(Cell, int);	Gets the terrain content at the given TERRAIN cell and height, starting from 0
+string		Game.Terrain.Content.ToString(int);	Converts the respective type to string
 Cell[]		Game.Terrain.cells			Ordered table of all planar terrain cells in the world. These are smaller than unit cells
 
 

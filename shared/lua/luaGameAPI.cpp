@@ -494,6 +494,7 @@ namespace Lua
 		gridTable.ClearReference();
 		pathfindingTable.ClearReference();
 		terrainTable.ClearReference();
+		terrainContentTable.ClearReference();
 		researchTable.ClearReference();
 		researchTopicList.ClearReference();
 		#ifdef CLIENT
@@ -704,6 +705,9 @@ namespace Lua
 		
 		terrainTable = p->CreateTable();
 		gameTable.SetField("Terrain", terrainTable);
+
+		terrainContentTable = p->CreateTable();
+		terrainTable.SetField("Content",terrainContentTable);
 
 		researchTable = p->CreateTable();
 		gameTable.SetField("Research",researchTable);
@@ -1331,6 +1335,14 @@ namespace Lua
 		{
 			auto stack = Detail::LuaCellToStack(cell, "GetContent(): Cell parameter #1",Grid::HighSetup::GridType::CellCount);
 			return int(World::actual.GetCell(Grid::HCellIdI(stack,height)).content);
+		});
+
+		terrainContentTable.SetFunction("ToString",[](int content)
+		{
+			Grid::Content c;
+			if (!c.Load(content))
+				throw Lua::Exception(CLOCATION,"Game.Terrain.Content.ToString(): Parameter "+String(content)+" is outside supported content range");
+			return String(c.ToString());
 		});
 
 

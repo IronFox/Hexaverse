@@ -20,6 +20,7 @@ namespace Lua
 							researchTable,	//Game.Research.X
 							pathfindingTable, //Game.Pathfinding.X
 							terrainTable, //Game.Terrain.X
+							terrainContentTable,	//Game.Terrain.Content.X
 							gridTable;	//Game.Grid.X
 		Lua::Table			entityIDMap,
 							factionIDMap,
