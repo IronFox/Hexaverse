@@ -48,8 +48,10 @@ Table-Type: Faction
 	
 Table-Type: ResVec
 {
-	int			*						Resource value where * may be: minerals, fuel, uranium, 
-	
+	int			minerals;
+	int			fuel;
+	int			uranium;
+	int 		energy;
 }
 	
 Table-Type: Unit
