@@ -158,8 +158,11 @@ Task
 }
 
 [client only]
-	Research[]	Game.myResearch			Table of all researchable topics, both completed, and open, as well as endless
-	Research	Game.myCurrentResearch	Currently active research topic. May be nil. Otherwise also contained by Game.myResearch
+	Research[]	Game.myResearch				Table of all researchable topics, both completed, and open, as well as endless
+	Research	Game.myCurrentResearch		Currently active research topic. May be nil. Otherwise also contained by Game.myResearch
+	Research[]	Game.myResearchQueue		Queue of all scheduled research items, starting with the one currently researched
+	int			Game.maxResearchQueueLength	Maximum research queue length
+	
 Research
 {
 	string	fullName;					Full path to the entry. Unique

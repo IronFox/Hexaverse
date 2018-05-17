@@ -372,14 +372,20 @@ namespace Lua
 			{
 				myResearch = program->CreateTable();
 				gameTable.SetField("myResearch",myResearch);
+				myResearchQueue = program->CreateTable();
+				gameTable.SetField("myResearchQueue",myResearchQueue);
 			}
 			else
+			{
 				myResearch.ClearTable();
+				myResearchQueue.ClearTable();
+			}
 
 			Lua::Reference current;
 			const auto&st = Objects::Faction::mine->researchState.topicProgressVector;
 			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
 			Array<UINT32> q;
+			Array<Lua::Table> res (Objects::Research::globalState.allTopics.Count());
 			Objects::Faction::mine->researchState.ExportResearchQueue(q);
 			for (index_t i = 0; i < Objects::Research::globalState.allTopics.Count(); i++)
 			{
@@ -389,6 +395,7 @@ namespace Lua
 				String key = t->GetFullName();
 
 				Lua::Table outT = program->CreateTable();
+				res[i] = outT;
 				myResearch.SetField(key,outT);
 
 				outT.SetField("fullName",key);
@@ -409,6 +416,11 @@ namespace Lua
 			}
 
 
+			foreach (q,queued)
+				myResearchQueue.AppendElement(res[*queued]);
+
+			gameTable.SetField("maxResearchQueueLength",Objects::Research::MaxResearchQueueLength);
+
 			gameTable.SetField("myCurrentResearch",current);
 		}
 
@@ -425,6 +437,7 @@ namespace Lua
 			myEntityIDMap.ClearTable();
 			myMarkerIDMap.ClearTable();
 			myResearch.ClearTable();
+			myResearchQueue.ClearTable();
 			gameTable.UnsetField("myCurrentResearch");
 			gameTable.UnsetField("selectedUnit");
 		#endif

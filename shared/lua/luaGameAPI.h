@@ -25,7 +25,8 @@ namespace Lua
 		#ifdef CLIENT	
 			Lua::Table		myEntityIDMap,
 							myMarkerIDMap,
-							myResearch;
+							myResearch,
+							myResearchQueue;
 		#endif
 		Array<Lua::Table>	lowCellGrid;
 
@@ -80,7 +81,7 @@ namespace Lua
 
 		void		AddGrid();
 		/**
-		Clears Game.units, Game.myUnits, Game.myMarkers, Game.factions, Game.alliances, Game.selectedUnit, Game.myResearch, Game.myCurrentResearch
+		Clears Game.units, Game.myUnits, Game.myMarkers, Game.factions, Game.alliances, Game.selectedUnit, Game.myResearch, Game.myResearchQueue, Game.myCurrentResearch
 		Unless clearCaches is set, locally cached Lua tables are left unchanged, and will be reused if an entity, faction, marker, or alliance is re-added.
 		Potentially script-added variables are preserved this way
 		@param clearCaches If set true, re-added entities will receive new Lua tables, thus flushing any script-added values. Table member variables will be updated either way
