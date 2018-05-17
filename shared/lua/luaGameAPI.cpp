@@ -1186,7 +1186,8 @@ namespace Lua
 						throw Lua::Exception(CLOCATION,"DropLastTask(): onDropLastTask not set");
 				});
 
-				t.SetFunction("DirectTo",[id,this](const Lua::Table&luaReachable)
+				auto loc = e->location;
+				t.SetFunction("DirectTo",[id,this,loc](const Lua::Table&luaReachable)
 				{
 					Buffer0<Grid::LCellIdI>	path;
 					Lua::Table at = luaReachable;
@@ -1195,6 +1196,8 @@ namespace Lua
 						path << Detail::ToLGridCell(at.GetField("location"),"DirectTo(): destination.location");
 						at = at.GetField("predecessor");
 					}
+					if (path.Last() == loc)
+						path.EraseLast();
 					path.Revert();
 					onDetailedDirectTo(id,path.ToRef());
 				});
