@@ -82,7 +82,7 @@ namespace Lua
 		void		AddEntity(const Objects::PWorldEntity&e);
 		Lua::Table	MapEntity(const Objects::PWorldEntity&e, bool isReal, bool updateIfFound);
 		TFaction*	AddFaction(const Objects::PFaction&f, bool updateIfFound);
-		TAlliance*	AddAlliance(const Objects::PAlliance&a, bool updateIfFound);
+		TAlliance*	AddAlliance(const Objects::PAlliance&a, bool updateIfFound, bool updateMembers);
 		void		AddObjectAndPathfindingFunctions();
 		#ifdef CLIENT
 			void	AddMyMarker(const Objects::Marker&m);
@@ -103,6 +103,7 @@ namespace Lua
 	private:
 
 		Lua::Table	LuaFindShortestPathFrom(const Objects::PVehicle&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute);
+		Lua::Table	LuaTraceTrajectoryFrom(const Objects::TrajectoryEndPoint&origin, const Objects::TrajectoryEndPoint&target, Objects::TrajectoryType trajectory, float flatAttackRange, const Objects::WFaction&owner);
 
 		void	Setup();
 	};

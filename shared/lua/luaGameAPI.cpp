@@ -266,28 +266,14 @@ namespace Lua
 
 			t.SetFunction("TraceTrajectory", [this, trajectory, flatAttackRange, origin, owner](const Lua::Table&location)->Lua::Table
 			{
-				#ifndef CLIENT
-					auto lockedOwner = owner.lock();
-					if (!lockedOwner)
-						throw Lua::Exception(CLOCATION, "TraceTrajectory(): Owner expired");
-				#endif
-				const World::Data&visibleWorld =
-					#ifndef CLIENT
-						lockedOwner->knownWorld
-					#else
-						World::actual
-					#endif
-				;
-
 				const auto dest = Objects::TrajectoryEndPoint(Detail::ToLGridCell(location, "TraceTrajectory(): Target parameter"), 0);
-				auto rs = Objects::Component::Turret::TraceTrajectory(trajectory, flatAttackRange, visibleWorld, World::actual, false, origin, dest);
-				if (rs.result == Objects::TraceResult::InvalidTrajectory)
-					return Lua::Reference{};
-				Lua::Table t = program->CreateTable();
-				t.SetField("midFlightImpact", rs.result == Objects::TraceResult::MidFlightImpact);
-				t.SetField("distanceToTarget", rs.distanceToTarget);
-				t.SetField("impactAt", Detail::ToTable(program, rs.impactAt));
-				return t;
+				return LuaTraceTrajectoryFrom(origin,dest,trajectory,flatAttackRange,owner);
+			});
+			t.SetFunction("TraceTrajectoryFrom", [this, trajectory, flatAttackRange, zOffset, owner](const Lua::Table&from, const Lua::Table&location)->Lua::Table
+			{
+				const auto dest = Objects::TrajectoryEndPoint(Detail::ToLGridCell(location, "TraceTrajectoryFrom(): Target parameter #2"), 0);
+				const auto src = Objects::TrajectoryEndPoint(Detail::ToLGridCell(from,"TraceTrajectoryFrom(): Origin parameter #1"),zOffset);
+				return LuaTraceTrajectoryFrom(src,dest,trajectory,flatAttackRange,owner);
 			});
 		}
 
@@ -302,6 +288,33 @@ namespace Lua
 
 		return t;
 	}
+
+
+	Lua::Table API::LuaTraceTrajectoryFrom( const Objects::TrajectoryEndPoint&origin, const Objects::TrajectoryEndPoint&dest, Objects::TrajectoryType trajectory, float flatAttackRange, const Objects::WFaction&owner )
+	{
+		#ifndef CLIENT
+			auto lockedOwner = owner.lock();
+			if (!lockedOwner)
+				throw Lua::Exception(CLOCATION, "TraceTrajectory(): Owner expired");
+		#endif
+		const World::Data&visibleWorld =
+			#ifndef CLIENT
+				lockedOwner->knownWorld
+			#else
+				World::actual
+			#endif
+		;
+
+		auto rs = Objects::Component::Turret::TraceTrajectory(trajectory, flatAttackRange, visibleWorld, World::actual, false, origin, dest);
+		if (rs.result == Objects::TraceResult::InvalidTrajectory)
+			return Lua::Reference{};
+		Lua::Table t = program->CreateTable();
+		t.SetField("midFlightImpact", rs.result == Objects::TraceResult::MidFlightImpact);
+		t.SetField("distanceToTarget", rs.distanceToTarget);
+		t.SetField("impactAt", Detail::ToTable(program, rs.impactAt));
+		return t;
+	}
+
 
 	#ifdef CLIENT
 
