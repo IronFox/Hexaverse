@@ -142,7 +142,7 @@ CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please re
 CreateTask(function() Game.DisplayMessage("Laboratories allow two types of research: Unlocking and Improving. The more laboratories you have enabled, the faster the research will progress. It is also a good idea to build them next to each other, as they accelerate each other in close proximity.","laboratory.jpg"); end);
 CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type by selecting it and using the commands in the bottom section of the screen."); end,
 	function()
-		local res = Game.myResearch['Unlock:ReactorCore'];
+		local res = Game.Research.topics['Unlock:ReactorCore'];
 		return res ~= nil and (res.isQueued or res.isCompleted);
 	end
 );
