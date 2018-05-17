@@ -2,8 +2,6 @@
 
 void	Game.CallDelayed(float seconds, function func)					Waits the specified number of seconds, then calls the given function without parameters
 void	Game.ClearAllDelayed()											Drops all non-executed delayed function calls
-int		Game.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns -1 if none are found
-int		Game.GetResourceCoverage(string resourceName, int stackID)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet, of the specified index is not in [1,#Game.lowCells]
 void	Game.FocusCameraAt(int stackID)									Smoothly focuses the camera on the specified stack index
 int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
 int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative
@@ -152,8 +150,7 @@ CreateTask(function() Game.DescribeTask("While we wait for the laboratory to fin
 CreateTask(function() Game.DisplayMessage("Surveyors automatically identify new natural resources in their yellow scanning sphere. The dark discs near your starting location indicate that there isn't anything there (except beneath your starting mine). Instruct your surveyor to move by right-clicking anywhere without discs.","surveyor.png") end);
 CreateTask(function() Game.DescribeTask("Please move your surveyor until it found some more %Fuel%fuel (a green bar atop the terrain). Select the vehicle and right-click anywhere on the terrain to schedule the motion. Request new rounds to execute movement operations") end, 
 		function() 
-			local at = Game.FindHighestAvailableResourceLocation('Fuel');
-			return (at ~= -1);
+			return Game.Grid.FindHighestAvailableResourceLocation('Fuel') ~= nil;
 		end
 		);
 
@@ -166,7 +163,7 @@ CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly 
 	function()
 		local count = 0;
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Mine' and Game.GetResourceCoverage('Fuel', u.location.cell) > 0 then
+			if u.typeName == 'Mine' and Game.Grid.GetNaturalResourceAt('Fuel', u.location.cell) > 0 then
 				count = count + 1;
 			end;
 		end;
@@ -269,7 +266,7 @@ CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and 
 	function()
 		local count = 0;
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Mine' and Game.GetResourceCoverage('Uranium', u.location.cell) > 0 then
+			if u.typeName == 'Mine' and Game.Grid.GetNaturalResourceAt('Uranium', u.location.cell) > 0 then
 				count = count + 1;
 			end;
 		end;

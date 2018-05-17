@@ -8,8 +8,6 @@ E.g. Game.units
 void		Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
 
 [client only]
-	int		Game.GetResourceCoverage(string resourceName, Cell cell)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet.
-	int		Game.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns -1 if none are found
 	void	Game.FocusCameraAt(Cell cell)									Smoothly focuses the camera on the specified stack index
 	int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
 	int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative
@@ -224,7 +222,10 @@ bool		Game.Grid.AffectedByEMP(Cell);		Returns true if EMP zones affect the given
 Loc			Game.Grid.ToLocation(Cell, int);	Constructs a location at the given cell and height
 int			Game.Grid.bottomHeight;		Minimum grid height (also applies to terrain)
 int			Game.Grid.topHeight;		Maximum grid height (also applies to terrain)
-bool		Game.Grid.IsClear(Loc);		Checks if all terrain cells affecting the specified location are clear
+bool		Game.Grid.IsClear(Loc);												Checks if all terrain cells affecting the specified location are clear
+[client only]
+	int		Game.Grid.GetNaturalResourceAt(string resourceName, Cell cell)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet.
+	Cell	Game.Grid.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns nil if none are found
 
 Cell[]		Game.Grid.unitCells			Ordered table of all planar unit cells in the world. These are larger than terrain cells
 

@@ -79,47 +79,27 @@ namespace Lua
 				#endif
 			}
 
-			int FindHighestAvailableResourceLocation(const String&resourceName)
-			{
-				foreach (Grid::Resource::all,r)
-					if (r->GetName() == resourceName)
-					{
-						int highestAt = -1;
-						Grid::Resource::coverage_t highest = 0;
-						for (index_t i = 0; i < Grid::Resource::NumEntries; i++)
-							if (Grid::ResourceDiscovery::client.resourcesDiscovered[i])
-							{
-								if (r->coverage[i] > highest)
-								{
-									if (Objects::FindApplicableGround(Grid::LCellIdI(i,0),true,true) != Objects::badHeight)
-									{
-										highest = r->coverage[i];
-										highestAt = (int)i;
-									}
-								}
-							}
-						return highestAt;
-					}
-				throw Lua::Exception("Resource '"+resourceName+"' does not exist.");
-			}
-
-			int GetResourceCoverage(const String&resourceName, Lua::Table cellTable)
-			{
-				const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
-				foreach (Grid::Resource::all,r)
-					if (r->GetName() == resourceName)
-					{
-						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
-							return -1;
-						return r->coverage[stackID];
-					}
-				throw Lua::Exception("GetResourceCoverage(): Resource '"+resourceName+"' does not exist.");
-			}
-
+		
 
 
 		#endif
 
+
+
+		int GetNaturalResourceAt(const String&resourceName, Lua::Table cellTable)
+		{
+			const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
+			foreach (Grid::Resource::all,r)
+				if (r->GetName().EqualsIgnoreCase(resourceName))
+				{
+					#ifdef CLIENT
+						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
+							return -1;
+					#endif
+					return r->coverage[stackID];
+				}
+			throw Lua::Exception("GetNaturalResourceAt(): Resource '"+resourceName+"' does not exist.");
+		}
 
 
 
@@ -289,6 +269,30 @@ namespace Lua
 		return t;
 	}
 
+
+	Lua::Table API::LuaFindHighestAvailableResourceLocation(const String&resourceName)
+	{
+		foreach (Grid::Resource::all,r)
+			if (r->GetName().EqualsIgnoreCase(resourceName))
+			{
+				int highestAt = -1;
+				Grid::Resource::coverage_t highest = 0;
+				for (index_t i = 0; i < Grid::Resource::NumEntries; i++)
+					if (Grid::ResourceDiscovery::client.resourcesDiscovered[i])
+					{
+						if (r->coverage[i] > highest)
+						{
+							if (Objects::FindApplicableGround(Grid::LCellIdI(i,0),true,true) != Objects::badHeight)
+							{
+								highest = r->coverage[i];
+								highestAt = (int)i;
+							}
+						}
+					}
+				return highestAt >= 0 ? lowCellGrid[highestAt] : Lua::Table{};
+			}
+		throw Lua::Exception(CLOCATION,"Resource '"+resourceName+"' does not exist.");
+	}
 
 	Lua::Table API::LuaTraceTrajectoryFrom( const Objects::TrajectoryEndPoint&origin, const Objects::TrajectoryEndPoint&dest, Objects::TrajectoryType trajectory, float flatAttackRange, const Objects::WFaction&owner )
 	{
@@ -662,8 +666,6 @@ namespace Lua
 		String name = program->GetName();
 		gameTable.SetFunction("Log", [name](const String&msg){Detail::LogLua(msg,name);});
 		#ifdef CLIENT
-			gameTable.SetFunction("FindHighestAvailableResourceLocation",Detail::FindHighestAvailableResourceLocation);
-			gameTable.SetFunction("GetResourceCoverage",Detail::GetResourceCoverage);
 			gameTable.SetFunction("GetCompoundResourceChange",Detail::GetCompoundResourceChange);
 			gameTable.SetFunction("GetCompoundResourceStorage",Detail::GetCompoundResourceStorage);
 		#endif
@@ -1356,6 +1358,10 @@ namespace Lua
 		gridTable.SetField("unitCells",cellTable);
 
 		MapCells(program,cellTable,Grid::low,lowCellGrid);
+
+		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource){return LuaFindHighestAvailableResourceLocation(resource);});
+		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
+
 	}
 
 

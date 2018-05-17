@@ -127,7 +127,7 @@ namespace Lua
 
 		Lua::Table	LuaFindShortestPathFrom(const Objects::PVehicle&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute);
 		Lua::Table	LuaTraceTrajectoryFrom(const Objects::TrajectoryEndPoint&origin, const Objects::TrajectoryEndPoint&target, Objects::TrajectoryType trajectory, float flatAttackRange, const Objects::WFaction&owner);
-
+		Lua::Table	LuaFindHighestAvailableResourceLocation(const String&resourceType);
 		void	Setup();
 	};
 }
