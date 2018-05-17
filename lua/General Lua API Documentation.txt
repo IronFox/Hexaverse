@@ -192,7 +192,7 @@ Cell
 {
 	Vector	center;						Normalized center vector of the cell
 	Cell[]	neighbors;					Ordered table of all planar neighbor cells
-	int		index;						Linear index of this cell in Game.Cells in [1,#Game.lowCells]
+	int		index;						Linear index of this cell in Game.Cells in [1,#Game.unitCells]
 };
 Vector
 {
