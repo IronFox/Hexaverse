@@ -1077,6 +1077,12 @@ namespace Lua
 					else
 						throw Lua::Exception(CLOCATION,"ClearTasks(): onDropAllTasks not set");
 				});
+				t.SetFunction("DropLastTask",[id,this]()
+				{
+					if (onDropLastTask)
+						onDropLastTask(id);
+					else
+						throw Lua::Exception(CLOCATION,"DropLastTask(): onDropLastTask not set");
 				});
 
 				t.SetFunction("DirectTo",[id,this](const Lua::Table&luaReachable)

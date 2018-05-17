@@ -60,7 +60,8 @@ namespace Lua
 		std::function<void(const TUniqueID&)>	onMarkerTouch,
 												onMarkerDestroy, 
 												onRemove,
-												onDropAllTasks
+												onDropAllTasks,
+												onDropLastTask
 												;
 		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure;
 		std::function<void(const TUniqueID&mID,Objects::MarkerType,const Objects::PWorldEntity&, const Grid::LCellIdI&)> onMarkerCreate;
