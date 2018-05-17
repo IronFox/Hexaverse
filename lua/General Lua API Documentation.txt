@@ -96,6 +96,7 @@ Unit
 	[isVehicle]
 		int		maxClimbUp;				Maximum climbing height difference. Typically 1
 		int		minClimbDown;			Minimum down-climbing heigh difference. Negative. Typically -1 or less
+		bool	CanStandAt(Loc);		Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
 }
 
 Prod

@@ -1110,6 +1110,23 @@ namespace Lua
 			if (m->IsVehicle())
 			{
 				auto v = To<Objects::Vehicle>::Cast(m);
+				Objects::WVehicle w = v;
+				t.SetFunction("CanStandAt",[w](const Lua::Table&loc)
+				{
+					auto v = w.lock();
+					if (!v)
+						throw Lua::Exception(CLOCATION,"CanStandAt(): Local unit has expired");
+					const World::Data&visibleWorld =
+						#ifndef CLIENT
+							v->owner->knownWorld
+						#else
+							World::actual
+						#endif
+					;
+					const auto location = Detail::ToLGridCell(loc,"CanStandAt(): Location parameter");
+					return visibleWorld.LowCellIsClear(location) && v->CanStandOn(visibleWorld,location-1,false,false);
+				});
+
 				t.SetField("maxClimbUp", v->base->maxClimbUp);
 				t.SetField("minClimbDown", v->base->minClimbDown);
 			}
