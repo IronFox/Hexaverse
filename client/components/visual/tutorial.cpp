@@ -288,13 +288,13 @@ namespace Tutorial
 			scriptAPI.FlushAllObjects();
 			scriptAPI.AddFactionEntities(Objects::Faction::mine);
 			scriptAPI.SetSelectedUnit(Objects::selectedEntity,false);
-			scriptAPI.UpdateMyResearch();
+			scriptAPI.UpdateResearch();
 		}
 
 
 		void RebuildResearchState()
 		{
-			scriptAPI.UpdateMyResearch();
+			scriptAPI.UpdateResearch();
 		}
 
 		void	ProcessTriggers()
