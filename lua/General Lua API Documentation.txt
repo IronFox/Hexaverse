@@ -1,7 +1,8 @@
 All functions and global contants are located in the Game table.
 E.g. Game.units
-
-
+Array-like tables are denoted X[], whereas maps are denotes {Key->Value}
+Although Lua does not actually support types as such, they are used here to clarify what content
+can be expected.
 
 
 
