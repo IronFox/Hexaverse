@@ -98,6 +98,7 @@ namespace Lua
 
 		void	AddFactionEntities(const Objects::PFaction&);
 		void	AddAllEntities();
+		void	AddAllFactionsAndAlliances();
 		void	AddAllAlliances();
 	private:
 

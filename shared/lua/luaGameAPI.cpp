@@ -742,7 +742,7 @@ namespace Lua
 	}
 
 
-	API::TAlliance*	API::AddAlliance( const Objects::PAlliance&a, bool updateIfFound )
+	API::TAlliance*	API::AddAlliance( const Objects::PAlliance&a, bool updateIfFound, bool updateMembers )
 	{
 		if (!a)
 			return nullptr;
@@ -768,13 +768,15 @@ namespace Lua
 			allianceMappedToTable.Set(a->id);
 			allianceIDMap.SetField(a->id.ToFullString(),t);
 		}
-		found->factionTable.ClearTable();
-		a->VisitMembers([found,this](const Objects::PFaction&f)
+		if (updateMembers)
 		{
-			auto luaFaction = AddFaction(f,false);
-			found->factionTable.AppendElement(luaFaction->table);
-		},true);
-
+			found->factionTable.ClearTable();
+			a->VisitMembers([found,this](const Objects::PFaction&f)
+			{
+				auto luaFaction = AddFaction(f,false);
+				found->factionTable.AppendElement(luaFaction->table);
+			},true);
+		}
 		t.SetField("id",a->id.ToFullString());
 		return found;
 	}
@@ -810,7 +812,7 @@ namespace Lua
 
 		t.SetField("name",f->name);
 		t.SetField("id",f->id.ToFullString());
-		const auto*const alliance = AddAlliance(f->alliance,false);
+		const auto*const alliance = AddAlliance(f->alliance,false,true);
 		t.SetField("alliance",alliance->table);
 
 		return found;
@@ -1071,9 +1073,26 @@ namespace Lua
 	{
 		Objects::Alliance::Foreach([this](const Objects::PAlliance&a)
 		{
-			AddAlliance(a, false);
+			AddAlliance(a, true,true);
 		});
 	}
+
+	void		API::AddAllFactionsAndAlliances()
+	{
+		Objects::Alliance::Foreach([this](const Objects::PAlliance&a)
+		{
+			AddAlliance(a, false,false);
+		});
+		Objects::ForeachFaction([this](const Objects::PFaction&f)
+		{
+			AddFaction(f,true);
+		});
+		Objects::Alliance::Foreach([this](const Objects::PAlliance&a)
+		{
+			AddAlliance(a, true,true);
+		});
+	}
+
 
 
 	void		API::AddAllEntities( )

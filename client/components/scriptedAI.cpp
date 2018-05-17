@@ -234,8 +234,8 @@ namespace ScriptedAI
 		if (IsRunning())
 			return;
 		thread.api.FlushAllObjects();
+		thread.api.AddAllFactionsAndAlliances();
 		thread.api.AddAllEntities();
-		thread.api.AddAllAlliances();
 		thread.api.AddMyMarkers();
 		thread.api.AddObjectAndPathfindingFunctions();
 		thread.isRunning = true;
