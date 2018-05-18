@@ -238,6 +238,7 @@ namespace ScriptedAI
 		}
 		
 		Detail::reloadScript = true;
+		Detail::completedThisPhase = true;		//upon (re)loading, is considered having executed this phase so player can request new round
 		Detail::hasSuccessfullyExecuted = true;	//set true here, since we don't know yet
 
 		auto&api = thread.api;
