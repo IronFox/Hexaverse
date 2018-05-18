@@ -8,9 +8,6 @@ can be expected.
 
 void		Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
 
-[client only]
-	int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
-	int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative
 float		Game.GetDistance(Loc a, Loc b)				Retrieves the geometric distance between the two specified locations
 
 
