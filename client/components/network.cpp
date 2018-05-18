@@ -196,6 +196,7 @@ namespace Network
 		RuntimeConfig::tutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
+		GlobalEvents::phaseChange();
 		gameHasBegun = false;
 
 		LoadGameConfig(host.serverInfo.gameInfo.gameConfig);
@@ -2262,6 +2263,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		Tutorial::lastDelayingEvent = timer.Now();
 	#endif
 	RuntimeConfig::phase.Load(c.newPhase);
+	GlobalEvents::phaseChange();
 	if (RuntimeConfig::IsInAnyCommandPhase())
 		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;
