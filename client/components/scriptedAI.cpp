@@ -27,8 +27,8 @@ namespace ScriptedAI
 	{
 	public:
 		Lua::API		api;
-		Lua::Function<Lua::Reference()> exportFunction;
-		Lua::Function<void(Lua::Reference)> importFunction;
+		Lua::Function<Lua::Reference()> exportState;
+		Lua::Function<void(Lua::Reference)> init;
 		Lua::Function<void()> execute;
 
 		String			error;
@@ -43,21 +43,22 @@ namespace ScriptedAI
 				{
 					Detail::reloadScript = false;
 					api.program->ExecuteFile(Detail::scriptPath);
-					exportFunction = api.program->RequireGlobal("ExportState");
-					importFunction = api.program->RequireGlobal("ImportState");
+					exportState = api.program->RequireGlobal("ExportState");
+					init = api.program->RequireGlobal("Init");
 					execute = api.program->RequireGlobal("Execute");
-				}
-				if (!Detail::freshState && Detail::exportedState.IsNotEmpty())
-				{
-					auto state = api.program->DeserializeToReference(
-						MemReadStream(
-							Detail::exportedState.GetPointer(),
-							Detail::exportedState.GetContentSize()
-						)
-					);
-					importFunction(state);
-				}
 
+					if (!Detail::freshState && Detail::exportedState.IsNotEmpty())
+					{
+						auto state = api.program->DeserializeToReference(
+							MemReadStream(
+								Detail::exportedState.GetPointer(),
+								(serial_size_t)Detail::exportedState.GetContentSize()
+							)
+						);
+						init(state);
+					}
+					else
+						init(Lua::nil);
 				execute();
 			}
 			catch (const Lua::Exception&ex)
@@ -170,8 +171,8 @@ namespace ScriptedAI
 		if (thread.api.IsCreated())
 		{
 			Lua::Reference ref;
-			if (thread.exportFunction.IsSet())
-				ref = thread.exportFunction();
+			if (thread.exportState.IsSet())
+				ref = thread.exportState();
 			if (!ref)
 				Detail::exportedState.Clear();
 			else
@@ -180,8 +181,8 @@ namespace ScriptedAI
 				ref.Serialize(stream);
 				Detail::exportedState = stream.GetWrittenData();
 			}
-			thread.exportFunction.ClearReference();
-			thread.importFunction.ClearReference();
+			thread.exportState.ClearReference();
+			thread.init.ClearReference();
 			thread.execute.ClearReference();
 			thread.api.Destroy();
 		}
@@ -266,23 +267,22 @@ namespace ScriptedAI
 			<< "--[[" << nl
 			<< "@brief State export" << nl << nl
 			<< "This function is expected to export any persistent AI state." << nl
-			<< "Whatever you return (unless nil) will be fed to ImportState() when resuming interrupted execution." << nl
+			<< "Whatever you return will be fed to Init() when resuming interrupted execution." << nl
 			<< "Anything you keep in the local Lua state but don't export here will be lost during discontinuities" << nl
-			<< "(e.g. save game loading, client crash, AI script reloading during debug)." << nl
-			<< "@return Exported state. May be any regular Lua type, including recursive tables, or nil." << nl
+			<< "(e.g. save game loading, client crash, AI script reloading during debug, etc)." << nl
+			<< "@return Exported state. May be any regular Lua type, including arbitrarily nested tables, or plain nil." << nl
 			<< "]]" << nl
 			<< "function ExportState()" << nl
 			<< "\treturn nil;" << nl
 			<< "end;" << nl
 			<< nl
 			<< "--[[" << nl
-			<< "@brief State import" << nl << nl
-			<< "This function is expected to import any previously exported state. Whatever you are getting," << nl
-			<< "SOME ExportState() function has produced it. Usually your own, but who knows..." << nl
-			<< "Not invoked if there was no state." << nl
-			<< "@param state Some previously exported state." << nl
+			<< "@brief Initialization" << nl << nl
+			<< "Invoked ONCE before the first execution. If a previously exported state exists, it is passed" <<nl
+			<< "as parameter." << nl
+			<< "@param state Some previously exported state, or nil." << nl
 			<< "]]" << nl
-			<< "function ImportState(state)" << nl
+			<< "function Init(state)" << nl
 			<< "end;" << nl << nl
 			<< nl
 			<< "--[[" << nl
@@ -291,7 +291,7 @@ namespace ScriptedAI
 			<< "During production runs, this function will be called exactly once at the beginning of a round." << nl
 			<< "Executed asynchronously. Take as much time as you need, though bad things _will_ happen if you" << nl
 			<< "take longer than the server permits any player. Try to not produce endless loops as those will" << nl
-			<< "force the client to restart." << nl
+			<< "force the user to restart the client." << nl
 			<< "]]" << nl
 			<< "function Execute()" << nl
 			<< "\t-- Your stuff here" << nl
