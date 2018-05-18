@@ -63,6 +63,8 @@ namespace ScriptedAI
 					}
 					else
 						init(Lua::nil);
+				}
+				
 				execute();
 				Detail::hasSuccessfullyExecuted = true;
 			}
