@@ -625,6 +625,11 @@ namespace Lua
 
 			factionIDMap = gameTable.SetSubTable("factions");
 			allianceIDMap = gameTable.SetSubTable("alliances");
+			
+			gameTable.SetFunction("Log",[this](const String&msg)
+			{
+				LogEvent(EventClass::Preset::scriptLog,program->GetName()+"(Lua): "+msg);
+			});
 
 	}
 

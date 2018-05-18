@@ -63,6 +63,7 @@ struct EventClass
 		static EventClass	error,	//!< Non-fatal error that should be logged and displayed on the console
 							internalError,	//!< Non-fatal error that should be logged and displayed on the console. Not distributed to clients
 							fatal,
+							scriptLog,
 							scriptError,
 							unexpectedBehavior,
 							uncommon,
