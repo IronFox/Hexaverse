@@ -1073,7 +1073,7 @@ namespace Lua
 				});
 
 
-
+				loc = v->location;
 				t.SetFunction("GetReach", [this,w,loc](const Lua::Function<bool(Lua::Table)>&isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute, bool cannotStandOnUnknown)->Lua::Table
 				{
 					auto v = w.lock();
