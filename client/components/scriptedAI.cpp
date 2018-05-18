@@ -193,6 +193,12 @@ namespace ScriptedAI
 		}
 	}
 
+
+	bool	WillExecuteOnNewRound()
+	{
+		return Detail::controlBeginRegistration != InvalidIndex;
+	}
+
 	void	Reload(bool force, bool freshState)
 	{
 		ASSERT__(IsLoaded());

@@ -59,6 +59,7 @@ namespace ScriptedAI
 
 	bool			DoneThisRound();
 	bool			SuccessfullyExecutedThisRound();
+	bool			WillExecuteOnNewRound();
 
 	void			CreateTemplateAt(const D::PathString&);
 
