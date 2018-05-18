@@ -201,7 +201,7 @@ namespace ScriptedAI
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
 
-		api.Create("ScriptedAI");
+		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
 		api.AddGrid();
 
 		Detail::scriptPath = scriptPath;
