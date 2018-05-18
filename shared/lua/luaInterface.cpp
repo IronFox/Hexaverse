@@ -711,6 +711,11 @@ namespace Lua
 	namespace Detail
 	{
 
+		void PushParameter(lua_State *state, Nil)
+		{
+			lua_pushnil(state);
+		}
+
 		void PushParameter(lua_State *state, long long i)
 		{
 			lua_pushinteger(state, i);
@@ -1709,6 +1714,11 @@ namespace Lua
 			SignalChange("");
 	}
 
+	void	Reference::operator=(Nil)
+	{
+		ClearReference();
+		SignalChange("");
+	}
 
 	void		Reference::DeserializeMerge(IReadStream&stream)
 	{

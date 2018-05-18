@@ -84,6 +84,11 @@ namespace Lua
 		virtual	const char*		GetType()	const override					{return StaticGetName();}
 	};
 
+	struct Nil
+	{};
+
+	static const Nil	nil;
+
 
 	namespace Detail
 	{
@@ -109,6 +114,7 @@ namespace Lua
 		void PushParameter(lua_State *state, double i);
 		void PushParameter(lua_State *state, void*p);
 		void PushParameter(lua_State *state, const Reference&);
+		void PushParameter(lua_State *state, Nil);
 		void PushStrParameter(lua_State *state, const String&str);
 		void PushStrParameter(lua_State *state, const char*str);
 
@@ -571,7 +577,9 @@ namespace Lua
 	public:
 
 		/**/		Reference(){}
+		/**/		Reference(Nil){}
 		virtual		~Reference() {};
+		void		operator=(Nil);
 		void		operator=(const Reference&other);
 		/**
 		Reference comparison. Does not compare content
