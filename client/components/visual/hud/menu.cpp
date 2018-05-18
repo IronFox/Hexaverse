@@ -18,6 +18,7 @@
 #include "../../cameraControl.h"
 #include "../../scriptedAI.h"
 #include "hexGrid.h"
+#include "../commandDefinitions.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -357,7 +358,8 @@ namespace Menu
 			{
 				ScriptedAI::visualDebugActive = enabled;
 				Configuration::Update("runtime/aiDebugMode", enabled);
-				HUD::HexGrid::BottomRightPanel::RecreateCommands();
+
+				Objects::Commands::RedefineGlobalCommands();
 				HUD::HexGrid::Configure(Objects::selectedEntity);
 			}
 		});

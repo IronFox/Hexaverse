@@ -474,7 +474,7 @@ namespace HexGrid
 	{
 		typedef std::shared_ptr<Icon>	PIcon;
 		Buffer0<PIcon>				commands;
-		PIcon						menuCommand,tutorialCommand,aiCommand;
+		PIcon						menuCommand,tutorialCommand;
 
 		/**/						Icon::Icon(const String&name) : Super(name)
 		{
@@ -490,39 +490,39 @@ namespace HexGrid
 			HUD::WindowStack::Show(HUD::Menu::main);
 		}
 
-		/*virtual override*/ void			AICommand::Refresh(bool controlsAreEnabled)
-		{
-			this->state = Flags::None;
+		///*virtual override*/ void			AICommand::Refresh(bool controlsAreEnabled)
+		//{
+		//	this->state = Flags::None;
 
-			if (ScriptedAI::IsRunning())
-				state |= Flags::IsPermaActive | Flags::IsFlashing | Flags::SoftFlashing;
-			elif (controlsAreEnabled)
-				state |= Flags::IsEnabled;
-		}
+		//	if (ScriptedAI::IsRunning())
+		//		state |= Flags::IsPermaActive | Flags::IsFlashing | Flags::SoftFlashing;
+		//	elif (controlsAreEnabled)
+		//		state |= Flags::IsEnabled;
+		//}
 
-		/*virtual override*/ void			AICommand::Execute()
-		{
-			if (ScriptedAI::IsRunning())
-				return;
-			FileSystem::Folder scripts = RuntimeConfig::myConfig.Lookup("AIScripts");
-			if (!scripts.IsValidLocation())
-				FileSystem::CreateDirectory(scripts.GetLocation());
-			ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
+		///*virtual override*/ void			AICommand::Execute()
+		//{
+		//	if (ScriptedAI::IsRunning())
+		//		return;
+		//	FileSystem::Folder scripts = RuntimeConfig::myConfig.Lookup("AIScripts");
+		//	if (!scripts.IsValidLocation())
+		//		FileSystem::CreateDirectory(scripts.GetLocation());
+		//	ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
 
-			FileSystem::File debugLua;
-			scripts.FindFile("debug.lua", debugLua, false);
-			if (!debugLua.DoesExist())
-			{
-				ScriptedAI::CreateTemplateAt(debugLua);
-				Dialog::ShowMessage("It appears you have activated the AI for the first time."
-						" A new Lua script has been created at\n"+FileSystem::PathToString(debugLua)+"\n"
-						" Edit the file to define the desired behavior.\n"
-						"Whenever you press the AI button, the script will be reloaded, and applied to your current set of units.");
-			}
+		//	FileSystem::File debugLua;
+		//	scripts.FindFile("debug.lua", debugLua, false);
+		//	if (!debugLua.DoesExist())
+		//	{
+		//		ScriptedAI::CreateTemplateAt(debugLua);
+		//		Dialog::ShowMessage("It appears you have activated the AI for the first time."
+		//				" A new Lua script has been created at\n"+FileSystem::PathToString(debugLua)+"\n"
+		//				" Edit the file to define the desired behavior.\n"
+		//				"Whenever you press the AI button, the script will be reloaded, and applied to your current set of units.");
+		//	}
 
-			ScriptedAI::Load(debugLua, Engine::input.pressed[Key::Shift]);
-			ScriptedAI::Start();
-		}
+		//	ScriptedAI::Load(debugLua, Engine::input.pressed[Key::Shift]);
+		//	ScriptedAI::Start();
+		//}
 
 
 		static void VoteRefresh(const PVote&)
@@ -537,10 +537,7 @@ namespace HexGrid
 			commands.Clear();
 
 			commands << (menuCommand);
-			if (ScriptedAI::visualDebugActive)
-				commands << aiCommand;
-			else
-				commands << tutorialCommand;
+			commands << tutorialCommand;
 			commands << PIcon(new VoteCommand());
 
 			commands << PIcon(new DemolishCommand());
@@ -554,7 +551,6 @@ namespace HexGrid
 
 		void Create()
 		{
-			aiCommand = PIcon(new AICommand());
 			tutorialCommand = PIcon(new TutorialCommand());
 			menuCommand = menuCommand = PIcon(new MenuCommand());
 

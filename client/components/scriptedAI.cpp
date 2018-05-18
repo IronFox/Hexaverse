@@ -7,7 +7,9 @@
 #include "visual/hud/windowStack.h"
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/dialog.h"
+#include "visual/hud/guiComponents.h"
 #include <io/string_file.h>
+#include "io.h"
 
 namespace ScriptedAI
 {
@@ -343,5 +345,133 @@ namespace ScriptedAI
 
 	}
 
+	void	CreateAndLoad(const PathString&path)
+	{
+		CreateTemplateAt(path);
+		Load(path,true);
+		HUD::HexGrid::RefreshButtonState();
+		LogEvent(EventSignificance::Uncommon,"New AI script "+FileSystem::PathToString(FileSystem::ExtractFileNameExt(path))+" created");
+	}
+
+	FileSystem::Folder	GetScriptFolder()
+	{
+		return RuntimeConfig::myConfig.Lookup("AIScripts");
+	}
+
+	#ifdef HAS_WINDOW
+	void	DefineCommands(const Objects::Command::PCommandGroup&aiCommands)
+	{
+		using namespace Objects::Command;
+
+		aiCommands->Add(new GlobalCommand("Load AI...",
+		[]()
+		{
+			using namespace HUD;
+			using namespace HUD::Component;
+			PWindow window = Window::Create();
+
+			FileSystem::Folder scripts = GetScriptFolder();
+			if (!scripts.IsValidLocation())
+				FileSystem::CreateDirectory(scripts.GetLocation());
+
+			FileSystem::File file;
+			scripts.Rewind();
+			WWindow w = window;
+			while (scripts.NextFile(".lua",file))
+			{
+				PButton button {new Button{FileSystem::PathToString(file.GetInnerName()),[file,w]()
+				{
+					PWindow window = w.lock();
+					WindowStack::Hide(window);
+					Load(file.GetLocation(),true);
+
+					HUD::HexGrid::RefreshButtonState();
+				}}};
+
+				window->AnchorBelowPrevious(CLOCATION,button);
+			};
+
+			window->AnchorBelowPrevious(CLOCATION,new Label{"Press Escape to abort"},0,0);
+			WindowStack::Show(window);
+		}));
+
+		aiCommands->Add(new GlobalCommand("Create new AI...",
+		[]()
+		{
+			static const String aiAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
+
+			HUD::Dialog::Query("Enter name for new AI script","debug",aiAlpha,[](const StringRef&str)->bool
+			{
+				return str.GetLength() > 3;
+			},
+			[](const String&input)
+			{
+				FileSystem::Folder scripts = GetScriptFolder();
+				if (!scripts.IsValidLocation())
+					FileSystem::CreateDirectory(scripts.GetLocation());
+				ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
+				FileSystem::File scriptAt;
+				const auto path = PathString(input+".lua");
+				scripts.FindFile(path, scriptAt, false);
+				if (scriptAt.DoesExist())
+					HUD::Dialog::Confirm("The specified AI script '"+input+".lua' already exists. Replace?",[scriptAt]()
+					{
+						CreateAndLoad(scriptAt);
+					});
+				else
+					CreateAndLoad(scriptAt);
+
+
+					
+			});
+		}));
+
+				
+
+		const PIconCommand runCmd { new GlobalCommand("Reload and run AI",
+		[]()
+		{
+			if (IsRunning())
+				return;
+			Reload(true,Engine::input.pressed[Key::Shift]);
+			Start();
+			HUD::HexGrid::RefreshButtonState();
+		},
+		[](bool controlEnabled)->Objects::CommandFlags
+		{
+			using namespace Objects;
+			CommandFlags rs = CommandFlags::None;
+
+			if (ScriptedAI::IsRunning())
+				rs |= CommandFlags::IsPermaActive | CommandFlags::IsFlashing | CommandFlags::SoftFlashing;
+			elif (controlEnabled && IsLoaded())
+				rs |= CommandFlags::IsEnabled;
+			return rs;
+		})};
+
+		aiCommands->Add(runCmd);
+
+		aiCommands->Add(new GlobalCommand("Edit Loaded AI",
+		[]()
+		{
+			OpenDocumentExternally(ScriptedAI::GetScriptPath());
+		},
+		[](bool controlEnabled)->Objects::CommandFlags
+		{
+			using namespace Objects;
+			CommandFlags rs = CommandFlags::None;
+			if (IsLoaded())
+				rs |= CommandFlags::IsEnabled;
+			return rs;
+		}));
+
+		aiCommands->Add(new GlobalCommand("Open AI Documentation",
+		[]()
+		{
+			OpenDocumentExternally(ScriptedAI::GetDocumentationPath());
+		}));
+
+	}
+	#endif
 }
 

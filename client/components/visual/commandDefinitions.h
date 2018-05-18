@@ -34,6 +34,7 @@ namespace Objects
 		Also rasterizes component images
 		*/
 		void	DefineAll();
+		void	RedefineGlobalCommands();
 
 
 		/**

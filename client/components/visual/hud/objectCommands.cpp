@@ -26,7 +26,7 @@ extern Engine::Display<Engine::DirectX11>	display;
 namespace Objects
 {
 	Command::Container		globalCommands;
-	Command::PCommandGroup	viewCommands;
+	Command::PCommandGroup	viewCommands,aiCommands;
 
 	namespace Command
 	{

@@ -2,6 +2,7 @@
 
 #include <io/file_system.h>
 #include <structure/observable.h>
+#include "visual/hud/objectCommands.h"
 
 namespace ScriptedAI
 {
@@ -58,5 +59,9 @@ namespace ScriptedAI
 
 
 	void			CreateTemplateAt(const D::PathString&);
+
+	#ifdef HAS_WINDOW	
+		void		DefineCommands(const Objects::Command::PCommandGroup&aiCommands);
+	#endif
 }
 

@@ -394,6 +394,8 @@ namespace Objects
 	*/
 	extern Command::PCommandGroup	viewCommands;
 
+	extern Command::PCommandGroup	aiCommands;
+
 	namespace GlobalCmd
 	{
 		void	ToggleSeeThrough();
