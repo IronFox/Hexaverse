@@ -42,6 +42,8 @@ namespace ScriptedAI
 				if (Detail::reloadScript)
 				{
 					Detail::reloadScript = false;
+					
+					api.AddTerrain();
 					api.program->ExecuteFile(Detail::scriptPath);
 					exportState = api.program->RequireGlobal("ExportState");
 					init = api.program->RequireGlobal("Init");
@@ -201,7 +203,7 @@ namespace ScriptedAI
 
 		api.Create("ScriptedAI");
 		api.AddGrid();
-		api.AddTerrain();
+
 		Detail::scriptPath = scriptPath;
 		Detail::freshState = freshState;
 
