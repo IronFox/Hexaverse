@@ -53,6 +53,7 @@ namespace ScriptedAI
 
 	bool			IsLoaded();
 	D::PathString	GetScriptPath();
+	bool			HasSuccessfullyExecuted();
 
 	void	CreateTemplateAt(const D::PathString&);
 }

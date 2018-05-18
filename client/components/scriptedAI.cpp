@@ -22,6 +22,7 @@ namespace ScriptedAI
 		PathString		scriptPath;
 		FileSystem::ftime_t	scriptTime;
 		bool			freshState = false, reloadScript = true;
+		bool			hasSuccessfullyExecuted = false;
 	}
 
 	class Thread : public Sys::ThreadObject
@@ -63,6 +64,7 @@ namespace ScriptedAI
 					else
 						init(Lua::nil);
 				execute();
+				Detail::hasSuccessfullyExecuted = true;
 			}
 			catch (const Lua::Exception&ex)
 			{
@@ -199,6 +201,7 @@ namespace ScriptedAI
 		}
 		
 		Detail::reloadScript = true;
+		Detail::hasSuccessfullyExecuted = false;
 
 		auto&api = thread.api;
 
@@ -273,6 +276,14 @@ namespace ScriptedAI
 	{
 		return Detail::scriptPath;
 	}
+
+
+	bool			HasSuccessfullyExecuted()
+	{
+		return Detail::hasSuccessfullyExecuted;
+	}
+
+
 	void	CreateTemplateAt(const D::PathString&path)
 	{
 		StringFile f;
