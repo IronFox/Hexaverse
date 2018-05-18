@@ -460,6 +460,10 @@ namespace Objects
 		{
 			String name2 = name;
 			name2.FindAndReplace(NotValidFSChar,'-');
+			while (name2.EndsWith('-'))
+				name2.EraseRight(1);
+			while (name2.BeginsWith('-'))
+				name2.EraseLeft(1);
 
 			PathString filename = PathString("resources/icons/"+name2+".png");
 			if (!FileSystem::IsFile(filename))
