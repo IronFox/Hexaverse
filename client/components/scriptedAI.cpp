@@ -28,6 +28,20 @@ namespace ScriptedAI
 
 		bool			completedThisPhase = false;
 
+		index_t			controlBeginRegistration = InvalidIndex;
+		void			RegisterExecution()
+		{
+			if (controlBeginRegistration != InvalidIndex)
+				return;
+			controlBeginRegistration = GlobalEvents::playerControlBegin.Register(ScriptedAI::Start);
+		}
+
+		void			UnregisterExecution()
+		{
+			if (controlBeginRegistration != InvalidIndex)
+				GlobalEvents::playerControlBegin.Unregister(controlBeginRegistration);
+			controlBeginRegistration = InvalidIndex;
+		}
 	}
 
 	class Thread : public Sys::ThreadObject
@@ -236,6 +250,8 @@ namespace ScriptedAI
 		Detail::scriptTime = FileSystem::GetModificationTime(scriptPath);
 		Detail::freshState = freshState;
 
+
+		Detail::RegisterExecution();
 	}
 	
 	static void Check()
@@ -253,6 +269,9 @@ namespace ScriptedAI
 					HUD::Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + thread.error);
 				#endif
 			}
+
+			if (!Detail::hasSuccessfullyExecuted)
+				Detail::UnregisterExecution();
 
 			onExecutionFinished();
 			#ifdef HAS_WINDOW
