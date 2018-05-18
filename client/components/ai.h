@@ -12,6 +12,7 @@ namespace AI
 	void	Process(float timeQuantum);
 	void	SignalStart(const String&because, const TCodeLocation&caller);
 
+	bool	IsDone();
 
 	/**
 	(Re)initializes BlockTest() for the specified vehicle
