@@ -49,11 +49,6 @@ namespace ObjectHelper
 			outdated.Clear();
 			lastProcessedRoundNumber = RuntimeConfig::roundNumber;
 
-			#ifdef HAS_WINDOW
-				HUD::WindowStack::SignalSituationChange();
-				HUD::HexGrid::RefreshButtonState();
-			#endif
-
 			PlayerControlBegin::CheckAutoNextRound();
 			return true;
 		}

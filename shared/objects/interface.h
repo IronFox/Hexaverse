@@ -29,6 +29,7 @@ namespace ApplicationInterface
 	void	SignalUndoRoundEnd();
 	bool	HasSignalledRoundEnd();
 	bool	ShouldSignalRoundEnd();
+	bool	AutomaticProcessesAreDoneThisRound();
 	bool	CanChangeRoundState();
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, Objects::EntityType parameterName);
 	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode activeCursorMode,const Array<Grid::HCellIdI>&selection);

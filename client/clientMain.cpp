@@ -242,7 +242,7 @@ namespace ApplicationInterface
 		return Network::client.IsConnected() 
 			&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase 
 			&& !Network::amSpectator
-			&& 	ObjectHelper::MarkerCheck::DoneThisRound()
+			&& AutomaticProcessesAreDoneThisRound()
 			;
 	}
 
@@ -1681,28 +1681,25 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 namespace ApplicationInterface
 {
+	bool	AutomaticProcessesAreDoneThisRound()
+	{
+		return 
+				ObjectHelper::MarkerCheck::DoneThisRound()
+				&&
+				(!RuntimeConfig::aiMode || AI::IsDone())
+			;
+	}
+
+
 	bool	ShouldSignalRoundEnd()
 	{
 		if (!CanChangeRoundState())
 			return false;
 
-		if (!ObjectHelper::MarkerCheck::DoneThisRound())
+		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound)
 			return false;
 
-		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
-			return false;
-		#if 0
-			count_t total=0,requested=0;
-			Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
-			{
-				total++;
-				if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
-					requested++;
-			});
 
-			if (requested+1 != total)
-				return false;
-		#endif /*0*/
 
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
@@ -1712,10 +1709,6 @@ namespace ApplicationInterface
 			if (ObjectHelper::IsIdle(e))
 				any = e;
 		},Objects::IncludeGhosts::None);
-		//#ifdef _DEBUG
-		//if (any)
-		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
-		//#endif
 		return !any;
 	}
 }
