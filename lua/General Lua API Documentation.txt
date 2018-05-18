@@ -274,6 +274,7 @@ Table-Type: Vector
 	{
 		Loc		location;				World location
 		string	type;					'Visited','EntityDeath','HostileContact'
+		string	id;						Marker ID
 		bool	confirmed;				True if this marker has been confirmed by the server, false if it is pending (or failed)
 		int		age;					Number of rounds since this marker was created
 		Unit	unitReference;			Referenced unit. May be nil
