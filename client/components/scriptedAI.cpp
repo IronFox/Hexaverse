@@ -217,7 +217,7 @@ namespace ScriptedAI
 		}
 		
 		Detail::reloadScript = true;
-		Detail::hasSuccessfullyExecuted = false;
+		Detail::hasSuccessfullyExecuted = true;	//set true here, since we don't know yet
 
 		auto&api = thread.api;
 
