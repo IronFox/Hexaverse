@@ -1686,6 +1686,8 @@ namespace ApplicationInterface
 		return 
 				ObjectHelper::MarkerCheck::DoneThisRound()
 				&&
+				ScriptedAI::DoneThisRound()
+				&&
 				(!RuntimeConfig::aiMode || AI::IsDone())
 			;
 	}
