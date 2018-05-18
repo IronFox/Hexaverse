@@ -210,7 +210,7 @@ function ProcessVehicle(v)
 
 	for _,m in pairs(Game.myMarkers) do
 		if (m.type == "Visited") then
-			local distance = Game.GetDistance(m.location,v.location);
+			local distance = Game.Grid.GetDistance(m.location,v.location);
 			if (distance < 5.0) then
 				m.Touch();
 				haveMarker = true;
@@ -269,7 +269,7 @@ function ProcessVehicle(v)
 			targets[#targets] = t.target;
 		end;
 		
-		v.ScheduleAttacks(targets);
+		v.Attack(targets);
 
 		if #attackTarget > 0 and v.motionIgnoresAttack then
 			return;
@@ -305,16 +305,16 @@ function ProcessVehicle(v)
 	local referenceThreat = EstimateThreatFromAll(v.location,true, canIgnoreThreat,overconfident);
 	
 	
-	local reach = Game.Pathfinding.GetUnitReach(v,BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat)
+	local reach = v.GetReach(BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat)
 		,referenceSpeed,true,false,false,false);
 	
 	if (#reach == 0) then
 		--no chance to get out of danger, so try to reduce threat level
 		referenceThreat = EstimateThreatFromAll(v.location,false, canIgnoreThreat,overconfident);
 		local test = BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat);
-		reach = Game.Pathfinding.GetUnitReach(v,test,referenceSpeed,true,false,false,false);
+		reach = v.GetReach(test,referenceSpeed,true,false,false,false);
 		if (#reach == 0) then
-			reach = Game.Pathfinding.GetUnitReach(v,test,referenceSpeed,false,false,false,false);
+			reach = v.GetReach(test,referenceSpeed,false,false,false,false);
 		end;
 	end;
 
@@ -428,7 +428,7 @@ function ExportState()
 	return nil;
 end;
 
-function ImportState(state)
+function Init(state)
 end;
 
 
