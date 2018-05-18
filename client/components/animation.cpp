@@ -832,6 +832,8 @@ namespace Animation
 
 		#endif
 
+		if (RuntimeConfig::IsInAnyCommandPhase())
+			PlayerControlBegin::CheckAutoNextRound();
 	}
 
 	void	UpdateState(const Objects::PStructure&s,Protocol::StructureState&vs)
@@ -958,6 +960,8 @@ namespace Animation
 			//HUD::HexGrid::Configure(Objects::selectedEntity);
 		#endif
 
+		if (RuntimeConfig::IsInAnyCommandPhase())
+			PlayerControlBegin::CheckAutoNextRound();
 	}
 
 	float GetExplosionSize(const Objects::PWorldEntity&target)
