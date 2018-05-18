@@ -896,21 +896,12 @@ namespace Lua
 				if (IsEmpty())
 					return;	//allow return-less functions to just fail silently
 					//throw Except::Program::GeneralFault("Lua: Trying to call empty function");
-				try
-				{
-					lua_State*state = GetProgram()->GetState();
-					Super::Push();
-					int numParameters = Detail::PushParameters(state,parameters...);
-					CallPushedFunction(state,numParameters,0);
-				}
-				catch (const Lua::Exception&ex)
-				{
-					throw Exception(CLOCATION, "Failed to call void function '" + this->GetName() + "': '" + String(ex.GetRawMessage()));
-				}
-				catch (const std::exception&ex)
-				{
-					throw Exception(CLOCATION,"Failed to call void function '"+this->GetName()+"': '"+String(ex.what()));
-				}
+
+				lua_State*state = GetProgram()->GetState();
+				Super::Push();
+				int numParameters = Detail::PushParameters(state,parameters...);
+				CallPushedFunction(state,numParameters,0);
+
 			}
 
 		};
@@ -934,33 +925,23 @@ namespace Lua
 			{
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
+
+				lua_State*state = GetProgram()->GetState();
+				Super::Push();
+				int numParameters = Detail::PushParameters(state,parameters...);
+				CallPushedFunction(state,numParameters,1);
+				return_t rs;
 				try
 				{
-					lua_State*state = GetProgram()->GetState();
-					Super::Push();
-					int numParameters = Detail::PushParameters(state,parameters...);
-					CallPushedFunction(state,numParameters,1);
-					return_t rs;
-					try
-					{
-						Detail::StackedT<return_t,false>::Get(GetProgram(),-1,rs);
-					}
-					catch (...)
-					{
-						Detail::PopStacked(state);
-						throw;
-					}
+					Detail::StackedT<return_t,false>::Get(GetProgram(),-1,rs);
+				}
+				catch (...)
+				{
 					Detail::PopStacked(state);
-					return rs;
+					throw;
 				}
-				catch (const Lua::Exception&ex)
-				{
-					throw Exception(CLOCATION, "Failed to call " + String(typeid(return_t).name()) + " function '" + this->GetName() + "': '" + String(ex.GetRawMessage()));
-				}
-				catch (const std::exception&ex)
-				{
-					throw Exception(CLOCATION,"Failed to call "+String(typeid(return_t).name())+" function '"+this->GetName()+"': '"+String(ex.what()));
-				}
+				Detail::PopStacked(state);
+				return rs;
 
 			}
 
