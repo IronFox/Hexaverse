@@ -195,7 +195,7 @@ namespace Lua
 			});
 
 			const Objects::WFaction owner = b.ToEntity().owner;
-			t.SetFunction("FindTarget", [this,trajectory, flatAttackRange, origin, explosionRadius,owner](const Lua::Table&location)->Lua::Table
+			t.SetFunction("SearchAttackTarget", [this,trajectory, flatAttackRange, origin, explosionRadius,owner](const Lua::Table&location)->Lua::Table
 			{
 				Objects::TurretBase::TargetChoice choice;
 				const auto dest = Objects::TrajectoryEndPoint(Detail::ToLGridCell(location,"FindTarget(): Target parameter"),0);
@@ -207,7 +207,7 @@ namespace Lua
 					return Lua::Reference();
 				return ToTable(choice.cellTarget);
 			});
-			t.SetFunction("FindTargetFrom", [this,trajectory, flatAttackRange, explosionRadius,owner, zOffset](const Lua::Table&org,const Lua::Table&location)->Lua::Table
+			t.SetFunction("SearchAttackTargetFrom", [this,trajectory, flatAttackRange, explosionRadius,owner, zOffset](const Lua::Table&org,const Lua::Table&location)->Lua::Table
 			{
 				Objects::TurretBase::TargetChoice choice;
 				const auto dest = Objects::TrajectoryEndPoint(Detail::ToLGridCell(location,"FindTargetFrom(): Target parameter #2"),0);
