@@ -260,6 +260,7 @@ namespace ScriptedAI
 		thread.api.AddMyMarkers();
 		thread.api.AddObjectAndPathfindingFunctions();
 		thread.isRunning = true;
+		Detail::hasSuccessfullyExecuted = false;
 		thread.Start();
 		if (Detail::frameBeginRegistration == InvalidIndex)
 			Detail::frameBeginRegistration = GlobalEvents::frameBegin.Register(Check);
