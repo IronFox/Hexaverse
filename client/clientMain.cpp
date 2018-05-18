@@ -891,12 +891,17 @@ namespace ApplicationInterface
 				#endif
 			if (e->owner->alliance != Objects::Faction::mine->alliance)
 			{
-				LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
-				PlayerControlBegin::pauseAutomaticRoundProgression = true;
+				if (!ScriptedAI::WillExecuteOnNewRound())
+				{
+					LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"New hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
+					PlayerControlBegin::pauseAutomaticRoundProgression = true;
+				}
+				else
+					LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"New hostile contact: "+e->GetNiceName());
 			}
 			else
 			{
-				LogEvent(EventClass(EventSignificance::Common,EventFlavor::Gain),"Friendly contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
+				LogEvent(EventClass(EventSignificance::Common,EventFlavor::Gain),"New friendly contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
 			}
 		}
 	}
