@@ -605,76 +605,27 @@ namespace Lua
 
 	void	API::Setup()
 	{
-		const auto p = program;
-		ASSERT__(p);
-		gameTable = p->CreateTable();
-		gridTable = p->CreateTable();
-		gameTable.SetField("Grid",gridTable);
+		gameTable = program->SetGlobalTable("Game");
+			gridTable = gameTable.SetSubTable("Grid");
+			terrainTable = gameTable.SetSubTable("Terrain");
+				terrainContentTable = terrainTable.SetSubTable("Content");
+
+			researchTable = gameTable.SetSubTable("Research");
+				researchTopicList = researchTable.SetSubTable("Topics");
 		
-		terrainTable = p->CreateTable();
-		gameTable.SetField("Terrain", terrainTable);
+			entityIDMap = gameTable.SetSubTable("units");
 
-		terrainContentTable = p->CreateTable();
-		terrainTable.SetField("Content",terrainContentTable);
-
-		researchTable = p->CreateTable();
-		gameTable.SetField("Research",researchTable);
-		researchTopicList = p->CreateTable();
-		researchTable.SetField("Topics",researchTopicList);
-		gameTable.SetGlobal("Game");
-
-		entityIDMap = program->CreateTable();
-		gameTable.SetField("units",entityIDMap);
 		#ifdef CLIENT
-			myEntityIDMap = program->CreateTable();
-			gameTable.SetField("myUnits",myEntityIDMap);
-			alliedEntityIDMap = program->CreateTable();
-			gameTable.SetField("alliedUnits",alliedEntityIDMap);
-			hostileEntityIDMap = program->CreateTable();
-			gameTable.SetField("hostileUnits",hostileEntityIDMap);
+			myEntityIDMap = gameTable.SetSubTable("myUnits");
+			alliedEntityIDMap = gameTable.SetSubTable("alliedUnits");
+			hostileEntityIDMap = gameTable.SetSubTable("hostileUnits");
 
-			myMarkerIDMap = program->CreateTable();
-			gameTable.SetField("myMarkers", myMarkerIDMap);
+			myMarkerIDMap = gameTable.SetSubTable("myMarkers");
 		#endif
 
-		factionIDMap = program->CreateTable();
-		gameTable.SetField("factions",factionIDMap);
+			factionIDMap = gameTable.SetSubTable("factions");
+			allianceIDMap = gameTable.SetSubTable("alliances");
 
-		allianceIDMap = program->CreateTable();
-		gameTable.SetField("alliances",allianceIDMap);
-
-
-		gameTable.SetFunction("GetDistance",Detail::GetDistance);
-
-		#ifdef LOWER_RESOLUTION_PLANET
-			gridTable.SetField("lowerResolutionPlanet",true);
-		#else
-			gridTable.SetField("lowerResolutionPlanet",false);
-		#endif
-
-		gridTable.SetFunction("ToLocation",[this](const Lua::Table&cell, int height)
-		{
-			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1",Grid::LowSetup::GridType::CellCount);
-			if (height < Grid::CellStack::BottomHeight)
-				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
-			if (height > Grid::CellStack::TopHeight)
-				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") exceeds maximum grid height ("+String(Grid::CellStack::TopHeight)+")");
-			return this->ToTable(Grid::LCellIdI(stack,height));
-		});
-		gridTable.SetFunction("AffectedByEMP",[](const Lua::Table&loc)
-		{
-			auto cell = Detail::ToLGridCell(loc,"AffectedByEMP(): Location parameter");
-			return Grid::AffectedByEMP(cell);
-		});
-		gridTable.SetFunction("IsClear",[](const Lua::Table&loc)
-		{
-			auto location = Detail::ToLGridCell(loc,"IsClear(): Location parameter");
-			return World::actual.LowCellIsClearIgnoreStructure(location);
-		});
-
-
-		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
-		gridTable.SetField("topHeight",Grid::CellStack::TopHeight);
 	}
 
 	Lua::Table	API::LuaFindShortestPathFrom(const Objects::PVehicle&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)
@@ -1351,6 +1302,38 @@ namespace Lua
 
 		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource){return LuaFindHighestAvailableResourceLocation(resource);});
 		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
+
+
+		gridTable.SetFunction("ToLocation",[this](const Lua::Table&cell, int height)
+		{
+			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1",Grid::LowSetup::GridType::CellCount);
+			if (height < Grid::CellStack::BottomHeight)
+				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
+			if (height > Grid::CellStack::TopHeight)
+				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") exceeds maximum grid height ("+String(Grid::CellStack::TopHeight)+")");
+			return this->ToTable(Grid::LCellIdI(stack,height));
+		});
+		gridTable.SetFunction("AffectedByEMP",[](const Lua::Table&loc)
+		{
+			auto cell = Detail::ToLGridCell(loc,"AffectedByEMP(): Location parameter");
+			return Grid::AffectedByEMP(cell);
+		});
+		gridTable.SetFunction("IsClear",[](const Lua::Table&loc)
+		{
+			auto location = Detail::ToLGridCell(loc,"IsClear(): Location parameter");
+			return World::actual.LowCellIsClearIgnoreStructure(location);
+		});
+
+
+		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
+		gridTable.SetField("topHeight",Grid::CellStack::TopHeight);
+		#ifdef LOWER_RESOLUTION_PLANET
+			gridTable.SetField("lowerResolutionPlanet",true);
+		#else
+			gridTable.SetField("lowerResolutionPlanet",false);
+		#endif
+
+		gridTable.SetFunction("GetDistance",Detail::GetDistance);
 
 	}
 
