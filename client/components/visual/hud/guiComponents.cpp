@@ -1635,6 +1635,12 @@ namespace Component
 			Detail::DeactivateInput(&backup);
 	}
 
+	StringRef			Input::GetTextRef()
+	{
+		if (IsActive())
+			return StringRef(Engine::keyboard.GetInput(),Engine::keyboard.GetInputLen());
+		return StringRef(backup.GetCharacters(),backup.GetLength());
+	}
 
 
 	String			Input::GetText()

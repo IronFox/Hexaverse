@@ -26,8 +26,8 @@ namespace Dialog
 	typedef std::function<void()>	FOnConfirm;
 	typedef std::function<void(bool)>	FOnConfirmBool;
 	typedef std::function<CheckResult()>	FCheckState;
-	typedef std::function<bool(const String&)>	FCheckInput;
-	typedef std::function<void(const String&)>	FFetchInput;
+	typedef std::function<bool(const StringRef&)>	FCheckInput;
+	typedef std::function<void(const StringRef&)>	FFetchInput;
 	typedef std::function<void(const char*)>	FOnPassword;
 
 
