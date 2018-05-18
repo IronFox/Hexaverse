@@ -57,6 +57,8 @@ namespace ScriptedAI
 	bool			HasSuccessfullyExecuted();
 	D::PathString	GetDocumentationPath();
 
+	bool			DoneThisRound();
+	bool			SuccessfullyExecutedThisRound();
 
 	void			CreateTemplateAt(const D::PathString&);
 

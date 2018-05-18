@@ -25,6 +25,9 @@ namespace ScriptedAI
 		FileSystem::ftime_t	scriptTime;
 		bool			freshState = false, reloadScript = true;
 		bool			hasSuccessfullyExecuted = false;
+
+		bool			completedThisPhase = false;
+
 	}
 
 	class Thread : public Sys::ThreadObject
@@ -187,6 +190,13 @@ namespace ScriptedAI
 	{
 		ASSERT__(!IsRunning());
 		
+		static bool installed = false;
+		if (!installed)
+		{
+			GlobalEvents::phaseChange << [](){Detail::completedThisPhase = false; ASSERT__(!IsRunning());};
+			installed = true;
+		}
+
 		if (thread.api.IsCreated())
 		{
 			Lua::Reference ref;
@@ -249,6 +259,8 @@ namespace ScriptedAI
 				HUD::WindowStack::SignalSituationChange();
 				HUD::HexGrid::RefreshButtonState();
 			#endif
+
+			Detail::completedThisPhase = true;
 		}
 	}
 
@@ -360,6 +372,22 @@ namespace ScriptedAI
 	{
 		return RuntimeConfig::myConfig.Lookup("AIScripts");
 	}
+
+	bool			DoneThisRound()
+	{
+		if (!IsLoaded())
+			return true;
+		if (IsRunning())
+			return false;
+		return Detail::completedThisPhase;
+	}
+
+	bool			SuccessfullyExecutedThisRound()
+	{
+		return Detail::completedThisPhase && Detail::hasSuccessfullyExecuted;
+	}
+
+
 
 	#ifdef HAS_WINDOW
 	void	DefineCommands(const Objects::Command::PCommandGroup&aiCommands)
