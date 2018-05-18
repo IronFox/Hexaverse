@@ -36,7 +36,6 @@ namespace PlayerControlBegin
 			ApplicationInterface::SignalRoundEnd();
 		}
 
-		pauseAutomaticRoundProgression = false;
 	}
 
 

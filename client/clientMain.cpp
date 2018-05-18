@@ -249,6 +249,7 @@ namespace ApplicationInterface
 
 	void	SignalRoundEnd()
 	{
+		PlayerControlBegin::pauseAutomaticRoundProgression = false;
 		if (Network::ControlEnabled())
 		{
 			Network::client.SendSignal(Protocol::ChannelID::RequestRoundEnd);
