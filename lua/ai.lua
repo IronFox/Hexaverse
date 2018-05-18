@@ -117,19 +117,20 @@ function ProcessAttackPriority(u--[[Unit]],explosionCenter--[[Vector]],maxExplos
 end;
 
 function ProcessAttackTarget(source--[[Unit]], candidate--[[Unit]],  attackTarget--[[Table: AttackTarget[] ]])
-	if (candidate.isOwnedByMe or candidate.isIndestructible) then
+	--Game.Log("Processing attack target "..candidate.niceName);
+	if (candidate.isIndestructible) then
 		return;
 	end;
 	-- float distance = Vec::quadraticDistance(source.system.w.xyz,candidate.system.w.xyz);
 	-- const float range = source.GetAttackRange();
-	local choice = source.turret.FindTarget(candidate.location);
+	local choice = source.turret.SearchAttackTarget(candidate.location);
 	if (choice ~= nil) then
 		local explosionRadius = source.turret.explosionRadius;
 
 		local rs = source.turret.TraceTrajectory(choice);
 
 		if (rs == nil) then
-			Game.Log("Cannot trace good trajectory to destination. Invalid trajectory");
+			Game.Log("Cannot trace good trajectory to ".. candidate.niceName ..". Invalid trajectory");
 			return;
 		end;
 		
@@ -141,8 +142,8 @@ function ProcessAttackTarget(source--[[Unit]], candidate--[[Unit]],  attackTarge
 		end;
 
 
-		Game.Log("Trajectory checks out");
-		local needAttacks = math.ceil(math.max(1,candidate.health)) / source.turret.damageLevel;
+		--Game.Log("Trajectory checks out");
+		local needAttacks = math.ceil(math.max(1,candidate.health) / source.turret.damageLevel);
 		if (rs.midFlightImpact) then
 			needAttacks = needAttacks + 1;
 		end;
@@ -155,7 +156,7 @@ function ProcessAttackTarget(source--[[Unit]], candidate--[[Unit]],  attackTarge
 				priority = priority + ProcessAttackPriority(m.unitReference,rs.impactAt,explosionRadius);
 			end;
 		end;
-		Game.Log("Base Priority considered "..tostring(priority));
+		Game.Log("Base Priority for ".. candidate.niceName .." considered "..tostring(priority)..". Will need "..tostring(needAttacks).." attack(s)");
 		for i = 1,needAttacks do
 			local t = {
 				explosionAt = rs.impactAt,
@@ -163,8 +164,9 @@ function ProcessAttackTarget(source--[[Unit]], candidate--[[Unit]],  attackTarge
 				target = choice,
 				midflightExplosion = rs.midFlightImpact
 			};
-			attackTarget[#attackTarget] = t;
+			attackTarget[#attackTarget + 1] = t;
 		end;
+
 	end;
 end;
 
@@ -176,6 +178,9 @@ function EstimateInterest(turret, constructionCost)
 	return rs * 3.0;
 end;
 
+function IsRadar(u)
+	return string.find(string.lower(u.typeName),'radar') ~= nil;
+end;
 
 function ProcessVehicle(v)
 	
@@ -222,14 +227,15 @@ function ProcessVehicle(v)
 		Game.CreateMarker(v,'Visited');
 	end;
 
+	local explosionRadius = t.explosionRadius or 0;
+	local expR2 = explosionRadius * explosionRadius;
 
 	if (attacker) then
-		local explosionRadius = t.explosionRadius;
-		local expR2 = explosionRadius * explosionRadius;
+		Game.Log("Processing attacker "..v.niceName);
 		local id = v.id;
 		local attackTarget = {};
 
-		for _,u in pairs(Game.units) do
+		for _,u in pairs(Game.hostileUnits) do
 			ProcessAttackTarget(v,u,attackTarget);
 		end;
 		
@@ -239,18 +245,19 @@ function ProcessVehicle(v)
 			end;
 		end;
 		
+		--Game.Log("Got "..tostring(#attackTarget).." candidates");
+		
+		
 		for i=1,#attackTarget do
 			local a = attackTarget[i];
 			if a.midflightExplosion then
 				local ref = a.explosionAt;
 				local conflict = false;
-				for u in Game.units do
-					if not conflict and u.isOwnedByMe then
-						local distance = QuadraticDistance(u.location.world,ref);
-						if (distance < expR2) then
-							conflict = true;
-							break;
-						end;
+				for _,u in pairs(Game.myUnits) do
+					local distance = QuadraticDistance(u.location.world,ref);
+					if (distance < expR2) then
+						conflict = true;
+						break;
 					end;
 				end;
 				if conflict then
@@ -265,8 +272,8 @@ function ProcessVehicle(v)
 		end;
 		
 		local targets = {};
-		for _,t in pairs(attackTarget) do
-			targets[#targets] = t.target;
+		for k,t in pairs(attackTarget) do
+			targets[k] = t.target;
 		end;
 		
 		v.Attack(targets);
@@ -282,14 +289,14 @@ function ProcessVehicle(v)
 		if u.isOwnedByMe and u.turret and QuadraticDistance(v.location.world,u.location.world) < 25.0 then
 			if u.turret.canAttack then
 				proximityPresence = proximityPresence+ 1;
-			else
+			elseif IsRadar(u) then
 				radarProximity = radarProximity + 1;
 			end;
 		end;
 	end;
-	if not attacker and radarProximity > 1 and math.random() < 0.3 then
+	if IsRadar(v) and radarProximity > 1 and math.random() < 0.3 then
 		--too many radars here
-		Game.Log("");
+		Game.Log("Too many radars near "..v.niceName..". Destroying radar");
 		v.Destroy();
 		return;
 	end;
@@ -459,7 +466,7 @@ function	Execute()
 
 	for _,m in pairs(Game.myMarkers) do
 		if (m.type == 'Visited' and m.age > 100) then
-			Game.Log("Deleting marker "..m.GetName()..". Reached end-of-life after 100 rounds");
+			Game.Log("Deleting marker "..m.id..". Reached end-of-life after 100 rounds");
 			m.Destroy();
 		end;
 	end;
