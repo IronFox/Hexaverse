@@ -67,7 +67,9 @@ namespace ScriptedAI
 						init(Lua::nil);
 				}
 				
+				auto t = timer.Now();
 				execute();
+				LogEvent(EventSignificance::Important,api.program->GetName()+": Execution took "+String(timer.GetSecondsSince(t))+" seconds...");
 				Detail::hasSuccessfullyExecuted = true;
 			}
 			catch (const Lua::Exception&ex)
