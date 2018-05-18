@@ -286,6 +286,12 @@ namespace ScriptedAI
 	}
 
 
+	D::PathString	GetDocumentationPath()
+	{
+		return FileSystem::Folder().FindFile("../Lua/General Lua API Documentation.txt")->GetLocation();
+	}
+
+
 	void	CreateTemplateAt(const D::PathString&path)
 	{
 		StringFile f;
@@ -295,16 +301,17 @@ namespace ScriptedAI
 			<< "Generated Lua AI file. Fill out the details to define what the AI is supposed to do." << nl
 			<< "You have access to a set of API functions to examine units and instruct them," << nl
 			<< "documented in " <<
-			FileSystem::PathToString(FileSystem::Folder().FindFile("../Lua/General Lua API Documentation.txt")->GetLocation()) << nl
+			FileSystem::PathToString(GetDocumentationPath()) << nl
 			<< "]]" << nl
 			<< nl
 			<< "--[[" << nl
 			<< "@brief State export" << nl << nl
 			<< "This function is expected to export any persistent AI state." << nl
 			<< "Whatever you return will be fed to Init() when resuming interrupted execution." << nl
-			<< "Anything you keep in the local Lua state but don't export here will be lost during discontinuities" << nl
+			<< "Anything you keep in the local Lua state but don't export here will be lost during interruptions" << nl
 			<< "(e.g. save game loading, client crash, AI script reloading during debug, etc)." << nl
-			<< "@return Exported state. May be any regular Lua type, including arbitrarily nested tables, or plain nil." << nl
+			<< "@return Exported state. May be any regular Lua type, including arbitrarily nested tables, or"<<nl
+			<< "plain nil." << nl
 			<< "]]" << nl
 			<< "function ExportState()" << nl
 			<< "\treturn nil;" << nl
@@ -323,14 +330,14 @@ namespace ScriptedAI
 			<< "@brief AI execution entry point" << nl << nl
 			<< "This function is executed whenever the AI is supposed to do something." << nl
 			<< "During production runs, this function will be called exactly once at the beginning of a round." << nl
-			<< "Executed asynchronously. Take as much time as you need, though bad things _will_ happen if you" << nl
-			<< "take longer than the server permits any player. Try to not produce endless loops as those will" << nl
-			<< "force the user to restart the client." << nl
+			<< "Executed asynchronously. May take as much time as needed, though bad things WILL happen if it" << nl
+			<< "takes longer than the server permits any player. Also, endless loops are bad as those will" << nl
+			<< "force the user to restart the client. There is currently no kill-switch." << nl
 			<< "]]" << nl
 			<< "function Execute()" << nl
-			<< "\t-- Your stuff here" << nl
-			<< "\t-- Check the API documentation: " <<
-			FileSystem::PathToString(FileSystem::Folder().FindFile("../Lua/General Lua API Documentation.txt")->GetLocation()) << nl
+			<< "\t-- Your AI goes here" << nl
+			<< "\t-- Again, check API documentation in " <<
+			FileSystem::PathToString(GetDocumentationPath()) << nl
 			<< "end;" << nl << nl
 			;
 

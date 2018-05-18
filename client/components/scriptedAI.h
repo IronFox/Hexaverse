@@ -54,7 +54,9 @@ namespace ScriptedAI
 	bool			IsLoaded();
 	D::PathString	GetScriptPath();
 	bool			HasSuccessfullyExecuted();
+	D::PathString	GetDocumentationPath();
 
-	void	CreateTemplateAt(const D::PathString&);
+
+	void			CreateTemplateAt(const D::PathString&);
 }
 
