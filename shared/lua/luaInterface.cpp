@@ -1793,6 +1793,13 @@ namespace Lua
 	}
 
 
+	Table	Program::SetGlobalTable(const String&name)
+	{
+		Table rs = CreateTable();
+		SetGlobal(name,rs);
+		return rs;
+	}
+
 	void	Program::SetGlobal( const String&name, const Reference&ref )
 	{
 		if (!ref.Push())

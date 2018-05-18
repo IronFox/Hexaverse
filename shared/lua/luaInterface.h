@@ -539,6 +539,11 @@ namespace Lua
 		*/
 		void			SetGlobal(const String&name, const Reference&ref);
 		/**
+		Creates, globally sets, and returns a new table by the given global name.
+		The process may overwrite any previous value of the specified global
+		*/
+		Table			SetGlobalTable(const String&name);
+		/**
 		Unsets the specified global variable
 		*/
 		void			UnsetGlobal(const String&name);
