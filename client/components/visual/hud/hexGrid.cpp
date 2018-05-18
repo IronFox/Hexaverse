@@ -515,7 +515,7 @@ namespace HexGrid
 			{
 				ScriptedAI::CreateTemplateAt(debugLua);
 				Dialog::ShowMessage("It appears you have activated the AI for the first time."
-						" A new Lua script has been created at "+FileSystem::PathToString(debugLua)+"."
+						" A new Lua script has been created at\n"+FileSystem::PathToString(debugLua)+"\n"
 						" Edit the file to define the desired behavior.\n"
 						"Whenever you press the AI button, the script will be reloaded, and applied to your current set of units.");
 			}
