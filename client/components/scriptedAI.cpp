@@ -10,6 +10,7 @@
 #include "visual/hud/guiComponents.h"
 #include <io/string_file.h>
 #include "io.h"
+#include "playerControlBegin.h"
 
 namespace ScriptedAI
 {
@@ -274,12 +275,10 @@ namespace ScriptedAI
 				Detail::UnregisterExecution();
 
 			onExecutionFinished();
-			#ifdef HAS_WINDOW
-				HUD::WindowStack::SignalSituationChange();
-				HUD::HexGrid::RefreshButtonState();
-			#endif
 
 			Detail::completedThisPhase = true;
+
+			PlayerControlBegin::CheckAutoNextRound();
 		}
 	}
 
