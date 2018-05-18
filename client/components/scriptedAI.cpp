@@ -20,6 +20,7 @@ namespace ScriptedAI
 		index_t			frameBeginRegistration = InvalidIndex;
 		Array<BYTE>		exportedState;
 		PathString		scriptPath;
+		FileSystem::ftime_t	scriptTime;
 		bool			freshState = false, reloadScript = true;
 	}
 
@@ -166,6 +167,14 @@ namespace ScriptedAI
 		}
 	}
 
+	void	Reload(bool force, bool freshState)
+	{
+		ASSERT__(IsLoaded());
+		const bool doLoad = force || FileSystem::GetModificationTime(Detail::scriptPath) != Detail::scriptTime;
+		if (doLoad)
+			Load(Detail::scriptPath,freshState);
+	}
+
 	void	Load(const PathString&scriptPath, bool freshState)
 	{
 		ASSERT__(!IsRunning());
@@ -205,6 +214,7 @@ namespace ScriptedAI
 		api.AddGrid();
 
 		Detail::scriptPath = scriptPath;
+		Detail::scriptTime = FileSystem::GetModificationTime(scriptPath);
 		Detail::freshState = freshState;
 
 	}
@@ -254,6 +264,15 @@ namespace ScriptedAI
 	}
 
 
+	bool			IsLoaded()
+	{
+		return Detail::scriptPath.IsNotEmpty();
+	}
+
+	D::PathString	GetScriptPath()
+	{
+		return Detail::scriptPath;
+	}
 	void	CreateTemplateAt(const D::PathString&path)
 	{
 		StringFile f;

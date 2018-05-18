@@ -29,6 +29,15 @@ namespace ScriptedAI
 	void	Load(const D::PathString&scriptPath, bool freshState);
 
 	/**
+	Checks and potentially reloads the currently loaded file.
+	Demand to reload is determined by modification timestamp.
+	A file must be loaded.
+	@param force If set, ignore file modification timestamp and reload
+	@param freshState If set, ignore any previously exported state and start fresh. Effective only if the file actually is reloaded
+	*/
+	void	Reload(bool force, bool freshState);
+
+	/**
 	Starts asynchronous execution of the loaded AI script.
 	Fails silently if already active.
 	Hooks itself in GlobalEvents::frameBegin to re-check completion, and possibly invoke
@@ -42,6 +51,8 @@ namespace ScriptedAI
 	*/
 	bool	IsRunning();
 
+	bool			IsLoaded();
+	D::PathString	GetScriptPath();
 
 	void	CreateTemplateAt(const D::PathString&);
 }
