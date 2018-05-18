@@ -792,49 +792,51 @@ namespace Lua
 	Lua::Table	API::MapEntity( const Objects::PWorldEntity&e, bool actual, bool updateIfFound )
 	{
 		auto found = loadedEntityTableMap.QueryPointer(e->id);
+		entityMap.Set(e->id,e);
 		Lua::Table t;
 		bool outIsNew = false;
+		bool update = updateIfFound;
+		bool setField = false;
 		if (found)
 		{
 			t = found->first;
 			if (actual && entityMappedToTable.SetNew(e->id))
 			{
-				const String sid = e->id.ToFullString();
-				entityIDMap.SetField(sid,t);
-				#ifdef CLIENT
-					if (e->isOwnedByMe)
-						myEntityIDMap.SetField(sid,t);
-					elif (e->owner && e->owner->IsAlliedWithMe())
-						alliedEntityIDMap.SetField(sid,t);
-					else
-						hostileEntityIDMap.SetField(sid,t);
-				#endif
+				setField = true;
 			}
 			if (!updateIfFound && actual == found->second)
 				return t;
 		}
 		else
 		{
-			entityMap.Set(e->id,e);
+			update = true;
 			t = program->CreateTable();
 			outIsNew = true;
 			
 			if (actual)
 			{
-				const String sid = e->id.ToFullString();
-
 				entityMappedToTable.Set(e->id);
-				entityIDMap.SetField(sid,t);
-				#ifdef CLIENT
-					if (e->isOwnedByMe)
-						myEntityIDMap.SetField(sid,t);
-				#endif
+				setField = true;
 			}
 			loadedEntityTableMap.Set(e->id,std::make_pair(t,actual));
 		}
 
+		const String sid = e->id.ToFullString();
+		if (setField)
+		{
+			entityIDMap.SetField(sid,t);
+			#ifdef CLIENT
+				if (e->isOwnedByMe)
+					myEntityIDMap.SetField(sid,t);
+				elif (e->owner && e->owner->IsAlliedWithMe())
+					alliedEntityIDMap.SetField(sid,t);
+				else
+					hostileEntityIDMap.SetField(sid,t);
+			#endif
+		}
 
-
+		if (!update)
+			return t;
 
 		t.SetField("name",e->GetName());
 		t.SetField("niceName",e->GetNiceName());
