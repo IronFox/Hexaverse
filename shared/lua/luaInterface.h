@@ -108,6 +108,7 @@ namespace Lua
 
 
 		void PushParameter(lua_State *state, long long i);
+		inline void PushParameter(lua_State *state, unsigned long long i) {PushParameter(state,(long long)i);}
 		void PushParameter(lua_State *state, bool b);
 		inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
 		inline void PushParameter(lua_State *state, unsigned i) {PushParameter(state,(long long)i);}
