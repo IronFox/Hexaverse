@@ -852,7 +852,7 @@ namespace Game
 
 		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
-			if (v.IsAboveGrid())
+			if (v.IsAboveTerrain())
 			{
 				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
 			}
@@ -1586,7 +1586,7 @@ namespace Game
 	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
-			if (e->owner == Objects::Faction::nexus && e->IsAboveGrid())
+			if (e->owner == Objects::Faction::nexus && e->IsAboveTerrain())
 				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (Grid::AffectedByEMP(e->location))
 			{

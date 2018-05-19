@@ -59,9 +59,9 @@ Table-Type: Unit
 	string		typeName;				String representation of the type. May be a compound type if isMovile is true
 	Faction		owner;					Entity owner
 	int			constructionCost;		Amount of resources necessary to build this type
+	int			height;					Unit height in layers. Typically 1. Some structures are larger.
 	float		scanningRange;			Regular grid scanning range
 	bool		isMobile;				True if this is a mobile entity
-	bool		isVehicle;				True if this is a vehicle (implies isMobile)
 	bool		isStructure;			True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
 	Loc			location;				Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
 	bool		isSleeping;				True if the local entity is currently sleeping
@@ -112,24 +112,23 @@ Table-Type: Unit
 		int		movementSpeed;			Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
 		bool	motionIgnoresAttack;	True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	
-	[isVehicle]
 		int		maxClimbUp;				Maximum climbing height difference. Typically 1
 		int		minClimbDown;			Minimum down-climbing heigh difference. Negative. Typically -1 or less
 		bool	CanStandAt(Loc);		Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
-		
+		bool	IsAffectedByGravity(Loc)	Checks whether or not the local unit would be affected by gravity at the given location. If the parameter is nil, will use the current mobile location
 
-		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil)
+		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) and the current mobile location
 		@param unit Unit to determine reach of
 		@param isBlocked Optional function that excludes certain cells. Type: bool BlockTest(Loc): true if blocked. 
 			If nil, all possible locations are considered. Otherwise invoked only once per candidate (result is cached)
 		@param maxReach Maximum distance (in terms of mobile movementSpeed) to consider. Larger values increase time necessary to complete
 		@param forceReversible If true only consider paths that the specified unit can return on (as opposed to e.g. falling safely from a cliff, but not being able to climb back up)
 		@param allowAccessibleHangars If true also include possible destination hangars of the local unit, false to consider those areas blocked
-		@param ignoreFriendlyVehiclesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
+		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 		@param cannotStandOnUnknown Set true to disallow relocation onto unknown terrain
-		@return Array of reachable locations
+		@return Array of reachable locations. The current unit location is omitted.
 
-		Reachable[]						GetReach(func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute, bool cannotStandOnUnknown);
+		Reachable[]						GetReach(func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedMobilesOnRoute, bool cannotStandOnUnknown);
 
 		@brief Finds the shortest grid path for the specified unit to the specified target location
 		@param unit Unit to find the path for
@@ -139,11 +138,11 @@ Table-Type: Unit
 			Setting this function such that it reduces costs of a given node will cause pathfinding to favor paths across that location.
 			Conversely, increasing the returned value will cause the routing mechanism to avoid the location (assuming it's not the target).
 			Note that the returned value will be factored in the calculation of Reachable.movementCostsFromRoot
-		@param ignoreFriendlyVehiclesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
+		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 		@return Array of path nodes, in order along the route. The current unit location is omitted, making the first entry the first step to take.
 
-		Reachable[]						FindShortestPath(Loc target, int(Loc,int) costModifier,  bool ignoreFriendlyVehiclesOnRoute)
-		Reachable[]						FindShortestPathFrom(Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreFriendlyVehiclesOnRoute)
+		Reachable[]						FindShortestPath(Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
+		Reachable[]						FindShortestPathFrom(Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
 				
 }
 

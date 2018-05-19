@@ -275,7 +275,7 @@ namespace Objects
 			}
 			if (location != cell) 
 			{
-				PVehicle v = GetVehicle(cell);
+				auto v = GetMobileEntity(cell);
 				if (v)
 				{
 					if (v->owner == owner)
@@ -309,13 +309,13 @@ namespace Objects
 			int fallingHeight = 0;
 			while (location.height-fallingHeight > -Grid::CellStack::HalfRange 
 					&& World::actual.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
-					&& NoVehicleHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
+					&& NoMobileEntityHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
 				fallingHeight ++;
 			//if (fallingHeight > 0)
 			{
 				timeCost += Times::Fall * fallingHeight;
 				location = location - fallingHeight;
-				if (!CanClimb(-fallingHeight) || !CanStandOn(World::actual,location-1,false,false))
+				if (!CanClimb(-fallingHeight) || !CanStandOn(World::actual,location-1))
 				{
 					if (cell.stackID != old.stackID)	//at least some horizontal motion
 					{
@@ -331,7 +331,7 @@ namespace Objects
 					}
 					if (isCreated)
 					{
-						RemoveVehicleFromGrid(To<Vehicle>::Cast(shared_from_this()),old);
+						RemoveFromGrid(shared_from_this(),old);
 						//RemoveFromGrid(vehicleGrid,old,To<Vehicle>::Cast(shared_from_this()));
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
@@ -339,7 +339,7 @@ namespace Objects
 							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,entityTime,timeCost);
 
 						entityTime += timeCost;
-						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
+						InsertIntoGrid(shared_from_this(),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
 					if (!IsIndestructible())
@@ -367,8 +367,8 @@ namespace Objects
 				}
 				if (isCreated)
 				{
-					RemoveVehicleFromGrid(To<Vehicle>::Cast(shared_from_this()),old);
-					InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
+					RemoveFromGrid(shared_from_this(),old);
+					InsertIntoGrid(shared_from_this(),location);
 
 					if (constructionActionCounter)
 					{
@@ -552,7 +552,7 @@ namespace Objects
 							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								Pathfinding::GetWays(owner->knownWorld,this,prev,possibilities,dest,nullptr,true,true,false);
+								Pathfinding::GetWays(owner->knownWorld,this,prev,possibilities,dest,nullptr, Pathfinding::RoutingFlags::IgnoreMobilesOnDestination | Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute);
 								bool found = false;
 								for (index_t j = 0; j < possibilities.numWays; j++)
 								{

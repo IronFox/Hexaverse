@@ -594,6 +594,7 @@ namespace Lua
 		bool		operator!=(const Reference&other) const {return !operator==(other);}
 
 		bool		operator!() const {return IsEmpty();}
+		explicit	operator bool() const {return IsSet();}
 
 		/**
 		Clears any locally held Lua references

@@ -505,7 +505,33 @@ namespace Objects
 		So far only satellites do this in case residence height changes
 		*/
 		virtual void			TranslateLocationFromExport(){};
+		virtual int				GetMaxClimbingHeight() const {return Grid::CellStack::Range;}
+		virtual int				GetMaxFallingHeight() const {return Grid::CellStack::Range;}
+		virtual bool			IsAffectedByGravity() const {return false;}
+		virtual bool			IsAffectedByGravity(const Grid::LCellIdI&) const {return false;}
+		/**
+		Checks whether or not the local mobile entity can stand atop the specified cell (not in the cell).
+		Needs only be overridden if the local entity type adheres to gravity (i.e. AffectedByGravity() returns true).
+		Otherwise it does not technically need to 'stand on' anything, and can therefor safely ignore the terrain beneath
+		@param world World to check against
+		@param cell The cell the local mobile entity is attempting to stand atop of. If relocation is performed the cell one higher than this will be used for the final location
+		@param ignoreWater Upon encountering pure water, the method succeeds if either the local vehicle can stand on water, or this value is set true
+		@param doFloat Allows the vehicle to stand on any substance. Useful for certain construction jobs
+		*/
+		virtual bool			CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, Component::GroundFlags flags = Component::GroundFlags::None) const {return true;}
+		/**
+		Queries the hindrance this mobile entity experiences from the ground underneath.
+		Should be unaffected by the entity's current location
+		*/
+		virtual THindranceVector	GetGroundHindrance() const {return THindranceVector();}
 
+
+
+		/**
+		Checks whether or not the local mobile entity can climb/fall the specified inclination level.
+		@param inclination Inclination level. Values above zero indicate ascent, below value indicate a descent
+		*/
+		bool					CanClimb(int inclination) const {return inclination <= GetMaxClimbingHeight() && inclination >= -GetMaxFallingHeight();}
 
 		//TurretBase overrides:
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};

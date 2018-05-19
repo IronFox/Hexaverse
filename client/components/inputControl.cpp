@@ -201,11 +201,11 @@ namespace InputControl
 					{
 						//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
 						int h;
-						if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
+						if (!Objects::selectedMobileEntity->CanSpawnInTerrain() && Objects::selectedMobileEntity->CanSpawnAboveTerrain(h))
 							target.height = h;
 						else
-						if (Objects::selectedMobileEntity->IsPlane())
-							target.height = Objects::SubOrbital::Height;
+							if (Objects::selectedMobileEntity->IsPlane())
+								target.height = Objects::SubOrbital::Height;
 						ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,false),Objects::activeCursorMode);
 					}
 				}
@@ -640,7 +640,7 @@ namespace InputControl
 				if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 				{
 					int h;
-					if (!Objects::selectedEntity->CanSpawnInGrid() && Objects::selectedEntity->CanSpawnAboveGrid(h))
+					if (!Objects::selectedEntity->CanSpawnInTerrain() && Objects::selectedEntity->CanSpawnAboveTerrain(h))
 						target.height = h;
 					else if (Objects::selectedEntity->IsPlane() && Objects::activeCursorMode != Objects::CursorMode::AttackMode)
 						target.height = Objects::SubOrbital::Height;
@@ -680,25 +680,28 @@ namespace InputControl
 					else
 					{
 						const auto mode = Objects::activeCursorMode;
-						if (ShouldExpand(mode) && Objects::selectedVehicle)
+						if (ShouldExpand(mode) && Objects::selectedMobileEntity)
 						{
+
 							const bool ignoreWater = mode == Objects::CursorMode::BuildRoadChainMode || mode == Objects::CursorMode::BuildBridgeMode;
 							const bool flat = mode == Objects::CursorMode::BuildBridgeMode;
 
-							Buffer0<Grid::LCellIdI>	path;
-							auto rs = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),ignoreWater,flat,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path);
+							using namespace Objects;
+							const Component::GroundFlags groundFlags = ignoreWater ? Component::GroundFlags::ForceFloatOnWater : Component::GroundFlags::None;
+
+							const auto&path = Pathfinding::shortestPath.result;
+							auto rs = Pathfinding::shortestPath.UpdateConstructionPath(*Objects::selectedMobileEntity,flat,Objects::selectedVehicle->GetLastPointOfOrigin(),target,Pathfinding::RoutingFlags::None,groundFlags);
 							switch (rs)
 							{
 								case Objects::Pathfinding::Result::InsufficientIterations:
 								{
-									path.Clear();
-									auto rs2 = Objects::Pathfinding::AppendShortestConstructionPath(Objects::selectedVehicle.get(),ignoreWater,flat,Objects::selectedVehicle->GetLastPointOfOrigin(),target,path,10000);
+									auto rs2 = Pathfinding::shortestPath.UpdateConstructionPath(*Objects::selectedMobileEntity,flat,Objects::selectedVehicle->GetLastPointOfOrigin(),target,Pathfinding::RoutingFlags::None,groundFlags,10000);
 									if (rs2 == Objects::Pathfinding::Result::DestinationReached)
 									{
 										const count_t stepLength = 10;
 										for (index_t i = stepLength; i+1 < path.GetLength(); i+= stepLength)
-											ObjectHelper::DirectTo(Objects::selectedMobileEntity,path[i], ObjectHelper::AssembleMotionFlags(false,true),mode);
-										ObjectHelper::DirectTo(Objects::selectedMobileEntity,path.Last(), ObjectHelper::AssembleMotionFlags(false,true),mode);
+											ObjectHelper::DirectTo(Objects::selectedMobileEntity,path[i].cell, ObjectHelper::AssembleMotionFlags(false,true),mode);
+										ObjectHelper::DirectTo(Objects::selectedMobileEntity,path.Last().cell, ObjectHelper::AssembleMotionFlags(false,true),mode);
 									}
 									else
 									{

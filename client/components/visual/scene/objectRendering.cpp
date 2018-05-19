@@ -1681,7 +1681,7 @@ namespace Objects
 	{
 		mobileGhosts.Foreach([orbital](const Objects::PMobileEntity&m)
 		{
-			if (m->IsAboveGrid() != orbital)
+			if (m->IsAboveTerrain() != orbital)
 				return;
 			if (m->IsPlane())
 			{
@@ -1708,7 +1708,7 @@ namespace Objects
 
 		structureGhosts.Foreach([orbital](const Objects::PStructure&s)
 		{
-			if (s->IsAboveGrid() != orbital)
+			if (s->IsAboveTerrain() != orbital)
 				return;
 			if (s->owner->IsAlliedWithMe())
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
@@ -1736,7 +1736,7 @@ namespace Objects
 
 		ForeachMobileGhost([orbital](const Objects::PMobileEntity&m)
 		{
-			if (m->IsAboveGrid() != orbital)
+			if (m->IsAboveTerrain() != orbital)
 				return;
 			if (m->IsPlane())
 			{
@@ -1762,7 +1762,7 @@ namespace Objects
 		});
 		ForeachStructureGhost([orbital](const Objects::PStructure&s)
 		{
-			if (s->IsAboveGrid() != orbital)
+			if (s->IsAboveTerrain() != orbital)
 				return;
 			Renderer::RenderSimple(*s,s->HasFoundation());
 		});
@@ -1781,7 +1781,7 @@ namespace Objects
 		overallTint.Update(noTint);	//all zero tint makes shapes invisible
 		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
-			if (v->IsAboveGrid() != orbital)
+			if (v->IsAboveTerrain() != orbital)
 				return;
 
 			{
@@ -1823,7 +1823,7 @@ namespace Objects
 
 		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
-			if (v->IsAboveGrid() != orbital)
+			if (v->IsAboveTerrain() != orbital)
 				return;
 			const bool selected = v == selectedEntity;
 			if (selected)
@@ -1863,7 +1863,7 @@ namespace Objects
 
 		structures.Foreach([orbital](const Objects::PStructure&s)
 		{
-			if (s->IsAboveGrid() != orbital)
+			if (s->IsAboveTerrain() != orbital)
 				return;
 
 			float dummy;
@@ -1912,7 +1912,7 @@ namespace Objects
 
 		for (const auto&at : attackers)
 		{
-			if (at->IsAboveGrid() != orbital)
+			if (at->IsAboveTerrain() != orbital)
 				continue;
 			M::TMatrix4<> sys;
 			const M::TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
@@ -1966,7 +1966,7 @@ namespace Objects
 
 		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
-			if (v->IsAboveGrid() != orbital)
+			if (v->IsAboveTerrain() != orbital)
 				return;
 			if (v != selectedEntity)
 			{
@@ -1988,7 +1988,7 @@ namespace Objects
 
 		structures.Foreach([orbital](const Objects::PStructure&s)
 		{
-			if (s->IsAboveGrid() != orbital)
+			if (s->IsAboveTerrain() != orbital)
 				return;
 
 			float zOffset;
@@ -2026,7 +2026,7 @@ namespace Objects
 
 		M::TVec4<> selectedTint;
 
-		if (selectedEntity && selectedEntity->IsAboveGrid() == orbital)
+		if (selectedEntity && selectedEntity->IsAboveTerrain() == orbital)
 		{
 			const PMobileEntity&v = selectedMobileEntity;
 
@@ -2068,7 +2068,7 @@ namespace Objects
 
 		display.SetRasterizer(true,true);
 
-		if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && WorldEntity::IsAboveGrid(choiceVis.arrowFromCell) == orbital)
+		if (choiceVis.showArrow && choiceVis.hasArrowCellTarget && WorldEntity::IsAboveTerrain(choiceVis.arrowFromCell) == orbital)
 		{
 			if (choiceVis.arrowCellTarget.cellLocation != choiceVis.arrowFromCell)
 			{

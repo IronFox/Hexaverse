@@ -13,11 +13,9 @@
 
 namespace Objects
 {
-	Ctr::Array<PVehicle>			vehicleGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
-	Ctr::Array<PStructure>		structureGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
+	ObjectVolumeGrid<MobileEntity>	mobileGrid;
+	ObjectVolumeGrid<Structure>		structureGrid;
 
-
-	
 
 
 
@@ -29,15 +27,6 @@ namespace Objects
 
 
 
-		namespace SubOrbital
-		{
-			bool NoHostilePlaneHere(UINT32 stackID, const OwnerParameter&v)
-			{
-				PPlane vh = GetPlane(stackID,true);
-				return !vh || vh->owner == v
-				;
-			}
-		}
 	#else
 
 
@@ -46,8 +35,6 @@ namespace Objects
 		{
 			ForeachWorldEntity([](const Objects::PWorldEntity&e)
 			{
-				if (e->IsAboveGrid())
-					return;
 				if (e->IsMobile())
 				{
 					const PMobileEntity found = GetMobileEntity(e->location);
@@ -151,9 +138,9 @@ namespace Objects
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
 			float outerRadius = explosionRadius*explosionRadius;
-			static Ctr::Buffer0<PWorldEntity>	allLivingAffected;
-			static Ctr::Buffer0<PStructure>		affectedStructures;
-			static Ctr::Buffer0<PVehicle>		affectedVehicles;
+			static Buffer0<PWorldEntity>	allLivingAffected;
+			static Buffer0<PStructure>		affectedStructures;
+			static Buffer0<PMobileEntity>	potentiallyFalling;
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime,attack](const PWorldEntity e)
 			{
 				if (e->IsIndestructible())
@@ -227,15 +214,17 @@ namespace Objects
 				allLivingAffected << e;
 
 
-				if (e->IsGroundBoundVehicle())
+				if (e->IsMobile())
 				{
-					affectedVehicles << To<Vehicle>::Cast(e);
+					const auto m = To<MobileEntity>::Cast(e);
+					if (m->IsAffectedByGravity())
+						potentiallyFalling << m;
 				}
 				else
-				if (e->IsStructure())
-				{
-					affectedStructures << To<Structure>::Cast(e);
-				}
+					if (e->IsStructure())
+					{
+						affectedStructures << To<Structure>::Cast(e);
+					}
 			});
 			atTime += timeEpsilon;
 
@@ -261,12 +250,14 @@ namespace Objects
 				}
 				//static Buffer0<PVehicle>	copy;
 				//copy = vehicles;	//in case they get whooped by falling
-				for (const auto&v : affectedVehicles)
+				for (const auto&m : potentiallyFalling)
 				{
-					v->CheckGround(atTime);	//in case they fall due to explosions
-					if (v->IsDeadOrGhost())
+					m->CheckGround(atTime);	//in case they fall due to explosions
+					if (m->IsDeadOrGhost())	//died?
 					{
-						DBG_ASSERT__(!vehicles.Contains(v));
+						//just some checks
+						DBG_ASSERT__(!vehicles.Contains(m));
+						DBG_ASSERT__(!SubOrbital::planes.Contains(m));
 					}
 				}
 			}
@@ -276,7 +267,7 @@ namespace Objects
 			}
 			allLivingAffected.Clear();
 			affectedStructures.Clear();
-			affectedVehicles.Clear();
+			potentiallyFalling.Clear();
 
 			currentExplosionAttack = nullptr;
 		}
@@ -418,32 +409,20 @@ namespace Objects
 	
 
 
-	index_t					CellToGridIndex(const Grid::LCellIdU&location)
-	{
-		index_t rs = location.layer * Grid::LowSetup::GridType::CellCount + location.stackID;
-		ASSERT_LESS__(rs,vehicleGrid.GetLength());
-		return rs;
-	}
 
-	index_t					CellToGridIndex(const Grid::LCellIdI&location)
-	{
-		index_t rs = Grid::CellStack::ToLayer(location.height) * Grid::LowSetup::GridType::CellCount + location.stackID;
-		ASSERT_LESS__(rs,vehicleGrid.GetLength());
-		return rs;
-	}
 
 	bool NothingHere(const Grid::LCellIdI&stackID)
 	{
-		return !GetStructure(stackID) && !GetVehicle(stackID);
+		return !GetEntity(stackID);
 	}
 	
-	bool NoVehicleHere(const Grid::LCellIdI&stackID)
+	bool NoMobileEntityHere(const Grid::LCellIdI&stackID)
 	{
-		return !GetVehicle(stackID);
+		return !GetMobileEntity(stackID);
 	}
-	bool NoVehicleHereExcept( const Grid::LCellIdI&cellID, const Vehicle*v )
+	bool NoMobileEntityHereExcept( const Grid::LCellIdI&cellID, const MobileEntity*v )
 	{
-		PVehicle vh = GetVehicle(cellID);
+		PMobileEntity vh = GetMobileEntity(cellID);
 		return !vh || vh.get() == v 
 			#ifndef CLIENT
 				|| !v->owner->CanSee(vh,v->entityTime)
@@ -451,184 +430,42 @@ namespace Objects
 		;
 	}
 
+	void			RemoveFromGrid(const PWorldEntity&e,const Grid::LCellIdI&location)
+	{
+		if (e->IsMobile())
+			mobileGrid.RemoveObject(location,To<MobileEntity>::Cast(e));
+		elif (e->IsStructure())
+			structureGrid.RemoveObject(location,To<Structure>::Cast(e));
+		else
+			FATAL__("There is no grid type that supports "+e->GetTypeName());
+	}
 
-	#ifndef NO_SATELLITES
-		bool NoSatelliteHere(const UINT32 stackID)
-		{
-			return !GetSatellite(stackID);
-		}
-		bool NoSatelliteHereExcept(UINT32 stackID, const Satellite*v)
-		{
-			PSatellite vh = GetSatellite(stackID);
-			return !vh || vh.get() == v
-				#ifndef CLIENT
-					|| !v->owner->CanSee(vh,v->motionTime)
-				#endif
-			;
-		}
-	#endif
+	void			InsertIntoGrid(const PWorldEntity&e,const Grid::LCellIdI&location)
+	{
+		if (e->IsMobile())
+			mobileGrid.InsertObject(location,To<MobileEntity>::Cast(e));
+		elif (e->IsStructure())
+			structureGrid.InsertObject(location,To<Structure>::Cast(e));
+		else
+			FATAL__("There is no grid type that supports "+e->GetTypeName());
+	}
 
-		
-	template <typename T>
-		void				RemoveFromGrid(Ctr::Array<T>&grid, const Grid::LCellIdI&location, const T&object)
-		{
-			ASSERT__(object->isInsertedIntoGrid);
-
-			const int h = object->GetHeight();
-
-			for (int z = 0; z < h; z++)
-			{
-				index_t at = CellToGridIndex(location+z);
-				if (grid[at] != object)
-				{
-					index_t foundAt = InvalidIndex;
-					index_t cloneAt = InvalidIndex;
-					T	cloneIs;
-					for (index_t i = 0; i < grid.GetLength(); i++)
-					{
-						if (grid[i] == object)
-						{
-							ASSERT__(foundAt == InvalidIndex);
-							foundAt = i;
-						}
-						else if (grid[i] && grid[i]->id == object->id)
-						{
-							cloneAt = i;
-							cloneIs = grid[i];
-						}
-					}
-					if (grid[at])
-						LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
-					String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
-					if (foundAt != InvalidIndex)
-					{
-						Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
-						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
-					}
-					else
-						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
-				}
-				LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
-				grid[at].reset();
-			}
-			object->isInsertedIntoGrid = false;
-		}
-	template <typename T>
-		void				InsertIntoGrid(Ctr::Array<T>&grid, const Grid::LCellIdI&location, const T&object)
-		{
-			ASSERT__(!object->isInsertedIntoGrid);
-			Grid::AssertIsValid(location,CLOCATION);
-
-			const int h = object->GetHeight();
-			if (h > 1)
-				Grid::AssertIsValid(location+h-1,CLOCATION);
-			for (int z = 0; z < h; z++)
-			{
-				index_t at = CellToGridIndex(location+z);
-				if (grid[at])
-				{
-					FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+",z="+String(z)+") at "+ToString(location)+": Cell occupied by "+grid[at]->GetName()+"(@"+ToString(grid[at]->location)+")");
-				}
-				ASSERT3__(!grid[at],grid[at]->GetName(),location,object->GetName());
-				LogEvent(EventSignificance::Debug,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
-				grid[at] = object;
-			}
-			object->isInsertedIntoGrid = true;
-		}
-	template <typename T>
-		T					QueryGrid(const Ctr::Array<T>&grid, const Grid::LCellIdI&location)
-		{
-			return grid[CellToGridIndex(location)];
-		}
-	template <typename T>
-		T					QueryGrid(const Ctr::Array<T>&grid, const Grid::LCellIdU&location)
-		{
-			return grid[CellToGridIndex(location)];
-		}
 
 
 	PStructure GetStructure(const Grid::LCellIdI&stackID)
 	{
-		if (stackID.height > Grid::CellStack::TopHeight)
-			return PStructure();
-		return QueryGrid(structureGrid,stackID);
+		return structureGrid[stackID];
 	}
 
-	PStructure GetStructure(const Grid::LCellIdU&stackID)
+	PMobileEntity GetMobileEntity(const Grid::LCellIdI&stackID)
 	{
-		if (stackID.layer >= Grid::CellStack::Range)
-			return PStructure();
-		return QueryGrid(structureGrid,stackID);
-	}
-
-	PVehicle GetVehicle(const Grid::LCellIdI&stackID)
-	{
-		return QueryGrid(vehicleGrid,stackID);
-	}
-
-	PMobileEntity GetMobileEntity(const Grid::LCellIdI&cellID)
-	{
-		if (cellID.height <= Grid::CellStack::TopHeight)
-			return QueryGrid(vehicleGrid,cellID);
-		if (cellID.height == SubOrbital::Height)
-			return SubOrbital::GetPlane(cellID.stackID,true);
-		#ifndef NO_SATELLITES
-			return GetSatellite(cellID.stackID);
-		#else
-			return PMobileEntity();
-		#endif
-	}
-	PMobileEntity GetMobileEntity(const Grid::LCellIdU&cellID)
-	{
-		if (cellID.layer < Grid::CellStack::Range)
-			return QueryGrid(vehicleGrid,cellID);
-		if (cellID.layer == SubOrbital::Layer)
-			return SubOrbital::GetPlane(cellID.stackID,true);
-		#ifndef NO_SATELLITES
-			return GetSatellite(cellID.stackID);
-		#else
-			return PMobileEntity();
-		#endif
+		return mobileGrid[stackID];
 	}
 
 
-	#ifndef NO_SATELLITES
-		PSatellite		GetSatellite(UINT32 flatCellID)
-		{
-			for (const auto&s : satellites)
-				if (s->location.stackID == flatCellID)
-					return s;
-			return PSatellite();
-		}
-	#endif
-
-	namespace SubOrbital
+	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID)
 	{
-		PPlane		GetPlane(UINT32 flatCellID, bool airborneOnly)
-		{
-			PPlane rs;
-			planes.Foreach([&rs,flatCellID,airborneOnly](const PPlane&s)
-			{
-				if (!rs && s->location.stackID == flatCellID && (!airborneOnly || s->location.height == Height))
-					rs = s;
-			});
-			return rs;
-		}
-	}
-
-	PWorldEntity					GetEntity(const Grid::LCellIdI&cellID)
-	{
-		if (cellID.height == SubOrbital::Height)
-			return SubOrbital::GetPlane(cellID.stackID,true);
-		if (cellID.height > Grid::CellStack::TopHeight)
-		{
-			#ifndef NO_SATELLITES
-				if (Satellite::IsSatelliteHeight( cellID.height ))
-					return GetSatellite(cellID.stackID);	//if there is no satellite here, there is nothing else here either
-			#endif
-			return PWorldEntity();
-		}
-		PWorldEntity e = GetVehicle(cellID);
+		PWorldEntity e = GetMobileEntity(cellID);
 		if (e)
 			return e;
 		return GetStructure(cellID);
@@ -638,36 +475,13 @@ namespace Objects
 
 	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
 	{
-		if (cellID.height > Grid::CellStack::TopHeight)
-		{
-			if (cellID.height == SubOrbital::Height)
-			{
-				#ifdef CLIENT
-					return !checkVehiclesOnClient || !SubOrbital::GetPlane(cellID.stackID,true);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
-				#else
-					return !SubOrbital::GetPlane(cellID.stackID,true);
-				#endif
-			}
-			#ifndef NO_SATELLITES
-				if (Satellite::IsSatelliteHeight( cellID.height ))
-				{
-					#ifdef CLIENT
-						return !checkVehiclesOnClient || !GetSatellite(cellID.stackID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
-					#else
-						return !GetSatellite(cellID.stackID);
-					#endif
-				}
-			#endif
-			return false;
-		}
-
 		PStructure s = GetStructure(cellID);
 		if (s && !To<Connector>::DynamicCast(s))
 			return false;
 		#ifdef CLIENT
-			return !checkVehiclesOnClient || !GetVehicle(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
+			return !checkVehiclesOnClient || !GetMobileEntity(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
 		#else
-			PVehicle v = GetVehicle(cellID);
+			auto v = GetMobileEntity(cellID);
 			return !v;
 		#endif
 	}
@@ -682,19 +496,19 @@ namespace Objects
 			return h->GetLoad() < h->GetMaximumLoad();
 		if (!World::actual.LowCellIsClear(cell) || !NothingBlockingHere(cell,true))
 			return false;
-		if (cell.height > Grid::CellStack::TopHeight)
+		if (WorldEntity::IsAboveTerrain(cell))
 		{
 			int rs = 0;
-			return entity->CanSpawnAboveGrid(rs) && rs == cell.height;	//must NOT go into CanStandOn() when above grid. That makes no sense. So return here, whatever the result
+			return entity->CanSpawnAboveTerrain(rs) && rs == cell.height;	//must NOT go into CanStandOn() when above grid. That makes no sense. So return here, whatever the result
 		}
 		else
-			if (!entity->CanSpawnInGrid())
+			if (!entity->CanSpawnInTerrain())
 				return false;
-		return !entity->IsVehicle() || To<Vehicle>::Cast(entity)->CanStandOn(World::actual,cell-1,false,false);
+		return !entity->IsAffectedByGravity(cell) || entity->CanStandOn(World::actual,cell-1);
 	}
 
 	void	GetProductionChoices( const WorldEntity*producer,const PVehicle&production,
-									Ctr::BasicBuffer<Choice>&choices)
+									BasicBuffer<Choice>&choices)
 	{
 		choices.Clear();	
 		if (!production)
@@ -781,13 +595,13 @@ namespace Objects
 				Component::VehicleBase* base = nullptr;
 				const auto&building = p->queue.First();
 
-				if (building.CanSpawnInGrid())
+				if (building.CanSpawnInTerrain())
 					GetProductionChoices(&entity,To<Vehicle>::DynamicCast( building.GetPrototype() ),movementChoices);
 
 				int h;
-				if (building.CanSpawnAboveGrid(h))
+				if (building.CanSpawnAboveTerrain(h))
 				{
-					if (entity.IsAboveGrid())
+					if (entity.IsAboveTerrain())
 					{
 						//off-grid producing off-grid
 
@@ -835,7 +649,7 @@ namespace Objects
 				const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
 
 				//const auto&c = Grid::low.grid.GetCell(location.stackID);
-				if (location.height <= Grid::CellStack::TopHeight && deploying->CanSpawnInGrid())
+				if (location.height <= Grid::CellStack::TopHeight && deploying->CanSpawnInTerrain())
 				{
 					for (int h = location.height -1; h <= location.height+1; h++)
 					{
@@ -852,7 +666,7 @@ namespace Objects
 				}
 				
 				int h;
-				if (deploying->CanSpawnAboveGrid(h))
+				if (deploying->CanSpawnAboveTerrain(h))
 				{
 					if (location.height > Grid::CellStack::TopHeight)
 						for (int j = 0; j < n.numNeighbors; j++)
@@ -1100,7 +914,7 @@ namespace Objects
 			});
 
 		#endif
-
+		InsertIntoGrid(e,e->location);
 		e->isInserted = true;
 	}
 
@@ -1135,31 +949,13 @@ namespace Objects
 			//ASSERT__(!satellitesAreLocked);
 			auto plane = To<SubOrbital::Plane>::Cast(v);
 			SubOrbital::planes << plane;
-			if (insertIntoGrid && plane->IsGroundBoundVehicle())
-			{
-				InsertIntoGrid(vehicleGrid,v->location,To<Vehicle>::Cast(plane));
-			}
 		}
 		else
 			if (v->IsPureVehicle())
 			{
 				PVehicle veh = To<Vehicle>::Cast(v);
 				vehicles << veh;
-				if (insertIntoGrid)
-				{
-					InsertIntoGrid(vehicleGrid,v->location,veh);
-				}
 			}
-			else
-				#ifndef NO_SATELLITES
-					if (v->IsSatellite())
-					{
-						//ASSERT__(!satellitesAreLocked);
-						satellites << To<Satellite>::Cast(v);
-					}
-					else
-				#endif
-					FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
 
 		#ifndef CLIENT
 			ApplicationInterface::SignalNewMobileEntity(v,restored,signalTime);
@@ -1204,7 +1000,7 @@ namespace Objects
 				ASSERT__(h > 0);
 				break;
 			}
-			existing = QueryGrid(structureGrid,s->location+h);
+			existing = structureGrid[s->location+h];
 			if (existing)
 				throw Except::Program::DataConsistencyFault(CLOCATION,
 					"Trying to insert "+s->GetNameAndOwner()+" into grid, but "+existing->GetNameAndOwner()
@@ -1212,7 +1008,7 @@ namespace Objects
 		}
 		if (s->HasFoundation())
 		{
-			existing = QueryGrid(structureGrid,s->location-1);
+			existing = structureGrid[s->location-1];
 			if (existing)
 				throw Except::Program::DataConsistencyFault(CLOCATION,
 					"Trying to insert foundation of "+s->GetNameAndOwner()+" into grid, but "+existing->GetNameAndOwner()
@@ -1232,10 +1028,6 @@ namespace Objects
 			}
 		#endif
 
-
-		InsertIntoGrid(structureGrid,s->location,s);
-
-//		InjectIntoNeighborhood(s,atTime);
 
 		#ifdef CLIENT
 			RefreshCompoundCoverage(atTime);
@@ -1332,6 +1124,9 @@ namespace Objects
 			//e->OnDestroy(timestamp);	//moved destroy further down to prevent some cascading edge cases, which loop back into the destroyed entity
 		}
 
+		if (!isRemovedFromGrid)
+			RemoveFromGrid(e,e->location);
+
 
 		bool isStructure = e->IsStructure();
 		if (isStructure)
@@ -1341,11 +1136,8 @@ namespace Objects
 
 			#ifndef CLIENT
 				e->owner->RegisterStructureLoss(s);
-
 			#endif
 
-			if (!isRemovedFromGrid)
-				RemoveFromGrid(structureGrid,e->location,s);
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
 			#ifdef CLIENT
@@ -1382,10 +1174,6 @@ namespace Objects
 						e->owner->RegisterStoredMobileLoss(v);
 
 				#endif
-				if (v->IsGroundBoundVehicle() && !isRemovedFromGrid)
-				{
-					RemoveFromGrid(vehicleGrid,v->location,To<Objects::Vehicle>::Cast(v));
-				}
 
 				if (t == RemovalType::DestroyedInStorage)
 					storedMobileEntities.FindAndErase(e);
@@ -1399,15 +1187,7 @@ namespace Objects
 						if (e->IsPureVehicle())
 							vehicles.FindAndErase(e);
 						else
-						#ifndef NO_SATELLITES
-							if (e->IsSatellite())
-							{
-								//ASSERT__(!satellitesAreLocked);
-								satellites.FindAndErase(e);
-							}
-							else
-						#endif
-								FATAL__("Type not supported at this point: "+e->GetName());
+							FATAL__("Type not supported at this point: "+e->GetName());
 
 					if (move)
 						storedMobileEntities << v;
@@ -1608,7 +1388,7 @@ namespace Objects
 		}
 
 
-		PMobileEntity			SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,const PMobileEntity&proto, bool placeNow, bool isOwnedByMe)
+		PMobileEntity			SpawnNonVehicleMobile( const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,const PMobileEntity&proto, bool placeNow, bool isOwnedByMe )
 		{
 			PMobileEntity s = To<MobileEntity>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
 			s->location = baseLocation;
@@ -1735,22 +1515,9 @@ namespace Objects
 
 
 
-	void					RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location)
-	{
-		RemoveFromGrid(vehicleGrid,location,v);
-	}
-	void					InsertVehicleIntoGrid(const PVehicle&v,const Grid::LCellIdI&location)
-	{
-		InsertIntoGrid(vehicleGrid,location,v);
-	}
 
 
 	#ifdef CLIENT
-		void					MoveGridVehicle(const PVehicle&v, const Grid::LCellIdI&from, const Grid::LCellIdI&to)
-		{
-			RemoveFromGrid(vehicleGrid,from,v);
-			InsertIntoGrid(vehicleGrid,to,v);
-		}
 	#else
 		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
 		{

@@ -480,21 +480,21 @@ namespace Objects
 		virtual bool				IsIndestructible() const;
 
 		/**
-		Checks if the local entity is currently above the regular grid (e.g. a satellite)
+		Checks if the local entity is currently above the regular terrain (e.g. a satellite)
 		*/
-		inline bool					IsAboveGrid() const	{return IsAboveGrid(location);}
-		static inline bool			IsAboveGrid(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
+		inline bool					IsAboveTerrain() const	{return IsAboveTerrain(location);}
+		static inline bool			IsAboveTerrain(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
 
 		/**
-		Checks whether or not a new instance of the local class can be spawned within the world grid
+		Checks whether or not a new instance of the local class can be spawned within the terrain grid
 		*/
-		virtual bool				CanSpawnInGrid() const {return true;}
+		virtual bool				CanSpawnInTerrain() const {return true;}
 		/**
-		Checks whether or not a new instance of the local class can be spawned above grid
+		Checks whether or not a new instance of the local class can be spawned above the terrain grid
 		@param[out] outHeight Height that a new instance can be spawned at. Not updated if the method returns false
 		@return true, if a new instance can be spawned above grid. @a outHeight will be updated to a valid non-grid height in this case
 		*/
-		virtual bool				CanSpawnAboveGrid(int&outHeight) const {return false;}
+		virtual bool				CanSpawnAboveTerrain(int&outHeight) const {return false;}
 
 		/**
 		Sentry entities automatically fill their attack queue

@@ -125,7 +125,7 @@ namespace Objects
 		public:
 			typedef BaseJob	Super;
 
-			Ctr::Buffer0<Grid::LCellIdI>path;
+			Buffer0<Grid::LCellIdI>		path;
 			bool						pathChanged;
 
 			/**/						PathJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):Super(jobAutoCompletion, movesToFocusWhenDone)	{}

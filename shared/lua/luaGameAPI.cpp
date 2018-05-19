@@ -633,20 +633,25 @@ namespace Lua
 
 	}
 
-	Lua::Table	API::LuaFindShortestPathFrom(const Objects::PVehicle&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)
+	Lua::Table	API::LuaFindShortestPathFrom(const Objects::PMobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreOwnedMobilesOnRoute)
 	{
-		bool success = true;
 		Objects::Pathfinding::FCellCostModifier costMod;
 		if (costModifier.IsSet())
 			costMod = [&costModifier, this](const Grid::LCellIdI&loc, int&costs)
 		{
 			costs = costModifier(ToTable(loc), costs);
 		};
-		success = shortestPath.Update(*v, origin, dest, ignoreFriendlyMobilesOnRoute, false, nullptr, costMod);
-		if (!success)
-			return Lua::Table{};
 
-		Lua::Table result = program->CreateTable(), pred;
+		Objects::Pathfinding::RoutingFlags flags = Objects::Pathfinding::RoutingFlags::AllowAccessibleHangars | Objects::Pathfinding::RoutingFlags::IgnoreLimit;
+		if (ignoreOwnedMobilesOnRoute)
+			flags |= Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute;
+
+		auto success = shortestPath.Update(*v, origin, dest,flags,Objects::Component::GroundFlags::None, nullptr, costMod);
+		if (success != Objects::Pathfinding::Result::DestinationReached)
+			return Lua::nil;
+
+		Lua::Table result = program->CreateTable();
+		Lua::Table pred;
 		int cost = 0;
 		for (index_t i = 0; i < shortestPath.result.Count(); i++)
 		{
@@ -797,6 +802,7 @@ namespace Lua
 		bool outIsNew = false;
 		bool update = updateIfFound;
 		bool setField = false;
+		const auto location = e->location;
 		if (found)
 		{
 			t = found->first;
@@ -842,8 +848,8 @@ namespace Lua
 		t.SetField("niceName",e->GetNiceName());
 		t.SetField("id",e->id.ToFullString());
 		t.SetField("typeName",e->GetTypeName());
+		t.SetField("height",e->GetHeight());
 		t.SetField("isMobile", e->IsMobile());
-		t.SetField("isVehicle",e->IsVehicle());
 		t.SetField("constructionCost",e->GetConstructionCost());
 		t.SetField("isStructure",e->IsStructure());
 		#ifdef CLIENT
@@ -1027,106 +1033,114 @@ namespace Lua
 
 			t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
 
-			if (m->IsVehicle())
+			Objects::WMobileEntity w = m;
+			t.SetFunction("CanStandAt",[w](const Lua::Table&loc)
 			{
-				auto v = To<Objects::Vehicle>::Cast(m);
-				Objects::WVehicle w = v;
-				t.SetFunction("CanStandAt",[w](const Lua::Table&loc)
+				auto v = w.lock();
+				if (!v)
+					throw Lua::Exception(CLOCATION,"CanStandAt(): Local unit has expired");
+				const World::Data&visibleWorld =
+					#ifndef CLIENT
+						v->owner->knownWorld
+					#else
+						World::actual
+					#endif
+				;
+				const auto location = Detail::ToLGridCell(loc,"CanStandAt(): Location parameter");
+				return visibleWorld.LowCellIsClear(location) && 
+					(!v->IsAffectedByGravity(location) || v->CanStandOn(visibleWorld,location-1));
+			});
+
+			t.SetField("maxClimbUp", m->GetMaxClimbingHeight());
+			t.SetField("minClimbDown", -m->GetMaxFallingHeight());
+
+
+			t.SetFunction("IsAffectedByGravity",[this,w,location](const Lua::Table&luaLocation)
+			{
+				auto loc = luaLocation ? Detail::ToLGridCell(luaLocation,"IsAffectedByGravity(): Location parameter") : location;
+				auto m = w.lock();
+				return m->IsAffectedByGravity(loc);
+			});
+
+			Grid::LCellIdI loc;
+			t.SetFunction("FindShortestPath", [this,w,loc](const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
+			{
+				auto v = w.lock();
+				if (!v)
+					throw Lua::Exception("FindShortestPath(): Mobile entity has expired");
+
+				const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPath(): Target parameter #1");
+
+				return this->LuaFindShortestPathFrom(v,loc,dest,costModifier,ignoreFriendlyMobilesOnRoute);
+			});
+
+			t.SetFunction("FindShortestPathFrom", [this,w](const Lua::Table&originLocation, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
+			{
+				auto v = w.lock();
+				if (!v)
+					throw Lua::Exception("FindShortestPathFrom(): Vehicle has expired");
+				const auto origin = Detail::ToLGridCell(originLocation, "FindShortestPathFrom(): Origin parmater #1");
+				const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPathFrom(): Target parmater #2");
+
+				return this->LuaFindShortestPathFrom(v,origin,dest,costModifier,ignoreFriendlyMobilesOnRoute);
+			});
+
+
+			t.SetFunction("GetReach", [this,w,location](const Lua::Function<bool(Lua::Table)>&isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedVehiclesOnRoute, bool cannotStandOnUnknown)->Lua::Table
+			{
+				auto v = w.lock();
+				if (!v)
+					throw Lua::Exception("GetReach(): Vehicle has expired");
+
+				Objects::Component::GroundFlags groundFlags = Objects::Component::GroundFlags::None;
+
+				if (cannotStandOnUnknown)
+					groundFlags |= Objects::Component::GroundFlags::DisallowUnknownGround;
+
+				Objects::Pathfinding::RoutingFlags routingFlags = Objects::Pathfinding::RoutingFlags::IgnoreLimit;
+				if (forceReversible)
+					routingFlags |= Objects::Pathfinding::RoutingFlags::ForceRevertible;
+				if (allowAccessibleHangars)
+					routingFlags |= Objects::Pathfinding::RoutingFlags::AllowAccessibleHangars;
+				if (ignoreOwnedVehiclesOnRoute)
+					routingFlags |= Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute;
+
+				if (!isBlocked)
+					mapper.Map(*v, location, nullptr, routingFlags,groundFlags, maxReach);
+				else
 				{
-					auto v = w.lock();
-					if (!v)
-						throw Lua::Exception(CLOCATION,"CanStandAt(): Local unit has expired");
-					const World::Data&visibleWorld =
-						#ifndef CLIENT
-							v->owner->knownWorld
-						#else
-							World::actual
-						#endif
-					;
-					const auto location = Detail::ToLGridCell(loc,"CanStandAt(): Location parameter");
-					return visibleWorld.LowCellIsClear(location) && v->CanStandOn(visibleWorld,location-1,false,false);
-				});
-
-				t.SetField("maxClimbUp", v->base->maxClimbUp);
-				t.SetField("minClimbDown", v->base->minClimbDown);
-
-
-				Grid::LCellIdI loc;
-				t.SetFunction("FindShortestPath", [this,w,loc](const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
-				{
-					auto v = w.lock();
-					if (!v)
-						throw Lua::Exception("FindShortestPath(): Vehicle has expired");
-
-					const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPath(): Target parameter #1");
-
-					return this->LuaFindShortestPathFrom(v,loc,dest,costModifier,ignoreFriendlyMobilesOnRoute);
-				});
-
-				t.SetFunction("FindShortestPathFrom", [this,w](const Lua::Table&originLocation, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
-				{
-					auto v = w.lock();
-					if (!v)
-						throw Lua::Exception("FindShortestPathFrom(): Vehicle has expired");
-					const auto origin = Detail::ToLGridCell(originLocation, "FindShortestPathFrom(): Origin parmater #1");
-					const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPathFrom(): Target parmater #2");
-
-					return this->LuaFindShortestPathFrom(v,origin,dest,costModifier,ignoreFriendlyMobilesOnRoute);
-				});
-
-
-				loc = v->location;
-				t.SetFunction("GetReach", [this,w,loc](const Lua::Function<bool(Lua::Table)>&isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreFriendlyVehiclesOnRoute, bool cannotStandOnUnknown)->Lua::Table
-				{
-					auto v = w.lock();
-					if (!v)
-						throw Lua::Exception("GetReach(): Vehicle has expired");
-
-					if (cannotStandOnUnknown)
-						Objects::Component::VehicleBase::canStandOnUnknown = false;
-
-
-					if (!isBlocked)
-						mapper.Map(v.get(), loc, nullptr, maxReach, forceReversible, allowAccessibleHangars, ignoreFriendlyVehiclesOnRoute);
-					else
+					mapper.Map(*v, location, [&isBlocked, this](const Grid::LCellIdI&loc)->bool
 					{
-						mapper.Map(v.get(), loc, [&isBlocked, this](const Grid::LCellIdI&loc)->bool
-						{
-							return isBlocked(ToTable(loc));
-						}, maxReach, forceReversible, allowAccessibleHangars, ignoreFriendlyVehiclesOnRoute);
-					}
+						return isBlocked(ToTable(loc));
+					}, routingFlags,groundFlags);
+				}
 
-					if (cannotStandOnUnknown)
-						Objects::Component::VehicleBase::canStandOnUnknown = true;
+				Lua::Table result = program->CreateTable();
+				Array<Lua::Table>	 tables;
+				tables.SetSize(mapper.result.Count());
+				for (index_t i = 0; i < mapper.result.Count(); i++)
+				{
+					const auto&in = mapper.result[i];
+					Lua::Table luaReachable = program->CreateTable();
+					tables[i] = luaReachable;
+					luaReachable.SetField("location", ToTable(in.cell));
+					luaReachable.SetField("movementCostsFromRoot", in.movementCostsFromRoot);
+					if (allowAccessibleHangars)
+						luaReachable.SetField("isHangarHere", Objects::AccessibleHangarHere(in.cell, *v));
+					result.AppendElement(luaReachable);
+				}
 
-
-
-					Lua::Table result = program->CreateTable();
-					Array<Lua::Table>	 tables;
-					tables.SetSize(mapper.result.Count());
-					for (index_t i = 0; i < mapper.result.Count(); i++)
-					{
-						const auto&in = mapper.result[i];
-						Lua::Table luaReachable = program->CreateTable();
-						tables[i] = luaReachable;
-						luaReachable.SetField("location", ToTable(in.cell));
-						luaReachable.SetField("movementCostsFromRoot", in.movementCostsFromRoot);
-						if (allowAccessibleHangars)
-							luaReachable.SetField("isHangarHere", Objects::AccessibleHangarHere(in.cell, *v));
-						result.AppendElement(luaReachable);
-					}
-
-					for (index_t i = 0; i < mapper.result.Count(); i++)
-					{
-						const auto&in = mapper.result[i];
-						if (in.predecessor != InvalidIndex)
-							tables[i].SetField("predecessor", tables[in.predecessor]);
-					}
+				for (index_t i = 0; i < mapper.result.Count(); i++)
+				{
+					const auto&in = mapper.result[i];
+					if (in.predecessor != InvalidIndex)
+						tables[i].SetField("predecessor", tables[in.predecessor]);
+				}
 
 
-					return result;
-				});
-			}
+				return result;
+			});
+			
 			if (actual)
 			{
 				t.SetFunction("ClearTasks",[id,this]()

@@ -1477,31 +1477,23 @@ namespace Objects
 			if (v.location != destination)
 			{
 				Grid::LCellIdI origin = _origin;
-				//if (mode == MobileEntity::BuildWallChainMode && DoneHere(origin))
-				//{
-				//	origin--;	//prevent two-block fall
-				//	origin--;	//prevent two-block fall
-				//}
 				if (mode == CursorMode::BuildBridgeMode)
 					destination.height = origin.height;
 
 
-				if (v.IsGroundBoundVehicle())
+				Component::GroundFlags groundFlags = Component::GroundFlags::None;
+				if (this->mode == CursorMode::BuildRoadChainMode || this->mode == CursorMode::BuildBridgeMode)
+					groundFlags |= Component::GroundFlags::ForceFloatOnWater;
+				if (!Pathfinding::Okay(
+					Pathfinding::shortestPath.UpdateConstructionPath(v,
+						this->mode == CursorMode::BuildBridgeMode,
+						origin,destination,Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute,groundFlags)))
 				{
-					if (!Pathfinding::Okay( Pathfinding::AppendShortestConstructionPath((const Vehicle*)&v,
-														this->mode == CursorMode::BuildRoadChainMode || this->mode == CursorMode::BuildBridgeMode,
-														this->mode == CursorMode::BuildBridgeMode,
-														 origin,destination,path) ))
-					{
 
-						return false;
-					}
+					return false;
 				}
-				else
-				{
-					FATAL__("routing not implemented for non-vehicle mobile entities");
-				}
-
+				foreach (Pathfinding::shortestPath.result,rs)
+					path << rs->cell;
 			}
 			return true;	
 		}
@@ -1534,9 +1526,6 @@ namespace Objects
 			Grid::LCellIdI destination = _destination;
 			if (mode != CursorMode::BuildBridgeMode)
 				while (!world.LowCellIsClearIgnoreStructure(destination))
-					destination++;
-			else
-				if (v.IsGroundBoundVehicle() && !((Vehicle&)v).CanStandOn(world,destination,false,true))
 					destination++;
 			while (world.LowCellIsClear(destination-1))
 				destination--;

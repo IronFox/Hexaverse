@@ -801,7 +801,7 @@ namespace Objects
 			{
 				Pathfinding::TWays	ways;
 
-				GetMobileWays(owner->knownWorld, this,  location,ways, Grid::LCellIdI::Invalid, nullptr,false,false);
+				GetWays(owner->knownWorld, this,  location,ways, Grid::LCellIdI::Invalid, nullptr,Pathfinding::RoutingFlags::AllowAccessibleHangars,Component::GroundFlags::None);
 				//random first to maybe not make the same mistake twice
 				for (index_t i = 0; i < ways.numWays; i++)
 				{
@@ -1138,19 +1138,16 @@ namespace Objects
 		bool			MobileEntity::PlotCourse( MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/ )
 		{
 			const World::Data&world = owner->knownWorld;
-			if (IsPureVehicle()) 
+			for (index_t i = 0; i < destination.GetLength(); i++)
 			{
-				for (index_t i = 0; i < destination.GetLength(); i++)
-				{
-					Grid::LCellIdI&dest = destination[i];
+				Grid::LCellIdI&dest = destination[i];
 
-					while (!world.LowCellIsClear(dest) && !AccessibleHangarHere(dest,*this))
-						dest++;
-					while (world.LowCellIsClear(dest-1) || AccessibleHangarHere(dest-1,*this))
-						dest--;
-					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
-						return false;
-				}
+				while (!world.LowCellIsClear(dest) && !AccessibleHangarHere(dest,*this))
+					dest++;
+				while (world.LowCellIsClear(dest-1) || AccessibleHangarHere(dest-1,*this))
+					dest--;
+				if (!virtualPlatformMode && IsAffectedByGravity(dest) && !CanStandOn(world,dest -1))
+					return false;
 			}
 
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
@@ -1241,15 +1238,12 @@ namespace Objects
 		{
 			const World::Data&world = owner->knownWorld;
 
-			if (IsPureVehicle())
+			for (auto&dest : destination)
 			{
-				for (auto&dest : destination)
-				{
-					while (!world.LowCellIsClear(dest))
-						dest++;
-					if (!((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
-						return false;
-				}
+				while (!world.LowCellIsClear(dest))
+					dest++;
+				if (IsAffectedByGravity(dest) && !CanStandOn(world,dest -1))
+					return false;
 			}
 
 			while (destination.IsNotEmpty() && destination.First() == location)
@@ -1516,15 +1510,10 @@ namespace Objects
 			{
 				UnregisterSensory(t);
 			}
-			if (IsGroundBoundVehicle())
-			{
-				Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
-			}
+			Objects::RemoveFromGrid(shared_from_this(),location);
 			location = toLocation;
-			if (IsGroundBoundVehicle())
-			{
-				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
-			}
+			Objects::InsertIntoGrid(shared_from_this(),location);
+
 			if (owner->SharesSensorsWithMe())
 			{
 				RegisterSensory(t);
@@ -1543,68 +1532,9 @@ namespace Objects
 
 	bool	MobileEntity::Task::AppendPathSegment( const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target )
 	{
-		if (v->IsPureVehicle())
-		{
-			//would be faster, but too complicated to extract cost
-			//if (target.isExplicit)
-			//{
-			//	Grid::LCellIdI	possibilities[6 * 3];
-			//	count_t numWays = Objects::GetWays(v->owner->knownWorld,(const Objects::Vehicle*)v,prev,possibilities,target.target,true,true);
-			//	bool found = false;
-			//	for (index_t i = 0; i < numWays; i++)
-			//		if (possibilities[i] == target.target)
-			//		{
-			//			found = true;
-			//			break;
-			//		}
-			//	if (!found)
-			//		return false;
-			//	path << target.target;
-			//}
-			//else
-			{
-				if (!Pathfinding::shortestPath.SelectiveUpdate((const Vehicle&)*v,prev,target.target))
-					return false;
-				this->path.AppendAll(Pathfinding::shortestPath.result);
-			}
-		}
-		else
-		{
-			if (v->IsPlane())
-			{
-				{
-					count_t offset = path.Count();
-					if (!Pathfinding::SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v, prev, target.target, path))
-						return false;
-				#ifndef CLIENT
-					if (target.isDetailed && path.Count() - offset != 1)
-					{
-						path.Truncate(offset);
-						return false;
-					}
-				#endif
-				}
-			}
-			else
-			#ifndef NO_SATELLITES
-				if (v->IsSatellite())
-				{
-					count_t offset = path.Count();
-					if (!AppendShortestPathI((const Satellite*)v,prev,target.target.stackID,path))
-						return false;
-					#ifndef CLIENT
-						if (target.isDetailed && path.Count() - offset != 1)
-						{
-							path.Truncate(offset);
-							return false;
-						}
-					#endif
-				}
-				else
-			#endif
-				FATAL__("Routing not implemented for "+v->GetTypeName());
-		}
-
+		if (!Pathfinding::Okay(Pathfinding::shortestPath.SelectiveUpdate(*v,prev,target.target, Pathfinding::RoutingFlags::AllowAccessibleHangars)))
+			return false;
+		this->path.AppendAll(Pathfinding::shortestPath.result);
 		return true;
 	}
 
@@ -1709,31 +1639,10 @@ namespace Objects
 		{
 			path.Clear();
 			path << PathNode(pointOfOrigin,0);
-			if (v->IsGroundBoundVehicle())
+			if (!Pathfinding::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
 			{
-				if (!Pathfinding::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
-				{
-					return false;	//this would be weird, but happens
-				}
+				return false;	//this would be weird, but happens
 			}
-			else
-				if (v->IsPlane())
-				{
-					if (!Pathfinding::SubOrbital::AppendShortestDirectPath(pointOfOrigin, foci.Peek().target.stackID, path))
-					{
-						return false;	//this would be weird, but happens
-					}
-				}
-				else
-				#ifndef NO_SATELLITES
-					if (v->IsSatellite())
-					{
-						if (!AppendShortestDirectSatellitePath(pointOfOrigin, foci.Peek().target.stackID, path))
-							return false;
-					}
-					else
-					#endif
-						FATAL__("Routing not implemented for " + v->GetTypeName());
 		}
 		#ifdef _DEBUG
 			static StringBuffer strPlottedCourse;

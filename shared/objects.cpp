@@ -98,7 +98,7 @@ namespace Objects
 			World::actual.onTerrainChange << [](const World::Data&d, const BaseGrid::FamiliesChanged&changed, float t){
 				Objects::ForeachWorldEntity([changed,t](const Objects::PWorldEntity&e)
 				{
-					if (e->IsAboveGrid())
+					if (e->IsAboveTerrain())
 						return;
 					if (changed.IsSet(Grid::low.grid.GetCell(e->location.stackID).family))
 						e->SignalTerrainChange(t);
@@ -130,8 +130,8 @@ namespace Objects
 				;
 
 		#endif
-		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Vehicle grid of "+String(vehicleGrid.GetContentSize())+" bytes allocated");
-		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetContentSize())+" bytes allocated");
+		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Mobile grid of "+String(mobileGrid.GetStructureSize())+" bytes allocated");
+		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetStructureSize())+" bytes allocated");
 
 
 		LogEvent(EventSignificance::Debug, nullptr, "Structure static setup");
@@ -193,8 +193,8 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				compounds.Clear();
 			#endif
-			vehicleGrid.Fill(PVehicle());
-			structureGrid.Fill(PStructure());
+			mobileGrid.Flush();
+			structureGrid.Flush();
 			#ifdef CLIENT
 				skyLinks.Clear();
 				Marker::FlushAll();
