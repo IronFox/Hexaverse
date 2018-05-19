@@ -511,6 +511,7 @@ public:
 	{
 		while (!application_shutting_down)
 		{
+			//change _getch() -> _getwch() due to https://developercommunity.visualstudio.com/content/problem/245451/unbuffered-console-io-is-broken-only-in-release-bu.html
 			int ch = _getwch();
 			if (ch == 0xE0 || ch == 0)
 			{
