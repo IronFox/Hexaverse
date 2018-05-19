@@ -1061,6 +1061,7 @@ int main( int argc, const char* argv[])
 
 			std::cout << "Running tests..." << std::endl;
 			{
+				Test::Run(Test::Routing());
 				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::StringMethods());
 				Test::Run(Test::Serialization());

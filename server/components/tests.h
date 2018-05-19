@@ -192,6 +192,15 @@ namespace Test
 		{}
 		virtual void	Run(Random&random) override;
 	};
+
+
+	class Routing : public Test
+	{
+	public:
+		/**/			Routing() : Test("Routing")
+		{}
+		virtual void	Run(Random&random) override;
+	};
 }
 
 
