@@ -6,12 +6,15 @@ v0.8.5
 	> Improved anti-aircraft geometry.
 	> Added close-button to game-end statistics (still closeable via Escape).
 	> Reduced default launcher attack range.
+	> Moved AI configuration folder from client/ai to aiClient.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.
 	* Fixed DPI awareness manifest.
 	* Fixed client warning/mishandling of anti-aircraft attack targets.
 	* Fixed bad fog of war at round beginning.
+	* Fixed missing menu button in configuration mode.
+	* Fixed main menu button while server list is visible.
 
 v0.8.4	[Apr 22 2018]
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.

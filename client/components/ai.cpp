@@ -561,6 +561,12 @@ namespace AI
 
 	}
 
+	bool	IsDone()
+	{
+		return done;
+	}
+
+
 	void	Process(float timeQuantum)
 	{
 		if (done)

@@ -31,7 +31,7 @@ namespace Network
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
 	extern UINT16				connectionBasePort;
 	
-	extern GenericHashTable<TUniqueID,CryptographicID>	accessMap;
+	extern HashTable<TUniqueID,CryptographicID>	accessMap;
 
 
 	extern Protocol::GameProgress	gameProgress;
@@ -410,7 +410,7 @@ namespace Network
 	};
 
 	extern Buffer0<ServerInfo,Swap>	servers;
-	extern GenericHashTable<TUniqueID,index_t>	serverMap;
+	extern HashTable<TUniqueID,index_t>	serverMap;
 
 	extern Timer::Time		lastPing,lastServerTableUpdate;
 

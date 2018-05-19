@@ -653,6 +653,22 @@ static int pmain (lua_State *L) {
 namespace Lua
 {
 
+	void	Reference::ResetFromStackTopPop(const PProgram&st)
+	{
+		lua_State*state = st->GetState();
+		int ref = luaL_ref(state, LUA_REGISTRYINDEX);
+		try
+		{
+			SetReference(st, ref, "");
+		}
+		catch (...)
+		{
+			luaL_unref(state, LUA_REGISTRYINDEX, ref);
+			throw;
+		}
+	}
+
+
 	bool Reference::ResetFromStack(const PProgram&st, int at)
 	{
 		if (!st)
@@ -661,16 +677,7 @@ namespace Lua
 		if (lua_gettop(state)< abs(at) || lua_isnil(state,at))
 			return false;
 		lua_pushvalue(state,at);
-		int ref = luaL_ref(state, LUA_REGISTRYINDEX);
-		try
-		{
-			SetReference(st,ref,"");
-		}
-		catch (...)
-		{
-			luaL_unref(state,LUA_REGISTRYINDEX,ref);
-			throw;
-		}
+		ResetFromStackTopPop(st);
 		return true;
 	}
 
@@ -703,6 +710,11 @@ namespace Lua
 
 	namespace Detail
 	{
+
+		void PushParameter(lua_State *state, Nil)
+		{
+			lua_pushnil(state);
+		}
 
 		void PushParameter(lua_State *state, long long i)
 		{
@@ -1172,6 +1184,13 @@ namespace Lua
 
 	}
 
+	Table		Table::SetSubTable(const char*name)
+	{
+		auto t = GetProgram()->CreateTable();
+		SetField(name,t);
+		return t;
+	}
+
 
 	/*virtual override*/ void Table::SignalChange(const String&name)
 	{
@@ -1179,7 +1198,7 @@ namespace Lua
 			throw Exception("Trying to assigning non-table Lua reference '"+name+"' to table reference variable");
 	}
 
-	void	Table::Pop(int cnt)
+	void	Table::Pop(int cnt)	const
 	{
 		lua_State*st = GetState();
 		lua_pop(st,cnt);
@@ -1245,17 +1264,23 @@ namespace Lua
 
 	bool Table::PushField(const String & name)	const
 	{
+		return PushField(name.c_str());
+	}
+
+	bool Table::PushField(const char* name)	const
+	{
 		if (!Super::Push())
 			return false;
 		lua_State*st = GetState();
-		lua_getfield(st,-1,name.c_str());
-		if (lua_isnil(st,-1))
+		lua_getfield(st, -1, name);
+		if (lua_isnil(st, -1))
 		{
-			lua_pop(st,2);
+			lua_pop(st, 2);
 			return false;
 		}
 		return true;
 	}
+
 
 	bool Table::PushElement(index_t at)	const
 	{
@@ -1270,6 +1295,29 @@ namespace Lua
 		}
 		return true;
 	}
+
+	void		Table::Foreach(const std::function<void(const String&, const Lua::Reference&)>&visitor) const
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
+		Detail::StackChecker chk(st);
+		Super::Push();
+		String key;
+		lua_pushnil(st);
+		//..., table, nil
+		while (lua_next(st, -2) != 0)
+		{
+			//..., table, key, value
+			Lua::Reference ref;
+			ref.ResetFromStackTopPop(GetProgram()); //pop value -> ..., table, key
+			key = lua_tostring(st, -1);
+			visitor(key, ref);
+		}
+		//..., table
+		lua_pop(st, 1);
+	}
+
 
 	void		Table::ClearTable()
 	{
@@ -1666,6 +1714,11 @@ namespace Lua
 			SignalChange("");
 	}
 
+	void	Reference::operator=(Nil)
+	{
+		ClearReference();
+		SignalChange("");
+	}
 
 	void		Reference::DeserializeMerge(IReadStream&stream)
 	{
@@ -1740,14 +1793,31 @@ namespace Lua
 	}
 
 
-	void	Program::SetGlobal(const String&name, const Reference&ref)
+	Table	Program::SetGlobalTable(const String&name)
+	{
+		Table rs = CreateTable();
+		SetGlobal(name,rs);
+		return rs;
+	}
+
+	void	Program::SetGlobal( const String&name, const Reference&ref )
 	{
 		if (!ref.Push())
 			return throw Lua::Exception(CLOCATION,"Can't copy reference to global '"+name+"': Reference is empty");
 		lua_setglobal(state,name.c_str());
 	}
 
-	Reference Program::GetGlobal(const String&name)
+	void	Program::UnsetGlobal( const String&name )
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
+		Detail::StackChecker chk(st);
+		lua_pushnil(st);
+		lua_setglobal(state, name.c_str());
+	}
+
+	Reference Program::GetGlobal( const String&name )
 	{
 		Reference		rs;
 		rs.ResetToGlobal(shared_from_this(),name);

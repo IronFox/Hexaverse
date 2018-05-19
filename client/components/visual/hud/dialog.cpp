@@ -232,7 +232,7 @@ namespace Dialog
 					bool canConfirmNow = !d->check || d->check() == CheckResult::OkayContinue;
 					if (d->checkInput && inputField)
 					{
-						if (!d->checkInput(inputField->GetText()))
+						if (!d->checkInput(inputField->GetTextRef()))
 							canConfirmNow = false;
 					}
 					return canConfirmNow;
@@ -301,7 +301,7 @@ namespace Dialog
 			if (bySpace)
 				return;
 			if (fetchInput)
-				fetchInput(userInput->GetText());
+				fetchInput(userInput->GetTextRef());
 			if (onPassword)
 			{
 				onPassword(passwordInput->GetText());

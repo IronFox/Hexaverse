@@ -4,6 +4,7 @@
 #include "../gridAndChoices.h"
 #include "../components.h"
 #include "../../runtimeConfig.h"
+#include "../research/globalState.h"
 
 namespace Objects
 {
@@ -18,7 +19,7 @@ namespace Objects
 				auto cause = currentExplosionAttack ? currentExplosionAttack->attackFrom : nullptr;
 				
 				const bool doomsday = RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow;
-				const auto&state = Research::globalState.zeroTable;;
+				const auto&state = Research::globalState.zeroTable;
 
 				const float bombExplosionRadius = Component::Bomb::GetRadius(false,state);
 				const float nukeExplosionRadius = Component::Bomb::GetRadius(doomsday,state);

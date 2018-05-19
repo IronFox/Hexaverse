@@ -19,7 +19,7 @@ namespace RuntimeConfig
 
 	void	ClientInit()
 	{
-		myConfig.InitConfigDir(aiMode ? "client/ai" : "client");
+		myConfig.InitConfigDir(aiMode ? "aiClient" : "client");
 		sharedConfig.InitConfigDir("shared");
 
 

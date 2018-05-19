@@ -15,7 +15,6 @@
 #include <objects/gridAndChoices.h>
 #include <objects/components.h>
 #include <image/converter/magic.h>
-#include <objects/research.h>
 #include "../../network.h"
 #include "../scene/terrain.h"
 
@@ -26,9 +25,8 @@ extern Engine::Display<Engine::DirectX11>	display;
 
 namespace Objects
 {
-	
-	Command::Container	globalCommands;
-	Command::PCommandGroup		viewCommands;
+	Command::Container		globalCommands;
+	Command::PCommandGroup	viewCommands,aiCommands;
 
 	namespace Command
 	{
@@ -55,24 +53,10 @@ namespace Objects
 			}
 
 
-		//void		RefreshCommands(bool controlEnabled)
-		//{
-		//	controlIsEnabled = controlEnabled;
-		//	globalCommands.Refresh(controlEnabled);
-	
-		//	if (selectedEntity)
-		//	{
-		//		CC*cmds = selectedEntity->GetCommands();
-
-		//		selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>,false);
-		//	}
-		//}
-
-
 		/*static*/ Buffer0<WCommandGroup>		CommandGroup::activeGroupPath;
 
 
-		/*static*/ GenericHashTable<PathString, DX11::Texture>	VisualCommand::textureMap;
+		/*static*/ HashTable<PathString, DX11::Texture>	VisualCommand::textureMap;
 
 
 
@@ -476,6 +460,10 @@ namespace Objects
 		{
 			String name2 = name;
 			name2.FindAndReplace(NotValidFSChar,'-');
+			while (name2.EndsWith('-'))
+				name2.EraseRight(1);
+			while (name2.BeginsWith('-'))
+				name2.EraseLeft(1);
 
 			PathString filename = PathString("resources/icons/"+name2+".png");
 			if (!FileSystem::IsFile(filename))

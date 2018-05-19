@@ -625,7 +625,7 @@ namespace Objects
 			if (signalEvent)
 			{
 
-				//static GenericHashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
+				//static HashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
 				//static Buffer0<PWorldEntity> checkCanStillSee;
 				//checkCanStillSee.Clear();
 				//checkStillBeeingSeenBy.Clear();
@@ -1563,8 +1563,9 @@ namespace Objects
 			//}
 			//else
 			{
-				if (!Pathfinding::AppendShortestPathI((const Vehicle*)v,prev,target.target,path))
+				if (!Pathfinding::shortestPath.SelectiveUpdate((const Vehicle&)*v,prev,target.target))
 					return false;
+				this->path.AppendAll(Pathfinding::shortestPath.result);
 			}
 		}
 		else

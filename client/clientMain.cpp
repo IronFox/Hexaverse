@@ -80,6 +80,7 @@
 #include "components/objectNetworkHelper.h"
 #include "components/playerControlBegin.h"
 #include "components/visual/scene/vehicleAccessibilityMesh.h"
+#include "components/scriptedAI.h"
 
 #include "rc/Resource.h"
 
@@ -215,31 +216,34 @@ namespace ApplicationInterface
 		Network::Channels::automate.SendTo(Network::client,Protocol::EntityStateUpdate(e->id,doAutomate));
 	}
 
-	void	SignalRemoval(const Objects::PWorldEntity&entity)
+	void	SignalRemoval( const Objects::PWorldEntity&entity, bool allowConfirmation )
 	{
 		TUniqueID id = entity->id;
 		#ifdef HAS_WINDOW
-			HUD::Dialog::Confirm("Confirm destruction of "+entity->GetNiceName()+". This operation cannot be undone.",[id]()
+			if (allowConfirmation)
 			{
-				Network::Channels::removeEntity.SendTo(Network::client,id);
+				HUD::Dialog::Confirm("Confirm destruction of "+entity->GetNiceName()+". This operation cannot be undone.",[id]()
+				{
+					Network::Channels::removeEntity.SendTo(Network::client,id);
 	
-			},
-			[id]()->HUD::Dialog::CheckResult
-			{
-				if (!Network::client.IsConnected())
-					return HUD::Dialog::CheckResult::Abort;
-				Objects::PWorldEntity e = Objects::GetEntity(id);
-				if (!e || !e->isOwnedByMe)
-					return HUD::Dialog::CheckResult::Abort;
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
-					return HUD::Dialog::CheckResult::OkayNotRightNow;
-				return HUD::Dialog::CheckResult::OkayContinue;
+				},
+				[id]()->HUD::Dialog::CheckResult
+				{
+					if (!Network::client.IsConnected())
+						return HUD::Dialog::CheckResult::Abort;
+					Objects::PWorldEntity e = Objects::GetEntity(id);
+					if (!e || !e->isOwnedByMe)
+						return HUD::Dialog::CheckResult::Abort;
+					if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
+						return HUD::Dialog::CheckResult::OkayNotRightNow;
+					return HUD::Dialog::CheckResult::OkayContinue;
+				}
+				);
+				return;
 			}
-			);
-		#else
-
-			Network::Channels::removeEntity.SendTo(Network::client,entity->id);
+			else
 		#endif
+		Network::Channels::removeEntity.SendTo(Network::client,entity->id);
 	}
 
 	void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component::Turret*&newTurret)
@@ -260,13 +264,14 @@ namespace ApplicationInterface
 		return Network::client.IsConnected() 
 			&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase 
 			&& !Network::amSpectator
-			&& 	ObjectHelper::MarkerCheck::DoneThisRound()
+			&& AutomaticProcessesAreDoneThisRound()
 			;
 	}
 
 
 	void	SignalRoundEnd()
 	{
+		PlayerControlBegin::pauseAutomaticRoundProgression = false;
 		if (Network::ControlEnabled())
 		{
 			Network::client.SendSignal(Protocol::ChannelID::RequestRoundEnd);
@@ -435,10 +440,10 @@ namespace ApplicationInterface
 		ObjectHelper::InnerUndoTask(e,false);
 	}
 
-	void	SignalDropAllTasks(const Objects::PWorldEntity&e)
+	void	SignalDropAllTasks( const Objects::PWorldEntity&e, bool allowConfirmation )
 	{
 		#ifdef HAS_WINDOW
-			if (e->IsMobile())
+			if (allowConfirmation && e->IsMobile())
 			{
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
 				if (v->constructionActionCounter > 0 
@@ -461,11 +466,6 @@ namespace ApplicationInterface
 					});
 					return;
 				}
-				else
-				{
-			
-				}
-		
 			}
 		#endif
 		Network::Channels::dropTasks.SendTo(Network::client, Protocol::DropTasks( e->id, Protocol::DropMode::AllTasks));
@@ -773,13 +773,6 @@ namespace ApplicationInterface
 
 
 
-void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE)
-{
-	marker.location = e->location;
-	outE.id = e->id;
-	outE.owner = e->owner->id;
-	outE.type = e->GetType();
-}
 
 
 
@@ -819,7 +812,7 @@ namespace ApplicationInterface
 			Protocol::Marker marker;
 			static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
 			marker.id.Generate();
-			FillMarker(marker, e, marker.data.Set0());
+			ObjectHelper::FillMarker(marker, e, marker.data.Set0());
 			ObjectHelper::SignalMarkerCreation(marker);
 			LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 		}
@@ -836,7 +829,7 @@ namespace ApplicationInterface
 					Protocol::Marker marker;
 					marker.id.Generate();
 					static_assert(Objects::Marker::Type::HostileContact == 1, "Please update marker logic");
-					FillMarker(marker, e, marker.data.Set1());
+					ObjectHelper::FillMarker(marker, e, marker.data.Set1());
 					ObjectHelper::SignalMarkerCreation(marker);
 
 					LogEvent(EventSignificance::Debug,e.get(),"Created hostile contact marker for "+e->GetName()+" since original disappeared");
@@ -921,12 +914,17 @@ namespace ApplicationInterface
 				#endif
 			if (e->owner->alliance != Objects::Faction::mine->alliance)
 			{
-				LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"Hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
-				PlayerControlBegin::pauseAutomaticRoundProgression = true;
+				if (!ScriptedAI::WillExecuteOnNewRound())
+				{
+					LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"New hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
+					PlayerControlBegin::pauseAutomaticRoundProgression = true;
+				}
+				else
+					LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"New hostile contact: "+e->GetNiceName());
 			}
 			else
 			{
-				LogEvent(EventClass(EventSignificance::Common,EventFlavor::Gain),"Friendly contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
+				LogEvent(EventClass(EventSignificance::Common,EventFlavor::Gain),"New friendly contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
 			}
 		}
 	}
@@ -1739,28 +1737,27 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 namespace ApplicationInterface
 {
+	bool	AutomaticProcessesAreDoneThisRound()
+	{
+		return 
+				ObjectHelper::MarkerCheck::DoneThisRound()
+				&&
+				ScriptedAI::DoneThisRound()
+				&&
+				(!RuntimeConfig::aiMode || AI::IsDone())
+			;
+	}
+
+
 	bool	ShouldSignalRoundEnd()
 	{
 		if (!CanChangeRoundState())
 			return false;
 
-		if (!ObjectHelper::MarkerCheck::DoneThisRound())
+		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound)
 			return false;
 
-		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
-			return false;
-		#if 0
-			count_t total=0,requested=0;
-			Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
-			{
-				total++;
-				if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
-					requested++;
-			});
 
-			if (requested+1 != total)
-				return false;
-		#endif /*0*/
 
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
@@ -1770,10 +1767,6 @@ namespace ApplicationInterface
 			if (ObjectHelper::IsIdle(e))
 				any = e;
 		},Objects::IncludeGhosts::None);
-		//#ifdef _DEBUG
-		//if (any)
-		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
-		//#endif
 		return !any;
 	}
 }
@@ -2096,6 +2089,7 @@ int main( int argc, const char* argv[])
 				}
 
 				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
+				ScriptedAI::visualDebugActive = StartConfig::GetBool("runtime/aiDebugMode");
 
 				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 

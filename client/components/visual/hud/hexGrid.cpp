@@ -9,6 +9,7 @@
 #include "resourceGauges.h"
 #include "../../configurationMode.h"
 #include "menu.h"
+#include "../../scriptedAI.h"
 
 namespace HUD
 {
@@ -472,20 +473,56 @@ namespace HexGrid
 	namespace BottomRightPanel
 	{
 		typedef std::shared_ptr<Icon>	PIcon;
-		Buffer0<PIcon >				commands;
+		Buffer0<PIcon>				commands;
+		PIcon						menuCommand,tutorialCommand;
 
-		/*static*/ index_t			Icon::indexCounter = 0;
-			/**/					Icon::Icon(const String&name) : Super(name)
-									{
-										LoadIcon();
-										indexCounter++;
-										gridCoords = int2(/*1+*/indexCounter,1);
-									}
+		/**/						Icon::Icon(const String&name) : Super(name)
+		{
+			LoadIconByName(name);
+		}
+		/**/						Icon::Icon(const String&name, const String&iconName) : Super(name)
+		{
+			LoadIconByName(iconName);
+		}
 
 		/*virtual override*/ void			MenuCommand::Execute()
 		{
 			HUD::WindowStack::Show(HUD::Menu::main);
 		}
+
+		///*virtual override*/ void			AICommand::Refresh(bool controlsAreEnabled)
+		//{
+		//	this->state = Flags::None;
+
+		//	if (ScriptedAI::IsRunning())
+		//		state |= Flags::IsPermaActive | Flags::IsFlashing | Flags::SoftFlashing;
+		//	elif (controlsAreEnabled)
+		//		state |= Flags::IsEnabled;
+		//}
+
+		///*virtual override*/ void			AICommand::Execute()
+		//{
+		//	if (ScriptedAI::IsRunning())
+		//		return;
+		//	FileSystem::Folder scripts = RuntimeConfig::myConfig.Lookup("AIScripts");
+		//	if (!scripts.IsValidLocation())
+		//		FileSystem::CreateDirectory(scripts.GetLocation());
+		//	ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
+
+		//	FileSystem::File debugLua;
+		//	scripts.FindFile("debug.lua", debugLua, false);
+		//	if (!debugLua.DoesExist())
+		//	{
+		//		ScriptedAI::CreateTemplateAt(debugLua);
+		//		Dialog::ShowMessage("It appears you have activated the AI for the first time."
+		//				" A new Lua script has been created at\n"+FileSystem::PathToString(debugLua)+"\n"
+		//				" Edit the file to define the desired behavior.\n"
+		//				"Whenever you press the AI button, the script will be reloaded, and applied to your current set of units.");
+		//	}
+
+		//	ScriptedAI::Load(debugLua, Engine::input.pressed[Key::Shift]);
+		//	ScriptedAI::Start();
+		//}
 
 
 		static void VoteRefresh(const PVote&)
@@ -493,16 +530,31 @@ namespace HexGrid
 			RefreshButtonState();
 		}
 
+		void	RecreateCommands( )
+		{
+			foreach(commands, c)
+				FindAndDeleteCell(*c);
+			commands.Clear();
+
+			commands << (menuCommand);
+			commands << tutorialCommand;
+			commands << PIcon(new VoteCommand());
+
+			commands << PIcon(new DemolishCommand());
+			commands << PIcon(new SleepCommand());
+			commands << PIcon(new AbortCommand());
+			commands << PIcon(new UndoCommand());
+
+			for (index_t i = 0; i < commands.Count(); i++)
+				commands[i]->gridCoords = int2(1+i, 1);
+		}
+
 		void Create()
 		{
-			commands << PIcon( new MenuCommand() );
-			commands << PIcon( new TutorialCommand() );
-			commands << PIcon( new VoteCommand() );
+			tutorialCommand = PIcon(new TutorialCommand());
+			menuCommand = menuCommand = PIcon(new MenuCommand());
 
-			commands << PIcon( new DemolishCommand() );
-			commands << PIcon( new SleepCommand() );
-			commands << PIcon( new AbortCommand() );
-			commands << PIcon( new UndoCommand() );
+			RecreateCommands();
 
 
 			GlobalEvents::voteCast << VoteRefresh;
@@ -520,6 +572,17 @@ namespace HexGrid
 		{
 			GridCell*cell = AllocateCell(cmd,coords,Anchor::BottomRight);
 			cmd->Refresh(Network::ControlEnabled());
+		}
+
+		void			RefreshMenuButtonOnly( )
+		{
+			if (!showControlsAndContacts)
+			{
+				foreach (commands,c)
+					FindAndDeleteCell(*c);
+				return;
+			}
+			Add(menuCommand->gridCoords,menuCommand);
 		}
 
 		void			Refresh( )
@@ -767,7 +830,7 @@ namespace HexGrid
 	class Region
 	{
 	public:
-		GenericHashTable<int2,ScrollArea>	scrollAreas;
+		HashTable<int2,ScrollArea>	scrollAreas;
 		IndexTable<M::TFloatRange<> >	rowRanges;
 		M::TIntRange<int>				yRanges;
 		/**
@@ -1541,12 +1604,15 @@ namespace HexGrid
 
 	void					Configure(const Objects::PWorldEntity&e)
 	{
-		if (ConfigurationMode::ReconfigureVisualCommands())	//configuration mode has its own buttons; should not be removed while active
-			return;
-		const auto cfg = GetGridConfig();
 		ClearCommands();
+		if (ConfigurationMode::DefineHexCommands())	//configuration mode has its own buttons; should not be removed while active
+		{
+			BottomRightPanel::RefreshMenuButtonOnly();
+			return;
+		}
+		const auto cfg = GetGridConfig();
 
-		bool showControls = showControlsAndContacts && e
+		const bool showControls = showControlsAndContacts && e
 				#ifndef DEBUG_ACCESS_RESTRICTIONS
 					&& e->isOwnedByMe && e->IsAlive()
 				#endif

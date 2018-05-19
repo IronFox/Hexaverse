@@ -13,8 +13,8 @@
 
 namespace ScriptCache
 {
-	Ctr::GenericHashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
-	Ctr::GenericHashTable<SHA256::HashContainer,PScript>	hashMap;
+	HashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
+	HashTable<SHA256::HashContainer,PScript>	hashMap;
 
 	static const PathString cacheFileExtension = ".script";
 
@@ -138,7 +138,7 @@ namespace ScriptCache
 		if (!f)
 			return rs;
 		FileSystem::fsize_t size = FileSystem::GetFileSize(path);
-		Ctr::Array<BYTE> compressed(size);
+		Array<BYTE> compressed(size);
 		size_t read = fread(compressed.pointer(),1,size,f);
 		fclose(f);
 		if (read != size)
@@ -158,7 +158,7 @@ namespace ScriptCache
 		return DefineFromFleetingCompressedData(id,compressed,false);
 	}
 
-	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id, Ctr::ArrayData<BYTE>&data, bool createFile/*=true*/)
+	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id, ArrayData<BYTE>&data, bool createFile/*=true*/)
 	{
 		if (data.GetLength() < 4)
 		{

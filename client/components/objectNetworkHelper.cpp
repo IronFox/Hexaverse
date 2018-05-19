@@ -19,6 +19,15 @@
 
 namespace ObjectHelper
 {
+	void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE)
+	{
+		marker.location = e->location;
+		outE.id = e->id;
+		outE.owner = e->owner->id;
+		outE.type = e->GetType();
+	}
+
+
 	namespace MarkerCheck
 	{
 		RuntimeConfig::RoundNumber	lastProcessedRoundNumber;
@@ -39,11 +48,6 @@ namespace ObjectHelper
 			}
 			outdated.Clear();
 			lastProcessedRoundNumber = RuntimeConfig::roundNumber;
-
-			#ifdef HAS_WINDOW
-				HUD::WindowStack::SignalSituationChange();
-				HUD::HexGrid::RefreshButtonState();
-			#endif
 
 			PlayerControlBegin::CheckAutoNextRound();
 			return true;
@@ -340,15 +344,17 @@ namespace ObjectHelper
 	{
 		if (prev == target)
 			return true;
-		Buffer0<Objects::PathNode>		path;
 		{
 			bool tooLong;
 			bool foundPath;
 
 			if (v->IsPlane())
-				foundPath = Objects::Pathfinding::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target,path,false,&tooLong);
+			{
+				Objects::Pathfinding::shortestPath.result.Clear();
+				foundPath = Objects::Pathfinding::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target,Objects::Pathfinding::shortestPath.result,false,&tooLong);
+			}
 			else if (v->IsGroundBoundVehicle())
-				foundPath = Objects::Pathfinding::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
+				foundPath = Objects::Pathfinding::shortestPath.SelectiveUpdate((const Objects::Vehicle&)*v, prev, target, false, &tooLong);
 			#ifndef NO_SATELLITES
 				else if (v->IsSatellite())
 					foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
@@ -375,6 +381,7 @@ namespace ObjectHelper
 				static Buffer0<Grid::LCellIdI>	waypoints;
 				waypoints.Clear();
 				bool open = true;
+				const auto&path = Objects::Pathfinding::shortestPath.result;
 				for (index_t i = 0; i < path.GetLength(); i++)
 				{
 					if (!((i+1)%5))

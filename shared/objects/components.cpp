@@ -891,8 +891,8 @@ namespace Objects
 			FFunc		doomsdayExplosionRadius;
 			IFunc		doomsdayDamageLevel;
 
-			LuaAttributeWithDefault<int,200>		doomsdayUraniumCost;
-			LuaAttributeWithDefault<int,-100>		regularUraniumCost;
+			AttributeWithDefault<int,200>		doomsdayUraniumCost;
+			AttributeWithDefault<int,-100>		regularUraniumCost;
 
 		}
 
@@ -1426,7 +1426,7 @@ namespace Objects
 
 			namespace Bomber
 			{
-				LuaAttributeWithDefault<int,300>		doomsdayBeamAttackCosts;
+				AttributeWithDefault<int,300>		doomsdayBeamAttackCosts;
 				FFunc				doomsdayExplosionRadius;
 				IFunc				doomsdayDamageLevel;
 

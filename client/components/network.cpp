@@ -48,7 +48,7 @@ namespace Network
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
 	INT32			uplinkBandwidth = -1;
 	
-	GenericHashTable<TUniqueID,CryptographicID>	accessMap;
+	HashTable<TUniqueID,CryptographicID>	accessMap;
 
 
 	Protocol::GameProgress	gameProgress;
@@ -60,7 +60,7 @@ namespace Network
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
 
-	GenericHashSet<TUniqueID>	visitedWorldMap;
+	HashSet<TUniqueID>	visitedWorldMap;
 
 
 	bool	IsValidNickname(const String&candidate)
@@ -196,6 +196,7 @@ namespace Network
 		RuntimeConfig::tutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
+		GlobalEvents::phaseChange();
 		gameHasBegun = false;
 
 		LoadGameConfig(host.serverInfo.gameInfo.gameConfig);
@@ -637,7 +638,12 @@ namespace Network
 								&&
 								p->time.min == vs.entityState.timestamp.atTime)
 							{
-								FATAL__("Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+								auto entity = Objects::GetEntity(p->targetEntityID);
+								if (entity)
+									LogEvent(EventSignificance::ClientFatal, entity.get(), "Got multiple mobile entity updates on this entity at time " + ToString(vs.entityState.timestamp));
+								else
+									LogEvent(EventSignificance::ClientFatal,"Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+								FATAL__("Stop");
 							}
 						}
 					#endif
@@ -2025,7 +2031,7 @@ namespace Network
 
 
 	Buffer0<ServerInfo,Swap>	servers;
-	GenericHashTable<TUniqueID,index_t>	serverMap;
+	HashTable<TUniqueID,index_t>	serverMap;
 
 	Timer::Time		lastPing = timer.Now(),lastServerTableUpdate=timer.Now();
 
@@ -2257,6 +2263,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		Tutorial::lastDelayingEvent = timer.Now();
 	#endif
 	RuntimeConfig::phase.Load(c.newPhase);
+	GlobalEvents::phaseChange();
 	if (RuntimeConfig::IsInAnyCommandPhase())
 		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;

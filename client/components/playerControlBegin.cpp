@@ -8,7 +8,7 @@
 namespace PlayerControlBegin
 {
 	bool pauseAutomaticRoundProgression=false;
-	bool checked=false;
+	bool allowChecks = true;
 
 
 	bool			SeeingHostileActivity()
@@ -23,20 +23,19 @@ namespace PlayerControlBegin
 
 	void CheckAutoNextRound()
 	{
-		if (!ObjectHelper::MarkerCheck::DoneThisRound())
+		if (!allowChecks)
 			return;
 
-		if (checked)
+		if (!ApplicationInterface::AutomaticProcessesAreDoneThisRound())
 			return;
-
-		checked = true;
 
 		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
-		{
 			ApplicationInterface::SignalRoundEnd();
-		}
 
-		pauseAutomaticRoundProgression = false;
+		#ifdef HAS_WINDOW
+			HUD::HexGrid::RefreshButtonState();
+			HUD::WindowStack::SignalSituationChange();
+		#endif
 	}
 
 
@@ -49,6 +48,8 @@ namespace PlayerControlBegin
 	//	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
 		LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+RuntimeConfig::roundNumber.ToString()+")");
 
+		allowChecks = false;
+
 		#ifdef HAS_WINDOW
 			GlobalEvents::invalidateObjectCache();
 			HUD::HexGrid::RefreshButtonState();
@@ -59,12 +60,9 @@ namespace PlayerControlBegin
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
 
-		checked = false;
-
-		CheckAutoNextRound();
-
 		GlobalEvents::playerControlBegin();
 
+		allowChecks = true;
 		CheckAutoNextRound();
 	}
 

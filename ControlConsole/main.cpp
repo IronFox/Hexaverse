@@ -339,11 +339,11 @@ namespace ParameterConfig
 		ExpectPort,
 		ReadCommand
 
-	}		mode = Idle;
-
-	const char*program = "";
+	};
+	mode_t		mode = Idle;
+	const char*	program = "";
 	StringBuffer	command;
-	bool	interactive = true,
+	bool		interactive = true,
 				server = false;
 
 

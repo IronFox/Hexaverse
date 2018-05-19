@@ -541,7 +541,7 @@ namespace World
 		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::sharedConfig.Lookup("config/myPlanets"),files);
 		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("../predefinedPlanets"),files);
 
-		Ctr::GenericHashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
+		HashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)
 		{
 			

@@ -441,7 +441,7 @@ namespace Objects
 	{
 		return !GetVehicle(stackID);
 	}
-	bool NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*v)
+	bool NoVehicleHereExcept( const Grid::LCellIdI&cellID, const Vehicle*v )
 	{
 		PVehicle vh = GetVehicle(cellID);
 		return !vh || vh.get() == v 

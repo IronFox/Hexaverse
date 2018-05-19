@@ -1,119 +1,20 @@
 --[[ API:
 
-void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
-void	Game.DisplayMessage(string msg[,string imageName])		Prints a persistent message on screen. Once the user has pressed 'Got it', OnMessageConfirm() is invoked
-
 void	Game.CallDelayed(float seconds, function func)					Waits the specified number of seconds, then calls the given function without parameters
 void	Game.ClearAllDelayed()											Drops all non-executed delayed function calls
-int		Game.FindHighestAvailableResourceLocation(string resourceName)	Searches among all known resource spots for the highest value where a mine could be constructed. Returns -1 if none are found
-int		Game.GetResourceCoverage(string resourceName, int stackID)		Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet, of the specified index is not in [1,#Game.lowCells]
 void	Game.FocusCameraAt(int stackID)									Smoothly focuses the camera on the specified stack index
-int		Game.GetCompoundResourceChange(string resourceName)				Fetches the current balance of the specified resource type in the active player's compound. May be negative
-int		Game.GetCompoundResourceStorage(string resourceName)			Fetches the current storage level of the specified resource type in the active player's compound. May be 0 but not negative
 void	Game.SignalTaskStart(int)									Signals that a new task was started at the given index (>0)
 
-
-bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of cells, each cell twice as high)
-float	Game.UnitScale					Set to a global unit scale depending on [Game.LowerResolutionPlanet]. This scale value is to be
-										applied to units (hence the name). 1 if the planet is not of lowered resolution, 2 otherwise.
+Check General Lua API Documentation.txt for general purpose functions and tables
 
 
-
-Table	Game.myUnits					Table of all player-owned units currently known to the client
-Table	Game.selectedUnit				Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
-
-Unit entry table:
-{
-	string	name;						Full entity name (for logging purposes). Includes type and unique ID
-	string 	niceName;					Full entity name (as presented to the player). Includes type and nice representation of unique ID
-	string	id;							Entity unique ID
-	string	typeName;					String representation of the type. May be a compound type if isMovile is true
-	bool	isMobile;					True if this is a mobile entity
-	bool	isStructure;				True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
-	bool	[isOwnedByMe];				Client only: true if the local player owns this entity
-	Table	location;					Entity location
-	bool	isSleeping;					True if the local entity is currently sleeping
-	int		health;						Current entity health. <= 0 for ghosts
-	int		maxHealth;					Maximum possible health of the local entity. May change over time
-	int		empDamageLevel;				Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
-	bool	isWorkingStructure;			True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
-	bool	(isEnabled);				If isStructure: True if the local structure is active
-	function (Enable(bool));			If isStructure: Change enable state of the local structure. Immediately applied if server, sent to server if client, no effect if not owned by the local player, or outside command phase
-	bool	isMobileEntityProducer;		True if this entity can produce mobile entities. Does not necessarily imply that this is a building
-	Table	(productionQueue);			If isMobileEntityProducer: String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production
-	Table	(turretBase);				If turret present: Table containing turret information. May be set for structures or mobile entities
-	bool	(isAutomated);				If mobile: True if the local entity has some behavior logic attached. Currently used by surveyor only
-	Table	(tasks);					If mobile: Task queue
-}
-
-location entry table:
-{
-	int		height;						Layer difference from mean planetary height. Usually in the range [-16,15], though some units may be located above the regular grid
-	int		stackID;					Index of the stack location (planar cell). Use Game.lowCells to navigate the stack graph
-}
-
-
-turretBase entry table:
-{
-	string	typeName;					Turret type name
-	int		weight;						Weight affecting mobile entity speed
-	bool	canAttack;					True if offensive, false otherwise
-	string	(trajectoryType);			If canAttack: String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
-	string	(ammoType);					If canAttack: String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
-	int		(possibleAttacks);			If canAttack: Counts the number of attacks possible in the local unit's next attack phase
-	float	(attackActionLeft);			If canAttack: Percentage (0.0-1.0) of attack action left in the next attack phase
-	float	(attackInitiative);			If canAttack: Effective attack initiative applied during the next attack phase (if attacking). Automatically reduced by attackActionLeft. The higher, the better
-	int		(attacksPerRound);			If canAttack: Theoretical maximum number of attacks per round
-	float	(flatAttackRange);			If canAttack: Horizontal attack range. Increased by explosionRadius. Vertical range depends on trajectoryType
-	float	(explosionRadius);			If canAttack: Spherical explosion radius
-	bool	can[Operation];				True if the respective operation can be performed by this turret, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. canConstruct)
-	int		speedOf[Operation];			Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. speedOfConstruct)
-}
-
-task table entry
-{
-	string	name;						Task name
-	bool	isJob;						True if this is a construction job (e.g. by a terraformer), as opposed to motion or attack
-	Table	foci;						List of location tables, representing each one stage in the task (movement waypoints, construction destinations, and so forth, most tasks only have one focus point)
-}
-
-Table	Game.myResearch					Table of all researchable topics, both completed, and open, as well as endless
-Research entry table:
-{
-	string	fullName;					Full path to the entry. Unique
-	string	name;						Name of this entry. Not unique
-	bool	isEndless;					True if the research can run indefinitely
-	int		max;						Max research needed to complete research. -1 if endless
-	int		progress;					Current research progress. >= 0
-	bool	isCompleted;				True if research is completed. Always false if endless
-	bool	isActive;					True if this topic is currently being researched. If true, implies isQueued
-	bool	isQueued;					True if this topic is or will be researched
-};
-
-
-Table	Game.myCurrentResearch			Currently active research topic. May be nil. Otherwise also contained by Game.myResearch
-
-Cell[]		Game.lowCells				Ordered table of all planar cells in the world, with:
-Cell
-{
-	Vector	center;			Normalized center vector of the cell
-	Cell[]	neighbors;		Ordered table of all planar neighbor cells
-	int		index;			Linear index of this cell in Game.Cells in [1,#Game.lowCells]
-};
-Vector
-{
-	float	x,y,z;
-};
-
-
-
-The following global functions must be defined:
+The following global functions must be defined, and are called by the game as required:
 void	OnBegin(optional int atTask)		Called once when the tutorial is started or resumed
-void	CheckTaskConditions()					Called when situations have changed such that completion of the current task should be reevaluated. Expect high, but not per-frame frequency
-void	OnMessageConfirm()						Called when the user has confirmed the last issued message (via Game.DisplayMessage())
-void	OnCameraDrag()							Called when the user has dragged the camera around the planet
-void	OnCameraRotate()						Called when the user has rotated the camera around the pivot point
-void	OnCameraZoom()							Called when the user has altered the camera zoom level
+void	CheckTaskConditions()				Called when situations have changed such that completion of the current task should be reevaluated. Expect high, but not per-frame frequency
+void	OnMessageConfirm()					Called when the user has confirmed the last issued message (via Game.DisplayMessage())
+void	OnCameraDrag()						Called when the user has dragged the camera around the planet
+void	OnCameraRotate()					Called when the user has rotated the camera around the pivot point
+void	OnCameraZoom()						Called when the user has altered the camera zoom level
 
 ]]
 
@@ -148,6 +49,17 @@ function CreateTask(begin, endConditionFunc)
 	end;
 	table.insert(tasks, t);
 end
+
+
+function SurveyorIsAutomated() 
+	for _,u in pairs(Game.myUnits) do
+		if u.typeName == 'Hoversurveyor' and u.isAutomated then
+			return true;
+		end;
+	end;
+	return false;
+end;
+		
 
 --test:
 
@@ -191,16 +103,14 @@ CreateTask(function() Game.DisplayMessage("Terraformers are your primary working
 CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
 	function() 
 		if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then 
-			for i = 1, #Game.selectedUnit.tasks do
-				local t = Game.selectedUnit.tasks[i];
+			for _,t in ipairs(Game.selectedUnit.tasks) do
 				if t.name == 'construct Laboratory' then
 					return true;
 				end;
 			end;
 		end;
 		--also done when it already exists
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
+		for _,u in pairs(Game.myUnits) do
 			if u.typeName == 'Laboratory' then
 				return true;
 			end;
@@ -210,8 +120,7 @@ CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to bui
 
 	
 function HaveLab()
-	for i = 1, #Game.myUnits do
-		local u = Game.myUnits[i];
+	for _,u in pairs(Game.myUnits) do
 		if u.typeName == 'Laboratory' then
 			return true;
 		end;
@@ -220,7 +129,7 @@ function HaveLab()
 end
 
 	
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.GetCompoundResourceChange('Minerals') .." per round, "..Game.GetCompoundResourceStorage('Minerals').." in storage. So let's press on.") end, HaveLab);
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.myFaction.resourceBalance.minerals .." per round, "..Game.myFaction.resourceStorage.minerals.." in storage. So let's press on.") end, HaveLab);
 
 CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please request new rounds by using the 'End Round' command in the bottom left section of the screen, or by pressing the Enter/Return key."); end,
 	HaveLab
@@ -229,7 +138,7 @@ CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please re
 CreateTask(function() Game.DisplayMessage("Laboratories allow two types of research: Unlocking and Improving. The more laboratories you have enabled, the faster the research will progress. It is also a good idea to build them next to each other, as they accelerate each other in close proximity.","laboratory.jpg"); end);
 CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the ReactorCore building type by selecting it and using the commands in the bottom section of the screen."); end,
 	function()
-		local res = Game.myResearch['Unlock:ReactorCore'];
+		local res = Game.Research.topics['Unlock:ReactorCore'];
 		return res ~= nil and (res.isQueued or res.isCompleted);
 	end
 );
@@ -237,23 +146,13 @@ CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the Reac
 CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, please find and select your Surveyor.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor'; end);
 
 CreateTask(function() Game.DisplayMessage("Surveyors automatically identify new natural resources in their yellow scanning sphere. The dark discs near your starting location indicate that there isn't anything there (except beneath your starting mine). Instruct your surveyor to move by right-clicking anywhere without discs.","surveyor.png") end);
-CreateTask(function() Game.DescribeTask("Please move your surveyor until it found some more %Fuel%fuel (a green bar atop the terrain). Request new rounds to execute movement operations") end, 
+CreateTask(function() Game.DescribeTask("Please move your surveyor until it found some more %Fuel%fuel (a green bar atop the terrain). Select the vehicle and right-click anywhere on the terrain to schedule the motion. Request new rounds to execute movement operations") end, 
 		function() 
-			local at = Game.FindHighestAvailableResourceLocation('Fuel');
-			return (at ~= -1);
+			return Game.Grid.FindHighestAvailableResourceLocation('Fuel') ~= nil;
 		end
 		);
 
-function SurveyorIsAutomated() 
-	for i = 1, #Game.myUnits do
-		local u = Game.myUnits[i];
-		if u.typeName == 'Hoversurveyor' and u.isAutomated then
-			return true;
-		end;
-	end;
-	return false;
-end;
-		
+
 		
 CreateTask(function() Game.DisplayMessage("In some situations it may be smarter to survey the terrain manually, but for now let's instruct the unit to do so automatically.") end, SurveyorIsAutomated);
 CreateTask(function() Game.DescribeTask("Please automate your Surveyor by selecting it and clicking on the Automate button at the bottom screen section.") end, SurveyorIsAutomated);
@@ -261,9 +160,8 @@ CreateTask(function() Game.DescribeTask("Please automate your Surveyor by select
 CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly found fuel resource using your terraformer. In the bottom screen section, select Build->Resources->Mine, and click on the terrain cell with the green bar. Request new rounds until done.") end,
 	function()
 		local count = 0;
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
-			if u.typeName == 'Mine' and Game.GetResourceCoverage('Fuel', u.location.stackID) > 0 then
+		for _,u in pairs(Game.myUnits) do
+			if u.typeName == 'Mine' and Game.Grid.GetNaturalResourceAt('Fuel', u.location.cell) > 0 then
 				count = count + 1;
 			end;
 		end;
@@ -283,8 +181,7 @@ CreateTask(function() Game.DescribeTask(
 		.."Request new rounds until done.") end,
 	function()
 		local count = 0;
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
+		for _,u in pairs(Game.myUnits) do
 			if u.typeName == 'Generator' then
 				count = count + 1;
 			end;
@@ -296,8 +193,7 @@ CreateTask(function() Game.DescribeTask(
 
 function SecondGeneratorIsEnabled()
 	local enabled = 0;
-	for i = 1, #Game.myUnits do
-		local u = Game.myUnits[i];
+	for _,u in pairs(Game.myUnits) do
 		if (u.typeName == 'Generator' or u.typeName == 'Mine') and u.isEnabled then
 			enabled = enabled + 1;
 		end;
@@ -312,8 +208,7 @@ CreateTask(function() Game.DisplayMessage("Both the new generator and mine are c
 
 CreateTask(
 	function() 
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
+		for _,u in pairs(Game.myUnits) do
 			if (u.typeName == 'Laboratory') and not u.isEnabled then
 				u.Enable(true);
 			end;
@@ -328,8 +223,7 @@ CreateTask(function() Game.DisplayMessage("Notice how enabling either the genera
 
 CreateTask(function() Game.DescribeTask("Next, construct a Vehicle Plant using your terraformer. In the bottom screen section, select Build->Factories->Vehicle Plant, and click anywhere on the terrain. Request new rounds until done.") end,
 	function()
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
+		for _,u in pairs(Game.myUnits) do
 			if u.typeName == 'Vehicle Plant' then
 				return true;
 			end;
@@ -342,13 +236,12 @@ CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sort
 
 CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to construct another hoverformer by selecting the plant and then choosing the Terraformer turret in the top row of its unit commands.") end,
 	function()
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
+		for _,u in pairs(Game.myUnits) do
 			if u.typeName == 'Vehicle Plant' then
 				local found = false;
-				
-				for j = 1, #u.productionQueue do
-					if u.productionQueue[j] == "Hoverformer" then
+
+				for _,t in ipairs(u.productionQueue) do
+					if t.name == "Hoverformer" then
 						found = true;
 						break;
 					end;
@@ -370,9 +263,8 @@ CreateTask(function() Game.DisplayMessage("As long as it's enabled and has acces
 CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and construct a mine atop using your terraformer. In the bottom screen section, select Build->Resources->Mine, and click on the terrain cell with the yellow bar. Request new rounds until done.") end,
 	function()
 		local count = 0;
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
-			if u.typeName == 'Mine' and Game.GetResourceCoverage('Uranium', u.location.stackID) > 0 then
+		for _,u in pairs(Game.myUnits) do
+			if u.typeName == 'Mine' and Game.Grid.GetNaturalResourceAt('Uranium', u.location.cell) > 0 then
 				count = count + 1;
 			end;
 		end;
@@ -382,9 +274,8 @@ CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and 
 
 CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core research to complete."); end,
 	function()
-		local res = Game.myResearch['Unlock:ReactorCore'];
-		--FindResearch('Unlock:ReactorCore');
-		return res ~= nil and (res.isCompleted);
+		local res = Game.Research.topics['Unlock:ReactorCore'];
+		return res and res.isCompleted;
 	end
 );
 
@@ -394,15 +285,13 @@ CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core resea
 CreateTask(function() Game.DescribeTask("Now, please construct a Reactor Core next to one of your Generators. It must be on the same level") end,
 	function()
 		
-		for i = 1, #Game.myUnits do
-			local u = Game.myUnits[i];
+		for _,u in pairs(Game.myUnits) do
 			if u.typeName == 'Reactor Core' then
 				Game.Log("Found reactor");
-				local cell = Game.lowCells[u.location.stackID];
-				local n = cell.neighbors;
-				for j = 1, #n do
-					Game.Log("Looking at "..n[j].index..", "..u.location.height);
-					local neighbor = FindUnitIn(n[j].index,u.location.height);
+				local cell = u.location.cell;
+				for _,n in ipairs(cell.neighbors) do
+					Game.Log("Looking at "..n.index..", "..u.location.height);
+					local neighbor = FindUnitIn(n,u.location.height);
 					if (neighbor ~= nil and neighbor.typeName == 'Generator') then
 						return true;
 					end;
@@ -435,8 +324,7 @@ CreateTask(function() Game.DisplayMessage("This concludes the interactive tutori
 
 function CountType(strTypeName)
 	local cnt = 0;
-	for i = 1, #Game.myUnits do
-		local u = Game.myUnits[i];
+	for _,u in pairs(Game.myUnits) do
 		if u.typeName == strTypeName then
 			cnt = cnt + 1;
 		end;
@@ -487,10 +375,9 @@ end
 
 
 
-function FindUnitIn(stackID--[[int]], height--[[int]])
-	for i = 1, #Game.myUnits do
-		local u = Game.myUnits[i];
-		if (u.location.stackID == stackID and u.location.height == height) then
+function FindUnitIn(cell--[[Cell]], height--[[int]])
+	for _,u in pairs(Game.myUnits) do
+		if (u.location.cell == cell and u.location.height == height) then
 			return u;
 		end;
 	end;
@@ -508,7 +395,7 @@ function CheckTaskConditions()
 	local t = Current();
 	if t ~= nil and type(t.check) == 'function' then
 		t.check();
-	end
+	end;
 end
 
 

@@ -84,6 +84,11 @@ namespace Lua
 		virtual	const char*		GetType()	const override					{return StaticGetName();}
 	};
 
+	struct Nil
+	{};
+
+	static const Nil	nil;
+
 
 	namespace Detail
 	{
@@ -103,12 +108,14 @@ namespace Lua
 
 
 		void PushParameter(lua_State *state, long long i);
+		inline void PushParameter(lua_State *state, unsigned long long i) {PushParameter(state,(long long)i);}
 		void PushParameter(lua_State *state, bool b);
 		inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
 		inline void PushParameter(lua_State *state, unsigned i) {PushParameter(state,(long long)i);}
 		void PushParameter(lua_State *state, double i);
 		void PushParameter(lua_State *state, void*p);
 		void PushParameter(lua_State *state, const Reference&);
+		void PushParameter(lua_State *state, Nil);
 		void PushStrParameter(lua_State *state, const String&str);
 		void PushStrParameter(lua_State *state, const char*str);
 
@@ -526,11 +533,20 @@ namespace Lua
 		*/
 		Table			CreateTable();
 		/**
-		Associates the specified name with the given reference
-		@return true if the given reference is not empty, false otherwise
+		Associates the specified name with the given reference.
+		An exception is thrown if the specified reference is empty
+		@param ref Reference to assign to the specified global identifier. Must not be empty
 		*/
-		void			SetGlobal(const String&name, const Reference&);
-
+		void			SetGlobal(const String&name, const Reference&ref);
+		/**
+		Creates, globally sets, and returns a new table by the given global name.
+		The process may overwrite any previous value of the specified global
+		*/
+		Table			SetGlobalTable(const String&name);
+		/**
+		Unsets the specified global variable
+		*/
+		void			UnsetGlobal(const String&name);
 		/**
 		Queries a global variable.
 		The resulting reference may be empty if the requested global does not exist
@@ -567,8 +583,17 @@ namespace Lua
 	public:
 
 		/**/		Reference(){}
+		/**/		Reference(Nil){}
 		virtual		~Reference() {};
+		void		operator=(Nil);
 		void		operator=(const Reference&other);
+		/**
+		Reference comparison. Does not compare content
+		*/
+		bool		operator==(const Reference&other) const	{return GetProgram() == other.GetProgram() && GetRefID() == other.GetRefID();}
+		bool		operator!=(const Reference&other) const {return !operator==(other);}
+
+		bool		operator!() const {return IsEmpty();}
 
 		/**
 		Clears any locally held Lua references
@@ -577,7 +602,7 @@ namespace Lua
 
 
 		/**
-		Updates the local reference to the top-most entry of the current lua stack associated with the specified program.
+		Updates the local reference to the specified entry of the current lua stack associated with the specified program.
 		The stack remains unchanged by the operation (the referenced element remains in the stack)
 		The method fails if the given program is empty, its stack does not contain the addressed element, or the addressed element is nil.
 		@return true if the local reference was updated
@@ -585,6 +610,12 @@ namespace Lua
 		@param idx Stack address in the ranges [1,top] and [-top,-1]. 0 is invalid
 		*/
 		bool		ResetFromStack(const PProgram&prog, int idx);
+		
+		/**
+		Special purpose constructor that uses the top most entry from the current lua stack associated with the specified program.
+		The top most element is removed in the process.
+		*/
+		void		ResetFromStackTopPop(const PProgram&prog);
 		/**
 		Updates the local reference to the given program and name
 		The method fails if the specified program is not set, or the name does not exist
@@ -618,9 +649,6 @@ namespace Lua
 		int			GetRefID() const {return (int)(UINT32)(index_t)( refID.get() );}	//cast to something integer like of pointer-size -> cast to unsigned 32bit number -> cast to signed int32 (is what we store in there)
 		PProgram	GetProgram() const {return prog.lock();}
 		lua_State*	GetState() const {PProgram prog = this->prog.lock(); return prog ? prog->GetState() : nullptr;}
-
-		bool		operator==(const Reference&other) const {return refID == other.refID;}
-		bool		operator!=(const Reference&other) const {return refID != other.refID;}
 
 		/**
 		Pushes the local reference to the top of the stack
@@ -662,6 +690,10 @@ namespace Lua
 		void			Serialize(IWriteStream&stream, bool ignoreNonSerializableContent=false)	const;
 
 		void			DeserializeMerge(IReadStream&stream);
+
+		/**
+		Assigns this reference to a new (or existing) global variable by the given name
+		*/
 		void			SetGlobal(const String&name);
 
 	};
@@ -693,8 +725,9 @@ namespace Lua
 		void			SetTopElement(index_t at);
 		bool			AppendTopElement();
 		bool			PushField(const String&name) const;
+		bool			PushField(const char*name) const;
 		bool			PushElement(index_t) const;
-		void			Pop(int cnt);
+		void			Pop(int cnt) const;
 	protected:
 		virtual void	SignalChange(const String&) override;
 	public:
@@ -717,6 +750,8 @@ namespace Lua
 		void			ClearTable();
 		void			UnsetField(const String&name);
 		void			UnsetElement(index_t at);
+
+		void			Foreach(const std::function<void(const String&, const Lua::Reference&)>&visitor) const;
 		/**
 		Fetches the value of the specified field in the local table.
 		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
@@ -725,12 +760,23 @@ namespace Lua
 		template <typename T>
 			bool		GetField(const String&name, T&rs) const
 			{
+				return GetField(name.c_str(), rs);
+			}
+		/**
+		Fetches the value of the specified field in the local table.
+		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
+		@return true on success
+		*/
+		template <typename T>
+			bool		GetField(const char*name, T&rs) const
+			{
 				if (!PushField(name))
 					return false;
 				rs = Detail::StackedT<T,false>::Get(GetProgram(),-1);
 				Pop(2);
 				return true;
 			}
+
 		/**
 		Fetches the value of the specified index element in the local table.
 		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
@@ -751,9 +797,14 @@ namespace Lua
 		Works for primitive values as well as references
 		*/
 		template <typename T>
-			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
+			void		SetField(const String&name, const T&value)	{return SetField(name.c_str(),value);}
 		template <typename T>
 			void		SetField(const char*name, const T&value)	{if (IsEmpty()) return; Detail::ParameterT<T>::Push(GetState(),value); SetTopField(name);}
+		/**
+		Creates a new table and sets it as a field with the given name
+		*/
+		Table			SetSubTable(const String&name)			{return SetSubTable(name.c_str());}
+		Table			SetSubTable(const char*name);
 		/**
 		Sets an index element in the local table.
 		Works for primitive values as well as references
@@ -844,17 +895,12 @@ namespace Lua
 				if (IsEmpty())
 					return;	//allow return-less functions to just fail silently
 					//throw Except::Program::GeneralFault("Lua: Trying to call empty function");
-				try
-				{
-					lua_State*state = GetProgram()->GetState();
-					Super::Push();
-					int numParameters = Detail::PushParameters(state,parameters...);
-					CallPushedFunction(state,numParameters,0);
-				}
-				catch (const std::exception&ex)
-				{
-					throw Exception(CLOCATION,"Failed to call void function '"+this->GetName()+"': '"+String(ex.what()));
-				}
+
+				lua_State*state = GetProgram()->GetState();
+				Super::Push();
+				int numParameters = Detail::PushParameters(state,parameters...);
+				CallPushedFunction(state,numParameters,0);
+
 			}
 
 		};
@@ -878,29 +924,23 @@ namespace Lua
 			{
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
+
+				lua_State*state = GetProgram()->GetState();
+				Super::Push();
+				int numParameters = Detail::PushParameters(state,parameters...);
+				CallPushedFunction(state,numParameters,1);
+				return_t rs;
 				try
 				{
-					lua_State*state = GetProgram()->GetState();
-					Super::Push();
-					int numParameters = Detail::PushParameters(state,parameters...);
-					CallPushedFunction(state,numParameters,1);
-					return_t rs;
-					try
-					{
-						Detail::StackedT<return_t,false>::Get(GetProgram(),-1,rs);
-					}
-					catch (...)
-					{
-						Detail::PopStacked(state);
-						throw;
-					}
-					Detail::PopStacked(state);
-					return rs;
+					Detail::StackedT<return_t,false>::Get(GetProgram(),-1,rs);
 				}
-				catch (const std::exception&ex)
+				catch (...)
 				{
-					throw Exception(CLOCATION,"Failed to call "+String(typeid(return_t).name())+" function '"+this->GetName()+"': '"+String(ex.what()));
+					Detail::PopStacked(state);
+					throw;
 				}
+				Detail::PopStacked(state);
+				return rs;
 
 			}
 

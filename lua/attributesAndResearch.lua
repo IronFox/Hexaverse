@@ -19,9 +19,11 @@ Handle	Game.CreateResearch(Handle group, String name, String iconName, advance(R
 	@return Handle to the new topic group
 
 	
-void	Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
+void	Game.Log(msg)						Prints any message to Hexaverse log (client or server-private)
 
-bool	Game.LowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of horizontal cells)
+bool	Game.Grid.lowerResolutionPlanet		Set to true if the planet has reduced grid resolution (1/4 of horizontal cells)
+int		Game.Grid.bottomHeight;		Minimum grid height
+int		Game.Grid.topHeight;		Maximum grid height
 
 Hexaverse expects the following classes and methods to be defined:
 	ResearchState - table, arbitrary content. Expected but not required to mimic a class

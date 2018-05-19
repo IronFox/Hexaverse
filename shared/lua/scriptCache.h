@@ -16,7 +16,7 @@ namespace ScriptCache
 		SHA256::HashContainer	identifier;
 		PathString				filename;
 		String					content;
-		Ctr::Array<BYTE>				compressed;
+		Array<BYTE>				compressed;
 
 
 		bool					Recompress();
@@ -31,7 +31,7 @@ namespace ScriptCache
 	PScript		LoadContent(const String&content);
 
 	PScript		Lookup(const SHA256::HashContainer&id);
-	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,Ctr::ArrayData<BYTE>&data, bool createFile=true);
+	PScript		DefineFromFleetingCompressedData(const SHA256::HashContainer&id,ArrayData<BYTE>&data, bool createFile=true);
 
 	/**
 	Cleans up outdated cache files on client.

@@ -3,7 +3,6 @@
 #include "hud/objectCommands.h"
 #include <objects/structure.h>
 #include "objectSelection.h"
-#include <objects/research.h>
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>
 #include <objects/prototypes.h>
@@ -25,6 +24,7 @@
 #include "hud/hexGrid.h"
 #include "../objectNetworkHelper.h"
 #include "scene/vehicleAccessibilityMesh.h"
+#include "../scriptedAI.h"
 
 
 namespace Objects
@@ -1340,9 +1340,11 @@ namespace Objects
 		}
 
 
-		void DefineGlobalCommands()
+		void RedefineGlobalCommands()
 		{
 			using namespace Command;
+
+			globalCommands.Clear();
 
 			globalCommands.Add(new GlobalCommand("End Round",
 			[]()
@@ -1365,22 +1367,47 @@ namespace Objects
 				return rs;
 			}));
 
-			globalCommands.Add(new GlobalCommand("Auto End Round",
-			[]()
+			if (ScriptedAI::visualDebugActive)
 			{
-				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
-					ApplicationInterface::SignalRoundEnd();
-				RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
-			},
-			[](bool controlEnabled)->Objects::CommandFlags
-			{
-				Objects::CommandFlags rs = Objects::CommandFlags::None;
-				rs |= Objects::CommandFlags::IsEnabled;
-				if (RuntimeConfig::autoNewRound)
-					rs |= Objects::CommandFlags::IsPermaActive;
-				return rs;
-			}));
+				aiCommands = AddChild(globalCommands,"AI Commands","Enable Nexus AI");
 
+				aiCommands->Add(new GlobalCommand("Auto End Round",
+				[]()
+				{
+					if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+						ApplicationInterface::SignalRoundEnd();
+					RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
+				},
+				[](bool controlEnabled)->Objects::CommandFlags
+				{
+					Objects::CommandFlags rs = Objects::CommandFlags::None;
+					rs |= Objects::CommandFlags::IsEnabled;
+					if (RuntimeConfig::autoNewRound)
+						rs |= Objects::CommandFlags::IsPermaActive;
+					return rs;
+				}));
+
+				ScriptedAI::DefineCommands(aiCommands);
+
+			}
+			else
+			{
+				globalCommands.Add(new GlobalCommand("Auto End Round",
+				[]()
+				{
+					if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+						ApplicationInterface::SignalRoundEnd();
+					RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
+				},
+				[](bool controlEnabled)->Objects::CommandFlags
+				{
+					Objects::CommandFlags rs = Objects::CommandFlags::None;
+					rs |= Objects::CommandFlags::IsEnabled;
+					if (RuntimeConfig::autoNewRound)
+						rs |= Objects::CommandFlags::IsPermaActive;
+					return rs;
+				}));
+			}
 
 			viewCommands = AddChild(globalCommands,"View");
 
@@ -1525,7 +1552,7 @@ namespace Objects
 				DefineTower(**p);
 			}
 
-			DefineGlobalCommands();
+			RedefineGlobalCommands();
 
 		}
 

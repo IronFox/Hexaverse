@@ -9,5 +9,6 @@ void OpenDocumentExternally(const PathString&document)
 	#ifdef HAS_WINDOW
 		SetFullScreen(false);
 	#endif
-	_wsystem(("start "+document).c_str());
+	ShellExecuteW(NULL, NULL, document.c_str(), NULL, NULL, SW_SHOWNORMAL);
+	//_wsystem(("start \""+document+"\"").c_str());
 }

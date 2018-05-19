@@ -864,7 +864,7 @@ namespace Journal
 		{
 		public:
 			EventStorage<FactionEvent>			factionEvents;
-			Ctr::GenericHashTable<TUniqueID,EntityStrand,Ctr::StdHash,Copy,Swap>	entityStrands;
+			HashTable<TUniqueID,EntityStrand,Ctr::StdHash,Copy,Swap>	entityStrands;
 
 			void			swap(FactionStrand&other)
 			{
@@ -883,7 +883,7 @@ namespace Journal
 		};
 
 
-		Ctr::GenericHashTable<TUniqueID,FactionStrand,Ctr::StdHash,Copy,Swap>	factionStrands;
+		HashTable<TUniqueID,FactionStrand,Ctr::StdHash,Copy,Swap>	factionStrands;
 		EventStorage<GlobalEvent>		globalEvents;
 		
 		RuntimeConfig::RoundNumber		roundNumber;

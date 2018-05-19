@@ -125,6 +125,7 @@ namespace Objects
 		*/
 		bool					ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const;
 
+		static bool				FindTarget(const PFaction&myFaction, TrajectoryType trajectoryType, float flatAttackRange, float explosionRadius, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult);
 
 
 
@@ -160,8 +161,8 @@ namespace Objects
 		class AreaHelper
 		{
 		public:
-			Ctr::Queue<Grid::LCellIdI>	queue;
-			Ctr::GenericHashSet<Grid::LCellIdI>	visited;
+			Queue<Grid::LCellIdI>	queue;
+			HashSet<Grid::LCellIdI>	visited;
 
 			bool				operator>>(Grid::LCellIdI&next)
 			{

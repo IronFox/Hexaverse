@@ -128,7 +128,7 @@ namespace RuntimeConfig
 
 	namespace UnitLimits
 	{
-		static DeltaWorks::GenericHashTable<Objects::EntityType,UINT16>	map;
+		static DeltaWorks::HashTable<Objects::EntityType,UINT16>	map;
 
 		static bool isSet = false;
 		static bool isEnabled = true;

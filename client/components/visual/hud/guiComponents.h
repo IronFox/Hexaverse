@@ -764,6 +764,7 @@ namespace Component
 		static const char*	GetStandardAlphabet()  {return "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";};
 
 		String				GetText();
+		StringRef			GetTextRef();
 		void				SetText(const String&);
 		void				SetAllowedAlphabet(const String&);
 	};

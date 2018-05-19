@@ -93,9 +93,9 @@ namespace HexGrid
 			typedef Objects::Command::VisualCommand	Super;
 		public:
 			int2					gridCoords;
-			static index_t			indexCounter;
 
 			/**/					Icon(const String&name);
+			/**/					Icon(const String&name, const String&iconName);
 		};
 
 		#pragma region PanelButtonImplementations
@@ -117,6 +117,16 @@ namespace HexGrid
 				outResult << (HUD::Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
 			}
 		};
+
+		//class AICommand : public Icon
+		//{
+		//	typedef Icon			Super;
+		//public:
+		//	/**/					AICommand() : Super("Reload and run AI", "Enable Nexus AI") {}
+
+		//	virtual void			Refresh(bool) override;
+		//	virtual void			Execute() override;
+		//};
 
 		class VoteCommand : public Icon
 		{
@@ -290,6 +300,7 @@ namespace HexGrid
 		Updates state and presence of all buttons of this panel
 		*/
 		void		Refresh();
+		void		RefreshMenuButtonOnly();
 	}
 
 

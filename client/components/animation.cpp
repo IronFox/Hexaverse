@@ -525,7 +525,7 @@ namespace Animation
 	}
 
 
-	static GenericHashSet<TUniqueID> insertIntoGridLater;
+	static HashSet<TUniqueID> insertIntoGridLater;
 
 
 	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, Objects::EntityType type)
@@ -832,6 +832,8 @@ namespace Animation
 
 		#endif
 
+		if (RuntimeConfig::IsInAnyCommandPhase())
+			PlayerControlBegin::CheckAutoNextRound();
 	}
 
 	void	UpdateState(const Objects::PStructure&s,Protocol::StructureState&vs)
@@ -960,6 +962,8 @@ namespace Animation
 			//HUD::HexGrid::Configure(Objects::selectedEntity);
 		#endif
 
+		if (RuntimeConfig::IsInAnyCommandPhase())
+			PlayerControlBegin::CheckAutoNextRound();
 	}
 
 	float GetExplosionSize(const Objects::PWorldEntity&target)

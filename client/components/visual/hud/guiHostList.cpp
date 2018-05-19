@@ -65,6 +65,7 @@ namespace HUD{namespace HostList{
 			changelog = Window::Create();
 			changelog->Anchor().Right().Bottom(0.1f);
 			changelog->canBeImplicitlyClosed = false;
+			changelog->isModal = false;
 			changelog->SetWidth(HUD::Component::Distance(0.4f));
 			//changelog->SetAutomaticHeight(false);
 			//changelog->SetHeight(0.6f);
