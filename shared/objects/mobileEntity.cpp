@@ -1144,8 +1144,9 @@ namespace Objects
 
 				while (!world.LowCellIsClear(dest) && !AccessibleHangarHere(dest,*this))
 					dest++;
-				while (world.LowCellIsClear(dest-1) || AccessibleHangarHere(dest-1,*this))
-					dest--;
+				if (IsAffectedByGravity(dest))
+					while (world.LowCellIsClear(dest-1) || AccessibleHangarHere(dest-1,*this))
+						dest--;	//drop destination down to ground
 				if (!virtualPlatformMode && IsAffectedByGravity(dest) && !CanStandOn(world,dest -1))
 					return false;
 			}

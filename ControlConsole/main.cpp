@@ -511,10 +511,10 @@ public:
 	{
 		while (!application_shutting_down)
 		{
-			int ch = _getch();
-			if (ch == 224 || ch == 0)
+			int ch = _getwch();
+			if (ch == 0xE0 || ch == 0)
 			{
-				int next = _getch();
+				int next = _getwch();
 				switch(next)
 				{
 					case 72:
