@@ -23,10 +23,10 @@ namespace Objects
 
 	struct THindranceVector
 	{
-		int			road,
-					air,
-					water,
-					other;
+		int			road=0,
+					air=0,
+					water=0,
+					other=0;
 	};
 
 
@@ -398,6 +398,32 @@ namespace Objects
 
 
 
+		enum class GroundFlags
+		{
+			None = 0x0,
+			DisallowUnknownGround = 0x1,		//!< If the detected ground is unknown, cannot stand here
+			ForceFloatOnEverything = 0x2,		//!< Except DisallowUnknownGround type, all other attributes of the ground are ignored
+			ForceFloatOnWater = 0x4,			//!< If the base cannot normally stand on water alone, and only water is found, the vehicle may stand there anyways
+		};
+
+
+		inline GroundFlags operator|(GroundFlags a, GroundFlags b)
+		{
+			typedef std::underlying_type<GroundFlags>::type U;
+			return GroundFlags( U(a) | U(b) );
+		}
+		inline GroundFlags operator|=(GroundFlags&a, GroundFlags b)
+		{
+			a = a | b;
+			return a;
+		}
+		inline bool operator&(GroundFlags a, GroundFlags b)
+		{
+			typedef std::underlying_type<GroundFlags>::type U;
+			return ( U(a) & U(b) ) != 0;
+		}
+
+
 
 		class VehicleBase : public Base
 		{
@@ -428,7 +454,7 @@ namespace Objects
 			With a maximum action value of 128, using an exponent of 6 would allow the vehicle to continue a job 128 times each round.
 			A value of 7 or more will (theoretically) allow an infinite number of executions per round.
 			*/
-			Ctr::FixedArray<BYTE,OperationCount>	acceleration;
+			FixedArray<BYTE,OperationCount>	acceleration;
 
 
 			//warning: none is broken in pathfinding
@@ -457,14 +483,7 @@ namespace Objects
 
 			virtual bool					IsVehicleBase() const override {return true;}
 
-			/**
-			Global flag that states whether or not any base should be able to stand on unknown blocks.
-			Usually this is fine, but for AI-units this can prove fatal.
-			Make sure this variable is only ever temporarily false
-			*/
-			static bool						canStandOnUnknown	/*=true*/;
-
-			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
+			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, GroundFlags flags=GroundFlags::None);
 
 			void							DescribeType(Description&, bool compound, bool includeName, const OwnerParameter&);
 

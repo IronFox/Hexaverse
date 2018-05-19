@@ -1683,24 +1683,20 @@ namespace Objects
 		#endif
 
 
-		/*static*/ bool					VehicleBase::canStandOnUnknown=true;
 
-		bool							VehicleBase::CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat)
+		bool							VehicleBase::CanStandOn( const World::Data&world, const Grid::LCellIdI&cell, GroundFlags flags/*=GroundFlags::None*/ )
 		{
 			if (requirements == Requirement::None)
 				return true;
 
 			Grid::Content weakest,strongest;
-			bool anyUnknown = world.GetStrengthRange(cell,weakest,strongest,canStandOnUnknown);
+			const bool canStandOnUnknown = !(flags & GroundFlags::DisallowUnknownGround);
+			world.GetStrengthRange(cell,weakest,strongest,canStandOnUnknown);
 			if (strongest == Grid::Content::Unknown && !canStandOnUnknown)
 				return false;
-			//if (!canStandOnUnknown && anyUnknown)
-			//	return false;
+			if (flags & GroundFlags::ForceFloatOnEverything)
+				return true;
 
-	//								moveOnWater
-
-			//if (t == Grid::Content::Clear)
-				//return false;
 			const int waterStrength = Grid::CellStack::Cell::typeStrength[Grid::Content::Water];
 			const int strongestStr = Grid::CellStack::Cell::typeStrength[strongest];
 
@@ -1711,33 +1707,12 @@ namespace Objects
 					if (strongestStr > waterStrength)
 						return true;
 					if (strongestStr == waterStrength)
-						return moveOnWater || ignoreWater;
-					//if (strongest == Grid::Content::Clear)
-					//	return doFloat;
-					return doFloat;	//air or lava
+						return moveOnWater || (flags & GroundFlags::ForceFloatOnWater);
+					return false;	//air or lava
 				}
 				case Requirement::Water:
-					if (anyUnknown && !canStandOnUnknown)
-						return false;
-					//if (strongestStr > waterStrength)
-					//	return false;
-					//if (strongest == Grid::Content::Lava)
-					//	return false;
-					//if (strongest == Grid::Content::Clear)
-					//	return doFloat;
-					return strongest == Grid::Content::Water || doFloat;
+					return strongest == Grid::Content::Water;
 				break;
-				//case Requirement::CentralBlock:
-				//{
-				//	BYTE t = world.cellStack[Grid::low.grid.GetCell(cell.cellID).higherEquivalent].GetCellI(cell.height).content;
-				//	return t != Grid::Content::Clear && (moveOnWater || t != Grid::Content::Water);
-				//}
-				/*case Requirement::FullBase:
-				{
-					return weakest != Grid::Content::Clear && (moveOnWater || weakest != Grid::Content::Water);
-				}
-				case Requirement::RoadOrFoundation:
-					return weakest == Grid::Content::Foundation || weakest == Grid::Content::Road;*/
 			}
 			FATAL__("Unknown requirement "+String(requirements.ToString()));
 			return false;

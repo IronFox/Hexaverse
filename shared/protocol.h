@@ -124,6 +124,12 @@ namespace Protocol
 				Super::operator=(other);
 			}
 
+			void				operator=(const ArrayRef<const T>&other)
+			{
+				ASSERT_LESS_OR_EQUAL__(other.Count(),MaxSize);
+				Super::operator=(other);
+			}
+
 #ifdef __ARRAY_RVALUE_REFERENCES__
 			void				operator=(ArrayRef<T>&&other)
 			{

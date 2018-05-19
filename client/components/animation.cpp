@@ -154,10 +154,13 @@ namespace Animation
 
 	//	static Buffer<Objects::MapNode>	nodes;
 		static Objects::Pathfinding::ReachabilityMapper mapper(false);
-		Objects::Component::VehicleBase::canStandOnUnknown = false;
+
+
 		AI::BeginBlockTest(v,false,false,false);
-		mapper.Map(v.get(),v->location,AI::BlockTest,referenceSpeed*5,true);
-		Objects::Component::VehicleBase::canStandOnUnknown = true;
+
+		using namespace Objects::Pathfinding;
+
+		mapper.Map(*v,v->location,AI::BlockTest,RoutingFlags::ForceRevertible,Objects::Component::GroundFlags::DisallowUnknownGround,referenceSpeed*5);
 
 		float dummy = 0;
 		const bool originGood = EstimateThreatLevel(v,v->location,dummy,dummy,dummy);;
@@ -1202,8 +1205,8 @@ namespace Animation
 						Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
 						if (v)
 						{
-							if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
-								Objects::RemoveVehicleFromGrid(v,v->location);
+							if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage)
+								Objects::RemoveFromGrid(v,v->location);
 						}
 					}
 					if (allocatedTarget->IsMobile() && allocatedTarget->owner->SharesSensorsWithMe())
@@ -1243,8 +1246,7 @@ namespace Animation
 
 				if (!insertIntoGridLater.IsSet(v->id))
 				{
-					if (v->IsVehicle() && !v->IsAboveGrid())
-						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
+					Objects::RemoveFromGrid(v,v->location);
 					insertIntoGridLater.Set(v->id);
 				}
 				v->isInMovementStream = true;
@@ -1927,8 +1929,7 @@ namespace Animation
 							float t = 0.f;
 							v->MoveSensoryToCurrentLocation(t);
 						}
-						if (v->IsVehicle() && !v->IsAboveGrid())
-							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
+						Objects::InsertIntoGrid(v,v->location);
 					}
 				});
 				Animation::insertIntoGridLater.Clear();

@@ -696,7 +696,7 @@ namespace Test
 				if (++tries > 100)
 					Fail(CLOCATION,"Unable to find suitable vehicle location");
 			}
-			while (vehicleAt.height == Objects::badHeight || !myBase->CanStandOn(World::actual,vehicleAt-1,false,false));
+			while (vehicleAt.height == Objects::badHeight || !myBase->CanStandOn(World::actual,vehicleAt-1));
 
 			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,myBase,turret));
 			float t = 0;
@@ -1104,8 +1104,8 @@ namespace Test
 			ASSERT__(!plant->IsEnabled());
 			ASSERT__(v0);
 			ASSERT__(v1);
-			ASSERT__(Objects::GetVehicle(v0->location) == v0);
-			ASSERT__(Objects::GetVehicle(v1->location) == v1);
+			ASSERT__(Objects::GetMobileEntity(v0->location) == v0);
+			ASSERT__(Objects::GetMobileEntity(v1->location) == v1);
 			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t);
 			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t);
 			ASSERT__(Objects::vehicles.IsEmpty());

@@ -855,7 +855,7 @@ namespace Objects
 
 			if (!appear)
 			{
-				if (e->IsAboveGrid())
+				if (e->IsAboveTerrain())
 				{
 					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
 					if (cover > 0)
@@ -882,7 +882,7 @@ namespace Objects
 				{
 
 
-					if (e->IsAboveGrid())
+					if (e->IsAboveTerrain())
 					{
 						count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
 						stillVisible = cover > 0;
@@ -1286,7 +1286,7 @@ namespace Objects
 
 				this->VisitVisibleForeignEntities(t,[this,offGrid, sensor,&t](const PWorldEntity&s)
 				{
-					if (s->IsAboveGrid() != offGrid)
+					if (s->IsAboveTerrain() != offGrid)
 						return;
 					HandlePotentialDisappearance(s,t,SharingSensorWith(s->owner));
 				});

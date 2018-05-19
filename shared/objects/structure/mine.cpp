@@ -39,7 +39,7 @@ namespace Objects
 				for (UINT j = layer-1; j >= i && j < layer; j--)
 				{
 					const int h = Grid::CellStack::ToHeight(j);
-					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetVehicle(Grid::LCellIdI(location.stackID,h)))
+					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetMobileEntity(Grid::LCellIdI(location.stackID,h)))
 						stack.volumeCell[j].content = Grid::Content::Foundation;
 					else
 					{

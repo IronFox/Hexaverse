@@ -44,21 +44,21 @@ namespace Objects
 	#endif
 
 
-	bool					MobileEntityProducer::WorkItem::CanSpawnAboveGrid(int&outHeight) const
+	bool					MobileEntityProducer::WorkItem::CanSpawnAboveTerrain(int&outHeight) const
 	{
 		#ifdef CLIENT
-			return prototype ? prototype->CanSpawnAboveGrid(outHeight) : false;
+			return prototype ? prototype->CanSpawnAboveTerrain(outHeight) : false;
 		#else
-			return producing->CanSpawnAboveGrid(outHeight);
+			return producing->CanSpawnAboveTerrain(outHeight);
 		#endif
 	}
 
-	bool					MobileEntityProducer::WorkItem::CanSpawnInGrid() const
+	bool					MobileEntityProducer::WorkItem::CanSpawnInTerrain() const
 	{
 		#ifdef CLIENT
-			return prototype ? prototype->CanSpawnInGrid() : base != nullptr;
+			return prototype ? prototype->CanSpawnInTerrain() : base != nullptr;
 		#else
-			return producing->CanSpawnInGrid();
+			return producing->CanSpawnInTerrain();
 		#endif
 	}
 
@@ -207,7 +207,11 @@ namespace Objects
 				}
 			}
 			else
-				c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
+			{
+				Buffer0<Choice>	highChoices;
+				foreach (movementChoices,c)
+					if (WorldEntity::IsAboveTerrain(c->location))
+						highChoices << *c;
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))

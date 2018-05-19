@@ -77,8 +77,8 @@ namespace Objects
 			#endif
 			bool					IsVehicle() const;
 			Component::VehicleBase*	GetVehicleBase() const;
-			bool					CanSpawnInGrid() const;
-			bool					CanSpawnAboveGrid(int&) const;
+			bool					CanSpawnInTerrain() const;
+			bool					CanSpawnAboveTerrain(int&) const;
 			const String&			GetName() const;
 
 			/**

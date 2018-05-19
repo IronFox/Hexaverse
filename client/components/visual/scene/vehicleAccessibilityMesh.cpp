@@ -151,10 +151,11 @@ namespace VehicleAccessibilityMesh
 
 			root = e->GetLastPointOfOrigin();
 		}
-		if (Objects::WorldEntity::IsAboveGrid(root))
+		if (Objects::WorldEntity::IsAboveTerrain(root))
 			return;
 
-		mapper.Map(e.get(),root,nullptr,0xFFFFFFFF,false,true,true);
+		using namespace Objects::Pathfinding;
+		mapper.Map(*e,root,nullptr, RoutingFlags::IgnoreOwnMobilesOnRoute | RoutingFlags::IgnoreMobilesOnDestination | RoutingFlags::AllowAccessibleHangars | RoutingFlags::DisallowOffTerrain);
 
 		const count_t rootAt = mapper.result.Count();
 		mapper.result.Append().cell = root;

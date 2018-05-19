@@ -388,19 +388,19 @@ namespace AI
 		const bool canIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
 		BeginBlockTest(v,true,canIgnoreThreat,overconfident);	//force current to have no threat level, limiting motion to areas with zero threat
 
-		Objects::Component::VehicleBase::canStandOnUnknown = false;
+		const Objects::Component::GroundFlags groundFlags = Objects::Component::GroundFlags::DisallowUnknownGround;
 
-		mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,true);
+
+		mapper.Map(*v, v->location, BlockTest, Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed);
 		if (mapper.result.IsEmpty())
 		{
 			//no chance to get out of danger, so try to reduce threat level
 			BeginBlockTest(v,false,canIgnoreThreat,overconfident);
-			mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,true);
+			mapper.Map(*v, v->location, BlockTest, Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed);
 			if (mapper.result.IsEmpty())
-				mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,false);
+				mapper.Map(*v, v->location, BlockTest, Objects::Pathfinding::RoutingFlags::None, groundFlags,referenceSpeed);
 		}
 
-		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 		{
 			foreach (mapper.result,n)

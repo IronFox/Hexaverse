@@ -133,7 +133,7 @@ Timer::Time applicationStart;
 
 namespace ApplicationInterface
 {
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<const Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
 	{
 		return
 		#ifdef HAS_WINDOW
@@ -1104,7 +1104,12 @@ namespace ApplicationInterface
 
 			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
 			{
-				Camera::TargetSkyOrbit();
+				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveTerrain())
+				{
+					Camera::TargetSkyOrbit();
+				}
+				else
+					Camera::TargetGroundOrbit();
 			}
 			else
 				Camera::TargetGroundOrbit();

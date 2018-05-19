@@ -352,7 +352,7 @@ namespace Nexus
 						Grid::AssertIsValid(candidate,CLOCATION);
 						candidate.height = Objects::FindApplicableGround(candidate, true, false);
 
-						if (candidate.height != Objects::badHeight && !Objects::GetVehicle(candidate))
+						if (candidate.height != Objects::badHeight && !Objects::GetMobileEntity(candidate))
 						{
 							location = candidate;
 							break;

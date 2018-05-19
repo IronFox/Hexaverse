@@ -2,6 +2,7 @@
 
 #include "../grid/stack.h"
 #include "mobileEntity.h"
+#include "volumeGrid.h"
 
 namespace Objects
 {
@@ -34,32 +35,52 @@ namespace Objects
 		It must also be increased if vehicle types can ever float freely.
 		*/
 		typedef TWaysTemplate<Grid::LCellIdI,2>	TWays;	//TWays MaxLevels must always be >= 1
-		typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
+		
 
+		
+		enum class RoutingFlags
+		{
+			None = 0x0,
+			IgnoreMobilesOnDestination = 0x1,	//!< If any mobile is found on final destination, route there anyways
+			IgnoreOwnMobilesOnRoute = 0x2,		//!< Assume my own mobile entities are temporary obstructions and route through
+			ForceRevertible = 0x4,				//!< Only assume steps that can be taken in either direction
+			IgnoreLimit = 0x8,					//!< Disables the hardcoded step limit to avoid server overload
+			AllowAccessibleHangars = 0x10,		//!< Allows accessible hangars on destination
+			IncludeOrigin = 0x20,				//!< Includes the origin location into the result
+			DisallowOffTerrain = 0x40,			//!< Disallows locations above the terrain
+		};
+
+
+		inline RoutingFlags operator|(RoutingFlags a, RoutingFlags b)
+		{
+			typedef std::underlying_type<RoutingFlags>::type U;
+			return RoutingFlags( U(a) | U(b) );
+		}
+		inline RoutingFlags operator|=(RoutingFlags&a, RoutingFlags b)
+		{
+			a = a | b;
+			return a;
+		}
+		inline bool operator&(RoutingFlags a, RoutingFlags b)
+		{
+			typedef std::underlying_type<RoutingFlags>::type U;
+			return ( U(a) & U(b) ) != 0;
+		}
 
 
 
 		void			GetWays(const World::Data&world,
-								const Vehicle*v,  const Grid::LCellIdI&location, 
+								const MobileEntity*v,  const Grid::LCellIdI&location, 
 								TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar,
-								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
-		#ifndef NO_SATELLITES
-			void		GetWays(const Satellite*v,  UINT32 location, 
-								TOrbitalWays&outWays, UINT32 destination, 
-								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
-		#endif
-		void			GetMobileWays(	const World::Data&world,
-								const MobileEntity*v,  const Grid::LCellIdI&location,
-								TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar, 
-								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
-
+								RoutingFlags routingFlags, Component::GroundFlags groundFlags=Component::GroundFlags::None);
 
 
 		enum class Result
 		{
 			DestinationReached,
 			InsufficientIterations,
-			NoPath
+			NoPath,
+			InvalidDestination
 		};
 
 
@@ -83,18 +104,18 @@ namespace Objects
 
 			/**
 			Updates @a result.
-			@param vehicle Vehicle to plot for
+			@param mobile Mobile entity to plot for
 			@param from Location to plot from (excluded from result)
 			@param to Location to plot to (included in result if found)
-			@param ignoreFriendlyVehiclesOnRoute Set true to ignore friendly vehicles, false to route around them
+			@param routingFlags Parameters affecting routing
+			@param groundFlags Parameters affecting where the mobile entity can stand
 			@param failIfLimitReached Set true to apply server-side work limit of 2000 routing steps (radially, following Dijkstra), false to take until done or no ways left
 			@param[out] outWouldFailDueToLimitReached Set if failIfLimitReached is set false, and the limit has been reached (and ignored)
 			@param cellCostModifer Custom cell modifier function, that receives the input cell ID, and determined terrain costs, and can alter this value. Must not be set negative
-			@return True if the destination was reached, false otherwise
+			@return Routing result
 			*/
-			bool Update(const Vehicle&vehicle, const Grid::LCellIdI&from,
-				const Grid::LCellIdI&to, 
-				bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached = true, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
+			Result Update(const MobileEntity&mobile, const Grid::LCellIdI&from, const Grid::LCellIdI&to, 
+				RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
 
 
 			/**
@@ -102,18 +123,33 @@ namespace Objects
 			If the route without ignorance is less than 4x longer than the one with ignorance, the non-ignoring will be copied to result.
 			Otherwise the ignoring will be copied
 			*/
-			bool SelectiveUpdate(const Vehicle&vehicle, const Grid::LCellIdI&from,
-				const Grid::LCellIdI&to,
-				bool failIfLimitReached = true, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
+			Result SelectiveUpdate(const MobileEntity&mobile, const Grid::LCellIdI&from, const Grid::LCellIdI&to, 
+				RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
+
+
+			/**
+			Sets the local result to the shortest construction path
+			@param mobile Mobile entity to plot for
+			@param flatPath Avoid height changes along the path. Destination height is forcefully set to origin height
+			@param from Origin location
+			@param to Destination location. If @a flatPath is set, to.height is ignored
+			@param routingFlags Routing parameters
+			@param groundFlags Flags to determine where the mobile entity can stand
+			*/
+			Result	UpdateConstructionPath(const MobileEntity&mobile, bool flatPath, const Grid::LCellIdI&from, Grid::LCellIdI to, 
+				RoutingFlags routingFlags, Component::GroundFlags groundFlags, const count_t maxIterations = 500);
 
 		private:
 			struct TNode
 			{
-				UINT32	backLink, minDistance;
+				Grid::LCellIdI	backLink;
+				UINT32	minDistance;
 				int		nodeCosts;
 			};
-			Array<TNode>	buffer;
+			VolumeGrid<TNode>	buffer;
 			Buffer0<PathNode>	routeIgnore;
+
+			void				CompleteRouting(const Grid::LCellIdI&dest, bool includeOrigin);
 		};
 
 		extern ShortestPath	shortestPath;
@@ -123,7 +159,6 @@ namespace Objects
 		#ifndef NO_SATELLITES
 			bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 		#endif
-		Result			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath, const count_t maxIterations = 500);
 		/**
 		Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
 		@param from Source location
@@ -161,35 +196,33 @@ namespace Objects
 
 			typedef std::function<bool(const Grid::LCellIdI&)>FBlockTest;
 
-			/**/			ReachabilityMapper(bool logPerformance, bool cacheIsBlocked=true) :logPerformance(logPerformance),cacheIsBlocked(cacheIsBlocked)	{}
+			/**/			ReachabilityMapper(bool logPerformance) :logPerformance(logPerformance)	{}
 		
 			/**
-			@brief Maps all reachable cells of the given vehicle from the specified location.
-			Uses known world on client, and client-specific world (derived from the vehicle parameter) on server.
+			@brief Maps all reachable cells of the given mobile entity from the specified location.
+			Uses known world on client, and client-specific world (derived from the entity parameter) on server.
 			Clears this->result before filling it with the new outcome
 			@param vehicle Vehicle to use for reference. Must not be NULL. Must have a non-NULL owner
 			@param from Specifies the starting location
 			@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
-			@param forceRevertible Forces that only steps are considered that are possible in both directions
 			*/
-			void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false, bool allowAccessibleHangars=false, bool ignoreFriendlyVehiclesOnRoute=false);
-
-
+			void			Map(const MobileEntity&vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, UINT32 maxRange=0xFFFFFFFF);
 
 		private:
 			struct TReachableNode
 			{
-				UINT32	backLink, minDistance;
+				Grid::LCellIdI backLink;
+				UINT32	minDistance;
 				int		nodeCosts;
-				bool	isBlocked;
+				bool	isBlocked, blockedTested;
 				index_t	mapped;
 			};
-			bool					logPerformance,cacheIsBlocked;
-			Buffer<index_t>			touched;
-			Array<TReachableNode>	buffer;
-			HashTable<Grid::LCellIdI,bool>	blockedCache;
+			bool					logPerformance;
+			Buffer<Grid::LCellIdI>		touched;
+			VolumeGrid<TReachableNode>	buffer;
 
 			bool					CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked);
+			void					CheckNodeCosts(TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FBlockTest&isBlocked, const THindranceVector&vec);
 		};
 
 

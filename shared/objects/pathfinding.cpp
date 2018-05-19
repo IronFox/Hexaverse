@@ -10,36 +10,32 @@ namespace Objects{ namespace Pathfinding
 	
 	#ifdef CLIENT
 
-		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v)
+		bool NoHostileMobileHere(const Grid::LCellIdI&cellID, const OwnerParameter&v, float)
 		{
-			PVehicle vh = GetVehicle(cellID);
+			auto vh = GetMobileEntity(cellID);
 			return !vh || vh->owner->IsFriendly(v);
 		}
-		#ifndef NO_SATELLITES
-			bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v)
-			{
-				PSatellite vh = GetSatellite(cellID);
-				return !vh || vh->owner->IsFriendly(v);
-			}
-		#endif
-	#else
-		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const PFaction&v, float t)
+		bool NoForeignMobileHere(const Grid::LCellIdI&cellID, const OwnerParameter&v, float)
 		{
-			PVehicle vh = GetVehicle(cellID);
+			auto vh = GetMobileEntity(cellID);
+			return !vh || vh->owner == v;
+		}
+	#else
+		bool NoHostileMobileHere(const Grid::LCellIdI&cellID, const PFaction&v, float t)
+		{
+			auto vh = GetMobileEntity(cellID);
 			return !vh || vh->owner->IsFriendly(v) 
 					|| !v->CanSee(vh,t)
 			;
 		}
 
-		#ifndef NO_SATELLITES
-			bool NoHostileSatelliteHere(UINT32 cellID, const PFaction&v, float t)
-			{
-				PSatellite vh = GetSatellite(cellID);
-				return !vh || vh->owner->IsFriendly(v) 
-						|| !v->CanSee(vh,t)
-				;
-			}
-		#endif
+		bool NoForeignMobileHere(const Grid::LCellIdI&cellID, const PFaction&v, float t)
+		{
+			auto vh = GetMobileEntity(cellID);
+			return !vh || vh->owner == v
+					|| !v->CanSee(vh,t)
+			;
+		}
 	#endif
 
 
@@ -129,16 +125,16 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	template <bool IgnoreStructuresAtDestination>
-	bool ValidDestinationOf( const World::Data&world,const Vehicle&v, const Grid::LCellIdI&location, const Grid::LCellIdI&finalDestination, const PHangar&finalDestinationHangar, bool ignoreWater, bool doFloat)
+	bool ValidDestinationOf( const World::Data&world,const MobileEntity&v, const Grid::LCellIdI&location, const Grid::LCellIdI&finalDestination, const PHangar&finalDestinationHangar, RoutingFlags routingFlags, Component::GroundFlags groundFlags)
 	{
 		if (Grid::AffectedByEMP(location))
 			return false;
 		if (IsClear(world,location,v.owner, GetEntityTime(v)))
-			return v.CanStandOn(world,location-1,ignoreWater,doFloat);
+			return !v.IsAffectedByGravity(location) || v.CanStandOn(world,location-1,groundFlags);
 
 		auto hangar = AccessibleHangarHere(location,v);
 		if (hangar)
-			if (location == finalDestination || hangar == finalDestinationHangar || finalDestination == Grid::LCellIdI::Invalid)
+			if (routingFlags & RoutingFlags::AllowAccessibleHangars && (location == finalDestination || hangar == finalDestinationHangar))
 				return true;
 
 		return IgnoreStructuresAtDestination && finalDestination == location;
@@ -146,18 +142,81 @@ namespace Objects{ namespace Pathfinding
 
 
 
-	void GetWays(	const World::Data&world,
-							const Vehicle*v,  const Grid::LCellIdI&location, 
+	void GetWays( const World::Data&world,
+							const MobileEntity*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar,
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible)
+							RoutingFlags routingFlags, Component::GroundFlags groundFlags/*=Component::GroundFlags::None*/ )
 	{
 		outWays.Clear();
 		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
 
 		int maxWayDown = std::min(location.height + Grid::CellStack::HalfRange, v->GetMaxFallingHeight());
-		if (forceRevertible)
+		if (routingFlags & RoutingFlags::ForceRevertible)
 			maxWayDown = std::min(maxWayDown,v->GetMaxClimbingHeight());
 		bool canWalk[6] = {true,true,true,true,true,true};
+
+		const bool ignoreMobilesOnDestination = routingFlags & RoutingFlags::IgnoreMobilesOnDestination;
+
+		if (v->IsPlane())
+		{
+			if (routingFlags & RoutingFlags::DisallowOffTerrain)
+				return;
+
+			if (WorldEntity::IsAboveTerrain(location))
+			{
+				for (int i = 0; i < n.numNeighbors; i++)
+				{
+					auto	cell = Grid::LCellIdI(n.neighborID[i],location.height);
+
+					if (cell==destination)
+					{
+						if (!ignoreMobilesOnDestination && !NoMobileEntityHereExcept(cell,v))
+							continue;
+					}
+					else
+					{
+						if (routingFlags & RoutingFlags::IgnoreOwnMobilesOnRoute)
+						{
+							if (!NoForeignMobileHere(cell,v->owner,GetEntityTime(*v)))
+								continue;
+						}
+						else
+							if (!NoMobileEntityHereExcept(cell,v))
+								continue;
+					}
+					outWays.Add(cell);
+				}	
+				const auto p = ((Objects::SubOrbital::Plane*)v);
+				int h = p->GetLandingHeight(location,*p);
+				const auto candidate = Grid::LCellIdI(location.stackID,h);
+				if (h != badHeight && ValidDestinationOf<false>(world,*v,candidate, destination, destinationHangar, routingFlags, groundFlags))
+					outWays.Add(candidate);
+				return;
+			}
+
+			const auto fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			const UINT32 base = Grid::CellStack::ToLayer(location.height + v->GetHeight());
+			{
+				const auto&stack = world.GetStack(fine);
+				for (UINT32 layer = base; layer < Grid::CellStack::Range; layer++)
+					if (stack.GetCellU(layer).content != Grid::Content::Clear)
+						return;	//can't go up
+			}
+			#ifdef HYBRID_GRID
+				const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
+				for (int k = 0; k < n.numNeighbors; k++)
+				{
+					const auto&stack = world.GetStack(n.neighborID[k]);
+					for (UINT32 layer = base; layer < Grid::CellStack::Range; layer++)
+						if (stack.GetCellU(layer).content != Grid::Content::Clear)
+							return;	//can't go up
+				}
+			#endif
+			const auto candidate = Grid::LCellIdI(location.stackID,Objects::SubOrbital::Height);
+			if (ValidDestinationOf<false>(world,*v,candidate, destination, destinationHangar, routingFlags, groundFlags))
+				outWays.Add(candidate);
+			return;	//landed planes are limited to liftoff (if at all)
+		}
 
 		for (int j = v->GetMaxClimbingHeight(); j >= -maxWayDown; j--)
 		{
@@ -180,7 +239,7 @@ namespace Objects{ namespace Pathfinding
 					if (!okay)
 						continue;
 				}
-				bool valid = ValidDestinationOf<false>(world,*v,cell, destination, destinationHangar, false, false);
+				bool valid = ValidDestinationOf<false>(world,*v,cell, destination, destinationHangar, routingFlags, groundFlags);
 				if (!valid)
 				{
 					if (j <= 0 && !world.LowCellIsClear(cell))
@@ -188,27 +247,21 @@ namespace Objects{ namespace Pathfinding
 					continue;
 				}
 
-
 				if (cell==destination)
 				{
-					if (!ignoreVehiclesOnDestination && !NoVehicleHereExcept(cell,v))
+					if (!ignoreMobilesOnDestination && !NoMobileEntityHereExcept(cell,v))
 						continue;
 				}
 				else
 				{
-					if (!ignoreFriendlyVehiclesOnRoute)
+					if (routingFlags & RoutingFlags::IgnoreOwnMobilesOnRoute)
 					{
-						if (!NoVehicleHereExcept(cell,v))
+						if (!NoForeignMobileHere(cell,v->owner,GetEntityTime(*v)))
 							continue;
 					}
 					else
-						#ifdef CLIENT
-							if (!NoHostileVehicleHere(cell,v->owner))
-								continue;
-						#else
-							if (!NoHostileVehicleHere(cell,v->owner,v->entityTime))
-								continue;
-						#endif
+						if (!NoMobileEntityHereExcept(cell,v))
+							continue;
 				}
 
 				//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
@@ -220,83 +273,10 @@ namespace Objects{ namespace Pathfinding
 	}
 
 
-	#ifndef NO_SATELLITES
-		void GetWays(		const Satellite*v,  UINT32 location, 
-								TOrbitalWays&outWays, UINT32 destination, 
-								bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
-		{
-			outWays.Clear();
-			const auto&n = Grid::low.grid.GetCell(location).neighborhood;
-
-			{
-				//if (!v->CanClimb(j))	//now redundant
-					//continue;
-				for (int i = 0; i < n.numNeighbors; i++)
-				{
-					UINT32	cell = n.neighborID[i];
-
-
-					if (cell==destination)
-					{
-						if (!ignoreVehiclesOnDestination && !NoSatelliteHereExcept(cell,v))
-							continue;
-					}
-					else
-					{
-						if (!ignoreFriendlyVehiclesOnRoute)
-						{
-							if (!NoSatelliteHereExcept(cell,v))
-								continue;
-						}
-						else
-							#ifdef CLIENT
-								if (!NoHostileSatelliteHere(cell,v->owner))
-									continue;
-							#else
-								if (!NoHostileSatelliteHere(cell,v->owner,v->motionTime))
-									continue;
-							#endif
-					}
-
-					//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
-					outWays.Add(cell);
-				}	
-			}
-		}
-	#endif
-
 	
-	void			GetMobileWays(	const World::Data&world,
-							const MobileEntity*v,  const Grid::LCellIdI&location, 
-							TWays&outWays, const Grid::LCellIdI&destination, const PHangar&destinationHangar,
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
-	{
-		if (v->IsVehicle())
-		{
-			GetWays(world,(const Vehicle*)v, location, outWays, destination, destinationHangar, ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
-			return;
-		}
-		outWays.Clear();
-		#ifndef NO_SATELLITES
-			if (v->IsSatellite())
-			{
-				TOrbitalWays ways;
-				GetWays((const Satellite*)v,location.stackID,ways,destination.stackID,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
-				for (index_t i = 0; i < ways.numWays; i++)
-				{
-					outWays.Add(Grid::LCellIdI(ways.way[i],location.height));
-				}
-				return;
-			}
-		#endif
 
-		DBG_FATAL__("Unexpected mobile type used to determine ways");
-	}
-
-
-
-	static count_t GetConstructionWays( const World::Data&world, bool ignoreWater, bool flat, bool canGoDownVertically,
-										const Vehicle*v,  const Grid::LCellIdI&location, 
+	static count_t GetConstructionWays( const World::Data&world, bool flat, bool canGoDownVertically, RoutingFlags routingFlags, Component::GroundFlags groundFlags,
+										const MobileEntity*v,  const Grid::LCellIdI&location, 
 										Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination)
 	{
 		index_t rs = 0;
@@ -322,7 +302,7 @@ namespace Objects{ namespace Pathfinding
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf<true>(world,*v,cell, destination, nullptr,ignoreWater, true) )
+				if ( ValidDestinationOf<true>(world,*v,cell, destination, nullptr,routingFlags, groundFlags) )
 				{
 					(*outChoices++) = cell;
 					rs++;
@@ -363,8 +343,7 @@ namespace Objects{ namespace Pathfinding
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf<true>(world,*v,cell, destination, nullptr, ignoreWater, false) )
-//				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
+				if (ValidDestinationOf<true>(world,*v,cell, destination, nullptr, routingFlags, groundFlags))
 				{
 					(*outChoices++) = cell;
 					rs++;
@@ -397,8 +376,7 @@ namespace Objects{ namespace Pathfinding
 							break;
 						}
 			}
-			if ( okay && ValidDestinationOf<true>(world,*v,cell, destination, nullptr, ignoreWater, false) )
-//				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
+			if (okay && ValidDestinationOf<true>(world,*v,cell, destination, nullptr, routingFlags, groundFlags))
 			{
 				(*outChoices++) = cell;
 				rs++;
@@ -472,19 +450,23 @@ namespace Objects{ namespace Pathfinding
 	}
 
 
-	bool ShortestPath::SelectiveUpdate( const Vehicle&vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
+	Result ShortestPath::SelectiveUpdate( const MobileEntity&m, const Grid::LCellIdI&from, const Grid::LCellIdI&to, 
+							RoutingFlags routingFlags, Component::GroundFlags groundFlags /*= Component::GroundFlags::None*/,
+							bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
 	{
+		if (routingFlags & RoutingFlags::IgnoreOwnMobilesOnRoute)
+			return Update(m,from,to,routingFlags,groundFlags,outWouldFailDueToLimitReached,cellCostModifer);
+
 		routeIgnore.Clear();
-		bool hasI = Update(vehicle,from,to,true,failIfLimitReached,outWouldFailDueToLimitReached, cellCostModifer);
-		if (!hasI)
-			return false;
+		Result hasI = Update(m,from,to, routingFlags | RoutingFlags::IgnoreOwnMobilesOnRoute, groundFlags,outWouldFailDueToLimitReached, cellCostModifer);
+		if (hasI != Result::DestinationReached)
+			return hasI;
 		routeIgnore.swap(result);
-		bool has = Update(vehicle,from,to,false,failIfLimitReached,outWouldFailDueToLimitReached, cellCostModifer);
-		if (!has)
+		Result has = Update(m,from,to,routingFlags, groundFlags ,outWouldFailDueToLimitReached, cellCostModifer);
+		if (has != Result::DestinationReached)
 		{
 			swap(routeIgnore, result);
-			return true;
+			return Result::DestinationReached;
 		}
 
 		count_t lenI = 0, len = 0;
@@ -494,55 +476,11 @@ namespace Objects{ namespace Pathfinding
 			len += n->movementCostsFromPrevNode;
 		if (len < lenI * 4)	//less than 400% more
 		{
-			return true;
+			return Result::DestinationReached;
 		}
 		swap(routeIgnore, result);	//else: use the one that ignores friendly vehicles
-		return true;
-
+		return Result::DestinationReached;
 	}
-
-	#ifndef NO_SATELLITES
-		bool AppendShortestPath(const Satellite*sat, const Grid::LCellIdI&from,
-								const UINT32 to, BasicBuffer<PathNode>&oPath,
-								bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
-
-		bool AppendShortestPathI(const Satellite*sat, const Grid::LCellIdI&from,
-								const UINT32 to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
-		{
-			static Buffer0<PathNode>	routeI, route;
-			routeI.Clear();
-			route.Clear();
-			bool hasI = AppendShortestPath(sat,from,to,routeI,true,failIfLimitReached,outWouldFailDueToLimitReached);
-			if (!hasI)
-				return false;
-			bool has = AppendShortestPath(sat,from,to,route,false,failIfLimitReached,outWouldFailDueToLimitReached);
-			//foreach (routeI,r)
-			//	ASSERT__(*r != Grid::LCellIdI::Invalid);
-			//if (has)
-			//	foreach (route,r)
-			//		ASSERT__(*r != Grid::LCellIdI::Invalid);
-			if (!has)
-			{
-				oPath.Append(routeI);
-				return true;
-			}
-
-			count_t lenI = 0, len = 0;
-			foreach (routeI,n)
-				lenI += n->movementCostsFromPrevNode;
-			foreach (route,n)
-				len += n->movementCostsFromPrevNode;
-			if (len < lenI * 4)	//less than 400% more
-			{
-				oPath.Append(route);
-				return true;
-			}
-
-			oPath.Append(routeI);		//else: use the one that ignores friendly vehicles
-			return true;
-		}
-	#endif
-
 
 
 
@@ -550,9 +488,11 @@ namespace Objects{ namespace Pathfinding
 
 	ShortestPath	shortestPath;
 
-	bool ShortestPath::Update( const Vehicle&vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to,  
-							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
+
+
+	Result ShortestPath::Update( const MobileEntity&m, const Grid::LCellIdI&from, const Grid::LCellIdI&to,  
+		RoutingFlags routingFlags, Component::GroundFlags groundFlags /*= Component::GroundFlags::None*/,
+		bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
 	{
 		result.Clear();
 		if (outWouldFailDueToLimitReached)
@@ -562,57 +502,49 @@ namespace Objects{ namespace Pathfinding
 		#ifdef CLIENT
 			World::actual;
 		#else
-			vehicle.owner->knownWorld;
+			m.owner->knownWorld;
 		#endif
 		
-		const auto destHangar = AccessibleHangarHere(to,vehicle);
+		const auto destHangar = AccessibleHangarHere(to,m);
 
-		if (!ValidDestinationOf<false>(world,vehicle,to,to,destHangar,false, false))
-			return false;
-		const THindranceVector&hindrance = vehicle.base->hindrance;
+		if (!ValidDestinationOf<false>(world,m,to,to,destHangar,routingFlags, groundFlags))
+			return Result::InvalidDestination;
+		const THindranceVector hindrance = m.GetGroundHindrance();
 		TWays	possibilities;
 
-		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
 
-		TNode empty = {0xFFFFFFFF,0xFFFFFFFF,0};
-		buffer.SetSize(cellCount);
+		TNode empty = {Grid::LCellIdI::Invalid,0xFFFFFFFF,0};
 		buffer.Fill(empty);
 
-		PriorityQueue<index_t,int>	queue;
-		#undef IDOF
-		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
-		#undef DESCOF
-		#define DESCOF(CELLID)	Grid::LCellIdI((CELLID)%Grid::LowSetup::GridType::CellCount, Grid::CellStack::ToHeight( (UINT32)((CELLID) / Grid::LowSetup::GridType::CellCount)))
+		PriorityQueue<Grid::LCellIdI,int>	queue;
 
-		buffer[IDOF(from)].minDistance = 0;
 
-		queue.Push( IDOF(from),0);
+		buffer[from].minDistance = 0;
+
+		queue.Push( from,0);
 
 		count_t iterations = 0;
-		index_t current;
+		Grid::LCellIdI current;
 		while (queue.PopLeast(current))
 		{
 			iterations ++;
 			if (iterations > 2000)
 			{
-				if (failIfLimitReached)	//client sided operation may choose to not implement maximum ranges
-				{
-					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-					return false;//let's ignore long ranges
-				}
-				else
+				if (routingFlags & RoutingFlags::IgnoreLimit)	//client sided operation may choose to not implement maximum ranges
 				{
 					if (outWouldFailDueToLimitReached)
 						(*outWouldFailDueToLimitReached) = true;
 				}
+				else
+					return Result::InsufficientIterations;
 			}
 
-			Grid::LCellIdI cellID(DESCOF(current));
+			const Grid::LCellIdI cellID = current;
 			TNode&tn = buffer[current];
 			if (!tn.nodeCosts)
 			{
-				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
+				tn.nodeCosts = m.IsAffectedByGravity(cellID) ? GetCellMovementCosts(world,cellID,hindrance) : 1;
 				if (cellCostModifer)
 					cellCostModifer(cellID, tn.nodeCosts);
 			}
@@ -620,26 +552,15 @@ namespace Objects{ namespace Pathfinding
 
 			if (cellID == to)
 			{
-
-				while (current < cellCount)
-				{
-					UINT32 next = buffer[current].backLink;
-					int nextCosts = next < buffer.Count() ? buffer[next].nodeCosts : 0;
-					//GetCellMovementCosts(next, vehicle);
-					int hCosts = next < buffer.Count() ?  std::max(0, DESCOF(current).height - DESCOF(next).height ) : 0;
-					result << PathNode(DESCOF(current), std::max(nextCosts, buffer[current].nodeCosts) + hCosts);
-					current = next;
-				}
-				result.EraseLast();	//dont need entry point
-				result.Revert();
-				return true;
+				CompleteRouting(current, routingFlags & RoutingFlags::IncludeOrigin);
+				return Result::DestinationReached;
 			}
-			GetWays(world,&vehicle,  cellID, possibilities, to, destHangar, true, ignoreFriendlyVehiclesOnRoute,false);
+			GetWays(world,&m,  cellID, possibilities, to, destHangar, routingFlags, groundFlags);
 
 
 			for (index_t i = 0; i < possibilities.numWays; i++)
 			{
-				UINT32 option = IDOF(possibilities.way[i]);
+				const auto option = possibilities.way[i];
 				TNode&n = buffer[option];
 				if (!n.nodeCosts)
 				{
@@ -653,165 +574,76 @@ namespace Objects{ namespace Pathfinding
 				if (tn.minDistance + cost < n.minDistance)
 				{
 					n.minDistance = tn.minDistance + cost;
-					n.backLink = (UINT32)current;
+					n.backLink = current;
 					queue.Push(option,n.minDistance);
 				}
 			}
 		}
-		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-		return false;
+		return Result::NoPath;
 	}
 
-	#ifndef NO_SATELLITES
-		bool AppendShortestPath(const Satellite*sat, const Grid::LCellIdI&from,
-								const UINT32 to, BasicBuffer<PathNode>&oPath,
-								bool ignoreFriendlyVehiclesOnRoute
-								, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
-		{
-			if (outWouldFailDueToLimitReached)
-				(*outWouldFailDueToLimitReached) = false;
-			const int speed = sat->GetMovementStepsPerRound();
-			TOrbitalWays	possibilities;
-
-			static const count_t cellCount = Grid::LowSetup::GridType::CellCount;
-
-			struct TNode
-			{
-				UINT32	backLink, minDistance;
-			};
-
-			static Ctr::Array<TNode>	buffer(cellCount);
-			TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
-			buffer.Fill(empty);
-
-			PriorityQueue<UINT32,int>	queue;
-			//#undef IDOF
-			//#define IDOF(CELL)	((CELL).stackID)
-			//#undef DESCOF
-			//#define DESCOF(CELLID)	Grid::LCellIdI((CELLID), from.height)
-
-			buffer[from.stackID].minDistance = 0;
-
-			queue.Push( from.stackID,0);
-
-			count_t iterations = 0;
-			UINT32 current;
-			while (queue.PopLeast(current))
-			{
-				iterations ++;
-				if (iterations > 2000)
-				{
-					if (failIfLimitReached)
-					{
-						//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-						return false;//let's ignore long ranges
-					}
-					else
-						if (outWouldFailDueToLimitReached)
-							(*outWouldFailDueToLimitReached) = true;
-				}
-
-				//Grid::LCellIdI stackID(DESCOF(current));
-				TNode&tn = buffer[current];
-
-
-				if (current == to)
-				{
-					static Buffer<PathNode>	outPath;
-					outPath.Clear();
-
-					while (current < cellCount)
-					{
-						UINT32 next = buffer[current].backLink;
-						int nextCosts = next < buffer.Count() ? 1 : 0;
-						//GetCellMovementCosts(next, vehicle);
-						outPath << PathNode(Grid::LCellIdI(current,sat->location.height), 1);
-						current = next;
-					}
-					outPath.EraseLast();	//dont need entry point
-					outPath.Revert();
-					oPath.Append(outPath);
-					//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-					return true;
-				}
-				GetWays(sat,  current, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
-
-				for (index_t i = 0; i < possibilities.numWays; i++)
-				{
-					UINT32 option = possibilities.way[i];
-					TNode&n = buffer[option];
-					if (tn.minDistance + 1 < n.minDistance)
-					{
-						n.minDistance = tn.minDistance + 1;
-						n.backLink = current;
-						queue.Push(option,n.minDistance);
-					}
-				}
-			}
-			//ShowMessage("no route found after "+String(iterations)+" iterations");
-			//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-			return false;
-		}
-	#endif
 
 
 	bool	ReachabilityMapper::CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked)
 	{
 		if (!isBlocked)
 			return false;
-		if (!cacheIsBlocked)
-			return isBlocked(cell);
 
-		{
-			const bool*b = blockedCache.QueryPointer(cell);
-			if (b)
-				return *b;
-		}
-		bool rs = isBlocked(cell);
-		blockedCache.Set(cell,rs);
-		return rs;
+		auto&b = buffer[cell];
+		if (b.blockedTested)
+			return b.isBlocked;
+		b.blockedTested = true;
+		b.isBlocked = isBlocked(cell);
+		return b.isBlocked;
 	}
 
-	void ReachabilityMapper::Map( const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/, bool allowAccessibleHangars/*=false*/, bool ignoreFriendlyVehiclesOnRoute/*=false*/ )
+
+	void	ReachabilityMapper::CheckNodeCosts( TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FBlockTest&isBlocked, const THindranceVector&hindrance )
 	{
-		ASSERT_NOT_NULL__(vehicle);
-		ASSERT1__(vehicle->owner,vehicle->GetName());
+		if (!tn.nodeCosts)
+		{
+			tn.isBlocked = CheckIsBlocked(cellID,isBlocked);
+			if (tn.isBlocked)
+				tn.nodeCosts = 1000000;
+			elif (m.IsAffectedByGravity(cellID))
+				tn.nodeCosts = 1;
+			else
+				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
+		}
+
+	}
+
+	void ReachabilityMapper::Map( const MobileEntity&m, const Grid::LCellIdI&from, FBlockTest isBlocked, RoutingFlags routingFlags, Component::GroundFlags groundFlags, UINT32 maxRange/*=0xFFFFFFFF*/ )
+	{
+		ASSERT1__(m.owner,m.GetName());
 
 		const World::Data&world = 
 		#ifdef CLIENT
 			World::actual;
 		#else
-			vehicle->owner->knownWorld;
+			m.owner->knownWorld;
 		#endif
 		//Timer::Time t0 = timer.Now();
-		const THindranceVector&hindrance = vehicle->base->hindrance;
-		const int speed = vehicle->GetMovementStepsPerRound();
+		const THindranceVector hindrance = m.GetGroundHindrance();
+		const int speed = m.GetMovementStepsPerRound();
 		TWays	possibilities;
 
-		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
-		blockedCache.Clear();
 
-		buffer.SetSize(cellCount);
-		TReachableNode empty = {0xFFFFFFFF,0xFFFFFFFF,0,false,InvalidIndex};
+		TReachableNode empty = {Grid::LCellIdI::Invalid,0xFFFFFFFF,0,false,false,InvalidIndex};
 		buffer.Fill(empty);
 
-		Ctr::PriorityQueue<index_t,int>	queue;
-		#undef IDOF
-		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
-		#undef DESCOF
-		#define DESCOF(CELLID)	Grid::LCellIdI((CELLID)%Grid::LowSetup::GridType::CellCount, Grid::CellStack::ToHeight( (UINT32)((CELLID) / Grid::LowSetup::GridType::CellCount)))
+		PriorityQueue<Grid::LCellIdI,int>	queue;
 
-		buffer[IDOF(from)].minDistance = 0;
+		buffer[from].minDistance = 0;
 
-		queue.Push( IDOF(from),0);
+		queue.Push(from,0);
 
 		touched.Clear();
 
+
 		count_t iterations = 0;
-		index_t current;
+		Grid::LCellIdI current;
 		while (queue.PopLeast(current))
 		{
 			iterations ++;
@@ -822,20 +654,15 @@ namespace Objects{ namespace Pathfinding
 				break;
 			}
 
-			Grid::LCellIdI cellID(DESCOF(current));
+			const Grid::LCellIdI cellID(current);
 			TReachableNode&tn = buffer[current];
-			if (!tn.nodeCosts)
-			{
-				tn.isBlocked = CheckIsBlocked(cellID,isBlocked);
-				tn.nodeCosts = tn.isBlocked ? 1000000 :
-								GetCellMovementCosts(world,cellID,hindrance);
-			}
+			CheckNodeCosts(tn, world,m, cellID,isBlocked,hindrance);
 			if (tn.isBlocked)
 				continue;
 
 			touched << current;
 
-			GetWays(world,vehicle,  cellID, possibilities, allowAccessibleHangars ? Grid::LCellIdI::Invalid : cellID, nullptr, ignoreFriendlyVehiclesOnRoute, ignoreFriendlyVehiclesOnRoute,forceRevertible);
+			GetWays(world,&m,  cellID, possibilities, cellID, nullptr, routingFlags, groundFlags);
 
 
 
@@ -843,14 +670,9 @@ namespace Objects{ namespace Pathfinding
 
 			for (index_t i = 0; i < possibilities.numWays; i++)
 			{
-				UINT32 option = IDOF(possibilities.way[i]);
+				const auto option = possibilities.way[i];
 				TReachableNode&n = buffer[option];
-				if (!n.nodeCosts)
-				{
-					n.isBlocked = isBlocked && isBlocked(possibilities.way[i]);
-					n.nodeCosts = n.isBlocked ? 1000000 :
-									GetCellMovementCosts(world,possibilities.way[i],hindrance);
-				}
+				CheckNodeCosts(n, world,m,option,isBlocked,hindrance);
 				if (n.isBlocked)
 					continue;
 
@@ -860,7 +682,7 @@ namespace Objects{ namespace Pathfinding
 				if (tn.minDistance + cost < n.minDistance)
 				{
 					n.minDistance = tn.minDistance + cost;
-					n.backLink = (UINT32)current;
+					n.backLink = current;
 					if (n.minDistance < maxRange)
 						queue.Push(option,n.minDistance);
 				}
@@ -873,10 +695,12 @@ namespace Objects{ namespace Pathfinding
 		foreach (touched,t)
 		{
 			TReachableNode&n = buffer[*t];
-			if (n.mapped!=InvalidIndex || !n.minDistance)	//ignore first, and duplicates
+			if (n.mapped!=InvalidIndex || //already been here
+				(!n.minDistance && !(routingFlags & RoutingFlags::IncludeOrigin)))	//ignore first, and duplicates
 				continue;
+
 			n.mapped = result.Count();
-			result << MapNode(DESCOF(*t),n.minDistance);
+			result << MapNode(*t,n.minDistance);
 		}
 
 		foreach (touched,t)
@@ -884,23 +708,17 @@ namespace Objects{ namespace Pathfinding
 			TReachableNode&n = buffer[*t];
 			if (n.mapped != InvalidIndex)
 			{
-				if (n.backLink != 0xFFFFFFFF)
+				if (n.backLink != Grid::LCellIdI::Invalid)
 				{
 					TReachableNode&pre = buffer[n.backLink];
 					result[n.mapped].predecessor = pre.mapped;
 					if (pre.mapped == InvalidIndex)
-						ASSERT__(DESCOF(n.backLink) == from);
+						ASSERT__(n.backLink == from);
 				}
 				else
-					ASSERT__(DESCOF(*t) == from);
+					ASSERT__(*t == from);
 			}
 		}
-
-
-		//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-		//if (logPerformance)
-			//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-	
 	}
 
 	static float maxAngleBetweenNeighboringCells = 0.f;
@@ -938,10 +756,31 @@ namespace Objects{ namespace Pathfinding
 		return hSteps * minHorizontalCost + vSteps * minVerticalCost;
 	}
 
-	
-	Result AppendShortestConstructionPath( const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, Ctr::BasicBuffer<Grid::LCellIdI>&oPath, const count_t maxIterations /*= 2000*/ )
+
+	void	ShortestPath::CompleteRouting(const Grid::LCellIdI&dest, bool includeOrigin)
 	{
-		if (flat)
+		result.Clear();
+		auto current = dest;
+		while (current != Grid::LCellIdI::Invalid)
+		{
+			const auto next = buffer[current].backLink;
+			const bool nextIsValid = next != Grid::LCellIdI::Invalid;
+			const int nextCosts = nextIsValid ? buffer[next].nodeCosts : 0;
+			const int hCosts = nextIsValid ?  std::max(0, current.height - next.height ) : 0;
+			result << PathNode(current, std::max(nextCosts, buffer[current].nodeCosts) + hCosts);
+			current = next;
+		}
+		if (!includeOrigin)
+			result.EraseLast();
+		result.Revert();
+	}
+
+	
+	Result	ShortestPath::UpdateConstructionPath(
+		const MobileEntity&mobile, bool flatPath, const Grid::LCellIdI&from, Grid::LCellIdI to, RoutingFlags routingFlags, Component::GroundFlags groundFlags, const count_t maxIterations /*= 500*/)
+	{
+		result.Clear();
+		if (flatPath)
 			to.height = from.height;
 		if (from == to)
 			return Result::DestinationReached;
@@ -949,46 +788,26 @@ namespace Objects{ namespace Pathfinding
 		#ifdef CLIENT
 			World::actual;
 		#else
-			vehicle->owner->knownWorld;
+			mobile.owner->knownWorld;
 		#endif
-		if (!flat)
-			if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-			{
-				if (flat)
-					to++;
-				if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-					return Result::NoPath;
-			}
+		if (!flatPath && mobile.IsAffectedByGravity(to) && !mobile.CanStandOn(world,to -1,groundFlags))
+			return Result::NoPath;
 
-		//Timer::Time t0 = timer.Now();
-		Grid::LCellIdI	possibilities[6 * 3 + 2];
+		Grid::LCellIdI	possibilities[6 * 3 + 2];	//all diagonals plus up and down
 
-		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
+	
 
-		struct TNode
-		{
-			UINT32	backLink, minDistance;
-		};
-		
-
-		static Ctr::Array<TNode>	buffer(cellCount);
-		static Ctr::Array<bool> flatBuffer(Grid::LowSetup::GridType::CellCount);
-		TNode empty = {0xFFFFFFFF,0xFFFFFFFF};
+		TNode empty = {Grid::LCellIdI::Invalid,0xFFFFFFFF};
 		buffer.Fill(empty);
-		flatBuffer.Fill(false);
 
-		Ctr::PriorityQueue<index_t,int>	queue;
-		#undef IDOF
-		#define IDOF(CELL)	(Grid::CellStack::ToLayer( (CELL).height ) * Grid::LowSetup::GridType::CellCount + (CELL).stackID)
-		#undef DESCOF
-		#define DESCOF(CELLID)	Grid::LCellIdI((CELLID)%Grid::LowSetup::GridType::CellCount, Grid::CellStack::ToHeight( (UINT32)((CELLID) / Grid::LowSetup::GridType::CellCount)))
+		PriorityQueue<Grid::LCellIdI,int>	queue;
+		
+		buffer[from].minDistance = 0;
 
-		buffer[IDOF(from)].minDistance = 0;
-
-		queue.Push(IDOF(from),0);
+		queue.Push(from,0);
 
 		count_t iterations = 0;
-		index_t current;
+		Grid::LCellIdI current;
 		while (queue.PopLeast(current))
 		{
 			iterations ++;
@@ -998,33 +817,19 @@ namespace Objects{ namespace Pathfinding
 				return Result::InsufficientIterations;//let's ignore long ranges
 			}
 
-			Grid::LCellIdI cellID(DESCOF(current));
+			const Grid::LCellIdI cellID(current);
 			TNode&tn = buffer[current];
 
-			flatBuffer[cellID.stackID] = true;
 			if (cellID == to)
 			{
-				static Ctr::Buffer<Grid::LCellIdI>	outPath;
-				outPath.Clear();
 				if (!world.LowCellIsClear(to))
 				{
 					current = buffer[current].backLink;	
 				}
-				while (current < cellCount)
-				{
-					UINT32 next = buffer[current].backLink;
-					//GetCellMovementCosts(next, vehicle);
-					outPath << DESCOF(current);
-					current = next;
-				}
-				outPath.EraseLast();	//dont need entry point
-				outPath.Revert();
-				oPath.AppendAll(outPath);
-				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				CompleteRouting(current, routingFlags & RoutingFlags::IncludeOrigin);
 				return Result::DestinationReached;
 			}
-			count_t ways = GetConstructionWays(world, ignoreWater, flat, cellID == from, vehicle, cellID, possibilities, to);
+			count_t ways = GetConstructionWays(world, flatPath, cellID == from, routingFlags, groundFlags, &mobile, cellID, possibilities, to);
 			ASSERT_LESS_OR_EQUAL__(ways,ARRAYSIZE(possibilities));
 
 
@@ -1034,9 +839,7 @@ namespace Objects{ namespace Pathfinding
 			for (index_t i = 0; i < ways; i++)
 			{
 				const auto&p = possibilities[i];
-				if (flatBuffer[p.stackID] && p.stackID != cellID.stackID)
-					continue;
-				const UINT32 option = IDOF(p);
+				const auto option = p;
 				TNode&n = buffer[option];
 				int cost = possibilities[i].stackID != cellID.stackID ? 1 : 0;
 				int hCosts = abs(possibilities[i].height - cellID.height );
@@ -1046,7 +849,7 @@ namespace Objects{ namespace Pathfinding
 				{
 					const auto old = n.minDistance;
 					n.minDistance = tn.minDistance + cost + EstimateMinimumRemainingCost(possibilities[i],to, 1, 1);
-					n.backLink = (UINT32)current;
+					n.backLink = current;
 
 
 					if (!queue.AlterPriority(option,old,n.minDistance))
@@ -1056,8 +859,6 @@ namespace Objects{ namespace Pathfinding
 				}
 			}
 		}
-		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return Result::NoPath;
 	}
 
@@ -1247,6 +1048,8 @@ namespace Objects{ namespace Pathfinding
 		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
+
+
 
 
 }}

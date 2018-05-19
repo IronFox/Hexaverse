@@ -1,9 +1,9 @@
-#ifndef objectGridAndChoicesH
-#define objectGridAndChoicesH
+#pragma once
+
 #include "structure.h"
-//#include "vehicle.h"
 #include "types.h"
 #include "mobileEntity.h"
+#include "volumeGrid.h"
 
 namespace Objects
 {
@@ -44,21 +44,103 @@ namespace Objects
 	};
 
 
-	extern Ctr::Array<PVehicle>			vehicleGrid;
-	extern Ctr::Array<PStructure>		structureGrid;
 
-	index_t					CellToGridIndex(const Grid::LCellIdU&location);
+	template <typename T>
+		class ObjectVolumeGrid : private VolumeGrid<std::shared_ptr<T> >
+		{
+			typedef VolumeGrid<std::shared_ptr<T> >	Super;
+		public:
+			typedef std::shared_ptr<T>	Entry;
 
 
-	PVehicle		GetVehicle(const Grid::LCellIdI&cellID);
-	PStructure		GetStructure(const Grid::LCellIdI&cellID);
-	PStructure		GetStructure(const Grid::LCellIdU&cellID);
-	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID);
-	#ifndef NO_SATELLITES
-		PSatellite	GetSatellite(UINT32 flatCellID);
-	#endif
+			const Entry&	operator[](const Grid::LCellIdI&loc)	const
+			{
+				return Super::operator[](loc);
+			}
+
+			Super::GetStructureSize;
+
+			void		RemoveObject(const Grid::LCellIdI&location, const Entry&object)
+			{
+				ASSERT__(object->isInsertedIntoGrid);
+
+				const int h = object->GetHeight();
+
+				for (int z = 0; z < h; z++)
+				{
+					index_t at = CellToGridIndex(location+z);
+					if (entries[at] != object)
+					{
+						index_t foundAt = InvalidIndex;
+						index_t cloneAt = InvalidIndex;
+						Entry	cloneIs;
+						for (index_t i = 0; i < entries.GetLength(); i++)
+						{
+							if (entries[i] == object)
+							{
+								ASSERT__(foundAt == InvalidIndex);
+								foundAt = i;
+							}
+							else if (entries[i] && entries[i]->id == object->id)
+							{
+								cloneAt = i;
+								cloneIs = entries[i];
+							}
+						}
+						if (entries[at])
+							LogEvent(EventClass::Preset::error,entries[at].get(),"Found instead of "+object->GetName());
+						String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+ToString(Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))))+"}" : "";
+						if (foundAt != InvalidIndex)
+						{
+							Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
+							FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object resides in "+String(foundAt)+"/"+ToString(actualLocation)+clone);
+						}
+						else
+							FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+ToString(location)+", but object is not mapped in the grid"+clone);
+					}
+					LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+ToString(location));
+					entries[at].reset();
+				}
+				object->isInsertedIntoGrid = false;
+			}
+	
+			void				InsertObject(const Grid::LCellIdI&location, const Entry&object)
+			{
+				ASSERT__(!object->isInsertedIntoGrid);
+				Grid::AssertIsValid(location,CLOCATION);
+
+				const int h = object->GetHeight();
+				if (h > 1)
+					Grid::AssertIsValid(location+h-1,CLOCATION);
+				for (int z = 0; z < h; z++)
+				{
+					index_t at = CellToGridIndex(location+z);
+					if (entries[at])
+					{
+						FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+",z="+String(z)+") at "+ToString(location)+": Cell occupied by "+entries[at]->GetName()+"(@"+ToString(entries[at]->location)+")");
+					}
+					ASSERT3__(!entries[at],entries[at]->GetName(),location,object->GetName());
+					LogEvent(EventSignificance::Debug,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
+					entries[at] = object;
+				}
+				object->isInsertedIntoGrid = true;
+			}
+
+			void			Flush()
+			{
+				Super::Fill(nullptr);
+			}
+
+		};
+
+	extern ObjectVolumeGrid<MobileEntity>	mobileGrid;
+	extern ObjectVolumeGrid<Structure>		structureGrid;
+
+
+
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdI&cellID);
-	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
+	PStructure		GetStructure(const Grid::LCellIdI&cellID);
+	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID);
 
 
 	//void			InjectIntoNeighborhood(const PStructure&s, float atTime);
@@ -125,14 +207,14 @@ namespace Objects
 
 
 
-	bool			NoVehicleHere(const Grid::LCellIdI&cellID);
-	bool			NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*);
+	bool			NoMobileEntityHere(const Grid::LCellIdI&cellID);
+	bool			NoMobileEntityHereExcept(const Grid::LCellIdI&cellID, const MobileEntity*);
 	#ifndef NO_SATELLITES
 		bool		NoSatelliteHere(const UINT32 cellID);
 	#endif
 
-	void			RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location);
-	void			InsertVehicleIntoGrid(const PVehicle&v,const Grid::LCellIdI&location);
+	void			RemoveFromGrid(const PWorldEntity&v,const Grid::LCellIdI&location);
+	void			InsertIntoGrid(const PWorldEntity&v,const Grid::LCellIdI&location);
 
 
 	inline bool		Failed(MobilePlacementResult rs)
@@ -153,7 +235,6 @@ namespace Objects
 			extern UINT32	uplinkTraffic,
 							onlineUplinkTraffic;
 		#endif
-		void		MoveGridVehicle(const PVehicle&v, const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		PStructure	SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,EntityType type, bool placeNow, bool isOwnedByMe);
 		PVehicle	SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe);
 		PMobileEntity	SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,EntityType type, bool placeNow, bool isOwnedByMe);
@@ -308,4 +389,3 @@ namespace Objects
 }
 
 
-#endif

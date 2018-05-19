@@ -213,7 +213,7 @@ namespace ObjectHelper
 
 
 
-	bool	DirectTo( const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive )
+	bool	DirectTo( const Objects::PWorldEntity&v, const ArrayRef<const Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive )
 	{
 		if (!v)
 			return false;
@@ -273,7 +273,7 @@ namespace ObjectHelper
 				#endif
 				foreach (targets,t)
 				{
-					if (!MoveVehicleTo(me,start,*t,flags))
+					if (!MoveMobileTo(me,start,*t,flags))
 						return false;
 					start = *t;
 				}
@@ -323,13 +323,13 @@ namespace ObjectHelper
 		return flags;
 	}
 
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<const Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
 	{
 		return DirectTo(v, targets, flags, mode, true);
 	}
 
 
-	void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
+	void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<const Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode)
 	{
 		Protocol::EntityDirectCommand	cmd;
 		cmd.id = v->id;
@@ -340,33 +340,24 @@ namespace ObjectHelper
 	}
 
 
-	bool	MoveVehicleTo( const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target, UINT8 flags )
+	bool	MoveMobileTo( const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target, UINT8 flags )
 	{
 		if (prev == target)
 			return true;
 		{
 			bool tooLong;
-			bool foundPath;
 
-			if (v->IsVehicle())
-			{
-				foundPath = Objects::Pathfinding::shortestPath.SelectiveUpdate((const Objects::Vehicle&)*v, prev, target, false, &tooLong);
-			}
-			else
-			{
-				#ifndef NO_SATELLITES
-					if (v->IsSatellite())
-						foundPath = Objects::Pathfinding::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
-					else
-				#endif
-					FATAL__("Routing not implemented for "+v->GetTypeName());
-			}
-			if (!foundPath)
+			using namespace Objects::Pathfinding;
+			using namespace Objects::Component;
+
+			const auto foundPath = shortestPath.SelectiveUpdate(*v, prev, target, RoutingFlags::AllowAccessibleHangars | RoutingFlags::IgnoreLimit, GroundFlags::None, &tooLong);
+		
+			if (!Okay(foundPath))
 			{
 				if (!World::actual.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
 				{
 					target++;
-					return MoveVehicleTo(v,prev,target,flags);
+					return MoveMobileTo(v,prev,target,flags);
 				}
 				LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to destination");
 				//SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
@@ -386,7 +377,6 @@ namespace ObjectHelper
 					if (!((i+1)%5))
 					{
 						waypoints << path[i].cell;
-						//SendDirectTo(v,path[i].cell,false,Objects::CursorMode::Idle);
 						open = false;
 					}
 					else
@@ -395,7 +385,6 @@ namespace ObjectHelper
 
 				if (open)
 					waypoints << path.Last().cell;
-					//SendDirectTo(v,path.Last().cell,false,Objects::CursorMode::Idle);
 				SendDirectTo(v,waypoints.ToRef(),flags,Objects::CursorMode::Idle);
 			}
 		}

@@ -23,7 +23,7 @@ namespace ApplicationInterface
 {
 #ifdef CLIENT
 	
-	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<const Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode mode, const Objects::PMobileEntity&deployingWhat);
 	void	SignalRoundEnd();
 	void	SignalUndoRoundEnd();

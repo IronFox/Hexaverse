@@ -100,14 +100,6 @@ namespace Objects
 		@param inclination Inclination level. Values above zero indicate ascent, below value indicate a descent
 		*/
 		bool					CanClimb(int inclination) const { return base->CanClimb(inclination);}
-		/**
-		Checks whether or not the local vehicle can stand atop the specified cell (not in the cell).
-		@param world World to check against
-		@param cell The cell the local vehicle is attempting to stand atop of. If relocation is performed the cell one higher than this will be used for the final location
-		@param ignoreWater Upon encountering pure water, the method succeeds if either the local vehicle can stand on water, or this value is set true
-		@param doFloat Allows the vehicle to stand on any substance. Useful for certain construction jobs
-		*/
-		bool					CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat) const {return base->CanStandOn(world,cell,ignoreWater, doFloat);}
 
 		bool					IsAutomatedResourceDetector() const {return turret->detectsResources && isAutomated;}
 		bool					IsNonAutomatedResourceDetector() const {return turret->detectsResources && !isAutomated;}
@@ -127,9 +119,6 @@ namespace Objects
 		int						GetPrice() const	{return GetPrice(base,turret, GetResearchState());}
 		static int				GetPrice(Component::VehicleBase*, Component::Turret*, const Research::Attributes::Table&);
 		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t, const Research::Attributes::Table&table)	{return GetPrice(&b,&t,table);}
-		int						GetMaxClimbingHeight() const {return base->maxClimbUp;}
-		int						GetMaxFallingHeight() const {return -base->minClimbDown;}
-
 
 		int						GetTurretOverweight() const;
 		float					GetTurretOverweightFactor() const;
@@ -164,6 +153,12 @@ namespace Objects
 		virtual String			DescribeMovementStepsPerRound() const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
 		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const override {return base->acceleration[op];}
+		virtual int				GetMaxClimbingHeight() const override {return base->maxClimbUp;}
+		virtual int				GetMaxFallingHeight() const override {return -base->minClimbDown;}
+		virtual bool			IsAffectedByGravity() const override {return true;}
+		virtual bool			IsAffectedByGravity(const Grid::LCellIdI&) const override {return true;}
+		virtual bool			CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, Component::GroundFlags flags=Component::GroundFlags::None) const override {return base->CanStandOn(world,cell,flags);}
+		virtual THindranceVector	GetGroundHindrance() const override {return base->hindrance;}
 		#ifndef ONE_COMPOUND_PER_FACTION
 			virtual ResourceVector		GetMaxStorageCapacity()	const override;
 		#endif
