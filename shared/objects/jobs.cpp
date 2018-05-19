@@ -1527,6 +1527,7 @@ namespace Objects
 			if (mode != CursorMode::BuildBridgeMode)
 				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
+
 			while (world.LowCellIsClear(destination-1))
 				destination--;
 

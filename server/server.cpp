@@ -1050,11 +1050,18 @@ int main( int argc, const char* argv[])
 		{
 			std::cout << "Building initial test world..." << std::endl;
 
+			Game::Config::Nexus::allPorts.doPlace = false;
+			Game::Config::Nexus::bases.doPlace = false;
+			Game::Config::Nexus::satellitesAtopBases.doPlace = false;
+			GlobalEvents::FlushObjects();
+			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::None;
 			World::BuildConfiguredWorld(random);
+			ASSERT_EQUAL__(Objects::structures.Count(), 0);
 
 
 			std::cout << "Running tests..." << std::endl;
 			{
+				Test::Run(Test::Routing());
 				Test::Run(Test::AutoTargeting());
 				Test::Run(Test::StringMethods());
 				Test::Run(Test::Serialization());

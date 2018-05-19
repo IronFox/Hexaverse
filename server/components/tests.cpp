@@ -1468,5 +1468,70 @@ namespace Test
 	}
 
 	
+	/*virtual override*/ void	Routing::Run(Random&random)
+	{
+
+
+		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::None;
+		//perfectly flat:
+		Grid::currentPlanetConfig.extendedCore.baseHeight = -3;
+		Grid::currentPlanetConfig.extendedCore.heightScale = 0;
+		Grid::currentPlanetConfig.mountains.baseHeight = 0;
+		Grid::currentPlanetConfig.mountains.heightScale = 0;
+
+		Grid::currentPlanetConfig.extendedCoreType = Grid::Content::Rock;
+		Grid::currentPlanetConfig.innerCoreType = Grid::Content::Granite;
+		Grid::currentPlanetConfig.type = Grid::Content::Grass;
+		Grid::currentPlanetConfig.liquidHeight = -10;
+
+		World::BuildConfiguredWorld(random);
+
+		for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
+		{
+			const auto&stack = World::actual.GetStack(i);
+			ASSERT__(stack.GetCellI(1).content == Grid::Content::Clear);
+			ASSERT__(stack.GetCellI(0).content == Grid::Content::Grass);
+		}
+
+		ASSERT_EQUAL__(Objects::structures.Count(), 0);
+		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);
+
+		const auto faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
+
+		Objects::PMobileEntity m = Objects::AssembleVehicle(faction,TUniqueID::New(),Grid::LCellIdI(0,1),Objects::EntityType(ConstName::VehicleBase_HeavyBase,ConstName::Turret_Radar));
+		ASSERT__(m);
+
+		//first let's try simple routing from pole to pole
+		auto result = Objects::Pathfinding::shortestPath.Update(*m,m->location,Grid::LCellIdI(1,1),Objects::Pathfinding::RoutingFlags::None);
+		ASSERT__(result == Objects::Pathfinding::Result::DestinationReached);	//this should be possible even with normal limitations
+		foreach (Objects::Pathfinding::shortestPath.result,n)
+			ASSERT_EQUAL__(n->cell.height,1);
+
+		ASSERT_EQUAL__(Grid::LowSetup::GridType::CellsPerEdge+1,Objects::Pathfinding::shortestPath.result.Count());	//+1 because of destination pole which is not on an edge
+
+
+		//let's try some obstacles
+		//cell 12 is the first step from pole 0 to 1, so this will require some routing
+		Objects::PMobileEntity obstacle = Objects::AssembleVehicle(faction,TUniqueID::New(),Grid::LCellIdI(12,1),Objects::EntityType(ConstName::VehicleBase_HeavyBase,ConstName::Turret_Radar));
+		float t= 0;
+		Objects::InsertConstructed(obstacle,t);
+
+		result = Objects::Pathfinding::shortestPath.Update(*m,m->location,Grid::LCellIdI(13,1),Objects::Pathfinding::RoutingFlags::None);
+		ASSERT__(result == Objects::Pathfinding::Result::DestinationReached);	//this should be possible even with normal limitations
+		foreach (Objects::Pathfinding::shortestPath.result,n)
+			ASSERT_EQUAL__(n->cell.height,1);
+		ASSERT_EQUAL__(3,Objects::Pathfinding::shortestPath.result.Count());
+		Objects::Remove(obstacle,Objects::RemovalType::ControlledExplosion,t);
+		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);	//m is not inserted. should not count
+
+
+
+		GlobalEvents::FlushObjects();
+		ASSERT_EQUAL__(Objects::structures.Count(), 0);
+		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);
+		
+
+
+	}
 
 }
