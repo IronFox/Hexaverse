@@ -256,7 +256,6 @@ namespace Objects
 					{
 						//just some checks
 						DBG_ASSERT__(!vehicles.Contains(m));
-						DBG_ASSERT__(!SubOrbital::planes.Contains(m));
 					}
 				}
 			}

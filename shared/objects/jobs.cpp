@@ -1490,9 +1490,7 @@ namespace Objects
 			if (mode != CursorMode::BuildBridgeMode)
 				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
-			else
-				if (v.IsVehicle() && !((Vehicle&)v).CanStandOn(world,destination,false,true))
-					destination++;
+
 			while (world.LowCellIsClear(destination-1))
 				destination--;
 

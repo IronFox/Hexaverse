@@ -207,11 +207,7 @@ namespace Objects
 				}
 			}
 			else
-			{
-				Buffer0<Choice>	highChoices;
-				foreach (movementChoices,c)
-					if (WorldEntity::IsAboveTerrain(c->location))
-						highChoices << *c;
+				c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))

@@ -12,23 +12,16 @@ namespace Objects
 		public:
 
 			static const count_t Height = Grid::CellStack::Range
-							+1	//sub-orbital
 						;
 
 
 			static index_t	EntityHeightToLayer(int h)
 			{
-				if (h == SubOrbital::Height)
-					return Grid::CellStack::Range;
-
 				return Grid::CellStack::ToLayer(h);
 			}
 
 			static int		LocalLayerToEntityHeight(index_t layer)
 			{
-				if (layer >= Grid::CellStack::Range)
-					return SubOrbital::Height;
-
 				return Grid::CellStack::ToHeight(layer);
 			}
 

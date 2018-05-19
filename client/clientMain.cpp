@@ -1102,14 +1102,9 @@ namespace ApplicationInterface
 					Tutorial::ShowMessage("Hostile IncludeGhosts");
 			}
 
-			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
+			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveTerrain())
 			{
-				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveTerrain())
-				{
-					Camera::TargetSkyOrbit();
-				}
-				else
-					Camera::TargetGroundOrbit();
+				Camera::TargetSkyOrbit();
 			}
 			else
 				Camera::TargetGroundOrbit();
