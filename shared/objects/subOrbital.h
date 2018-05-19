@@ -76,7 +76,7 @@ namespace Objects
 			virtual int				GetMaxHealth() const override {return turret->healthMultiplier.GetValue(GetResearchState());}
 			virtual String			DescribeMaxHealth() const override {return turret->healthMultiplier.Describe(GetResearchState());}
 			virtual int				GetConstructionCost() const override {return turret->productionCosts.GetValue(GetResearchState());}
-			virtual bool			IsGroundBoundVehicle() const {return !IsAboveGrid(location);}	//landed
+			virtual bool			IsGroundBoundVehicle() const {return !IsAboveTerrain(location);}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
 			virtual bool			IsPlane() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
@@ -90,12 +90,14 @@ namespace Objects
 			#endif
 
 			virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
-			virtual bool			CanSpawnAboveGrid(int&outHeight) const override {outHeight = Height; return true;}
+			virtual bool			CanSpawnAboveTerrain(int&outHeight) const override {outHeight = Height; return true;}
 			virtual float3			GetScanningCenter(const Grid::LCellIdI&loc) const override;
 			
 
 			//MobileEntity overrides:
 			virtual float			GetBaseMovementInitiative() const override {return turret->initiative;}	//reuse turret initiative for motion
+			virtual bool			IsAffectedByGravity() const override {return !IsAboveTerrain(location);}
+			virtual bool			IsAffectedByGravity(const Grid::LCellIdI&loc) const override {return !IsAboveTerrain(loc);}
 			virtual int				GetMovementStepsPerRound() const override
 			{
 				return (int)ceil(EMPModify(GetMaxAirSpeed(),1.f));
@@ -326,8 +328,8 @@ namespace Objects
 			virtual WorldEntity&		ToEntity() override {return *this;}
 			virtual count_t				GetLoad() const override { return this->stored.Count(); }
 			virtual count_t				GetMaximumLoad() const override {return MaxStorage;}
-			virtual bool	CanStoreType(const MobileEntity&e) const override {return e.IsVehicle() && !e.IsHangar();}
-			virtual void	StoreLocallyFromImport(const PMobileEntity&e) override;
+			virtual bool			CanStoreType(const MobileEntity&e) const override {return e.IsVehicle() && !e.IsHangar();}
+			virtual void			StoreLocallyFromImport(const PMobileEntity&e) override;
 			#ifndef CLIENT
 				virtual bool	Store(const PMobileEntity&e, float&atTime) override;
 			#endif

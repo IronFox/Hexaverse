@@ -273,10 +273,8 @@ namespace Objects
 				{
 					if (isCreated)
 					{
-						if (old.height != Height)
-							RemoveVehicleFromGrid(To<Vehicle>::Cast(shared_from_this()),old);
-						if (location.height != Height)
-							InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
+						RemoveFromGrid(shared_from_this(),old);
+						InsertIntoGrid(shared_from_this(),location);
 
 						if (constructionActionCounter)
 						{
@@ -447,9 +445,9 @@ namespace Objects
 
 			/*virtual override*/ bool			Bomber::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const
 			{
-				if (!IsAboveGrid(attackFrom))
+				if (!IsAboveTerrain(attackFrom))
 					return false;
-				if (IsAboveGrid(attackTarget))
+				if (IsAboveTerrain(attackTarget))
 					return false;
 				const int h = GetLandingHeight(attackFrom, *this);
 				if (h == badHeight)
