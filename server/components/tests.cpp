@@ -1521,6 +1521,13 @@ namespace Test
 		foreach (Objects::Pathfinding::shortestPath.result,n)
 			ASSERT_EQUAL__(n->cell.height,1);
 		ASSERT_EQUAL__(3,Objects::Pathfinding::shortestPath.result.Count());
+
+		result = Objects::Pathfinding::shortestPath.Update(*m,m->location,Grid::LCellIdI(13,1),Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute);
+		ASSERT__(result == Objects::Pathfinding::Result::DestinationReached);	//this should be possible even with normal limitations
+		foreach (Objects::Pathfinding::shortestPath.result,n)
+			ASSERT_EQUAL__(n->cell.height,1);
+		ASSERT_EQUAL__(2,Objects::Pathfinding::shortestPath.result.Count());
+
 		Objects::Remove(obstacle,Objects::RemovalType::ControlledExplosion,t);
 		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);	//m is not inserted. should not count
 
