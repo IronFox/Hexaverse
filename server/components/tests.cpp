@@ -1525,6 +1525,16 @@ namespace Test
 		ASSERT_EQUAL__(Objects::vehicles.Count(), 0);	//m is not inserted. should not count
 
 
+		m = To<Objects::MobileEntity>::Cast(Objects::Prototypes::Find(ConstName::Type_CargoPlane)->CreateNewInstance(faction,Grid::LCellIdI(0,1),0));
+		result = Objects::Pathfinding::shortestPath.Update(*m,m->location,Grid::LCellIdI(1,1),Objects::Pathfinding::RoutingFlags::None);
+		ASSERT__(result == Objects::Pathfinding::Result::DestinationReached);	//this should be possible even with normal limitations
+
+		for (index_t i = 0; i+1 < Objects::Pathfinding::shortestPath.result.Count(); i++)
+			ASSERT_EQUAL__(Objects::Pathfinding::shortestPath.result[i].cell.height,Objects::SubOrbital::Height);
+		ASSERT_EQUAL__(Objects::Pathfinding::shortestPath.result.Last().cell.height,1);
+		ASSERT_EQUAL__(Grid::LowSetup::GridType::CellsPerEdge+3,Objects::Pathfinding::shortestPath.result.Count());	//+3 because of destination pole which is not on an edge, plus one for starting and landing each
+
+
 
 		GlobalEvents::FlushObjects();
 		ASSERT_EQUAL__(Objects::structures.Count(), 0);
