@@ -102,6 +102,7 @@ Table-Type: Unit
 		
 	[isMobileEntityProducer]
 		Prod[]	productionQueue;		Table of all production jobs currently enqueued to the local unit. nil if none
+		int		roundsToCompletion;		Number of rounds until the next production finishes if the local factory is enabled and has enough resources to continue. nil if none are queued
 
 	[has turret (tower, mobile)]
 		Turret	turret;					Table containing turret information. May be set for structures or mobile entities

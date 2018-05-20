@@ -954,10 +954,12 @@ namespace Lua
 					queue.AppendElement(production);
 				}
 				t.SetField("productionQueue",queue);
+				t.SetField("roundsToCompletion",prod->productionRoundsLeft);
 			}
 			else
 			{
 				t.UnsetField("productionQueue");
+				t.UnsetField("roundsToCompletion");
 			}
 			}
 
