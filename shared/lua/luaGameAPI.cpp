@@ -932,26 +932,34 @@ namespace Lua
 		t.SetField("isMobileEntityProducer",prod != nullptr);
 		if (prod)
 		{
-			Lua::Table queue = program->CreateTable();
-			foreach (prod->queue,w)
+			if (prod->queue.IsNotEmpty())
 			{
-				Lua::Table production = program->CreateTable();
-				production.SetField("name",w->GetName());
-				production.SetField("id",w->id.ToFullString());
-
-				TUniqueID tID = w->id;
-				production.SetFunction("Abort",[this,id,tID]()
+				Lua::Table queue = program->CreateTable();
+				foreach (prod->queue,w)
 				{
-					if (onAbortProduction)
-						onAbortProduction(id,tID);
-					else
-						throw Lua::Exception(CLOCATION,"Abort(): onAbortProduction not set");
+					Lua::Table production = program->CreateTable();
+					production.SetField("name",w->GetName());
+					production.SetField("id",w->id.ToFullString());
 
-				});
+					TUniqueID tID = w->id;
+					production.SetFunction("Abort",[this,id,tID]()
+					{
+						if (onAbortProduction)
+							onAbortProduction(id,tID);
+						else
+							throw Lua::Exception(CLOCATION,"Abort(): onAbortProduction not set");
 
-				queue.AppendElement(production);
+					});
+
+					queue.AppendElement(production);
+				}
+				t.SetField("productionQueue",queue);
 			}
-			t.SetField("productionQueue",queue);
+			else
+			{
+				t.UnsetField("productionQueue");
+			}
+			}
 
 			if (actual)
 			{

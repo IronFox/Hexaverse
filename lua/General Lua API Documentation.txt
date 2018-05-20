@@ -101,7 +101,7 @@ Table-Type: Unit
 		ResVec	resourceBalance;		Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
 		
 	[isMobileEntityProducer]
-		Prod[]	productionQueue;		String table of all production jobs currently enqueued by the local entity. Lists the respective entity type enqueued in order of production
+		Prod[]	productionQueue;		Table of all production jobs currently enqueued to the local unit. nil if none
 
 	[has turret (tower, mobile)]
 		Turret	turret;					Table containing turret information. May be set for structures or mobile entities
