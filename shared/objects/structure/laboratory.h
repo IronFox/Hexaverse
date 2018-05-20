@@ -40,7 +40,6 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;
-		//virtual int					GetConstructionCost() const override {return 80;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 20;}
 		#endif

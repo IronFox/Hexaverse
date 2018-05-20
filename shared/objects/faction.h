@@ -299,6 +299,13 @@ namespace Objects
 		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails));}
 		bool			SharingSensorWith(const PFaction&other) const{return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.shareSensors));}
 
+		/**
+		Fetches the attribute table of the local faction.
+		NULL-pointer sensitive.
+		If this is NULL, returns the global zero attribute table.
+		*/
+		const Research::Attributes::Table& GetAttributeTable() const;
+
 		String		GetName() const
 		{
 			if (!this)

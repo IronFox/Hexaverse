@@ -309,9 +309,15 @@ namespace Objects
 		return Grid::low.cells[loc.stackID].cornerCenter * Grid::ToRadiusf(0.5f + loc.height);
 	}
 
-	/*virtual*/ int			WorldEntity::GetConstructionCost() const
+	int			WorldEntity::GetConstructionCost() const
 	{
-		return GetTable()->constructionCost.GetValue(GetResearchState());
+		return GetConstructionCost(owner);
+	}
+
+	/*virtual*/ int			WorldEntity::GetConstructionCost(const Objects::PFaction&owner) const
+	{
+		const auto&state = owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
+		return GetTable()->constructionCost.GetValue(state);
 	}
 
 	/*virtual*/ int			WorldEntity::GetMaxHealth() const

@@ -311,6 +311,13 @@ namespace Objects
 		if (!application_shutting_down && alliance)
 			alliance->Leave(this);
 	}
+
+
+	const Research::Attributes::Table& Faction::GetAttributeTable() const
+	{
+		return this ? researchState.attributeTable : Research::globalState.zeroTable;
+	}
+
 	
 	#ifndef CLIENT
 

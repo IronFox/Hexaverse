@@ -722,5 +722,17 @@ namespace Objects
 
 	#endif
 
+
+	int						Vehicle::GetPrice() const
+	{
+		return GetPrice(base,turret, owner->GetAttributeTable());
+	}
+
+	int						Vehicle::GetPrice(const PFaction&owner) const
+	{
+		return GetPrice(base,turret, owner->GetAttributeTable());
+	}
+
+
 }
 

@@ -540,9 +540,7 @@ namespace Objects
 			prototype = Prototypes::Find(type);
 			if (prototype)
 			{
-				prototype->owner = parent->owner;
-					price = prototype->GetConstructionCost();
-				prototype->owner.reset();
+				price = prototype->GetConstructionCost(parent->owner);
 				name = prototype->GetTypeName();
 				if (prototype->IsVehicle())
 				{

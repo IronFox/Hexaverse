@@ -331,7 +331,8 @@ namespace Objects
 
 
 
-		virtual int					GetConstructionCost() const;	//!< Retrieves the minerals required to construct a new instance of this structure
+		int							GetConstructionCost() const;	//!< Retrieves the minerals required to construct a new instance of this structure
+		virtual int					GetConstructionCost(const PFaction&owner) const;	//!< Retrieves the minerals required to construct a new instance of this structure if it were owned by the specified faction
 
 		/**
 		Queries the entity height in layers. Most entities have height=1

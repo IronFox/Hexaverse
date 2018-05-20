@@ -92,7 +92,6 @@ namespace Objects
 				}
 			#endif
 		#endif
-		//virtual int					GetConstructionCost() const override {return 10;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 			virtual int				GetUplinkPriority() const override {return 1000;};
@@ -223,7 +222,6 @@ namespace Objects
 		}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
-		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 400;};

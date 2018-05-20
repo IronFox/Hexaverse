@@ -60,7 +60,6 @@ namespace Objects
 										v.level[Resource::Energy] += -EnergyConsumption;
 									}
 
-		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return naturalResources.fuel*5 + naturalResources.minerals + naturalResources.uranium;};

@@ -116,7 +116,8 @@ namespace Objects
 			virtual const CC*	GetCommands(CC&dynamicStorage) const override;
 		#endif
 
-		int						GetPrice() const	{return GetPrice(base,turret, GetResearchState());}
+		int						GetPrice() const;
+		int						GetPrice(const PFaction&owner) const;
 		static int				GetPrice(Component::VehicleBase*, Component::Turret*, const Research::Attributes::Table&);
 		static int				GetPrice(Component::VehicleBase&b, Component::Turret&t, const Research::Attributes::Table&table)	{return GetPrice(&b,&t,table);}
 
@@ -128,7 +129,7 @@ namespace Objects
 		virtual EntityType		GetType() const override {return EntityType(base->constName,turret->constName);}
 
 		//WorldEntity overrides:
-		virtual int				GetConstructionCost() const override {return GetPrice();}
+		virtual int				GetConstructionCost(const PFaction&owner) const override {return GetPrice(owner);}
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif
