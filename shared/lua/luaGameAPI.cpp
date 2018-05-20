@@ -955,6 +955,7 @@ namespace Lua
 				}
 				t.SetField("productionQueue",queue);
 				t.SetField("roundsToCompletion",prod->productionRoundsLeft);
+
 			}
 			else
 			{
@@ -974,17 +975,25 @@ namespace Lua
 				foreach (choices,c)
 					deploymentOptions.AppendElement(ToTable(c->location));
 				t.SetField("productionCompleted",prod->queue.First().GetName());
-					
-			//				GetChoices(selectedEntity,
-			//deployingMobileEntity, 
-			//activeCursorMode,movementChoices,choiceVis);
 
+				if (actual)
+					t.SetFunction("DeployProductionAt",[this,id](const Lua::Table&luaLoc)
+					{
+						auto loc = Detail::ToLGridCell(luaLoc,"DeployProductionAt(): Location parameter");
+						if (onDeployCompletedProduction)
+							onDeployCompletedProduction(id,loc);
+						else
+							throw Lua::Exception(CLOCATION,"DeployProductionAt(): onDeployCompletedProduction not set");
+					});
+				else
+					t.UnsetField("DeployProductionAt");
 			}
 			else
 			{
 				ASSERT__(!prod->AwaitsUserInteraction());	//let's check that the assumptions match
 				t.UnsetField("productionCompleted");
 				t.UnsetField("deploymentOptions");
+				t.UnsetField("DeployProductionAt");
 			}
 
 			if (actual)
