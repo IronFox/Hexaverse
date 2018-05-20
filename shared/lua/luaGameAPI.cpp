@@ -961,6 +961,30 @@ namespace Lua
 				t.UnsetField("productionQueue");
 				t.UnsetField("roundsToCompletion");
 			}
+
+
+
+			if (prod->queue.IsNotEmpty() && prod->productionRoundsLeft == 0)
+			{
+				ASSERT__(prod->AwaitsUserInteraction());	//let's check that the assumptions match
+				static Buffer0<Objects::Choice>	choices;
+				static Objects::TChoiceVisualization vis;
+				Objects::GetChoices(e,nullptr,Objects::CursorMode::Idle,choices,vis);
+				Lua::Table deploymentOptions = t.SetSubTable("deploymentOptions");
+				foreach (choices,c)
+					deploymentOptions.AppendElement(ToTable(c->location));
+				t.SetField("productionCompleted",prod->queue.First().GetName());
+					
+			//				GetChoices(selectedEntity,
+			//deployingMobileEntity, 
+			//activeCursorMode,movementChoices,choiceVis);
+
+			}
+			else
+			{
+				ASSERT__(!prod->AwaitsUserInteraction());	//let's check that the assumptions match
+				t.UnsetField("productionCompleted");
+				t.UnsetField("deploymentOptions");
 			}
 
 			if (actual)

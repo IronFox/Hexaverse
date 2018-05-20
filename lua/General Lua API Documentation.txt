@@ -102,6 +102,8 @@ Table-Type: Unit
 		
 	[isMobileEntityProducer]
 		Prod[]	productionQueue;		Table of all production jobs currently enqueued to the local unit. nil if none
+		Loc[]	deploymentOptions;		List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production is completed
+		string	productionCompleted;	Set to the name of the produced type if production is completed. nil otherwise. Can be used to check if production is completed
 		int		roundsToCompletion;		Number of rounds until the next production finishes if the local factory is enabled and has enough resources to continue. nil if none are queued
 
 	[has turret (tower, mobile)]
