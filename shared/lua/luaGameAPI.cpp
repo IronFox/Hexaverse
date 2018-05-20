@@ -972,6 +972,21 @@ namespace Lua
 					else
 						throw Lua::Exception(CLOCATION,"BuildMobile(): onBeginProduction not set");
 				});
+
+				t.SetFunction("PredictRoundsToCompletion",[this,w,owner](const String&type)
+				{
+					Objects::PWorldEntity e= w.lock();
+					if (!e)
+						throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Entity has expired");
+					auto prod = e->CastToProducer();
+					ASSERT_NOT_NULL1__(prod,e->GetName());
+					Objects::EntityType t = Objects::DecodeType(type);
+					if (t.IsEmpty())
+						throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Given type is empty");
+
+					int cost = prod->GetProductionCost(t,e->owner);
+					return prod->ProductionRounds(cost,false);
+				});
 			}
 			else
 				t.UnsetField("BuildMobile");
