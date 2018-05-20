@@ -116,6 +116,7 @@ namespace Objects
 
 
 		void						AppendTask(const TUniqueID&id, EntityType);
+		static int					GetProductionCost(EntityType, const Objects::OwnerParameter&);
 
 		#ifdef HAS_WINDOW
 			const int2&				GetCommandOffset() const {return commandOffset;}
