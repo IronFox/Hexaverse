@@ -876,12 +876,23 @@ namespace Lua
 
 		if (actual)
 		{
-			t.SetFunction("Destroy", [id,this]()
+			Objects::WWorldEntity w= e;
+			t.SetFunction("Destroy", [id,this,w]()
 			{
-				if (onRemove)
-					onRemove(id);
+				#ifdef CLIENT
+					auto e = w.lock();
+					if (!e)
+						throw Lua::Exception(CLOCATION,"Destroy(): Entity expired");
+					if (!e->isOwnedByMe)
+						throw Lua::Exception(CLOCATION,"Destroy(): Entity "+e->GetName()+" belongs to some other faction");
+				#endif
+
+				if (onRemoveEntity)
+				{
+					onRemoveEntity(id);
+				}
 				else
-					throw Lua::Exception("Destroy(): onRemove not set");
+					throw Lua::Exception("Destroy(): onRemoveEntity not set");
 
 
 				//#ifdef CLIENT

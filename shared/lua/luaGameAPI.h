@@ -66,7 +66,7 @@ namespace Lua
 		//feedback functions:
 		std::function<void(const TUniqueID&)>	onMarkerTouch,
 												onMarkerDestroy, 
-												onRemove,
+												onRemoveEntity,
 												onDropAllTasks,
 												onDropLastTask
 												;
