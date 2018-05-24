@@ -319,7 +319,9 @@ namespace Objects
 		{
 			if (!this)
 				return "<NULL>";
-			return ToString(id)+":'"+name+"'";
+			if (IsNexus())
+				return "Nexus";
+			return ToString(id);//+":'"+name+"'";
 		}
 
 
@@ -361,6 +363,7 @@ namespace Objects
 			*/
 			static PFaction				GetOrCreate(const TUniqueID&id, const TUniqueID&allianceID, bool&outAllianceChanged);
 
+			bool						IsNexus() const {return name == nexusName;}
 		#else
 
 			CryptographicID				accessToken;
@@ -410,6 +413,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&);
 			static PFaction				Create(const TUniqueID&, const TUniqueID&allianceID, const String&name = "");
 			static PFaction				Create(const TUniqueID&, const PAlliance&alliance, const String&name = "");
+			bool						IsNexus() const {return nexus.get() == this;}
 
 
 			World::Data				knownWorld;

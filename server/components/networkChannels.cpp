@@ -1316,7 +1316,7 @@ namespace Receiver
 			cl->faction->name = cl->name;
 			ASSERT__(!cl->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
-			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
+			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed");
 		}
 	}
 

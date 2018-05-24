@@ -129,7 +129,7 @@ namespace Logging
 	}
 
 
-	void	Begin(const PathString&path)
+	void	Begin( const PathString&path )
 	{
 		activePath = path;
 		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
@@ -222,6 +222,7 @@ namespace Logging
 			if (!printToConsole)
 				return;
 		}
+		const bool writeToFile = !inTestMode;
 
 		static Sys::SpinLock lock;
 
@@ -231,7 +232,7 @@ namespace Logging
 		if (!headerWritten)
 		{
 			headerWritten = true;
-			if (!inTestMode)
+			if (writeToFile)
 			{
 				//if you change this, make sure to update bug reporter
 				logFile << "Sig."<< tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
@@ -239,7 +240,7 @@ namespace Logging
 		}
 		if (printToConsole)
 			console << '[' << RuntimeConfig::roundNumber.ToString()<<"] ";
-		if (!inTestMode)
+		if (writeToFile)
 			logFile << evClass.significance.ToString()  << tab << TimeStamp() << tab << RuntimeConfig::roundNumber.ToString() << tab << RuntimeConfig::phase.ToString();
 
 		if (peer)
@@ -250,30 +251,30 @@ namespace Logging
 				{
 					if (printToConsole)
 						console << c->ConvertToString()<<" ";
-					if (!inTestMode)
+					if (writeToFile)
 						logFile << tab << c->ConvertToString();
 				}
 				else
 			#endif
-				if (!inTestMode)
+				if (writeToFile)
 					logFile << tab;
 			if (printToConsole)
 				console << peer->ToString()<< ": ";
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << peer->ToString();
 		}
 		else
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << tab;
 		if (e)
 		{
 			if (printToConsole)
 				console << e->GetName()<<" ("<<e->location<<"): ";
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location;
 		}
 		else
-			if (!inTestMode)
+			if (writeToFile)
 				if (owner)
 					logFile << tab << tab<<tab<<owner->GetLogName() <<tab;
 				else
@@ -299,13 +300,21 @@ namespace Logging
 				logConsoleMsg = ">[private]" +logConsoleMsg;
 			break;
 		}
-
-
-		if (!inTestMode)
-			logFile << tab << logConsoleMsg << nl;
 		if (printToConsole)
+		{
+			if (owner && evClass.flavor == EventFlavor::ChatMessage)
+				console << owner->name << ": ";
 			console << logConsoleMsg << nl;
-		if (!inTestMode)
+		}
+
+		if (writeToFile)
+		{
+			if (evClass.flavor == EventFlavor::ChatMessage)
+				logConsoleMsg = "[Redacted Chat Message]";
+			logFile << tab << logConsoleMsg << nl;
+		}
+
+		if (writeToFile)
 			Flush(logFile,printToConsole);
 		if (printToConsole)
 		{

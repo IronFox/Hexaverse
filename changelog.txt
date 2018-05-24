@@ -6,6 +6,7 @@ v0.8.5
 	> Added close-button to game-end statistics (still closeable via Escape).
 	> Reduced default launcher attack range.
 	> Moved AI configuration folder from client/ai to aiClient.
+	> Full paths, nicknames and chat messages are no longer recorded in log files.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.

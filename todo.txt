@@ -1,3 +1,7 @@
+obfuscate nicknames in log files, or remove them
+do not log chat messages
+replace ...\My Games\... with [My Games]\...
+replace * with [Install Dir]\...
 sharp shadow edge on pillars map
 air defense for nexus base
 
