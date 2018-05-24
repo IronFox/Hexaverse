@@ -191,6 +191,61 @@ namespace ScriptedAI
 		{
 			touchedMarkers << mID;
 		}
+
+		void	RemoveEntity( const TUniqueID&eID )
+		{
+			Network::Channels::removeEntity.SendTo(Network::client,eID);
+		}
+
+		void	DropLastTask( const TUniqueID&eID )
+		{
+			Protocol::DropTasks drop;
+			drop.dropMode = Protocol::DropMode::LastTask;
+			drop.targetID = eID;
+			Network::Channels::dropTasks.SendTo(Network::client,drop);
+		}
+
+		void	BeginConstruction( const TUniqueID&eID, const Objects::EntityType&type )
+		{
+			Protocol::ConstructionBegin begin;
+			begin.plantID = eID;
+			begin.type = type;
+			Network::Channels::constructionBegin.SendTo(Network::client,begin);
+		}
+
+		void	AbortConstruction( const TUniqueID&eID, const TUniqueID&tID )
+		{
+			Protocol::ConstructionAbort abort;
+			abort.plantID = eID;
+			abort.taskId = tID;
+			Network::Channels::constructionAbort.SendTo(Network::client,abort);
+		}
+
+		void	DeployCompletedConstruction( const TUniqueID&eID, const Grid::LCellIdI&loc )
+		{
+			Protocol::ChoiceIntersection ch;
+			ch.id = eID;
+			ch.mode = (UINT16)Objects::CursorMode::Idle;
+			ch.target = loc;
+			Network::Channels::choiceIntersection.SendTo(Network::client,ch);
+		}
+
+		void	BeginStructureConstruction( const TUniqueID&eID, const Objects::EntityType&type )
+		{
+			Protocol::StandardJob job;
+			job.jobName = ConstName::Job_Construct;
+			job.parameterName = type;
+			job.ownerID = eID;
+			Network::Channels::signalNewJob.SendTo(Network::client,job);
+		}
+
+		void	QueueResearch( index_t topicIndex, bool doDrop )
+		{
+			Protocol::QueueResearch queue;
+			queue.research = (UINT32) topicIndex;
+			queue.drop = doDrop;
+			Network::Channels::QueueResearch.SendTo(Network::client,queue);
+		}
 	}
 
 
@@ -250,6 +305,15 @@ namespace ScriptedAI
 		api.onMarkerCreate = Callback::MarkerCreate;
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
+
+		api.onRemoveEntity =Callback::RemoveEntity;
+		api.onDropLastTask = Callback::DropLastTask;
+		api.onBeginProduction = Callback::BeginConstruction;
+		api.onBeginStructureConstruction = Callback::BeginStructureConstruction;
+		api.onAbortProduction = Callback::AbortConstruction;
+		api.onDeployCompletedProduction = Callback::DeployCompletedConstruction;
+		api.onQueueResearch = Callback::QueueResearch;
+
 
 		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
 		api.AddGrid();
