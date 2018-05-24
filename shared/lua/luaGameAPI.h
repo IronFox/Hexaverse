@@ -74,7 +74,7 @@ namespace Lua
 		std::function<void(const TUniqueID&mID,Objects::MarkerType,const Objects::PWorldEntity&, const Grid::LCellIdI&)> onMarkerCreate;
 		std::function<void(const TUniqueID&, Array<Grid::LCellIdI>&)> onAttackTargets;	//!< Given array is fleeting
 		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
-		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginConstruction;
+		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginStructureConstruction;
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
 		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&)>	onDeployCompletedProduction;
 		std::function<void(index_t,bool)>	onQueueResearch;

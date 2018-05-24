@@ -1234,20 +1234,20 @@ namespace Lua
 
 
 				if (m->turret->CanDo(Objects::Component::Construct))
-					t.SetFunction("Construct",[this,id](const String&type)
+					t.SetFunction("BuildStructure",[this,id](const String&type)
 					{
 						Objects::EntityType t = Objects::DecodeType(type);
 						if (t.IsEmpty())
-							throw Lua::Exception(CLOCATION,"Construct(): Given type is empty: "+type);
+							throw Lua::Exception(CLOCATION,"BuildStructure(): Given type is empty: "+type);
 						auto proto = Objects::Prototypes::Find(t);
 						if (!proto)
-							throw Lua::Exception(CLOCATION,"Construct(): Unable to find prototype for "+ToString(t));
+							throw Lua::Exception(CLOCATION,"BuildStructure(): Unable to find prototype for "+ToString(t));
 						if (!proto->IsStructure())
-							throw Lua::Exception(CLOCATION,"Construct(): Chosen type '"+ToString(t)+"' is no structure");
-						if (onBeginConstruction)
-							onBeginConstruction(id,t);
+							throw Lua::Exception(CLOCATION,"BuildStructure(): Chosen type '"+ToString(t)+"' is no structure");
+						if (onBeginStructureConstruction)
+							onBeginStructureConstruction(id,t);
 						else
-							throw Lua::Exception(CLOCATION,"Construct(): onBeginConstruction not set");
+							throw Lua::Exception(CLOCATION,"BuildStructure(): onBeginStructureConstruction not set");
 					});
 			}
 			else
