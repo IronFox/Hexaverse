@@ -36,7 +36,7 @@ namespace Objects
 			void QueueResearch(const Objects::Research::PTopic&topic, bool drop)
 			{
 				#ifdef HAS_WINDOW
-					Network::Channels::queueResearch.SendTo(Network::client,Protocol::QueueResearch((UINT32)topic->serialIndex,drop));
+					Network::Channels::QueueResearch.SendTo(Network::client,Protocol::QueueResearch((UINT32)topic->serialIndex,drop));
 					if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
 					{
 						Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));

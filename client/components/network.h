@@ -283,7 +283,6 @@ namespace Network
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
-		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
 
 		DECLARE_CHANNEL(MyFaction);
