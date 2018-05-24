@@ -819,7 +819,9 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 {
 	PathString test = dir + "/config/declaration.xml";
 	bool rs = FileSystem::IsFile(test);
-	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"' => IsFile('"+String(test)+"'). Result="+String(rs));
+	#ifdef _DEBUG
+		LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"' => IsFile('"+String(test)+"'). Result="+String(rs));
+	#endif
 
 
 	return rs;
@@ -857,12 +859,15 @@ int main( int argc, const char* argv[])
 			while (dir.GetLength() > 1 && !IsTargetWorkingDirectory(dir))
 			{
 				dir = FileSystem::ExtractFileDir(dir);
-				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
+				#ifdef _DEBUG
+					LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
+				#endif
 			}
 			if (IsTargetWorkingDirectory(dir))
 				FileSystem::SetWorkingDirectory(dir);
 			else
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
+			FileSystem::SetPathPrefix(FileSystem::GetWorkingDirectory(),"Server");
 		}
 
 		ParameterConfig::SetProgramName(argc > 0 ? argv[0] : "program");
