@@ -401,14 +401,14 @@ namespace Lua
 				outT.SetFunction("Dequeue",[this,i]()
 				{
 					if (onQueueResearch)
-						onQueueResearch(i,false);
+						onQueueResearch(i,true);
 					else
 						throw Lua::Exception(CLOCATION,"Dequeue(): onQueueResearch not set");
 				});
 				outT.SetFunction("Enqueue",[this,i]()
 				{
 					if (onQueueResearch)
-						onQueueResearch(i,true);
+						onQueueResearch(i,false);
 					else
 						throw Lua::Exception(CLOCATION,"Enqueue(): onQueueResearch not set");
 				});
