@@ -1,7 +1,6 @@
-obfuscate nicknames in log files, or remove them
-do not log chat messages
-replace ...\My Games\... with [My Games]\...
-replace * with [Install Dir]\...
+remove bug report email address
+
+
 sharp shadow edge on pillars map
 air defense for nexus base
 
@@ -198,6 +197,10 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: obfuscate nicknames in log files, or remove them
+done: do not log chat messages
+done: replace ...\My Games\... with [My Games]\...
+done: replace * with [Install Dir]\... (using [Client]/[Server] instead)
 added: menu button in configuration mode
 done: since plane scale now matches vehicle scale: rescale plane geometries to something larger
 added: escape text or close button in statistics
