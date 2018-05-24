@@ -929,7 +929,7 @@ namespace Objects
 		InsertConstructedEntity(v,atTime,setHealthToFull);
 		if (v->IsVehicle())
 		{
-
+			vehicles <<  To<Vehicle>::Cast(v);
 		}
 		else
 		#ifndef NO_SATELLITES
