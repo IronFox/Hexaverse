@@ -50,6 +50,7 @@
 			this.whoAmI = new System.Windows.Forms.TextBox();
 			this.label7 = new System.Windows.Forms.Label();
 			this.loadTimer = new System.Windows.Forms.Timer(this.components);
+			this.privacyNotice = new System.Windows.Forms.LinkLabel();
 			this.statusStrip.SuspendLayout();
 			this.mainBody.SuspendLayout();
 			this.SuspendLayout();
@@ -130,7 +131,7 @@
 			this.logFileList.FormattingEnabled = true;
 			this.logFileList.Location = new System.Drawing.Point(15, 479);
 			this.logFileList.Name = "logFileList";
-			this.logFileList.Size = new System.Drawing.Size(474, 94);
+			this.logFileList.Size = new System.Drawing.Size(474, 64);
 			this.logFileList.TabIndex = 8;
 			this.logFileList.MouseUp += new System.Windows.Forms.MouseEventHandler(this.logFileList_MouseUp);
 			// 
@@ -138,7 +139,7 @@
 			// 
 			this.sendButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.sendButton.Enabled = false;
-			this.sendButton.Location = new System.Drawing.Point(15, 583);
+			this.sendButton.Location = new System.Drawing.Point(15, 545);
 			this.sendButton.Name = "sendButton";
 			this.sendButton.Size = new System.Drawing.Size(235, 31);
 			this.sendButton.TabIndex = 9;
@@ -149,7 +150,7 @@
 			// abortButton
 			// 
 			this.abortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.abortButton.Location = new System.Drawing.Point(256, 583);
+			this.abortButton.Location = new System.Drawing.Point(257, 545);
 			this.abortButton.Name = "abortButton";
 			this.abortButton.Size = new System.Drawing.Size(233, 31);
 			this.abortButton.TabIndex = 10;
@@ -180,7 +181,7 @@
 			this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
 			this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripStatusLabel});
-			this.statusStrip.Location = new System.Drawing.Point(0, 627);
+			this.statusStrip.Location = new System.Drawing.Point(0, 608);
 			this.statusStrip.Name = "statusStrip";
 			this.statusStrip.Size = new System.Drawing.Size(501, 22);
 			this.statusStrip.TabIndex = 14;
@@ -200,6 +201,7 @@
 			// 
 			// mainBody
 			// 
+			this.mainBody.Controls.Add(this.privacyNotice);
 			this.mainBody.Controls.Add(this.viewPrimaryButton);
 			this.mainBody.Controls.Add(this.whoAmI);
 			this.mainBody.Controls.Add(this.label7);
@@ -218,7 +220,7 @@
 			this.mainBody.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.mainBody.Location = new System.Drawing.Point(0, 0);
 			this.mainBody.Name = "mainBody";
-			this.mainBody.Size = new System.Drawing.Size(501, 627);
+			this.mainBody.Size = new System.Drawing.Size(501, 608);
 			this.mainBody.TabIndex = 15;
 			// 
 			// viewPrimaryButton
@@ -255,11 +257,23 @@
 			this.loadTimer.Enabled = true;
 			this.loadTimer.Tick += new System.EventHandler(this.loadTimer_Tick);
 			// 
+			// privacyNotice
+			// 
+			this.privacyNotice.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.privacyNotice.AutoSize = true;
+			this.privacyNotice.Location = new System.Drawing.Point(19, 582);
+			this.privacyNotice.Name = "privacyNotice";
+			this.privacyNotice.Size = new System.Drawing.Size(76, 13);
+			this.privacyNotice.TabIndex = 17;
+			this.privacyNotice.TabStop = true;
+			this.privacyNotice.Text = "Privacy Notice";
+			this.privacyNotice.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.privacyNotice_LinkClicked);
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(501, 649);
+			this.ClientSize = new System.Drawing.Size(501, 630);
 			this.Controls.Add(this.mainBody);
 			this.Controls.Add(this.statusStrip);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -299,6 +313,7 @@
 		private System.Windows.Forms.TextBox whoAmI;
 		private System.Windows.Forms.Label label7;
 		private System.Windows.Forms.Button viewPrimaryButton;
+		private System.Windows.Forms.LinkLabel privacyNotice;
 	}
 }
 

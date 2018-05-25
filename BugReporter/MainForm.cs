@@ -549,6 +549,12 @@ namespace BugReporter
 			}
 		}
 
+		private void privacyNotice_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		{
+			TopMost = false;
+			Process.Start("https://www.hexaverse.net/bugReport/privacyNotice.php");
+		}
+
 		private void sendButton_Click(object sender, EventArgs e)
 		{
 			try
