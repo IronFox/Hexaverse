@@ -7,6 +7,7 @@ v0.8.5
 	> Reduced default launcher attack range.
 	> Moved AI configuration folder from client/ai to aiClient.
 	> Full paths, nicknames and chat messages are no longer recorded in log files.
+	> Added buttons to view log files in bug reporter.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.
@@ -14,6 +15,7 @@ v0.8.5
 	* Fixed bad fog of war at round beginning.
 	* Fixed missing menu button in configuration mode.
 	* Fixed main menu button while server list is visible.
+	* Fixed bug reporter crash when handling files still written to by game executable.
 
 v0.8.4	[Apr 22 2018]
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.

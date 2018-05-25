@@ -144,7 +144,7 @@ namespace BugReporter
 
 		public IEnumerable<FileID> FetchLogFileList()
 		{
-			var fileList = GetFilesIn(new string[] { "client", "server", "client/ai" });
+			var fileList = GetFilesIn(new string[] { "client", "server", "aiClient" });
 
 			foreach (var f in fileList)
 				yield return f;
@@ -524,7 +524,31 @@ namespace BugReporter
 			loadTask = timedLoadQueue.Dequeue().LoadFileAsync();
 		}
 
-		
+
+
+
+		private void logFileList_MouseUp(object sender, MouseEventArgs e)
+		{
+			if (logFileList.SelectedItem is LogFile && e.Button == MouseButtons.Right)
+			{
+				OpenInDefaultViewer(((LogFile)logFileList.SelectedItem).File);
+			}
+		}
+
+		private void OpenInDefaultViewer(FileID file)
+		{
+			TopMost = false;
+			file.OpenInDefaultViewer();
+		}
+
+		private void viewPrimaryButton_Click(object sender, EventArgs e)
+		{
+			if (logFile.SelectedItem is FileID)
+			{
+				OpenInDefaultViewer((FileID)logFile.SelectedItem);
+			}
+		}
+
 		private void sendButton_Click(object sender, EventArgs e)
 		{
 			try

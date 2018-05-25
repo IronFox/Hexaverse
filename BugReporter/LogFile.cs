@@ -78,7 +78,8 @@ namespace BugReporter
 			reference = null;
 			try
 			{
-				foreach (var l in File.ReadLines(path))
+				var lines = ReadAllLines();
+				foreach (var l in lines)
 				{
 					LastLine = l;
 					NumLines++;
@@ -92,15 +93,18 @@ namespace BugReporter
 						}
 					}
 				}
-				parts = LastLine.Split('\t');
-
-				DateTime t2;
-				if (parts.Length > 1 && LogFile.TryParseTime(parts[1], out t2))
-					LastLineTime = t2;
-				
-				if (parts.Length > LogFile.MessageAt && parts[0] == "SystemFatal" && parts[LogFile.MessageAt].StartsWith("Fatal exception"))
+				if (LastLine != null)
 				{
-					Fatal = parts[LogFile.MessageAt];
+					parts = LastLine.Split('\t');
+
+					DateTime t2;
+					if (parts.Length > 1 && LogFile.TryParseTime(parts[1], out t2))
+						LastLineTime = t2;
+
+					if (parts.Length > LogFile.MessageAt && parts[0] == "SystemFatal" && parts[LogFile.MessageAt].StartsWith("Fatal exception"))
+					{
+						Fatal = parts[LogFile.MessageAt];
+					}
 				}
 
 			}
@@ -142,6 +146,11 @@ namespace BugReporter
 			if (reference == null)
 				reference = await LogFile.LoadAsync(this);
 			return reference;
+		}
+
+		public void OpenInDefaultViewer()
+		{
+			Process.Start(Path);
 		}
 
 		public override string ToString()

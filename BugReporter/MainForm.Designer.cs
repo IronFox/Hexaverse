@@ -46,6 +46,7 @@
 			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
 			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
 			this.mainBody = new System.Windows.Forms.Panel();
+			this.viewPrimaryButton = new System.Windows.Forms.Button();
 			this.whoAmI = new System.Windows.Forms.TextBox();
 			this.label7 = new System.Windows.Forms.Label();
 			this.loadTimer = new System.Windows.Forms.Timer(this.components);
@@ -108,7 +109,7 @@
 			this.logFile.FormattingEnabled = true;
 			this.logFile.Location = new System.Drawing.Point(15, 424);
 			this.logFile.Name = "logFile";
-			this.logFile.Size = new System.Drawing.Size(474, 21);
+			this.logFile.Size = new System.Drawing.Size(407, 21);
 			this.logFile.TabIndex = 6;
 			this.logFile.SelectedIndexChanged += new System.EventHandler(this.logFile_SelectedIndexChanged);
 			// 
@@ -117,9 +118,9 @@
 			this.label4.AutoSize = true;
 			this.label4.Location = new System.Drawing.Point(12, 463);
 			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(170, 13);
+			this.label4.Size = new System.Drawing.Size(258, 13);
 			this.label4.TabIndex = 7;
-			this.label4.Text = "Related log files (check to include)";
+			this.label4.Text = "Related log files (check to include, right click to view)";
 			// 
 			// logFileList
 			// 
@@ -131,6 +132,7 @@
 			this.logFileList.Name = "logFileList";
 			this.logFileList.Size = new System.Drawing.Size(474, 94);
 			this.logFileList.TabIndex = 8;
+			this.logFileList.MouseUp += new System.Windows.Forms.MouseEventHandler(this.logFileList_MouseUp);
 			// 
 			// sendButton
 			// 
@@ -198,6 +200,7 @@
 			// 
 			// mainBody
 			// 
+			this.mainBody.Controls.Add(this.viewPrimaryButton);
 			this.mainBody.Controls.Add(this.whoAmI);
 			this.mainBody.Controls.Add(this.label7);
 			this.mainBody.Controls.Add(this.gameVersion);
@@ -217,6 +220,17 @@
 			this.mainBody.Name = "mainBody";
 			this.mainBody.Size = new System.Drawing.Size(501, 627);
 			this.mainBody.TabIndex = 15;
+			// 
+			// viewPrimaryButton
+			// 
+			this.viewPrimaryButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.viewPrimaryButton.Location = new System.Drawing.Point(428, 423);
+			this.viewPrimaryButton.Name = "viewPrimaryButton";
+			this.viewPrimaryButton.Size = new System.Drawing.Size(60, 22);
+			this.viewPrimaryButton.TabIndex = 16;
+			this.viewPrimaryButton.Text = "View";
+			this.viewPrimaryButton.UseVisualStyleBackColor = true;
+			this.viewPrimaryButton.Click += new System.EventHandler(this.viewPrimaryButton_Click);
 			// 
 			// whoAmI
 			// 
@@ -284,6 +298,7 @@
 		private System.Windows.Forms.Timer loadTimer;
 		private System.Windows.Forms.TextBox whoAmI;
 		private System.Windows.Forms.Label label7;
+		private System.Windows.Forms.Button viewPrimaryButton;
 	}
 }
 
