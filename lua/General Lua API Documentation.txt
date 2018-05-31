@@ -87,8 +87,7 @@ Table-Type: Unit
 	[isMobileEntityProducer]
 		void	BuildMobile(string type);	Schedules the construction of the specified type at the end of the local queue
 		int		PredictRoundsToCompletion(string type);	Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
-		void	DeployProductionAt(Loc);	Deploys the completed production. Execute() may be re-triggered during this round if the deployed unit is received in time. Set only if a production is completed
-	
+		void	DeployProductionAt(Loc, func onDeploy(Unit));	Deploys the completed production. The specified function onDeploy, if not nil, may be triggered at a later stage during this round
 	
 	-- optional stuff:
 	

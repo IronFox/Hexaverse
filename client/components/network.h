@@ -301,6 +301,8 @@ namespace Network
 		DECLARE_OBJECT_SENDER(QueueResearch);
 		DECLARE_CHANNEL(ResearchAttributeVector);
 		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
+
+		DECLARE_CHANNEL(ChoiceResponse);
 	}
 
 

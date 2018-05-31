@@ -290,8 +290,10 @@ namespace Objects
 		@param choice World cell the user clicked on
 		@param mode Current cursor mode that effects available choices
 		@param deployWhat Vehicle being deployed (only if @a e points to a vehicle store)
+		@param[out] outDeployed If non-null, captures any deployed entity, new or existing as a result of the operation. Set to nullptr if handling failed
+		@return true on success
 		*/
-		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode mode, const PMobileEntity&deployWhat);
+		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode mode, const PMobileEntity&deployWhat, PWorldEntity*outDeployed);
 
 	#endif
 

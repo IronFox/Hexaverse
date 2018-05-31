@@ -281,7 +281,7 @@ namespace Nexus
 							producing++;	//dont count
 							continue;
 						}
-						Journal::currentRound.RegisterChoiceIntersection(false,producer.first,v->location,Objects::CursorMode::Idle,v);
+						Journal::currentRound.RegisterChoiceIntersection(false,producer.first,v->location,Objects::CursorMode::Idle,v, TUniqueID::Empty());
 						AddPresence(*v,v->location,env.ToRef());
 					}
 					if (plant->queue.IsNotEmpty())

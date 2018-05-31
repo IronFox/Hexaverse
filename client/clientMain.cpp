@@ -814,8 +814,9 @@ namespace ApplicationInterface
 			}
 	}
 
-	void	OnAppear(const Objects::PWorldEntity&e)
+	void	OnAppear( const Objects::PWorldEntity&e )
 	{
+		ScriptedAI::SignalAppearance(e);
 		#ifdef HAS_WINDOW
 			if (!e->ambientSound.IsCreated())
 			{

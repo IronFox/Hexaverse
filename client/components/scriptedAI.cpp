@@ -21,15 +21,16 @@ namespace ScriptedAI
 	namespace Detail
 	{
 		index_t			frameBeginRegistration = InvalidIndex;
-		Array<BYTE>		exportedState;
 		PathString		scriptPath;
 		FileSystem::ftime_t	scriptTime;
-		bool			freshState = false, reloadScript = true;
-		bool			hasSuccessfullyExecuted = false;
+		bool			reloadScript = true;
 
 		bool			completedThisPhase = false;
 
 		index_t			controlBeginRegistration = InvalidIndex;
+
+		HashTable<TUniqueID,TUniqueID>	awaitEntity;	//entity ID -> request ID
+
 		void			RegisterExecution()
 		{
 			if (controlBeginRegistration != InvalidIndex)
@@ -47,58 +48,121 @@ namespace ScriptedAI
 
 	class Thread : public Sys::ThreadObject
 	{
+		typedef Sys::ThreadObject Super;
 	public:
 		Lua::API		api;
 		Lua::Function<Lua::Reference()> exportState;
 		Lua::Function<void(Lua::Reference)> init;
 		Lua::Function<void()> execute;
+		Array<BYTE>		exportedState;
+		bool			freshState = false;
+		bool			hasSuccessfullyExecuted = false;
 
-		String			error;
+		typedef std::function<void(Thread&)> FEvent;
+		typedef std::pair<String,FEvent>	Event;
 
-		volatile bool	isRunning = false;
+
+		void			Enqueue(const String&title, const FEvent&func)
+		{
+			queue << std::make_pair(title,func);
+		}
+
+		void			Quit()
+		{
+			quit = true;
+			queue.OverrideSignalNow();
+			AwaitCompletion();
+		}
+
+		bool			IsBusy() const
+		{
+			queueLock.lock();
+				bool rs = isRunning || queue.IsNotEmpty();
+			queueLock.unlock();
+			return rs;
+		}
+
+		String		GetErrors()
+		{
+			if (errorQueue.IsEmpty())
+				return "";
+			Buffer0<String> localErrorQueue;
+			errorQueue.FlushContentTo(localErrorQueue);
+			StringBuffer rs;
+			foreach (localErrorQueue,err)
+			{
+				if (rs.IsNotEmpty())
+					rs << nl;
+				rs << *err;
+			}
+			return rs.ToStringRef();
+		}
+
+		bool		CallbacksDone()
+		{
+			return thread.api.onDeployedCallbacks.IsEmpty()
+				||
+				timer.GetSecondsSince(thread.api.lastDeploymentCallbackRegistered) > 3.f;
+		}
+
 		virtual void ThreadMain() override
 		{
-			error = "";
-			try
+			Buffer0<Event,Swap>	workItems;
+			while (!quit)
 			{
-				if (Detail::reloadScript)
-				{
-					Detail::reloadScript = false;
-					
-					api.AddTerrain();
-					api.program->ExecuteFile(Detail::scriptPath);
-					exportState = api.program->RequireGlobal("ExportState");
-					init = api.program->RequireGlobal("Init");
-					execute = api.program->RequireGlobal("Execute");
-
-					if (!Detail::freshState && Detail::exportedState.IsNotEmpty())
-					{
-						auto state = api.program->DeserializeToReference(
-							MemReadStream(
-								Detail::exportedState.GetPointer(),
-								(serial_size_t)Detail::exportedState.GetContentSize()
-							)
-						);
-						init(state);
-					}
-					else
-						init(Lua::nil);
-				}
+				workItems.Clear();
+				isRunning = false;
+				queue.WaitForContent();
+				queueLock.lock();
+					isRunning = true;
+					queue.FlushContentTo(workItems);
+				queueLock.unlock();
 				
-				auto t = timer.Now();
-				execute();
-				LogEvent(EventSignificance::Important,api.program->GetName()+": Execution took "+String(timer.GetSecondsSince(t))+" seconds...");
-				Detail::hasSuccessfullyExecuted = true;
+				foreach (workItems, item)
+				{
+					LogEvent(EventClass::Preset::scriptLog,"Executing "+item->first);
+					try
+					{
+						item->second(*this);
+					}
+					catch (const Lua::Exception&ex)
+					{
+						auto error = ex.GetRawMessage();
+						errorQueue << error;
+						LogEvent(EventClass::Preset::scriptError,"Failed to execute '"+item->first+"'. Lua exception: '"+error+"'");
+					}
+					catch (const std::exception&ex)
+					{
+						auto error = ex.what();
+						errorQueue << error;
+						LogEvent(EventClass::Preset::scriptError,"Failed to execute '"+item->first+"'. Standard exception: '"+error+"'");
+					}
+					catch (...)
+					{
+						errorQueue << "???";
+						//error = "???";
+						LogEvent(EventClass::Preset::scriptError,"Failed to execute '"+item->first+"'. Unsupported exception type");
+					}
+				}
+				workItems.Clear();
 			}
-			catch (const Lua::Exception&ex)
-			{
-				error = ex.GetRawMessage();
-			}
-			catch (const std::exception&ex)
-			{
-				error = ex.what();
-			}
+			isRunning = false;
 		}
+
+		void	Start()
+		{
+			quit = false;
+			Super::Start();
+		}
+
+	private:
+		mutable Sys::SpinLock	queueLock;
+		WorkPipe<Event,Swap>	queue;
+		WorkPipe<String,Swap>	errorQueue;
+
+		volatile bool	isRunning = false;
+		volatile bool	quit = false;
+
 	}	thread;
 
 	namespace Callback
@@ -221,12 +285,14 @@ namespace ScriptedAI
 			Network::Channels::constructionAbort.SendTo(Network::client,abort);
 		}
 
-		void	DeployCompletedConstruction( const TUniqueID&eID, const Grid::LCellIdI&loc )
+		void	DeployCompletedConstruction( const TUniqueID&eID, const Grid::LCellIdI&loc, const TUniqueID&requestID )
 		{
 			Protocol::ChoiceIntersection ch;
 			ch.id = eID;
 			ch.mode = (UINT16)Objects::CursorMode::Idle;
 			ch.target = loc;
+			if (requestID.IsNotEmpty())
+				ch.requestID.Set0() = requestID;
 			Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 		}
 
@@ -269,7 +335,7 @@ namespace ScriptedAI
 		static bool installed = false;
 		if (!installed)
 		{
-			GlobalEvents::phaseChange << [](){Detail::completedThisPhase = false; ASSERT__(!IsRunning());};
+			GlobalEvents::phaseChange << [](){Detail::completedThisPhase = false; ASSERT__(!IsRunning()); thread.api.onDeployedCallbacks.Clear();};
 			installed = true;
 		}
 
@@ -279,12 +345,12 @@ namespace ScriptedAI
 			if (thread.exportState.IsSet())
 				ref = thread.exportState();
 			if (!ref)
-				Detail::exportedState.Clear();
+				thread.exportedState.Clear();
 			else
 			{
 				ByteStreamBuffer stream;
 				ref.Serialize(stream);
-				Detail::exportedState = stream.GetWrittenData();
+				thread.exportedState = stream.GetWrittenData();
 			}
 			thread.exportState.ClearReference();
 			thread.init.ClearReference();
@@ -294,7 +360,7 @@ namespace ScriptedAI
 		
 		Detail::reloadScript = true;
 		Detail::completedThisPhase = true;		//upon (re)loading, is considered having executed this phase so player can request new round
-		Detail::hasSuccessfullyExecuted = true;	//set true here, since we don't know yet
+		thread.hasSuccessfullyExecuted = true;	//set true here, since we don't know yet
 
 		auto&api = thread.api;
 
@@ -320,7 +386,13 @@ namespace ScriptedAI
 
 		Detail::scriptPath = scriptPath;
 		Detail::scriptTime = FileSystem::GetModificationTime(scriptPath);
-		Detail::freshState = freshState;
+		thread.freshState = freshState;
+
+		if (!thread.IsActive())
+		{
+			thread.Start();
+			GlobalEvents::applicationTerminate << [](){thread.Quit();};
+		}
 
 
 		Detail::RegisterExecution();
@@ -328,21 +400,20 @@ namespace ScriptedAI
 	
 	static void Check()
 	{
-		if (!thread.IsActive())
+		if (!thread.IsBusy())
 		{
-			thread.isRunning = false;
 			GlobalEvents::frameBegin.Unregister(Detail::frameBeginRegistration);
 			Detail::frameBeginRegistration = InvalidIndex;
 			Callback::Submit();
-			if (thread.error.IsNotEmpty())
+			String err = thread.GetErrors();
+			if (err.IsNotEmpty())
 			{
-				LogEvent(EventClass::Preset::scriptError, thread.error);
 				#ifdef HAS_WINDOW
-					HUD::Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + thread.error);
+					HUD::Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + err);
 				#endif
 			}
 
-			if (!Detail::hasSuccessfullyExecuted)
+			if (!thread.hasSuccessfullyExecuted)
 				Detail::UnregisterExecution();
 
 			onExecutionFinished();
@@ -362,16 +433,98 @@ namespace ScriptedAI
 		thread.api.AddAllEntities();
 		thread.api.AddMyMarkers();
 		thread.api.AddObjectAndPathfindingFunctions();
-		thread.isRunning = true;
-		Detail::hasSuccessfullyExecuted = false;
-		thread.Start();
+		thread.hasSuccessfullyExecuted = false;
+
 		if (Detail::frameBeginRegistration == InvalidIndex)
 			Detail::frameBeginRegistration = GlobalEvents::frameBegin.Register(Check);
+
+		if (Detail::reloadScript)
+		{
+			thread.Enqueue("Reload",[](Thread&thread)
+			{
+				auto&api = thread.api;
+				Detail::reloadScript = false;
+
+				api.AddTerrain();
+				api.program->ExecuteFile(Detail::scriptPath);
+				thread.exportState = api.program->RequireGlobal("ExportState");
+				thread.init = api.program->RequireGlobal("Init");
+				thread.execute = api.program->RequireGlobal("Execute");
+
+				if (!thread.freshState && thread.exportedState.IsNotEmpty())
+				{
+					auto state = api.program->DeserializeToReference(
+						MemReadStream(
+							thread.exportedState.GetPointer(),
+							(serial_size_t)thread.exportedState.GetContentSize()
+						)
+					);
+					thread.init(state);
+				}
+				else
+					thread.init(Lua::nil);
+			});
+		}
+
+		thread.Enqueue("Run",[](Thread&thread)
+		{
+			auto&api = thread.api;
+			auto t = timer.Now();
+			thread.execute();
+			LogEvent(EventSignificance::Important,api.program->GetName()+": Execution took "+String(timer.GetSecondsSince(t))+" seconds...");
+			thread.hasSuccessfullyExecuted = true;
+		});
+
+
+		//thread.Start();
 	}
+
+
+	void		SignalDeployment(const TUniqueID&deploymentID, const Objects::PWorldEntity&e)
+	{
+		if (!IsLoaded() || deploymentID.IsEmpty())
+			return;
+		thread.Enqueue("Handle deployment("+ToString(deploymentID)+","+e->GetName()+")", [deploymentID,e](Thread&thread)
+		{
+			thread.api.SignalDeployment(deploymentID,e);
+		});
+	}
+
+
+	void			SignalAppearance(const Objects::PWorldEntity&e)
+	{
+		if (!IsLoaded())
+			return;
+		TUniqueID reqID;
+		if (Detail::awaitEntity.QueryAndUnset(e->id,reqID))
+		{
+			thread.Enqueue("Invoke callback function "+ToString(reqID),[e,reqID](Thread&thread)
+			{
+				thread.api.SignalDeployment(reqID,e);
+			});
+		}
+	}
+
+	void			SignalChoiceResponse(const TUniqueID&requestID, const TUniqueID&entityID)
+	{
+		if (!IsLoaded() || requestID.IsEmpty())
+			return;
+		if (entityID.IsEmpty())
+		{
+			thread.Enqueue("Remove callback function "+ToString(requestID),[requestID](Thread&thread)
+			{
+				thread.api.onDeployedCallbacks.Unset(requestID);
+			});
+		}
+		else
+			Detail::awaitEntity.Set(entityID,requestID);
+
+	}
+
 
 	bool	IsRunning()
 	{
-		return thread.isRunning;
+		return thread.IsBusy();
 	}
 
 
@@ -388,7 +541,7 @@ namespace ScriptedAI
 
 	bool			HasSuccessfullyExecuted()
 	{
-		return Detail::hasSuccessfullyExecuted;
+		return thread.hasSuccessfullyExecuted;
 	}
 
 
@@ -468,12 +621,12 @@ namespace ScriptedAI
 			return true;
 		if (IsRunning())
 			return false;
-		return Detail::completedThisPhase;
+		return Detail::completedThisPhase && thread.CallbacksDone();
 	}
 
 	bool			SuccessfullyExecutedThisRound()
 	{
-		return Detail::completedThisPhase && Detail::hasSuccessfullyExecuted;
+		return Detail::completedThisPhase && thread.hasSuccessfullyExecuted;
 	}
 
 

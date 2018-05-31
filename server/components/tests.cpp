@@ -1092,7 +1092,7 @@ namespace Test
 					ASSERT__(choices.IsNotEmpty());
 					Objects::PVehicle v = plant->GetProduction();
 					Grid::LCellIdI choice = choices[random.NextIndex(choices.Count())].location;
-					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
+					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle(), nullptr);
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 					ASSERT2__(v->location == choice, v->location, choice);
 					if (!v0)

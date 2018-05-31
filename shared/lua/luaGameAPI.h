@@ -54,7 +54,11 @@ namespace Lua
 			void			AddEntity(const Lua::Table&);
 		};
 
+		typedef Lua::Function<void(const Lua::Table&)>	LFOnDeploy;
+
 		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
+		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;
+		Timer::Time								lastDeploymentCallbackRegistered;
 
 		HashTable<TUniqueID,TAlliance>	loadedAllianceTableMap;
 		HashTable<TUniqueID,TFaction>	loadedFactionTableMap;
@@ -76,7 +80,7 @@ namespace Lua
 		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
 		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginStructureConstruction;
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
-		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&)>	onDeployCompletedProduction;
+		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&, const TUniqueID&)>	onDeployCompletedProduction;
 		std::function<void(index_t,bool)>	onQueueResearch;
 
 		/**/		API():mapper(true)	{}
@@ -120,10 +124,11 @@ namespace Lua
 		Lua::Table ToTable(const Objects::MobileEntity::Task&task);
 		Objects::PVehicle	ParameterToVehicle(const Lua::Table&luaEntity, Grid::LCellIdI&outLoc, const String&parameterName) const;
 
-		void	AddFactionEntities(const Objects::PFaction&);
-		void	AddAllEntities();
-		void	AddAllFactionsAndAlliances();
-		void	AddAllAlliances();
+		void		AddFactionEntities(const Objects::PFaction&);
+		void		AddAllEntities();
+		void		AddAllFactionsAndAlliances();
+		void		AddAllAlliances();
+		void		SignalDeployment(const TUniqueID&deploymentID, const Objects::PWorldEntity&e);
 	private:
 
 		Lua::Table	LuaFindShortestPathFrom(const Objects::PMobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute);

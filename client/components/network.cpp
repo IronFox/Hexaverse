@@ -26,6 +26,7 @@
 #include "voting.h"
 #include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
+#include "scriptedAI.h"
 #include <expectedBehavior.h>
 
 
@@ -1587,6 +1588,11 @@ namespace Network
 			}
 		}
 
+		void	ChoiceResponse(Protocol::ChoiceResponse&resp)
+		{
+			ScriptedAI::SignalChoiceResponse(resp.deployedID,resp.deployedID);
+		}
+
 	}
 
 
@@ -1679,6 +1685,8 @@ namespace Network
 		DECLARE_OBJECT_SENDER(QueueResearch);
 		DECLARE_CHANNEL(ResearchAttributeVector);
 		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
+
+		DECLARE_CHANNEL(ChoiceResponse);
 
 	}
 
@@ -1935,6 +1943,8 @@ namespace Network
 		client.InstallChannel(Channels::ResearchQueue);
 		client.InstallChannel(Channels::ResearchAttributeVector);
 		client.InstallChannel(Channels::ResearchAttributeDeltaVector);
+
+		client.InstallChannel(Channels::ChoiceResponse);
 
 		
 

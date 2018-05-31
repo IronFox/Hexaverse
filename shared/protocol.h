@@ -1230,11 +1230,17 @@ namespace Protocol
 	)
 
 
-	NETSTRUCT4(ChoiceIntersection
+	NETSTRUCT5(ChoiceIntersection
 		, NET(TUniqueID), id
 		, Grid::LCellIdI, target
 		, NET(UINT16), mode
-		, Optional<NET(TUniqueID)>, deployingWhat
+		, Optional<TUniqueID>, deployingWhat
+		, Optional<TUniqueID>, requestID
+	)
+
+	NETSTRUCT2(ChoiceResponse
+		, TUniqueID, requestID
+		, TUniqueID, deployedID	//empty on failure
 	)
 	
 	NETSTRUCT3(StandardJob
@@ -1580,7 +1586,9 @@ namespace Protocol
 
 			DestroyEntity,		//s2c: DestroyEntity
 
-			ChoiceIntersection,	//c2s: ChoiceIntersection
+			ChoiceIntersection,	//c2s: ChoiceIntersection [->ChoiceResponse, if requestID is set]
+			ChoiceResponse,		//s2c: ChoiceResponse
+
 			RequestRoundEnd,	//c2s: <signal>
 			RequestContinueRound,	//c2s: <signal>
 

@@ -429,6 +429,7 @@ namespace Lua
 
 	void		API::FlushAllObjects(bool clearCaches/*=false*/)
 	{
+		onDeployedCallbacks.Clear();
 		entityIDMap.ClearTable();
 		factionIDMap.ClearTable();
 		allianceIDMap.ClearTable();
@@ -475,6 +476,7 @@ namespace Lua
 	void	API::Destroy()
 	{
 		FlushAllObjects(true);
+		onDeployedCallbacks.Clear();
 		gameTable.ClearReference();
 		gridTable.ClearReference();
 		terrainTable.ClearReference();
@@ -788,6 +790,15 @@ namespace Lua
 	}
 
 
+	void			API::SignalDeployment(const TUniqueID&deploymentID, const Objects::PWorldEntity&e)
+	{
+		Lua::Table m = MapEntity(e,true,true);
+		LFOnDeploy dep;
+		if (onDeployedCallbacks.QueryAndUnset(deploymentID,dep))
+			dep(m);
+	}
+
+
 	void			API::TFaction::AddEntity(const Lua::Table&e)
 	{
 		entityTable.AppendElement(e);
@@ -988,11 +999,21 @@ namespace Lua
 				t.SetField("productionCompleted",prod->queue.First().GetName());
 
 				if (actual)
-					t.SetFunction("DeployProductionAt",[this,id](const Lua::Table&luaLoc)
+					t.SetFunction("DeployProductionAt",[this,id](const Lua::Table&luaLoc, const LFOnDeploy onDep)
 					{
 						auto loc = Detail::ToLGridCell(luaLoc,"DeployProductionAt(): Location parameter");
+
 						if (onDeployCompletedProduction)
-							onDeployCompletedProduction(id,loc);
+						{
+							TUniqueID depID = TUniqueID::Empty();
+							if (onDep)
+							{
+								depID.Generate();
+								onDeployedCallbacks.Set(depID,onDep);
+								lastDeploymentCallbackRegistered = timer.Now();
+							}
+							onDeployCompletedProduction(id,loc,depID);
+						}
 						else
 							throw Lua::Exception(CLOCATION,"DeployProductionAt(): onDeployCompletedProduction not set");
 					});

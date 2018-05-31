@@ -660,7 +660,8 @@ namespace Journal
 		class ChoiceIntersection : public EntityEvent
 		{
 		public:
-			TUniqueID		deployingWhat=TUniqueID::Empty();
+			TUniqueID		deployingWhat=TUniqueID::Empty(),
+							requestID=TUniqueID::Empty();
 			Objects::CursorMode mode;
 			Grid::LCellIdI	target;
 			
@@ -911,7 +912,7 @@ namespace Journal
 		void	LogFactionCreation(const Objects::PFaction&f, Round::CreateFaction::FactionType type);
 		void	RegisterDropEntityCommands(bool execute, const Objects::PWorldEntity&, Protocol::DropMode);
 		void	RegisterDirectEntityTo(bool execute, const Objects::PWorldEntity&, Objects::CursorMode mode, const Ctr::ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick, bool clearSafeTasks);
-		void	RegisterChoiceIntersection(bool execute, const Objects::PWorldEntity&,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat);
+		void	RegisterChoiceIntersection(bool execute, const Objects::PWorldEntity&,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat, const TUniqueID&requestID);
 		void	LogJobCommandStart(const Objects::PWorldEntity&, const Objects::VehicleJob::BaseJob&, const Grid::LCellIdI&focus);
 		void	LogFactionOffline(const Objects::PFaction&);
 		void	LogFactionOnline(const Objects::PFaction&);

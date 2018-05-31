@@ -1486,8 +1486,10 @@ namespace Objects
 
 	#ifdef CLIENT
 	#else
-		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
+		bool					ProcessChoiceIntersection( const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat, PWorldEntity*outDeployed )
 		{
+			if (outDeployed)
+				*outDeployed = nullptr;
 			if (deployWhat && deployWhat->lastDeployment == RuntimeConfig::roundNumber)
 			{
 				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot redeploy "+deployWhat->GetNiceName()+" twice during one round. Try again next round");
@@ -1527,6 +1529,8 @@ namespace Objects
 				{
 					float t = 0;
 					InsertConstructed(v,t);
+					if (outDeployed)
+						*outDeployed = v;
 				}
 
 				if (e->IsStructure())
@@ -1609,6 +1613,8 @@ namespace Objects
 							{
 								float t = 0.f;
 								actual->LocalCheckout(deployWhat,choice,t);
+								if (outDeployed)
+									*outDeployed = deployWhat;
 							}
 							else
 							{

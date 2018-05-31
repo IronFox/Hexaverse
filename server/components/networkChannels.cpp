@@ -386,6 +386,8 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
 
+	DECLARE_OBJECT_SENDER(ChoiceResponse);
+
 	DECLARE_OBJECT_SENDER(ResearchFactionState);
 	DECLARE_OBJECT_SENDER(ResearchProgram);
 	DECLARE_OBJECT_SENDER(ResearchQueue);
@@ -1730,7 +1732,7 @@ namespace Receiver
 		if (To<Objects::Hangar>::DynamicCast(e))
 			ASSERT_NOT_NULL1__(deploying,e->GetName());
 
-		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat);
+		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat, ch.requestID.Get0() ? *ch.requestID.Get0() : TUniqueID::Empty());
 
 		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target));
 	}
