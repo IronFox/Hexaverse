@@ -189,6 +189,15 @@ namespace Network
 	{
 		client.Disconnect();
 
+		if (ScriptedAI::IsRunning())
+		{
+			LogEvent(EventClass::Preset::scriptError,"Cannot connect right now. Scripted AI still busy");
+			#ifdef HAS_WINDOW
+				HUD::Dialog::ShowMessage("Unable to connect to the requested server right now. Your scripted AI is still busy. Please wait until it completes.");
+			#endif
+			return;
+		}
+
 		#ifdef HAS_WINDOW
 			if (HUD::Dialog::QueryNicknameIfEmpty())
 				return;
@@ -1590,7 +1599,7 @@ namespace Network
 
 		void	ChoiceResponse(Protocol::ChoiceResponse&resp)
 		{
-			ScriptedAI::SignalChoiceResponse(resp.deployedID,resp.deployedID);
+			ScriptedAI::SignalChoiceResponse(resp.requestID,resp.deployedID);
 		}
 
 	}

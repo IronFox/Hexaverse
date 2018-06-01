@@ -121,6 +121,7 @@ namespace ScriptedAI
 				foreach (workItems, item)
 				{
 					LogEvent(EventClass::Preset::scriptLog,"Executing "+item->first);
+					const auto t = timer.Now();
 					try
 					{
 						item->second(*this);
@@ -143,6 +144,8 @@ namespace ScriptedAI
 						//error = "???";
 						LogEvent(EventClass::Preset::scriptError,"Failed to execute '"+item->first+"'. Unsupported exception type");
 					}
+					LogEvent(EventClass::Preset::scriptLog,"Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+
 				}
 				workItems.Clear();
 			}
@@ -335,7 +338,29 @@ namespace ScriptedAI
 		static bool installed = false;
 		if (!installed)
 		{
-			GlobalEvents::phaseChange << [](){Detail::completedThisPhase = false; ASSERT__(!IsRunning()); thread.api.onDeployedCallbacks.Clear();};
+			GlobalEvents::phaseChange << []()
+			{
+				if (IsRunning())
+				{
+					LogEvent(EventClass::Preset::scriptError,"WARNING: Phase change detected (->"+String(RuntimeConfig::phase.ToString())+") but AI script is still busy");
+					return;
+				}
+				Detail::completedThisPhase = false; 
+				Detail::awaitEntity.Clear(); 
+				thread.api.onDeployedCallbacks.Clear();
+			};
+
+			GlobalEvents::objectFlush << []()
+			{
+				Detail::awaitEntity.Clear();
+				Reload(true,true);
+				if (IsRunning())
+				{
+					LogEvent(EventClass::Preset::scriptError,"WARNING: Flushing scene while AI script is still busy.");
+					return;
+				}
+
+			};
 			installed = true;
 		}
 
@@ -382,7 +407,7 @@ namespace ScriptedAI
 
 
 		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
-		api.AddGrid();
+		api.AddGrid();	//must be executed by main thread, because mapped entities need it, which are added by main thread, too
 
 		Detail::scriptPath = scriptPath;
 		Detail::scriptTime = FileSystem::GetModificationTime(scriptPath);
@@ -438,18 +463,33 @@ namespace ScriptedAI
 		if (Detail::frameBeginRegistration == InvalidIndex)
 			Detail::frameBeginRegistration = GlobalEvents::frameBegin.Register(Check);
 
+		thread.api.onDeployedCallbacks.Clear();
+		Detail::awaitEntity.Clear();
+
 		if (Detail::reloadScript)
 		{
-			thread.Enqueue("Reload",[](Thread&thread)
+			thread.Enqueue("Map Terrain",[](Thread&thread)
 			{
 				auto&api = thread.api;
+				api.AddTerrain();
+			});
+
+
+			thread.Enqueue("Load Script",[](Thread&thread)
+			{
+				auto&api = thread.api;
+
 				Detail::reloadScript = false;
 
-				api.AddTerrain();
 				api.program->ExecuteFile(Detail::scriptPath);
 				thread.exportState = api.program->RequireGlobal("ExportState");
 				thread.init = api.program->RequireGlobal("Init");
 				thread.execute = api.program->RequireGlobal("Execute");
+			});
+
+			thread.Enqueue("Script Init",[](Thread&thread)
+			{
+				auto&api = thread.api;
 
 				if (!thread.freshState && thread.exportedState.IsNotEmpty())
 				{
@@ -469,9 +509,7 @@ namespace ScriptedAI
 		thread.Enqueue("Run",[](Thread&thread)
 		{
 			auto&api = thread.api;
-			auto t = timer.Now();
 			thread.execute();
-			LogEvent(EventSignificance::Important,api.program->GetName()+": Execution took "+String(timer.GetSecondsSince(t))+" seconds...");
 			thread.hasSuccessfullyExecuted = true;
 		});
 
@@ -479,16 +517,6 @@ namespace ScriptedAI
 		//thread.Start();
 	}
 
-
-	void		SignalDeployment(const TUniqueID&deploymentID, const Objects::PWorldEntity&e)
-	{
-		if (!IsLoaded() || deploymentID.IsEmpty())
-			return;
-		thread.Enqueue("Handle deployment("+ToString(deploymentID)+","+e->GetName()+")", [deploymentID,e](Thread&thread)
-		{
-			thread.api.SignalDeployment(deploymentID,e);
-		});
-	}
 
 
 	void			SignalAppearance(const Objects::PWorldEntity&e)
@@ -498,6 +526,8 @@ namespace ScriptedAI
 		TUniqueID reqID;
 		if (Detail::awaitEntity.QueryAndUnset(e->id,reqID))
 		{
+			LogEvent(EventClass::Preset::scriptLog,e.get(), "Identified callback candidate entity: "+e->GetName());
+			ASSERT__(e->isOwnedByMe);
 			thread.Enqueue("Invoke callback function "+ToString(reqID),[e,reqID](Thread&thread)
 			{
 				thread.api.SignalDeployment(reqID,e);
@@ -511,13 +541,30 @@ namespace ScriptedAI
 			return;
 		if (entityID.IsEmpty())
 		{
+			LogEvent(EventClass::Preset::scriptLog,"Recorded callback result (failure) of "+ToString(requestID));
 			thread.Enqueue("Remove callback function "+ToString(requestID),[requestID](Thread&thread)
 			{
 				thread.api.onDeployedCallbacks.Unset(requestID);
 			});
 		}
 		else
-			Detail::awaitEntity.Set(entityID,requestID);
+		{
+			Objects::PWorldEntity e = Objects::GetEntity(entityID);
+			if (!e)
+			{
+				LogEvent(EventClass::Preset::scriptLog,"Recorded callback result (entity "+ToString(entityID)+") of "+ToString(requestID));
+				Detail::awaitEntity.Set(entityID,requestID);
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::scriptLog,e.get(), "Identified callback candidate entity: "+e->GetName());
+				ASSERT__(e->isOwnedByMe);
+				thread.Enqueue("Invoke callback function "+ToString(requestID),[e,requestID](Thread&thread)
+				{
+					thread.api.SignalDeployment(requestID,e);
+				});
+			}
+		}
 
 	}
 

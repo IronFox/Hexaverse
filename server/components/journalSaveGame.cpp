@@ -692,6 +692,7 @@ namespace Journal
 			response.deployedID = deployed && success ? deployed->id : TUniqueID::Empty();
 			response.requestID = requestID;
 			Channels::ChoiceResponse.SendTo(cl->peer.lock(),response);
+			LogEvent(EventSignificance::Common,e.get(),"Responded to deployment response request, success="+String(success)+", deployed="+ToString(response.deployedID));	//should be relayed to client, logged, but not displayed there
 		}
 
 		if (!success)

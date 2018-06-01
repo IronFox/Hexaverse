@@ -1704,8 +1704,10 @@ namespace Receiver
 
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target)
-			+" for entity "+ToString(ch.id));
+		const String respReq = ch.requestID.Get0() ? ", responseReq="+ToString(*ch.requestID.Get0()):"";
+		const String logMsg = "Processing choice intersection in mode "+String(ch.mode)+respReq+" at cell "+ToString(ch.target)
+			+" for entity "+ToString(ch.id);
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: "+logMsg);
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(ch.id,peer);
 		if (!e)
@@ -1734,7 +1736,7 @@ namespace Receiver
 
 		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat, ch.requestID.Get0() ? *ch.requestID.Get0() : TUniqueID::Empty());
 
-		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target));
+		LogEvent(EventSignificance::Common,peer,e,"End: "+logMsg);
 	}
 
 	
