@@ -503,21 +503,9 @@ namespace Lua
 				if (!t.Decode(markerType.c_str()))
 					throw Lua::Exception("CreateMarker(): Type parameter #2 cannot be decoded to a marker type");
 
-				auto luaID = luaEntity.GetField("id");
-				if (!luaID)
-					throw Lua::Exception("CreateMarker(): Entity parameter #1 does not contain an id field");
-				TUniqueID entityID;
-				if (!entityID.Decode(luaID.GetAs<String>()))
-					throw Lua::Exception("CreateMarker(): Entity parameter #1 does not contain a decodeable id field");
+				auto e = LuaUnitToEntity(luaEntity,"CreateMarker(): Entity parameter #1");
 
 				const Lua::Table loc = luaEntity.GetField("location");
-
-				auto ptr = this->entityMap.QueryPointer(entityID);
-				if (ptr == nullptr)
-					throw Lua::Exception("CreateMarker(): Entity parameter #1.id is unknown");
-				Objects::PWorldEntity e = ptr->lock();
-				if (!e)
-					throw Lua::Exception("CreateMarker(): Entity parameter #1 points to an expired entity");
 
 				Lua::Reference unitReference;
 				if (t != Objects::Marker::Type::Visited)
@@ -802,6 +790,23 @@ namespace Lua
 	void			API::TFaction::AddEntity(const Lua::Table&e)
 	{
 		entityTable.AppendElement(e);
+	}
+
+	Objects::PWorldEntity API::LuaUnitToEntity(const Lua::Table&luaEntity, const String&funcParameterName)	const
+	{
+		auto luaID = luaEntity.GetField("id");
+		if (!luaID)
+			throw Lua::Exception(funcParameterName+" does not contain an id field");
+		TUniqueID entityID;
+		if (!entityID.Decode(luaID.GetAs<String>()))
+			throw Lua::Exception(funcParameterName+" does not contain a decodeable id field");
+		auto ptr = this->entityMap.QueryPointer(entityID);
+		if (ptr == nullptr)
+			throw Lua::Exception(funcParameterName+".id is unknown");
+		Objects::PWorldEntity e = ptr->lock();
+		if (!e)
+			throw Lua::Exception(funcParameterName+" points to an expired entity");
+		return e;
 	}
 
 
