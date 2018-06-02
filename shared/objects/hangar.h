@@ -79,6 +79,14 @@ namespace Objects
 		virtual bool	SharesStorageWith(const PHangar&other) const {return other && other.get() == this;}
 		virtual bool	CanStoreType(const MobileEntity&e) const = 0;
 		virtual void	StoreLocallyFromImport(const PMobileEntity&e) = 0;
+
+		/**
+		Force definition for hangar structures/mobiles:
+		*/
+		virtual PHangar	CastToDestinationForType(const MobileEntity&e)=0;
+		virtual bool	IsHangar() const=0;
+
+
 		#ifndef CLIENT
 		virtual bool	Store(const PMobileEntity&e, float&atTime) = 0;
 		#else
