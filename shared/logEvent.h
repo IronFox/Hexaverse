@@ -64,6 +64,7 @@ struct EventClass
 							internalError,	//!< Non-fatal error that should be logged and displayed on the console. Not distributed to clients
 							fatal,
 							scriptLog,
+							scriptMessage,
 							scriptError,
 							unexpectedBehavior,
 							uncommon,

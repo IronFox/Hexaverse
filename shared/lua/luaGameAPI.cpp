@@ -627,7 +627,7 @@ namespace Lua
 			
 			gameTable.SetFunction("Log",[this](const String&msg)
 			{
-				LogEvent(EventClass::Preset::scriptLog,program->GetName()+"(Lua): "+msg);
+				LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
 			});
 
 			gameTable.SetFunction("GetRound",[]()
