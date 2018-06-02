@@ -298,9 +298,9 @@ Table-Type: Vector
 	
 Table-Type: Reachable
 {
-	bool	isHangarHere;			True if accessible hangars were included and there is a hangar here
 	Loc		location;				-- Grid/world location
 	int		movementCostsFromRoot;	-- Costs to reach this location from the current unit location
 	Reachable	predecessor;		-- nil if this is root (the current unit location)
+	Unit	hangar;					-- Non-nil if accessible hangars were included and there is a hangar here
 }
 		

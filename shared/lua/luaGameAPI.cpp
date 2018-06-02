@@ -1390,7 +1390,14 @@ namespace Lua
 					luaReachable.SetField("location", ToTable(in.cell));
 					luaReachable.SetField("movementCostsFromRoot", in.movementCostsFromRoot);
 					if (allowAccessibleHangars)
-						luaReachable.SetField("isHangarHere", Objects::AccessibleHangarHere(in.cell, *v));
+					{
+						auto hangar = Objects::AccessibleHangarHere(in.cell, *v);
+						if (hangar)
+						{
+							auto e = hangar->ToEntity().shared_from_this();
+							luaReachable.SetField("hangar", MapEntity(e,true,false));
+						}
+					}
 					result.AppendElement(luaReachable);
 				}
 
