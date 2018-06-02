@@ -202,6 +202,14 @@ namespace ScriptedAI
 				Network::Channels::dropTasks.SendTo(Network::client, cmd);
 			}
 
+			void	DropSafeTasks(const TUniqueID&entityID)
+			{
+				Protocol::DropTasks cmd;
+				cmd.dropMode = Protocol::DropMode::AllSafeTasks;
+				cmd.targetID = entityID;
+				Network::Channels::dropTasks.SendTo(Network::client, cmd);
+			}
+
 			void	EnableWorkingStructure(const TUniqueID&entityID, bool doEnable)
 			{
 				Protocol::EnableStructure cmd;
@@ -517,6 +525,7 @@ namespace ScriptedAI
 		api.onAttackTargets = Callback::AttackTargets;
 		api.onDetailedDirectTo = Callback::DetailedDirectTo;
 		api.onDropAllTasks = Callback::DropAllTasks;
+		api.onDropSafeTasks = Callback::DropSafeTasks;
 		api.onEnableWorkingStructure = Callback::EnableWorkingStructure;
 		api.onMarkerCreate = Callback::MarkerCreate;
 		api.onMarkerDestroy = Callback::MarkerDestroy;
