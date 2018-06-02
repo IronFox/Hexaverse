@@ -1421,6 +1421,13 @@ namespace Lua
 					else
 						throw Lua::Exception(CLOCATION,"ClearTasks(): onDropAllTasks not set");
 				});
+				t.SetFunction("ClearSafeTasks",[id,this]()
+				{
+					if (onDropSafeTasks)
+						onDropSafeTasks(id);
+					else
+						throw Lua::Exception(CLOCATION,"ClearSafeTasks(): onDropSafeTasks not set");
+				});
 				t.SetFunction("DropLastTask",[id,this]()
 				{
 					if (onDropLastTask)

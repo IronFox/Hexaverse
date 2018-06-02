@@ -107,6 +107,7 @@ namespace Lua
 												onMarkerDestroy, 
 												onRemoveEntity,
 												onDropAllTasks,
+												onDropSafeTasks,
 												onDropLastTask
 												;
 		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure;
