@@ -13,6 +13,31 @@
 
 namespace Lua
 {
+
+	/**
+	Centralized management structure for Lua script execution.
+	Provides tables and functions as requested by invoking the Add*() methods.
+
+	On thread-safety:
+	This structure is designed to be set up by the main thread.
+	Creation or invokation of Add*() methods by any other non-synchronized thread
+	will result in unexpected behavior or crashes.
+
+	Execution of the script itself is mostly thread-safe.
+	Provided functions guarantee the following conditions during script runtime:
+		*	No access to GetEntity(id) or the likes (since these lists are not thread-safe)
+		*	Local reference to entities via weak pointers. If they have expired the respective
+			Lua call will fail
+
+	Possibly inconsistent but assumed crash-free operations:
+		*	Read-only access to entity grids GetEntity(location) or the likes
+		*	Read-only access to terrain grid
+		*	Read-only access to resource distribution
+
+	If execution is performed by separate thread, it is mandatory that not external
+	manipulation occurs during runtime of this thread, as Lua itself is not designed to be
+	thread-safe.
+	*/
 	struct API
 	{
 		Lua::PProgram		program;
@@ -60,8 +85,8 @@ namespace Lua
 		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;
 		Timer::Time								lastDeploymentCallbackRegistered;
 
-		HashTable<TUniqueID,TAlliance>	loadedAllianceTableMap;
-		HashTable<TUniqueID,TFaction>	loadedFactionTableMap;
+		HashTable<TUniqueID,TAlliance>			loadedAllianceTableMap;
+		HashTable<TUniqueID,TFaction>			loadedFactionTableMap;
 		HashTable<TUniqueID,std::pair<Lua::Table,bool> >	loadedEntityTableMap;
 		HashTable<TUniqueID,Objects::WWorldEntity>	entityMap;
 		HashSet<TUniqueID>	entityMappedToTable, factionMappedToTable, allianceMappedToTable;
@@ -80,7 +105,7 @@ namespace Lua
 		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
 		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginStructureConstruction;
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
-		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&, const TUniqueID&)>	onDeployCompletedProduction;
+		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&, const TUniqueID&deploymentID)>	onDeployCompletedProduction;
 		std::function<void(index_t,bool)>	onQueueResearch;
 
 		/**/		API():mapper(true)	{}
