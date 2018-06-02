@@ -79,11 +79,21 @@ namespace Lua
 			void			AddEntity(const Lua::Table&);
 		};
 
+
+		struct TSharedHangar
+		{
+			Objects::WHangar	hangar;
+			Lua::Table			sharedDeployables;
+			bool				rebuild = true;
+		};
+
+
 		typedef Lua::Function<void(const Lua::Table&)>	LFOnDeploy;
 
 		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
 		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;
 		Timer::Time								lastDeploymentCallbackRegistered;
+		Buffer0<TSharedHangar>					sharedHangars;
 
 		HashTable<TUniqueID,TAlliance>			loadedAllianceTableMap;
 		HashTable<TUniqueID,TFaction>			loadedFactionTableMap;
@@ -106,6 +116,7 @@ namespace Lua
 		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginStructureConstruction;
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
 		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&, const TUniqueID&deploymentID)>	onDeployCompletedProduction;
+		std::function<void(const TUniqueID&hangar, const TUniqueID&mobile, const Grid::LCellIdI&location, const TUniqueID&deploymentID)> onDeployStored;
 		std::function<void(index_t,bool)>	onQueueResearch;
 
 		/**/		API():mapper(true)	{}
