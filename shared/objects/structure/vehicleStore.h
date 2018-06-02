@@ -121,6 +121,7 @@ namespace Objects
 		//Structure overrides:
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+		virtual PHangar				CastToHangar() override;
 		virtual PHangar				CastToDestinationForType(const MobileEntity&e) override;
 		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 

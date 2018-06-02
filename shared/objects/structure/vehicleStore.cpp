@@ -60,6 +60,12 @@ namespace Objects
 	}
 
 
+
+	/*virtual override */ PHangar			VehicleStore::CastToHangar()
+	{
+		return To<VehicleStore>::Cast(shared_from_this());
+	}
+
 	/*virtual override*/ PHangar			VehicleStore::CastToDestinationForType(const MobileEntity&e)
 	{
 		if (CanStoreType(e))

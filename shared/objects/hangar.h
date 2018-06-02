@@ -84,6 +84,7 @@ namespace Objects
 		Force definition for hangar structures/mobiles:
 		*/
 		virtual PHangar	CastToDestinationForType(const MobileEntity&e)=0;
+		virtual PHangar	CastToHangar()=0;
 		virtual bool	IsHangar() const=0;
 
 
