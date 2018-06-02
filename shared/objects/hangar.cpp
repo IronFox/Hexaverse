@@ -17,6 +17,12 @@ namespace Objects
 
 	}
 
+	/*virtual*/ void	Hangar::VisitStored(const std::function<void(const PMobileEntity&)>&visitor) const
+	{
+		foreach (stored,s)
+			visitor(s->entity.lock());
+	}
+
 
 	bool						Hangar::RemoveStored(const PMobileEntity&v)
 	{

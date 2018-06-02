@@ -112,6 +112,8 @@ namespace Objects
 		#ifndef CLIENT
 			virtual bool			Store(const PMobileEntity&e, float&atTime) override {return e && CanStoreType(*e) && StoreInPark(e,atTime);}
 		#endif
+		virtual bool				SharesStorage() const override;
+		virtual void				VisitStored(const std::function<void(const PMobileEntity&)>&visitor) const;
 		virtual bool				SharesStorageWith(const PHangar&other)	const override;
 		virtual count_t				GetMaxStorage() const override {return MaxVehiclesPerStore;}
 		const WorldEntity&			ToEntity() const override {return *this;}

@@ -236,7 +236,26 @@ namespace Objects
 
 	}
 
+	/*virtual override*/ void VehicleStore::VisitStored(const std::function<void(const PMobileEntity&)>&visitor) const
+	{
+		if (!park)
+			Hangar::VisitStored(visitor);
+		else
+		{
+			foreach (park->members,m)
+			{
+				PVehicleStore s = m->lock();
+				DBG_ASSERT__(s);
+				s->Hangar::VisitStored(visitor);
+			}
+		}
+	}
 
+
+	/*virtual override*/ bool VehicleStore::SharesStorage() const
+	{
+		return park != nullptr;
+	}
 
 
 	/*virtual override*/ bool VehicleStore::SharesStorageWith(const PHangar&other) const

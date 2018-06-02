@@ -32,7 +32,7 @@ namespace Objects
 
 			bool			operator==(const PMobileEntity&e) const {return entity.lock() == e;}
 		};
-		Ctr::Buffer0<TStored>	stored;
+		Buffer0<TStored>	stored;
 		static Observable<Hangar&,TStored&>	onStored;
 
 		virtual			~Hangar()	{}
@@ -76,7 +76,16 @@ namespace Objects
 		virtual WorldEntity&		ToEntity() = 0;
 		virtual count_t				GetMaxStorage() const = 0;
 
+		/**
+		Checks whether there currently is any storage sharing
+		*/
+		virtual bool	SharesStorage() const {return false;}
 		virtual bool	SharesStorageWith(const PHangar&other) const {return other && other.get() == this;}
+		/**
+		Visits all stored mobiles, including those in shared hangars
+		*/
+		virtual void	VisitStored(const std::function<void(const PMobileEntity&)>&visitor) const;
+
 		virtual bool	CanStoreType(const MobileEntity&e) const = 0;
 		virtual void	StoreLocallyFromImport(const PMobileEntity&e) = 0;
 
