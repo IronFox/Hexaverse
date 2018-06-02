@@ -288,6 +288,18 @@ namespace ScriptedAI
 			Network::Channels::constructionAbort.SendTo(Network::client,abort);
 		}
 
+		void	DeployStored( const TUniqueID&hID, const TUniqueID&mID, const Grid::LCellIdI&loc, const TUniqueID&requestID )
+		{
+			Protocol::ChoiceIntersection ch;
+			ch.id = hID;
+			ch.deployingWhat.Set0() = mID;
+			ch.mode = (UINT16)Objects::CursorMode::Idle;
+			ch.target = loc;
+			if (requestID.IsNotEmpty())
+				ch.requestID.Set0() = requestID;
+			Network::Channels::choiceIntersection.SendTo(Network::client,ch);
+		}
+
 		void	DeployCompletedConstruction( const TUniqueID&eID, const Grid::LCellIdI&loc, const TUniqueID&requestID )
 		{
 			Protocol::ChoiceIntersection ch;
@@ -403,6 +415,7 @@ namespace ScriptedAI
 		api.onBeginStructureConstruction = Callback::BeginStructureConstruction;
 		api.onAbortProduction = Callback::AbortConstruction;
 		api.onDeployCompletedProduction = Callback::DeployCompletedConstruction;
+		api.onDeployStored = Callback::DeployStored;
 		api.onQueueResearch = Callback::QueueResearch;
 
 
