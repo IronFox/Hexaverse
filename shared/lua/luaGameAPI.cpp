@@ -124,11 +124,24 @@ namespace Lua
 		return c;
 	}
 
-	Lua::Table API::ToTable(const Objects::MobileEntity::Task&task)
+	Lua::Table API::ToTable(const Objects::MobileEntity::Task&task, const Objects::PMobileEntity&entity, bool isFirst)
 	{
 		Lua::Table taskOut = program->CreateTable();
 		taskOut.SetField("name",task.name);
 		taskOut.SetField("isJob",task.IsJob());
+		if (task.IsJob())
+		{
+			Lua::Table job = taskOut.SetSubTable("job");
+			
+			if (isFirst && entity->constructionActionCounter > 0 
+						&& task.job->resourceCostLeft > 0)
+				job.SetField("hasBegun",true);
+			else
+				job.SetField("hasBegun",false);
+
+			job.SetField("roundsToCompletion", entity->ContinuationsToRounds(task.job->continuationsToJobCompletion,task.job->GetOperationAffinity()));
+			job.SetField("continuationsToCompletion",task.job->continuationsToJobCompletion);
+		}
 
 		Lua::Table foci = program->CreateTable();
 		foreach (task.foci,f)
@@ -1279,7 +1292,7 @@ namespace Lua
 		if (e->IsMobile())
 		{
 			Lua::Table tasks = program->CreateTable();
-			const auto&m = To<Objects::MobileEntity>::Cast(e);
+			const auto m = To<Objects::MobileEntity>::Cast(e);
 			t.SetField("isAutomated",m->isAutomated);
 			if (!m->storedIn.expired())
 			{
@@ -1287,7 +1300,7 @@ namespace Lua
 			}
 			foreach (m->myTasks,task)
 			{
-				tasks.AppendElement(ToTable(*task));
+				tasks.AppendElement(ToTable(*task,m, task == m->myTasks.begin()));
 			}
 			t.SetField("tasks",tasks);
 

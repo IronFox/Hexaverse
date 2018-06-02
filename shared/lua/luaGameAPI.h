@@ -158,7 +158,8 @@ namespace Lua
 
 		Lua::Table ToTable(const Grid::LCellIdI&cell);
 		Lua::Table TurretToTable(const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState);
-		Lua::Table ToTable(const Objects::MobileEntity::Task&task);
+		Lua::Table ToTable(const Objects::MobileEntity::Task&task, const Objects::PMobileEntity&entity, bool isFirst);
+
 		Objects::PVehicle	ParameterToVehicle(const Lua::Table&luaEntity, Grid::LCellIdI&outLoc, const String&parameterName) const;
 
 		void		AddFactionEntities(const Objects::PFaction&);
