@@ -1,28 +1,29 @@
+--[[
 All functions and global contants are located in the Game table.
 E.g. Game.units
 Array-like tables are denoted X[], whereas maps are denotes {Key->Value}
 Although Lua does not actually support types as such, they are used here to clarify what content
 can be expected.
+]]
 
 
-
-void		Game.Log(msg)					Prints any message to Hexaverse log (client or server-private)
+void		Game.Log(msg)					-- Prints any message to Hexaverse log (client or server-private)
 
 
 
 [client only]
-	{id->Unit}	Game.myUnits				Table of all player-owned units currently known to the client, mapped by id (string) to unit
-	{id->Unit}	Game.alliedUnits			Table of all allied units currently known to the client, mapped by id (string) to unit
-	{id->Unit}	Game.hostileUnits			Table of all hostile units currently known to the client, mapped by id (string) to unit
-	Unit		Game.selectedUnit			Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
+	{id->Unit}	Game.myUnits				-- Table of all player-owned units currently known to the client, mapped by id (string) to unit
+	{id->Unit}	Game.alliedUnits			-- Table of all allied units currently known to the client, mapped by id (string) to unit
+	{id->Unit}	Game.hostileUnits			-- Table of all hostile units currently known to the client, mapped by id (string) to unit
+	Unit		Game.selectedUnit			-- Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
 	Faction		Game.myFaction
 
-{id->Unit}		Game.units					Table of all (player-known on client) units, mapped by id (string) to unit
-{id->Faction}	Game.factions				List of all (player-known on client) factions, mapped by id (string) to faction
-{id->Alliance}	Game.alliances				List of all (player-known on client) alliances, mapped by id (string) to alliance
+{id->Unit}		Game.units					-- Table of all (player-known on client) units, mapped by id (string) to unit
+{id->Faction}	Game.factions				-- List of all (player-known on client) factions, mapped by id (string) to faction
+{id->Alliance}	Game.alliances				-- List of all (player-known on client) alliances, mapped by id (string) to alliance
 	
-Unit			Game.GetMobileAt(Loc);		Gets the mobile unit at the given location. nil if none. Can be used to quickly check if there is anything there
-Unit			Game.GetStructureAt(Loc);	Gets the structure unit at the given location. nil if none. Can be used to quickly check if there is anything there
+Unit			Game.GetMobileAt(Loc);		-- Gets the mobile unit at the given location. nil if none. Can be used to quickly check if there is anything there
+Unit			Game.GetStructureAt(Loc);	-- Gets the structure unit at the given location. nil if none. Can be used to quickly check if there is anything there
 	
 Table-Type: Alliance
 {
@@ -36,11 +37,11 @@ Table-Type: Faction
 	string		id;
 	Alliance	alliance;
 	Unit[]		units;
-	ResVec		resourceStorage;		Total resource storage. All values are >= 0
+	ResVec		resourceStorage;		-- Total resource storage. All values are >= 0
 	ResVec		maxResourceStorage;
-	ResVec		resourceBalance;		Sum of supply and demand among all enabled working structures. All values are >= 0
-	ResVec		resourceDemand;			Sum of all enabled working structure demand. All values are >= 0
-	ResVec		resourceSupply;			Sum of all enabled working structure supply. All values are >= 0
+	ResVec		resourceBalance;		-- Sum of supply and demand among all enabled working structures. All values are >= 0
+	ResVec		resourceDemand;			-- Sum of all enabled working structure demand. All values are >= 0
+	ResVec		resourceSupply;			-- Sum of all enabled working structure supply. All values are >= 0
 }
 	
 Table-Type: ResVec
@@ -53,74 +54,49 @@ Table-Type: ResVec
 	
 Table-Type: Unit
 {
-	string		name;					Full entity name (for logging purposes). Includes type and unique ID
-	string 		niceName;				Full entity name (as presented to the player). Includes type and nice representation of unique ID
-	string		id;						Entity unique ID
-	string		typeName;				String representation of the type. May be a compound type if isMovile is true
-	Faction		owner;					Entity owner
-	int			constructionCost;		Amount of resources necessary to build this type
-	int			height;					Unit height in layers. Typically 1. Some structures are larger.
-	float		scanningRange;			Regular grid scanning range
-	bool		isMobile;				True if this is a mobile entity
-	bool		isStructure;			True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
-	Loc			location;				Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
-	bool		isSleeping;				True if the local entity is currently sleeping
-	int			health;					Current entity health. <= 0 for ghosts
-	int			maxHealth;				Maximum possible health of the local entity. May change over time
-	bool		isIndestructible;		True if the local unit is indestructible, false otherwise
-	int			empDamageLevel;			Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
-	bool		isWorkingStructure;		True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
-	bool		isMobileEntityProducer;	True if this entity can produce mobile entities. Does not necessarily imply that this is a building
+	string		name;					-- Full entity name (for logging purposes). Includes type and unique ID
+	string 		niceName;				-- Full entity name (as presented to the player). Includes type and nice representation of unique ID
+	string		id;						-- Entity unique ID
+	string		typeName;				-- String representation of the type. May be a compound type if isMovile is true
+	Faction		owner;					-- Entity owner
+	int			constructionCost;		-- Amount of resources necessary to build this type
+	int			height;					-- Unit height in layers. Typically 1. Some structures are larger.
+	float		scanningRange;			-- Regular grid scanning range
+	bool		isMobile;				-- True if this is a mobile entity
+	bool		isStructure;			-- True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
+	Loc			location;				-- Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
+	bool		isSleeping;				-- True if the local entity is currently sleeping
+	int			health;					-- Current entity health. <= 0 for ghosts
+	int			maxHealth;				-- Maximum possible health of the local entity. May change over time
+	bool		isIndestructible;		-- True if the local unit is indestructible, false otherwise
+	int			empDamageLevel;			-- Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
+	bool		isWorkingStructure;		-- True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
+	bool		isMobileEntityProducer;	-- True if this entity can produce mobile entities. Does not necessarily imply that this is a building
 	
 	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
-	void		Destroy();				Attempts to destroy the local entity
+	void		Destroy();				-- Attempts to destroy the local entity
 	
 	[has turret (tower,mobile) and can attack]
-		void	Attack(Loc[]);			Schedules one or more attacks at the end of the task queue
-	[isMobile]
-		void	DirectTo(Reachable);	Schedules a motion to the specified location along the path defined by the Reachable
-		void	ClearTasks();			Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
-		void	DropLastTask();			Drops only the last queued task.
-		void	BuildStructure(string type);	Schedules the construction of the specified type at the end of the local queue, using the last queued location
-	[isWorkingStructure]
-		void 	Enable(bool);			Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
-	[isMobileEntityProducer]
-		void	BuildMobile(string type);	Schedules the construction of the specified type at the end of the local queue
-		int		PredictRoundsToCompletion(string type);	Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
-		void	DeployProductionAt(Loc, func onDeploy(Unit));	Deploys the completed production. The specified function onDeploy, if not nil, may be triggered at a later stage during this round
-	
-	-- optional stuff:
-	
-	[Client only]
-		bool	isOwnedByMe;			true if the local player owns this entity
+		Turret	turret;					-- Table containing turret information. May be set for structures or mobile entities
 		
-	[isWorkingStructure]
-		bool	isEnabled;				True if the local structure is active
-		ResVec	resourceStorage;		Resource vector containing all locally stored resources. All values are >= 0
-		ResVec	maxResourceStorage;		Resource vector describing the maximum storage capacity. All values are >= 0
-		ResVec	resourceBalance;		Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
-		
-	[isMobileEntityProducer]
-		Prod[]	productionQueue;		Table of all production jobs currently enqueued to the local unit. nil if none
-		Loc[]	deploymentOptions;		List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production is completed
-		string	productionCompleted;	Set to the name of the produced type if production is completed. nil otherwise. Can be used to check if production is completed
-		int		roundsToCompletion;		Number of rounds until the next production finishes if the local factory is enabled and has enough resources to continue. nil if none are queued
-
-	[has turret (tower, mobile)]
-		Turret	turret;					Table containing turret information. May be set for structures or mobile entities
-	
+		void	Attack(Loc[]);			-- Schedules one or more attacks at the end of the task queue
 	[isMobile]
-		bool	isAutomated;			True if the local entity has some behavior logic attached. Currently used by surveyor only
-		Unit	storedIn;				Set if this unit is stored in some other unit. May be nil
-		Task[]	tasks;					Task queue, in order of execution (first will be executed next, or is already being executed if taking more than one round)
-		int		movementSpeed;			Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
-		bool	motionIgnoresAttack;	True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
+		int		maxClimbUp;				-- Maximum climbing height difference. Typically 1
+		int		minClimbDown;			-- Minimum down-climbing heigh difference. Negative. Typically -1 or less
+		bool	isAutomated;			-- True if the local entity has some behavior logic attached. Currently used by surveyor only
+		Unit	storedIn;				-- Set if this unit is stored in some other unit. May be nil
+		Task[]	tasks;					-- Task queue, in order of execution (first will be executed next, or is already being executed if taking more than one round)
+		int		movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
+		bool	motionIgnoresAttack;	-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	
-		int		maxClimbUp;				Maximum climbing height difference. Typically 1
-		int		minClimbDown;			Minimum down-climbing heigh difference. Negative. Typically -1 or less
-		bool	CanStandAt(Loc);		Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
-		bool	IsAffectedByGravity(Loc)	Checks whether or not the local unit would be affected by gravity at the given location. If the parameter is nil, will use the current mobile location
+		bool	CanStandAt(Loc);		-- Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
+		bool	IsAffectedByGravity(Loc)	-- Checks whether or not the local unit would be affected by gravity at the given location. If the parameter is nil, will use the current mobile location
+		void	DirectTo(Reachable);	-- Schedules a motion to the specified location along the path defined by the Reachable
+		void	ClearTasks();			-- Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
+		void	DropLastTask();			-- Drops only the last queued task.
+		void	BuildStructure(string type);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
 
+		--[[
 		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) and the current mobile location
 		@param unit Unit to determine reach of
 		@param isBlocked Optional function that excludes certain cells. Type: bool BlockTest(Loc): true if blocked. 
@@ -131,9 +107,10 @@ Table-Type: Unit
 		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 		@param cannotStandOnUnknown Set true to disallow relocation onto unknown terrain
 		@return Array of reachable locations. The current unit location is omitted.
+		]]
+		Reachable[]	GetReach(func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedMobilesOnRoute, bool cannotStandOnUnknown);
 
-		Reachable[]						GetReach(func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedMobilesOnRoute, bool cannotStandOnUnknown);
-
+		--[[
 		@brief Finds the shortest grid path for the specified unit to the specified target location
 		@param unit Unit to find the path for
 		@param target Target location
@@ -144,9 +121,30 @@ Table-Type: Unit
 			Note that the returned value will be factored in the calculation of Reachable.movementCostsFromRoot
 		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 		@return Array of path nodes, in order along the route. The current unit location is omitted, making the first entry the first step to take.
+		]]
+		Reachable[]	FindShortestPath(Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
+		Reachable[]	FindShortestPathFrom(Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
+		
+	[isWorkingStructure]
+		bool	isEnabled;				-- True if the local structure is active
+		ResVec	resourceStorage;		-- Resource vector containing all locally stored resources. All values are >= 0
+		ResVec	maxResourceStorage;		-- Resource vector describing the maximum storage capacity. All values are >= 0
+		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
+		
+		void 	Enable(bool);			-- Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
+	[isMobileEntityProducer]
+		Prod[]	productionQueue;		-- Table of all production jobs currently enqueued to the local unit. nil if none
+		Loc[]	deploymentOptions;		-- List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production is completed
+		string	productionCompleted;	-- Set to the name of the produced type if production is completed. nil otherwise. Can be used to check if production is completed
+		int		roundsToCompletion;		-- Number of rounds until the next production finishes if the local factory is enabled and has enough resources to continue. nil if none are queued
+		
+		void	BuildMobile(string type);	-- Schedules the construction of the specified type at the end of the local queue
+		int		PredictRoundsToCompletion(string type);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
+		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified, it will be called on success once a response from the server has been received
 
-		Reachable[]						FindShortestPath(Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
-		Reachable[]						FindShortestPathFrom(Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
+	[Client only]
+		bool	isOwnedByMe;			true if the local player owns this entity
+
 				
 }
 
