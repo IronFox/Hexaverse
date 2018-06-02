@@ -1003,13 +1003,15 @@ namespace Lua
 						if (!d->IsMobile())
 							throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Unit is not a mobile unit");
 						auto m = To<Objects::MobileEntity>::Cast(d);
-						if (!m->isOwnedByMe)
-							throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+m->GetNameAndOwner());
 						auto e = w.lock();
 						if (!e)
 							throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Local entity has expired");
-						if (!e->isOwnedByMe)
-							throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+e->GetNameAndOwner());
+						#ifdef CLIENT
+							if (!m->isOwnedByMe)
+								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+m->GetNameAndOwner());
+							if (!e->isOwnedByMe)
+								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+e->GetNameAndOwner());
+						#endif
 						auto h = e->CastToHangar();
 						if (m->storedIn.lock() != h)
 						{
@@ -1033,13 +1035,15 @@ namespace Lua
 						if (!d->IsMobile())
 							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Unit is not a mobile unit");
 						auto m = To<Objects::MobileEntity>::Cast(d);
-						if (!m->isOwnedByMe)
-							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+m->GetNameAndOwner());
 						auto e = w.lock();
 						if (!e)
 							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Local entity has expired");
-						if (!e->isOwnedByMe)
-							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+e->GetNameAndOwner());
+						#ifdef CLIENT
+							if (!m->isOwnedByMe)
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+m->GetNameAndOwner());
+							if (!e->isOwnedByMe)
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+e->GetNameAndOwner());
+						#endif
 						auto h = e->CastToHangar();
 						if (m->storedIn.lock() != h)
 						{
