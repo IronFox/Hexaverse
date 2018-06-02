@@ -117,7 +117,7 @@ namespace ScriptedAI
 				
 					foreach (workItems, item)
 					{
-						LogEvent(EventClass::Preset::scriptLog,"Executing "+item->first);
+						LogEvent(EventClass::Preset::debug,"ScriptedAI.Thread: Executing "+item->first);
 						const auto t = timer.Now();
 						try
 						{
@@ -141,7 +141,11 @@ namespace ScriptedAI
 							//error = "???";
 							LogEvent(EventClass::Preset::scriptError,"Failed to execute '"+item->first+"'. Unsupported exception type");
 						}
-						LogEvent(EventClass::Preset::scriptLog,"Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+						const float seconds = timer.GetSecondsSince(t);
+						if (seconds > 0.5f)
+							LogEvent(EventClass::Preset::scriptLog,"ScriptedAI: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+						else
+							LogEvent(EventSignificance::PerformanceMeasurement,"ScriptedAI.Thread: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
 
 					}
 					workItems.Clear();
@@ -358,7 +362,7 @@ namespace ScriptedAI
 			#ifdef HAS_WINDOW
 				thread.api.SetSelectedUnit(Objects::selectedEntity,false);
 			#endif
-			LogEvent(EventClass::Preset::scriptLog,"ScriptedAI: Rebuilt entities in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventSignificance::PerformanceMeasurement,"ScriptedAI: Rebuilt entities in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 
 
@@ -375,7 +379,7 @@ namespace ScriptedAI
 
 				foreach (onSynchronized,sync)
 				{
-					LogEvent(EventClass::Preset::scriptLog,"On synchronized: Executing "+sync->first+"...");
+					LogEvent(EventSignificance::Debug,"ScripedAI: On synchronized: Executing "+sync->first+"...");
 					sync->second();
 				}
 				onSynchronized.Clear();
