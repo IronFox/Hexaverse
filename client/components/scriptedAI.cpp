@@ -787,7 +787,8 @@ namespace ScriptedAI
 
 			<< "--[[" << nl
 			<< "@brief Optional selection change reaction function" << nl << nl
-			<< "If defined, executed when the local client provides user interaction and the user has selected some other entity." << nl
+			<< "If defined, executed when the local client provides user interaction and the user has selected"
+			<< "some other entity, or deselected the previously selected entity." << nl
 			<< "]]" << nl
 			<< "function OnSelectionChanged()" << nl
 			<< "\t-- Your handling here. Query Game.selectedUnit to find the selected unit (if any) " << nl
