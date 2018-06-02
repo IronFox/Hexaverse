@@ -8,8 +8,10 @@ can be expected.
 
 
 void		Game.Log(msg)					-- Prints any message to Hexaverse log (client or server-private)
-
-
+int			Game.GetMainRoundNumber()		-- Fetches the primary round indicator. Non-negative, and non-decreasing
+string		Game.GetRound()					-- Fetches the full current round descriptor. Typically this is a string cast of GetMainRoundNumber(), but some source branches use sub rounds
+string		Game.GetPhase()					-- Fetches the current phase. Typically the result will be 'CommandPhase'
+bool		Game.CanIssueUnitCommands()		-- Checks whether the current phase is valid for command execution. Typically the result will be true, so there is usually no need to check this
 
 [client only]
 	{id->Unit}	Game.myUnits				-- Table of all player-owned units currently known to the client, mapped by id (string) to unit

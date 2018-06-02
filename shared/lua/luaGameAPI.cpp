@@ -5,6 +5,7 @@
 #include "grid/resources.h"
 #include "objects.h"
 #include "../objects/faction.h"
+#include "../runtimeConfig.h"
 
 namespace Lua
 {
@@ -628,6 +629,24 @@ namespace Lua
 			{
 				LogEvent(EventClass::Preset::scriptLog,program->GetName()+"(Lua): "+msg);
 			});
+
+			gameTable.SetFunction("GetRound",[]()
+			{
+				return RuntimeConfig::roundNumber.ToString();
+			});
+			gameTable.SetFunction("GetMainRoundNumber",[]()
+			{
+				return RuntimeConfig::roundNumber.main;
+			});
+			gameTable.SetFunction("GetPhase",[]()
+			{
+				return RuntimeConfig::phase.ToString();
+			});
+			gameTable.SetFunction("CanIssueUnitCommands",[]()
+			{
+				return RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;	//not using IsInAnyCommandPhase() here, as unit instructions are valid only during the main command phase
+			});
+
 
 	}
 
