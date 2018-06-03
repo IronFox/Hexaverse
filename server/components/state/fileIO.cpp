@@ -194,6 +194,8 @@ namespace FileIO
 								researchState("REST"),
 								activeResearchTopic("ARET"),
 								winningAlliance("WINA"),
+								aiScriptName("AISN"),
+								aiScriptState("AISS"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -1099,6 +1101,11 @@ namespace FileIO
 		ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
 	}
 
+	String	ChunkDataToString(const Riff::Chunk&chunk)
+	{
+		return String((const char*)chunk.pointer(),chunk.size());
+	}
+
 	void	Load(const PathString&filename)
 	{
 		RuntimeConfig::loadingPhase = true;
@@ -1518,8 +1525,14 @@ namespace FileIO
 												}
 											}
 										}
+										{
+											Riff::Chunk*scriptName = list->FindFirst(RID::aiScriptName);
+											if (scriptName)
 											{
-												faction->researchState.RestoreResearchQueue(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size()));
+												Riff::Chunk*scriptState = list->FindFirst(RID::aiScriptState);
+												faction->aiScriptName = ChunkDataToString(*scriptName);
+												if (scriptState)
+													scriptState->Get(faction->aiScriptState);
 											}
 										}
 
@@ -1906,6 +1919,13 @@ namespace FileIO
 					{
 						factionSection->AppendBlock(RID::activeResearchTopic)->SetData(res.c_str(),res.GetLength());
 					}
+				}
+				
+				if (faction->aiScriptName.IsNotEmpty())
+				{
+					Export(factionSection,RID::aiScriptName,faction->aiScriptName);
+					if (faction->aiScriptState.IsNotEmpty())
+						factionSection->AppendBlock(RID::aiScriptState,faction->aiScriptState);
 				}
 
 
