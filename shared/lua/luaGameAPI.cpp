@@ -1095,6 +1095,21 @@ namespace Lua
 					t.UnsetField("GetStoredDeploymentOptions");
 					t.UnsetField("DeployStored");
 				}
+
+				t.SetFunction("CanStore",[this,w](const Lua::Table&luaEntity)
+				{
+					auto d = LuaUnitToEntity(luaEntity,"CanStore(): Unit parameter");
+					if (!d->IsMobile())
+						return false;
+					auto m = To<Objects::MobileEntity>::Cast(d);
+					auto e = w.lock();
+					if (!e)
+						throw Lua::Exception(CLOCATION,"CanStore(): Local entity has expired");
+					auto h = e->CastToHangar();
+					if (!h)
+						throw Lua::Exception(CLOCATION,"CanStore(): Local entity is no hangar");
+					return h->CanStoreType(*m);
+				});
 			}
 		}
 		else
@@ -1103,6 +1118,7 @@ namespace Lua
 			t.UnsetField("storedUnits");
 			t.UnsetField("GetStoredDeploymentOptions");
 			t.UnsetField("DeployStored");
+			t.UnsetField("CanStore");
 		}
 
 		if (e->IsWorkingStructure())

@@ -155,6 +155,7 @@ Table-Type: Unit
 		nil if deployableUnits is nil
 		]]
 		void	DeployStored(Unit, Loc, func onDeploy(Unit));
+		bool	CanStore(Unit);			-- Checks whether or not the local unit can store the specified unit
 
 	[Client only]
 		bool	isOwnedByMe;			-- true if the local player owns this entity
