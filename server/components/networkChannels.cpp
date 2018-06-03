@@ -299,6 +299,24 @@ namespace Receiver
 				LogEvent(EventClass::Preset::internalError,"Unexpected invite type for alliance "+ToString(alliance->id)+" and faction "+faction->GetLogName());
 		}
 	}
+
+	void	ScriptedAIState(Protocol::ScriptedAIState&state, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"ScriptedAIState: client is nullptr");
+			return;
+		}
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"ScriptedAIState: client->faction is nullptr");
+			return;
+		}
+		LogEvent(EventClass::Preset::debug,peer,"ScriptedAIState: Accepted '"+state.scriptName+"' of "+String(state.dataVector.GetLength())+" byte(s)");
+		client->faction->aiScriptState.swap(state.dataVector);
+		client->faction->aiScriptName.swap(state.scriptName);
+	}
 }
 
 namespace Channels
@@ -394,6 +412,8 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
 	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
 	DECLARE_FACTION_CHANNEL(QueueResearch);
+
+	DECLARE_FACTION_CHANNEL(ScriptedAIState);
 
 	namespace Statistics
 	{
@@ -1048,6 +1068,14 @@ namespace Receiver
 		});
 
 		Game::Vote::AdvertiseAllToNewlyConnectedPeer(client->faction,peer);
+
+		if (faction->aiScriptName.IsNotEmpty())
+		{
+			Protocol::ScriptedAIState state;
+			state.dataVector = faction->aiScriptState;
+			state.scriptName = faction->aiScriptName;
+			Channels::ScriptedAIState.SendTo(peer,state);
+		}
 		
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
 	}

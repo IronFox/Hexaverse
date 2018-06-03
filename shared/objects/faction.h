@@ -275,6 +275,9 @@ namespace Objects
 			bool	requestedNewRound = false;
 			bool	isOwnedByMe = false;
 			count_t	roundChangeNotifications=0;
+		#else
+			String		aiScriptName;
+			Array<BYTE>	aiScriptState;
 		#endif
 
 		#ifdef ONE_COMPOUND_PER_FACTION

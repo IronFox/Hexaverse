@@ -1602,6 +1602,12 @@ namespace Network
 			ScriptedAI::SignalChoiceResponse(resp.requestID,resp.deployedID);
 		}
 
+		void	ScriptedAIState(Protocol::ScriptedAIState&state)
+		{
+			LogEvent(EventSignificance::Common,"Received script state for '"+state.scriptName+"' of "+String(state.dataVector.GetLength())+" byte(s)");
+			ScriptedAI::Resume(state.scriptName,state.dataVector);
+		}
+
 	}
 
 
@@ -1697,6 +1703,7 @@ namespace Network
 
 		DECLARE_CHANNEL(ChoiceResponse);
 
+		DECLARE_CHANNEL(ScriptedAIState);
 	}
 
 
@@ -1955,6 +1962,7 @@ namespace Network
 
 		client.InstallChannel(Channels::ChoiceResponse);
 
+		client.InstallChannel(Channels::ScriptedAIState);
 		
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);

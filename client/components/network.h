@@ -303,6 +303,8 @@ namespace Network
 		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
 
 		DECLARE_CHANNEL(ChoiceResponse);
+
+		DECLARE_CHANNEL(ScriptedAIState);
 	}
 
 

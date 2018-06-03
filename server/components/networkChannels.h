@@ -161,6 +161,8 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
 	DECLARE_FACTION_CHANNEL(QueueResearch);
 
+	DECLARE_FACTION_CHANNEL(ScriptedAIState);
+
 	namespace Statistics
 	{
 		

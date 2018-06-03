@@ -25,7 +25,8 @@ namespace ScriptedAI
 		FileSystem::ftime_t	scriptTime;
 		bool			reloadScript = true;
 
-		bool			completedThisPhase = false;
+		bool			completedThisPhase = false,
+						exportedThisPhase = false;
 
 		/**
 		Indicates that no further tasks should be scheduled with the thread,
@@ -40,6 +41,11 @@ namespace ScriptedAI
 		HashTable<TUniqueID,TUniqueID>	awaitEntity;	//entity ID -> request ID
 
 
+		FileSystem::Folder	GetScriptFolder()
+		{
+			return RuntimeConfig::myConfig.Lookup("AIScripts");
+		}
+
 
 		class Thread : public Sys::ThreadObject
 		{
@@ -50,9 +56,9 @@ namespace ScriptedAI
 			Lua::Function<void(Lua::Reference)> init;
 			Lua::Function<void()> execute,selectionChanged;
 
+			bool			disallowEnqueue = false;
 
-			Array<BYTE>		exportedState;
-			bool			freshState = false;
+			Array<BYTE>		nonCompressedExportedState;
 			bool			hasSuccessfullyExecuted = false;
 
 			typedef std::function<void(Thread&)> FEvent;
@@ -61,6 +67,7 @@ namespace ScriptedAI
 
 			void			Enqueue(const String&title, const FEvent&func)
 			{
+				ASSERT__(!disallowEnqueue);
 				queue << std::make_pair(title,func);
 			}
 
@@ -348,6 +355,7 @@ namespace ScriptedAI
 
 		Buffer0<std::pair<String,std::function<void()> > > onSynchronized;
 		Buffer0<Thread::Event,Swap> onSynchronizedEnqueue;
+		Array<BYTE>			transientImportState;
 
 		void			FlushAndRebuildEntities()
 		{
@@ -370,19 +378,20 @@ namespace ScriptedAI
 		{
 			if (stopAndSynchronize)
 			{
-				stopAndSynchronize = false;
 				if (rebuildEntitiesOnSynchronize)
 				{
 					rebuildEntitiesOnSynchronize = false;
 					FlushAndRebuildEntities();
 				}
-
+				thread.disallowEnqueue = true;	//make sure no synchronized event enqueues job (which can just start right away)
 				foreach (onSynchronized,sync)
 				{
 					LogEvent(EventSignificance::Debug,"ScripedAI: On synchronized: Executing "+sync->first+"...");
 					sync->second();
 				}
 				onSynchronized.Clear();
+				thread.disallowEnqueue = false;
+				stopAndSynchronize = false;	//must unset here or later since some sync function do try to enqueue
 
 				foreach (onSynchronizedEnqueue,sync)
 				{
@@ -460,6 +469,152 @@ namespace ScriptedAI
 			});
 		}
 
+
+		
+		void PerFrameCheck( )
+		{
+			auto&thread = Details::thread;
+			namespace Callback = Details::Callback;
+			if (!thread.IsBusy() && thread.CallbacksDone())
+			{
+				if (Details::SynchronizeWithThread())
+					return;
+
+				if (!Details::exportedThisPhase && WillExecuteOnNewRound() && thread.exportState)
+				{
+					Details::ThreadEnqueue("Export State",[](Details::Thread&thread)
+					{
+						if (!thread.exportState)
+							return;
+						Lua::Reference ref;
+						ref = thread.exportState();
+						if (!ref)
+							thread.nonCompressedExportedState.Clear();
+						else
+						{
+							ByteStreamBuffer stream;
+							ref.Serialize(stream);
+							thread.nonCompressedExportedState = stream.GetWrittenData();
+						}
+
+						if (Network::client.IsConnected() && Network::haveFaction)
+						{
+							Protocol::ScriptedAIState compressedState;
+							compressedState.scriptName = FileSystem::PathToString(FileSystem::ExtractFileName(Details::scriptPath));
+							if (!thread.nonCompressedExportedState.IsEmpty())
+							{
+								Array<BYTE> temp(thread.nonCompressedExportedState.GetLength()+100);
+								const size_t compressed = BZ2::compress(thread.nonCompressedExportedState.pointer(),thread.nonCompressedExportedState.GetLength(),temp.pointer()+4,temp.GetLength()-4);
+								compressedState.dataVector.ResizeAndCopy(temp,compressed+4);
+								(*(UINT32*)compressedState.dataVector.GetPointer()) = (UINT32)thread.nonCompressedExportedState.GetLength();
+							}
+							if (compressedState.dataVector.GetLength() <= compressedState.dataVector.MaxElementCount)
+								Network::Channels::ScriptedAIState.SendTo(Network::client,compressedState);
+							else
+								LogEvent(EventClass::Preset::scriptError,"Failed to upload script state to server: Maximum state size ("+String(compressedState.dataVector.MaxElementCount)+" byte(s)) exceeded: "+String(compressedState.dataVector.GetLength())+" bytes");
+						}
+					});
+					Details::exportedThisPhase = true;
+					return;
+				}
+
+
+				GlobalEvents::frameBegin.UnregisterAndSetInvalid(Details::frameBeginRegistration);
+
+
+				Callback::Submit();
+				String err = thread.GetErrors();
+				if (err.IsNotEmpty())
+				{
+					#ifdef HAS_WINDOW
+						HUD::Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + err);
+					#endif
+				}
+
+				if (!thread.hasSuccessfullyExecuted)
+					Details::UnregisterExecution();
+
+				onExecutionFinished();
+
+				Details::completedThisPhase = true;
+
+				PlayerControlBegin::CheckAutoNextRound();
+			}
+		}
+
+
+		void HandleCallbackCandidate(const TUniqueID&reqID, const Objects::PWorldEntity&e)
+		{
+			if (e)
+			{
+				LogEvent(EventClass::Preset::scriptLog,e.get(), "Identified callback candidate entity: "+e->GetName());
+				ASSERT__(e->isOwnedByMe);
+				Details::ThreadEnqueue("Invoke callback function "+ToString(reqID),[e,reqID](Details::Thread&thread)
+				{
+					thread.nonCompressedExportedState.Clear();
+					thread.api.SignalDeployment(reqID,e);
+				});
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::scriptLog,"Recorded callback result (failure) of "+ToString(reqID));
+				Details::ThreadEnqueue("Remove callback function "+ToString(reqID),[reqID](Details::Thread&thread)
+				{
+					thread.api.onDeployedCallbacks.Unset(reqID);
+				});
+			}
+
+		}
+
+	}
+
+
+	void	Resume( const String&scriptName, Array<BYTE>&compressedState )
+	{
+		using namespace Details;
+		FileSystem::Folder scripts = GetScriptFolder();
+		FileSystem::File scriptLocation;
+
+		if (!scripts.FindFile(PathString(scriptName)+".lua",scriptLocation))
+		{
+			LogEvent(EventClass::Preset::scriptError,"ScriptedAI: Unable to resume server-stored script '"+scriptName+"'. Cannot find file.");
+			#ifdef HAS_WINDOW
+				HUD::Dialog::ShowMessage("The server suggested AI script '"+scriptName+"', but the corresponding script file apparently doesn't exist. Server-stored AI state cannot be applied.");
+			#endif
+			return;
+		}
+		LogEvent(EventSignificance::Important,"ScriptedAI: Attempting to resume script '"+scriptName+"', using "+String(compressedState.GetLength())+" bytes of compressed state");
+		
+		if (compressedState.GetLength() <= 8)
+			transientImportState.Clear();
+		else
+		{
+			static const size_t MaxSafeSize = 10000000;
+			size_t decompressedSize = *(const UINT32*)compressedState.GetPointer();
+			if (decompressedSize > MaxSafeSize)
+			{
+				LogEvent(EventClass::Preset::scriptError,"Decompressed data size ("+String(decompressedSize)+") exceeds safe size ("+String(MaxSafeSize)+")");
+				transientImportState.Clear();
+			}
+			else
+			{
+				transientImportState.SetSize(decompressedSize);
+				size_t rs = BZ2::decompress(compressedState.GetPointer()+4,compressedState.GetContentSize()-4,transientImportState.GetPointer(),decompressedSize);
+				if (rs != decompressedSize)
+				{
+					LogEvent(EventClass::Preset::scriptError,"Decompression error. BZ2 reports "+String(rs)+" decompressed bytes. Expected "+String(decompressedSize));
+					transientImportState.Clear();
+				}
+				else
+					LogEvent(EventClass::Preset::common,"ScriptedAI: Decompressed "+String(decompressedSize)+" of state bytes for script '"+scriptName+"'");
+			}
+		}
+
+		SynchronizeWithThread(true,rebuildEntitiesOnSynchronize,"AdoptState",[scriptLocation]()
+		{
+			thread.nonCompressedExportedState.swap(transientImportState);
+			Load(scriptLocation,false);
+		});
 	}
 
 	bool	WillExecuteOnNewRound()
@@ -477,7 +632,7 @@ namespace ScriptedAI
 
 	void	Load(const PathString&scriptPath, bool freshState)
 	{
-		ASSERT__(!IsRunning());
+		ASSERT__(!Details::thread.IsBusy());
 		
 		static bool installed = false;
 		if (!installed)
@@ -485,6 +640,8 @@ namespace ScriptedAI
 			GlobalEvents::phaseChange << []()
 			{
 				Details::Interrupt("Phase change detected (->"+String(RuntimeConfig::phase.ToString())+")",false);
+				Details::exportedThisPhase = false;
+				Details::completedThisPhase = false;
 			};
 
 			GlobalEvents::objectFlush << []()
@@ -498,20 +655,10 @@ namespace ScriptedAI
 		auto&thread = Details::thread;
 		if (thread.api.IsCreated())
 		{
-			Lua::Reference ref;
-			if (thread.exportState.IsSet())
-				ref = thread.exportState();
-			if (!ref)
-				thread.exportedState.Clear();
-			else
-			{
-				ByteStreamBuffer stream;
-				ref.Serialize(stream);
-				thread.exportedState = stream.GetWrittenData();
-			}
 			thread.exportState.ClearReference();
 			thread.init.ClearReference();
 			thread.execute.ClearReference();
+			thread.selectionChanged.ClearReference();
 			thread.api.Destroy();
 		}
 		
@@ -550,7 +697,8 @@ namespace ScriptedAI
 
 		Details::scriptPath = scriptPath;
 		Details::scriptTime = FileSystem::GetModificationTime(scriptPath);
-		thread.freshState = freshState;
+		if (freshState)
+			thread.nonCompressedExportedState.Clear();
 
 		if (!thread.IsActive())
 		{
@@ -561,44 +709,12 @@ namespace ScriptedAI
 		Details::RegisterExecution();
 	}
 	
-	static void Check( )
-	{
-		auto&thread = Details::thread;
-		namespace Callback = Details::Callback;
-		if (!thread.IsBusy())
-		{
-			if (Details::SynchronizeWithThread())
-				return;
-
-
-			GlobalEvents::frameBegin.UnregisterAndSetInvalid(Details::frameBeginRegistration);
-
-
-			Callback::Submit();
-			String err = thread.GetErrors();
-			if (err.IsNotEmpty())
-			{
-				#ifdef HAS_WINDOW
-					HUD::Dialog::ShowMessage("Something seems to have gone wrong execting the Lua AI script:\n" + err);
-				#endif
-			}
-
-			if (!thread.hasSuccessfullyExecuted)
-				Details::UnregisterExecution();
-
-			onExecutionFinished();
-
-			Details::completedThisPhase = true;
-
-			PlayerControlBegin::CheckAutoNextRound();
-		}
-	}
 
 	void	Start()
 	{
 		if (Details::frameBeginRegistration == InvalidIndex)
 		{
-			Details::frameBeginRegistration = GlobalEvents::frameBegin.Register(Check);
+			Details::frameBeginRegistration = GlobalEvents::frameBegin.Register(Details::PerFrameCheck);
 
 
 			#ifdef HAS_WINDOW
@@ -657,12 +773,12 @@ namespace ScriptedAI
 				{
 					auto&api = thread.api;
 
-					if (!thread.freshState && thread.exportedState.IsNotEmpty())
+					if (thread.nonCompressedExportedState.IsNotEmpty())
 					{
 						auto state = api.program->DeserializeToReference(
 							MemReadStream(
-								thread.exportedState.GetPointer(),
-								(serial_size_t)thread.exportedState.GetContentSize()
+								thread.nonCompressedExportedState.GetPointer(),
+								(serial_size_t)thread.nonCompressedExportedState.GetContentSize()
 							)
 						);
 						thread.init(state);
@@ -675,6 +791,7 @@ namespace ScriptedAI
 			Details::ThreadEnqueue("Run",[](Details::Thread&thread)
 			{
 				auto&api = thread.api;
+				thread.nonCompressedExportedState.Clear();	//state is lost
 				thread.execute();
 				thread.hasSuccessfullyExecuted = true;
 			});
@@ -692,12 +809,7 @@ namespace ScriptedAI
 		TUniqueID reqID;
 		if (Details::awaitEntity.QueryAndUnset(e->id,reqID))
 		{
-			LogEvent(EventClass::Preset::scriptLog,e.get(), "Identified callback candidate entity: "+e->GetName());
-			ASSERT__(e->isOwnedByMe);
-			Details::ThreadEnqueue("Invoke callback function "+ToString(reqID),[e,reqID](Details::Thread&thread)
-			{
-				thread.api.SignalDeployment(reqID,e);
-			});
+			Details::HandleCallbackCandidate(reqID,e);
 		}
 	}
 
@@ -707,11 +819,8 @@ namespace ScriptedAI
 			return;
 		if (entityID.IsEmpty())
 		{
-			LogEvent(EventClass::Preset::scriptLog,"Recorded callback result (failure) of "+ToString(requestID));
-			Details::ThreadEnqueue("Remove callback function "+ToString(requestID),[requestID](Details::Thread&thread)
-			{
-				thread.api.onDeployedCallbacks.Unset(requestID);
-			});
+			Details::HandleCallbackCandidate(requestID,nullptr);
+
 		}
 		else
 		{
@@ -723,12 +832,7 @@ namespace ScriptedAI
 			}
 			else
 			{
-				LogEvent(EventClass::Preset::scriptLog,e.get(), "Identified callback candidate entity: "+e->GetName());
-				ASSERT__(e->isOwnedByMe);
-				Details::ThreadEnqueue("Invoke callback function "+ToString(requestID),[e,requestID](Details::Thread&thread)
-				{
-					thread.api.SignalDeployment(requestID,e);
-				});
+				Details::HandleCallbackCandidate(requestID,e);
 			}
 		}
 
@@ -737,7 +841,7 @@ namespace ScriptedAI
 
 	bool	IsRunning()
 	{
-		return Details::thread.IsBusy() || Details::onSynchronized.IsNotEmpty();
+		return Details::thread.IsBusy() || Details::stopAndSynchronize;
 	}
 
 
@@ -833,10 +937,6 @@ namespace ScriptedAI
 		LogEvent(EventSignificance::Uncommon,"New AI script "+FileSystem::PathToString(FileSystem::ExtractFileNameExt(path))+" created");
 	}
 
-	FileSystem::Folder	GetScriptFolder()
-	{
-		return RuntimeConfig::myConfig.Lookup("AIScripts");
-	}
 
 	bool			DoneThisRound()
 	{
@@ -866,7 +966,7 @@ namespace ScriptedAI
 			using namespace HUD::Component;
 			PWindow window = Window::Create();
 
-			FileSystem::Folder scripts = GetScriptFolder();
+			FileSystem::Folder scripts = Details::GetScriptFolder();
 			if (!scripts.IsValidLocation())
 				FileSystem::CreateDirectory(scripts.GetLocation());
 
@@ -902,7 +1002,7 @@ namespace ScriptedAI
 			},
 			[](const String&input)
 			{
-				FileSystem::Folder scripts = GetScriptFolder();
+				FileSystem::Folder scripts = Details::GetScriptFolder();
 				if (!scripts.IsValidLocation())
 					FileSystem::CreateDirectory(scripts.GetLocation());
 				ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));

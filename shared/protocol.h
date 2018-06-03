@@ -1541,6 +1541,15 @@ namespace Protocol
 
 
 
+
+	typedef NetArray<BYTE,100000>	ScriptedAIStateVector;
+
+	NETSTRUCT2(ScriptedAIState
+		, Package::NetString<64>, scriptName
+		, ScriptedAIStateVector, dataVector
+	);
+
+
 	typedef Package::NetString<32>	SaveAs;
 	typedef TUniqueID	KillFaction;
 
@@ -1658,6 +1667,8 @@ namespace Protocol
 			RoundStatistics,			//s2c: Statistics::Round
 			EntityTypeStatistics,		//s2c: Statistics::EntityType
 			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
+
+			ScriptedAIState,			//[both]: ScriptedAIState
 
 			SaveAs,	//c2s: SaveAs
 		};
