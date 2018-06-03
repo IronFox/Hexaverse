@@ -695,6 +695,7 @@ namespace ScriptedAI
 		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
 		api.AddGrid();	//must be executed by main thread, because mapped entities need it, which are added by main thread, too
 
+		Details::exportedThisPhase = false;
 		Details::scriptPath = scriptPath;
 		Details::scriptTime = FileSystem::GetModificationTime(scriptPath);
 		if (freshState)
