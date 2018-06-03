@@ -1504,14 +1504,20 @@ namespace FileIO
 										}
 										locks.Append(faction.get());
 									
-										Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
-										if (researchStateChunk)
 										{
-											faction->researchState.ImportLuaState(researchStateChunk->ReferenceData());
+											Riff::Chunk*researchStateChunk = list->FindFirst(RID::researchState);
+											if (researchStateChunk)
+											{
+												faction->researchState.ImportLuaState(researchStateChunk->ReferenceData());
 
 
-											Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
-											if (activeResearchChunk)
+												Riff::Chunk*activeResearchChunk = list->FindFirst(RID::activeResearchTopic);
+												if (activeResearchChunk)
+												{
+													faction->researchState.RestoreResearchQueue(ChunkDataToString(*activeResearchChunk));
+												}
+											}
+										}
 											{
 												faction->researchState.RestoreResearchQueue(String((const char*)activeResearchChunk->pointer(),activeResearchChunk->size()));
 											}
