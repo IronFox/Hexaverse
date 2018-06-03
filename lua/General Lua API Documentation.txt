@@ -148,8 +148,13 @@ Table-Type: Unit
 	[isHangar]
 		Unit[]	storedUnits;					--Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
 		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. nil if deployableUnits is nil
-		void	DeployStored(Unit, Loc, func onDeploy(Unit));	-- Deploys the specified stored unit to the specified location. If onDeploy is specified, it will be called on success once a response from the server has been received
-		
+		--[[
+		Deploys the specified stored unit to the specified location.
+		If onDeploy is specified, it will be called on success once a
+		response from the server has been received.
+		nil if deployableUnits is nil
+		]]
+		void	DeployStored(Unit, Loc, func onDeploy(Unit));
 
 	[Client only]
 		bool	isOwnedByMe;			-- true if the local player owns this entity
