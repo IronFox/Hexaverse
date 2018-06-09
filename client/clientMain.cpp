@@ -1847,7 +1847,8 @@ bool ConfigureClient(const wchar_t*commandLine)
 	}
 	catch (const std::exception&e)
 	{
-		MyFatal(FatalDescriptor(CLOCATION, e.what()));
+		//MyFatal(FatalDescriptor(CLOCATION, e.what()));		//not good to treat this as a fatal since fatals trigger the bug reporter, and this is not technically a bug
+		ErrMessage(e.what());
 		return false;
 	}
 	if (RuntimeConfig::serverAddress.host.IsNotEmpty())
