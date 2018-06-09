@@ -21,7 +21,7 @@ namespace RuntimeConfig
 	extern Network::ServerAddress	serverAddress;
 	extern FileSystem::File			documentationRootFolder;
 
-	extern String					profilePrefix;
+	extern String					profilePrefix, profileName;
 
 	extern bool						nexusBases,	nexusPortsOnAllPoles;
 

@@ -1725,6 +1725,11 @@ namespace ApplicationInterface
 }
 
 
+bool ValidProfileCharacter(char c)
+{
+	return (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9');
+}
+
 
 void ParseKeyValue(const String&key, const String&value)
 {
@@ -1739,7 +1744,9 @@ void ParseKeyValue(const String&key, const String&value)
 		}
 		elif (key == "profile")
 		{
-			RuntimeConfig::profilePrefix = value+"_";
+			RuntimeConfig::profileName = value.CopyToLowerCase().Trim();
+			RuntimeConfig::profileName.EraseCharacters(ValidProfileCharacter,false);
+			RuntimeConfig::profilePrefix = RuntimeConfig::profileName+"_";
 			LogEvent(EventClass::Preset::configuration,nullptr,"Using profile prefix '"+RuntimeConfig::profilePrefix+"'");
 		}
 		elif (key == "udpListen")
