@@ -487,7 +487,7 @@ namespace Menu
 		},
 		[](){return Network::client.IsConnected() || ConfigurationMode::IsActive();});
 		main->AddCommand("Game",[](){WindowStack::Show(game);},std::function<bool()>(),false);
-		main->AddCommand("Launch",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
+		main->AddCommand("Launch...",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
 		
 		main->AddCommand("Help",
 			[]()
@@ -510,9 +510,9 @@ namespace Menu
 	static void CreateLaunchMenu()
 	{
 		auto menu = launch = Menu::Create();
-		menu->Setup(0.3f,"Launch",true);
+		menu->Setup(0.3f,"Launch...",true);
 
-		menu->AddCommand("Local Server Control Console",[]()
+		menu->AddCommand("Local server control console",[]()
 		{
 			SetFullScreen(false);
 			MonitoredProcess	process(false);
@@ -522,7 +522,7 @@ namespace Menu
 				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
 		});
 
-		menu->AddCommand("New Client with Different Profile",[]()
+		menu->AddCommand("New client with custom profile",[]()
 		{
 			Dialog::Query("Please enter a profile name to continue (empty for none).\n"
 				"Servers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation.\n"
