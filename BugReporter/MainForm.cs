@@ -193,6 +193,11 @@ namespace BugReporter
 		}
 
 		List<FileID> logFiles = new List<FileID>();
+		enum CommandMode
+		{
+			None,
+			Message,
+		};
 
 
 		private void MainForm_Load(object sender, EventArgs e)
@@ -226,6 +231,31 @@ namespace BugReporter
 			RestartHelloTask();
 			logFiles = FetchLogFileList().ToList();
 			logFiles.Sort();
+
+
+			CommandMode mode = CommandMode.None;
+
+			foreach (var c in Environment.GetCommandLineArgs().Skip(2))
+			{
+				if (c.StartsWith("-"))
+				{
+					switch (c)
+					{
+						case "-m":
+						case "--message":
+							mode = CommandMode.Message;
+							break;
+					}
+				}
+				else
+					switch (mode)
+					{
+						case CommandMode.Message:
+							UpdateFatal(c);
+							break;
+					}
+
+			}
 
 			FinishLoading();
 		}
@@ -268,7 +298,7 @@ namespace BugReporter
 
 			{
 				string[] args = Environment.GetCommandLineArgs();
-				if (args.Length > 1)
+				if (args.Length > 1 && !args[1].StartsWith("-"))
 				{
 					try
 					{
@@ -341,6 +371,41 @@ namespace BugReporter
 
 		private string lastFatal = null;
 
+		private void UpdateFatal(string newFatal)
+		{
+			if (lastFatal != newFatal)
+			{
+				int foundAt = -1;
+				if (lastFatal != null)
+				{
+					int at;
+					while ((at = bugDescription.Text.IndexOf(lastFatal)) != -1)
+					{
+						foundAt = at;
+						bugDescription.Text = bugDescription.Text.Remove(at, lastFatal.Length);
+					}
+					lastFatal = null;
+				}
+
+				if (newFatal != null)
+				{
+					if (foundAt >= 0)
+						bugDescription.Text = bugDescription.Text.Insert(foundAt, newFatal);
+					else
+					{
+						if (string.IsNullOrWhiteSpace(bugDescription.Text))
+							bugDescription.Text = newFatal;
+						else
+							bugDescription.Text = newFatal + "\r\n" + "\r\n" + bugDescription.Text.Trim(new char[] { '\r', '\n' });
+					}
+					bugDescription.Select(0, 0);
+					lastFatal = newFatal;
+				}
+			}
+
+		}
+
+
 		private void logFile_SelectedIndexChanged(object sender, EventArgs e)
 		{
 			var items = logFileList.Items;
@@ -355,35 +420,7 @@ namespace BugReporter
 				FileID f = (FileID)logFile.SelectedItem;
 				gameVersion.Text = f.Version;
 
-				if (lastFatal != f.Fatal)
-				{
-					int foundAt = -1;
-					if (lastFatal != null)
-					{
-						int at;
-						while ((at = bugDescription.Text.IndexOf(lastFatal)) != -1)
-						{
-							foundAt = at;
-							bugDescription.Text = bugDescription.Text.Remove(at, lastFatal.Length);
-						}
-						lastFatal = null;
-					}
-
-					if (f.Fatal != null)
-					{
-						if (foundAt >= 0)
-							bugDescription.Text = bugDescription.Text.Insert(foundAt, f.Fatal);
-						else
-						{
-							if (string.IsNullOrWhiteSpace(bugDescription.Text))
-								bugDescription.Text = f.Fatal;
-							else
-								bugDescription.Text = f.Fatal + "\r\n" + "\r\n" + bugDescription.Text.Trim(new char[] { '\r', '\n' });
-						}
-						bugDescription.Select(0, 0);
-						lastFatal = f.Fatal;
-					}
-				}
+				UpdateFatal(f.Fatal);
 
 				LogFile root = f.CachedFile;
 				if (root == null)
