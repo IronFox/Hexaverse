@@ -1834,11 +1834,11 @@ bool ConfigureClient(const wchar_t*commandLine)
 		}
 		if (expectValue)
 		{
-			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing parameter value for '" + parameterName + "'");
+			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Empty value for parameter '" + parameterName + "'");
 		}
 		else
 			if (parameterName.IsNotEmpty())
-				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
+				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Parameter '" + parameterName + "' does not appear to have a value (should be 'parameter=value')");
 	
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
