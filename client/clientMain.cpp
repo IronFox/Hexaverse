@@ -1647,8 +1647,14 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
+
+	const bool supplyMessage = !Logging::HasBegun();
 	Logging::End();
-	Logging::CallBugReporter();
+	if (supplyMessage)
+		Logging::CallBugReporter("Pre-logging issue encountered: "+message);
+	else
+		Logging::CallBugReporter();
+
 	application_shutting_down = true;	//prevent certain operations in Close()
 	
 	//ErrMessage(message);

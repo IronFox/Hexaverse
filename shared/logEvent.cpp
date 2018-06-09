@@ -112,16 +112,19 @@ namespace Logging
 
 	//HANDLE	fileHandle = INVALID_HANDLE_VALUE;
 
+	PathString activePath;
+	bool		hasBegun = false;
+
 	void	End()
 	{
 		#ifndef HAS_WINDOW
 		consoleThread.End();
 		#endif
 		outFile.Close();
+		hasBegun = false;
 	}
 
 
-	PathString activePath;
 
 	void	CallBugReporter()
 	{
@@ -129,9 +132,20 @@ namespace Logging
 		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
 	}
 
+	void	CallBugReporter(const String&message)
+	{
+		MonitoredProcess	process(false);
+		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\" -m \""+PathString(message.Escape("\""))+"\"");	//start and abandon
+	}
+
+	bool	HasBegun()
+	{
+		return hasBegun;
+	}
 
 	void	Begin( const PathString&path )
 	{
+		hasBegun = true;
 		activePath = path;
 		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
 		folder.Rewind();

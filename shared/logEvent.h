@@ -121,8 +121,11 @@ namespace Logging
 
 	void	End();
 	void	Begin(const PathString&path);
+	bool	HasBegun();
+
 
 	void	CallBugReporter();
+	void	CallBugReporter(const String&message);
 
 
 	String	TimeStamp(bool filename=false);
