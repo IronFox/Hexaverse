@@ -534,7 +534,7 @@ namespace Menu
 				MonitoredProcess	process(false);
 				PathString parameters = PathString("profile="+str);
 				if (Network::client.IsConnected())
-					parameters += PathString(" serverURL="+ToString(RuntimeConfig::serverAddress));
+					parameters += PathString(" serverURL="+ToString(Network::lastServerAddress));
 
 
 				count_t len = 0;
