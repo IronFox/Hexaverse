@@ -1519,7 +1519,7 @@ bool loop()
 				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
 				textout << "Hello "<<Network::chosenNickname;
 				if (RuntimeConfig::profileName.IsNotEmpty())
-					textout << " (profile "<<RuntimeConfig::profileName<<")";
+					textout << " ["<<RuntimeConfig::profileName<<"]";
 				textout <<nl;
 				if (Network::amOnline)
 				{
@@ -2104,10 +2104,10 @@ int main( int argc, const char* argv[])
 
 			UINT32 loadedFlags = Engine::CreateDisplay(display,
 				RuntimeConfig::myConfig.Lookup("window"),
-				RuntimeConfig::aiMode ? "AI":
-				PRODUCT_NAME
+				(RuntimeConfig::aiMode ? "AI": PRODUCT_NAME)
+				+ (RuntimeConfig::profileName.IsNotEmpty() ? " ["+RuntimeConfig::profileName+"]":"")
 				#ifdef _DEBUG
-					" (DEBUG)"
+					+" (DEBUG)"
 				#endif
 				,Resolution(1280,800),onWindowResize
 				,Engine::DisplayConfig::Icon(IDI_CLIENT)

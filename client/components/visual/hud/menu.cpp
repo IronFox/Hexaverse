@@ -512,7 +512,7 @@ namespace Menu
 		auto menu = launch = Menu::Create();
 		menu->Setup(0.3f,"Launch",true);
 
-		menu->AddCommand("Launch Local Server Control Console",[]()
+		menu->AddCommand("Local Server Control Console",[]()
 		{
 			SetFullScreen(false);
 			MonitoredProcess	process(false);
@@ -522,11 +522,13 @@ namespace Menu
 				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
 		});
 
-		menu->AddCommand("Launch new Client using Different Profile",[]()
+		menu->AddCommand("New Client with Different Profile",[]()
 		{
-			Dialog::Query("Please enter a profile name to continue.\nServers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation",
-				"",
-				"abcdefghijklmnopqrstuvwxyz_0123456789",[](const StringRef&str){return str.Length() > 0;},[](const String&str)
+			Dialog::Query("Please enter a profile name to continue (empty for none).\n"
+				"Servers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation.\n"
+				"Make sure to not reuse the same profile for more than one open client instance at a time."
+				,"",
+				"abcdefghijklmnopqrstuvwxyz_0123456789",[](const StringRef&str){return true;},[](const String&str)
 			{
 				SetFullScreen(false);
 				MonitoredProcess	process(false);
