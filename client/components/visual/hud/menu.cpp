@@ -22,6 +22,7 @@
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
+bool	ValidProfileCharacter(char c);
 
 
 
@@ -519,6 +520,32 @@ namespace Menu
 				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
 			else
 				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
+		});
+
+		menu->AddCommand("Launch new Client using Different Profile",[]()
+		{
+			Dialog::Query("Please enter a profile name to continue.\nServers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation",
+				"",
+				"abcdefghijklmnopqrstuvwxyz_0123456789",[](const StringRef&str){return str.Length() > 0;},[](const String&str)
+			{
+				SetFullScreen(false);
+				MonitoredProcess	process(false);
+				PathString parameters = PathString("profile="+str);
+				if (Network::client.IsConnected())
+					parameters += PathString(" serverURL="+ToString(RuntimeConfig::serverAddress));
+
+
+				count_t len = 0;
+				Buffer<PathString::char_t> execPath; 
+				do
+				{
+					execPath.AppendRow(MAX_PATH);
+					len = GetModuleFileNameW(nullptr, execPath.GetPointer(), execPath.GetLength());
+				}
+				while (len >= execPath.GetLength());
+
+				process.Start("./",execPath.GetPointer(),parameters);
+			});
 		});
 
 
