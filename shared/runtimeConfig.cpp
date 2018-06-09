@@ -76,9 +76,10 @@ namespace RuntimeConfig
 		myDocuments = folder;
 		ASSERT1__(myDocuments.IsValidLocation(),myDocuments.GetLocation());
 
-		FileSystem::File file;
-		myDocuments.Find(L"./My Games",file,FileSystem::FindFlags::None);
-		FileSystem::SetPathPrefix(file.GetLocation(),"My Games");
+		//FileSystem::File file;
+		//myDocuments.Find(L"./My Games",file,FileSystem::FindFlags::None);
+		//FileSystem::SetPathPrefix(file.GetLocation(),"My Games");
+		FileSystem::SetPathPrefix(myDocuments.GetLocation(),"Documents");
 	}
 
 
