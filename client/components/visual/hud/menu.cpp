@@ -89,7 +89,13 @@ namespace Menu
 
 
 
-	PMenu	main,help,login,game,startServer,saveGames;
+	PMenu	main,
+			help,
+			login,
+			game,
+			startServer,
+			saveGames,
+			launch;
 	Component::PWindow	options;
 
 
@@ -412,16 +418,6 @@ namespace Menu
 			});
 
 		},[](){return Network::client.IsConnected() && Network::client.IsLocalhost();});
-		game->AddCommand("Launch Control Console",[]()
-		{
-			SetFullScreen(false);
-			MonitoredProcess	process(false);
-			if (Network::amOnline && Network::client.IsLocalhost())
-				process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
-			else
-				process.Start("../ControlConsole/","ControlConsole.exe","");	//start and abandon, without port parameter since we don't know any
-		});
-		//game->FullAutoLayout();
 	}
 
 	static void	CreateHelpMenu()
@@ -490,6 +486,7 @@ namespace Menu
 		},
 		[](){return Network::client.IsConnected() || ConfigurationMode::IsActive();});
 		main->AddCommand("Game",[](){WindowStack::Show(game);},std::function<bool()>(),false);
+		main->AddCommand("Launch",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
 		
 		main->AddCommand("Help",
 			[]()
@@ -507,6 +504,24 @@ namespace Menu
 
 		main->AddCommand("Quit to Desktop",[](){HUD::Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return HUD::Dialog::CheckResult::OkayContinue;});});
 		//main->FullAutoLayout();
+	}
+
+	static void CreateLaunchMenu()
+	{
+		auto menu = launch = Menu::Create();
+		menu->Setup(0.3f,"Launch",true);
+
+		menu->AddCommand("Launch Local Server Control Console",[]()
+		{
+			SetFullScreen(false);
+			MonitoredProcess	process(false);
+			if (Network::amOnline && Network::client.IsLocalhost())
+				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+			else
+				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
+		});
+
+
 	}
 
 
@@ -653,6 +668,7 @@ namespace Menu
 		CreateOptionsMenu();
 		CreateHelpMenu();
 		CreateMainMenu();
+		CreateLaunchMenu();
 		CreateLoginMenu();
 		CreateGameMenu();
 		CreateStartServerMenu();
@@ -660,6 +676,7 @@ namespace Menu
 		GlobalEvents::applicationTerminate << []()
 		{
 			main.reset();
+			launch.reset();
 			help.reset();
 			login.reset();
 			options.reset();
