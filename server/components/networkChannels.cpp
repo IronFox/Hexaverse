@@ -776,7 +776,7 @@ namespace Receiver
 			Network::PClient other;
 			if (Network::playerMap.Query(faction,other))
 			{
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss ),peer,"Faction access token recognized, but faction is already being controlled. Disconnecting "+other->ConvertToString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss ),peer,"Faction access recognized, but target faction is already being controlled. Disconnecting "+other->ConvertToString());
 
 				if (faction == Objects::Faction::nexus)
 				{
