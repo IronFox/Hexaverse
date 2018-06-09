@@ -1517,7 +1517,10 @@ bool loop()
 				#endif
 
 				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
-				textout << "Hello "<<Network::chosenNickname<<nl;
+				textout << "Hello "<<Network::chosenNickname;
+				if (RuntimeConfig::profileName.IsNotEmpty())
+					textout << " (profile "<<RuntimeConfig::profileName<<")";
+				textout <<nl;
 				if (Network::amOnline)
 				{
 					textout << "Server ID: " << Network::serverIDString<<nl;
