@@ -7,6 +7,7 @@
 #include <io/config.h>
 #include <io/file_system.h>
 #include "aiProcess.h"
+#include "networkChannels.h"
 
 namespace Reflection
 {
@@ -359,6 +360,55 @@ namespace Reflection
 			virtual String		GetSupportedValues() const override 
 			{
 				return "[false,true]";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ConvertToString();
+			}
+		};
+
+
+		class NexusAIScript : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue = "";
+
+			/**/			NexusAIScript(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "string", Persistence::Temporary,1,protection)	{}
+			virtual String	ConvertToString()		const	override	{return Objects::Faction::nexus ? Objects::Faction::nexus->aiScriptName : "";}
+			virtual	bool	Set(const String&value)	override
+			{
+				String old = ConvertToString();
+				if (value == old)
+					return true;
+				if (value.Contains("/") || value.Contains("\\"))
+					return false;
+				PathString filename = RuntimeConfig::sharedConfig.Lookup("AIScripts/"+value+".lua");
+				if (!FileSystem::IsFile(filename))
+				{
+					LogEvent(EventClass::Preset::commandRejected,FileSystem::PathToString(filename) + " does not exist");
+					return false;
+				}
+				const auto faction = Objects::Faction::nexus;
+				if (!faction)
+					return false;
+				faction->aiScriptName = value;
+				faction->aiScriptState.Clear();
+
+				Network::PClient client;
+				if (Network::playerMap.Query(faction,client))
+				{
+					Protocol::ScriptedAIState state;
+					state.dataVector = faction->aiScriptState;
+					state.scriptName = faction->aiScriptName;
+					Channels::ScriptedAIState.SendTo(client->peer.lock(),state);
+				}
+				OnChanged();
+				return true;
 			}
 			virtual String	GetDefault() const override
 			{
@@ -1226,6 +1276,7 @@ namespace Reflection
 					Variable::Set("haveSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.havePlaced,false,true,Variable::Persistence::GameInvariant);
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
+				state.SetVariable(CLI::PVariable(new Variable::NexusAIScript("aiScript")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::RestoreFromSavegame);
 				VAR(roundsPerResearchPoint,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);

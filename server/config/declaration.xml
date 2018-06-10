@@ -226,6 +226,10 @@
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).
 				A client is separately launched to compute AI decisions.
 			</variable>
+			<variable name="aiScript" default="">
+				Defines a custom script for the AI to run instead of the build-in AI functionality.
+				For any value X, [My Games]/AIScripts/X.lua must exist.
+			</variable>
 			<variable name="threatEstimationFactor" default="0.5">
 				Linearly affects density of nexus vehicles.
 				If density is saturated, vehicle production/spawning halts.
