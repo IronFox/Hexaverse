@@ -86,6 +86,19 @@ namespace ScriptedAI
 				return rs;
 			}
 
+			void			DestroyAPI()
+			{
+				if (api.IsCreated())
+				{
+					exportState.ClearReference();
+					init.ClearReference();
+					execute.ClearReference();
+					selectionChanged.ClearReference();
+					api.Destroy();
+				}
+
+			}
+
 			String		GetErrors()
 			{
 				if (errorQueue.IsEmpty())
@@ -572,6 +585,18 @@ namespace ScriptedAI
 	void	Resume( const String&scriptName, Array<BYTE>&compressedState )
 	{
 		using namespace Details;
+
+		if (scriptName.IsEmpty())
+		{
+			SynchronizeWithThread(true,false,"End",[]()
+			{
+				thread.DestroyAPI();
+				Details::UnregisterExecution();
+				Details::scriptPath = "";
+			});
+			return;
+		}
+
 		FileSystem::Folder scripts = GetScriptFolder();
 		FileSystem::File scriptLocation;
 
@@ -653,14 +678,7 @@ namespace ScriptedAI
 		}
 
 		auto&thread = Details::thread;
-		if (thread.api.IsCreated())
-		{
-			thread.exportState.ClearReference();
-			thread.init.ClearReference();
-			thread.execute.ClearReference();
-			thread.selectionChanged.ClearReference();
-			thread.api.Destroy();
-		}
+		thread.DestroyAPI();
 		
 		Details::reloadScript = true;
 		Details::completedThisPhase = true;		//upon (re)loading, is considered having executed this phase so player can request new round
