@@ -206,7 +206,7 @@ namespace Nexus
 
 	void ProcessCoverage()
 	{
-		if (!Game::Config::Nexus::enableAI)
+		if (!Game::Config::Nexus::enableAI || !Objects::Faction::nexus || Objects::Faction::nexus->aiScriptName.IsNotEmpty())
 			return;
 		
 
