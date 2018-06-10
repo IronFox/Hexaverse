@@ -1713,10 +1713,11 @@ namespace ApplicationInterface
 		if (!CanChangeRoundState())
 			return false;
 
-		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound)
+		if (!Objects::Faction::mine || Network::newRoundRequested)
 			return false;
 
-
+		if (RuntimeConfig::aiMode)
+			return true;	//don't check units. script has run
 
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
@@ -1745,6 +1746,7 @@ void ParseKeyValue(const String&key, const String&value)
 		if (key == "aiAccessToken")
 		{
 			RuntimeConfig::aiMode = true;
+			RuntimeConfig::autoNewRound = true;
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}

@@ -4,6 +4,7 @@
 #include "animation.h"
 #include "clientEvents.h"
 #include "objectNetworkHelper.h"
+#include "clientRuntimeConfig.h"
 
 namespace PlayerControlBegin
 {
@@ -29,7 +30,7 @@ namespace PlayerControlBegin
 		if (!ApplicationInterface::AutomaticProcessesAreDoneThisRound())
 			return;
 
-		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && !SeeingHostileActivity())
+		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && (RuntimeConfig::aiMode || !SeeingHostileActivity()))
 			ApplicationInterface::SignalRoundEnd();
 
 		#ifdef HAS_WINDOW
