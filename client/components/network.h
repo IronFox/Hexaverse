@@ -87,6 +87,9 @@ namespace Network
 		}
 	};
 
+
+	extern ServerAddress	lastServerAddress;
+
 }
 
 DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);

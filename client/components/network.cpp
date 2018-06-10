@@ -60,6 +60,8 @@ namespace Network
 					roundTimer = 0;
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
+	ServerAddress	lastServerAddress;
+
 
 	HashSet<TUniqueID>	visitedWorldMap;
 
@@ -218,6 +220,7 @@ namespace Network
 
 		serverID = host.serverInfo.hostInfo.hostID;
 		serverIDString = Network::serverID.ToNiceString();
+		lastServerAddress = host.address;
 
 		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
