@@ -1747,6 +1747,8 @@ void ParseKeyValue(const String&key, const String&value)
 		{
 			RuntimeConfig::aiMode = true;
 			RuntimeConfig::autoNewRound = true;
+			ScriptedAI::visualDebugActive = true;
+
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
@@ -2065,7 +2067,7 @@ int main( int argc, const char* argv[])
 				}
 
 				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
-				ScriptedAI::visualDebugActive = StartConfig::GetBool("runtime/aiDebugMode");
+				ScriptedAI::visualDebugActive = RuntimeConfig::aiMode || StartConfig::GetBool("runtime/aiDebugMode");
 
 				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
