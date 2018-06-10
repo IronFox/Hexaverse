@@ -43,7 +43,11 @@ namespace ScriptedAI
 
 		FileSystem::Folder	GetScriptFolder()
 		{
-			return RuntimeConfig::sharedConfig.Lookup("AIScripts");
+			FileSystem::Folder rs = RuntimeConfig::sharedConfig.Lookup("AIScripts");
+			if (!rs.IsValidLocation())
+				FileSystem::ForceCreateDirectory(rs.GetLocation());
+
+			return rs;
 		}
 
 
