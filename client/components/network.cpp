@@ -1899,7 +1899,7 @@ namespace Network
 	void OnIgnoredException(const TCodeLocation&loc, const std::exception&ex)
 	{
 		LogEvent(EventClass::Preset::networkError,String(loc)+": Ignored(TCP): "+ex.what());
-		DBG_FATAL__("Ignored Exception");
+		DBG_FATAL__("Ignored Exception: "+String(ex.what()));
 	}
 
 	void		Update();
