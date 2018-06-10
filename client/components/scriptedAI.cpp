@@ -166,10 +166,14 @@ namespace ScriptedAI
 							LogEvent(EventClass::Preset::scriptError,"Failed to execute '"+item->first+"'. Unsupported exception type");
 						}
 						const float seconds = timer.GetSecondsSince(t);
+						#ifndef _DEBUG
 						if (seconds > 0.5f)
+						#endif
 							LogEvent(EventClass::Preset::scriptLog,"ScriptedAI: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+						#ifndef _DEBUG
 						else
 							LogEvent(EventSignificance::PerformanceMeasurement,"ScriptedAI.Thread: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+						#endif
 
 					}
 					workItems.Clear();
