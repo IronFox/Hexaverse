@@ -401,10 +401,11 @@ namespace ScriptedAI
 					FlushAndRebuildEntities();
 				}
 				thread.disallowEnqueue = true;	//make sure no synchronized event enqueues job (which can just start right away)
-				foreach (onSynchronized,sync)
+				for (index_t i = 0; i < onSynchronized.Count(); i++)
 				{
-					LogEvent(EventSignificance::Debug,"ScripedAI: On synchronized: Executing "+sync->first+"...");
-					sync->second();
+					const auto&sync = onSynchronized[i];
+					LogEvent(EventSignificance::Debug,"ScripedAI: On synchronized: Executing "+sync.first+"...");
+					sync.second();
 				}
 				onSynchronized.Clear();
 				thread.disallowEnqueue = false;
