@@ -892,7 +892,7 @@ namespace ApplicationInterface
 				#endif
 			if (e->owner->alliance != Objects::Faction::mine->alliance)
 			{
-				if (!ScriptedAI::WillExecuteOnNewRound())
+				if (!ScriptedAI::WillExecuteOnNewRound() && !RuntimeConfig::aiMode)
 				{
 					LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"New hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
 					PlayerControlBegin::pauseAutomaticRoundProgression = true;
