@@ -849,7 +849,7 @@ namespace Objects
 	}
 
 	
-	static void	InsertConstructedEntity(const PWorldEntity&e, float&atTime, bool setHealthToFull)
+	static void	InsertConstructedEntity( const PWorldEntity&e, float&atTime, bool insertIntoGrid, bool setHealthToFull )
 	{
 		#ifndef CLIENT
 			if (setHealthToFull && e->owner)
@@ -898,7 +898,8 @@ namespace Objects
 			});
 
 		#endif
-		InsertIntoGrid(e,e->location);
+		if (insertIntoGrid)
+			InsertIntoGrid(e,e->location);
 		e->isInserted = true;
 	}
 
@@ -926,7 +927,7 @@ namespace Objects
 		#endif
 
 		atTime += timeEpsilon;
-		InsertConstructedEntity(v,atTime,setHealthToFull);
+		InsertConstructedEntity(v,atTime,insertIntoGrid,setHealthToFull);
 		if (v->IsVehicle())
 		{
 			vehicles <<  To<Vehicle>::Cast(v);
@@ -1000,7 +1001,7 @@ namespace Objects
 					+" was found at foundation height, from location "+ToString(s->location));
 		}
 
-		InsertConstructedEntity(s,atTime,setHealthToFull);
+		InsertConstructedEntity(s,atTime,true,setHealthToFull);
 
 
 		structures << s;
@@ -1455,12 +1456,12 @@ namespace Objects
 			}
 		#endif
 
-		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle/*=true*/)
+		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGrid/*=true*/ )
 		{
 			ASSERT__(m);
 			ASSERT2__(!m->isInMovementStream,m->location,m->GetName());
 			float t = 0;
-			InsertConstructed(m,t,insertIntoGridIfVehicle);
+			InsertConstructed(m,t,insertIntoGrid);
 			#ifndef NO_SATELLITES
 				if (m->IsSatellite())
 				{

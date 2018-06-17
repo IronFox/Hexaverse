@@ -106,7 +106,7 @@ namespace Objects
 	
 			void				InsertObject(const Grid::LCellIdI&location, const Entry&object)
 			{
-				ASSERT__(!object->isInsertedIntoGrid);
+				ASSERT1__(!object->isInsertedIntoGrid, object->GetName());
 				Grid::AssertIsValid(location,CLOCATION);
 
 				const int h = object->GetHeight();
@@ -248,7 +248,7 @@ namespace Objects
 		#ifndef NO_SATELLITES
 			void	Place( const PSatellite&s);
 		#endif
-		void		PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
+		void		PlaceMobileEntity(const PMobileEntity&m, bool insertIntoGrid=true);
 
 
 
