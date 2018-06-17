@@ -5,6 +5,7 @@
 #include "clientEvents.h"
 #include "objectNetworkHelper.h"
 #include "clientRuntimeConfig.h"
+#include "scriptedAI.h"
 
 namespace PlayerControlBegin
 {
@@ -32,6 +33,8 @@ namespace PlayerControlBegin
 
 		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && (RuntimeConfig::aiMode || !SeeingHostileActivity()))
 			ApplicationInterface::SignalRoundEnd();
+		elif (!RuntimeConfig::aiMode && ScriptedAI::DoneThisRound())
+			allowChecks = false;	//don't auto-complete if player has assumed control
 
 		#ifdef HAS_WINDOW
 			HUD::HexGrid::RefreshButtonState();
