@@ -10,6 +10,7 @@ v0.8.5
 	> Moved AI configuration folder from client/ai to aiClient.
 	> Full paths, nicknames and chat messages are no longer recorded in log files.
 	> Added buttons to view log files in bug reporter.
+	> Doubled mechanic default repair speed.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.
