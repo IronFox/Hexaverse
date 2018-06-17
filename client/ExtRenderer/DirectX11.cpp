@@ -534,11 +534,10 @@ namespace Engine
 
 	void				DirectX11::RestoreRendererState()
 	{
-		ASSERT__(stack.IsNotEmpty());
-		TRendererState state = stack.Pop();
-		SetBlendMode(state.blendMode);
-		SetRasterizer(state.fill,state.cull);
-		SetDepthTest(state.depthTest,state.depthWrite);
+		Super::PopStateStackToCurrent();
+		SetBlendMode0(current.blendMode);
+		SetRasterizer0(current.fill,current.cull);
+		SetDepthTest0(current.depthTest,current.depthWrite);
 	}
 
 
