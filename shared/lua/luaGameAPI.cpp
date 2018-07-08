@@ -141,6 +141,10 @@ namespace Lua
 
 			job.SetField("roundsToCompletion", entity->ContinuationsToRounds(task.job->continuationsToJobCompletion,task.job->GetOperationAffinity()));
 			job.SetField("continuationsToCompletion",task.job->continuationsToJobCompletion);
+			if (task.name.BeginsWithIgnoreCase("construct "))	//kind of a hack
+			{
+				job.SetField("buildingType", task.name.SubStringRef(10));
+			};
 		}
 
 		Lua::Table foci = program->CreateTable();

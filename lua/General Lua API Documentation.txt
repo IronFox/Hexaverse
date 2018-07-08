@@ -226,6 +226,7 @@ Table-Type: Job
 	bool	hasBegun;					-- Indicates it's no longer safe to drop this task (resources have been expended on it)
 	int		roundsToCompletion;			-- Number of rounds further needed to complete this task (if resources are available)
 	int		continuationsToCompletion;	-- Number of executions until this job will be completed (Mobile units execute multiple continuations per round)
+	string	buildingType;				-- Set to the constructed type if applicable, nil otherwise
 }
 
 Table-Type: Task
