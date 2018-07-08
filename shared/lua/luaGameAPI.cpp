@@ -978,6 +978,14 @@ namespace Lua
 
 			});
 
+			t.SetFunction("Sleep",[id,this](bool doSleep)
+			{
+				if (onUpdateSleep)
+					onUpdateSleep(id, doSleep);
+				else
+					throw Lua::Exception(CLOCATION,"Sleep(): onUpdateSleep not set");
+			});
+
 
 			{
 				auto h = e->CastToHangar();

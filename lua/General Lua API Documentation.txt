@@ -83,6 +83,7 @@ Table-Type: Unit
 	
 	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
 	void		Destroy();				-- Attempts to destroy the local entity
+	void		Sleep(bool);			-- Updates the sleep state
 	
 	[has turret (tower,mobile) and can attack]
 		Turret	turret;					-- Table containing turret information. May be set for structures or mobile entities
