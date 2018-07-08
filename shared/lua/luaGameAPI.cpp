@@ -1393,16 +1393,15 @@ namespace Lua
 				return m->IsAffectedByGravity(loc);
 			});
 
-			Grid::LCellIdI loc;
-			t.SetFunction("FindShortestPath", [this,w,loc](const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
+		//	Grid::LCellIdI loc;
+			t.SetFunction("FindShortestPath", [this,w](const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
 			{
 				auto v = w.lock();
 				if (!v)
 					throw Lua::Exception("FindShortestPath(): Mobile entity has expired");
 
 				const auto dest = Detail::ToLGridCell(targetLocation, "FindShortestPath(): Target parameter #1");
-
-				return this->LuaFindShortestPathFrom(v,loc,dest,costModifier,ignoreFriendlyMobilesOnRoute);
+				return this->LuaFindShortestPathFrom(v,v->location,dest,costModifier,ignoreFriendlyMobilesOnRoute);
 			});
 
 			t.SetFunction("FindShortestPathFrom", [this,w](const Lua::Table&originLocation, const Lua::Table&targetLocation, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute)->Lua::Table
