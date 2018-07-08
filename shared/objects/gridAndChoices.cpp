@@ -471,17 +471,21 @@ namespace Objects
 
 
 
-	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
+	PWorldEntity	GetBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
 	{
 		PStructure s = GetStructure(cellID);
 		if (s && !To<Connector>::DynamicCast(s))
-			return false;
+			return s;
 		#ifdef CLIENT
-			return !checkVehiclesOnClient || !GetMobileEntity(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
-		#else
-			auto v = GetMobileEntity(cellID);
-			return !v;
+			if (!checkVehiclesOnClient)
+				return nullptr;
 		#endif
+		return GetMobileEntity(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
+	}
+
+	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
+	{
+		return !GetBlockingHere(cellID,checkVehiclesOnClient);
 	}
 
 

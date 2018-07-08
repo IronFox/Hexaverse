@@ -227,6 +227,7 @@ namespace Objects
 					}
 
 	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
+	PWorldEntity	GetBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
 
 
