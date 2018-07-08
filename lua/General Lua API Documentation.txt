@@ -99,6 +99,7 @@ Table-Type: Unit
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
 		void	BuildStructure(string type);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
+		void	SetAutomation(bool);	-- Updates automation
 
 		--[[
 		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) and the current mobile location

@@ -242,6 +242,14 @@ namespace ScriptedAI
 				Network::Channels::dropTasks.SendTo(Network::client, cmd);
 			}
 
+			void	UpdateMobileAutomation(const TUniqueID&entityID, bool doAutomate)
+			{
+				Protocol::EntityStateUpdate update;
+				update.entityID = entityID;
+				update.doSet = doAutomate;
+				Network::Channels::automate.SendTo(Network::client, update);
+			}
+
 			void	EnableWorkingStructure(const TUniqueID&entityID, bool doEnable)
 			{
 				Protocol::EnableStructure cmd;
@@ -708,6 +716,7 @@ namespace ScriptedAI
 		api.onDropAllTasks = Callback::DropAllTasks;
 		api.onDropSafeTasks = Callback::DropSafeTasks;
 		api.onEnableWorkingStructure = Callback::EnableWorkingStructure;
+		api.onUpdateMobileAutomation = Callback::UpdateMobileAutomation;
 		api.onMarkerCreate = Callback::MarkerCreate;
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;

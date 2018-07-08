@@ -1324,7 +1324,18 @@ namespace Lua
 		{
 			Lua::Table tasks = program->CreateTable();
 			const auto m = To<Objects::MobileEntity>::Cast(e);
+			const Objects::WMobileEntity w = m;
+
 			t.SetField("isAutomated",m->isAutomated);
+			t.SetFunction("SetAutomation",[id,this](bool doAutomate)
+			{
+				if (onUpdateMobileAutomation)
+					onUpdateMobileAutomation(id, doAutomate);
+				else
+					throw Lua::Exception(CLOCATION,"SetAutomation(): onUpdateAutomation not set");
+			});
+
+
 			if (!m->storedIn.expired())
 			{
 				t.SetField("storedIn",MapEntity(m->storedIn.lock()->ToEntity().shared_from_this(),actual,false));
@@ -1341,7 +1352,6 @@ namespace Lua
 
 			t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
 
-			Objects::WMobileEntity w = m;
 			t.SetFunction("CanStandAt",[w](const Lua::Table&loc)
 			{
 				auto v = w.lock();
