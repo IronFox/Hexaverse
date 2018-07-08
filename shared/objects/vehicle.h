@@ -170,6 +170,7 @@ namespace Objects
 		virtual String			DescribeFlatAttackRange() const override;
 		virtual float			GetZOffset() const override {return base->height;}
 		virtual int				GetOperationSpeed(Component::operation_t) const override;
+		virtual int				GetOperationAccelerationExponent(Component::operation_t) const override;
 		virtual String			DescribeOperationSpeed(Component::operation_t) const override;
 
 		//Hibernating overrides:

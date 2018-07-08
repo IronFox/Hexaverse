@@ -209,6 +209,12 @@ namespace Objects
 		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
 	}
 
+	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::operation_t op) const
+	{
+		//const auto&state = GetResearchState();
+		return base->acceleration[op];
+	}
+
 
 	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op) const
 	{
