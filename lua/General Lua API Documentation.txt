@@ -130,7 +130,7 @@ Table-Type: Unit
 			Conversely, increasing the returned value will cause the routing mechanism to avoid the location (assuming it's not the target).
 			Note that the returned value will be factored in the calculation of Reachable.movementCostsFromRoot
 		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
-		@return Array of path nodes, in order along the route. The current unit location is omitted, making the first entry the first step to take.
+		@return Array of path nodes, in order along the route. The current unit location is omitted, making the first entry the first step to take. Returns nil if no route was found
 		]]
 		Reachable[]	FindShortestPath(Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
 		Reachable[]	FindShortestPathFrom(Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
