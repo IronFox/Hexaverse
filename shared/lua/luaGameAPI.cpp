@@ -64,6 +64,21 @@ namespace Lua
 			}
 		}
 
+		bool NoNaturalResourcesHere(Lua::Table cellTable)
+		{
+			const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
+			#ifdef CLIENT
+				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
+					return false;
+			#endif
+			foreach (Grid::Resource::all,r)
+			{
+				if (r->coverage[stackID] != 0)
+					return false;
+			}
+			return true;
+		}
+
 
 		int GetNaturalResourceAt(const String&resourceName, Lua::Table cellTable)
 		{
@@ -1679,6 +1694,7 @@ namespace Lua
 
 		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource){return LuaFindHighestAvailableResourceLocation(resource);});
 		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
+		gridTable.SetFunction("NoNaturalResourcesHere",Detail::NoNaturalResourcesHere);
 
 
 		gridTable.SetFunction("ToLocation",[this](const Lua::Table&cell, int height)

@@ -275,6 +275,7 @@ without falling or taking damage.
 Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
 [client only]
 	int		Game.Grid.GetNaturalResourceAt(string resourceName, Cell cell)		-- Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet.
+	bool	Game.Grid.NoNaturalResourcesHere(Cell cell)	-- Returns true if the location has been surveyed but there is nothing here
 	Cell	Game.Grid.FindHighestAvailableResourceLocation(string resourceName)	-- Searches among all known resource spots for the highest value where a mine could be constructed. Returns nil if none are found
 
 Cell[]		Game.Grid.unitCells						-- Ordered table of all planar unit cells in the world. These are larger than terrain cells
