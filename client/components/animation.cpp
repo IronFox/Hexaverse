@@ -133,7 +133,11 @@ namespace Animation
 					bool canDo = true;
 					foreach (v->myTasks.GetNewest().path,node)
 					{
-						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost) || !Objects::NothingBlockingHere(node->cell,true))
+						if (node->cell == v->location)
+							continue;
+						const bool threatless = EstimateThreatLevel(v,node->cell,competition,ally,ghost);
+						const auto blocking = Objects::GetBlockingHere(node->cell,true);
+						if (!threatless || blocking)
 						{
 							canDo = false;
 							break;

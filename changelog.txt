@@ -20,6 +20,7 @@ v0.8.5
 	* Fixed main menu button while server list is visible.
 	* Fixed bug reporter crash when handling files still written to by game executable.
 	* Fixed empty bug reporter messages when encountering pre-logging faults.
+	* Fixed surveyor automation constantly rejecting previous path.
 
 v0.8.4	[Apr 22 2018]
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
