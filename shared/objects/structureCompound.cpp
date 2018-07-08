@@ -462,6 +462,23 @@ namespace Objects
 		return result;
 	}
 
+	FullResourceVector Compound::GetAllEnabledVector() const
+	{
+		FullResourceVector result;
+
+		foreach (workingStructures,s0)
+		{
+			PWorkingStructure s= s0->lock();
+			DBG_ASSERT__(s);
+			if (!s || s->IsHibernating())
+				continue;
+			ResourceVector local,storage,storageMax;
+			s->GetResourceVector(local,storage,storageMax);
+			result.Include(local,storage,storageMax);
+		}
+		return result;
+	}
+
 	bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const
 	{
 		ResourceVector balance = total.balance;

@@ -763,6 +763,17 @@ namespace Lua
 		t.SetField("id",a->id.ToFullString());
 		return found;
 	}
+
+
+	void			API::TFactionResourceBalance::AllocateIn(Lua::Table&parent, const String&name)
+	{
+		auto t = table = parent.SetSubTable(name);
+		balanceTable = t.SetSubTable("balance");
+		storageTable = t.SetSubTable("storage");
+		demandTable = t.SetSubTable("demand");
+		supplyTable = t.SetSubTable("supply");
+	}
+
 	
 
 	API::TFaction*	API::AddFaction( const Objects::PFaction&f, bool updateIfFound )
@@ -787,11 +798,8 @@ namespace Lua
 			found = loadedFactionTableMap.SetNew(f->id);
 			found->table = t;
 			found->entityTable = t.SetSubTable("units");
-			found->balanceTable = t.SetSubTable("resourceBalance");
-			found->storageTable = t.SetSubTable("resourceStorage");
-			found->demandTable = t.SetSubTable("resourceDemand");
-			found->supplyTable = t.SetSubTable("resourceSupply");
-			found->maxStorageTable = t.SetSubTable("maxResourceStorage");
+			found->current.AllocateIn(t,"currentResources");
+			found->max.AllocateIn(t,"maxResources");
 
 			factionMappedToTable.Set(f->id);
 			factionIDMap.SetField(f->id.ToFullString(),t);
@@ -808,11 +816,16 @@ namespace Lua
 		t.SetField("alliance",alliance->table);
 
 		auto vec = f->compound.GetVector();
-		Detail::UpdateResourceTable(found->balanceTable,vec.balance);
-		Detail::UpdateResourceTable(found->demandTable,vec.demand);
-		Detail::UpdateResourceTable(found->storageTable,vec.storage);
-		Detail::UpdateResourceTable(found->maxStorageTable,vec.storageMax);
-		Detail::UpdateResourceTable(found->supplyTable,vec.supply);
+		Detail::UpdateResourceTable(found->current.balanceTable,vec.balance);
+		Detail::UpdateResourceTable(found->current.demandTable,vec.demand);
+		Detail::UpdateResourceTable(found->current.storageTable,vec.storage);
+		Detail::UpdateResourceTable(found->current.supplyTable,vec.supply);
+
+		vec = f->compound.GetAllEnabledVector();
+		Detail::UpdateResourceTable(found->max.balanceTable,vec.balance);
+		Detail::UpdateResourceTable(found->max.demandTable,vec.demand);
+		Detail::UpdateResourceTable(found->max.supplyTable,vec.supply);
+		Detail::UpdateResourceTable(found->max.storageTable,vec.storageMax);
 
 		return found;
 	}
