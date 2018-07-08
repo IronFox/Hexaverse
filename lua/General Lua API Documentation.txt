@@ -264,6 +264,13 @@ Loc			Game.Grid.ToLocation(Cell, int);	-- Constructs a location at the given cel
 int			Game.Grid.bottomHeight;		-- Minimum grid height (also applies to terrain)
 int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
 bool		Game.Grid.IsClear(Loc);												-- Checks if all terrain cells affecting the specified location are clear
+--[[
+FindHighestVehicleGround:
+Identifies the height level where the specified unit (vehicle) can stand
+without falling or taking damage.
+@return Location or nil if none exists
+]]
+Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
 [client only]
 	int		Game.Grid.GetNaturalResourceAt(string resourceName, Cell cell)		-- Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet.
 	Cell	Game.Grid.FindHighestAvailableResourceLocation(string resourceName)	-- Searches among all known resource spots for the highest value where a mine could be constructed. Returns nil if none are found

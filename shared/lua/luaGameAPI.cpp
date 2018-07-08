@@ -1689,6 +1689,20 @@ namespace Lua
 			auto location = Detail::ToLGridCell(loc,"IsClear(): Location parameter");
 			return World::actual.LowCellIsClearIgnoreStructure(location);
 		});
+		gridTable.SetFunction("FindHighestVehicleGround",[this](const Lua::Table&unit, const Lua::Table&cell)->Lua::Table
+		{
+			const auto stack = Detail::LuaCellToStack(cell, "FindHighestVehicleGround(): Cell parameter #2" , Grid::LowSetup::GridType::CellCount);
+			auto e = LuaUnitToEntity(unit, "FindHighestVehicleGround(): Unit parameter #1");
+			if (!e->IsVehicle())
+				throw Lua::Exception("FindHighestVehicleGround(): Unit parameter #1 does not point to a vehicle");
+			auto v = To<Objects::Vehicle>::Cast(e);
+
+			int h = Objects::FindApplicableGround(Grid::LCellIdI(stack,Grid::CellStack::TopHeight),v->base->moveOnWater,false);
+			if (h == Grid::BadHeight)
+				return Lua::nil;
+			return this->ToTable(Grid::LCellIdI(stack,h));
+		});
+
 
 
 		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
