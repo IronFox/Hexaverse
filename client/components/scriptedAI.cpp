@@ -561,6 +561,9 @@ namespace ScriptedAI
 				Details::completedThisPhase = true;
 
 				PlayerControlBegin::CheckAutoNextRound();
+				#ifdef HAS_WINDOW
+					HUD::HexGrid::RefreshButtonState();
+				#endif
 			}
 		}
 
