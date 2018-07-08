@@ -275,6 +275,7 @@ namespace Lua
 			t.SetField("can"+os,b.turret->CanDo(o));
 					
 			t.SetField("speedOf"+os,b.GetOperationSpeed(o));
+			t.SetField("perRound"+os, 1 << b.GetOperationAccelerationExponent(o));
 		}
 
 		return t;
