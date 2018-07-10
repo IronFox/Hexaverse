@@ -358,7 +358,7 @@ namespace Menu
 			}
 		});
 
-		AddCheckBox("Debug AI", ScriptedAI::visualDebugActive, [](bool enabled)
+		AddCheckBox("Debug Tools for Scripted AI", ScriptedAI::visualDebugActive, [](bool enabled)
 		{
 			bool old = ScriptedAI::visualDebugActive;
 			if (old != enabled)
