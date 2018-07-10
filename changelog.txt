@@ -1,8 +1,9 @@
-v0.8.5
+v0.9.0	[June 10 2018]
 	+ Bomb detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
 	+ Added checkbox to disable terrain camera clipping.
 	+ Added Privacy Notice link to bug reporter.
 	+ Added menu option to start new client instance using different profile.
+	+ Added support for scriptable AI.
 	> Removed internal emergency program in favor of install-directory factory default.
 	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
 	> Added close-button to game-end statistics (still closeable via Escape).
