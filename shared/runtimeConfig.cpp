@@ -75,6 +75,11 @@ namespace RuntimeConfig
 		HRESULT hr = SHGetFolderPathW(0, CSIDL_MYDOCUMENTS, 0, 0, folder);
 		myDocuments = folder;
 		ASSERT1__(myDocuments.IsValidLocation(),myDocuments.GetLocation());
+
+		//FileSystem::File file;
+		//myDocuments.Find(L"./My Games",file,FileSystem::FindFlags::None);
+		//FileSystem::SetPathPrefix(file.GetLocation(),"My Games");
+		FileSystem::SetPathPrefix(myDocuments.GetLocation(),"Documents");
 	}
 
 

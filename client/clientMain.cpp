@@ -837,8 +837,9 @@ namespace ApplicationInterface
 			}
 	}
 
-	void	OnAppear(const Objects::PWorldEntity&e)
+	void	OnAppear( const Objects::PWorldEntity&e )
 	{
+		ScriptedAI::SignalAppearance(e);
 		#ifdef HAS_WINDOW
 			if (!e->ambientSound.IsCreated())
 			{
@@ -914,7 +915,7 @@ namespace ApplicationInterface
 				#endif
 			if (e->owner->alliance != Objects::Faction::mine->alliance)
 			{
-				if (!ScriptedAI::WillExecuteOnNewRound())
+				if (!ScriptedAI::WillExecuteOnNewRound() && !RuntimeConfig::aiMode)
 				{
 					LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"New hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
 					PlayerControlBegin::pauseAutomaticRoundProgression = true;
@@ -1211,7 +1212,7 @@ bool loop()
 	#ifndef HAS_WINDOW
 		Sleep(50);
 		AI::Process(0.5f);
-		Sys::DisableConsoleQuickEdit();
+		//Sys::DisableConsoleQuickEdit();
 	#else
 
 		if (Animation::AllDone())
@@ -1567,7 +1568,10 @@ bool loop()
 				#endif
 
 				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
-				textout << "Hello "<<Network::chosenNickname<<nl;
+				textout << "Hello "<<Network::chosenNickname;
+				if (RuntimeConfig::profileName.IsNotEmpty())
+					textout << " ["<<RuntimeConfig::profileName<<"]";
+				textout <<nl;
 				if (Network::amOnline)
 				{
 					textout << "Server ID: " << Network::serverIDString<<nl;
@@ -1581,7 +1585,7 @@ bool loop()
 					if (!Network::gameProgress.gameOver)
 					{
 						if (Network::gameProgress.status.IsNotEmpty())
-							textout << "Progress: "<<Network::gameProgress.status<<nl;
+							textout << "Progress: "<<nl << "  "<<Network::gameProgress.status<<nl;
 						if (Network::gameProgress.warning.IsNotEmpty())
 						{
 							textout.SetColor(1,0,0);
@@ -1694,8 +1698,14 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
+
+	const bool supplyMessage = !Logging::HasBegun();
 	Logging::End();
-	Logging::CallBugReporter();
+	if (supplyMessage)
+		Logging::CallBugReporter("Pre-logging issue encountered: "+message);
+	else
+		Logging::CallBugReporter();
+
 	application_shutting_down = true;	//prevent certain operations in Close()
 	
 	//ErrMessage(message);
@@ -1754,10 +1764,11 @@ namespace ApplicationInterface
 		if (!CanChangeRoundState())
 			return false;
 
-		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound)
+		if (!Objects::Faction::mine || Network::newRoundRequested)
 			return false;
 
-
+		if (RuntimeConfig::aiMode)
+			return true;	//don't check units. script has run
 
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
@@ -1772,6 +1783,11 @@ namespace ApplicationInterface
 }
 
 
+bool ValidProfileCharacter(char c)
+{
+	return (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9');
+}
+
 
 void ParseKeyValue(const String&key, const String&value)
 {
@@ -1781,12 +1797,17 @@ void ParseKeyValue(const String&key, const String&value)
 		if (key == "aiAccessToken")
 		{
 			RuntimeConfig::aiMode = true;
+			RuntimeConfig::autoNewRound = true;
+			ScriptedAI::visualDebugActive = true;
+
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
 		elif (key == "profile")
 		{
-			RuntimeConfig::profilePrefix = value+"_";
+			RuntimeConfig::profileName = value.CopyToLowerCase().Trim();
+			RuntimeConfig::profileName.EraseCharacters(ValidProfileCharacter,false);
+			RuntimeConfig::profilePrefix = RuntimeConfig::profileName+"_";
 			LogEvent(EventClass::Preset::configuration,nullptr,"Using profile prefix '"+RuntimeConfig::profilePrefix+"'");
 		}
 		elif (key == "udpListen")
@@ -1868,11 +1889,11 @@ bool ConfigureClient(const wchar_t*commandLine)
 		}
 		if (expectValue)
 		{
-			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing parameter value for '" + parameterName + "'");
+			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Empty value for parameter '" + parameterName + "'");
 		}
 		else
 			if (parameterName.IsNotEmpty())
-				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Missing '=' and parameter value for '" + parameterName + "'");
+				throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Parameter '" + parameterName + "' does not appear to have a value (should be 'parameter=value')");
 	
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
@@ -1881,7 +1902,8 @@ bool ConfigureClient(const wchar_t*commandLine)
 	}
 	catch (const std::exception&e)
 	{
-		MyFatal(FatalDescriptor(CLOCATION, e.what()));
+		//MyFatal(FatalDescriptor(CLOCATION, e.what()));		//not good to treat this as a fatal since fatals trigger the bug reporter, and this is not technically a bug
+		ErrMessage(e.what());
 		return false;
 	}
 	if (RuntimeConfig::serverAddress.host.IsNotEmpty())
@@ -1897,7 +1919,9 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 {
 	PathString test = dir + "/resources";
 	bool rs = FileSystem::IsDirectory(test);
-	LogEvent(EventSignificance::Debug,"Checking client target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+	#ifdef _DEBUG
+		LogEvent(EventSignificance::Debug,"Checking client target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+	#endif
 
 
 	return rs;
@@ -2053,12 +2077,17 @@ int main( int argc, const char* argv[])
 			while (dir.GetLength() > 1 && !IsTargetWorkingDirectory(dir))
 			{
 				dir = FileSystem::ExtractFileDir(dir);
-				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
+				#ifdef _DEBUG
+					LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
+				#endif
 			}
 			if (IsTargetWorkingDirectory(dir))
 				FileSystem::SetWorkingDirectory(dir);
 			else
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
+
+			FileSystem::SetPathPrefix(FileSystem::GetWorkingDirectory(),"Client");
+
 		}
 
 
@@ -2089,7 +2118,7 @@ int main( int argc, const char* argv[])
 				}
 
 				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
-				ScriptedAI::visualDebugActive = StartConfig::GetBool("runtime/aiDebugMode");
+				ScriptedAI::visualDebugActive = RuntimeConfig::aiMode || StartConfig::GetBool("runtime/aiDebugMode");
 
 				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
@@ -2137,10 +2166,10 @@ int main( int argc, const char* argv[])
 
 			UINT32 loadedFlags = Engine::CreateDisplay(display,
 				RuntimeConfig::myConfig.Lookup("window"),
-				RuntimeConfig::aiMode ? "AI":
-				PRODUCT_NAME
+				(RuntimeConfig::aiMode ? "AI": PRODUCT_NAME)
+				+ (RuntimeConfig::profileName.IsNotEmpty() ? " ["+RuntimeConfig::profileName+"]":"")
 				#ifdef _DEBUG
-					" (DEBUG)"
+					+" (DEBUG)"
 				#endif
 				,Resolution(1280,800),onWindowResize
 				,Engine::DisplayConfig::Icon(IDI_CLIENT)

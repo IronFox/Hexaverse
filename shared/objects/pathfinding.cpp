@@ -134,7 +134,7 @@ namespace Objects{ namespace Pathfinding
 
 		auto hangar = AccessibleHangarHere(location,v);
 		if (hangar)
-			if (routingFlags & RoutingFlags::AllowAccessibleHangars && (location == finalDestination || hangar == finalDestinationHangar))
+			if (routingFlags & RoutingFlags::AllowAccessibleHangars && (finalDestination == Grid::LCellIdI::Invalid || location == finalDestination || hangar == finalDestinationHangar))
 				return true;
 
 		return IgnoreStructuresAtDestination && finalDestination == location;
@@ -662,7 +662,7 @@ namespace Objects{ namespace Pathfinding
 
 			touched << current;
 
-			GetWays(world,&m,  cellID, possibilities, cellID, nullptr, routingFlags, groundFlags);
+			GetWays(world,&m,  cellID, possibilities, Grid::LCellIdI::Invalid, nullptr, routingFlags, groundFlags);
 
 
 

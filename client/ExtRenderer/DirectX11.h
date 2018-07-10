@@ -919,7 +919,6 @@ namespace Engine
 
 	//namespace V2 = GL::V2;
 
-	CONSTRUCT_ENUMERATION4(BlendMode,None,AlphaBlend,FlareBlend,Add);
 
 
 
@@ -927,6 +926,7 @@ namespace Engine
 	{
 	public:
 	private:
+		typedef VisualInterface	Super;
 
 		struct CameraData
 		{
@@ -977,30 +977,12 @@ namespace Engine
 		int					shaderLockLevel = 0;
 
 
-		struct TRendererState
-		{
-			BlendMode		blendMode;
-			bool			fill,cull,depthTest,depthWrite;
-		};
 
-		TRendererState		current;
-		Buffer0<TRendererState>	stack;
 
 		void				SetDepthTest0(bool depthTest, bool depthWrite);
 		void				SetRasterizer0(bool fill, bool cull);
 		void				SetBlendMode0(BlendMode);
 		void				UnbindShaderResources();
-
-	protected:
-		//static			bool				bindFrameBufferObject(const GL::FBO&);
-			//			void				unbindFrameBufferObject(const Resolution&new_resolution);
-		inline			void				onModelviewChange();
-
-		virtual	void				enableLight(const PLight&)	override	{};
-		virtual	void				disableLight(const PLight&)	override	{};
-		virtual	void				updateLight(const PLight&)	override	{};
-		virtual	void				updateLightPosition(const PLight&)	override	{};
-
 
 	public:
 		struct MSAAConfig
@@ -1028,9 +1010,6 @@ namespace Engine
 		//typedef		GL::ContextLock					ContextLock;
 
 		static DirectX11			*globalInstance;
-
-
-		virtual bool				pickLightScene(index_t  scenario) override	{return false;};		//!< Picks a light scenario as active scenario (this may be slow at times). \param scenario Index of an existing scenario that should be used from now on (0 = default scenario). \return true on success
 
 		void						NextFrameNoClr();																				//!< Swaps buffers
 		void						NextFrame();																					//!< Swaps buffers and clears the back buffer
@@ -1093,13 +1072,10 @@ namespace Engine
 		void						SetBackbufferClearColor(const M::TVec3<>&c)					{clearColor.rgb = c;}
 
 		/**
-		@brief Pushes the current render state (depth-test,rasterizer,blend-mode) to the stack
-		*/
-		void						StoreRendererState()	{ASSERT_LESS__(stack.Count(), 16); stack << current;}
-		/**
-		@brief Pops and restores the last pushed render state from the stack
+		@brief Pops and restores the last pushed render state from the stack.
 		*/
 		void						RestoreRendererState();
+		//void						StoreRendererState();	//implemented by VisualInterface
 		void						SetDepthTest(bool depthTest, bool depthWrite);
 		void						SetRasterizer(bool fill, bool cull);
 		void						SetBlendMode(BlendMode);

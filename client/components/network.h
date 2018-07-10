@@ -87,6 +87,9 @@ namespace Network
 		}
 	};
 
+
+	extern ServerAddress	lastServerAddress;
+
 }
 
 DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
@@ -283,7 +286,6 @@ namespace Network
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
-		extern TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>			queueResearch;
 		
 
 		DECLARE_CHANNEL(MyFaction);
@@ -302,6 +304,10 @@ namespace Network
 		DECLARE_OBJECT_SENDER(QueueResearch);
 		DECLARE_CHANNEL(ResearchAttributeVector);
 		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
+
+		DECLARE_CHANNEL(ChoiceResponse);
+
+		DECLARE_CHANNEL(ScriptedAIState);
 	}
 
 

@@ -209,6 +209,12 @@ namespace Objects
 		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
 	}
 
+	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::operation_t op) const
+	{
+		//const auto&state = GetResearchState();
+		return base->acceleration[op];
+	}
+
 
 	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op) const
 	{
@@ -721,6 +727,18 @@ namespace Objects
 		}
 
 	#endif
+
+
+	int						Vehicle::GetPrice() const
+	{
+		return GetPrice(base,turret, owner->GetAttributeTable());
+	}
+
+	int						Vehicle::GetPrice(const PFaction&owner) const
+	{
+		return GetPrice(base,turret, owner->GetAttributeTable());
+	}
+
 
 }
 

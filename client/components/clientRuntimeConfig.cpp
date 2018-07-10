@@ -14,7 +14,7 @@ namespace RuntimeConfig
 	Network::ServerAddress	serverAddress;
 	FileSystem::File		documentationRootFolder;
 
-	String					profilePrefix;
+	String					profilePrefix,profileName;
 
 
 	void	ClientInit()

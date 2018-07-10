@@ -133,7 +133,11 @@ namespace Animation
 					bool canDo = true;
 					foreach (v->myTasks.GetNewest().path,node)
 					{
-						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost) || !Objects::NothingBlockingHere(node->cell,true))
+						if (node->cell == v->location)
+							continue;
+						const bool threatless = EstimateThreatLevel(v,node->cell,competition,ally,ghost);
+						const auto blocking = Objects::GetBlockingHere(node->cell,true);
+						if (!threatless || blocking)
 						{
 							canDo = false;
 							break;
@@ -1182,9 +1186,10 @@ namespace Animation
 					else
 					{
 						//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
+						ASSERT__(!v->isInsertedIntoGrid);
 						Objects::PlaceMobileEntity(v,false);
-						if (v->IsGroundBoundVehicle())	//only vehicles get to be inserted anyhow
-							insertIntoGridLater.Set(v->id);
+						ASSERT__(!v->isInsertedIntoGrid);
+						insertIntoGridLater.Set(v->id);
 						#ifdef HAS_WINDOW
 							if (!allocatedTarget->isOwnedByMe)
 								HUD::HexGrid::RefreshContacts();
@@ -1207,7 +1212,7 @@ namespace Animation
 						Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
 						if (v)
 						{
-							if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage)
+							if (!insertIntoGridLater.Unset(v->id) && removalType != Objects::RemovalType::DestroyedInStorage)
 								Objects::RemoveFromGrid(v,v->location);
 						}
 					}

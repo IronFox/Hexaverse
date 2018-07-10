@@ -152,12 +152,16 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
 
+	DECLARE_OBJECT_SENDER(ChoiceResponse);
+
 	DECLARE_OBJECT_SENDER(ResearchFactionState);
 	DECLARE_OBJECT_SENDER(ResearchProgram);
 	DECLARE_OBJECT_SENDER(ResearchQueue);
 	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
 	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
 	DECLARE_FACTION_CHANNEL(QueueResearch);
+
+	DECLARE_FACTION_CHANNEL(ScriptedAIState);
 
 	namespace Statistics
 	{

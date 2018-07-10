@@ -740,6 +740,11 @@ namespace Lua
 			lua_pushstring(state,str.c_str());
 		}
 
+		void PushStrParameter(lua_State *state, const StringRef&str)
+		{
+			lua_pushlstring(state,str.GetPointer(),str.GetLength());
+		}
+
 		void PushStrParameter(lua_State *state, const char*str)
 		{
 			lua_pushstring(state,str);

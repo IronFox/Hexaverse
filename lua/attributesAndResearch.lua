@@ -324,7 +324,7 @@ TurretConfig =
 		Weight = 2,
 		HealthMultiplier = 1,
 		ScanningRange = 3,
-		Op_Repair = 10,
+		Op_Repair = 20,
 		IsUnlocked = true,
 	},
 	

@@ -119,6 +119,8 @@ struct TUniqueID
 
 	String		ConvertToString(count_t numBytes=4) const
 	{
+		if (IsEmpty())
+			return "0";
 		return Bin2Str::Convert(bytes,numBytes);
 	}
 

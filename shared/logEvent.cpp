@@ -27,6 +27,7 @@ bool		inTestMode = false;
 EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalError),
 			EventClass::Preset::internalError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::scriptLog = EventClass(EventSignificance::Important, EventFlavor::ServerPrivate),
+			EventClass::Preset::scriptMessage = EventClass(EventSignificance::Important),
 			EventClass::Preset::scriptError = EventClass(EventSignificance::NonFatalError, EventFlavor::ServerPrivate),
 			EventClass::Preset::fatal = EventClass(EventSignificance::SystemFatal, EventFlavor::SystemError),
 			EventClass::Preset::unexpectedBehavior = EventClass(EventSignificance::ClientFatal, EventFlavor::SystemError),
@@ -111,16 +112,19 @@ namespace Logging
 
 	//HANDLE	fileHandle = INVALID_HANDLE_VALUE;
 
+	PathString activePath;
+	bool		hasBegun = false;
+
 	void	End()
 	{
 		#ifndef HAS_WINDOW
 		consoleThread.End();
 		#endif
 		outFile.Close();
+		hasBegun = false;
 	}
 
 
-	PathString activePath;
 
 	void	CallBugReporter()
 	{
@@ -128,9 +132,20 @@ namespace Logging
 		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
 	}
 
-
-	void	Begin(const PathString&path)
+	void	CallBugReporter(const String&message)
 	{
+		MonitoredProcess	process(false);
+		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\" -m \""+PathString(message.Escape("\""))+"\"");	//start and abandon
+	}
+
+	bool	HasBegun()
+	{
+		return hasBegun;
+	}
+
+	void	Begin( const PathString&path )
+	{
+		hasBegun = true;
 		activePath = path;
 		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
 		folder.Rewind();
@@ -222,6 +237,7 @@ namespace Logging
 			if (!printToConsole)
 				return;
 		}
+		const bool writeToFile = !inTestMode;
 
 		static Sys::SpinLock lock;
 
@@ -231,7 +247,7 @@ namespace Logging
 		if (!headerWritten)
 		{
 			headerWritten = true;
-			if (!inTestMode)
+			if (writeToFile)
 			{
 				//if you change this, make sure to update bug reporter
 				logFile << "Sig."<< tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
@@ -239,7 +255,7 @@ namespace Logging
 		}
 		if (printToConsole)
 			console << '[' << RuntimeConfig::roundNumber.ToString()<<"] ";
-		if (!inTestMode)
+		if (writeToFile)
 			logFile << evClass.significance.ToString()  << tab << TimeStamp() << tab << RuntimeConfig::roundNumber.ToString() << tab << RuntimeConfig::phase.ToString();
 
 		if (peer)
@@ -250,30 +266,30 @@ namespace Logging
 				{
 					if (printToConsole)
 						console << c->ConvertToString()<<" ";
-					if (!inTestMode)
+					if (writeToFile)
 						logFile << tab << c->ConvertToString();
 				}
 				else
 			#endif
-				if (!inTestMode)
+				if (writeToFile)
 					logFile << tab;
 			if (printToConsole)
 				console << peer->ToString()<< ": ";
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << peer->ToString();
 		}
 		else
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << tab;
 		if (e)
 		{
 			if (printToConsole)
 				console << e->GetName()<<" ("<<e->location<<"): ";
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location;
 		}
 		else
-			if (!inTestMode)
+			if (writeToFile)
 				if (owner)
 					logFile << tab << tab<<tab<<owner->GetLogName() <<tab;
 				else
@@ -299,13 +315,21 @@ namespace Logging
 				logConsoleMsg = ">[private]" +logConsoleMsg;
 			break;
 		}
-
-
-		if (!inTestMode)
-			logFile << tab << logConsoleMsg << nl;
 		if (printToConsole)
+		{
+			if (owner && evClass.flavor == EventFlavor::ChatMessage)
+				console << owner->name << ": ";
 			console << logConsoleMsg << nl;
-		if (!inTestMode)
+		}
+
+		if (writeToFile)
+		{
+			if (evClass.flavor == EventFlavor::ChatMessage)
+				logConsoleMsg = "[Redacted Chat Message]";
+			logFile << tab << logConsoleMsg << nl;
+		}
+
+		if (writeToFile)
 			Flush(logFile,printToConsole);
 		if (printToConsole)
 		{

@@ -22,6 +22,7 @@
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
+bool	ValidProfileCharacter(char c);
 
 
 
@@ -89,7 +90,13 @@ namespace Menu
 
 
 
-	PMenu	main,help,login,game,startServer,saveGames;
+	PMenu	main,
+			help,
+			login,
+			game,
+			startServer,
+			saveGames,
+			launch;
 	Component::PWindow	options;
 
 
@@ -351,7 +358,7 @@ namespace Menu
 			}
 		});
 
-		AddCheckBox("Debug AI", ScriptedAI::visualDebugActive, [](bool enabled)
+		AddCheckBox("Debug Tools for Scripted AI", ScriptedAI::visualDebugActive, [](bool enabled)
 		{
 			bool old = ScriptedAI::visualDebugActive;
 			if (old != enabled)
@@ -412,16 +419,6 @@ namespace Menu
 			});
 
 		},[](){return Network::client.IsConnected() && Network::client.IsLocalhost();});
-		game->AddCommand("Launch Control Console",[]()
-		{
-			SetFullScreen(false);
-			MonitoredProcess	process(false);
-			if (Network::amOnline && Network::client.IsLocalhost())
-				process.Start("../ControlConsole/","ControlConsole.exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
-			else
-				process.Start("../ControlConsole/","ControlConsole.exe","");	//start and abandon, without port parameter since we don't know any
-		});
-		//game->FullAutoLayout();
 	}
 
 	static void	CreateHelpMenu()
@@ -490,6 +487,7 @@ namespace Menu
 		},
 		[](){return Network::client.IsConnected() || ConfigurationMode::IsActive();});
 		main->AddCommand("Game",[](){WindowStack::Show(game);},std::function<bool()>(),false);
+		main->AddCommand("Launch...",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
 		
 		main->AddCommand("Help",
 			[]()
@@ -507,6 +505,52 @@ namespace Menu
 
 		main->AddCommand("Quit to Desktop",[](){HUD::Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return HUD::Dialog::CheckResult::OkayContinue;});});
 		//main->FullAutoLayout();
+	}
+
+	static void CreateLaunchMenu()
+	{
+		auto menu = launch = Menu::Create();
+		menu->Setup(0.3f,"Launch...",true);
+
+		menu->AddCommand("Local server control console",[]()
+		{
+			SetFullScreen(false);
+			MonitoredProcess	process(false);
+			if (Network::amOnline && Network::client.IsLocalhost())
+				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+			else
+				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
+		});
+
+		menu->AddCommand("New client with custom profile",[]()
+		{
+			Dialog::Query("Please enter a profile name to continue (empty for none).\n"
+				"Servers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation.\n"
+				"Make sure to not reuse the same profile for more than one open client instance at a time."
+				,"",
+				"abcdefghijklmnopqrstuvwxyz_0123456789",[](const StringRef&str){return true;},[](const String&str)
+			{
+				SetFullScreen(false);
+				MonitoredProcess	process(false);
+				PathString parameters = PathString("profile="+str);
+				if (Network::client.IsConnected())
+					parameters += PathString(" serverURL="+ToString(Network::lastServerAddress));
+
+
+				count_t len = 0;
+				Buffer<PathString::char_t> execPath; 
+				do
+				{
+					execPath.AppendRow(MAX_PATH);
+					len = GetModuleFileNameW(nullptr, execPath.GetPointer(), execPath.GetLength());
+				}
+				while (len >= execPath.GetLength());
+
+				process.Start("./",execPath.GetPointer(),parameters);
+			});
+		});
+
+
 	}
 
 
@@ -653,6 +697,7 @@ namespace Menu
 		CreateOptionsMenu();
 		CreateHelpMenu();
 		CreateMainMenu();
+		CreateLaunchMenu();
 		CreateLoginMenu();
 		CreateGameMenu();
 		CreateStartServerMenu();
@@ -660,6 +705,7 @@ namespace Menu
 		GlobalEvents::applicationTerminate << []()
 		{
 			main.reset();
+			launch.reset();
 			help.reset();
 			login.reset();
 			options.reset();

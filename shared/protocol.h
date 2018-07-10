@@ -1231,11 +1231,17 @@ namespace Protocol
 	)
 
 
-	NETSTRUCT4(ChoiceIntersection
+	NETSTRUCT5(ChoiceIntersection
 		, NET(TUniqueID), id
 		, Grid::LCellIdI, target
 		, NET(UINT16), mode
-		, Optional<NET(TUniqueID)>, deployingWhat
+		, Optional<TUniqueID>, deployingWhat
+		, Optional<TUniqueID>, requestID
+	)
+
+	NETSTRUCT2(ChoiceResponse
+		, TUniqueID, requestID
+		, TUniqueID, deployedID	//empty on failure
 	)
 	
 	NETSTRUCT3(StandardJob
@@ -1536,6 +1542,15 @@ namespace Protocol
 
 
 
+
+	typedef NetArray<BYTE,100000>	ScriptedAIStateVector;
+
+	NETSTRUCT2(ScriptedAIState
+		, Package::NetString<64>, scriptName
+		, ScriptedAIStateVector, dataVector
+	);
+
+
 	typedef Package::NetString<32>	SaveAs;
 	typedef TUniqueID	KillFaction;
 
@@ -1581,7 +1596,9 @@ namespace Protocol
 
 			DestroyEntity,		//s2c: DestroyEntity
 
-			ChoiceIntersection,	//c2s: ChoiceIntersection
+			ChoiceIntersection,	//c2s: ChoiceIntersection [->ChoiceResponse, if requestID is set]
+			ChoiceResponse,		//s2c: ChoiceResponse
+
 			RequestRoundEnd,	//c2s: <signal>
 			RequestContinueRound,	//c2s: <signal>
 
@@ -1651,6 +1668,8 @@ namespace Protocol
 			RoundStatistics,			//s2c: Statistics::Round
 			EntityTypeStatistics,		//s2c: Statistics::EntityType
 			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
+
+			ScriptedAIState,			//[both]: ScriptedAIState
 
 			SaveAs,	//c2s: SaveAs
 		};

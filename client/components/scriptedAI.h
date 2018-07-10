@@ -2,7 +2,9 @@
 
 #include <io/file_system.h>
 #include <structure/observable.h>
+#include <uniqueID.h>
 #include "visual/hud/objectCommands.h"
+#include <objects/types.h>
 
 namespace ScriptedAI
 {
@@ -50,7 +52,7 @@ namespace ScriptedAI
 	Checks whether or not AI is still running or has completed.
 	@return True if the AI is still busy, false if it has terminated.
 	*/
-	bool	IsRunning();
+	bool			IsRunning();
 
 	bool			IsLoaded();
 	D::PathString	GetScriptPath();
@@ -60,6 +62,11 @@ namespace ScriptedAI
 	bool			DoneThisRound();
 	bool			SuccessfullyExecutedThisRound();
 	bool			WillExecuteOnNewRound();
+
+	void			Resume(const String&scriptName, Array<BYTE>&compressedState);
+
+	void			SignalAppearance(const Objects::PWorldEntity&e);
+	void			SignalChoiceResponse(const TUniqueID&requestID, const TUniqueID&entityID);
 
 	void			CreateTemplateAt(const D::PathString&);
 

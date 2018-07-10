@@ -1,12 +1,6 @@
-sharp shadow edge on pillars map
 air defense for nexus base
 
-
-wrap progress line
-
 optimize camera terrain intersection test
-
-
 
 hard to reproduce/fix:
 	construction finish->move directly into storage seems to drop constructed lab
@@ -194,6 +188,13 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: wrap progress line (not actually wrapped, just 'Progress:\n...')
+skipped: sharp shadow edge on pillars map (fixed maybe?)
+skipped: remove bug report email address. added privacy note and email encryption
+done: obfuscate nicknames in log files, or remove them
+done: do not log chat messages
+done: replace ...\My Games\... with [My Games]\...
+done: replace * with [Install Dir]\... (using [Client]/[Server] instead)
 added: menu button in configuration mode
 done: since plane scale now matches vehicle scale: rescale plane geometries to something larger
 added: escape text or close button in statistics

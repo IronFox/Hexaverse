@@ -379,7 +379,6 @@ namespace Objects
 		virtual EntityType			GetType() const override {return ConstName::Type_Connector;}
 
 
-		//virtual int					GetConstructionCost() const override {return 5;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
@@ -631,7 +630,6 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int					GetHeight() const override {return 2;}
 			virtual void				PrototypeSetup() override;
-			//virtual int					GetConstructionCost() const override {return 40;}
 			#ifndef NO_HIBERNATION
 				virtual int				GetUplinkTraffic() const override {return 10;}
 				virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
@@ -744,7 +742,6 @@ namespace Objects
 
 
 
-		//virtual int					GetConstructionCost() const override {return 0;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
@@ -812,7 +809,6 @@ namespace Objects
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector :  Super::GetSourceForConnection(connected);}
 		#endif
 
-		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -848,7 +844,6 @@ namespace Objects
 		static const int	UraniumCost = 5;
 		static const int	EnergyOutput = 40;
 
-		//virtual int					GetConstructionCost() const override {return 120;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 15;}
 			virtual int				GetUplinkPriority() const override {return 750;};

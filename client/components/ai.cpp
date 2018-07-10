@@ -2,6 +2,8 @@
 #include "ai.h"
 #include <objects/interface.h>
 #include "objectNetworkHelper.h"
+#include "scriptedAI.h"
+#include "playerControlBegin.h"
 
 
 namespace AI
@@ -517,8 +519,10 @@ namespace AI
 		}
 	}
 
-	void	SignalStart(const String&because, const TCodeLocation&caller)
+	void	SignalStart( const String&because, const TCodeLocation&caller )
 	{
+		if (ScriptedAI::IsLoaded())
+			return;
 		if (done)
 			LogEvent(EventSignificance::Debug,"AI: Starting ("+because+", by "+String(caller)+")");
 
@@ -567,10 +571,17 @@ namespace AI
 	}
 
 
-	void	Process(float timeQuantum)
+	void	Process( float timeQuantum )
 	{
 		if (done)
 			return;
+
+		if (ScriptedAI::IsLoaded())
+		{
+			done = true;
+			return;
+		}
+
 		LogEvent(EventSignificance::Debug,nullptr,"AI: Resuming processing ("+String(timeQuantum)+")");
 		tempMarkers.Clear();
 		Timer::Time started = timer.Now();
@@ -609,11 +620,7 @@ namespace AI
 					i--;
 				}
 			}
-
-			ASSERT__(done);
-			LogEvent(EventSignificance::Debug,nullptr,"AI: all done. requesting new round");
-			ApplicationInterface::SignalRoundEnd();
-			
+			PlayerControlBegin::CheckAutoNextRound();
 		}
 
 	}

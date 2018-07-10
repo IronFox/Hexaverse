@@ -28,6 +28,12 @@ namespace Objects
 		}
 
 
+		/*virtual override*/ int			Plane::GetConstructionCost(const Objects::PFaction&owner) const
+		{
+			return turret->productionCosts.GetValue(owner ? owner->researchState.attributeTable : Research::globalState.zeroTable);
+		}
+
+
 		/*virtual override*/ void		Plane::VisitSensors( const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/ ) const
 		{
 			float3 scanningCenter = GetScanningCenter(loc);

@@ -550,6 +550,7 @@ namespace Objects
 		}
 		#endif
 
+
 		void				MobileEntityProducer::AppendTask(const TUniqueID&id, EntityType type)
 		{
 			//PSatellite	satellite;
@@ -566,9 +567,7 @@ namespace Objects
 			prototype = Prototypes::Find(type);
 			if (prototype)
 			{
-				prototype->owner = parent->owner;
-					price = prototype->GetConstructionCost();
-				prototype->owner.reset();
+				price = prototype->GetConstructionCost(parent->owner);
 				name = prototype->GetTypeName();
 				if (prototype->IsVehicle())
 				{
@@ -617,5 +616,27 @@ namespace Objects
 
 	#endif
 
+		
+	/*static*/ int		MobileEntityProducer::GetProductionCost(EntityType type, const Objects::OwnerParameter&owner)
+	{
+		Component::VehicleBase* base = nullptr;
+		Component::Turret* turret = nullptr;
+		PWorldEntity prototype;
+		int price = -1;
+		prototype = Prototypes::Find(type);
+		if (prototype)
+		{
+			price = prototype->GetConstructionCost(owner);
+		}
+		else
+		{
+			base = Component::baseComponents.Find(type.baseType);
+			turret = Component::vehicleTurretComponents.Find(type.turretType);
+			ASSERT_NOT_NULL1__(turret, (int)type.turretType);
+			ASSERT_NOT_NULL1__(base, (int)type.baseType);
 
+			price = Vehicle::GetPrice(base,turret,owner->GetAttributeTable());
+		}
+		return price;
+	}
 }

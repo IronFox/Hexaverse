@@ -473,17 +473,21 @@ namespace Objects
 
 
 
-	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
+	PWorldEntity	GetBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
 	{
 		PStructure s = GetStructure(cellID);
 		if (s && !To<Connector>::DynamicCast(s))
-			return false;
+			return s;
 		#ifdef CLIENT
-			return !checkVehiclesOnClient || !GetMobileEntity(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
-		#else
-			auto v = GetMobileEntity(cellID);
-			return !v;
+			if (!checkVehiclesOnClient)
+				return nullptr;
 		#endif
+		return GetMobileEntity(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
+	}
+
+	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
+	{
+		return !GetBlockingHere(cellID,checkVehiclesOnClient);
 	}
 
 
@@ -575,7 +579,7 @@ namespace Objects
 
 
 	
-	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
+	void		GetChoices( WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis )
 	{
 		const World::Data&world = 
 		#ifdef CLIENT
@@ -848,7 +852,7 @@ namespace Objects
 
 
 
-	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis)
+	void					GetChoices( const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis )
 	{
 		//showArrow = false;		//why were these here...?
 		//hasArrowCellTarget = false;
@@ -865,7 +869,7 @@ namespace Objects
 	}
 
 	
-	static void	InsertConstructedEntity(const PWorldEntity&e, float&atTime, bool setHealthToFull)
+	static void	InsertConstructedEntity( const PWorldEntity&e, float&atTime, bool insertIntoGrid, bool setHealthToFull )
 	{
 		#ifndef CLIENT
 			if (setHealthToFull && e->owner)
@@ -914,7 +918,8 @@ namespace Objects
 			});
 
 		#endif
-		InsertIntoGrid(e,e->location);
+		if (insertIntoGrid)
+			InsertIntoGrid(e,e->location);
 		e->isInserted = true;
 	}
 
@@ -942,7 +947,7 @@ namespace Objects
 		#endif
 
 		atTime += timeEpsilon;
-		InsertConstructedEntity(v,atTime,setHealthToFull);
+		InsertConstructedEntity(v,atTime,insertIntoGrid,setHealthToFull);
 
 		if (v->IsPlane())
 		{
@@ -1015,7 +1020,7 @@ namespace Objects
 					+" was found at foundation height, from location "+ToString(s->location));
 		}
 
-		InsertConstructedEntity(s,atTime,setHealthToFull);
+		InsertConstructedEntity(s,atTime,true,setHealthToFull);
 
 
 		structures << s;
@@ -1483,12 +1488,12 @@ namespace Objects
 			ASSERT1__(SubOrbital::planes.Contains(s),s->GetName());
 		}
 
-		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle/*=true*/)
+		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGrid/*=true*/ )
 		{
 			ASSERT__(m);
 			ASSERT2__(!m->isInMovementStream,m->location,m->GetName());
 			float t = 0;
-			InsertConstructed(m,t,insertIntoGridIfVehicle);
+			InsertConstructed(m,t,insertIntoGrid);
 			#ifndef NO_SATELLITES
 				if (m->IsSatellite())
 				{
@@ -1519,8 +1524,10 @@ namespace Objects
 
 	#ifdef CLIENT
 	#else
-		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
+		bool					ProcessChoiceIntersection( const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat, PWorldEntity*outDeployed )
 		{
+			if (outDeployed)
+				*outDeployed = nullptr;
 			if (deployWhat && deployWhat->lastDeployment == RuntimeConfig::roundNumber)
 			{
 				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot redeploy "+deployWhat->GetNiceName()+" twice during one round. Try again next round");
@@ -1560,6 +1567,8 @@ namespace Objects
 				{
 					float t = 0;
 					InsertConstructed(v,t);
+					if (outDeployed)
+						*outDeployed = v;
 				}
 
 				if (e->IsStructure())
@@ -1642,6 +1651,8 @@ namespace Objects
 							{
 								float t = 0.f;
 								actual->LocalCheckout(deployWhat,choice,t);
+								if (outDeployed)
+									*outDeployed = deployWhat;
 							}
 							else
 							{

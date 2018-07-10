@@ -275,6 +275,9 @@ namespace Objects
 			bool	requestedNewRound = false;
 			bool	isOwnedByMe = false;
 			count_t	roundChangeNotifications=0;
+		#else
+			String		aiScriptName;
+			Array<BYTE>	aiScriptState;
 		#endif
 
 		#ifdef ONE_COMPOUND_PER_FACTION
@@ -299,6 +302,13 @@ namespace Objects
 		bool			ExposesEntityDetailsTo(const PFaction&other) const {return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.exposeEntityDetails));}
 		bool			SharingSensorWith(const PFaction&other) const{return other && this && (other.get() == this || (other->alliance == alliance && alliance->config.shareSensors));}
 
+		/**
+		Fetches the attribute table of the local faction.
+		NULL-pointer sensitive.
+		If this is NULL, returns the global zero attribute table.
+		*/
+		const Research::Attributes::Table& GetAttributeTable() const;
+
 		String		GetName() const
 		{
 			if (!this)
@@ -312,7 +322,9 @@ namespace Objects
 		{
 			if (!this)
 				return "<NULL>";
-			return ToString(id)+":'"+name+"'";
+			if (IsNexus())
+				return "Nexus";
+			return ToString(id);//+":'"+name+"'";
 		}
 
 
@@ -354,6 +366,7 @@ namespace Objects
 			*/
 			static PFaction				GetOrCreate(const TUniqueID&id, const TUniqueID&allianceID, bool&outAllianceChanged);
 
+			bool						IsNexus() const {return name == nexusName;}
 		#else
 
 			CryptographicID				accessToken;
@@ -406,6 +419,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&);
 			static PFaction				Create(const TUniqueID&, const TUniqueID&allianceID, const String&name = "");
 			static PFaction				Create(const TUniqueID&, const PAlliance&alliance, const String&name = "");
+			bool						IsNexus() const {return nexus.get() == this;}
 
 
 			World::Data				knownWorld;

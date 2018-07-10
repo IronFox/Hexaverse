@@ -13,6 +13,31 @@
 
 namespace Lua
 {
+
+	/**
+	Centralized management structure for Lua script execution.
+	Provides tables and functions as requested by invoking the Add*() methods.
+
+	On thread-safety:
+	This structure is designed to be set up by the main thread.
+	Creation or invokation of Add*() methods by any other non-synchronized thread
+	will result in unexpected behavior or crashes.
+
+	Execution of the script itself is mostly thread-safe.
+	Provided functions guarantee the following conditions during script runtime:
+		*	No access to GetEntity(id) or the likes (since these lists are not thread-safe)
+		*	Local reference to entities via weak pointers. If they have expired the respective
+			Lua call will fail
+
+	Possibly inconsistent but assumed crash-free operations:
+		*	Read-only access to entity grids GetEntity(location) or the likes
+		*	Read-only access to terrain grid
+		*	Read-only access to resource distribution
+
+	If execution is performed by separate thread, it is mandatory that not external
+	manipulation occurs during runtime of this thread, as Lua itself is not designed to be
+	thread-safe.
+	*/
 	struct API
 	{
 		Lua::PProgram		program;
@@ -46,18 +71,40 @@ namespace Lua
 			Lua::Table		factionTable;
 		};
 
+		struct TFactionResourceBalance
+		{
+			Lua::Table		table, storageTable, balanceTable, demandTable, supplyTable;
+
+			void			AllocateIn(Lua::Table&parent, const String&name);
+		};
+
 		struct TFaction
 		{
 			Lua::Table		table;
-			Lua::Table		entityTable, storageTable, balanceTable, demandTable, supplyTable, maxStorageTable;
+			Lua::Table		entityTable;
+			TFactionResourceBalance	current,max;
 
 			void			AddEntity(const Lua::Table&);
 		};
 
-		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
 
-		HashTable<TUniqueID,TAlliance>	loadedAllianceTableMap;
-		HashTable<TUniqueID,TFaction>	loadedFactionTableMap;
+		struct TSharedHangar
+		{
+			Objects::WHangar	hangar;
+			Lua::Table			sharedDeployables;
+			bool				rebuild = true;
+		};
+
+
+		typedef Lua::Function<void(const Lua::Table&)>	LFOnDeploy;
+
+		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
+		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;
+		Timer::Time								lastDeploymentCallbackRegistered;
+		Buffer0<TSharedHangar>					sharedHangars;
+
+		HashTable<TUniqueID,TAlliance>			loadedAllianceTableMap;
+		HashTable<TUniqueID,TFaction>			loadedFactionTableMap;
 		HashTable<TUniqueID,std::pair<Lua::Table,bool> >	loadedEntityTableMap;
 		HashTable<TUniqueID,Objects::WWorldEntity>	entityMap;
 		HashSet<TUniqueID>	entityMappedToTable, factionMappedToTable, allianceMappedToTable;
@@ -66,16 +113,21 @@ namespace Lua
 		//feedback functions:
 		std::function<void(const TUniqueID&)>	onMarkerTouch,
 												onMarkerDestroy, 
-												onRemove,
+												onRemoveEntity,
 												onDropAllTasks,
+												onDropSafeTasks,
 												onDropLastTask
 												;
-		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure;
+		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure,
+													onUpdateMobileAutomation,
+													onUpdateSleep;
 		std::function<void(const TUniqueID&mID,Objects::MarkerType,const Objects::PWorldEntity&, const Grid::LCellIdI&)> onMarkerCreate;
 		std::function<void(const TUniqueID&, Array<Grid::LCellIdI>&)> onAttackTargets;	//!< Given array is fleeting
 		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
-		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginConstruction;
+		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginStructureConstruction;
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
+		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&, const TUniqueID&deploymentID)>	onDeployCompletedProduction;
+		std::function<void(const TUniqueID&hangar, const TUniqueID&mobile, const Grid::LCellIdI&location, const TUniqueID&deploymentID)> onDeployStored;
 		std::function<void(index_t,bool)>	onQueueResearch;
 
 		/**/		API():mapper(true)	{}
@@ -116,18 +168,22 @@ namespace Lua
 
 		Lua::Table ToTable(const Grid::LCellIdI&cell);
 		Lua::Table TurretToTable(const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState);
-		Lua::Table ToTable(const Objects::MobileEntity::Task&task);
+		Lua::Table ToTable(const Objects::MobileEntity::Task&task, const Objects::PMobileEntity&entity, bool isFirst);
+
 		Objects::PVehicle	ParameterToVehicle(const Lua::Table&luaEntity, Grid::LCellIdI&outLoc, const String&parameterName) const;
 
-		void	AddFactionEntities(const Objects::PFaction&);
-		void	AddAllEntities();
-		void	AddAllFactionsAndAlliances();
-		void	AddAllAlliances();
+		void		AddFactionEntities(const Objects::PFaction&);
+		void		AddAllEntities();
+		void		AddAllFactionsAndAlliances();
+		void		AddAllAlliances();
+		void		SignalDeployment(const TUniqueID&deploymentID, const Objects::PWorldEntity&e);
 	private:
 
 		Lua::Table	LuaFindShortestPathFrom(const Objects::PMobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute);
 		Lua::Table	LuaTraceTrajectoryFrom(const Objects::TrajectoryEndPoint&origin, const Objects::TrajectoryEndPoint&target, Objects::TrajectoryType trajectory, float flatAttackRange, const Objects::WFaction&owner);
 		Lua::Table	LuaFindHighestAvailableResourceLocation(const String&resourceType);
+		Objects::PWorldEntity LuaUnitToEntity(const Lua::Table&luaUnit, const String&funcParameterName)	const;
+
 		void	Setup();
 	};
 }

@@ -299,6 +299,24 @@ namespace Receiver
 				LogEvent(EventClass::Preset::internalError,"Unexpected invite type for alliance "+ToString(alliance->id)+" and faction "+faction->GetLogName());
 		}
 	}
+
+	void	ScriptedAIState(Protocol::ScriptedAIState&state, TCP::Peer&peer)
+	{
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"ScriptedAIState: client is nullptr");
+			return;
+		}
+		if (!client->faction)
+		{
+			LogEvent(EventClass::Preset::internalError,peer,"ScriptedAIState: client->faction is nullptr");
+			return;
+		}
+		LogEvent(EventClass::Preset::debug,peer,"ScriptedAIState: Accepted '"+state.scriptName+"' of "+String(state.dataVector.GetLength())+" byte(s)");
+		client->faction->aiScriptState.swap(state.dataVector);
+		client->faction->aiScriptName.swap(state.scriptName);
+	}
 }
 
 namespace Channels
@@ -386,12 +404,16 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(GameConfig);
 	DECLARE_OBJECT_SENDER(KillFaction);
 
+	DECLARE_OBJECT_SENDER(ChoiceResponse);
+
 	DECLARE_OBJECT_SENDER(ResearchFactionState);
 	DECLARE_OBJECT_SENDER(ResearchProgram);
 	DECLARE_OBJECT_SENDER(ResearchQueue);
 	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
 	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
 	DECLARE_FACTION_CHANNEL(QueueResearch);
+
+	DECLARE_FACTION_CHANNEL(ScriptedAIState);
 
 	namespace Statistics
 	{
@@ -754,7 +776,7 @@ namespace Receiver
 			Network::PClient other;
 			if (Network::playerMap.Query(faction,other))
 			{
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss ),peer,"Faction access token recognized, but faction is already being controlled. Disconnecting "+other->ConvertToString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Loss ),peer,"Faction access recognized, but target faction is already being controlled. Disconnecting "+other->ConvertToString());
 
 				if (faction == Objects::Faction::nexus)
 				{
@@ -1046,6 +1068,14 @@ namespace Receiver
 		});
 
 		Game::Vote::AdvertiseAllToNewlyConnectedPeer(client->faction,peer);
+
+		if (faction->aiScriptName.IsNotEmpty())
+		{
+			Protocol::ScriptedAIState state;
+			state.dataVector = faction->aiScriptState;
+			state.scriptName = faction->aiScriptName;
+			Channels::ScriptedAIState.SendTo(peer,state);
+		}
 		
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
 	}
@@ -1316,7 +1346,7 @@ namespace Receiver
 			cl->faction->name = cl->name;
 			ASSERT__(!cl->faction->isDead);
 			Channels::identifyFaction.SendTo(Network::server,Network::Identify(cl->faction),Channels::Level::Faction);
-			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed to '"+cl->name+"'");
+			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer, "User renamed");
 		}
 	}
 
@@ -1716,8 +1746,10 @@ namespace Receiver
 
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target)
-			+" for entity "+ToString(ch.id));
+		const String respReq = ch.requestID.Get0() ? ", responseReq="+ToString(*ch.requestID.Get0()):"";
+		const String logMsg = "Processing choice intersection in mode "+String(ch.mode)+respReq+" at cell "+ToString(ch.target)
+			+" for entity "+ToString(ch.id);
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: "+logMsg);
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(ch.id,peer);
 		if (!e)
@@ -1744,9 +1776,9 @@ namespace Receiver
 		if (To<Objects::Hangar>::DynamicCast(e))
 			ASSERT_NOT_NULL1__(deploying,e->GetName());
 
-		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat);
+		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode,deployingWhat, ch.requestID.Get0() ? *ch.requestID.Get0() : TUniqueID::Empty());
 
-		LogEvent(EventSignificance::Common,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ToString(ch.target));
+		LogEvent(EventSignificance::Common,peer,e,"End: "+logMsg);
 	}
 
 	

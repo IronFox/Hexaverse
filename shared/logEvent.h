@@ -64,6 +64,7 @@ struct EventClass
 							internalError,	//!< Non-fatal error that should be logged and displayed on the console. Not distributed to clients
 							fatal,
 							scriptLog,
+							scriptMessage,
 							scriptError,
 							unexpectedBehavior,
 							uncommon,
@@ -120,8 +121,11 @@ namespace Logging
 
 	void	End();
 	void	Begin(const PathString&path);
+	bool	HasBegun();
+
 
 	void	CallBugReporter();
+	void	CallBugReporter(const String&message);
 
 
 	String	TimeStamp(bool filename=false);

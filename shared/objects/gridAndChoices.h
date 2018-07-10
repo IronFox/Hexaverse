@@ -106,7 +106,7 @@ namespace Objects
 	
 			void				InsertObject(const Grid::LCellIdI&location, const Entry&object)
 			{
-				ASSERT__(!object->isInsertedIntoGrid);
+				ASSERT1__(!object->isInsertedIntoGrid, object->GetName());
 				Grid::AssertIsHorizontallyValid(location,CLOCATION);
 				if (location.height != SubOrbital::Height)
 					Grid::AssertIsValid(location,CLOCATION);
@@ -229,6 +229,7 @@ namespace Objects
 					}
 
 	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
+	PWorldEntity	GetBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
 
 
@@ -250,8 +251,8 @@ namespace Objects
 		#ifndef NO_SATELLITES
 			void	Place( const PSatellite&s);
 		#endif
-		void		Place( const SubOrbital::PPlane&s);
-		void		PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
+		void		Place(const SubOrbital::PPlane&s);
+		void		PlaceMobileEntity(const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
 
 
 
@@ -293,8 +294,10 @@ namespace Objects
 		@param choice World cell the user clicked on
 		@param mode Current cursor mode that effects available choices
 		@param deployWhat Vehicle being deployed (only if @a e points to a vehicle store)
+		@param[out] outDeployed If non-null, captures any deployed entity, new or existing as a result of the operation. Set to nullptr if handling failed
+		@return true on success
 		*/
-		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode mode, const PMobileEntity&deployWhat);
+		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode mode, const PMobileEntity&deployWhat, PWorldEntity*outDeployed);
 
 	#endif
 

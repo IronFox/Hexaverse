@@ -1,12 +1,18 @@
-v0.8.5
+v0.9.0	[June 10 2018]
 	+ Bomb/bomber detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
 	+ Added checkbox to disable terrain camera clipping.
+	+ Added Privacy Notice link to bug reporter.
+	+ Added menu option to start new client instance using different profile.
+	+ Added support for scriptable AI.
 	> Removed internal emergency program in favor of install-directory factory default.
 	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
 	> Improved anti-aircraft geometry.
 	> Added close-button to game-end statistics (still closeable via Escape).
 	> Reduced default launcher attack range.
 	> Moved AI configuration folder from client/ai to aiClient.
+	> Full paths, nicknames and chat messages are no longer recorded in log files.
+	> Added buttons to view log files in bug reporter.
+	> Doubled mechanic default repair speed.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.
@@ -15,6 +21,9 @@ v0.8.5
 	* Fixed bad fog of war at round beginning.
 	* Fixed missing menu button in configuration mode.
 	* Fixed main menu button while server list is visible.
+	* Fixed bug reporter crash when handling files still written to by game executable.
+	* Fixed empty bug reporter messages when encountering pre-logging faults.
+	* Fixed surveyor automation constantly rejecting previous path.
 
 v0.8.4	[Apr 22 2018]
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.

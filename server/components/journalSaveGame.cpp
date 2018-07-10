@@ -673,14 +673,29 @@ namespace Journal
 		
 		e.locationParameters.Set("Location",target);
 		e.intParameters.Set("DirectMode",(int)mode);
-		if (deployingWhat != TUniqueID::Empty())
+		if (deployingWhat.IsNotEmpty())
 			e.uuidParameters.Set("EntityID",deployingWhat);
+		if (requestID.IsNotEmpty())
+			e.uuidParameters.Set("RequestID",requestID);
 	}
 	/*virtual override*/ void	Round::ChoiceIntersection::Execute(const Objects::PWorldEntity&e) const
 	{
 		Objects::PWorldEntity deploy = deployingWhat!=TUniqueID::Empty() ? Objects::GetEntity(deployingWhat) : nullptr;
 		Objects::PMobileEntity md = deploy && deploy->IsMobile() ? To<Objects::MobileEntity>::Cast(deploy) : Objects::PMobileEntity();
-		if (!Objects::ProcessChoiceIntersection(e,target,mode,md))
+		Objects::PWorldEntity deployed;
+		const bool success = Objects::ProcessChoiceIntersection(e,target,mode,md,&deployed);
+
+		Network::PClient cl;
+		if (requestID.IsNotEmpty() && e->owner && Network::playerMap.Query(e->owner,cl))
+		{
+			Protocol::ChoiceResponse response;
+			response.deployedID = deployed && success ? deployed->id : TUniqueID::Empty();
+			response.requestID = requestID;
+			Channels::ChoiceResponse.SendTo(cl->peer.lock(),response);
+			LogEvent(EventSignificance::Common,e.get(),"Responded to deployment response request, success="+String(success)+", deployed="+ToString(response.deployedID));	//should be relayed to client, logged, but not displayed there
+		}
+
+		if (!success)
 		{
 			#ifdef _DEBUG
 				throw RoundException(CLOCATION, "Unable to handle choice of "+e->GetName()+" with "+ToString(target)+" in mode "+String(int(mode))+", while deploying "+(md?md->GetName():""));
@@ -699,6 +714,8 @@ namespace Journal
 		mode = (Objects::CursorMode) e.intParameters.Require(CLOCATION,"DirectMode");
 		if (!e.uuidParameters.TryGet("EntityID",deployingWhat))
 			deployingWhat = TUniqueID::Empty();
+		if (!e.uuidParameters.TryGet("RequestID",requestID))
+			requestID = TUniqueID::Empty();
 	}
 
 	/*virtual override*/ void	Round::DirectToCommand::Compile(Entry&e) const
@@ -1944,13 +1961,14 @@ namespace Journal
 			strand.Append(cmd);
 	}
 
-	void	Round::RegisterChoiceIntersection(bool apply, const Objects::PWorldEntity&e,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat)
+	void	Round::RegisterChoiceIntersection( bool apply, const Objects::PWorldEntity&e,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat, const TUniqueID&requestID )
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<ChoiceIntersection> cmd(new ChoiceIntersection());
 		cmd->deployingWhat = deployingWhat?deployingWhat->id : TUniqueID::Empty();
 		cmd->mode = mode;
 		cmd->target = target;
+		cmd->requestID = requestID;
 		if (!apply || cmd->TryExecute(e))
 			strand.Append(cmd);
 	}

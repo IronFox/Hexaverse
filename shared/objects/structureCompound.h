@@ -85,6 +85,7 @@ namespace Objects
 		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Ctr::Array<Resource>*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
 		void				RefreshState(float atTime);
 		FullResourceVector	GetVector() const;
+		FullResourceVector	GetAllEnabledVector() const;
 
 
 

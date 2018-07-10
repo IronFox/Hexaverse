@@ -109,6 +109,7 @@ namespace Objects
 		@return Amount of consumed (or virtual) resources that can be converted per action by the local entity. 0 for entities that cannot perform the requested operation
 		*/
 		virtual int				GetOperationSpeed(Component::operation_t) const = 0;
+		virtual int				GetOperationAccelerationExponent(Component::operation_t) const {return 0;}
 		virtual String			DescribeOperationSpeed(Component::operation_t) const = 0;
 		bool					CanAttack();
 		bool					CanAttackIgnoreAmmo() const;

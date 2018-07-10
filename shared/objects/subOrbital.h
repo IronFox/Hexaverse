@@ -75,7 +75,7 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int				GetMaxHealth() const override {return turret->healthMultiplier.GetValue(GetResearchState());}
 			virtual String			DescribeMaxHealth() const override {return turret->healthMultiplier.Describe(GetResearchState());}
-			virtual int				GetConstructionCost() const override {return turret->productionCosts.GetValue(GetResearchState());}
+			virtual int				GetConstructionCost(const Objects::PFaction&owner) const override;
 			virtual bool			IsGroundBoundVehicle() const {return !IsAboveTerrain(location);}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
 			virtual bool			IsPlane() const override {return true;}
@@ -328,6 +328,7 @@ namespace Objects
 			virtual WorldEntity&		ToEntity() override {return *this;}
 			virtual count_t				GetLoad() const override { return this->stored.Count(); }
 			virtual count_t				GetMaximumLoad() const override {return MaxStorage;}
+			virtual PHangar				CastToHangar() override	{return To<CargoPlane>::Cast(shared_from_this());}
 			virtual bool			CanStoreType(const MobileEntity&e) const override {return e.IsVehicle() && !e.IsHangar();}
 			virtual void			StoreLocallyFromImport(const PMobileEntity&e) override;
 			#ifndef CLIENT

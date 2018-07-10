@@ -26,6 +26,7 @@
 #include "voting.h"
 #include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
+#include "scriptedAI.h"
 #include <expectedBehavior.h>
 
 
@@ -59,6 +60,8 @@ namespace Network
 					roundTimer = 0;
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
+	ServerAddress	lastServerAddress;
+
 
 	HashSet<TUniqueID>	visitedWorldMap;
 
@@ -188,6 +191,15 @@ namespace Network
 	{
 		client.Disconnect();
 
+		if (ScriptedAI::IsRunning())
+		{
+			LogEvent(EventClass::Preset::scriptError,"Cannot connect right now. Scripted AI still busy");
+			#ifdef HAS_WINDOW
+				HUD::Dialog::ShowMessage("Unable to connect to the requested server right now. Your scripted AI is still busy. Please wait until it completes.");
+			#endif
+			return;
+		}
+
 		#ifdef HAS_WINDOW
 			if (HUD::Dialog::QueryNicknameIfEmpty())
 				return;
@@ -208,6 +220,7 @@ namespace Network
 
 		serverID = host.serverInfo.hostInfo.hostID;
 		serverIDString = Network::serverID.ToNiceString();
+		lastServerAddress = host.address;
 
 		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
@@ -1587,6 +1600,17 @@ namespace Network
 			}
 		}
 
+		void	ChoiceResponse(Protocol::ChoiceResponse&resp)
+		{
+			ScriptedAI::SignalChoiceResponse(resp.requestID,resp.deployedID);
+		}
+
+		void	ScriptedAIState(Protocol::ScriptedAIState&state)
+		{
+			LogEvent(EventSignificance::Common,"Received script state for '"+state.scriptName+"' of "+String(state.dataVector.GetLength())+" byte(s)");
+			ScriptedAI::Resume(state.scriptName,state.dataVector);
+		}
+
 	}
 
 
@@ -1662,7 +1686,6 @@ namespace Network
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
-		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
 		DECLARE_CHANNEL(MyFaction);
 		DECLARE_CHANNEL(AllianceConfigChange);
@@ -1681,6 +1704,9 @@ namespace Network
 		DECLARE_CHANNEL(ResearchAttributeVector);
 		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
 
+		DECLARE_CHANNEL(ChoiceResponse);
+
+		DECLARE_CHANNEL(ScriptedAIState);
 	}
 
 
@@ -1873,7 +1899,7 @@ namespace Network
 	void OnIgnoredException(const TCodeLocation&loc, const std::exception&ex)
 	{
 		LogEvent(EventClass::Preset::networkError,String(loc)+": Ignored(TCP): "+ex.what());
-		DBG_FATAL__("Ignored Exception");
+		DBG_FATAL__("Ignored Exception: "+String(ex.what()));
 	}
 
 	void		Update();
@@ -1937,6 +1963,9 @@ namespace Network
 		client.InstallChannel(Channels::ResearchAttributeVector);
 		client.InstallChannel(Channels::ResearchAttributeDeltaVector);
 
+		client.InstallChannel(Channels::ChoiceResponse);
+
+		client.InstallChannel(Channels::ScriptedAIState);
 		
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
