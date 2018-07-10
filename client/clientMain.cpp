@@ -1534,7 +1534,7 @@ bool loop()
 					if (!Network::gameProgress.gameOver)
 					{
 						if (Network::gameProgress.status.IsNotEmpty())
-							textout << "Progress: "<<Network::gameProgress.status<<nl;
+							textout << "Progress: "<<nl << "  "<<Network::gameProgress.status<<nl;
 						if (Network::gameProgress.warning.IsNotEmpty())
 						{
 							textout.SetColor(1,0,0);

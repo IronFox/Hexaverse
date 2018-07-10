@@ -1,7 +1,6 @@
 remove bug report email address
 
 
-sharp shadow edge on pillars map
 air defense for nexus base
 
 
@@ -197,6 +196,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: wrap progress line (not actually wrapped, just 'Progress:\n...')
 done: obfuscate nicknames in log files, or remove them
 done: do not log chat messages
 done: replace ...\My Games\... with [My Games]\...
