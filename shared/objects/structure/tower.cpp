@@ -125,7 +125,7 @@ namespace Objects
 					ExplodeEMP(at,rs.impactCell,rs.impactAt, explosionRadius, damageLevel,entityTime);
 				else
 					Explode(at,
-							rs.impactCell,rs.impactAt, explosionRadius, damageLevel,turret->isDoomsday, entityTime);
+							rs.impactCell,rs.impactAt, explosionRadius, damageLevel,turret->mainAttackIsDoomsday, entityTime);
 
 				RegisterChange(TasksChanged);
 				//stateChangedAt = attackTime;	//problematic

@@ -215,7 +215,8 @@ namespace Objects
 											isScanner = false,	//indicates a turret explicitly designed to scan for hostile units or terrain changes
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
-											isDoomsday = false;	//server may reject their deployment
+											mainAttackIsDoomsday = false,	//server may reject their deployment
+											hasDoomsdayFunctionality = false;	//server may reject part of their functions
 
 			MountType						mountType = MountType::Vehicle;
 			FFunc							explosionRadius;

@@ -67,7 +67,7 @@ namespace Objects
 			float c2 = std::numeric_limits<float>::max();
 			Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 			PWorldEntity closestEntity;
-			if (base.turret->GetAmmoNeedPerShot(source.GetResearchState()) > munitionStorage || base.turret->dealsEMPDamage || base.turret->isDoomsday)
+			if (base.turret->GetAmmoNeedPerShot(source.GetResearchState()) > munitionStorage || base.turret->dealsEMPDamage || base.turret->mainAttackIsDoomsday)
 				return false;
 			const World::Data&world = source.owner->knownWorld;
 
