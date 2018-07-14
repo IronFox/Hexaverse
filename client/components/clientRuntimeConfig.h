@@ -19,7 +19,6 @@ namespace RuntimeConfig
 	extern bool udpListen;
 
 	extern Network::ServerAddress	serverAddress;
-	extern FileSystem::File			documentationRootFolder;
 
 	extern String					profilePrefix, profileName;
 

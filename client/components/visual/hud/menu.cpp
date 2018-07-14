@@ -19,6 +19,7 @@
 #include "../../scriptedAI.h"
 #include "hexGrid.h"
 #include "../commandDefinitions.h"
+#include "../autoDocumentation.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -502,6 +503,31 @@ namespace Menu
 			{
 				WindowStack::Show(options);
 			});
+
+		#ifdef _DEBUG
+			main->AddCommand("Update Automatic Documentation...",
+			[]()
+			{
+				if (!Network::client.IsConnected() || !Network::gameHasBegun)
+					Dialog::ShowMessage("Please connect to a server to continue");
+				else
+				{
+					Dialog::Query("Enter target documentation directory (must exist)","../documentation","abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_ ",[](const String&str)
+					{
+						return FileSystem::IsDirectory(PathString(str));
+					},
+					[](const String&str)
+					{
+						if (!Network::client.IsConnected() || !Network::gameHasBegun)
+							Dialog::ShowMessage("Please connect to a server to continue");
+						else
+							AutoDocumentation::Run(FileSystem::Folder().FindDirectory(PathString(str)));
+					});
+				}
+
+			});
+
+		#endif
 
 		main->AddCommand("Quit to Desktop",[](){HUD::Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return HUD::Dialog::CheckResult::OkayContinue;});});
 		//main->FullAutoLayout();
