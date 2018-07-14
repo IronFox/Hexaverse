@@ -721,7 +721,10 @@ namespace Objects{ namespace Pathfinding
 	{
 		result.Clear();
 		if (flatPath)
+		{
 			to.height = from.height;
+			groundFlags |= Component::GroundFlags::ForceFloatOnEverything;
+		}
 		if (from == to)
 			return Result::DestinationReached;
 		const World::Data&world = 
