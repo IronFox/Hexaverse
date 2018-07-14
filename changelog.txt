@@ -1,11 +1,11 @@
-v0.9.1	[June 14 2018]
+v0.9.1	[Jul 14 2018]
 	> Improved some automated type descriptions.
 	> Removed error message when trying to right-click direct some structures.
 	> Moved terraformer turret to the front of the turret build options of vehicle plants.
 	> Improved coloring of movement arrows of non-selected mobiles.
-	* Fixed routing of 'Build Bridge' command.
+	* Fixed routing of 'Build Bridge to' command.
 	
-v0.9.0	[June 10 2018]
+v0.9.0	[Jul 10 2018]
 	+ Bomb/bomber detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
 	+ Added checkbox to disable terrain camera clipping.
 	+ Added Privacy Notice link to bug reporter.

@@ -11,4 +11,4 @@
 *  1 attack per round
 *  Explosion radius: 2
 *  Damage: 7
-This turret type can attack objects in range.
+Units or ground locations can be attacked if in range.

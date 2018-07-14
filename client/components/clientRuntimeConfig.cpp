@@ -12,7 +12,6 @@ namespace RuntimeConfig
 	bool nexusBases=false,	nexusPortsOnAllPoles=false;
 
 	Network::ServerAddress	serverAddress;
-	FileSystem::File		documentationRootFolder;
 
 	String					profilePrefix,profileName;
 

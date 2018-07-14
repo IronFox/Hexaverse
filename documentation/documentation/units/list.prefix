@@ -21,6 +21,7 @@
 * [[units/structures/AntiAircraft Tower|AntiAircraft Tower]]
 * [[units/structures/Surveyor Tower|Surveyor Tower]]
 ==Turrets==
+* [[units/turrets/Terraformer|Terraformer]]
 * [[units/turrets/Radar|Radar]]
 * [[units/turrets/Cannon|Cannon]]
 * [[units/turrets/Artillery|Artillery]]
@@ -29,7 +30,6 @@
 * [[units/turrets/EMP|EMP]]
 * [[units/turrets/AntiAircraft|AntiAircraft]]
 * [[units/turrets/Bomb|Bomb]]
-* [[units/turrets/Terraformer|Terraformer]]
 * [[units/turrets/Surveyor|Surveyor]]
 * [[units/turrets/Mechanic|Mechanic]]
 ==Vehicle Bases==
