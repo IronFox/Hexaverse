@@ -745,10 +745,12 @@ namespace Network
 				logConfig(" -Bases: New factions are given minimal bases.");
 			else
 				logConfig(" -Flexibility: New factions are given vehicles, but no structures.");
-			if (Objects::newVehiclesHaveFullAmmo)
-				logConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
-			else
-				logConfig(" -No Ammo: New vehicles have zero ammo.");
+			#ifndef NO_MUNITION	
+				if (Objects::newVehiclesHaveFullAmmo)
+					logConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
+				else
+					logConfig(" -No Ammo: New vehicles have zero ammo.");
+			#endif
 			if (Game::Config::exposeActionLeftToHostileFactions)
 				logConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
 			else
@@ -761,7 +763,7 @@ namespace Network
 			if (FileIO::Config::saveEveryNRounds > 0)
 				logConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 			if (FileIO::Config::saveWhenAllQuit)
-				logConfig(" -Auto-saves will be created when all quit.");
+				logConfig(" -Auto-save will be created when all quit.");
 
 			if (RuntimeConfig::GameHasEnded())
 				logConfig("This game has ENDED. Clients can connect to view statistics only.");
