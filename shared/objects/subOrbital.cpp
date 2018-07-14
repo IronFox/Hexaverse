@@ -85,7 +85,7 @@ namespace Objects
 
 
 				outResult.MarkBriefEnd();
-				outResult<< "Suborbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.";
+				outResult<< "Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.";
 
 				if (IsHangar())
 					outResult<< "This plane can quickly transport other mobile entities to remote locations. Land atop mobile units, or have them move on the same location as the plane to load.";
@@ -419,7 +419,7 @@ namespace Objects
 
 			/*virtual override*/ bool					Plane::FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice)
 			{
-				if (!CanAttack() || turret->dealsEMPDamage || turret->isDoomsday)
+				if (!CanAttack() || turret->dealsEMPDamage || turret->mainAttackIsDoomsday)
 				{
 					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 					return false;

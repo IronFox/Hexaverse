@@ -1957,12 +1957,8 @@ namespace Objects
 		overallTint.Update(noTint);
 	
 		display.SetDepthTest(true,false);
-
-
 		display.SetRasterizer(true,false);
-
-		display.SetBlendMode(Engine::BlendMode::FlareBlend);
-		overallTint.Update(float4(float3(0.18f,0.185f,2.f),1.f));
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
 		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
@@ -1970,13 +1966,22 @@ namespace Objects
 				return;
 			if (v != selectedEntity)
 			{
+				bool set = false;
 				foreach (v->myTasks,t)
 				{
 					if (t->visualization)
 					{
 						const auto&visual = Objects::TaskAttachment::Of(*t);
 
-						display.Render(visual.instruction);
+						if (!visual.instruction.vbo.IsEmpty())
+						{
+							if (!set)
+							{
+								overallTint.Update(float4(v->owner->color,0.75f));
+								set = true;
+							}
+							display.Render(visual.instruction);
+						}
 					}
 				}
 

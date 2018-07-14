@@ -179,7 +179,8 @@ namespace InputControl
 					}
 					else
 					{
-						if (Objects::selectedEntity->CastToProducer() && !Objects::selectedMobileEntity)
+						auto prod = Objects::selectedEntity->CastToProducer();
+						if (prod && prod->SupportsGatheringPoint())
 						{
 							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 							{

@@ -1480,7 +1480,7 @@ namespace Objects
 
 			Task&task = LockedPeekTask();
 
-			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(GetResearchState())),turret->dealsEMPDamage, turret->isDoomsday, attackTime);
+			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(GetResearchState())),turret->dealsEMPDamage, turret->mainAttackIsDoomsday, attackTime);
 
 			if (task.foci.IsEmpty())
 			{

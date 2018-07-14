@@ -107,6 +107,7 @@ namespace Objects
 			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 		virtual bool				CanProduce(const PWorldEntity&e) const override;
+		virtual bool				SupportsGatheringPoint() const override {return true;}
 
 		#ifndef NO_HIBERNATION
 			//Hibernating overrides:

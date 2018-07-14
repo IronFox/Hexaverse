@@ -161,7 +161,7 @@ namespace Objects
 		virtual void				SignalLastProductionDone(float&t) {}
 		virtual void				SignalNewProductionEnqueued() {}
 		virtual bool				CanProduce(const PWorldEntity&proto) const=0;
-
+		virtual bool				SupportsGatheringPoint() const {return false;}
 	};
 
 

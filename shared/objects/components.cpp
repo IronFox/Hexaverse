@@ -935,6 +935,7 @@ namespace Objects
 			component.typeName = "Bomb";
 			component.shortName = "bomb";
 			component.constName = ConstName::Turret_Bomb;
+			component.hasDoomsdayFunctionality = true;
 
 			//component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
@@ -1114,7 +1115,7 @@ namespace Objects
 				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Satellite;
-				component.isDoomsday = true;
+				component.mainAttackIsDoomsday = true;
 
 				component.continuousRotation = true;
 				component.continuousRotationSpeed = -0.25f;
@@ -1449,6 +1450,7 @@ namespace Objects
 				component.typeName = "Bomber";
 				component.shortName = " Bomber";
 				component.constName = ConstName::Type_Bomber;
+				component.hasDoomsdayFunctionality = true;
 
 				component.mountType = Turret::MountType::Plane;
 
@@ -1684,12 +1686,8 @@ namespace Objects
 				const String lowerName = upperName.CopyToLowerCase();
 				if (includeName)
 				{
-					const String nameAppend = isDoomsday ? ", DOOMSDAY" : "";
-					outResult << typeName+" ("+upperName+nameAppend+")";
+					outResult << typeName+" ("+upperName+")";
 				}
-				else
-					if (isDoomsday)
-						outResult << "DOOMSDAY";
 
 				if (!compound && RuntimeConfig::UnitLimits::AnySet())
 				{
@@ -1792,15 +1790,24 @@ namespace Objects
 					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())
 				{
-					if (trajectoryType == TrajectoryType::AAMissile)
+					switch (trajectoryType)
 					{
-						if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
-							outResult << ("This "+lowerName+" type can detect and attack sub-orbital planes in flight.");
-						else
-							outResult << ("This "+lowerName+" type can attack sub-orbital planes in flight.");
+						case TrajectoryType::AAMissile:
+						{
+							if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
+								outResult << ("Sub-orbital planes can be detected and attacked in flight.");
+							else
+								outResult << ("Sub-orbital planes can be attacked in flight.");
+						}
+						break;
+						case TrajectoryType::VerticalBeam:
+						{
+							outResult << ("Ground targets can be attacked if directly beneath the unit.");
+						}
+						break;
+						default:
+							outResult << ("Units or ground locations can be attacked if in range.");
 					}
-					else
-						outResult << ("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
 						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces attack and scanning range, movement speed, and disallows construction operations. Does not cause any permanent damage.");
 				}
@@ -1815,7 +1822,7 @@ namespace Objects
 				if (attacksMovingHostilesDuringMotionPhase)
 				{
 					if (mountType != MountType::TowerOnly)
-						outResult << ("The "+this->typeName + " "+lowerName+" intercepts hostile mobile units during their movement phase even if itself mounted on a mobile unit. It is thus particularly well suited to establish an adhoc defense perimeter, or to persistently defend strategically important regions if mounted on a tower.");
+						outResult << ("The "+this->typeName + " "+lowerName+" intercepts hostile mobile units during their movement phase even if itself mounted on a mobile unit. It is thus particularly well suited to establish an ad hoc defense perimeter, or to permanently defend strategically important regions if mounted on a tower.");
 					else
 						outResult << ("The "+this->typeName + " "+lowerName+" intercepts hostile mobile units during their movement phase. It is thus particularly well suited to defend strategically important regions.");
 				}
@@ -1823,10 +1830,17 @@ namespace Objects
 				if (this == &bomb)
 					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
 					"Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+String(ResourceTag(Resource::Uranium))+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
-				//if (isDoomsday)
-				//{
-				//	outResult.WrapAppendText("This "+lowerName+" type is classified as Doomsday weaponry. Careful with this one.");
-				//}
+				if (mainAttackIsDoomsday)
+				{
+					outResult << ("This "+lowerName+" type is classified as DOOMSDAY WEAPONRY. Careful with this one.");
+				}
+				elif (hasDoomsdayFunctionality)
+				{
+					if (this->CanDo(Objects::Component::Nuclear))
+						outResult << ("This "+lowerName+" type has special attacks classified as DOOMSDAY WEAPONRY. These typically require Uranium, and may be disallowed by the server.");
+					else
+						outResult << ("This "+lowerName+" type has special attacks classified as DOOMSDAY WEAPONRY. These may be disallowed by the server.");
+				}
 			}
 
 	
