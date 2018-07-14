@@ -187,13 +187,14 @@ namespace Objects
 
 
 
-			allTurretComponents << &radar 
+			allTurretComponents << &terraformer 
+								<< &radar 
 								#ifndef NO_SATELLITES
 									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								#endif
 								<< &armored << &artillery << &launcher << &rockets << &emp
 								<< &bomb
-								<< &terraformer << &resourceScanner
+								<< &resourceScanner
 								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 									<< &munitionTransporter
 								#endif
