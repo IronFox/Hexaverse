@@ -1,5 +1,6 @@
 v0.9.1
 	> Improved some automated type descriptions.
+	> Removed error message when trying to right-click direct some structures.
 	* Fixed routing of 'Build Bridge' command.
 	
 v0.9.0	[June 10 2018]
