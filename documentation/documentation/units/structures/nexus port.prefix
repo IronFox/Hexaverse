@@ -1,7 +1,7 @@
 {{ img:units/Nexus Port.png|Nexus Port}}
 =Nexus Port=
 *  Indestructible
-*  Price: %Minerals% 1
+*  Price: %Minerals% 0
 *  [[concepts/scanning range|Scanning range]]: 2
 *  Consumes: %Energy%10
 *  Produces: %Fuel%55 %Minerals%50 %Uranium%10
