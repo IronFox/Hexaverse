@@ -5,7 +5,7 @@
 Hexaverse is a round based X4 strategy game. Thrive and expand around the globe, or get whooped by someone that is better at it than you.
 
 If you are new, check out [[controls]], an explanation of the [[terrain]], or all [[units/list|supported unit types]].
-You may also be interested in game concepts such as [[concepts/round|round processing]], [[concepts/faction|factions]], [[concepts/scanning range|sensory]] or [[concepts/research]].
+You may also be interested in game concepts such as [[concepts/round|round processing]], [[concepts/faction|factions]], [[concepts/scanning range|sensory]], [[concepts/research]], or [[concepts/AI development]].
 
 Hexaverse is a networked game.
 It comes in two parts:
@@ -20,7 +20,7 @@ Hexaverse is networked but may run isolated on the local system.
 Typically, you need some network connection to compete against others.
 
 Hexaverse currently only runs on windows.
-The server can be started on Linux using Wine, but nobody has had any luck with the client so far.
+The server can be started on Linux using Wine, but few have had any luck with the client so far.
 
 You will need a video card capable of rendering Direct3D 10 content.
 If your's is capable of doing that, then Hexaverse should run with an acceptable framerate.
