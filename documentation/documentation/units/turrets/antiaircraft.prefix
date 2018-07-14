@@ -12,5 +12,5 @@
 *  1 attack per round
 *  Explosion radius: 1
 *  Damage: 10
-This turret type can detect and attack sub-orbital planes in flight.
-The AntiAircraft turret intercepts hostile mobile units during their movement [[concepts/phase]] even if itself mounted on a mobile unit. It is thus particularly well suited to establish an adhoc defense perimeter, or to persistently defend strategically important regions if mounted on a tower.
+Sub-orbital planes can be detected and attacked in flight.
+The AntiAircraft turret intercepts hostile mobile units during their movement [[concepts/phase]] even if itself mounted on a mobile unit. It is thus particularly well suited to establish an ad hoc defense perimeter, or to permanently defend strategically important regions if mounted on a tower.

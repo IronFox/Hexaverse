@@ -9,8 +9,9 @@
 *  1 attack per round
 *  Explosion radius: 2
 *  Damage: 7
-This plane-turret type can attack objects in range.
+Ground targets can be attacked if directly beneath the unit.
+This plane-turret type has special attacks classified as DOOMSDAY WEAPONRY. These typically require Uranium, and may be disallowed by the server.
 *  Can safely fall down 1 height level
 *  Stationary on ground (supported by water)
 *  Speed: 5 (aerial)
-Suborbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.
+Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

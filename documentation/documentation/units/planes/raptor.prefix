@@ -9,8 +9,8 @@
 *  2 attacks per round
 *  Explosion radius: 1
 *  Damage: 5
-This plane-turret type can attack objects in range.
+Units or ground locations can be attacked if in range.
 *  Can safely fall down 1 height level
 *  Stationary on ground (supported by water)
 *  Speed: 10 (aerial)
-Suborbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.
+Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

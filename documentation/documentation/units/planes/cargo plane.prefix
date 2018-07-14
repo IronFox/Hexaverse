@@ -6,5 +6,5 @@
 *  Can safely fall down 1 height level
 *  Stationary on ground (supported by water)
 *  Speed: 9 (aerial)
-Suborbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.
+Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.
 This plane can quickly transport other mobile entities to remote locations. Land atop mobile units, or have them move on the same location as the plane to load.
