@@ -1,13 +1,25 @@
 set zip="7z.exe"
-set rs1="file.7z"
-set rs=%rs1%
-del %rs1% /Q
+set rs1="game.7z"
+set rs2="server.7z"
 
-Bake\Bake.exe
+
+del %rs1% /Q
+del %rs2% /Q
+
+Bake\Bake.exe mainBakeRecipe baked
 IF "%errorlevel%" NEQ "0" goto failed
 
 cd baked
-%zip% a ..\%rs% "*" -r
+%zip% a ..\%rs1% "*" -r
+cd ..
+IF "%errorlevel%" NEQ "0" goto failed
+
+
+Bake\Bake.exe serverBakeRecipe baked
+IF "%errorlevel%" NEQ "0" goto failed
+
+cd baked
+%zip% a ..\%rs2% "*" -r
 cd ..
 IF "%errorlevel%" NEQ "0" goto failed
 

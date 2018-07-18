@@ -13,18 +13,38 @@ namespace Bake
 		{
 			try
 			{
-				Console.WriteLine("Clearing previous baked...");
-				try
-				{
-					Directory.Delete("baked", true);
-				}
-				catch { }
+				if (args.Length != 2)
+					throw new ArgumentException("Usage: Bake.exe <recipe file[.txt]> <oven directory>");
+				string at = Directory.GetCurrentDirectory();
 				Console.WriteLine("Reading recipe...");
 
-				string[] recipe = System.IO.File.ReadAllLines(@"bakeRecipe.txt");
+				string recipeAt = args[0];
+				if (!File.Exists(recipeAt))
+				{
+					if (!recipeAt.EndsWith(".txt"))
+					{
+						recipeAt += ".txt";
+						if (!File.Exists(recipeAt))
+							throw new FileNotFoundException("Input recipe does not exist", recipeAt);
+					}
+					else
+						throw new FileNotFoundException("Input recipe does not exist", recipeAt);
+				}
 
-				Console.WriteLine("Creating temporary 'baked' directory...");
-				DirectoryInfo globalDest = Directory.CreateDirectory("baked");
+				string oven = args[1];
+				if (Directory.Exists(oven))
+				{
+					Console.WriteLine("Clearing previous oven at '" + oven + "'...");
+					Directory.Delete(oven, true);
+				}
+				if (File.Exists(oven))
+					throw new ArgumentException("File found at target oven location '"+oven+"'");
+
+
+				string[] recipe = File.ReadAllLines(recipeAt);
+
+				Console.WriteLine("Creating target '"+oven+"' directory...");
+				DirectoryInfo globalDest = Directory.CreateDirectory(oven);
 				Console.WriteLine("Processing recipe...");
 				foreach (string element in recipe)
 				{
@@ -40,9 +60,7 @@ namespace Bake
 					}
 					FileInfo[] files = source.GetFiles(segments[segments.Length - 1]);
 					if (files.Length == 0)
-					{
-						throw new Exception("Missing at least one file to match recipe element '" + element + "'");
-					}
+						throw new FileNotFoundException("Zero files to match recipe element '" + element + "'");
 					foreach (FileInfo f in files)
 					{
 						string target = Path.Combine(dest.FullName, f.Name);
@@ -50,12 +68,11 @@ namespace Bake
 						Console.WriteLine(target);
 					}
 				}
-
 				Console.WriteLine("Done.");
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine(e);
+				Console.Error.WriteLine(e);
 				return -1;
 			}
 			return 0;

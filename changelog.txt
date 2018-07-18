@@ -1,3 +1,6 @@
+v0.9.2
+	+ Fixed control console help text output.
+
 v0.9.1	[Jul 14 2018]
 	> Improved some automated type descriptions.
 	> Removed error message when trying to right-click direct some structures.

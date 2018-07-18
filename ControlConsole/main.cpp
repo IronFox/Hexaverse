@@ -344,7 +344,8 @@ namespace ParameterConfig
 	const char*	program = "";
 	StringBuffer	command;
 	bool		interactive = true,
-				server = false;
+				server = false,
+				doQuit = false;
 
 
 	void	Process(const char*arg)
@@ -376,16 +377,19 @@ namespace ParameterConfig
 					}
 					elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
 					{
-						std::cout << "usage: "<<program<<" [-p basePort] [[-c] command(s)]"<<std::endl;
+						std::cout << "usage: "<<program<<" [options] [command(s)]"<<std::endl;
 						std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
-						std::cout << " -c/--command [cmd]\tExecute command"<<std::endl;
-						std::cout << " -s/--server\tStart server and bind to the lifetime of this console"<<std::endl;
-						std::cout << " *\t\tExecute command"<<std::endl;
+						std::cout << " -c/--command [cmd]\tConnect, execute command(s), then quit"<<std::endl;
+						std::cout << " -s/--server\t\tStart server and bind to the runtime of this application"<<std::endl;
+						std::cout << " *\t\t\tConnect, execute command(s), then quit"<<std::endl;
 						std::cout << " [no parameters]\tStart in interactive mode"<<std::endl;
+						doQuit = true;
 					}
 					else
+					{
 						std::cerr << "Unsupported parameter: "<<arg<<std::endl;
-
+						doQuit = true;
+					}
 				}
 				else
 				{
@@ -616,7 +620,8 @@ int main(int argc, char* argv[])
 	ParameterConfig::program = argc > 0 ? argv[0] : "";
 	for (int i = 1; i < argc; i++)
 		ParameterConfig::Process(argv[i]);
-
+	if (ParameterConfig::doQuit)
+		return 0;
 
 	
 	client.InstallChannel(Channels::error);
