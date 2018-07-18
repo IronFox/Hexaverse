@@ -1,9 +1,11 @@
 set zip="7z.exe"
 set rs1="file.7z"
+
+
 set rs=%rs1%
 del %rs1% /Q
 
-Bake\Bake.exe
+Bake\Bake.exe mainBakeRecipe baked
 IF "%errorlevel%" NEQ "0" goto failed
 
 cd baked
