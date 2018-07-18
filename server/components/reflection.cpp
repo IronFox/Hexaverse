@@ -215,6 +215,19 @@ namespace Reflection
 
 
 		template <typename T>
+			String	TypedRangeToString(const M::TFloatRange<T>&range)
+			{
+				using StringConversion::ToString;
+				return "["+ToString(range.min)+","+ToString(range.max)+"]";
+			}
+		template <>
+			String	TypedRangeToString<bool>(const M::TFloatRange<bool>&range)
+			{
+				return "true/false";
+			}
+
+
+		template <typename T>
 			class TypedVariable : public Base
 			{
 				typedef Base	Super;
@@ -246,7 +259,7 @@ namespace Reflection
 				}
 				virtual String		GetSupportedValues() const override 
 				{
-					return ToString(range);
+					return TypedRangeToString(range);
 				}
 
 				virtual void		SetCurrentToDefault() override
