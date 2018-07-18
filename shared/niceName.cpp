@@ -7,8 +7,7 @@
 namespace NiceName
 {
 
-	static Ctr::Buffer<String>	adjectives,nouns;
-	static UINT64	totalCombinations = 0;
+	static Buffer<String>	nouns;
 
 	#ifdef CLIENT
 		#define PRE_PATH
@@ -41,12 +40,6 @@ namespace NiceName
 		while (file >> line)
 			nouns << line;
 
-		file.Open(PRE_PATH L"resources/nice/adjectives.txt");
-
-		while (file >> line)
-			adjectives << MakeNiceAdjective(line);
-
-		totalCombinations = adjectives.Count() * nouns.Count();
 	}
 
 	String	Get(UINT64 code)
@@ -58,9 +51,6 @@ namespace NiceName
 		result += 'A' + ch;
 		result += String((code>>8)%100);
 		return result;
-
-		code %= totalCombinations;
-		return adjectives[code / nouns.Count()]+" "+nouns[code % nouns.Count()];
 	}
 
 
