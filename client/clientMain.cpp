@@ -2225,6 +2225,7 @@ int main( int argc, const char* argv[])
 
 		#else
 			Loading::Finish();
+			LogEvent(EventSignificance::Uncommon,"Entering main loop");
 			while (!application_shutting_down && loop())
 			{};
 				
