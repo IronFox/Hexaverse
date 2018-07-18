@@ -670,7 +670,7 @@ namespace Menu
 	}
 
 
-	static void RefreshSaveGames()
+	static bool RefreshSaveGames()
 	{
 		if (!saveGames)
 			saveGames = Menu::Create();
@@ -679,6 +679,8 @@ namespace Menu
 
 		Buffer0<TSaveGame> saves;
 		LookupSaveGames(saves, RuntimeConfig::sharedConfig.Lookup("saves"), "");
+		if (saves.IsEmpty())
+			return false;
 		foreach (saves,s)
 		{
 			PathString p = s->path;
@@ -693,6 +695,7 @@ namespace Menu
 				HUD::WindowStack::SignalSituationChange();
 			},[](){return !Network::amOnline;});
 		}
+		return true;
 	}
 
 
@@ -710,8 +713,10 @@ namespace Menu
 		menu->AddCommand("Load saved game...",
 			[]()
 		{
-			RefreshSaveGames();
-			WindowStack::Show(saveGames);
+			if (RefreshSaveGames())
+				WindowStack::Show(saveGames);
+			else
+				Dialog::ShowMessage("Apparently, there are no save games to load. Please try again later.");
 		});
 		menu->AddCommand("Start Interactive Tutorial",
 			Tutorial::StartTutorialServer,
