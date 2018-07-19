@@ -1,17 +1,14 @@
 Hexaverse
-
-This is a game-prototype in beta state.
-Unless specified otherwise, all work done by Stefan Elsen, copyright (C) 2014-2015.
+https://www.hexaverse.net
 
 
+Third party content:
+http://findicons.com/icon/93659/guake?id=274746 (Console icon used in console applications)
+The origin of object sound sources is declared individually in
+.\client\resources\objectSounds\sources.txt
 
-Exceptions:
-Console icon used in console applications:
-http://findicons.com/icon/93659/guake?id=274746
 
-
-This project uses the following libaries and acknowledges their priceless contribution:
+This project uses the following libraries and acknowledges their priceless contribution:
 libbzip2: http://www.bzip.org/
 libpng: http://www.libpng.org/
-mbedtls: http://tls.mbed.org/
 
