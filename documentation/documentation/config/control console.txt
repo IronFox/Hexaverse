@@ -32,5 +32,12 @@ By default the server connects to the default port using interactive mode.
 The following runtime parameters may be used to alter this behavior:
 
 * ''-p/--port [port]'': Use non-default [[server start|base port]].
+* ''-s/--server'': [[server start|Start and supervise server]].
 * ''-c/--command [cmd]'': Explicitly connect, execute remote command(s), and terminate. Virtual directory updates are printed with a leading =, Regular results with a +, errors with a -. Multiple commands can be chained using ; as separator.
 * Anything else: Interpreted as a command, and executed as if ''-c'' was declared.
+
+==Server Supervision Mode==
+If the console is started with the ''--server'' option, then it will automatically [[server start|start]] a server for you, and attempt to connect to it.
+Regular heartbeats make sure the control console closes when the server does, and vice versa.
+This option can be combined with the ''--port'' option, changing the server to a different base port.
+Should not be combined with any other option.

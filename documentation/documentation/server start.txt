@@ -20,6 +20,21 @@ If you are not hosting the server, then you cannot create or load save games.
 
 When starting the server using the client visual interface, then a menu option allows to start a new server directly with a previously created save game.
 
+== Server via Control Console ==
+
+Both of the above options ship with a (hopefully) working [[config/control console]] that can supervise a server internally.
+The tool installation will automatically run this version when started via the Steam UI.
+To do so manually, run the [[config/control console]] with the ''-s/--server'' option.
+Using this option hides the server window itself and ties the server to the control console.
+Closing the console will automatically shut down the server.
+If the server stops due to some other reason, the control console will also close.
+
+Alternatively (or rather classically), you would start the server, and then run a control console to manage it.
+Either option works.
+
+
+
+
 ==Logs==
 
 Regardless of how a server is started, it always creates a log file in ''[[config/game folder]]\server\logs\''.
@@ -34,14 +49,17 @@ If you are located behind a NAT router, and you wish others to connect to you vi
 
 ==Runtime Parameters==
 
-For the more proficient users, a number of runtime parameters allow customization of more specific server settings.
-Execute //''server --help''// for a list of all switches.
+For the more proficient user, a number of runtime parameters allow customization of specific server/control console settings.
+Execute the respective program with the //''--help''// for a list of all switches.
 
 If you wish to run multiple servers on the same system, then an adjustment of base ports is required.
 The current game base port is 10247. Starting from there, two more TCP ports are used (effectively: ''10247, 10248, and 10249'').
+The third port is used for localhost-only control console communication and need not be NATed, but must be accounted for.
 Consecutive servers should thus allocate base ports (via the ''-p [base port]'' parameter) in steps of 3.
 
 External clients trying to connect must specify non-default base ports as additional address parameter (''yourhost:baseport''), e.g. ''localhost:20000'', if 20000 is your non-standard server base port.
 LAN computers will automatically receive these ports via the UDP discovery function.
 
-Use the ''-p [base port]'' runtime parameter of a [[config/control console]] to connect to these servers.
+If the server was started first, then use the ''-p [base port]'' runtime parameter of a [[config/control console]] to connect to these servers.
+Otherwise, using this option in combination with ''-s'' will start the server on that port and establish a connection to it.
+E.g. ''[[config/control console|ControlConsole.exe]] -p 20000 -s''
