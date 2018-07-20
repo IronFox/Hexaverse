@@ -50,7 +50,7 @@ namespace ServerManager
 			attributeValueHeader.Width = -1;
 		}
 
-
+		private UDPReceiver receiver;
 
 		private void ServerTable_Load(object sender, EventArgs e)
 		{
@@ -79,8 +79,8 @@ namespace ServerManager
 				   });
 			}
 
-
-			//this.globalAttributeView
+			receiver = new UDPReceiver();
+			receiverTimer.Start();
 		}
 
 		private void OpenServerConfiguration(string commitText, Action<string> onCompleteHandlePath)
@@ -95,6 +95,15 @@ namespace ServerManager
 				var at = globalAttributeView.SelectedIndices[0];
 				if (at < attributeListHandler.Count && attributeListHandler[at] != null)
 					attributeListHandler[at](globalAttributeView.Items[at].SubItems[2].Text);
+			}
+		}
+
+		private void receiverTimer_Tick(object sender, EventArgs e)
+		{
+			UDPReceiver.Info info;
+			while (receiver.Updates.TryDequeue(out info))
+			{
+
 			}
 		}
 	}

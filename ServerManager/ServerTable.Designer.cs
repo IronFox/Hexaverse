@@ -38,6 +38,7 @@
 			this.launchServerButton = new System.Windows.Forms.Button();
 			this.globalAttributeView = new System.Windows.Forms.ListView();
 			this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.attributeNameHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.attributeValueHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.launchClientButton = new System.Windows.Forms.Button();
 			this.serverListView = new System.Windows.Forms.ListView();
@@ -60,7 +61,7 @@
 			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
 			this.shutdownStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-			this.attributeNameHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.receiverTimer = new System.Windows.Forms.Timer(this.components);
 			this.globalInfoPanel.SuspendLayout();
 			this.menuStrip1.SuspendLayout();
 			this.serverContextMenuStrip.SuspendLayout();
@@ -118,6 +119,11 @@
 			// 
 			this.columnHeader1.Text = "";
 			this.columnHeader1.Width = 1;
+			// 
+			// attributeNameHeader
+			// 
+			this.attributeNameHeader.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			this.attributeNameHeader.Width = 82;
 			// 
 			// attributeValueHeader
 			// 
@@ -279,10 +285,10 @@
 			this.toolStripSeparator2.Name = "toolStripSeparator2";
 			this.toolStripSeparator2.Size = new System.Drawing.Size(205, 6);
 			// 
-			// attributeNameHeader
+			// receiverTimer
 			// 
-			this.attributeNameHeader.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			this.attributeNameHeader.Width = 82;
+			this.receiverTimer.Interval = 1000;
+			this.receiverTimer.Tick += new System.EventHandler(this.receiverTimer_Tick);
 			// 
 			// ServerTable
 			// 
@@ -338,6 +344,7 @@
 		private System.Windows.Forms.ToolStripTextBox passwordStripItem;
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
 		private System.Windows.Forms.ColumnHeader attributeNameHeader;
+		private System.Windows.Forms.Timer receiverTimer;
 	}
 }
 

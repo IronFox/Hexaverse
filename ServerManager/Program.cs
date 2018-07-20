@@ -50,6 +50,7 @@ namespace ServerManager
 
 			try
 			{
+				NiceName.Load();
 				Application.EnableVisualStyles();
 				Application.SetCompatibleTextRenderingDefault(false);
 				Application.Run(new ServerTable());
