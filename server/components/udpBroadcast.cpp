@@ -175,6 +175,15 @@ namespace UDPBroadCast
 		ASSERT_EQUAL__(rc,0);
 
 		UpdateOutAdapters(everyone);
+		{
+			auto&adapter = everyone.Append();
+			
+			memset(&adapter,0,sizeof(adapter));
+			adapter.sin_family=AF_INET;
+			adapter.sin_addr.s_addr= htonl( INADDR_LOOPBACK );
+			adapter.sin_port = htons(MANAGER_UNICAST_PORT);
+		}
+
 		lastBroadcast = lastAdapterQuery = timer.Now();
 
 		return true;
