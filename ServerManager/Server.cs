@@ -32,7 +32,7 @@ namespace ServerManager
 			ListViewItem.SubItems.Add("");  //rules
 
 			receiver = new ServerInfoReceiver(basePort);
-			receiver.TryToReconnect();
+			//receiver.TryToReconnect();
 		}
 
 		public void Receive(UDPReceiver.Info info)
@@ -45,7 +45,7 @@ namespace ServerManager
 
 		public bool Update()
 		{
-			if (!receiver.IsConnected)
+			if (!receiver.IsConnected && !SessionIsClosed)
 				receiver.TryToReconnect();
 
 			ListViewItem.SubItems[1].Text = ID.ToNiceString();
@@ -56,7 +56,7 @@ namespace ServerManager
 			if (RequiresHeartbeats)
 				ListViewItem.Text += " (H)";
 
-			if (receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2))
+			if (!SessionIsClosed && receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2))
 			{
 				var info = receiver.LastUpdate.Package.game;
 				status.Text = info.numFactionsOnline + "/" + info.numFactionsCreated + " online, round "+info.roundNumber;
@@ -71,7 +71,7 @@ namespace ServerManager
 				{
 					worldID.Text = "";
 					rules.Text = "";
-					status.Text = "Session closed";
+					status.Text = "Session closed or suspended";
 				}
 				else
 				{
