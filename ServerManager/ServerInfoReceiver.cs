@@ -12,7 +12,7 @@ namespace ServerManager
 
 
 
-	public class ServerInfoReceiver : Protocol.Client
+	public class ServerInfoReceiver : Protocol.Client, IDisposable
 	{
 		public struct VersionPackage
 		{
@@ -75,6 +75,8 @@ namespace ServerManager
 
 		public void TryToReconnect()
 		{
+			if (isDisposed)
+				throw new ObjectDisposedException("This client is disposed");
 			if (readThread != null && readThread.IsAlive)
 				return;
 			readThread = new Thread(new ThreadStart(ConnectAndRead));
@@ -86,6 +88,8 @@ namespace ServerManager
 			try
 			{
 				Reset(new TcpClient("localhost", port));
+				if (isDisposed)
+					return;
 				StartNoSSLSelf();
 			}
 			catch (SocketException)
@@ -131,6 +135,14 @@ namespace ServerManager
 				if ((gameFlags & (uint)values[i]) != 0)
 					result.Add(names[i]);
 			return string.Join(", ", result);
+		}
+
+		private volatile bool isDisposed = false;
+
+		public void Dispose()
+		{
+			ForceDisconnect();
+			isDisposed = true;
 		}
 	}
 }

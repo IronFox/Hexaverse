@@ -129,6 +129,29 @@ namespace ServerManager
 			}
 			ruleHeader.Width = -1;
 		}
+
+		void Shutdown()
+		{
+			foreach (var server in servers)
+			{
+				server.Dispose();
+			}
+			servers.Clear();
+			portMap.Clear();
+			receiver.Dispose();
+			receiver = null;
+			Application.Exit();
+		}
+
+		private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			Shutdown();
+		}
+
+		private void ServerTable_FormClosed(object sender, FormClosedEventArgs e)
+		{
+			Shutdown();
+		}
 	}
 
 }

@@ -42,9 +42,9 @@
 			this.attributeValueHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.launchClientButton = new System.Windows.Forms.Button();
 			this.serverListView = new System.Windows.Forms.ListView();
+			this.portHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.hostIDHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.worldIDHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-			this.portHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.statusHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.ruleHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.statusStrip1 = new System.Windows.Forms.StatusStrip();
@@ -157,6 +157,11 @@
 			this.serverListView.UseCompatibleStateImageBehavior = false;
 			this.serverListView.View = System.Windows.Forms.View.Details;
 			// 
+			// portHeader
+			// 
+			this.portHeader.Text = "Port Range";
+			this.portHeader.Width = 100;
+			// 
 			// hostIDHeader
 			// 
 			this.hostIDHeader.Text = "Server ID";
@@ -166,11 +171,6 @@
 			// 
 			this.worldIDHeader.Text = "World ID";
 			this.worldIDHeader.Width = 100;
-			// 
-			// portHeader
-			// 
-			this.portHeader.Text = "Port Range";
-			this.portHeader.Width = 100;
 			// 
 			// statusHeader
 			// 
@@ -211,8 +211,9 @@
 			// exitToolStripMenuItem
 			// 
 			this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-			this.exitToolStripMenuItem.Size = new System.Drawing.Size(92, 22);
+			this.exitToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
 			this.exitToolStripMenuItem.Text = "Exit";
+			this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
 			// 
 			// serverContextMenuStrip
 			// 
@@ -298,6 +299,7 @@
 			this.MinimumSize = new System.Drawing.Size(816, 489);
 			this.Name = "ServerTable";
 			this.Text = "Server Manager";
+			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.ServerTable_FormClosed);
 			this.Load += new System.EventHandler(this.ServerTable_Load);
 			this.globalInfoPanel.ResumeLayout(false);
 			this.menuStrip1.ResumeLayout(false);

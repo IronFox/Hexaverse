@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace ServerManager
 {
-	public class Server
+	public class Server : IDisposable
 	{
 		private Process controlConsole=null, server=null;
 		private readonly ServerInfoReceiver receiver;
@@ -18,7 +18,7 @@ namespace ServerManager
 		public readonly int BasePort;
 		public readonly ListViewItem ListViewItem = new ListViewItem();
 		public DateTime LastUDPPing { get; private set; }
-
+		private bool isDisposed = false;
 
 
 		public Server(int basePort)
@@ -45,6 +45,8 @@ namespace ServerManager
 
 		public bool Update()
 		{
+			if (this.isDisposed)
+				return false;
 			if (!receiver.IsConnected && !SessionIsClosed)
 				receiver.TryToReconnect();
 
@@ -86,6 +88,16 @@ namespace ServerManager
 
 
 			return true;
+		}
+
+		public void Dispose()
+		{
+			isDisposed = true;
+			if (receiver != null)
+				receiver.Dispose();
+			//if (server != null)	//it'll stop on its own
+				//server.Kill();
+
 		}
 	}
 }

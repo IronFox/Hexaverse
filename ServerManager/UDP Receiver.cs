@@ -60,7 +60,7 @@ namespace ServerManager
 		}
 	};
 
-	public class UDPReceiver
+	public class UDPReceiver : IDisposable
 	{
 		public class Info
 		{
@@ -132,9 +132,10 @@ namespace ServerManager
 			}
 		}
 
-
-
-
-
+		public void Dispose()
+		{
+			if (client != null)
+				client.Dispose();
+		}
 	}
 }
