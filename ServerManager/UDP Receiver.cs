@@ -41,6 +41,10 @@ namespace ServerManager
 			return hashCode;
 		}
 
+		public bool IsEmpty => First == 0 && Last == 0;
+
+
+
 		public string ToNiceString()
 		{
 			return NiceName.Get(First);

@@ -52,6 +52,7 @@
       <DependentUpon>EditServerConfig.cs</DependentUpon>
     </Compile>
     <Compile Include="NiceName.cs" />
+    <Compile Include="Server.cs" />
     <Compile Include="ServerTable.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -83,6 +83,10 @@ namespace ServerManager
 			receiverTimer.Start();
 		}
 
+
+		private readonly List<Server> servers = new List<Server>();
+		private readonly Dictionary<int, Server> portMap = new Dictionary<int, Server>();
+
 		private void OpenServerConfiguration(string commitText, Action<string> onCompleteHandlePath)
 		{
 			new EditServerConfig().Show(commitText, onCompleteHandlePath);
@@ -103,7 +107,15 @@ namespace ServerManager
 			UDPReceiver.Info info;
 			while (receiver.Updates.TryDequeue(out info))
 			{
-
+				Server server;
+				if (!portMap.TryGetValue(info.Port, out server))
+				{
+					server = new Server(info.Port);
+					servers.Add(server);
+					portMap.Add(info.Port, server);
+					serverListView.Items.Add(server.ListViewItem);
+				}
+				server.Update(info);
 			}
 		}
 	}

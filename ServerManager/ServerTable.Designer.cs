@@ -42,10 +42,9 @@
 			this.attributeValueHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.launchClientButton = new System.Windows.Forms.Button();
 			this.serverListView = new System.Windows.Forms.ListView();
-			this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-			this.columnHeader4 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-			this.columnHeader5 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-			this.visibilityHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.hostIDHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.worldIDHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.portHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.statusHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.ruleHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.statusStrip1 = new System.Windows.Forms.StatusStrip();
@@ -144,10 +143,9 @@
 			// serverListView
 			// 
 			this.serverListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader3,
-            this.columnHeader4,
-            this.columnHeader5,
-            this.visibilityHeader,
+            this.portHeader,
+            this.hostIDHeader,
+            this.worldIDHeader,
             this.statusHeader,
             this.ruleHeader});
 			this.serverListView.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -159,24 +157,20 @@
 			this.serverListView.UseCompatibleStateImageBehavior = false;
 			this.serverListView.View = System.Windows.Forms.View.Details;
 			// 
-			// columnHeader3
+			// hostIDHeader
 			// 
-			this.columnHeader3.Text = "Server ID";
-			this.columnHeader3.Width = 100;
+			this.hostIDHeader.Text = "Server ID";
+			this.hostIDHeader.Width = 100;
 			// 
-			// columnHeader4
+			// worldIDHeader
 			// 
-			this.columnHeader4.Text = "World ID";
-			this.columnHeader4.Width = 100;
+			this.worldIDHeader.Text = "World ID";
+			this.worldIDHeader.Width = 100;
 			// 
-			// columnHeader5
+			// portHeader
 			// 
-			this.columnHeader5.Text = "Port Range";
-			this.columnHeader5.Width = 100;
-			// 
-			// visibilityHeader
-			// 
-			this.visibilityHeader.Text = "Visibility";
+			this.portHeader.Text = "Port Range";
+			this.portHeader.Width = 100;
 			// 
 			// statusHeader
 			// 
@@ -323,10 +317,9 @@
 		private System.Windows.Forms.ColumnHeader columnHeader1;
 		private System.Windows.Forms.ColumnHeader attributeValueHeader;
 		private System.Windows.Forms.ListView serverListView;
-		private System.Windows.Forms.ColumnHeader columnHeader3;
-		private System.Windows.Forms.ColumnHeader columnHeader4;
-		private System.Windows.Forms.ColumnHeader columnHeader5;
-		private System.Windows.Forms.ColumnHeader visibilityHeader;
+		private System.Windows.Forms.ColumnHeader hostIDHeader;
+		private System.Windows.Forms.ColumnHeader worldIDHeader;
+		private System.Windows.Forms.ColumnHeader portHeader;
 		private System.Windows.Forms.ColumnHeader statusHeader;
 		private System.Windows.Forms.ColumnHeader ruleHeader;
 		private System.Windows.Forms.StatusStrip statusStrip1;
