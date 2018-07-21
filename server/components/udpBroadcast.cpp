@@ -217,7 +217,7 @@ namespace UDPBroadCast
 		{
 
 			managerPacket.flags = 0;
-			if (!Network::SessionIsStarted())
+			if (!Network::SessionIsStarted() || Network::SessionIsSuspended())
 				managerPacket.flags |= managerPacket.SessionClosed;
 			if (Network::RequiresHeartbeats())
 				managerPacket.flags |= managerPacket.RequireHeartbeats;

@@ -901,7 +901,7 @@ int main( int argc, const char* argv[])
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",
-			[]()->bool{return Network::SessionIsStarted();},
+			[]()->bool{return Network::SessionIsStarted() && !Network::SessionIsSuspended();},
 			[](){Network::SuspendSession();},
 			[](){
 				Network::RestartSession(false);

@@ -579,6 +579,11 @@ namespace Network
 	}
 
 
+	bool		SessionIsSuspended()
+	{
+		return Session::isStarted && !server.IsOnline();
+	}
+
 	bool		SessionIsStarted()
 	{
 		return Session::isStarted;
