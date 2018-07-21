@@ -19,7 +19,7 @@ namespace ServerManager
 			code >>= 32;
 			byte ch = (byte)((code & 0xff) % 26);
 			result += ' ';
-			result += 'A' + ch;
+			result += (char)('A' + ch);
 			result += ((code >> 8) % 100).ToString();
 			return result;
 		}
