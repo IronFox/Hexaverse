@@ -135,6 +135,7 @@ namespace Network
 	Call only if the heartbeat system should be active. There is currently no method to again deactive it
 	*/
 	void		StartHeartbeat(UINT16 basePort);
+	bool		RequiresHeartbeats();
 
 	/**
 	Resolves network events

@@ -19,6 +19,7 @@ namespace UDPBroadCast
 	Timer::Time		lastAdapterQuery, lastBroadcast;
 
 	Protocol::THostBroadcastPacket	packet;
+	Protocol::THostToManagerPacket	managerPacket;
 	static sockaddr_in managerAddr;
 	static bool doBroadcast = false;
 
@@ -118,6 +119,8 @@ namespace UDPBroadCast
 		GlobalEvents::applicationTerminate << Destroy;
 		packet.hostID = serverID;
 		packet.serverBasePort = basePort;
+		managerPacket.hostID = serverID;
+		managerPacket.serverBasePort = basePort;
 		{
 			const char var[] = SERVER_NAME;
 			const size_t len = sizeof(var);
@@ -212,7 +215,13 @@ namespace UDPBroadCast
 	{
 		if (timer.CheckIfOutdatedAndUpdate(lastBroadcast,1))
 		{
-			sendto(broadcastSocket,(const char*)&packet,sizeof(packet),0,(const sockaddr*)&managerAddr,(int)sizeof(sockaddr_in));
+
+			managerPacket.flags = 0;
+			if (!Network::SessionIsStarted())
+				managerPacket.flags |= managerPacket.SessionClosed;
+			if (Network::RequiresHeartbeats())
+				managerPacket.flags |= managerPacket.RequireHeartbeats;
+			sendto(broadcastSocket,(const char*)&managerPacket,sizeof(managerPacket),0,(const sockaddr*)&managerAddr,(int)sizeof(sockaddr_in));
 
 			if (doBroadcast)
 			{

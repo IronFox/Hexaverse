@@ -1317,12 +1317,20 @@ namespace Protocol
 	//typedef NET(SHA256::HashContainer) ResourceID;
 
 
+	/**
+	Configuration settings that should be forwarded to the client
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	NETSTRUCT3(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
 		, NET(BYTE), worldDiscovery
 	)	
 
+	/**
+	Information about the running game
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	NETSTRUCT6(GameInfo
 		, NET(UINT16), numFactionsOnline
 		, NET(UINT16), numFactionsCreated
@@ -1679,7 +1687,10 @@ namespace Protocol
 
 
 
-
+	/**
+	Primary UDP broadcast package to notify potential clients of the server's existence.
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs and [ServerManager:]UDP Receiver.cs
+	*/
 	struct THostBroadcastPacket
 	{
 		typedef THostBroadcastPacket Self;
@@ -1709,6 +1720,27 @@ namespace Protocol
 	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64 + 2, "Struct packing not appropriate for host broadcast packet");//make sure there are no gaps
 
 
+
+	struct THostToManagerPacket
+	{
+		enum flag_t
+		{
+			SessionClosed = 0x1,
+			RequireHeartbeats = 0x2,
+		};
+
+		TUniqueID	hostID;
+		UINT16		flags;
+		UINT16		serverBasePort;
+	};
+	static_assert(sizeof(THostToManagerPacket) == sizeof(TUniqueID) + 2 + 2, "Struct packing not appropriate for host manager packet");//make sure there are no gaps
+
+
+	/**
+	Flags that may or not be set for a game.
+	Each signifies a particular switch being on, or in absence off.
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	namespace GameFlag
 	{
 		enum flag_t
@@ -1737,6 +1769,10 @@ namespace Protocol
 
 
 
+	/**
+	Info package regularly sent by the server to connected info listeners (TCP)
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	NETSTRUCT2(ServerInfo
 		, NET(THostBroadcastPacket), hostInfo
 		, GameInfo, gameInfo

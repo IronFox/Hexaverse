@@ -129,7 +129,10 @@ namespace Network
 		}
 
 
-
+		bool	IsActive()
+		{
+			return s != INVALID_SOCKET;
+		}
 
 
 		void	Check()
@@ -408,6 +411,12 @@ namespace Network
 	{
 		Heartbeat::Start(basePort);
 	}
+
+	bool		RequiresHeartbeats()
+	{
+		return Heartbeat::IsActive();
+	}
+
 
 
 	void		Start(UINT16 basePort)
