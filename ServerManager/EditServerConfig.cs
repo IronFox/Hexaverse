@@ -533,7 +533,6 @@ namespace ServerManager
 
 		private void abortButton_Click(object sender, EventArgs e)
 		{
-			File.Delete(fileName);
 			this.Close();
 		}
 
@@ -546,8 +545,12 @@ namespace ServerManager
 
 
 			onCompleteHandlePath(fileName);
-			File.Delete(fileName);
 			this.Close();
+		}
+
+		private void EditServerConfig_FormClosed(object sender, FormClosedEventArgs e)
+		{
+			File.Delete(fileName);
 		}
 	}
 }

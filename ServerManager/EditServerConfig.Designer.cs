@@ -30,8 +30,8 @@
 		{
 			this.components = new System.ComponentModel.Container();
 			this.panel2 = new System.Windows.Forms.Panel();
-			this.acceptButton = new System.Windows.Forms.Button();
 			this.abortButton = new System.Windows.Forms.Button();
+			this.acceptButton = new System.Windows.Forms.Button();
 			this.attributePanel = new System.Windows.Forms.Panel();
 			this.toolTip = new System.Windows.Forms.ToolTip(this.components);
 			this.panel2.SuspendLayout();
@@ -47,16 +47,6 @@
 			this.panel2.Size = new System.Drawing.Size(800, 37);
 			this.panel2.TabIndex = 1;
 			// 
-			// acceptButton
-			// 
-			this.acceptButton.Location = new System.Drawing.Point(3, 6);
-			this.acceptButton.Name = "acceptButton";
-			this.acceptButton.Size = new System.Drawing.Size(251, 23);
-			this.acceptButton.TabIndex = 0;
-			this.acceptButton.Text = "button1";
-			this.acceptButton.UseVisualStyleBackColor = true;
-			this.acceptButton.Click += new System.EventHandler(this.acceptButton_Click);
-			// 
 			// abortButton
 			// 
 			this.abortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -67,6 +57,16 @@
 			this.abortButton.Text = "Cancel";
 			this.abortButton.UseVisualStyleBackColor = true;
 			this.abortButton.Click += new System.EventHandler(this.abortButton_Click);
+			// 
+			// acceptButton
+			// 
+			this.acceptButton.Location = new System.Drawing.Point(3, 6);
+			this.acceptButton.Name = "acceptButton";
+			this.acceptButton.Size = new System.Drawing.Size(251, 23);
+			this.acceptButton.TabIndex = 0;
+			this.acceptButton.Text = "button1";
+			this.acceptButton.UseVisualStyleBackColor = true;
+			this.acceptButton.Click += new System.EventHandler(this.acceptButton_Click);
 			// 
 			// attributePanel
 			// 
@@ -86,6 +86,7 @@
 			this.Controls.Add(this.panel2);
 			this.Name = "EditServerConfig";
 			this.Text = "Configure Server";
+			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.EditServerConfig_FormClosed);
 			this.panel2.ResumeLayout(false);
 			this.ResumeLayout(false);
 
