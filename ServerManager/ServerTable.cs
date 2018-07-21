@@ -115,8 +115,19 @@ namespace ServerManager
 					portMap.Add(info.Port, server);
 					serverListView.Items.Add(server.ListViewItem);
 				}
-				server.Update(info);
+				server.Receive(info);
 			}
+			for (int i = 0; i < servers.Count; i++)
+			{
+				var server = servers[i];
+				if (!server.Update())
+				{
+					serverListView.Items.Remove(server.ListViewItem);
+					servers.RemoveAt(i--);
+					portMap.Remove(server.BasePort);
+				}
+			}
+			ruleHeader.Width = -1;
 		}
 	}
 

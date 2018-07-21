@@ -285,7 +285,6 @@ namespace ServerManager
 
 		class EnumAttribute : Attribute
 		{
-			public readonly string[] Choices;
 			public EnumAttribute(Group parent, string name, string range, string[] help) : base(parent, name, new ComboBox(), help)
 			{
 				var box = (ComboBox)MainControl;

@@ -53,6 +53,7 @@
     </Compile>
     <Compile Include="NiceName.cs" />
     <Compile Include="Server.cs" />
+    <Compile Include="ServerInfoReceiver.cs" />
     <Compile Include="ServerTable.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -96,6 +97,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\hexaverse cover capsule 87.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\TechniteLogic\Protocol\Protocol.csproj">
+      <Project>{b9f262af-b3c7-44a8-a095-cf84f5b6c009}</Project>
+      <Name>Protocol</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

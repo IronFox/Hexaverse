@@ -65,14 +65,16 @@ namespace ServerManager
 		public class Info
 		{
 			public readonly UUID HostID;
-			public readonly string Version;
 			public readonly int Port;
+			public readonly bool RequiresHeartbeats;
+			public readonly bool SessionClosed;
 			public readonly DateTime Received;
 
-			public Info(UUID host, string version, int port)
+			public Info(UUID host, int port, bool heartbeats, bool closed)
 			{
 				HostID = host;
-				Version = version;
+				RequiresHeartbeats = heartbeats;
+				SessionClosed = closed;
 				Port = port;
 				Received = DateTime.Now;
 			}
@@ -106,15 +108,22 @@ namespace ServerManager
 				{
 					Byte[] bytes = client.Receive(ref RemoteIpEndPoint);
 
-					if (bytes.Length != 16 + 64 + 2)
+					if (bytes.Length != 16 + 2+ 2)
 						throw new IOException("Received unexpected package size "+bytes.Length);
 
 					/*
-					TUniqueID hostID;
-					char version[64];
-					UINT16 serverBasePort;
+					enum flag_t
+					{
+						SessionClosed = 0x1,
+						RequireHeartbeats = 0x2,
+					};
+
+					TUniqueID	hostID;
+					UINT16		flags;
+					UINT16		serverBasePort;
 					*/
-					Updates.Enqueue(new Info(new UUID(bytes, 0),BitConverter.ToString(bytes, 16, 64),BitConverter.ToUInt16(bytes, 80)));
+					var flags = BitConverter.ToUInt16(bytes, 16);
+					Updates.Enqueue(new Info(new UUID(bytes, 0),BitConverter.ToUInt16(bytes, 18),(flags & 0x2) != 0, (flags &0x1) != 0));
 				}
 			}
 			catch (Exception ex)
