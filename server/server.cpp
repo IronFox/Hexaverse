@@ -874,7 +874,8 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
+		const auto logPath = RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log"));
+		Logging::Begin(logPath);
 		//Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
@@ -926,6 +927,7 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.PushFocus();
 			Reflection::state.EnterNewFolder("/IO");
+			Reflection::state.SetString("logFile",FileSystem::PathToString(logPath,false),CLI::FullProtection,true);
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
 			{
