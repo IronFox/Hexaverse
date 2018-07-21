@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ using System.Windows.Forms;
 
 namespace ServerManager
 {
-	public class Server : IDisposable
+	public class Server : ListViewItem, IDisposable
 	{
 		private Process controlConsole=null, server=null;
 		private readonly ServerInfoReceiver receiver;
@@ -16,7 +17,6 @@ namespace ServerManager
 		public bool SessionIsClosed { get; private set; }
 		public bool RequiresHeartbeats { get; private set; }
 		public readonly int BasePort;
-		public readonly ListViewItem ListViewItem = new ListViewItem();
 		public DateTime LastUDPPing { get; private set; }
 		private bool isDisposed = false;
 
@@ -24,12 +24,12 @@ namespace ServerManager
 		public Server(int basePort)
 		{
 			BasePort = basePort;
-			ListViewItem.Text = basePort + ".." + (basePort + 2);
-				//basePort + "," + (basePort + 1) + "(," + (basePort + 2) + ")";
-			ListViewItem.SubItems.Add("");	//server id
-			ListViewItem.SubItems.Add("");  //world id
-			ListViewItem.SubItems.Add("Unknown");  //status
-			ListViewItem.SubItems.Add("");  //rules
+			base.Text = basePort + ".." + (basePort + 2);
+			//basePort + "," + (basePort + 1) + "(," + (basePort + 2) + ")";
+			base.SubItems.Add("");  //server id
+			base.SubItems.Add("");  //world id
+			base.SubItems.Add("Unknown");  //status
+			base.SubItems.Add("");  //rules
 
 			receiver = new ServerInfoReceiver(basePort);
 			//receiver.TryToReconnect();
@@ -50,13 +50,13 @@ namespace ServerManager
 			if (!receiver.IsConnected && !SessionIsClosed)
 				receiver.TryToReconnect();
 
-			ListViewItem.SubItems[1].Text = ID.ToNiceString();
-			var status = ListViewItem.SubItems[3];
-			var worldID = ListViewItem.SubItems[2];
-			var rules = ListViewItem.SubItems[4];
-			ListViewItem.Text = BasePort + ".." + (BasePort + 2);
+			base.SubItems[1].Text = ID.ToNiceString();
+			var status = base.SubItems[3];
+			var worldID = base.SubItems[2];
+			var rules = base.SubItems[4];
+			base.Text = BasePort + ".." + (BasePort + 2);
 			if (RequiresHeartbeats)
-				ListViewItem.Text += " (H)";
+				base.Text += " (H)";
 
 			if (!SessionIsClosed && receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2))
 			{
@@ -98,6 +98,44 @@ namespace ServerManager
 			//if (server != null)	//it'll stop on its own
 				//server.Kill();
 
+		}
+
+		public void IssueControlCommand(string cmd)
+		{
+
+		}
+
+		public void FetchVariableContent(string path, Action<string> result)
+		{
+
+		}
+
+		public void Shutdown()
+		{
+			IssueControlCommand("/server/shutdown");
+		}
+
+		internal void StartControlConsole()
+		{
+			try
+			{
+				if (Environment.Is64BitOperatingSystem)
+					Process.Start(Path.Combine("ControlConsole", "ControlConsole.exe"), "-p " + BasePort);
+				else
+					Process.Start(Path.Combine("ControlConsole", "ControlConsole x86.exe"), "-p " + BasePort);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message, "Error opening control console", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+			}
+		}
+
+		internal void OpenLogFile()
+		{
+			FetchVariableContent("/IO/logFile",(logAt) =>
+			{
+				Process.Start(logAt);
+			});
 		}
 	}
 }

@@ -55,11 +55,8 @@
 			this.controlStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.logStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.saveGameAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-			this.visibilityStripItem = new System.Windows.Forms.ToolStripComboBox();
-			this.passwordStripItem = new System.Windows.Forms.ToolStripTextBox();
 			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
 			this.shutdownStripItem = new System.Windows.Forms.ToolStripMenuItem();
-			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
 			this.receiverTimer = new System.Windows.Forms.Timer(this.components);
 			this.globalInfoPanel.SuspendLayout();
 			this.menuStrip1.SuspendLayout();
@@ -148,6 +145,7 @@
             this.worldIDHeader,
             this.statusHeader,
             this.ruleHeader});
+			this.serverListView.ContextMenuStrip = this.serverContextMenuStrip;
 			this.serverListView.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.serverListView.FullRowSelect = true;
 			this.serverListView.Location = new System.Drawing.Point(0, 141);
@@ -221,48 +219,31 @@
             this.controlStripItem,
             this.logStripItem,
             this.saveGameAsToolStripMenuItem,
-            this.visibilityStripItem,
-            this.passwordStripItem,
             this.toolStripSeparator1,
-            this.shutdownStripItem,
-            this.toolStripSeparator2});
+            this.shutdownStripItem});
 			this.serverContextMenuStrip.Name = "serverContextMenuStrip";
-			this.serverContextMenuStrip.Size = new System.Drawing.Size(209, 156);
+			this.serverContextMenuStrip.Size = new System.Drawing.Size(209, 120);
+			this.serverContextMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(this.serverContextMenuStrip_Opening);
 			// 
 			// controlStripItem
 			// 
 			this.controlStripItem.Name = "controlStripItem";
 			this.controlStripItem.Size = new System.Drawing.Size(208, 22);
 			this.controlStripItem.Text = "Connect Control Console";
+			this.controlStripItem.Click += new System.EventHandler(this.controlStripItem_Click);
 			// 
 			// logStripItem
 			// 
 			this.logStripItem.Name = "logStripItem";
 			this.logStripItem.Size = new System.Drawing.Size(208, 22);
 			this.logStripItem.Text = "View Log File";
+			this.logStripItem.Click += new System.EventHandler(this.logStripItem_Click);
 			// 
 			// saveGameAsToolStripMenuItem
 			// 
 			this.saveGameAsToolStripMenuItem.Name = "saveGameAsToolStripMenuItem";
 			this.saveGameAsToolStripMenuItem.Size = new System.Drawing.Size(208, 22);
 			this.saveGameAsToolStripMenuItem.Text = "Save Game as...";
-			// 
-			// visibilityStripItem
-			// 
-			this.visibilityStripItem.Items.AddRange(new object[] {
-            "Private",
-            "Friends Only",
-            "Public"});
-			this.visibilityStripItem.Name = "visibilityStripItem";
-			this.visibilityStripItem.Size = new System.Drawing.Size(121, 23);
-			this.visibilityStripItem.Text = "Visibility:";
-			this.visibilityStripItem.Click += new System.EventHandler(this.visibilityStripItem_Click);
-			// 
-			// passwordStripItem
-			// 
-			this.passwordStripItem.Name = "passwordStripItem";
-			this.passwordStripItem.Size = new System.Drawing.Size(100, 23);
-			this.passwordStripItem.Text = "Password:";
 			// 
 			// toolStripSeparator1
 			// 
@@ -274,11 +255,7 @@
 			this.shutdownStripItem.Name = "shutdownStripItem";
 			this.shutdownStripItem.Size = new System.Drawing.Size(208, 22);
 			this.shutdownStripItem.Text = "Shut Down";
-			// 
-			// toolStripSeparator2
-			// 
-			this.toolStripSeparator2.Name = "toolStripSeparator2";
-			this.toolStripSeparator2.Size = new System.Drawing.Size(205, 6);
+			this.shutdownStripItem.Click += new System.EventHandler(this.shutdownStripItem_Click);
 			// 
 			// receiverTimer
 			// 
@@ -305,7 +282,6 @@
 			this.menuStrip1.ResumeLayout(false);
 			this.menuStrip1.PerformLayout();
 			this.serverContextMenuStrip.ResumeLayout(false);
-			this.serverContextMenuStrip.PerformLayout();
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -333,11 +309,8 @@
 		private System.Windows.Forms.ToolStripMenuItem logStripItem;
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
 		private System.Windows.Forms.ToolStripMenuItem shutdownStripItem;
-		private System.Windows.Forms.ToolStripComboBox visibilityStripItem;
 		private System.Windows.Forms.Button launchServerButton;
 		private System.Windows.Forms.ToolStripMenuItem saveGameAsToolStripMenuItem;
-		private System.Windows.Forms.ToolStripTextBox passwordStripItem;
-		private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
 		private System.Windows.Forms.ColumnHeader attributeNameHeader;
 		private System.Windows.Forms.Timer receiverTimer;
 	}

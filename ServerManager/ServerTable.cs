@@ -113,7 +113,7 @@ namespace ServerManager
 					server = new Server(info.Port);
 					servers.Add(server);
 					portMap.Add(info.Port, server);
-					serverListView.Items.Add(server.ListViewItem);
+					serverListView.Items.Add(server);
 				}
 				server.Receive(info);
 			}
@@ -122,7 +122,7 @@ namespace ServerManager
 				var server = servers[i];
 				if (!server.Update())
 				{
-					serverListView.Items.Remove(server.ListViewItem);
+					serverListView.Items.Remove(server);
 					servers.RemoveAt(i--);
 					portMap.Remove(server.BasePort);
 				}
@@ -151,6 +151,50 @@ namespace ServerManager
 		private void ServerTable_FormClosed(object sender, FormClosedEventArgs e)
 		{
 			Shutdown();
+		}
+
+		private void serverContextMenuStrip_Opening(object sender, CancelEventArgs e)
+		{
+			var items = serverListView.SelectedItems;
+			if (items.Count != 1)
+			{
+				controlStripItem.Enabled = false;
+				logStripItem.Enabled = false;
+				saveGameAsToolStripMenuItem.Enabled = false;
+				if (items.Count == 0)
+					shutdownStripItem.Enabled = false;
+			}
+			else
+			{
+				controlStripItem.Enabled = true;
+				logStripItem.Enabled = true;
+				saveGameAsToolStripMenuItem.Enabled = true;
+				shutdownStripItem.Enabled = true;
+			}
+		}
+
+		private void shutdownStripItem_Click(object sender, EventArgs e)
+		{
+			foreach (Server srv in serverListView.SelectedItems)
+			{
+				srv.Shutdown();
+			}
+		}
+
+		private void controlStripItem_Click(object sender, EventArgs e)
+		{
+			foreach (Server srv in serverListView.SelectedItems)
+			{
+				srv.StartControlConsole();
+			}
+		}
+
+		private void logStripItem_Click(object sender, EventArgs e)
+		{
+			foreach (Server srv in serverListView.SelectedItems)
+			{
+				srv.OpenLogFile();
+			}
 		}
 	}
 
