@@ -125,6 +125,7 @@ namespace ServerManager
 					serverListView.Items.Remove(server);
 					servers.RemoveAt(i--);
 					portMap.Remove(server.BasePort);
+					server.Dispose();
 				}
 			}
 			ruleHeader.Width = -1;

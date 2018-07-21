@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -96,8 +97,12 @@ namespace ServerManager
 			if (receiver != null)
 				receiver.Dispose();
 			//if (server != null)	//it'll stop on its own
-				//server.Kill();
-
+			//server.Kill();
+			if (controlConsole != null && !controlConsole.HasExited)
+			{
+				controlConsole.Kill();
+				controlConsole.Dispose();
+			}
 		}
 
 		public void IssueControlCommand(string cmd)
@@ -115,14 +120,22 @@ namespace ServerManager
 			IssueControlCommand("/server/shutdown");
 		}
 
+		[DllImport("user32.dll", SetLastError = true)]
+		static extern bool SetForegroundWindow(IntPtr hWnd);
+
 		internal void StartControlConsole()
 		{
+			if (controlConsole != null && !controlConsole.HasExited)
+			{
+				SetForegroundWindow(controlConsole.MainWindowHandle);
+				return;
+			}
 			try
 			{
 				if (Environment.Is64BitOperatingSystem)
-					Process.Start(Path.Combine("ControlConsole", "ControlConsole.exe"), "-p " + BasePort);
+					controlConsole = Process.Start(Path.Combine("ControlConsole", "ControlConsole.exe"), "-p " + BasePort);
 				else
-					Process.Start(Path.Combine("ControlConsole", "ControlConsole x86.exe"), "-p " + BasePort);
+					controlConsole = Process.Start(Path.Combine("ControlConsole", "ControlConsole x86.exe"), "-p " + BasePort);
 			}
 			catch (Exception ex)
 			{
