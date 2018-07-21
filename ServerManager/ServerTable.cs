@@ -139,7 +139,8 @@ namespace ServerManager
 			}
 			servers.Clear();
 			portMap.Clear();
-			receiver.Dispose();
+			if (receiver != null)
+				receiver.Dispose();
 			receiver = null;
 			Application.Exit();
 		}
