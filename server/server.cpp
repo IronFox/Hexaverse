@@ -897,141 +897,143 @@ int main( int argc, const char* argv[])
 
 
 		Reflection::Create();
-		Reflection::state.PushFocus();
-		Reflection::state.EnterNewFolder("/Server/Online");
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",
-			[]()->bool{return Network::SessionIsStarted() && !Network::SessionIsSuspended();},
-			[](){Network::SuspendSession();},
-			[](){
-				Network::RestartSession(false);
-			}))
-		);
-		//Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
-
-		Reflection::state.PopFocus();
-
-		Reflection::state.DefineCommand("/Server/describeStatus",(CLI::Command::function0_t)[]()
 		{
-			RemoteControl::RelayEvent(Network::DescribeStatus());
-			Network::DescribeConfiguration([](const String&line){RemoteControl::RelayEvent(line);});
-		},CLI::NoCompletion);
+			auto parser = Reflection::state->NewParser();
+			parser->PushFocus();
+			parser->EnterNewFolder("/Server/Online");
+			parser->SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
+			parser->SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
+			parser->SetVariable(CLI::PVariable(new ServiceVar("session",
+				[]()->bool{return Network::SessionIsStarted() && !Network::SessionIsSuspended();},
+				[](){Network::SuspendSession();},
+				[](){
+					Network::RestartSession(false);
+				}))
+			);
+			//parser->DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
-		Reflection::state.DefineCommand("/Server/shutdown",(CLI::Command::function0_t)[]()
-		{
-			quitMainLoop = true;
-		})->SetUniqueHelp("Shuts down the service and terminates the application");
+			parser->PopFocus();
 
-
-
-		Reflection::state.PushFocus();
-			Reflection::state.EnterNewFolder("/IO");
-			Reflection::state.SetString("logFile",FileSystem::PathToString(logPath,false),CLI::FullProtection,true);
-			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
-			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
+			parser->DefineCommand("/Server/describeStatus",(CLI::Command::function0_t)[]()
 			{
-				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
-				FileSystem::ForceCreateDirectory( saveDirPath );
-				FileSystem::Directory saveDir = saveDirPath;
-				FileSystem::File file;
-				PathString path = PathString(path0);
-				if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
-					path += RuntimeConfig::savFileExtension;
-				if (!saveDir.FindFile(path,file,false))
+				RemoteControl::RelayEvent(Network::DescribeStatus());
+				Network::DescribeConfiguration([](const String&line){RemoteControl::RelayEvent(line);});
+			},CLI::NoCompletion);
+
+			parser->DefineCommand("/Server/shutdown",(CLI::Command::function0_t)[]()
+			{
+				quitMainLoop = true;
+			})->SetUniqueHelp("Shuts down the service and terminates the application");
+
+
+
+			parser->PushFocus();
+				parser->EnterNewFolder("/IO");
+				parser->SetString("logFile",FileSystem::PathToString(logPath,false),CLI::FullProtection,true);
+				parser->DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
+				parser->DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
 				{
-					LogEvent(EventClass::Preset::remoteControlError,"Unable to save to '"+String(path)+"'. Invalid path");
-					return;
-				}
-				FileIO::Save(file.GetLocation(),RuntimeConfig::phase);
-			},CLI::FileCompletion);
-
-			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path0)
-			{
-				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
-				FileSystem::Directory saveDir = saveDirPath;
-				
-				FileSystem::File file;
-				PathString path = PathString(path0);
-				if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
-					path += RuntimeConfig::savFileExtension;
-				if (!saveDir.FindFile(path,file,true))
-				{
-					LogEvent(EventClass::Preset::remoteControlError,"Unable to load '"+String(path)+"'. File does not exist");
-					return;
-				}
-				FileIO::Load(file.GetLocation());
-			},CLI::FileCompletion);
-
-			Reflection::state.DefineCommand("loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
-			{
-				index_t index;
-				if (sindex.IsEmpty())
-					index = 0;
-				else
-					if (!convert(sindex.c_str(),index))
+					PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
+					FileSystem::ForceCreateDirectory( saveDirPath );
+					FileSystem::Directory saveDir = saveDirPath;
+					FileSystem::File file;
+					PathString path = PathString(path0);
+					if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+						path += RuntimeConfig::savFileExtension;
+					if (!saveDir.FindFile(path,file,false))
 					{
-						LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
+						LogEvent(EventClass::Preset::remoteControlError,"Unable to save to '"+String(path)+"'. Invalid path");
 						return;
 					}
-				FileIO::Load(FileIO::GetAutoSavePath(index));
-			},CLI::FileCompletion);
+					FileIO::Save(file.GetLocation(),RuntimeConfig::phase);
+				},CLI::FileCompletion);
 
-
-			Reflection::state.DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
-			{
-				Objects::Research::LoadDefaultProgram();
-			})->SetUniqueHelp("Reloads research program from file and redeploys to clients");
-
-		Reflection::state.PopFocus();
-
-
-		Reflection::state.DefineCommand("/World/generate [planetType] [discovery]",(CLI::Command::function2_t)[](const String&planet, const String&discovery)
-		{
-			if (planet.IsNotEmpty())
-			{
-				if (!World::IsPlanet(planet))
+				parser->DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path0)
 				{
-					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
-					return;
-				}
-			}
+					PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
+					FileSystem::Directory saveDir = saveDirPath;
+				
+					FileSystem::File file;
+					PathString path = PathString(path0);
+					if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+						path += RuntimeConfig::savFileExtension;
+					if (!saveDir.FindFile(path,file,true))
+					{
+						LogEvent(EventClass::Preset::remoteControlError,"Unable to load '"+String(path)+"'. File does not exist");
+						return;
+					}
+					FileIO::Load(file.GetLocation());
+				},CLI::FileCompletion);
 
-			if (planet.IsNotEmpty())
-			{
-				Reflection::Variable::planetType->Set(planet.Trim());
-				Reflection::ReloadPlanet();
-			}
-			if (discovery.IsNotEmpty())
-			{
-				if (!World::Config::worldDiscovery.Decode(discovery.c_str()))
+				parser->DefineCommand("loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
 				{
-					LogEvent(EventClass::Preset::remoteControlError,"'"+discovery+"' is not a valid planet discovery type. Check World/worldDiscovery for details");
+					index_t index;
+					if (sindex.IsEmpty())
+						index = 0;
+					else
+						if (!convert(sindex.c_str(),index))
+						{
+							LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
+							return;
+						}
+					FileIO::Load(FileIO::GetAutoSavePath(index));
+				},CLI::FileCompletion);
+
+
+				parser->DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
+				{
+					Objects::Research::LoadDefaultProgram();
+				})->SetUniqueHelp("Reloads research program from file and redeploys to clients");
+
+			parser->PopFocus();
+
+
+			parser->DefineCommand("/World/generate [planetType] [discovery]",(CLI::Command::function2_t)[](const String&planet, const String&discovery)
+			{
+				if (planet.IsNotEmpty())
+				{
+					if (!World::IsPlanet(planet))
+					{
+						LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+						return;
+					}
 				}
-			}
-			Network::BuildConfiguredWorld();
 
-		},CLI::NoCompletion);
+				if (planet.IsNotEmpty())
+				{
+					Reflection::Variable::planetType->Set(planet.Trim());
+					Reflection::ReloadPlanet();
+				}
+				if (discovery.IsNotEmpty())
+				{
+					if (!World::Config::worldDiscovery.Decode(discovery.c_str()))
+					{
+						LogEvent(EventClass::Preset::remoteControlError,"'"+discovery+"' is not a valid planet discovery type. Check World/worldDiscovery for details");
+					}
+				}
+				Network::BuildConfiguredWorld();
 
-		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
-		{
-			Ctr::Array<World::TPlanetIniFile>	planetIniFiles;
-			World::GetAvailablePlanetIniFiles(planetIniFiles);
+			},CLI::NoCompletion);
 
-			CLI::println("-");
-			foreach (planetIniFiles,f)
+			parser->DefineCommand("/World/showPlanetTypes",(CLI::Command::full_function_t)[](const CLI::PParser&parser, const CLI::PCommand&, CLI::Command::ArgumentList)
 			{
-				if (f->userDefined.GetLocation().IsNotEmpty())
-					CLI::println("*"+f->name);
-			}
-			foreach (planetIniFiles,f)
-			{
-				if (f->factoryDefault.GetLocation().IsNotEmpty())
-					CLI::println(f->name);
-			}
-			CLI::println("-");
-		},CLI::NoCompletion);
+				Ctr::Array<World::TPlanetIniFile>	planetIniFiles;
+				World::GetAvailablePlanetIniFiles(planetIniFiles);
 
+				parser->PrintLine("-");
+				foreach (planetIniFiles,f)
+				{
+					if (f->userDefined.GetLocation().IsNotEmpty())
+						parser->PrintLine("*"+f->name);
+				}
+				foreach (planetIniFiles,f)
+				{
+					if (f->factoryDefault.GetLocation().IsNotEmpty())
+						parser->PrintLine(f->name);
+				}
+				parser->PrintLine("-");
+			},CLI::NoCompletion);
+		}
 		
 		#ifdef _DEBUG
 		//	inTestMode = true;

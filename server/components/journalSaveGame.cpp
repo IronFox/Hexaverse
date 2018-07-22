@@ -53,10 +53,8 @@ namespace Journal
 		if (updateRoundNumber)
 			RuntimeConfig::roundNumber = roundNumber;
 
-		Reflection::state.PushAndReplaceFocus(Reflection::state.GetRoot());
 		foreach (globalEvents,ev)
 			(*ev)->Execute();
-		Reflection::state.PopFocus();
 
 
 		factionStrands.VisitAllEntries([this](const TUniqueID&factionID, const FactionStrand&fstrand)
@@ -256,7 +254,7 @@ namespace Journal
 
 	/*virtual override*/ void	Round::UpdateVariable::Execute() const
 	{
-		CLI::PVariable v = Reflection::state.FindVar(key);
+		CLI::PVariable v = Reflection::state->NewParser()->FindVar(key);
 		if (!v)
 		{
 			LogEvent(EventClass::Preset::error,"Unable to find variable '"+key+"' for update");

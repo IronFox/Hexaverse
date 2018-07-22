@@ -1225,6 +1225,9 @@ namespace FileIO
 		}
 
 		{
+			CLI::PParser parser = Reflection::state->NewParser();
+
+
 			FactionMap	factionMap;
 			
 			/*
@@ -1335,7 +1338,7 @@ namespace FileIO
 													String key = "/"+line->SubStringRef(0,tabAt);
 													StringRef value = line->SubStringRef(tabAt+1);
 		
-													CLI::PVariable v = Reflection::state.FindVar(key);
+													CLI::PVariable v = parser->FindVar(key);
 													if (!v)
 													{
 														LogEvent(EventClass::Preset::fileError,"State::Load(): Unable to find variable '"+key+"' for update");

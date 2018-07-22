@@ -1702,7 +1702,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		String parameterName;
 		bool expectValue = false;
-		Tokenizer::dequote(tokenList, cfg);
+		Tokenizer::DequoteAll(tokenList, cfg);
 		foreach(tokenList, token)
 		{
 			if (*token == '=')
