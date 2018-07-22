@@ -240,7 +240,7 @@ namespace Channels
 	{
 		enum id_t
 		{
-			Command,	//c2s
+			Command,	//c2s : string
 			Complete,	//both : string
 			Error,		//s2c : string
 			Context,	//s2c : string
