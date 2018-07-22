@@ -45,12 +45,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ControlConnection.cs" />
     <Compile Include="EditServerConfig.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="EditServerConfig.Designer.cs">
       <DependentUpon>EditServerConfig.cs</DependentUpon>
     </Compile>
+    <Compile Include="LocalhostClient.cs" />
     <Compile Include="NiceName.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="ServerInfoReceiver.cs" />
@@ -99,7 +101,7 @@
     <None Include="Resources\hexaverse cover capsule 87.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\TechniteLogic\Protocol\Protocol.csproj">
+    <ProjectReference Include="Protocol\Protocol.csproj">
       <Project>{b9f262af-b3c7-44a8-a095-cf84f5b6c009}</Project>
       <Name>Protocol</Name>
     </ProjectReference>

@@ -14,12 +14,12 @@ namespace ServerManager
 	{
 		private Process controlConsole=null, server=null;
 		private readonly ServerInfoReceiver receiver;
+		private readonly ControlConnection controlConnection;
 		public UUID ID { get; private set; }
 		public bool SessionIsClosed { get; private set; }
 		public bool RequiresHeartbeats { get; private set; }
 		public readonly int BasePort;
 		public DateTime LastUDPPing { get; private set; }
-		private bool isDisposed = false;
 
 
 		public Server(int basePort)
@@ -33,11 +33,14 @@ namespace ServerManager
 			base.SubItems.Add("");  //rules
 
 			receiver = new ServerInfoReceiver(basePort);
+			controlConnection = new ControlConnection(basePort+2);
 			//receiver.TryToReconnect();
 		}
 
 		public void Receive(UDPReceiver.Info info)
 		{
+			if (this.disposedValue)
+				throw new ObjectDisposedException("This Server has been disposed. Cannot update");
 			ID = info.HostID;
 			LastUDPPing = info.Received;
 			SessionIsClosed = info.SessionClosed;
@@ -46,10 +49,12 @@ namespace ServerManager
 
 		public bool Update()
 		{
-			if (this.isDisposed)
-				return false;
+			if (this.disposedValue)
+				throw new ObjectDisposedException("This Server has been disposed. Cannot update");
 			if (!receiver.IsConnected && !SessionIsClosed)
 				receiver.TryToReconnect();
+			if (!controlConnection.IsConnected)
+				controlConnection.TryToReconnect();
 
 			base.SubItems[1].Text = ID.ToNiceString();
 			var status = base.SubItems[3];
@@ -91,28 +96,14 @@ namespace ServerManager
 			return true;
 		}
 
-		public void Dispose()
-		{
-			isDisposed = true;
-			if (receiver != null)
-				receiver.Dispose();
-			//if (server != null)	//it'll stop on its own
-			//server.Kill();
-			if (controlConsole != null && !controlConsole.HasExited)
-			{
-				controlConsole.Kill();
-				controlConsole.Dispose();
-			}
-		}
-
 		public void IssueControlCommand(string cmd)
 		{
-
+			controlConnection.ExecuteCommand(cmd);
 		}
 
-		public void FetchVariableContent(string path, Action<string> result)
+		public void FetchVariableContentAsync(string path, Action<string> result)
 		{
-
+			controlConnection.GetValue(path, result);
 		}
 
 		public void Shutdown()
@@ -132,6 +123,9 @@ namespace ServerManager
 			}
 			try
 			{
+				if (controlConsole != null)
+					controlConsole.Dispose();
+				controlConsole = null;
 				if (Environment.Is64BitOperatingSystem)
 					controlConsole = Process.Start(Path.Combine("ControlConsole", "ControlConsole.exe"), "-p " + BasePort);
 				else
@@ -145,10 +139,58 @@ namespace ServerManager
 
 		internal void OpenLogFile()
 		{
-			FetchVariableContent("/IO/logFile",(logAt) =>
+			FetchVariableContentAsync("/IO/logFile",(logAt) =>
 			{
-				Process.Start(logAt);
+				using (Process.Start(logAt))
+				{ }
 			});
 		}
+
+		#region IDisposable Support
+		private bool disposedValue = false; // To detect redundant calls
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposedValue)
+			{
+				if (disposing)
+				{
+					// TODO: dispose managed state (managed objects).
+					if (receiver != null)
+						receiver.Dispose();
+					if (controlConnection != null)
+						controlConnection.Dispose();
+					//if (server != null)	//it'll stop on its own
+					//server.Kill();
+					if (controlConsole != null)
+					{
+						if (!controlConsole.HasExited)
+							controlConsole.Kill();
+						controlConsole.Dispose();
+					}
+				}
+
+				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+				// TODO: set large fields to null.
+
+				disposedValue = true;
+			}
+		}
+
+		// TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+		// ~Server() {
+		//   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+		//   Dispose(false);
+		// }
+
+		// This code added to correctly implement the disposable pattern.
+		public void Dispose()
+		{
+			// Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+			Dispose(true);
+			// TODO: uncomment the following line if the finalizer is overridden above.
+			// GC.SuppressFinalize(this);
+		}
+		#endregion
 	}
 }

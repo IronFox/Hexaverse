@@ -10,9 +10,7 @@ namespace ServerManager
 {
 
 
-
-
-	public class ServerInfoReceiver : Protocol.Client, IDisposable
+	public class ServerInfoReceiver : LocalhostClient
 	{
 		public struct VersionPackage
 		{
@@ -64,43 +62,18 @@ namespace ServerManager
 
 		public Update LastUpdate { get; private set; } = null;
 
-		private readonly int port;
 
-		public ServerInfoReceiver(int port) : base(null, false)
-		{
-			this.port = port;
-		}
+		public ServerInfoReceiver(int port) : base(port)
+		{}
 
-		private Thread readThread;
 
-		public void TryToReconnect()
-		{
-			if (isDisposed)
-				throw new ObjectDisposedException("This client is disposed");
-			if (readThread != null && readThread.IsAlive)
-				return;
-			readThread = new Thread(new ThreadStart(ConnectAndRead));
-			readThread.Start();
-		}
-
-		private void ConnectAndRead()
-		{
-			try
-			{
-				Reset(new TcpClient("localhost", port));
-				if (isDisposed)
-					return;
-				StartNoSSLSelf();
-			}
-			catch (SocketException)
-			{ }
-		}
-
+		private static Protocol.ChannelMap staticMap = new Protocol.ChannelMap();
+		public override Protocol.ChannelMap ChannelMap => staticMap;
 
 
 		static ServerInfoReceiver()
 		{
-			Protocol.ChannelMap.Register<InfoPackage>(0, (client0, package) =>
+			staticMap.Register<InfoPackage>(0, (client0, package) =>
 			{
 				var client = (ServerInfoReceiver)client0;
 				client.LastUpdate = new Update(package);
@@ -137,12 +110,6 @@ namespace ServerManager
 			return string.Join(", ", result);
 		}
 
-		private volatile bool isDisposed = false;
 
-		public void Dispose()
-		{
-			ForceDisconnect();
-			isDisposed = true;
-		}
 	}
 }
