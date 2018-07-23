@@ -63,6 +63,8 @@ namespace ServerManager
 
 			if (dependent)
 				heartbeatSender = new HeartbeatSender(BasePort);
+
+			LastUDPPing = DateTime.Now + TimeSpan.FromSeconds(10);
 		}
 
 		public void Receive(UDPReceiver.Info info)
