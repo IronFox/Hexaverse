@@ -19,8 +19,8 @@
 #pragma comment(lib, "IPHLPAPI.lib")
 
 
-#define BROADCAST_PORT				10246	//must be constant, may overlap with base port range but not MANAGER_UNICAST_PORT
-#define MANAGER_UNICAST_PORT		10247	//must be constant, may overlap with base port range but not BROADCAST_PORT
+#define MANAGER_UNICAST_PORT		10245	//must be constant, not reused by any heartbeat port
+#define BROADCAST_PORT				10246	//must be constant, not reused by any heartbeat port
 
 #define DEFAULT_SERVER_BASE_PORT	10247
 

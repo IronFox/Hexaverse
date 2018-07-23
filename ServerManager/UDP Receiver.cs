@@ -81,7 +81,7 @@ namespace ServerManager
 		};
 
 
-		public const int ReceiverPort = 10247;
+		public const int ReceiverPort = 10245;
 		private UdpClient client;
 		private Thread readThread;
 		private volatile bool end = false;
