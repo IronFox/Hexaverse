@@ -108,7 +108,7 @@ namespace ServerManager
 
 		public void Shutdown()
 		{
-			IssueControlCommand("/server/shutdown");
+			IssueControlCommand("/Server/shutdown");
 		}
 
 		[DllImport("user32.dll", SetLastError = true)]
