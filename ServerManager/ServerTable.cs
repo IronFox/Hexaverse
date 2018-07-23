@@ -270,5 +270,27 @@ namespace ServerManager
 				srv.SetSession(true);
 			}
 		}
+
+		private void launchServerButton_Click(object sender, EventArgs e)
+		{
+			new StartServer().Show((port) =>
+			{
+				foreach (var s in servers)
+				{
+					if (Server.PortIntersection(s.BasePort, port))
+						return false;
+				}
+				return true;
+			},
+			(port,dependent,configPath,savePath) =>
+			{
+				var server = new Server(port, LogStatus, ShowError,dependent,configPath,savePath);
+				servers.Add(server);
+				portMap.Add(port, server);
+				serverListView.Items.Add(server);
+			}
+			);
+			
+		}
 	}
 }

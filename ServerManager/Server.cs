@@ -24,6 +24,8 @@ namespace ServerManager
 		public DateTime LastUDPPing { get; private set; }
 
 
+		private HeartbeatSender heartbeatSender;
+
 		public Server(int basePort, Action<string> asyncLog, Action<string> asyncDisplayError)
 		{
 			BasePort = basePort;
@@ -44,6 +46,25 @@ namespace ServerManager
 			});
 		}
 
+		public Server(int basePort, Action<string> asyncLog, Action<string> asyncDisplayError, bool dependent, string configPath, string savePath) : this(basePort, asyncLog, asyncDisplayError)
+		{
+			SessionIsClosed = true;
+
+			string options = "-c \"" + configPath + "\"";
+			options += " -p " + BasePort;
+			if (dependent)
+				options += " -b";
+			if (!string.IsNullOrWhiteSpace(savePath))
+				options += " -l \"" + savePath + "\"";
+
+			RequiresHeartbeats = dependent;
+
+			server = Program.StartComponent("server", "server", options);
+
+			if (dependent)
+				heartbeatSender = new HeartbeatSender(BasePort);
+		}
+
 		public void Receive(UDPReceiver.Info info)
 		{
 			if (this.disposedValue)
@@ -58,6 +79,18 @@ namespace ServerManager
 		{
 			if (this.disposedValue)
 				throw new ObjectDisposedException("This Server has been disposed. Cannot update");
+
+			if (RequiresHeartbeats && heartbeatSender == null)
+			{
+				heartbeatSender = new HeartbeatSender(BasePort);
+			}
+			else
+				if (heartbeatSender != null)
+				{
+					heartbeatSender.Dispose();
+					heartbeatSender = null;
+				}
+
 			if (!receiver.IsConnected && !SessionIsClosed)
 				receiver.TryToReconnect();
 			if (!controlConnection.IsConnected)
@@ -180,6 +213,11 @@ namespace ServerManager
 							controlConsole.Kill();
 						controlConsole.Dispose();
 					}
+					if (heartbeatSender != null)
+					{
+						heartbeatSender.Dispose();
+						heartbeatSender = null;
+					}
 				}
 
 				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
@@ -204,10 +242,22 @@ namespace ServerManager
 			// GC.SuppressFinalize(this);
 		}
 
+		#endregion
+
+
 		internal void SetSession(bool active)
 		{
 			IssueControlCommand("/Server/Online/session = " + active);
 		}
-		#endregion
+
+		public static bool PortIntersection(int a, int b)
+		{
+			return a <= b + NumPorts - 1 && a + NumPorts - 1 >= b;
+		}
+
+		public static bool PortContained(int basePort, int individualPort)
+		{
+			return basePort <= individualPort && basePort + NumPorts - 1 >= individualPort;
+		}
 	}
 }

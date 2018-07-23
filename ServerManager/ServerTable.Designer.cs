@@ -93,6 +93,7 @@
 			this.launchServerButton.Text = "Add Server...";
 			this.launchServerButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
 			this.launchServerButton.UseVisualStyleBackColor = true;
+			this.launchServerButton.Click += new System.EventHandler(this.launchServerButton_Click);
 			// 
 			// globalAttributeView
 			// 
@@ -199,7 +200,7 @@
             this.toolStripSeparator1,
             this.shutdownStripItem});
 			this.serverContextMenuStrip.Name = "serverContextMenuStrip";
-			this.serverContextMenuStrip.Size = new System.Drawing.Size(209, 148);
+			this.serverContextMenuStrip.Size = new System.Drawing.Size(209, 126);
 			this.serverContextMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(this.serverContextMenuStrip_Opening);
 			// 
 			// controlStripItem

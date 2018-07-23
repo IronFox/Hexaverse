@@ -228,7 +228,7 @@ namespace ServerManager
 						if (v < MinValue || v > MaxValue)
 							MainControl.BackColor = Color.Red;
 						else
-							MainControl.BackColor = Color.White;
+							MainControl.BackColor = SystemColors.Window;
 					}
 					catch
 					{
@@ -518,6 +518,8 @@ namespace ServerManager
 			c.Height = c.PreferredSize.Height;
 		}
 
+		private bool deleteOnExit = true;
+
 		public void Show(string commitText, Action<string> onCompleteHandlePath)
 		{
 			this.acceptButton.Text = commitText;
@@ -525,6 +527,19 @@ namespace ServerManager
 
 			fileName = Path.GetTempFileName();
 
+
+			Reload();
+
+			this.Show();
+		}
+
+		public void Show(string existingOutFileName, string commitText, Action<string> onCompleteHandlePath)
+		{
+			this.acceptButton.Text = commitText;
+			this.onCompleteHandlePath = onCompleteHandlePath;
+
+			fileName = existingOutFileName;
+			deleteOnExit = false;
 
 			Reload();
 
@@ -550,7 +565,8 @@ namespace ServerManager
 
 		private void EditServerConfig_FormClosed(object sender, FormClosedEventArgs e)
 		{
-			File.Delete(fileName);
+			if (deleteOnExit)
+				File.Delete(fileName);
 		}
 	}
 }
