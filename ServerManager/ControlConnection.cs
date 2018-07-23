@@ -56,9 +56,13 @@ namespace ServerManager
 
 		private readonly ConcurrentDictionary<string, Action<string>> onValueMap = new ConcurrentDictionary<string, Action<string>>();
 
+		private readonly Action<string> log, displayError;
 
-		public ControlConnection(int port) : base(port)
-		{}
+		public ControlConnection(int port,Action<string> asyncLog, Action<string> asyncDisplayError) : base(port)
+		{
+			log = asyncLog;
+			displayError = asyncDisplayError;
+		}
 
 
 		private void OnError(string error)
@@ -66,16 +70,41 @@ namespace ServerManager
 
 		private void OnResponse(string response)
 		{
+			//World snapshot, round 0, written to [Documents]\My Games\Hexaverse\shared\saves\test.hsf in 0.17119 seconds
+
 			//logFile: 'E:\Documents\My Games\Hexaverse\server\logs\server 2018 07 22 124802.v0.9.2.420.log'
-			var match = Regex.Match(response, @"^([^':\r\n]+): '([^'\r\n]+)'");
-			if (match.Success && match.Groups.Count == 3)
+			var logFileMatch = Regex.Match(response, @"^([^':\r\n]+): '([^'\r\n]+)'");
+			if (logFileMatch.Success && logFileMatch.Groups.Count == 3)
 			{
 				bool brk = true;
 
 				Action<string> onValue;
-				if (onValueMap.TryRemove(match.Groups[1].Value, out onValue))
+				if (onValueMap.TryRemove(logFileMatch.Groups[1].Value, out onValue))
 				{
-					onValue(match.Groups[2].Value);
+					onValue(logFileMatch.Groups[2].Value);
+				}
+				return;
+			}
+			{
+				var saveGameMatch = Regex.Match(response, @"^World snapshot, round ([0-9]+), written to (.*) in ([\.0-9]+) seconds$");
+				if (saveGameMatch.Success && saveGameMatch.Groups.Count == 4)
+				{
+					log("Save game of round "+ saveGameMatch.Groups[1].Value+" written to "+ saveGameMatch.Groups[2].Value);
+					return;
+				}
+			}
+			{
+				//"Unable to write world to "+FileSystem::PathToString(name)
+				var matches = Regex.Match(response, @"^Unable to write world to (.*)$");
+				if (matches.Success && matches.Groups.Count == 2)
+				{
+					displayError("Unable to write save game to " + matches.Groups[1].Value);
+					return;
+				}
+				if (response == "Unable to save game right now. Not in suitable phase")
+				{
+					displayError(response);
+					return;
 				}
 			}
 		}

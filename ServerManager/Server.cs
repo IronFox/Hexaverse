@@ -22,7 +22,7 @@ namespace ServerManager
 		public DateTime LastUDPPing { get; private set; }
 
 
-		public Server(int basePort)
+		public Server(int basePort, Action<string> asyncLog, Action<string> asyncDisplayError)
 		{
 			BasePort = basePort;
 			base.Text = basePort + ".." + (basePort + 2);
@@ -33,7 +33,7 @@ namespace ServerManager
 			base.SubItems.Add("");  //rules
 
 			receiver = new ServerInfoReceiver(basePort);
-			controlConnection = new ControlConnection(basePort+2);
+			controlConnection = new ControlConnection(basePort+2,asyncLog, asyncDisplayError);
 			//receiver.TryToReconnect();
 		}
 

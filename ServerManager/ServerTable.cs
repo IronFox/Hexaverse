@@ -51,7 +51,7 @@ namespace ServerManager
 		}
 
 		private UDPReceiver receiver;
-
+		private string gameDir;
 		private void ServerTable_Load(object sender, EventArgs e)
 		{
 			FlushAttributes();
@@ -62,7 +62,8 @@ namespace ServerManager
 			  });
 			{
 				string myDocs = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-				string gameDir = Path.Combine(myDocs, "My Games", "Hexaverse");
+				gameDir = Path.Combine(myDocs, "My Games", "Hexaverse");
+				hsfSaveFileDialog.InitialDirectory = Path.Combine(gameDir, "shared", "saves");
 				Directory.CreateDirectory(gameDir);
 				AddAttribute("Game Dir", gameDir, "Hexaverse Game Directory", (dir) =>
 				   {
@@ -102,6 +103,34 @@ namespace ServerManager
 			}
 		}
 
+
+		private delegate void StringDelegate(string str);
+
+		private void LogStatus(string msg)
+		{
+			if (mainStatusStrip.InvokeRequired)
+			{
+				mainStatusStrip.Invoke(new StringDelegate(LogStatus), new object[] { msg });
+				return;
+			}
+			toolStripStatusLabel.Text = msg;
+		}
+
+		private void ShowError(string msg)
+		{
+			if (InvokeRequired)
+			{
+				Invoke(new StringDelegate(ShowError), new object[] { msg });
+				return;
+			}
+			ShowError("Error", msg);
+		}
+
+		private void ShowError(string caption, string msg)
+		{
+			MessageBox.Show(msg, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+		}
+
 		private void receiverTimer_Tick(object sender, EventArgs e)
 		{
 			UDPReceiver.Info info;
@@ -110,7 +139,7 @@ namespace ServerManager
 				Server server;
 				if (!portMap.TryGetValue(info.Port, out server))
 				{
-					server = new Server(info.Port);
+					server = new Server(info.Port,LogStatus,ShowError);
 					servers.Add(server);
 					portMap.Add(info.Port, server);
 					serverListView.Items.Add(server);
@@ -196,6 +225,15 @@ namespace ServerManager
 			foreach (Server srv in serverListView.SelectedItems)
 			{
 				srv.OpenLogFile();
+			}
+		}
+
+		private void saveGameAsToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			var rs = hsfSaveFileDialog.ShowDialog();
+			if (rs == DialogResult.OK || rs == DialogResult.Yes)
+			{
+				((Server)serverListView.SelectedItems[0]).IssueControlCommand("/IO/saveTo \"" + hsfSaveFileDialog.FileName + "\"");
 			}
 		}
 	}
