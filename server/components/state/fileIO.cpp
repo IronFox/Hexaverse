@@ -1793,6 +1793,7 @@ namespace FileIO
 	{
 		if (!CanSaveRightNow(savePhase))
 		{
+			//keep message in sync with ServerManager:
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
 		}
@@ -1980,13 +1981,14 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
+			//keep message in sync with ServerManager:
 			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+FileSystem::PathToString(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
-			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
+		{
+			//keep message in sync with ServerManager:
 			LogEvent(EventClass::Preset::error,"Unable to write world to "+FileSystem::PathToString(name));
-		//Grid::SaveToFiles(name+".grid");
-		//Objects::SaveToFiles(name+".objects");
+		}
 
 
 
