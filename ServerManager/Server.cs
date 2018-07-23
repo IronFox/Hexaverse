@@ -19,14 +19,15 @@ namespace ServerManager
 		public bool SessionIsClosed { get; private set; }
 		public bool RequiresHeartbeats { get; private set; }
 		public readonly int BasePort;
+		public const int NumPorts = 3;
+
 		public DateTime LastUDPPing { get; private set; }
 
 
 		public Server(int basePort, Action<string> asyncLog, Action<string> asyncDisplayError)
 		{
 			BasePort = basePort;
-			base.Text = basePort + ".." + (basePort + 2);
-			//basePort + "," + (basePort + 1) + "(," + (basePort + 2) + ")";
+			base.Text = basePort + ".." + (basePort + NumPorts-1);
 			base.SubItems.Add("");  //server id
 			base.SubItems.Add("");  //world id
 			base.SubItems.Add("Unknown");  //status
@@ -66,7 +67,7 @@ namespace ServerManager
 			var status = base.SubItems[3];
 			var worldID = base.SubItems[2];
 			var rules = base.SubItems[4];
-			base.Text = BasePort + ".." + (BasePort + 2);
+			base.Text = BasePort + ".." + (BasePort + NumPorts -1);
 			if (RequiresHeartbeats)
 				base.Text += " (H)";
 
