@@ -35,10 +35,12 @@
             "v?.?.?.?"}, -1);
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ServerTable));
 			this.globalInfoPanel = new System.Windows.Forms.Panel();
+			this.launchServerButton = new System.Windows.Forms.Button();
 			this.globalAttributeView = new System.Windows.Forms.ListView();
 			this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.attributeNameHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.attributeValueHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.launchClientButton = new System.Windows.Forms.Button();
 			this.serverListView = new System.Windows.Forms.ListView();
 			this.portHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.hostIDHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -49,17 +51,19 @@
 			this.controlStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.logStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.saveGameAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
 			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
 			this.shutdownStripItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.sessionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.closeSessionStripItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.resumeSessionStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
+			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
 			this.menuStrip1 = new System.Windows.Forms.MenuStrip();
 			this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.receiverTimer = new System.Windows.Forms.Timer(this.components);
 			this.hsfSaveFileDialog = new System.Windows.Forms.SaveFileDialog();
-			this.launchServerButton = new System.Windows.Forms.Button();
-			this.launchClientButton = new System.Windows.Forms.Button();
-			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
 			this.globalInfoPanel.SuspendLayout();
 			this.serverContextMenuStrip.SuspendLayout();
 			this.mainStatusStrip.SuspendLayout();
@@ -76,6 +80,19 @@
 			this.globalInfoPanel.Name = "globalInfoPanel";
 			this.globalInfoPanel.Size = new System.Drawing.Size(800, 117);
 			this.globalInfoPanel.TabIndex = 0;
+			// 
+			// launchServerButton
+			// 
+			this.launchServerButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.launchServerButton.Image = global::ServerManager.Properties.Resources.hexaverse_server_capsule_87;
+			this.launchServerButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+			this.launchServerButton.Location = new System.Drawing.Point(550, 3);
+			this.launchServerButton.Name = "launchServerButton";
+			this.launchServerButton.Size = new System.Drawing.Size(247, 110);
+			this.launchServerButton.TabIndex = 8;
+			this.launchServerButton.Text = "Add Server...";
+			this.launchServerButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+			this.launchServerButton.UseVisualStyleBackColor = true;
 			// 
 			// globalAttributeView
 			// 
@@ -114,6 +131,19 @@
 			// attributeValueHeader
 			// 
 			this.attributeValueHeader.Width = 300;
+			// 
+			// launchClientButton
+			// 
+			this.launchClientButton.Image = global::ServerManager.Properties.Resources.hexaverse_cover_capsule_87;
+			this.launchClientButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
+			this.launchClientButton.Location = new System.Drawing.Point(3, 3);
+			this.launchClientButton.Name = "launchClientButton";
+			this.launchClientButton.Size = new System.Drawing.Size(247, 110);
+			this.launchClientButton.TabIndex = 0;
+			this.launchClientButton.Text = "Launch Client";
+			this.launchClientButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+			this.launchClientButton.UseVisualStyleBackColor = true;
+			this.launchClientButton.Click += new System.EventHandler(this.launchClientButton_Click);
 			// 
 			// serverListView
 			// 
@@ -164,10 +194,12 @@
             this.controlStripItem,
             this.logStripItem,
             this.saveGameAsToolStripMenuItem,
+            this.toolStripSeparator2,
+            this.sessionToolStripMenuItem,
             this.toolStripSeparator1,
             this.shutdownStripItem});
 			this.serverContextMenuStrip.Name = "serverContextMenuStrip";
-			this.serverContextMenuStrip.Size = new System.Drawing.Size(209, 98);
+			this.serverContextMenuStrip.Size = new System.Drawing.Size(209, 148);
 			this.serverContextMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(this.serverContextMenuStrip_Opening);
 			// 
 			// controlStripItem
@@ -191,6 +223,11 @@
 			this.saveGameAsToolStripMenuItem.Text = "Save Game as...";
 			this.saveGameAsToolStripMenuItem.Click += new System.EventHandler(this.saveGameAsToolStripMenuItem_Click);
 			// 
+			// toolStripSeparator2
+			// 
+			this.toolStripSeparator2.Name = "toolStripSeparator2";
+			this.toolStripSeparator2.Size = new System.Drawing.Size(205, 6);
+			// 
 			// toolStripSeparator1
 			// 
 			this.toolStripSeparator1.Name = "toolStripSeparator1";
@@ -203,6 +240,29 @@
 			this.shutdownStripItem.Text = "Shut Down";
 			this.shutdownStripItem.Click += new System.EventHandler(this.shutdownStripItem_Click);
 			// 
+			// sessionToolStripMenuItem
+			// 
+			this.sessionToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.closeSessionStripItem,
+            this.resumeSessionStripItem});
+			this.sessionToolStripMenuItem.Name = "sessionToolStripMenuItem";
+			this.sessionToolStripMenuItem.Size = new System.Drawing.Size(208, 22);
+			this.sessionToolStripMenuItem.Text = "Session";
+			// 
+			// closeSessionStripItem
+			// 
+			this.closeSessionStripItem.Name = "closeSessionStripItem";
+			this.closeSessionStripItem.Size = new System.Drawing.Size(180, 22);
+			this.closeSessionStripItem.Text = "Close";
+			this.closeSessionStripItem.Click += new System.EventHandler(this.closeSessionStripItem_Click);
+			// 
+			// resumeSessionStripItem
+			// 
+			this.resumeSessionStripItem.Name = "resumeSessionStripItem";
+			this.resumeSessionStripItem.Size = new System.Drawing.Size(180, 22);
+			this.resumeSessionStripItem.Text = "Resume";
+			this.resumeSessionStripItem.Click += new System.EventHandler(this.resumeSessionStripItem_Click);
+			// 
 			// mainStatusStrip
 			// 
 			this.mainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -212,6 +272,12 @@
 			this.mainStatusStrip.Size = new System.Drawing.Size(800, 22);
 			this.mainStatusStrip.TabIndex = 2;
 			this.mainStatusStrip.Text = "statusStrip1";
+			// 
+			// toolStripStatusLabel
+			// 
+			this.toolStripStatusLabel.Name = "toolStripStatusLabel";
+			this.toolStripStatusLabel.Size = new System.Drawing.Size(112, 17);
+			this.toolStripStatusLabel.Text = "toolStripStatusLabel";
 			// 
 			// menuStrip1
 			// 
@@ -247,37 +313,6 @@
 			// 
 			this.hsfSaveFileDialog.DefaultExt = "hsf";
 			this.hsfSaveFileDialog.Filter = "Hexaverse Save File|*.hsf";
-			// 
-			// launchServerButton
-			// 
-			this.launchServerButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.launchServerButton.Image = global::ServerManager.Properties.Resources.hexaverse_server_capsule_87;
-			this.launchServerButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
-			this.launchServerButton.Location = new System.Drawing.Point(550, 3);
-			this.launchServerButton.Name = "launchServerButton";
-			this.launchServerButton.Size = new System.Drawing.Size(247, 110);
-			this.launchServerButton.TabIndex = 8;
-			this.launchServerButton.Text = "Add Server...";
-			this.launchServerButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-			this.launchServerButton.UseVisualStyleBackColor = true;
-			// 
-			// launchClientButton
-			// 
-			this.launchClientButton.Image = global::ServerManager.Properties.Resources.hexaverse_cover_capsule_87;
-			this.launchClientButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
-			this.launchClientButton.Location = new System.Drawing.Point(3, 3);
-			this.launchClientButton.Name = "launchClientButton";
-			this.launchClientButton.Size = new System.Drawing.Size(247, 110);
-			this.launchClientButton.TabIndex = 0;
-			this.launchClientButton.Text = "Launch Client";
-			this.launchClientButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-			this.launchClientButton.UseVisualStyleBackColor = true;
-			// 
-			// toolStripStatusLabel
-			// 
-			this.toolStripStatusLabel.Name = "toolStripStatusLabel";
-			this.toolStripStatusLabel.Size = new System.Drawing.Size(112, 17);
-			this.toolStripStatusLabel.Text = "toolStripStatusLabel";
 			// 
 			// ServerTable
 			// 
@@ -334,6 +369,10 @@
 		private System.Windows.Forms.SaveFileDialog hsfSaveFileDialog;
 		private System.Windows.Forms.StatusStrip mainStatusStrip;
 		private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel;
+		private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
+		private System.Windows.Forms.ToolStripMenuItem sessionToolStripMenuItem;
+		private System.Windows.Forms.ToolStripMenuItem closeSessionStripItem;
+		private System.Windows.Forms.ToolStripMenuItem resumeSessionStripItem;
 	}
 }
 

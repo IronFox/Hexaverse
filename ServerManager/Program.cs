@@ -61,5 +61,18 @@ namespace ServerManager
 				//call bug reporter (later)
 			}
 		}
+
+		public static Process StartComponent(string path, string executableBaseName, string parameters = "")
+		{
+			if (Environment.Is64BitOperatingSystem)
+				return Process.Start(Path.Combine(path, executableBaseName+".exe"), parameters);
+			return Process.Start(Path.Combine(path, executableBaseName+ " x86.exe"), parameters);
+		}
+
+		public static void RunComponent(string path, string executableBaseName, string parameters = "")
+		{
+			using (StartComponent(path, executableBaseName, parameters))
+			{}
+		}
 	}
 }

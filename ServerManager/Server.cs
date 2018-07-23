@@ -33,8 +33,14 @@ namespace ServerManager
 			base.SubItems.Add("");  //rules
 
 			receiver = new ServerInfoReceiver(basePort);
-			controlConnection = new ControlConnection(basePort+2,asyncLog, asyncDisplayError);
-			//receiver.TryToReconnect();
+			controlConnection = new ControlConnection(basePort+2,(msg) =>
+			{
+				asyncLog(ID.ToNiceString() + ": " + msg);
+			},
+			(msg) =>
+			{
+				asyncDisplayError(ID.ToNiceString() + ": " + msg);
+			});
 		}
 
 		public void Receive(UDPReceiver.Info info)
@@ -64,7 +70,9 @@ namespace ServerManager
 			if (RequiresHeartbeats)
 				base.Text += " (H)";
 
-			if (!SessionIsClosed && receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2))
+			bool hasInfo = receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2);
+
+			if (!SessionIsClosed && hasInfo)
 			{
 				var info = receiver.LastUpdate.Package.game;
 				status.Text = info.numFactionsOnline + "/" + info.numFactionsCreated + " online, round "+info.roundNumber;
@@ -79,6 +87,12 @@ namespace ServerManager
 				{
 					worldID.Text = "";
 					rules.Text = "";
+					if (hasInfo)
+					{
+						var info = receiver.LastUpdate.Package.game;
+						worldID.Text = info.worldID.ToNiceString();
+						rules.Text = ServerInfoReceiver.GameFlagsToString(info.gameConfig.gameFlags);
+					}
 					status.Text = "Session closed or suspended";
 				}
 				else
@@ -126,10 +140,7 @@ namespace ServerManager
 				if (controlConsole != null)
 					controlConsole.Dispose();
 				controlConsole = null;
-				if (Environment.Is64BitOperatingSystem)
-					controlConsole = Process.Start(Path.Combine("ControlConsole", "ControlConsole.exe"), "-p " + BasePort);
-				else
-					controlConsole = Process.Start(Path.Combine("ControlConsole", "ControlConsole x86.exe"), "-p " + BasePort);
+				controlConsole = Program.StartComponent("ControlConsole", "ControlConsole", "-p " + BasePort);
 			}
 			catch (Exception ex)
 			{
@@ -190,6 +201,11 @@ namespace ServerManager
 			Dispose(true);
 			// TODO: uncomment the following line if the finalizer is overridden above.
 			// GC.SuppressFinalize(this);
+		}
+
+		internal void SetSession(bool active)
+		{
+			IssueControlCommand("/Server/Online/session = " + active);
 		}
 		#endregion
 	}

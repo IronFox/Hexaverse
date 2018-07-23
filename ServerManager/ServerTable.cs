@@ -37,7 +37,7 @@ namespace ServerManager
 		private void AddAttribute(string name, string value, string tooltip, Action<string> onClickHandleValue)
 		{
 			var row = globalAttributeView.Items.Add("");
-			row.SubItems.Add(name+":");
+			row.SubItems.Add(name + ":");
 			row.SubItems.Add(value);
 			row.ToolTipText = tooltip;
 			if (onClickHandleValue != null)
@@ -139,7 +139,7 @@ namespace ServerManager
 				Server server;
 				if (!portMap.TryGetValue(info.Port, out server))
 				{
-					server = new Server(info.Port,LogStatus,ShowError);
+					server = new Server(info.Port, LogStatus, ShowError);
 					servers.Add(server);
 					portMap.Add(info.Port, server);
 					serverListView.Items.Add(server);
@@ -193,7 +193,17 @@ namespace ServerManager
 				logStripItem.Enabled = false;
 				saveGameAsToolStripMenuItem.Enabled = false;
 				if (items.Count == 0)
+				{
 					shutdownStripItem.Enabled = false;
+					closeSessionStripItem.Enabled = false;
+					resumeSessionStripItem.Enabled = false;
+				}
+				else
+				{
+					shutdownStripItem.Enabled = true;
+					closeSessionStripItem.Enabled = true;
+					resumeSessionStripItem.Enabled = true;
+				}
 			}
 			else
 			{
@@ -201,6 +211,9 @@ namespace ServerManager
 				logStripItem.Enabled = true;
 				saveGameAsToolStripMenuItem.Enabled = true;
 				shutdownStripItem.Enabled = true;
+				var closed = ((Server)serverListView.SelectedItems[0]).SessionIsClosed;
+				closeSessionStripItem.Enabled = !closed;
+				resumeSessionStripItem.Enabled = closed;
 			}
 		}
 
@@ -236,6 +249,26 @@ namespace ServerManager
 				((Server)serverListView.SelectedItems[0]).IssueControlCommand("/IO/saveTo \"" + hsfSaveFileDialog.FileName + "\"");
 			}
 		}
-	}
 
+		private void launchClientButton_Click(object sender, EventArgs e)
+		{
+			Program.RunComponent("client", "Visual Client");
+		}
+
+		private void closeSessionStripItem_Click(object sender, EventArgs e)
+		{
+			foreach (Server srv in serverListView.SelectedItems)
+			{
+				srv.SetSession(false);
+			}
+		}
+
+		private void resumeSessionStripItem_Click(object sender, EventArgs e)
+		{
+			foreach (Server srv in serverListView.SelectedItems)
+			{
+				srv.SetSession(true);
+			}
+		}
+	}
 }
