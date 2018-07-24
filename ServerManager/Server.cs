@@ -57,7 +57,10 @@ namespace ServerManager
 				asyncDisplayError(ID.ToNiceString() + ": " + msg);
 			});
 
-			controlConnection.GetValue("/Rules/Nexus/enableAI", (str) => { bool.TryParse(str, out aiIsEnabled); });
+			controlConnection.GetValue("/Rules/Nexus/enableAI", 
+				(str) => {
+					bool.TryParse(str, out aiIsEnabled);
+				});
 			controlConnection.GetValue("/Rules/Nexus/aiScript", (str) => { aiScript = str; });
 		}
 
@@ -82,7 +85,7 @@ namespace ServerManager
 
 			RequiresHeartbeats = cfg.isDependent;
 
-			server = Program.StartComponent("server", "server", options,true);
+			server = Program.StartComponent("server", "server", options, cfg.isDependent);
 
 			if (cfg.isDependent)
 				heartbeatSender = new HeartbeatSender(BasePort);
@@ -100,10 +103,24 @@ namespace ServerManager
 			RequiresHeartbeats = info.RequiresHeartbeats;
 		}
 
+		private int aiUpdateCnt = 0;
+
 		public bool Update()
 		{
 			if (this.disposedValue)
 				throw new ObjectDisposedException("This Server has been disposed. Cannot update");
+
+
+			if (controlConnection.IsConnected && aiUpdateCnt++ > 10)
+			{
+				aiUpdateCnt = 0;
+				controlConnection.GetValue("/Rules/Nexus/enableAI",
+					(str) =>
+					{
+						bool.TryParse(str, out aiIsEnabled);
+					});
+				controlConnection.GetValue("/Rules/Nexus/aiScript", (str) => { aiScript = str; });
+			}
 
 			if (RequiresHeartbeats)
 			{

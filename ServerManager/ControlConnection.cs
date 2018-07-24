@@ -73,13 +73,16 @@ namespace ServerManager
 			//World snapshot, round 0, written to [Documents]\My Games\Hexaverse\shared\saves\test.hsf in 0.17119 seconds
 
 			//logFile: 'E:\Documents\My Games\Hexaverse\server\logs\server 2018 07 22 124802.v0.9.2.420.log'
-			var logFileMatch = Regex.Match(response, @"^([^':\r\n]+): '([^'\r\n]+)'");
+			var logFileMatch = Regex.Match(response, @"^([^':\r\n]+): ([^'\r\n]+)$");
 			if (logFileMatch.Success && logFileMatch.Groups.Count == 3)
 			{
 				Action<string> onValue;
 				if (onValueMap.TryRemove(logFileMatch.Groups[1].Value, out onValue))
 				{
-					onValue(logFileMatch.Groups[2].Value);
+					var v = logFileMatch.Groups[2].Value;
+					if (v.StartsWith("'") && v.EndsWith("'"))
+						v = v.Substring(1, v.Length - 2);
+					onValue(v);
 				}
 				return;
 			}

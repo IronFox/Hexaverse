@@ -80,7 +80,16 @@ namespace ServerManager
 				   });
 			}
 
-			receiver = new UDPReceiver();
+			try
+			{
+				receiver = new UDPReceiver();
+			}
+			catch (System.Net.Sockets.SocketException)
+			{
+				MessageBox.Show("Only one instance of ServerManager may run at any time.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				Shutdown();
+				return;
+			}
 			receiverTimer.Start();
 		}
 
