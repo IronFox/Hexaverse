@@ -166,6 +166,8 @@ namespace Reflection
 
 			/**/		StringVar(const String&name, Persistence persistence, const String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
 			{}
+			/**/		StringVar(const String&name, const String&type, Persistence persistence, const String&value, unsigned protection=CLI::EraseProtection) : Super(name,type,persistence, 1,protection),value(value),defaultValue(value)
+			{}
 			virtual String	ConvertToString()		const	override	{return value;}
 			virtual	bool	Set(const String&value)	override
 			{
@@ -778,6 +780,14 @@ namespace Reflection
 			return rs;
 		}
 
+		PBase	SetString(const String&name, const String&type, const String&value, Persistence p)
+		{
+			PBase rs (new StringVar(name,type,p, value, CLI::EraseProtection));
+			parser->SetVariable(rs);
+			return rs;
+		}
+
+
 		PBase	SetStringReference(const String&name, String&value, Persistence p)
 		{
 			PBase rs (new StringReferenceVar(name,p, value, CLI::EraseProtection));
@@ -1200,7 +1210,7 @@ namespace Reflection
 
 
 			parser->EnterNewFolder("Planet")->attachment = persistenceAttachment;
-				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
+				Variable::planetType = Variable::SetString("Type","PlanetName","LushGreen",Variable::Persistence::PlanetConfig);
 
 				parser->EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("../predefinedPlanets", "config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{

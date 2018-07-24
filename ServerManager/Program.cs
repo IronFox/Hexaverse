@@ -11,6 +11,8 @@ namespace ServerManager
 	static class Program
 	{
 		public static string gameVersion;
+		public static string gameDir;
+		//public static string installDir;	//Directory.GetCurrentDirectory();
 		/// <summary>
 		/// The main entry point for the application.
 		/// </summary>

@@ -283,11 +283,50 @@ namespace ServerManager
 			}
 		};
 
+		class PlanetNameAttribute : Attribute
+		{
+			public PlanetNameAttribute(Group parent, string name, string[] planetNames, string[] help) : base(parent, name, new ComboBox(), help)
+			{
+				var box = (ComboBox)MainControl;
+				box.MouseWheel += (sender, e) =>
+				{
+					((HandledMouseEventArgs)e).Handled = true;
+				};
+
+				box.DropDownStyle = ComboBoxStyle.DropDownList;
+
+				foreach (var item in planetNames)
+					box.Items.Add(item);
+				//box.SelectedValue = value;
+			}
+
+			public override string StringValue
+			{
+				get => base.StringValue;
+				set
+				{
+					var box = (ComboBox)MainControl;
+					for (int i = 0; i < box.Items.Count; i++)
+						if (box.Items[i].ToString() == value)
+						{
+							box.SelectedIndex = i;
+							break;
+						}
+				}
+			}
+
+		};
+
 		class EnumAttribute : Attribute
 		{
 			public EnumAttribute(Group parent, string name, string range, string[] help) : base(parent, name, new ComboBox(), help)
 			{
 				var box = (ComboBox)MainControl;
+				box.MouseWheel += (sender, e) =>
+				{
+					((HandledMouseEventArgs)e).Handled = true;
+				};
+
 				box.DropDownStyle = ComboBoxStyle.DropDownList;
 
 				if (range == null)
@@ -453,6 +492,7 @@ namespace ServerManager
 					}
 
 					Attribute attrib;
+					string[] planetNames = null;
 
 					if (parts[0].ToLower().Contains("set"))
 					{
@@ -468,6 +508,30 @@ namespace ServerManager
 						{
 							case "bool":
 								attrib = new BoolAttribute(ctx, name, comments.ToArray());
+								break;
+							case "planetname":
+								{
+									if (planetNames == null)
+									{
+										List<string> planets = new List<string>();
+										DirectoryInfo dir = new DirectoryInfo(Path.Combine(Program.gameDir, "shared", "config", "myPlanets"));
+										if (dir.Exists)
+										{
+											var files = dir.GetFiles("*.ini");
+											foreach (var f in files)
+												planets.Add("*" + Path.GetFileNameWithoutExtension(f.Name));
+										}
+
+										dir = new DirectoryInfo(Path.Combine( Directory.GetCurrentDirectory(), "predefinedPlanets"));
+										{
+											var files = dir.GetFiles("*.ini");
+											foreach (var f in files)
+												planets.Add(Path.GetFileNameWithoutExtension(f.Name));
+										}
+										planetNames = planets.ToArray();
+									}
+									attrib = new PlanetNameAttribute(ctx, name, planetNames,comments.ToArray());
+								}
 								break;
 							case "string":
 								attrib = new StringAttribute(ctx, name, comments.ToArray());
