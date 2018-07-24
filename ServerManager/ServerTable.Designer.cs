@@ -52,11 +52,11 @@
 			this.logStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.saveGameAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-			this.shutdownStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.sessionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.closeSessionStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.resumeSessionStripItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+			this.shutdownStripItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
 			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
 			this.menuStrip1 = new System.Windows.Forms.MenuStrip();
@@ -64,6 +64,7 @@
 			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.receiverTimer = new System.Windows.Forms.Timer(this.components);
 			this.hsfSaveFileDialog = new System.Windows.Forms.SaveFileDialog();
+			this.aiHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.globalInfoPanel.SuspendLayout();
 			this.serverContextMenuStrip.SuspendLayout();
 			this.mainStatusStrip.SuspendLayout();
@@ -152,11 +153,13 @@
             this.portHeader,
             this.hostIDHeader,
             this.worldIDHeader,
+            this.aiHeader,
             this.statusHeader,
             this.ruleHeader});
 			this.serverListView.ContextMenuStrip = this.serverContextMenuStrip;
 			this.serverListView.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.serverListView.FullRowSelect = true;
+			this.serverListView.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
 			this.serverListView.Location = new System.Drawing.Point(0, 141);
 			this.serverListView.Name = "serverListView";
 			this.serverListView.Size = new System.Drawing.Size(800, 287);
@@ -229,18 +232,6 @@
 			this.toolStripSeparator2.Name = "toolStripSeparator2";
 			this.toolStripSeparator2.Size = new System.Drawing.Size(205, 6);
 			// 
-			// toolStripSeparator1
-			// 
-			this.toolStripSeparator1.Name = "toolStripSeparator1";
-			this.toolStripSeparator1.Size = new System.Drawing.Size(205, 6);
-			// 
-			// shutdownStripItem
-			// 
-			this.shutdownStripItem.Name = "shutdownStripItem";
-			this.shutdownStripItem.Size = new System.Drawing.Size(208, 22);
-			this.shutdownStripItem.Text = "Shut Down";
-			this.shutdownStripItem.Click += new System.EventHandler(this.shutdownStripItem_Click);
-			// 
 			// sessionToolStripMenuItem
 			// 
 			this.sessionToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -263,6 +254,18 @@
 			this.resumeSessionStripItem.Size = new System.Drawing.Size(180, 22);
 			this.resumeSessionStripItem.Text = "Resume";
 			this.resumeSessionStripItem.Click += new System.EventHandler(this.resumeSessionStripItem_Click);
+			// 
+			// toolStripSeparator1
+			// 
+			this.toolStripSeparator1.Name = "toolStripSeparator1";
+			this.toolStripSeparator1.Size = new System.Drawing.Size(205, 6);
+			// 
+			// shutdownStripItem
+			// 
+			this.shutdownStripItem.Name = "shutdownStripItem";
+			this.shutdownStripItem.Size = new System.Drawing.Size(208, 22);
+			this.shutdownStripItem.Text = "Shut Down";
+			this.shutdownStripItem.Click += new System.EventHandler(this.shutdownStripItem_Click);
 			// 
 			// mainStatusStrip
 			// 
@@ -306,13 +309,17 @@
 			// 
 			// receiverTimer
 			// 
-			this.receiverTimer.Interval = 1000;
+			this.receiverTimer.Interval = 500;
 			this.receiverTimer.Tick += new System.EventHandler(this.receiverTimer_Tick);
 			// 
 			// hsfSaveFileDialog
 			// 
 			this.hsfSaveFileDialog.DefaultExt = "hsf";
 			this.hsfSaveFileDialog.Filter = "Hexaverse Save File|*.hsf";
+			// 
+			// aiHeader
+			// 
+			this.aiHeader.Text = "AI";
 			// 
 			// ServerTable
 			// 
@@ -328,6 +335,7 @@
 			this.MinimumSize = new System.Drawing.Size(816, 489);
 			this.Name = "ServerTable";
 			this.Text = "Server Manager";
+			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ServerTable_FormClosing);
 			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.ServerTable_FormClosed);
 			this.Load += new System.EventHandler(this.ServerTable_Load);
 			this.globalInfoPanel.ResumeLayout(false);
@@ -373,6 +381,7 @@
 		private System.Windows.Forms.ToolStripMenuItem sessionToolStripMenuItem;
 		private System.Windows.Forms.ToolStripMenuItem closeSessionStripItem;
 		private System.Windows.Forms.ToolStripMenuItem resumeSessionStripItem;
+		private System.Windows.Forms.ColumnHeader aiHeader;
 	}
 }
 

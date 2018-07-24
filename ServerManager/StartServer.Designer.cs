@@ -90,7 +90,7 @@
 			// startButton
 			// 
 			this.startButton.Enabled = false;
-			this.startButton.Location = new System.Drawing.Point(15, 145);
+			this.startButton.Location = new System.Drawing.Point(420, 145);
 			this.startButton.Name = "startButton";
 			this.startButton.Size = new System.Drawing.Size(104, 23);
 			this.startButton.TabIndex = 4;

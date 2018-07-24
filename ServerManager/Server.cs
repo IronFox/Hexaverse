@@ -33,7 +33,8 @@ namespace ServerManager
 
 		public DateTime LastUDPPing { get; private set; }
 
-
+		private volatile bool aiIsEnabled = false;
+		private volatile string aiScript = null;
 		private HeartbeatSender heartbeatSender;
 
 		public Server(int basePort, Action<string> asyncLog, Action<string> asyncDisplayError)
@@ -42,6 +43,7 @@ namespace ServerManager
 			base.Text = basePort + ".." + (basePort + NumPorts-1);
 			base.SubItems.Add("");  //server id
 			base.SubItems.Add("");  //world id
+			base.SubItems.Add("No");  //ai
 			base.SubItems.Add("Unknown");  //status
 			base.SubItems.Add("");  //rules
 
@@ -54,6 +56,9 @@ namespace ServerManager
 			{
 				asyncDisplayError(ID.ToNiceString() + ": " + msg);
 			});
+
+			controlConnection.GetValue("/Rules/Nexus/enableAI", (str) => { bool.TryParse(str, out aiIsEnabled); });
+			controlConnection.GetValue("/Rules/Nexus/aiScript", (str) => { aiScript = str; });
 		}
 
 		public Server(Config cfg, Action<string> asyncLog, Action<string> asyncDisplayError) : this(cfg.port, asyncLog, asyncDisplayError)
@@ -114,18 +119,29 @@ namespace ServerManager
 
 			if (!receiver.IsConnected && !SessionIsClosed)
 				receiver.TryToReconnect();
-			if (!controlConnection.IsConnected)
+			if (!controlConnection.IsAttemptingConnection && !controlConnection.IsConnected)
+			{
 				controlConnection.TryToReconnect();
+			}
 
 			base.SubItems[1].Text = ID.ToNiceString();
-			var status = base.SubItems[3];
+			var status = base.SubItems[4];
 			var worldID = base.SubItems[2];
-			var rules = base.SubItems[4];
+			var ai = base.SubItems[3];
+			var rules = base.SubItems[5];
 			base.Text = BasePort + ".." + (BasePort + NumPorts -1);
-			if (RequiresHeartbeats)
-				status.Text = "Dependent, ";
+			status.Text = "";
+
+			if (!aiIsEnabled)
+				ai.Text = "No";
 			else
-				status.Text = "";
+			{
+				string cp = aiScript;
+				if (string.IsNullOrWhiteSpace(cp))
+					ai.Text = "Yes";
+				else
+					ai.Text = "Lua:" + aiScript;
+			}
 
 			bool hasInfo = receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2);
 
@@ -162,6 +178,10 @@ namespace ServerManager
 						status.Text += "Connecting...";
 				}
 			}
+
+			if (RequiresHeartbeats)
+				status.Text += " (dep)";
+
 
 
 			return true;

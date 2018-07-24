@@ -177,7 +177,7 @@ namespace ServerManager
 
 		private void exitToolStripMenuItem_Click(object sender, EventArgs e)
 		{
-			Shutdown();
+			Close();
 		}
 
 		private void ServerTable_FormClosed(object sender, FormClosedEventArgs e)
@@ -292,6 +292,25 @@ namespace ServerManager
 			}
 			);
 			
+		}
+
+		private void ServerTable_FormClosing(object sender, FormClosingEventArgs e)
+		{
+			bool any = false;
+			foreach (var server in servers)
+			{
+				if (server.RequiresHeartbeats)
+				{
+					any = true;
+					break;
+				}
+			}
+			if (any)
+			{
+				var rs = MessageBox.Show("One or more servers are dependent on this manager. If you close it down, these servers may also shut down. Are you sure you wish to close the manager?", "Please confirm", MessageBoxButtons.OKCancel,MessageBoxIcon.Warning);
+				if (rs != DialogResult.OK)
+					e.Cancel = true;
+			}
 		}
 	}
 }
