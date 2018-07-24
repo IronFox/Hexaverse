@@ -199,6 +199,8 @@ namespace Reflection
 
 			/**/		StringReferenceVar(const String&name, Persistence persistence, String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
 			{}
+			/**/		StringReferenceVar(const String&name, const String&type, Persistence persistence, String&value, unsigned protection=CLI::EraseProtection) : Super(name,type,persistence, 1,protection),value(value),defaultValue(value)
+			{}
 			virtual String	ConvertToString()		const	override	{return value;}
 			virtual	bool	Set(const String&value)	override
 			{
@@ -787,7 +789,13 @@ namespace Reflection
 			return rs;
 		}
 
-
+		
+		PBase	SetStringReference(const String&name, const String&type, String&value, Persistence p)
+		{
+			PBase rs (new StringReferenceVar(name,type, p, value, CLI::EraseProtection));
+			parser->SetVariable(rs);
+			return rs;
+		}
 		PBase	SetStringReference(const String&name, String&value, Persistence p)
 		{
 			PBase rs (new StringReferenceVar(name,p, value, CLI::EraseProtection));
@@ -1206,7 +1214,7 @@ namespace Reflection
 		parser->EnterNewFolder("World")->attachment = persistenceAttachment;
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
-			Variable::SetStringReference("resourceDistribution",Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
+			Variable::SetStringReference("resourceDistribution","ResourceDistribution", Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 
 
 			parser->EnterNewFolder("Planet")->attachment = persistenceAttachment;
