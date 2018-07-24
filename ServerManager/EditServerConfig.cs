@@ -460,6 +460,7 @@ namespace ServerManager
 					Attribute attrib;
 					string[] planetNames = null;
 					string[] distNames = null;
+					string[] scriptNames = null;
 
 					if (parts[0].ToLower().Contains("set"))
 					{
@@ -475,6 +476,24 @@ namespace ServerManager
 						{
 							case "bool":
 								attrib = new BoolAttribute(ctx, name, comments.ToArray());
+								break;
+							case "aiscript":
+								{
+									if (scriptNames == null)
+									{
+										List<string> dists = new List<string>();
+										dists.Add("");
+										var dir = new DirectoryInfo(Path.Combine(Program.gameDir, "shared", "AIScripts"));
+										if (dir.Exists)
+										{
+											var files = dir.GetFiles("*.lua");
+											foreach (var f in files)
+												dists.Add(Path.GetFileNameWithoutExtension(f.Name));
+										}
+										scriptNames = dists.ToArray();
+									}
+									attrib = new EnumAttribute(ctx, name, scriptNames, comments.ToArray());
+								}
 								break;
 							case "resourcedistribution":
 								{

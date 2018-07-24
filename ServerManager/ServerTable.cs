@@ -143,6 +143,7 @@ namespace ServerManager
 		private void receiverTimer_Tick(object sender, EventArgs e)
 		{
 			UDPReceiver.Info info;
+			serverListView.BeginUpdate();
 			while (receiver.Updates.TryDequeue(out info))
 			{
 				Server server;
@@ -166,6 +167,7 @@ namespace ServerManager
 					server.Dispose();
 				}
 			}
+			serverListView.EndUpdate();
 			ruleHeader.Width = -1;
 		}
 
