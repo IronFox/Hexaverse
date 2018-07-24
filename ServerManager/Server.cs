@@ -12,6 +12,16 @@ namespace ServerManager
 {
 	public class Server : ListViewItem, IDisposable
 	{
+		public struct Config
+		{
+			public int port;
+			public bool isDependent;
+			public string configPath;	//ignored if saveGamePath is non-null and non-empty
+			public string saveGamePath; //superseeds configPath
+			public bool startSession;
+		};
+
+
 		private Process controlConsole=null, server=null;
 		private readonly ServerInfoReceiver receiver;
 		private readonly ControlConnection controlConnection;
@@ -46,22 +56,30 @@ namespace ServerManager
 			});
 		}
 
-		public Server(int basePort, Action<string> asyncLog, Action<string> asyncDisplayError, bool dependent, string configPath, string savePath) : this(basePort, asyncLog, asyncDisplayError)
+		public Server(Config cfg, Action<string> asyncLog, Action<string> asyncDisplayError) : this(cfg.port, asyncLog, asyncDisplayError)
 		{
 			SessionIsClosed = true;
 
-			string options = "-c \"" + configPath + "\"";
+			string options = "";
+			if (!string.IsNullOrWhiteSpace(cfg.saveGamePath))
+				options = "-l \"" + cfg.saveGamePath + "\"";
+			else
+			{
+				if (string.IsNullOrWhiteSpace(cfg.configPath))
+					throw new ArgumentException("Configuration is empty","cfg.configPath");
+				options = "-c \"" + cfg.configPath + "\"";
+			}
 			options += " -p " + BasePort;
-			if (dependent)
+			if (cfg.isDependent)
 				options += " -b";
-			if (!string.IsNullOrWhiteSpace(savePath))
-				options += " -l \"" + savePath + "\"";
+			if (!cfg.startSession)
+				options += " -o";
 
-			RequiresHeartbeats = dependent;
+			RequiresHeartbeats = cfg.isDependent;
 
-			server = Program.StartComponent("server", "server", options);
+			server = Program.StartComponent("server", "server", options,true);
 
-			if (dependent)
+			if (cfg.isDependent)
 				heartbeatSender = new HeartbeatSender(BasePort);
 
 			LastUDPPing = DateTime.Now + TimeSpan.FromSeconds(10);
@@ -82,9 +100,10 @@ namespace ServerManager
 			if (this.disposedValue)
 				throw new ObjectDisposedException("This Server has been disposed. Cannot update");
 
-			if (RequiresHeartbeats && heartbeatSender == null)
+			if (RequiresHeartbeats)
 			{
-				heartbeatSender = new HeartbeatSender(BasePort);
+				if (heartbeatSender == null)
+					heartbeatSender = new HeartbeatSender(BasePort);
 			}
 			else
 				if (heartbeatSender != null)
@@ -104,14 +123,16 @@ namespace ServerManager
 			var rules = base.SubItems[4];
 			base.Text = BasePort + ".." + (BasePort + NumPorts -1);
 			if (RequiresHeartbeats)
-				base.Text += " (H)";
+				status.Text = "Dependent, ";
+			else
+				status.Text = "";
 
 			bool hasInfo = receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2);
 
 			if (!SessionIsClosed && hasInfo)
 			{
 				var info = receiver.LastUpdate.Package.game;
-				status.Text = info.numFactionsOnline + "/" + info.numFactionsCreated + " online, round "+info.roundNumber;
+				status.Text += info.numFactionsOnline + "/" + info.numFactionsCreated + " online, Round "+info.roundNumber;
 				worldID.Text = info.worldID.ToNiceString();
 				rules.Text = ServerInfoReceiver.GameFlagsToString(info.gameConfig.gameFlags);
 			}
@@ -129,16 +150,16 @@ namespace ServerManager
 						worldID.Text = info.worldID.ToNiceString();
 						rules.Text = ServerInfoReceiver.GameFlagsToString(info.gameConfig.gameFlags);
 					}
-					status.Text = "Session closed or suspended";
+					status.Text += "Session closed or suspended";
 				}
 				else
 				{
 					worldID.Text = "?";
 					rules.Text = "?";
 					if (DateTime.Now - LastUDPPing > TimeSpan.FromSeconds(2))
-						status.Text = "No contact";
+						status.Text += "No contact";
 					else
-						status.Text = "Connecting...";
+						status.Text += "Connecting...";
 				}
 			}
 
@@ -250,6 +271,7 @@ namespace ServerManager
 		internal void SetSession(bool active)
 		{
 			IssueControlCommand("/Server/Online/session = " + active);
+			IssueControlCommand("/Server/Online/info = " + active);
 		}
 
 		public static bool PortIntersection(int a, int b)

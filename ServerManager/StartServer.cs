@@ -27,14 +27,26 @@ namespace ServerManager
 		private Func<int, bool> basePortIsFreeFunction;
 
 		private string configFileName;
-		private Action<int, bool, string, string> startServer;
+		private string saveGamePath;
+		private Action<Server.Config> startServer;
 
-		public void Show(Func<int, bool> basePortIsFreeFunction, Action<int,bool, string, string> startServer)
+		public void Show(string saveGamePath, Func<int, bool> basePortIsFreeFunction, Action<Server.Config> startServer)
 		{
 			configFileName = Path.GetTempFileName();
+			EditServerConfig.GenerateConfigAt(configFileName);
+			configOkay = false;
+			saveGameOkay = false;
+			portOkay = false;
+			startButton.Enabled = false;
+			//loadSaveButton.Text = "Load Save Game";
 
+			this.saveGamePath = saveGamePath;
 			this.basePortIsFreeFunction = basePortIsFreeFunction;
 			this.startServer = startServer;
+
+			RecheckBasePort();
+			if (!portOkay)
+				fixPortButton_Click(null, null);
 
 			this.portCheckTimer.Start();
 
@@ -43,17 +55,22 @@ namespace ServerManager
 
 		private bool portOkay = false;
 
+		private bool PortIsInUse(int port)
+		{
+			return !basePortIsFreeFunction(port) || Server.PortContained(port, Disallowed0) || Server.PortContained(port, Disallowed1);
+		}
+
 		private void RecheckBasePort()
 		{
 			try
 			{
 				int port = int.Parse(this.portInput.Text);
-				if (port <= 1024 || port+Server.NumPorts >= 65536)
+				if (port < 1024 || port+Server.NumPorts > 49151 - Server.NumPorts)
 				{
-					FailPort("Port out of valid range [1024,65535]");
+					FailPort("Port out of valid range [1024,"+(49151-Server.NumPorts)+"]");
 					return;
 				}
-				if (!basePortIsFreeFunction(port) || Server.PortContained(port, Disallowed0) || Server.PortContained(port, Disallowed1))
+				if (PortIsInUse(port))
 				{
 					FailPort("Port range already in use");
 					return;
@@ -61,7 +78,7 @@ namespace ServerManager
 				portInput.BackColor = SystemColors.Window;
 				portStatusLabel.Text = "Port OK";
 				portOkay = true;
-				this.startButton.Enabled = configOkay;
+				fixPortButton.Visible = false;
 			}
 			catch (FormatException)
 			{
@@ -75,45 +92,55 @@ namespace ServerManager
 			portInput.BackColor = Color.Red;
 			portStatusLabel.Text = error;
 			startButton.Enabled = false;
+			fixPortButton.Visible = true;
 		}
 
 		private void startButton_Click(object sender, EventArgs e)
 		{
-			RecheckBasePort();
-			if (!portOkay)
+			RecheckStartButton();
+			if (!startButton.Enabled)
 			{
 				return;
 			}
 			Debug.Assert(File.Exists(configFileName));
 
-			startServer(int.Parse(portInput.Text), dependentCheck.Checked, configFileName, "");
+			Server.Config cfg = new Server.Config();
+			cfg.configPath = newGameButton.Enabled ? configFileName : null;
+			cfg.saveGamePath = loadSaveButton.Enabled ? loadHSFDialog.FileName : null;
+			cfg.isDependent = dependentCheck.Checked;
+			cfg.port = int.Parse(portInput.Text);
+			cfg.startSession = !startOfflineCheck.Checked;
+
+			startServer(cfg);
 			configFileName = null;
 			Close();
 		}
 
 		private void portCheckTimer_Tick(object sender, EventArgs e)
 		{
-			RecheckBasePort();
+			RecheckStartButton();
 		}
 
 		private void portInput_TextChanged(object sender, EventArgs e)
 		{
-			RecheckBasePort();
+			RecheckStartButton();
 		}
 
 
 		private EditServerConfig editor = null;
 		private bool configOkay = false;
+		private bool saveGameOkay = false;
 
 		private void configureButton_Click(object sender, EventArgs e)
 		{
-			if (editor == null)
-				editor = new EditServerConfig();
 
-			if (editor.Visible)
+			if (editor != null && editor.Visible)
 				editor.BringToFront();
 			else
-				editor.Show(configFileName, "Accept Config", (str) => { configOkay = true; startButton.Enabled = portOkay; }); //don't care
+			{
+				editor = new EditServerConfig();
+				editor.Show(configFileName, "Accept Config", (str) => { configOkay = true; RecheckStartButton(); });
+			}
 		}
 
 		private void StartServer_FormClosing(object sender, FormClosingEventArgs e)
@@ -130,6 +157,79 @@ namespace ServerManager
 					configFileName = null;
 				}
 			}
+		}
+
+		private bool CanStart()
+		{
+			RecheckBasePort();
+			if (!portOkay)
+				return false;
+			if (loadSaveButton.Checked)
+				return saveGameOkay;
+			return configOkay;
+		}
+
+		private void RecheckStartButton()
+		{
+			startButton.Enabled = CanStart();
+		}
+
+		private void loadSaveButton_CheckedChanged(object sender, EventArgs e)
+		{
+			pickSaveGameButton.Enabled = loadSaveButton.Checked;
+			RecheckStartButton();
+		}
+
+		private void newGameButton_CheckedChanged(object sender, EventArgs e)
+		{
+			configureButton.Enabled = newGameButton.Checked;
+			RecheckStartButton();
+		}
+
+		private void pickSaveGameButton_Click(object sender, EventArgs e)
+		{
+			if (string.IsNullOrWhiteSpace(loadHSFDialog.InitialDirectory))
+				loadHSFDialog.InitialDirectory = saveGamePath;
+
+			var rs = loadHSFDialog.ShowDialog();
+			if (rs == DialogResult.OK || rs == DialogResult.Yes)
+			{
+				saveGameOkay = File.Exists(loadHSFDialog.FileName);
+				RecheckStartButton();
+				if (saveGameOkay)
+				{
+					var segs = loadHSFDialog.FileName.Split(Path.DirectorySeparatorChar);
+					//pickSaveGameButton.Text = segs.Last();
+					saveGameLabel.Text = segs.Last();
+					//if (loadSaveButton.Text.Length > 32)
+						//loadSaveButton.Text = loadSaveButton.Text.Substring(0, 32);
+				}
+			}
+		}
+
+		private void abortButton_Click(object sender, EventArgs e)
+		{
+			Close();
+		}
+
+		private void fixPortButton_Click(object sender, EventArgs e)
+		{
+			int current;
+			try
+			{
+				current = int.Parse(portInput.Text);
+			}
+			catch
+			{
+				current = Default;
+			}
+			if (current < 1024)
+				current = 1024;
+			if (current+Server.NumPorts > 49151)
+				current = Default;
+			while (PortIsInUse(current))
+				current++;
+			portInput.Text = current.ToString();
 		}
 	}
 }

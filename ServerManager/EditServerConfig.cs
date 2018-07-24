@@ -396,17 +396,6 @@ namespace ServerManager
 
 
 
-
-			{
-				var info = new ProcessStartInfo();
-				info.UseShellExecute = false;
-				info.CreateNoWindow = true;
-				info.FileName = Path.Combine("server", "Server.exe");
-				info.Arguments = "-g \"" + fileName+'\"';
-				var p = Process.Start(info);
-				p.WaitForExit();
-			}
-
 			var lines = File.ReadAllLines(fileName);
 
 			var comments = new List<string>();
@@ -527,18 +516,34 @@ namespace ServerManager
 
 			fileName = Path.GetTempFileName();
 
+			{
+			}
+			GenerateConfigAt(fileName);
 
 			Reload();
 
 			this.Show();
 		}
 
-		public void Show(string existingOutFileName, string commitText, Action<string> onCompleteHandlePath)
+		public static void GenerateConfigAt(string path)
+		{
+			var info = new ProcessStartInfo();
+			info.UseShellExecute = false;
+			info.CreateNoWindow = true;
+			info.FileName = Path.Combine("server", "Server.exe");
+			info.Arguments = "-g \"" + path + '\"';
+			using (var p = Process.Start(info))
+			{
+				p.WaitForExit();
+			}
+		}
+
+		public void Show(string existingConfiguration, string commitText, Action<string> onCompleteHandlePath)
 		{
 			this.acceptButton.Text = commitText;
 			this.onCompleteHandlePath = onCompleteHandlePath;
 
-			fileName = existingOutFileName;
+			fileName = existingConfiguration;
 			deleteOnExit = false;
 
 			Reload();

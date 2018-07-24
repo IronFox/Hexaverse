@@ -76,8 +76,6 @@ namespace ServerManager
 			var logFileMatch = Regex.Match(response, @"^([^':\r\n]+): '([^'\r\n]+)'");
 			if (logFileMatch.Success && logFileMatch.Groups.Count == 3)
 			{
-				bool brk = true;
-
 				Action<string> onValue;
 				if (onValueMap.TryRemove(logFileMatch.Groups[1].Value, out onValue))
 				{

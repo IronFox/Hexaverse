@@ -62,16 +62,22 @@ namespace ServerManager
 			}
 		}
 
-		public static Process StartComponent(string path, string executableBaseName, string parameters = "")
+		public static Process StartComponent(string path, string executableBaseName, string parameters = "", bool hideWindow=false)
 		{
-			if (Environment.Is64BitOperatingSystem)
-				return Process.Start(Path.Combine(path, executableBaseName+".exe"), parameters);
-			return Process.Start(Path.Combine(path, executableBaseName+ " x86.exe"), parameters);
+			ProcessStartInfo info = new ProcessStartInfo();
+			info.Arguments = parameters;
+			info.CreateNoWindow = hideWindow;
+			if (hideWindow)
+				info.UseShellExecute = false;
+			path = Path.Combine(Directory.GetCurrentDirectory(), path);
+			info.FileName = Environment.Is64BitOperatingSystem ? Path.Combine(path, executableBaseName + ".exe") : Path.Combine(path, executableBaseName+ " x86.exe");
+			info.WorkingDirectory = path;
+			return Process.Start(info);
 		}
 
-		public static void RunComponent(string path, string executableBaseName, string parameters = "")
+		public static void RunComponent(string path, string executableBaseName, string parameters = "", bool hideWindow = false)
 		{
-			using (StartComponent(path, executableBaseName, parameters))
+			using (StartComponent(path, executableBaseName, parameters,hideWindow))
 			{}
 		}
 	}

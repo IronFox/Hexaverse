@@ -52,6 +52,7 @@ namespace ServerManager
 
 		private UDPReceiver receiver;
 		private string gameDir;
+		private string hsfDefaultDirectory;
 		private void ServerTable_Load(object sender, EventArgs e)
 		{
 			FlushAttributes();
@@ -63,7 +64,7 @@ namespace ServerManager
 			{
 				string myDocs = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 				gameDir = Path.Combine(myDocs, "My Games", "Hexaverse");
-				hsfSaveFileDialog.InitialDirectory = Path.Combine(gameDir, "shared", "saves");
+				hsfDefaultDirectory = hsfSaveFileDialog.InitialDirectory = Path.Combine(gameDir, "shared", "saves");
 				Directory.CreateDirectory(gameDir);
 				AddAttribute("Game Dir", gameDir, "Hexaverse Game Directory", (dir) =>
 				   {
@@ -273,7 +274,7 @@ namespace ServerManager
 
 		private void launchServerButton_Click(object sender, EventArgs e)
 		{
-			new StartServer().Show((port) =>
+			new StartServer().Show(hsfDefaultDirectory,(port) =>
 			{
 				foreach (var s in servers)
 				{
@@ -282,11 +283,11 @@ namespace ServerManager
 				}
 				return true;
 			},
-			(port,dependent,configPath,savePath) =>
+			(Server.Config cfg) =>
 			{
-				var server = new Server(port, LogStatus, ShowError,dependent,configPath,savePath);
+				var server = new Server(cfg, LogStatus, ShowError);
 				servers.Add(server);
-				portMap.Add(port, server);
+				portMap.Add(server.BasePort, server);
 				serverListView.Items.Add(server);
 			}
 			);
