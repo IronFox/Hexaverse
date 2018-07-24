@@ -576,6 +576,13 @@ namespace Menu
 			});
 		});
 
+		menu->AddCommand("Server Manager",[]()
+		{
+			SetFullScreen(false);
+			MonitoredProcess	process(false);
+			process.Start("../ServerManager","ServerManager.exe","");
+		});
+
 
 	}
 
