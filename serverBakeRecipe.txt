@@ -15,3 +15,5 @@ lua/*.txt
 lua/distributions/*.lua
 
 ControlConsole/ControlConsole*.exe
+ServerManager/ServerManager.exe
+ServerManager/Protocol.dll
