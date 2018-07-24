@@ -400,7 +400,7 @@ namespace Reflection
 		public:
 			String			defaultValue = "";
 
-			/**/			NexusAIScript(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "string", Persistence::Temporary,1,protection)	{}
+			/**/			NexusAIScript(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "string",Persistence::RestoreFromSavegame,1,protection)	{}
 			virtual String	ConvertToString()		const	override	{return Objects::Faction::nexus ? Objects::Faction::nexus->aiScriptName : "";}
 			virtual	bool	Set(const String&value)	override
 			{
