@@ -96,7 +96,7 @@ namespace RemoteControl
 				};
 				parser->onPrintLine = [this](const String&line)
 				{
-					LogEvent(EventClass::Preset::remoteControlResponse,line);
+					//LogEvent(EventClass::Preset::remoteControlResponse,line);	//these may contain personal information, so do not log
 					Channels::response.SendTo(this->peer.lock(),line);
 				};
 				parser->onFocusChanged();
