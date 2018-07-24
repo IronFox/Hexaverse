@@ -107,7 +107,8 @@ namespace RemoteControl
 
 		void OnEvent(TCP::event_t event, TCP::Peer&origin)
 		{
-			LogEvent(EventSignificance::Debug,nullptr,"RemoteControl: "+origin.ToString()+": "+TCP::event2str(event));
+			ASSERT1__(origin.IsLocalhost(),origin.ToString());	//this should be implied through the way the server is created. but just in case something goes wrong, better crash than let someone remote control the system
+			LogEvent(EventClass::Preset::remoteControlCommand,nullptr,"Control connection: "+origin.ToString()+": "+TCP::event2str(event));
 			switch (event)
 			{
 				case TCP::Event::ConnectionEstablished:
@@ -133,7 +134,8 @@ namespace RemoteControl
 			PAttachment attach = To<Attachment>::Cast(peer.attachment);
 			auto parser = attach->parser;
 
-			LogEvent(EventClass::Preset::remoteControlCommand, parser->GetContext()+">"+cmd);
+			const String ctx = parser->GetContext();
+			//LogEvent(EventClass::Preset::remoteControlCommand, parser->GetContext()+">"+cmd);
 
 			index_t equalAt = cmd.Find('=');
 			if (equalAt != InvalidIndex)
@@ -142,7 +144,7 @@ namespace RemoteControl
 			}
 			if (!parser->Interpret(cmd))
 			{
-				LogEvent(EventClass::Preset::remoteControlError,parser->GetError());
+				LogEvent(EventClass::Preset::remoteControlError,ctx + ">"+cmd+" => "+ parser->GetError());
 				Channels::error.SendTo(peer,parser->GetError());
 			}
 
