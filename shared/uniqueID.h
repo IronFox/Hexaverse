@@ -54,12 +54,11 @@ namespace Bin2Str
 	{
 		return Convert(v.pointer(),v.size());
 	}
-	inline void Convert(void*outData, size_t outDataSize, const char*source, size_t sourceLen)
+	
+	inline bool TryToConvert(void*outData, size_t outDataSize, const StringRef&source)
 	{
-		if (sourceLen != outDataSize * 2)
-		{
-			throw Except::Program::ParameterFault("Unable to decode byte-string '" + String(source,sourceLen) + "': Invalid length (" + String(sourceLen) + "). Expected "+String(outDataSize*2)+" characters");
-		}
+		if (source.GetLength() != outDataSize * 2)
+			return false;
 		BYTE*outBytes = (BYTE*)outData;
 		for (index_t i = 0; i < outDataSize; i++)
 		{
@@ -67,11 +66,18 @@ namespace Bin2Str
 			char a1 = source[i * 2 + 1];
 			outBytes[i] = _HexToByte(a0, a1);
 		}
+		return true;
+	}
+
+	inline void Convert(void*outData, size_t outDataSize, const StringRef&source)
+	{
+		if (!TryToConvert(outData,outDataSize, source))
+			throw Except::Program::ParameterFault(String("Unable to decode byte-string '" + source + "': Invalid length (" + String(source.GetLength()) + "). Expected "+String(outDataSize*2)+" characters"));
 	}
 
 	inline void Convert(void*outData, size_t outDataSize, const String&source)
 	{
-		Convert(outData,outDataSize,source.c_str(),source.GetLength());
+		Convert(outData,outDataSize,source.ToRef());
 	}
 
 }
@@ -195,27 +201,18 @@ struct TUniqueID
 		return rs;
 	}
 
-	bool		Decode(const char*str, size_t len)
+	bool		Decode(const StringRef&str)
 	{
-		if (len != NumBytes*2)
-			return false;
-		try
-		{
-			Bin2Str::Convert(bytes,NumBytes,str,len);
-			return true;
-		}
-		catch (...)
-		{}
-		return false;
+		return Bin2Str::TryToConvert(bytes,NumBytes,str);
 	}
 
 	bool		Decode(const char*str)
 	{
-		return Decode(str,strlen(str));
+		return Decode(StringRef(str));
 	}
 	bool		Decode(const String&str)
 	{
-		return Decode(str.c_str(),str.GetLength());
+		return Decode(str.ToRef());
 	}
 
 };

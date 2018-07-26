@@ -1001,50 +1001,52 @@ namespace Journal
 			char opType = opAt[1];
 			StringRef paraRef = StringRef(tabAt+1,opAt-tabAt-1);
 			//String paraName = String(line.c_str()+tabAt+1,opAt-tabAt-1);
-			const char*value = opAt+2;
-			size_t valLen = nextTab ? nextTab-opAt-2 : lineEnd - opAt-2;
+			//const char*value = opAt+2;
+			//size_t valLen = nextTab ? nextTab-opAt-2 : lineEnd - opAt-2;
+			const StringRef value(opAt+2,nextTab ? nextTab-opAt-2 : lineEnd - opAt-2);
 			switch (opType)
 			{
 				case 'u':
 				{
 					TUniqueID target;
-					Bin2Str::Convert(target.bytes,target.NumBytes,value,valLen);
+					Bin2Str::Convert(target.bytes,target.NumBytes,value);
 					uuidParameters.Set(paraRef,target);
 				}
 				break;
 				case 'b':
 				{
 					Ctr::Array<BYTE>&binary = binaryParameters.Set(paraRef);
-					binary.SetSize(valLen/2);
-					Bin2Str::Convert(binary.pointer(),binary.GetLength(),value,valLen);
+					binary.SetSize(value.GetLength()/2);
+					Bin2Str::Convert(binary.pointer(),binary.GetLength(),value);
 				}
 				break;
 				case 'i':
 				{
 					INT32 target;
-					if (!convert(value,valLen,target))
+					if (!Convert(value,target))
 					{
-						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected integer for parameter '"+String(paraRef)+"' but got '"+String(value,valLen)+"' while decoding line "+String(line,lineLen));
+						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected integer for parameter '"+String(paraRef)+"' but got '"+String(value)+"' while decoding line "+String(line,lineLen));
 					}
 					intParameters.Set(paraRef,target);
 				}
 				break;
 				case 's':
 				{
-					stringParameters.Set(paraRef,String(value,valLen));
+					stringParameters.Set(paraRef,value);
 				}
 				break;
 				case 'l':
 				{
-					const char*dotAt = strnchr(const_cast<char*>(value),valLen,'.');
-					if (!dotAt)
+					const index_t dotAtPlusOne = value.FindFirst('.');
+					if (!dotAtPlusOne)
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected . in location parameter '"+String(paraRef)+"' while decoding line "+String(line,lineLen));
 					Grid::LCellIdI target;
-					if (!convert(value,dotAt - value,target.stackID))
+					const auto sStackID = value.SubStringRef(0,dotAtPlusOne-1);
+					if (!Convert(sStackID,target.stackID))
 					{
-						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid stack ID for parameter '"+String(paraRef)+"', but got '"+String(value,dotAt-value)+"' while decoding line "+String(line,lineLen));
+						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid stack ID for parameter '"+String(paraRef)+"', but got '"+String(sStackID)+"' while decoding line "+String(line,lineLen));
 					}
-					StringRef sHeight(dotAt+1, valLen  - (dotAt-value) -1);
+					StringRef sHeight = value.SubStringRef(dotAtPlusOne);
 					if (target.stackID >= Grid::LowSetup::GridType::CellCount)
 					{
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +ToString(target)+" is out of range, while decoding line "+String(line,lineLen));
@@ -1058,9 +1060,9 @@ namespace Journal
 						else
 					#endif
 					{
-						if (!convert(sHeight.pointer(),sHeight.GetLength(),target.height))
+						if (!Convert(sHeight,target.height))
 						{
-							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid height for parameter '"+String(paraRef)+"', but got '"+String(dotAt+1, valLen  - (dotAt-value)-1)+"' while decoding line "+String(line,lineLen));
+							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid height for parameter '"+String(paraRef)+"', but got '"+String(sHeight)+"' while decoding line "+String(line,lineLen));
 						}
 						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) 
 							IF_SATELLITES(&& target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)

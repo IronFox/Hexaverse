@@ -1728,7 +1728,8 @@ namespace FileIO
 
 	PathString GetAutoSavePath(index_t index)
 	{
-		return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
+		return RuntimeConfig::sharedConfig.Lookup("saves/auto/"+World::worldID.ToNiceString()+"/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
+		//return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
 	}
 
 	bool			IsValidSavePhase(RuntimeConfig::Phase p)
@@ -1755,15 +1756,15 @@ namespace FileIO
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
 		}
-		PathString base = RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot");
-		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
-		if (FileSystem::IsFile(base+"0"+RuntimeConfig::savFileExtension))
+		//PathString base = RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot");
+		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(GetAutoSavePath(0)));
+		if (FileSystem::IsFile(GetAutoSavePath(0)))
 		{
-			FileSystem::UnlinkFile(base+"9"+RuntimeConfig::savFileExtension);
+			FileSystem::UnlinkFile(GetAutoSavePath(9));
 			for (int i = 8; i >= 0; i--)
-				FileSystem::MoveFile(base+PathString(i)+RuntimeConfig::savFileExtension,base+PathString(i+1)+RuntimeConfig::savFileExtension);
+				FileSystem::MoveFile(GetAutoSavePath(i),GetAutoSavePath(i+1));
 		}
-		Save(base+"0"+RuntimeConfig::savFileExtension, RuntimeConfig::Phase::CommandPhase);
+		Save(GetAutoSavePath(0), RuntimeConfig::Phase::CommandPhase);
 
 		#ifdef SAVE_FILE_TEST
 			State::Load(base+"0."+savFileExtension);

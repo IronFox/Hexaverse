@@ -731,7 +731,7 @@ namespace ParameterConfig
 		elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
 			onParam = [](const char*arg)
 			{
-				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
+				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,StringRef(arg));
 				LogEvent(EventClass::Preset::configuration,"World ID set to "+World::worldID.ToFullString());
 				customWorldID = true;
 			};
@@ -931,7 +931,7 @@ int main( int argc, const char* argv[])
 				parser->EnterNewFolder("/IO");
 				parser->SetString("logFile",FileSystem::PathToString(logPath,false),CLI::FullProtection,true);
 				parser->DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
-				parser->DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path0)
+				parser->DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const StringRef&path0)
 				{
 					PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
 					FileSystem::ForceCreateDirectory( saveDirPath );
@@ -948,7 +948,7 @@ int main( int argc, const char* argv[])
 					FileIO::Save(file.GetLocation(),RuntimeConfig::phase);
 				},CLI::FileCompletion);
 
-				parser->DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path0)
+				parser->DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const StringRef&path0)
 				{
 					PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
 					FileSystem::Directory saveDir = saveDirPath;
@@ -965,19 +965,19 @@ int main( int argc, const char* argv[])
 					FileIO::Load(file.GetLocation());
 				},CLI::FileCompletion);
 
-				parser->DefineCommand("loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
+				parser->DefineCommand("loadAutoSave [index] [world ID]",(CLI::Command::function2_t)[](const StringRef&sindex, const StringRef&world)
 				{
 					index_t index;
 					if (sindex.IsEmpty())
 						index = 0;
 					else
-						if (!convert(sindex.c_str(),index))
+						if (!Convert(sindex,index))
 						{
 							LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
 							return;
 						}
 					FileIO::Load(FileIO::GetAutoSavePath(index));
-				},CLI::FileCompletion);
+				},CLI::FileCompletion)->SetUniqueHelp("Loads a previously automatically generated save game. If [index] is not specified, defaults to 0. If [world ID] is not specified, defaults to current world.");
 
 
 				parser->DefineCommand("reloadResearchProgram",(CLI::Command::function0_t)[]()
@@ -988,7 +988,7 @@ int main( int argc, const char* argv[])
 			parser->PopFocus();
 
 
-			parser->DefineCommand("/World/generate [planetType] [discovery]",(CLI::Command::function2_t)[](const String&planet, const String&discovery)
+			parser->DefineCommand("/World/generate [planetType] [discovery]",(CLI::Command::function2_t)[](const StringRef&planet, const StringRef&discovery)
 			{
 				if (planet.IsNotEmpty())
 				{
@@ -1006,7 +1006,7 @@ int main( int argc, const char* argv[])
 				}
 				if (discovery.IsNotEmpty())
 				{
-					if (!World::Config::worldDiscovery.Decode(discovery.c_str()))
+					if (!World::Config::worldDiscovery.Decode(discovery.GetPointer(),discovery.GetLength()))
 					{
 						LogEvent(EventClass::Preset::remoteControlError,"'"+discovery+"' is not a valid planet discovery type. Check World/worldDiscovery for details");
 					}

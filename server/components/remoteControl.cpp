@@ -136,6 +136,7 @@ namespace RemoteControl
 
 			const String ctx = parser->GetContext();
 			//LogEvent(EventClass::Preset::remoteControlCommand, parser->GetContext()+">"+cmd);
+			Channels::response.SendTo(peer,parser->GetContext()+">"+cmd);
 
 			index_t equalAt = cmd.Find('=');
 			if (equalAt != InvalidIndex)
