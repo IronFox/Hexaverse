@@ -9,7 +9,7 @@ Currently, if a history is desired, you will have to create save games manually 
 
 ===Automatic===
 Unless [[config/server|configured]] differently, automatic saves are created every 10 rounds, or when all players have disconnected.
-Up to 10 automatic savegames are preserved per world ID in ''[[config/game folder]]\server\saves\auto\[world ID]\snapshot[index].hsf'', where ''snapshot0.hsf'' is always the newest savegame.
+Up to 10 automatic savegames are preserved per world ID in ''[[config/game folder]]\server\saves\auto\[world ID]\snapshot[index].hsf'', where ''snapshot0.hsf'' is always the newest savegame, and ''snapshot9.hsf'' (if existing) is always the oldest.
 
 ===Manually===
 Autosaves may be created manually using the [[config/control console]] command ''/IO/autoSaveNow''.
