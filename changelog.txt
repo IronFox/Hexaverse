@@ -2,6 +2,7 @@ v0.9.2
 	+ Added control variable /IO/logFile
 	> Improved help text of variables (now including default value).
 	* Fixed control console help text output.
+	* Fixed loading of configuration files with empty aiScript
 
 v0.9.1	[Jul 14 2018]
 	> Improved some automated type descriptions.

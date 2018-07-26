@@ -1514,7 +1514,13 @@ namespace Reflection
 				continue;
 			WriteHelp(outFile,var,indent,var->name+": ");
 			WriteIndent(outFile,indent);
-			outFile << var->name << '='<<var->ConvertToString() << nl;
+			outFile << var->name << '=';
+			const auto str = var->ConvertToString();
+			if (str.Contains(' ') || str.Contains('\t') || str.IsEmpty())
+				outFile << '\'' << str << '\'';
+			else
+				outFile << str;
+			outFile << nl;
 		}
 		for (const auto&dir : folder->folders)
 		{
