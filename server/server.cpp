@@ -976,7 +976,7 @@ int main( int argc, const char* argv[])
 							LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
 							return;
 						}
-					FileIO::Load(FileIO::GetAutoSavePath(index));
+					FileIO::Load(world.IsEmpty() ? FileIO::GetAutoSavePath(index) : FileIO::GetAutoSavePath(index,world));
 				},CLI::FileCompletion)->SetUniqueHelp("Loads a previously automatically generated save game. If [index] is not specified, defaults to 0. If [world ID] is not specified, defaults to current world.");
 
 

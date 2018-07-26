@@ -1726,9 +1726,14 @@ namespace FileIO
 	}
 
 
+	PathString GetAutoSavePath(index_t index, const StringRef&worldNiceName)
+	{
+		return RuntimeConfig::sharedConfig.Lookup(String("saves/auto/"+worldNiceName+"/snapshot")) + PathString(index)+RuntimeConfig::savFileExtension;
+	}
+
 	PathString GetAutoSavePath(index_t index)
 	{
-		return RuntimeConfig::sharedConfig.Lookup("saves/auto/"+World::worldID.ToNiceString()+"/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
+		return GetAutoSavePath(index,World::worldID.ToNiceString().ToRef());
 		//return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
 	}
 
