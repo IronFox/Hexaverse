@@ -551,6 +551,9 @@ namespace ServerManager
 								break;
 						}
 					}
+					if ((value.StartsWith("'") && value.EndsWith("'")) || (value.StartsWith("\"") && value.EndsWith("\"")))
+						value = value.Substring(1, value.Length - 2);
+
 					attrib.StringValue = value;
 					comments.Clear();
 

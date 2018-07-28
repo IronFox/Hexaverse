@@ -92,6 +92,7 @@ namespace ServerManager
 			GameHasEnded = 0x80,
 			NexusHasBases = 0x100,
 			NexusPortsOnAllPoles = 0x200,
+			RequireServerPassword = 0x400,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,
