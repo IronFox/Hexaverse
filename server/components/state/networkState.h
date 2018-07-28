@@ -19,6 +19,9 @@ namespace Network
 	namespace Config
 	{
 		extern UINT16	sessionPort;
+		String			GetServerPassword();
+		bool			SetServerPassword(const String&);
+		bool			HasServerPassword();
 	}
 
 
@@ -42,14 +45,16 @@ namespace Network
 		//Timer::Time					lastPing;
 		Objects::PFaction	faction;
 		bool				wantNewRound=false;
-
-
+		CryptographicID		passwordChallenge;
 		/**
 		Indicates that this client sees everything, but has no faction to control
 		*/
 		bool				isSpectator=false;
 
-		
+		/**/				Client()
+		{
+			passwordChallenge.Generate();
+		}
 
 		String				ConvertToString() const;
 		bool				CanSee(const Objects::PWorldEntity&e, float t)	const;
@@ -70,7 +75,6 @@ namespace Network
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
 	extern HashTable<Objects::PFaction,PClient,Objects::OwnerHash>		playerMap;
-	extern HashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 

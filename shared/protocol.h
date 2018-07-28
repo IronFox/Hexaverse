@@ -39,9 +39,6 @@ namespace PortOffset
 	};
 }
 
-
-
-
 #ifdef ONE_COMPOUND_PER_FACTION
 	#define NAME_APPEND0	"o"
 #else
@@ -588,14 +585,10 @@ namespace Protocol
 
 	typedef Package::NetString<32>	ClientName,Hello;
 
-	//NETSTRUCT2(ClientState
-	//	, Package::NetString<64>, playerName
-	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
-	//)
-
-	NETSTRUCT3(HelloResponse
+	NETSTRUCT4(HelloResponse
 		, NET(bool), success
 		, UINT32, gameFlags
+		, CryptographicID, passwordChallenge	//to be hashed into the password, and faction access token
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -1343,14 +1336,15 @@ namespace Protocol
 
 	NETSTRUCT4(ClientFactionResponse
 		, NET(UINT32), startFactionTypes
-		, NET(CryptographicID), factionToken
+		, NET(CryptographicID), newFactionAccessToken
 		, NET(Grid::TSharedPlanetConfig), planetConfig
 		, GameInfo, info
 	)
 
-	NETSTRUCT2(ClientFactionRequest
+	NETSTRUCT3(ClientFactionRequest
 		, NET(UINT32), startFactionTypes
-		, NET(CryptographicID), factionToken
+		, SHA256::HashContainer, hashedServerPassword
+		, SHA256::HashContainer, hashedFactionToken
 	)
 
 	NETSTRUCT4(GameProgress
@@ -1755,6 +1749,7 @@ namespace Protocol
 			GameHasEnded = 0x80,
 			NexusHasBases = 0x100,
 			NexusPortsOnAllPoles = 0x200,
+			RequireServerPassword = 0x400,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,

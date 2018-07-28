@@ -1648,6 +1648,11 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
+		elif (key == "password")
+		{
+			RuntimeConfig::serverPassword = value;
+			LogEvent(EventClass::Preset::configuration,nullptr,"Using server password '"+value+"'");
+		}
 		elif (key == "profile")
 		{
 			RuntimeConfig::profileName = value.CopyToLowerCase().Trim();

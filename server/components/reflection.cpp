@@ -373,7 +373,7 @@ namespace Reflection
 						if (!val)
 							AIProcess::End();
 						else
-							AIProcess::Begin(Objects::Faction::nexus->accessToken);
+							AIProcess::Begin(Objects::Faction::nexus->accessToken, Network::Config::GetServerPassword);
 					}
 					OnChanged();
 				}
@@ -668,6 +668,31 @@ namespace Reflection
 		
 		
 
+		class Password : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue;
+
+			/**/			Password(const String&name, unsigned protection=CLI::EraseProtection):Super(name,"string",Persistence::ConfigOnly,1,protection)
+			{}
+			virtual String	ConvertToString()		const	override	{return Network::Config::GetServerPassword();}
+			virtual	bool	Set(const String&value)	override
+			{
+				if (Network::Config::SetServerPassword(value))
+					OnChanged();
+				return true;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = Network::Config::GetServerPassword();
+			}
+
+		};
 
 
 		class FactionsPerEMPZone : public Base
@@ -1329,6 +1354,7 @@ namespace Reflection
 		parser->EnterNewFolder("Server")->attachment = persistenceAttachment;
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
+			parser->SetVariable(CLI::PVariable(new Variable::Password("password")));
 		parser->ExitFolder();
 
 		SetupBase(state->GetRoot());

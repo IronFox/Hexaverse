@@ -28,6 +28,7 @@
 #include "playerControlBegin.h"
 #include "scriptedAI.h"
 #include <expectedBehavior.h>
+#include <passwordMatch.h>
 
 
 namespace Network
@@ -45,11 +46,12 @@ namespace Network
 	UINT32				gameFlags = 0;
 	UINT16			connectionBasePort = DEFAULT_SERVER_BASE_PORT;
 
-	CryptographicID	activeToken;
+	CryptographicID	activeToken,passwordChallenge;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
 	INT32			uplinkBandwidth = -1;
 	
 	HashTable<TUniqueID,CryptographicID>	accessMap;
+	bool			serverRequiresPassword = false;
 
 
 	Protocol::GameProgress	gameProgress;
@@ -540,6 +542,37 @@ namespace Network
 		#endif
 	}
 
+	#ifdef HAS_WINDOW
+		void QueryPasswordAndLogin(bool forceNewFaction, UINT32 factionTypes)
+		{
+			HUD::Dialog::CheckedQuery("Please provide the configured server password","",HUD::Component::Input::GetStandardAlphabet(),[]()->HUD::Dialog::CheckResult
+			{
+				if (!client.IsConnected())
+					return HUD::Dialog::CheckResult::Abort;
+				if (!RuntimeConfig::IsInAnyCommandPhase())
+					return HUD::Dialog::CheckResult::OkayNotRightNow;
+				return HUD::Dialog::CheckResult::OkayContinue;
+			},
+			[factionTypes,forceNewFaction](const StringRef&input)
+			{
+				RuntimeConfig::serverPassword = input;
+				AttemptFactionLogin(forceNewFaction,factionTypes,input);
+			});
+		}
+
+
+		void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes)
+		{
+			if (serverRequiresPassword && RuntimeConfig::serverPassword.IsEmpty())
+				QueryPasswordAndLogin(forceNewFaction,factionTypes);
+			else
+				AttemptFactionLogin(forceNewFaction,factionTypes,RuntimeConfig::serverPassword);
+		}
+
+
+
+	#endif
+
 
 	namespace Receiver
 	{
@@ -558,11 +591,22 @@ namespace Network
 			if (response.success)
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
+				passwordChallenge = response.passwordChallenge;
 				const bool gameEndSpectatorMode = (response.gameFlags & Protocol::GameFlag::GameHasEnded) != 0;
+				serverRequiresPassword = (response.gameFlags & Protocol::GameFlag::RequireServerPassword) != 0;
 				if (gameEndSpectatorMode)
-					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
-				elif (RuntimeConfig::tutorialMode)
-					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
+				{
+					#ifdef HAS_WINDOW
+						if (serverRequiresPassword)
+						{
+							QueryPasswordAndLogin(false,Protocol::FactionType::SpectatorFaction);
+						}
+						else
+					#endif
+							AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction,RuntimeConfig::serverPassword);
+				}
+				elif (RuntimeConfig::tutorialMode || RuntimeConfig::aiMode)
+					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly,RuntimeConfig::serverPassword);
 				else
 				{
 					#ifdef HAS_WINDOW
@@ -947,7 +991,7 @@ namespace Network
 					HUD::HexGrid::RefreshButtonState();
 				#endif
 
-				activeToken = cr.factionToken;
+				activeToken = cr.newFactionAccessToken;
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
 				{
@@ -1726,7 +1770,7 @@ namespace Network
 
 			Protocol::ClientFactionRequest ready;
 			ready.startFactionTypes = 0;
-			ready.factionToken = CryptographicID();
+			ready.hashedFactionToken = Password::Hashed::Empty;
 			LogEvent(EventClass::Preset::uncommon, nullptr, "Abandoning current faction");
 			Channels::clientFactionRequest.SendTo(client,ready);
 
@@ -1741,18 +1785,31 @@ namespace Network
 		return client.IsConnected() && accessMap.IsSet(worldID);
 	}
 
-	void		AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes)
+	void		AttemptFactionLogin( bool forceNewFaction, UINT32 factionTypes, const String&serverPassword )
 	{
 		Protocol::ClientFactionRequest ready;
 		ready.startFactionTypes = factionTypes;
+		ready.hashedFactionToken = Password::Hashed::Empty;
+		CryptographicID accessToken;
+		if (serverPassword.IsNotEmpty())
+		{
+			Password::Hash(passwordChallenge,serverPassword,ready.hashedServerPassword);
+		}
+		else
+		{
+			ready.hashedServerPassword = Password::Hashed::Empty;
+		}
+
 		if (RuntimeConfig::aiMode)
 		{
-			ready.factionToken = RuntimeConfig::aiAccessToken;
-			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI using token: " + ready.factionToken.ToString());
+			Password::Hash(passwordChallenge,RuntimeConfig::aiAccessToken,ready.hashedFactionToken);
+			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI using token: " + RuntimeConfig::aiAccessToken.ToFullString());
+
 		}
-		elif (!forceNewFaction && accessMap.Query(worldID, ready.factionToken))
+		elif (!forceNewFaction && accessMap.Query(worldID, accessToken))
 		{
-			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+ready.factionToken.ToString());
+			Password::Hash(passwordChallenge,accessToken,ready.hashedFactionToken);
+			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+RuntimeConfig::aiAccessToken.ToString());
 		}
 		else
 		{
@@ -1761,8 +1818,6 @@ namespace Network
 				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + ToString(worldID));
 			else
 				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + ToString(worldID));
-
-			ready.factionToken = CryptographicID();
 		}
 
 
@@ -1797,8 +1852,6 @@ namespace Network
 				//state.state = 0U;
 				Channels::hello.SendTo(client,hello);	//elevate client state
 
-				if (RuntimeConfig::aiMode)
-					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
 				//lastPong = timer.Now();
 
 				GlobalEvents::serverConnectionEstablished();
@@ -1824,6 +1877,9 @@ namespace Network
 
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : (ev == TCP::Event::ConnectionLost ? "Connection lost" : "Connection closed"));
 				amOnline = false;
+
+				serverRequiresPassword = false;
+				RuntimeConfig::serverPassword = "";
 
 				FlushFaction(true);
 				#ifdef HAS_WINDOW

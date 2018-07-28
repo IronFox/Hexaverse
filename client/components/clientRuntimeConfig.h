@@ -16,6 +16,7 @@ namespace RuntimeConfig
 {
 	extern bool aiMode;
 	extern CryptographicID aiAccessToken;
+	extern String serverPassword;
 	extern bool udpListen;
 
 	extern Network::ServerAddress	serverAddress;

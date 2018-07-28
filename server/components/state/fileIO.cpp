@@ -1591,8 +1591,6 @@ namespace FileIO
 											token.Generate();
 											faction->accessToken = token;
 										}
-										if (!isNexus)
-											::Network::tokenMap.Set(faction->accessToken,faction);	//dont even allow access if nexus
 
 										//BYTE k = 0;
 										//Protocol::WorldDelta	delta;

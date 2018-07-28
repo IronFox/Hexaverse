@@ -12,13 +12,13 @@ namespace AIProcess
 	namespace detail
 	{
 		CryptographicID	accessToken;
+		std::function<String()> asyncGetServerPassword;
 
 		MonitoredProcess	process(true);
 		index_t	eventKey = InvalidIndex;
 
 		void	Start()
 		{
-			char parameterBuffer[32768];
 			PathString	path,
 						workingDirectory = "..\\client\\";
 			#ifdef _DEBUG
@@ -33,7 +33,6 @@ namespace AIProcess
 				path = "..\\client\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
 			#endif
 
-			sprintf_s(parameterBuffer,"aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
 
 			try
 			{
@@ -42,7 +41,12 @@ namespace AIProcess
 					window = true;
 				#endif
 
-				process.Start(workingDirectory,path,parameterBuffer,window);
+				process.Start(workingDirectory,path,[]()
+				{
+					char parameterBuffer[32768];
+					sprintf_s(parameterBuffer,"aiAccessToken='%s' password='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str(), asyncGetServerPassword().c_str());
+					return PathString(parameterBuffer);
+				},window);
 			}
 			catch (const std::exception&ex)
 			{
@@ -60,13 +64,14 @@ namespace AIProcess
 	}
 
 
-	void Begin(const CryptographicID&accessToken)
+	void Begin(const CryptographicID&accessToken, const std::function<String()>&asyncGetServerPassword)
 	{
 		if (detail::process.IsRunning())
 		{
 			ASSERT__(accessToken == detail::accessToken);
 			return;
 		}
+		detail::asyncGetServerPassword = asyncGetServerPassword;
 		detail::accessToken = accessToken;
 		detail::Start();
 		if (detail::eventKey == InvalidIndex)

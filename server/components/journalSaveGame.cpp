@@ -233,7 +233,6 @@ namespace Journal
 			if (factionType != GetType(f))
 				throw RoundException(CLOCATION,"Faction already exists. Types diverge");
 		f->accessToken = accessToken;
-		Network::tokenMap.Set(f->accessToken,f);
 
 		World::UpdateEMPZones();
 	}
@@ -1327,7 +1326,7 @@ namespace Journal
 		Game::Config::Nexus::enableAI = ai;
 
 		if (Game::Config::Nexus::enableAI)
-			AIProcess::Begin(Objects::Faction::nexus->accessToken);
+			AIProcess::Begin(Objects::Faction::nexus->accessToken, Network::Config::GetServerPassword);
 
 
 		//#ifndef _DEBUG

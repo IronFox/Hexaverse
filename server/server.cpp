@@ -337,7 +337,6 @@ namespace ApplicationInterface
 	void	SignalFactionDied(const Objects::PFaction&f)
 	{
 		Channels::KillFaction.SendTo(Network::server,f->id,Channels::Level::Faction);
-		Network::tokenMap.Unset(f->accessToken);
 		Network::PClient client;
 		if (Network::playerMap.Query(f,client))
 		{
@@ -1155,7 +1154,7 @@ int main( int argc, const char* argv[])
 		//FATAL__("test");
 		if (Game::Config::Nexus::enableAI && Network::SessionIsStarted())
 		{
-			AIProcess::Begin(Objects::Faction::nexus->accessToken);
+			AIProcess::Begin(Objects::Faction::nexus->accessToken, Network::Config::GetServerPassword);
 		}
 
 		Game::ResetFactionStartMineralValue();

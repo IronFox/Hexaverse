@@ -5,6 +5,7 @@
 #include "journalSaveGame.h"
 #include <objects/structure/mine.h>
 #include "state/gameState.h"
+#include <passwordMatch.h>
 
 extern TwisterRandom		random;
 
@@ -623,7 +624,25 @@ namespace Receiver
 		return nullptr;
 	}
 
-	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
+
+	bool	GetFactionByToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken,Objects::PFaction&outFaction)
+	{
+		if (hashedFactionToken.IsEmpty())
+			return false;
+		foreach (Objects::Faction::all,f)
+		{
+			if (Password::HashMatch(passwordChallenge,(*f)->accessToken,hashedFactionToken))
+			{
+				outFaction = *f;
+				return true;
+			}
+		}
+		return false;
+	}
+
+
+
+	void	ClientFaction(Protocol::ClientFactionRequest&req, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
 			return;
@@ -636,8 +655,20 @@ namespace Receiver
 
 		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		Protocol::ClientFactionResponse response;
-		response.startFactionTypes = _p.startFactionTypes;
-		response.factionToken = _p.factionToken;
+		if (Network::Config::HasServerPassword())
+		{
+			SHA256::HashContainer hashed;
+			
+			Password::Hash(client->passwordChallenge,Network::Config::GetServerPassword(),hashed);
+			if (hashed != req.hashedServerPassword)
+			{
+				LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Password mismatch.");
+				peer.DisconnectPeer();
+				return;
+			}
+		}
+
+		response.startFactionTypes = req.startFactionTypes;
 		response.planetConfig = Grid::currentPlanetConfig;
 		Game::Network::AssembleGameInfo(response.info, peer.IsLocalhost());
 		//response.info = CompileWorldInfo();
@@ -740,7 +771,6 @@ namespace Receiver
 			}
 			client->isSpectator = true;
 
-			response.factionToken = CryptographicID();
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 
 			//send world state:
@@ -755,13 +785,12 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && peer.IsLocalhost())
 		{
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
 		}
 		if (faction
-			|| Network::tokenMap.Query(response.factionToken,faction)
+			|| GetFactionByToken(client->passwordChallenge, req.hashedFactionToken,faction)
 			|| (	response.startFactionTypes == Protocol::FactionType::ContinueOnly 
 					#ifndef _DEBUG
 						&& RuntimeConfig::tutorialMode
@@ -771,7 +800,7 @@ namespace Receiver
 			)
 		{
 			#ifdef _DEBUG
-				response.factionToken = faction->accessToken;
+				response.newFactionAccessToken = faction->accessToken;
 			#endif
 			Network::PClient other;
 			if (Network::playerMap.Query(faction,other))
@@ -798,24 +827,22 @@ namespace Receiver
 		}
 		else
 		{
-			if (response.factionToken.IsSet())
+			if (req.hashedFactionToken.IsSet())
 			{
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::UserError ),peer,"Provided token not recognized: "+response.factionToken.ToString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::UserError ),peer,"Provided non-empty token not recognized");
 
 				if (Game::Config::closedGame && RuntimeConfig::roundNumber > 0)
 				{
 					foreach (Objects::Faction::all,f)
 					{
-						ASSERT__((*f)->accessToken != response.factionToken);
+						ASSERT__(  !Password::HashMatch(client->passwordChallenge, (*f)->accessToken,req.hashedFactionToken));
 						LogEvent(EventSignificance::Debug,peer,"Known token: "+(*f)->accessToken.ToString());
 					}
 				}
-
 			}
 			else
 			{
 				LogEvent(EventSignificance::Common,peer,"No faction token provided");
-				response.factionToken.Generate();
 			}
 			newFaction = true;
 		}
@@ -830,6 +857,8 @@ namespace Receiver
 		index_t startLocation = InvalidIndex;
 		if (newFaction)
 		{
+			response.newFactionAccessToken.Generate();
+
 			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
 			{
 				response.startFactionTypes = 0;
@@ -866,8 +895,7 @@ namespace Receiver
 
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ),peer,"Created new faction.");
 
-			client->faction->accessToken = response.factionToken;
-			Network::tokenMap.Set(response.factionToken,client->faction);
+			client->faction->accessToken = response.newFactionAccessToken;
 
 			ResearchSerialization::SendTopicProgressVectorTo(Network::server,faction);	//since the user level hasn't been updated yet, this is not sent to the local client
 			ResearchSerialization::SendAttributeVectorTo(Network::server,faction->researchState.attributeTable,faction->id);
@@ -1981,6 +2009,7 @@ namespace Receiver
 
 			Protocol::HelloResponse response;
 			response.success = true;
+			response.passwordChallenge = client->passwordChallenge;
 			response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
 			response.errorMessage ="Userlevel set to "+String(peer.userLevel);
 			peer.SendPackage( TCP::Package(response, Protocol::ChannelID::Hello ));
@@ -1991,6 +2020,7 @@ namespace Receiver
 		ChangeMyName(hello,peer);
 		Protocol::HelloResponse response;
 		response.success = true;
+		response.passwordChallenge = client->passwordChallenge;
 		response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
 		response.errorMessage ="Duplicate Hello detected. Userlevel remains "+String(peer.userLevel);
 		peer.SendPackage( TCP::Package(response,Protocol::ChannelID::Hello) );		

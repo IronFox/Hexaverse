@@ -59,7 +59,6 @@ namespace Network
 {
 	Buffer0<PClient>	activePlayersAndSpectators,spectators;
 	HashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
-	HashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 	namespace Heartbeat
@@ -265,6 +264,32 @@ namespace Network
 	namespace Config
 	{
 		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
+
+		//owner: main thread. Assume SetServerPassword is called by main thread only. Read access by main thread to serverPassword should be safe. still better not allow header-wise direct access
+		String			serverPassword;
+		static Sys::SpinLock		passwordLock;
+
+		String			GetServerPassword()
+		{
+			passwordLock.lock();
+				String rs = serverPassword;
+			passwordLock.unlock();
+			return rs;
+		}
+
+		bool			HasServerPassword()
+		{
+			return serverPassword.IsNotEmpty();
+		}
+
+		bool			SetServerPassword(const String&newpwd)
+		{
+			passwordLock.lock();
+				bool rs = serverPassword != newpwd;
+				serverPassword = newpwd;
+			passwordLock.unlock();
+			return rs;
+		}
 	}
 
 	namespace Session
@@ -634,7 +659,6 @@ namespace Network
 
 
 		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
-		tokenMap.Clear();
 
 		World::Network::HandleSessionClosure();
 		Game::Network::HandleSessionClosure();
