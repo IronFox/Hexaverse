@@ -169,7 +169,15 @@ namespace ServerManager
 				Parent.WriteIndention(writer);
 				writer.Write(Name);
 				writer.Write('=');
-				writer.WriteLine(StringValue);
+				string sValue = StringValue;
+				if (sValue.Length > 0 && !sValue.Contains(' ') && !sValue.Contains('\''))
+					writer.WriteLine(sValue);
+				else
+				{
+					writer.Write('\'');
+					writer.Write(sValue);
+					writer.WriteLine('\'');
+				}
 			}
 
 			public virtual string StringValue { get { return MainControl.Text; } set { MainControl.Text = value; } }
