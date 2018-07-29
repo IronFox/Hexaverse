@@ -798,6 +798,10 @@ namespace Network
 			else
 				logConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
+			if (Network::Config::HasServerPassword())
+				logConfig(" -Server Password: Clients must specify the password '"+Network::Config::GetServerPassword()+"' to play.");
+			else
+				logConfig(" -No Password: Anyone can play (who can see/connect to the server).");
 			if (FileIO::Config::saveEveryNRounds > 0)
 				logConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 			if (FileIO::Config::saveWhenAllQuit)
