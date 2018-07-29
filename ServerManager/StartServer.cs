@@ -106,6 +106,7 @@ namespace ServerManager
 
 			Server.Config cfg = new Server.Config();
 			cfg.configPath = newGameButton.Enabled ? configFileName : null;
+			cfg.eraseConfigOnceLoaded = true;
 			cfg.saveGamePath = loadSaveButton.Enabled ? loadHSFDialog.FileName : null;
 			cfg.isDependent = dependentCheck.Checked;
 			cfg.port = int.Parse(portInput.Text);

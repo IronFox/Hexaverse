@@ -16,6 +16,7 @@ namespace ServerManager
 		{
 			public int port;
 			public bool isDependent;
+			public bool eraseConfigOnceLoaded;
 			public string configPath;	//ignored if saveGamePath is non-null and non-empty
 			public string saveGamePath; //superseeds configPath
 			public bool startSession;
@@ -76,6 +77,8 @@ namespace ServerManager
 				if (string.IsNullOrWhiteSpace(cfg.configPath))
 					throw new ArgumentException("Configuration is empty","cfg.configPath");
 				options = "-c \"" + cfg.configPath + "\"";
+				if (cfg.eraseConfigOnceLoaded)
+					options += " --eraseCfg";
 			}
 			options += " -p " + BasePort;
 			if (cfg.isDependent)
