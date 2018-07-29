@@ -60,6 +60,7 @@ namespace ConfigurationMode
 								simulateLiquids = true,
 								nexusBases = true,
 								allNexusPorts = false;
+			String				password;	//not technically a rule
 		}
 
 		void					LoadPlanetFrom(const Configuration&cfg);
@@ -952,6 +953,36 @@ namespace ConfigurationMode
 			*/
 
 			AppendRuleButton(ruleGroup,"Closed Game","Rules/closedGame",Detail::Rules::closedGame);
+			{
+				Objects::Command::PIconCommand cmd(new Objects::Command::IconCommand("Password",[]()
+				{
+					HUD::Dialog::CheckedQuery("Please specify a server password. Leave empty (no spaces) to disable.",Rules::password,HUD::Component::Input::GetStandardAlphabet(),[]()
+					{
+						if (!IsActive())
+							return HUD::Dialog::CheckResult::Abort;
+						return HUD::Dialog::CheckResult::OkayContinue;
+					},
+					[](const StringRef pwd)
+					{
+						Rules::password = pwd;
+						HUD::HexGrid::RefreshButtonState();
+					});
+				},
+				[](bool)->Objects::CommandFlags
+				{
+					typedef Objects::CommandFlags F;
+
+					F result = F::IsEnabled;
+				
+					if (Rules::password.IsNotEmpty())
+						result |= F::IsPermaActive;
+					return result;
+				}));
+				ruleGroup->Add(cmd);
+				String help = FindDeclaration("Server/password");
+				SetHint(*cmd, help);
+			}
+
 			AppendRuleButton(ruleGroup,"Start-Bases","Rules/startBases",Detail::Rules::startBases);
 			AppendRuleButton(ruleGroup,"Bases Required","Rules/basesRequired",Detail::Rules::basesRequired);
 			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Enable Nexus AI","Rules/Nexus/enableAI",Detail::Rules::enableAI, [](bool set){Detail::Update();});
@@ -1046,6 +1077,7 @@ namespace ConfigurationMode
 									cfg.Change("Rules/Nexus/enableAI",Rules::enableAI);
 									cfg.Change("Rules/Nexus/spawnBases",Rules::nexusBases && Rules::enableAI);
 									cfg.Change("Rules/Nexus/spawnAllPorts",Rules::allNexusPorts);
+									cfg.Change("Server/password",Rules::password);
 									if (!cfg.SaveToFile(Detail::outConfigPath.GetLocation(), PRODUCT_NAME))
 									{
 										LogEvent(EventClass::Preset::fileError,"Unable to save generated server configuration file at "+String(Detail::outConfigPath.GetLocation()));
