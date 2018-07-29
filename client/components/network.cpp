@@ -592,6 +592,12 @@ namespace Network
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
 				passwordChallenge = response.passwordChallenge;
+				if (passwordChallenge.IsEmpty())
+				{
+					LogEvent(EventClass::Preset::networkError,"Server password challenge is empty. Disconnecting.");
+					client.Disconnect();
+					return;
+				}
 				const bool gameEndSpectatorMode = (response.gameFlags & Protocol::GameFlag::GameHasEnded) != 0;
 				serverRequiresPassword = (response.gameFlags & Protocol::GameFlag::RequireServerPassword) != 0;
 				if (gameEndSpectatorMode)
@@ -1794,6 +1800,7 @@ namespace Network
 		if (serverPassword.IsNotEmpty())
 		{
 			Password::Hash(passwordChallenge,serverPassword,ready.hashedServerPassword);
+			LogEvent(EventClass::Preset::common,"Using server password '"+serverPassword+"' with challenge '"+passwordChallenge.ToFullString()+"': '"+Bin2Str::ConvertPOD(ready.hashedServerPassword));
 		}
 		else
 		{

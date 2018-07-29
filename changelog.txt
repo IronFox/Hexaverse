@@ -6,7 +6,9 @@ v0.9.2
 	> Now writing automatic savegames to (...)/saves/auto/[world id]/snapshot(...).
 	> AI clients now shut down if unable to connect for 15 seconds (server assumed dead).
 	* Fixed control console help text output.
+	* Fixed lobby discovery when hosting multiple servers using the same user account.
 	* Fixed loading of configuration files with empty aiScript.
+	* Fixed server always starting AI client with default game port.
 
 v0.9.1	[Jul 14 2018]
 	> Improved some automated type descriptions.
@@ -27,6 +29,7 @@ v0.9.0	[Jul 10 2018]
 	> Reduced default launcher attack range.
 	> Moved AI configuration folder from client/ai to aiClient.
 	> Full paths, nicknames and chat messages are no longer recorded in log files.
+	> Client profile names are now recognized by the server as an additional identifier so that multiple local clients can control each one faction.
 	> Added buttons to view log files in bug reporter.
 	> Doubled mechanic default repair speed.
 	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
@@ -47,6 +50,7 @@ v0.8.4	[Apr 22 2018]
 	> Mechanic now keeps trying to repair the designated unit if insufficient minerals are available for full repair.
 	> If auto-spawned player bases are off, new factions receive a single full mineral container so they can build.
 	> Renamed 'Disconnect' to 'Return to Server List' to clarify what happens when in interactive configuration mode.
+	> Improved handling of errors when processing accepted join requests.
 	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
 	> Switched off fuel-only mines are no longer considered idle.
 	> Added 'Start Interactive Tutorial' to 'Start Server' menu.
@@ -132,6 +136,7 @@ v0.7.7	[Mar 11 2018]
 	* Fixed '(abandoned)' nickname postfix sometimes remaining when continuing abandoned faction.
 	* Fixed warnings when spectating games with dead factions.
 	* Disabled faction survival checks on dead factions.
+	* Fixed server wrongly invalidating faction access upon death when a new faction was created in the meantime.
 	* Sentry units no longer try to fire at hostile units within EMP zones.
 	* Fixed height range of nexus ports and bases.
 
@@ -177,6 +182,9 @@ v0.7.5	[Feb 25 2018]
 	* Fixed console output freezes of server, control console, and console client due to marking of text in the console window.
 	* Fixed heartbeat failure message.
 	* Fixed dead factions lingering on.
+	* Fixed Steam thinking that the game was still running when the online manual or changelog were opened from the client.
+	* Fixed missing game config update to client.
+	* Removed dysfunctional remote variable Server/Online/udpBroadcast.
 	* Fixed radar vehicles driving into the firing range of mid-motion detected towers.
 	* Bug Reporter now retrieves timestamps from the observed log files.
 	* Fixed GUI bug resulting in keyboard handling errors and crashes when closing input dialogs.
@@ -249,6 +257,7 @@ v0.7.1	[Jan 22 2018]
 	* Fixed remote control variable /Server/Online/session.
 	* Loading a save game will now correctly disable interactive configuration mode.
 	* Fixed crash when displaying unknown construction tasks on foreign units.
+	* Fixed Steam lobbies sometimes not being created when session is started.
 
 v0.7.0	[Jan 20 2018]
 	+ Introduced sensor-sharing alliances of multiple factions.
@@ -280,6 +289,7 @@ v0.6.6	[Oct 3 2017]
 	> Loading a save game via control console will now lookup the desired path relative to the server configuration save directory.
 	* Fixed routing when encountering floating structure foundations.
 	* Fixed server crash when reporting invalid strings.
+	* Fixed steam-based communication.
 	
 v0.6.5	[Oct 1 2017]
 	+ Added background music to server selection screen.
@@ -289,6 +299,7 @@ v0.6.5	[Oct 1 2017]
 	+ Added options dialog.
 	+ Implemented loading splash screen.
 	+ Added help sub-menu with some new options.
+	+ Added filter tabs to server list.
 	+ Added surveyor tower that can detect tunnel-based attacks in a wider range than mobile surveyors can.
 	> Automatic target choice (e.g. by a tower) now traces candidate trajectories to improve precision.
 	> Idle vehicles will no longer constantly attack indestructible units.
@@ -345,6 +356,7 @@ v0.6.3	[Feb 26 2017]
 	> Added number icons next to changeable values in interactive configuration mode.
 	> Decreased water transparency. Improved contrast to oceanic fog-of-war.
 	> Faction colors are now generated and distributed by the server. Clients render them even in non-spectator mode.
+	> Servers are now configured as public by default.
 	> Nexus faction research can now be configured to progress over time. Removed the initial research bonus of that faction.
 	> Improved initial faction placement.
 	* Fixed rare fatal client exception when failing to layout menu components.
@@ -352,6 +364,7 @@ v0.6.3	[Feb 26 2017]
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.
 	* Fixed some hex-commands not showing their price (e.g. 'Obliterate').
 	* Nexus bases located in residual EMP fields now instantaneously suffer EMP damage.
+	* Fixed Steam game invites.
 	* Added missing research state updates to spectators.
 	
 v0.6.2	[Jan 31 2017]
@@ -370,6 +383,8 @@ v0.6.1	[Jan 28 2017]
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
 	> Automatic round progression now halts if hostile units appeared, or visible hostile activity has occurred during the previous round.
 	> Mechanic can now repair across one level of height difference.
+	> Disabled automatic lobby polling when connected to a server.
+	> Relocated steam notifications to not cover bottom right buttons.
 	> OpenAL sound output will now mute if the game window loses focus.
 	> New hostile contacts are now logged in the console.
 	* Fixed 'factionsPerEMPZone' implementation.
@@ -380,6 +395,7 @@ v0.6.1	[Jan 28 2017]
 
 v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.
+	+ Added checkbox to disable polling and hide steam servers.
 	> Lua research script now first falls back to factory default (the research script in the install directory) before loading emergency program.
 	> Enabling or disabling EMP zones now takes immediate effect and is rejected if not possible.
 	> Removed less important lua reporting messages.
@@ -393,6 +409,7 @@ v0.6.0	[Jan 10 2017]
 v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.
 	+ Introduced laboratory structure and Lua research programs.
+	> Added more logging when ignoring found steam lobbies.
 	> Decreased sensor range in reduced world resolution state.
 	> Added an on-screen message to show when client is in interactive configuration mode.
 	> Moved player client directory to Hexaverse/client (was Hexaverse/client/player).
@@ -412,6 +429,7 @@ v0.3.25 [Nov 4 2016]
 	* Fixed resource distribution.
 
 v0.3.24 [Oct 16 2016]
+	+ Added support for Steam lobbies, authentication, and communication protocol to bypass NAT.
 	+ Added new button and functionality to automatically progress round if all units have been instructed.
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
 	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.

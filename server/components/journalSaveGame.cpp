@@ -12,6 +12,7 @@
 #include "aiProcess.h"
 #include "serverLogEvent.h"
 
+
 namespace Journal
 {
 
@@ -1325,8 +1326,7 @@ namespace Journal
 
 		Game::Config::Nexus::enableAI = ai;
 
-		if (Game::Config::Nexus::enableAI)
-			AIProcess::Begin(Objects::Faction::nexus->accessToken, Network::Config::GetServerPassword);
+		Game::StartAIIfEnabled();
 
 
 		//#ifndef _DEBUG

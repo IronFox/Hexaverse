@@ -16,6 +16,7 @@ namespace AIProcess
 
 		MonitoredProcess	process(true);
 		index_t	eventKey = InvalidIndex;
+		USHORT serverBasePort=0;
 
 		void	Start()
 		{
@@ -44,7 +45,7 @@ namespace AIProcess
 				process.Start(workingDirectory,path,[]()
 				{
 					char parameterBuffer[32768];
-					sprintf_s(parameterBuffer,"aiAccessToken='%s' password='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str(), asyncGetServerPassword().c_str());
+					sprintf_s(parameterBuffer,"aiAccessToken='%s' password='%s' udpListen=false serverURL=localhost:%u",accessToken.ToFullString().c_str(), asyncGetServerPassword().c_str(),serverBasePort);
 					return PathString(parameterBuffer);
 				},window);
 			}
@@ -64,13 +65,14 @@ namespace AIProcess
 	}
 
 
-	void Begin(const CryptographicID&accessToken, const std::function<String()>&asyncGetServerPassword)
+	void Begin(const CryptographicID&accessToken, USHORT serverBasePort, const std::function<String()>&asyncGetServerPassword)
 	{
 		if (detail::process.IsRunning())
 		{
 			ASSERT__(accessToken == detail::accessToken);
 			return;
 		}
+		detail::serverBasePort = serverBasePort;
 		detail::asyncGetServerPassword = asyncGetServerPassword;
 		detail::accessToken = accessToken;
 		detail::Start();

@@ -263,7 +263,7 @@ namespace Network
 
 	namespace Config
 	{
-		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
+		UINT16		sessionBasePort = DEFAULT_SERVER_BASE_PORT;
 
 		//owner: main thread. Assume SetServerPassword is called by main thread only. Read access by main thread to serverPassword should be safe. still better not allow header-wise direct access
 		String			serverPassword;
@@ -306,20 +306,20 @@ namespace Network
 	{
 		if (server.IsOnline())
 		{
-			if (server.GetPort() == Config::sessionPort)
+			if (server.GetPort() == Config::sessionBasePort + PortOffset::Session)
 				return;
 			server.EndService();
 		}
 		server.OnDoneResolving([logStateAfterRestart]()
 		{
-			if (server.StartService(Config::sessionPort))
+			if (server.StartService(Config::sessionBasePort + PortOffset::Session))
 			{
-				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
+				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionBasePort + PortOffset::Session));
 				if (logStateAfterRestart)
 					LogServerState();
 			}
 			else
-				FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
+				FATAL__("Unable to start service in port "+String(Config::sessionBasePort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
 		});
 	}
 

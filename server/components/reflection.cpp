@@ -373,7 +373,7 @@ namespace Reflection
 						if (!val)
 							AIProcess::End();
 						else
-							AIProcess::Begin(Objects::Faction::nexus->accessToken, Network::Config::GetServerPassword);
+							Game::StartAI();
 					}
 					OnChanged();
 				}

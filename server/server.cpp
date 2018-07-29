@@ -699,8 +699,8 @@ namespace ParameterConfig
 				}
 				else
 				{
-					Network::Config::sessionPort = basePort + PortOffset::Session;
-					LogEvent(EventClass::Preset::configuration,"Base port redefined as "+String(basePort)+", session port set to "+String(Network::Config::sessionPort));
+					Network::Config::sessionBasePort = basePort;
+					LogEvent(EventClass::Preset::configuration,"Base port redefined as "+String(basePort));
 				}
 
 			};
@@ -1169,10 +1169,8 @@ int main( int argc, const char* argv[])
 
 
 		//FATAL__("test");
-		if (Game::Config::Nexus::enableAI && Network::SessionIsStarted())
-		{
-			AIProcess::Begin(Objects::Faction::nexus->accessToken, Network::Config::GetServerPassword);
-		}
+		if (Network::SessionIsStarted())
+			Game::StartAIIfEnabled();
 
 		Game::ResetFactionStartMineralValue();
 

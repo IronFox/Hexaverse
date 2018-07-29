@@ -6,7 +6,7 @@
 
 namespace AIProcess
 {
-	void			Begin(const CryptographicID&accessToken, const std::function<String()>&asyncGetServerPassword);
+	void			Begin(const CryptographicID&accessToken, USHORT serverBasePort, const std::function<String()>&asyncGetServerPassword);
 	void			End();
 }
 

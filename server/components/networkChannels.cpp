@@ -664,6 +664,8 @@ namespace Receiver
 			{
 				LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Password mismatch.");
 				peer.DisconnectPeer();
+				LogEvent(EventClass::Preset::debug,"Mismatch of server password '"+Network::Config::GetServerPassword()+"' with challenge '"+client->passwordChallenge.ToFullString()+"': '"+Bin2Str::ConvertPOD(hashed));
+
 				return;
 			}
 		}

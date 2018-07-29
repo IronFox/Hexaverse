@@ -18,7 +18,7 @@ namespace Network
 
 	namespace Config
 	{
-		extern UINT16	sessionPort;
+		extern UINT16	sessionBasePort;
 		String			GetServerPassword();
 		bool			SetServerPassword(const String&);
 		bool			HasServerPassword();
