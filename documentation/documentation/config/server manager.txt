@@ -1,0 +1,16 @@
+= Server Manager =
+
+The server manager provides an overview of all locally running servers.
+It enables GUI configuration, starting, manipulation, and termination of local servers.
+Only one instance of the Server Manager can run at any given time on the local system.
+
+{{serverManager.png }}
+The big button in the top left window section can be used to start the client, while the opposing button allows interactive instantiation of a new server.
+
+The top middle section lists global game attributes.
+Most attributes can be opened/edited via a double click.
+Particularly, the general [[config/server|server configuration]] can be visually edited by double clicking the path of **''Server Cfg''**.
+
+The main section lists any found, locally running server.
+Use the context menu to connect a [[config/control console]], create [[config/save games]], view the respective log file, or resume/stop/terminate the respective server session.
+Shown attributes are updated once every couple seconds.
