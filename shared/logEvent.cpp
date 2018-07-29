@@ -162,7 +162,7 @@ namespace Logging
 			Sorting::ByComparator::QuickSort(entries,[](const Entry&a, const Entry&b){return a.first < b.first ? -1 : (a.first == b.first ? 0 : 1);});
 			for (index_t i = 0; i+10 <= entries.Count(); i++)
 			{
-				FileSystem::UnlinkFile(entries[i].second);
+				FileSystem::TryToUnlinkFile(entries[i].second);	//don't care if open by other program
 			}
 		}
 
