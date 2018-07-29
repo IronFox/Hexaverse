@@ -715,17 +715,19 @@ namespace Network
 		//FileIO::RefreshWindowTitle();
 
 		{
-			logConfig("AI is configured as follows:");
+			logConfig("AI:");
 			if (Game::Config::Nexus::enableAI)
 			{
 				logConfig(" -Nexus-AI enabled");
-				logConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
-				//LogConfig(" -NexusTurrets=" + implode(',', State::Config::Nexus::vehicleTurretNames));
+				if (Objects::Faction::nexus && Objects::Faction::nexus->aiScriptName.IsNotEmpty())
+					logConfig(" -Custom AI: " + Objects::Faction::nexus->aiScriptName.IsNotEmpty());
+				else
+					logConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
 			}
 			else
 				logConfig(" -Disabled");
 
-			logConfig("This game is configured as follows:");
+			logConfig("Game:");
 			#ifndef NO_HIBERNATION
 				logConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
 			#endif
@@ -798,6 +800,8 @@ namespace Network
 			else
 				logConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
+
+			logConfig("Server:");
 			if (Network::Config::HasServerPassword())
 				logConfig(" -Server Password: Clients must specify the password '"+Network::Config::GetServerPassword()+"' to play.");
 			else
