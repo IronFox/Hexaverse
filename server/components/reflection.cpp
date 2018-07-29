@@ -1372,10 +1372,10 @@ namespace Reflection
 
 	typedef std::function<PathString(FeedMode)>	FSourcePath;
 
-	static bool Feed(const CLI::PFolder&folder, const FSourcePath&, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
+	static bool Feed(const CLI::PFolder&folder, const FSourcePath&, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
 
-	static bool FeedSubDirectory( const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
+	static bool FeedSubDirectory( const CLI::PFolder&dir, const Config::Context*ctx, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
@@ -1388,11 +1388,9 @@ namespace Reflection
 		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
 		if (ref)
 		{
-			if (testMode)
-				Variable::planetType->Set("LushGreen");
 
 			//PathString str = RuntimeConfig::Lookup( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"));
-			if (!Feed(dir,[ref](FeedMode mode) {return ref->Get(mode);},testMode,filterFunction,ref->mode))
+			if (!Feed(dir,[ref](FeedMode mode) {return ref->Get(mode);},readOnly,filterFunction,ref->mode))
 			{
 				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ConvertToString()+".ini'");
 				return false;
@@ -1405,7 +1403,7 @@ namespace Reflection
 			{
 				allGood = false;
 			}
-			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction,mode);
+			bool innerGood = InnerFeed(dir,sub,readOnly,filterFunction,mode);
 			if (!innerGood)
 				allGood = false;
 
@@ -1565,11 +1563,11 @@ namespace Reflection
 	}
 
 
-	static bool Feed( const CLI::PFolder&folder, const FSourcePath&sourcePath, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
+	static bool Feed( const CLI::PFolder&folder, const FSourcePath&sourcePath, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
 	{
 		bool needThis = true;
 		if (mode != FeedMode::Original)
-			needThis = !Feed(folder,sourcePath,testMode,filterFunction,FeedMode::Original);	//read original first
+			needThis = !Feed(folder,sourcePath,readOnly,filterFunction,FeedMode::Original);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
@@ -1616,10 +1614,10 @@ namespace Reflection
 
 		if (!ctx)
 			LogEvent(EventClass::Preset::configuration,"Default configuration loaded");
-		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,testMode,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
-		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
+		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,readOnly,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
+		if (!readOnly && mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
-			//Feed(folder,sourcePath,testMode,filterFunction,true);
+			//Feed(folder,sourcePath,readOnly,filterFunction,true);
 			try
 			{
 				StringFile outFile;
@@ -1707,7 +1705,7 @@ namespace Reflection
 	void Load( const PathString&customConfigPath)
 	{
 
-		Feed(state->GetRoot(),ConstructRootFeedFunction(customConfigPath), false,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
+		Feed(state->GetRoot(),ConstructRootFeedFunction(customConfigPath), customConfigPath.IsNotEmpty(),std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}
