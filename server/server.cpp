@@ -633,6 +633,7 @@ namespace ParameterConfig
 	PathString	loadFile,customConfigPath,outConfigPath;
 	bool	startOffline = false,
 			startInTutorial = false,
+			eraseCustomConfigAfterLoad = false,
 			heartBeat = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
@@ -663,6 +664,7 @@ namespace ParameterConfig
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test \tRun self-tests, then quit"<<std::endl;
 		std::cout << "  --config/-c <config path>\tLoad specified path instead of user configuration"<<std::endl;
+		std::cout << "  --eraseCfg\tErases the file loaded via -c/--config once loading is complete"<<std::endl;
 		std::cout << "  --generate/-g <config path>\tGenerate specified configuration file, then quit. Executed once config is loaded"<<std::endl;
 		std::cout << "  --version/-v \tShow version, then quit"<<std::endl;
 		//std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
@@ -743,6 +745,10 @@ namespace ParameterConfig
 				customConfigPath = arg;
 				LogEvent(EventClass::Preset::configuration,"Loading configuration from custom path "+String(arg));
 			};
+		}
+		elif (!strcmp(arg,"--eraseCfg"))
+		{
+			eraseCustomConfigAfterLoad = true;
 		}
 		elif (!strcmp(arg,"-g") || !strcmp(arg,"--generate"))
 			onParam = [](const char*arg){ outConfigPath = arg;};
@@ -1041,6 +1047,17 @@ int main( int argc, const char* argv[])
 		if (!inTestMode)
 		{
 			Reflection::Load(ParameterConfig::customConfigPath);
+			if (ParameterConfig::eraseCustomConfigAfterLoad && ParameterConfig::customConfigPath.IsNotEmpty())
+			{
+				try
+				{
+					FileSystem::UnlinkFile(ParameterConfig::customConfigPath);
+				}
+				catch (const std::exception&ex)
+				{
+					LogEvent(EventClass::Preset::fileError,"Unable to erase specified configuration file: "+String(ex.what()));
+				}
+			}
 			if (ParameterConfig::outConfigPath.IsNotEmpty())
 			{
 				Reflection::SaveRootConfigTo(ParameterConfig::outConfigPath);
