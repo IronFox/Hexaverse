@@ -105,6 +105,36 @@ namespace ServerManager
 
 		private int aiUpdateCnt = 0;
 
+		private class Cell : IDisposable
+		{
+			private readonly ListViewSubItem myItem1;
+			private readonly ListViewItem myItem0;
+			private string text0;
+			public Cell(ListViewSubItem item)
+			{
+				myItem1 = item;
+				text0 = Text = item.Text;
+			}
+			public Cell(ListViewItem item)
+			{
+				myItem0 = item;
+				text0 = Text = item.Text;
+			}
+
+
+			public string Text { get; set; }
+
+			public void Dispose()
+			{
+				if (text0 == Text)
+					return;
+				if (myItem0 != null)
+					myItem0.Text = Text;
+				else
+					myItem1.Text = Text;
+			}
+		}
+
 		public bool Update()
 		{
 			if (this.disposedValue)
@@ -141,64 +171,68 @@ namespace ServerManager
 				controlConnection.TryToReconnect();
 			}
 
-			base.SubItems[1].Text = ID.ToNiceString();
-			var status = base.SubItems[4];
-			var worldID = base.SubItems[2];
-			var ai = base.SubItems[3];
-			var rules = base.SubItems[5];
-			base.Text = BasePort + ".." + (BasePort + NumPorts -1);
-			status.Text = "";
+			using (var me = new Cell(this))
+				me.Text = BasePort + ".." + (BasePort + NumPorts - 1);
+			using (var a = new Cell(base.SubItems[1]))
+				a.Text = ID.ToNiceString();
 
-			if (!aiIsEnabled)
-				ai.Text = "No";
-			else
+			using (var status = new Cell(base.SubItems[4]))
+			using (var worldID = new Cell(base.SubItems[2]))
+			using (var ai = new Cell(base.SubItems[3]))
+			using (var rules = new Cell(base.SubItems[5]))
 			{
-				string cp = aiScript;
-				if (string.IsNullOrWhiteSpace(cp))
-					ai.Text = "Yes";
-				else
-					ai.Text = "Lua:" + aiScript;
-			}
+				status.Text = "";
 
-			bool hasInfo = receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2);
-
-			if (!SessionIsClosed && hasInfo)
-			{
-				var info = receiver.LastUpdate.Package.game;
-				status.Text += info.numFactionsOnline + "/" + info.numFactionsCreated + " online, Round "+info.roundNumber;
-				worldID.Text = info.worldID.ToNiceString();
-				rules.Text = ServerInfoReceiver.GameFlagsToString(info.gameConfig.gameFlags);
-			}
-			else
-			{
-				if (DateTime.Now - LastUDPPing > TimeSpan.FromSeconds(5))
-					return false;
-				if (SessionIsClosed)
-				{
-					worldID.Text = "";
-					rules.Text = "";
-					if (hasInfo)
-					{
-						var info = receiver.LastUpdate.Package.game;
-						worldID.Text = info.worldID.ToNiceString();
-						rules.Text = ServerInfoReceiver.GameFlagsToString(info.gameConfig.gameFlags);
-					}
-					status.Text += "Session closed or suspended";
-				}
+				if (!aiIsEnabled)
+					ai.Text = "No";
 				else
 				{
-					worldID.Text = "?";
-					rules.Text = "?";
-					if (DateTime.Now - LastUDPPing > TimeSpan.FromSeconds(2))
-						status.Text += "No contact";
+					string cp = aiScript;
+					if (string.IsNullOrWhiteSpace(cp))
+						ai.Text = "Yes";
 					else
-						status.Text += "Connecting...";
+						ai.Text = "Lua:" + aiScript;
 				}
+
+				bool hasInfo = receiver.IsConnected && receiver.LastUpdate != null && DateTime.Now - receiver.LastUpdate.Received < TimeSpan.FromSeconds(2);
+
+				if (!SessionIsClosed && hasInfo)
+				{
+					var info = receiver.LastUpdate.Package.game;
+					status.Text += info.numFactionsOnline + "/" + info.numFactionsCreated + " online, Round " + info.roundNumber;
+					worldID.Text = info.worldID.ToNiceString();
+					rules.Text = ServerInfoReceiver.GameFlagsToString(info.gameConfig.gameFlags);
+				}
+				else
+				{
+					if (DateTime.Now - LastUDPPing > TimeSpan.FromSeconds(5))
+						return false;
+					if (SessionIsClosed)
+					{
+						worldID.Text = "";
+						rules.Text = "";
+						if (hasInfo)
+						{
+							var info = receiver.LastUpdate.Package.game;
+							worldID.Text = info.worldID.ToNiceString();
+							rules.Text = ServerInfoReceiver.GameFlagsToString(info.gameConfig.gameFlags);
+						}
+						status.Text += "Session closed or suspended";
+					}
+					else
+					{
+						worldID.Text = "?";
+						rules.Text = "?";
+						if (DateTime.Now - LastUDPPing > TimeSpan.FromSeconds(2))
+							status.Text += "No contact";
+						else
+							status.Text += "Connecting...";
+					}
+				}
+
+				if (RequiresHeartbeats)
+					status.Text += " (dep)";
 			}
-
-			if (RequiresHeartbeats)
-				status.Text += " (dep)";
-
 
 
 			return true;
