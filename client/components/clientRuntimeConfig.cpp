@@ -11,6 +11,7 @@ namespace RuntimeConfig
 	String serverPassword;
 	bool udpListen = true;
 	bool nexusBases=false,	nexusPortsOnAllPoles=false;
+	Timer::Time				programStart;
 
 	Network::ServerAddress	serverAddress;
 
