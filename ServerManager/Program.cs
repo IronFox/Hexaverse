@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -23,6 +24,14 @@ namespace ServerManager
 		[STAThread]
 		static void Main()
 		{
+			{
+				//https://social.msdn.microsoft.com/Forums/en-US/76409b4b-58e7-4d83-9257-6bfaadf53a87/how-to-start-only-once-an-application?forum=devdocs
+				bool isNew;
+				Mutex mutex = new Mutex(true, Application.ProductName, out isNew);
+				if (!isNew)
+					return;
+			}
+
 			while (!File.Exists(Path.Combine("server", "Server.exe")))
 			{
 				try
