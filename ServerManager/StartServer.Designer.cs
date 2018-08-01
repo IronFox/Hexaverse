@@ -199,7 +199,7 @@
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.CancelButton = this.abortButton;
-			this.ClientSize = new System.Drawing.Size(658, 225);
+			this.ClientSize = new System.Drawing.Size(658, 214);
 			this.Controls.Add(this.startOfflineCheck);
 			this.Controls.Add(this.fixPortButton);
 			this.Controls.Add(this.saveGameLabel);
