@@ -36,7 +36,13 @@ namespace ServerManager
 			{
 				try
 				{
-					Directory.SetCurrentDirectory(new DirectoryInfo(Directory.GetCurrentDirectory()).Parent.FullName);
+					var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+					if (current.Parent == null)
+					{
+						MessageBox.Show("Unable to locate Hexaverse working directory", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+						return;
+					}
+					Directory.SetCurrentDirectory(current.Parent.FullName);
 				}
 				catch
 				{

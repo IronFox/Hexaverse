@@ -80,7 +80,7 @@
 			this.globalInfoPanel.Dock = System.Windows.Forms.DockStyle.Top;
 			this.globalInfoPanel.Location = new System.Drawing.Point(0, 24);
 			this.globalInfoPanel.Name = "globalInfoPanel";
-			this.globalInfoPanel.Size = new System.Drawing.Size(800, 102);
+			this.globalInfoPanel.Size = new System.Drawing.Size(800, 121);
 			this.globalInfoPanel.TabIndex = 0;
 			// 
 			// launchServerButton
@@ -90,8 +90,9 @@
 			this.launchServerButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
 			this.launchServerButton.Location = new System.Drawing.Point(550, 3);
 			this.launchServerButton.Name = "launchServerButton";
-			this.launchServerButton.Size = new System.Drawing.Size(247, 96);
+			this.launchServerButton.Size = new System.Drawing.Size(247, 112);
 			this.launchServerButton.TabIndex = 8;
+			this.launchServerButton.Text = "Add Server...";
 			this.launchServerButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
 			this.launchServerButton.UseVisualStyleBackColor = true;
 			this.launchServerButton.Click += new System.EventHandler(this.launchServerButton_Click);
@@ -114,7 +115,7 @@
 			this.globalAttributeView.MultiSelect = false;
 			this.globalAttributeView.Name = "globalAttributeView";
 			this.globalAttributeView.ShowItemToolTips = true;
-			this.globalAttributeView.Size = new System.Drawing.Size(288, 96);
+			this.globalAttributeView.Size = new System.Drawing.Size(288, 112);
 			this.globalAttributeView.TabIndex = 7;
 			this.globalAttributeView.UseCompatibleStateImageBehavior = false;
 			this.globalAttributeView.View = System.Windows.Forms.View.Details;
@@ -140,8 +141,9 @@
 			this.launchClientButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
 			this.launchClientButton.Location = new System.Drawing.Point(3, 3);
 			this.launchClientButton.Name = "launchClientButton";
-			this.launchClientButton.Size = new System.Drawing.Size(247, 96);
+			this.launchClientButton.Size = new System.Drawing.Size(247, 112);
 			this.launchClientButton.TabIndex = 0;
+			this.launchClientButton.Text = "Launch Client";
 			this.launchClientButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
 			this.launchClientButton.UseVisualStyleBackColor = true;
 			this.launchClientButton.Click += new System.EventHandler(this.launchClientButton_Click);
@@ -159,9 +161,9 @@
 			this.serverListView.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.serverListView.FullRowSelect = true;
 			this.serverListView.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
-			this.serverListView.Location = new System.Drawing.Point(0, 126);
+			this.serverListView.Location = new System.Drawing.Point(0, 145);
 			this.serverListView.Name = "serverListView";
-			this.serverListView.Size = new System.Drawing.Size(800, 302);
+			this.serverListView.Size = new System.Drawing.Size(800, 283);
 			this.serverListView.TabIndex = 1;
 			this.serverListView.UseCompatibleStateImageBehavior = false;
 			this.serverListView.View = System.Windows.Forms.View.Details;
