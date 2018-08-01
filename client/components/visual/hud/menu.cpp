@@ -487,10 +487,10 @@ namespace Menu
 			Network::client.Disconnect();
 		},
 		[](){return Network::client.IsConnected() || ConfigurationMode::IsActive();});
-		main->AddCommand("Game",[](){WindowStack::Show(game);},std::function<bool()>(),false);
+		main->AddCommand("Game...",[](){WindowStack::Show(game);},std::function<bool()>(),false);
 		main->AddCommand("Launch...",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
 		
-		main->AddCommand("Help",
+		main->AddCommand("Help...",
 			[]()
 			{
 				WindowStack::Show(help);
