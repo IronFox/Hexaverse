@@ -87,7 +87,7 @@ namespace ServerProcess
 				ASSERT__(Net::initNet());
 
 				Stop();
-				loopThread.CheckAwaitCompletion();
+				loopThread.AwaitCompletion();
 
 
 				s = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);

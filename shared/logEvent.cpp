@@ -97,7 +97,7 @@ namespace Logging
 			doEnd = true;
 			pipe.Clear();
 			pipe.OverrideSignalNow();
-			awaitCompletion();
+			AwaitCompletion();
 		}
 
 		void	Begin()

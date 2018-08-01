@@ -249,7 +249,7 @@ namespace Network
 		void		Stop()
 		{
 			updater.doEnd = true;
-			updater.awaitCompletion();
+			updater.AwaitCompletion();
 		}
 
 		bool	IsOnline()
