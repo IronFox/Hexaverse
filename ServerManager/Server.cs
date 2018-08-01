@@ -71,12 +71,10 @@ namespace ServerManager
 
 			string options = "";
 			if (!string.IsNullOrWhiteSpace(cfg.saveGamePath))
-				options = "-l \"" + cfg.saveGamePath + "\"";
-			else
+				options += " -l \"" + cfg.saveGamePath + "\"";
+			if (!string.IsNullOrWhiteSpace(cfg.configPath))
 			{
-				if (string.IsNullOrWhiteSpace(cfg.configPath))
-					throw new ArgumentException("Configuration is empty","cfg.configPath");
-				options = "-c \"" + cfg.configPath + "\"";
+				options += " -c \"" + cfg.configPath + "\"";
 				if (cfg.eraseConfigOnceLoaded)
 					options += " --eraseCfg";
 			}
