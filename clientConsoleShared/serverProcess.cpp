@@ -260,7 +260,7 @@ namespace ServerProcess
 	bool			IsRunning()
 	{
 		if (!Detail::process.IsRunning())
-			Detail::TryResume();	//do NOT try to resume
+			Detail::TryResume();
 		return Detail::process.IsRunning();
 	}
 
