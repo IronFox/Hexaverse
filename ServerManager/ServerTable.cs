@@ -19,6 +19,16 @@ namespace ServerManager
 			InitializeComponent();
 		}
 
+		public float FontScaleFactor
+		{
+			get
+			{
+				Graphics graphics = this.CreateGraphics();
+				float dpiX = graphics.DpiX;
+				return dpiX / 96.0f;
+			}
+		}
+
 		private void visibilityStripItem_Click(object sender, EventArgs e)
 		{
 
@@ -50,10 +60,15 @@ namespace ServerManager
 			attributeValueHeader.Width = -1;
 		}
 
+
 		private UDPReceiver receiver;
 		private string hsfDefaultDirectory;
 		private void ServerTable_Load(object sender, EventArgs e)
 		{
+			toolTip.SetToolTip(launchClientButton, "Launch Game Client");
+			toolTip.SetToolTip(launchServerButton, "Launch New Server...");
+			Program.ResizeFont(this.Controls, FontScaleFactor);
+
 			FlushAttributes();
 			AddAttribute("Version", Program.gameVersion, "Local Hexaverse version", null);
 			AddAttribute("Install Dir", Directory.GetCurrentDirectory(), "Hexaverse Installation Directory", (dir) =>

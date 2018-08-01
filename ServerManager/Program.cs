@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,6 +11,9 @@ namespace ServerManager
 {
 	static class Program
 	{
+		[System.Runtime.InteropServices.DllImport("user32.dll")]
+		private static extern bool SetProcessDPIAware();
+
 		public static string gameVersion;
 		public static string gameDir;
 		//public static string installDir;	//Directory.GetCurrentDirectory();
@@ -52,6 +56,9 @@ namespace ServerManager
 
 			try
 			{
+				if (Environment.OSVersion.Version.Major >= 6)
+					SetProcessDPIAware();
+
 				NiceName.Load();
 				Application.EnableVisualStyles();
 				Application.SetCompatibleTextRenderingDefault(false);
@@ -63,6 +70,24 @@ namespace ServerManager
 				//call bug reporter (later)
 			}
 		}
+
+		public static void ResizeThis(Control c, float scaleFactor)
+		{
+			c.Font = new Font(c.Font.FontFamily.Name, c.Font.Size * scaleFactor);
+		}
+		public static void ResizeFont(Control.ControlCollection coll, float scaleFactor)
+		{
+			foreach (Control c in coll)
+			{
+				if (c.HasChildren)
+				{
+					ResizeFont(c.Controls, scaleFactor);
+				}
+				ResizeThis(c, scaleFactor);
+				c.Height = c.PreferredSize.Height;
+			}
+		}
+
 
 		public static Process StartComponent(string path, string executableBaseName, string parameters = "", bool hideWindow=false)
 		{

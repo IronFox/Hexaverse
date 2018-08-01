@@ -29,23 +29,23 @@
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			this.panel2 = new System.Windows.Forms.Panel();
+			this.buttonPanel = new System.Windows.Forms.Panel();
 			this.abortButton = new System.Windows.Forms.Button();
 			this.acceptButton = new System.Windows.Forms.Button();
 			this.attributePanel = new System.Windows.Forms.Panel();
 			this.toolTip = new System.Windows.Forms.ToolTip(this.components);
-			this.panel2.SuspendLayout();
+			this.buttonPanel.SuspendLayout();
 			this.SuspendLayout();
 			// 
-			// panel2
+			// buttonPanel
 			// 
-			this.panel2.Controls.Add(this.abortButton);
-			this.panel2.Controls.Add(this.acceptButton);
-			this.panel2.Dock = System.Windows.Forms.DockStyle.Bottom;
-			this.panel2.Location = new System.Drawing.Point(0, 413);
-			this.panel2.Name = "panel2";
-			this.panel2.Size = new System.Drawing.Size(800, 37);
-			this.panel2.TabIndex = 1;
+			this.buttonPanel.Controls.Add(this.abortButton);
+			this.buttonPanel.Controls.Add(this.acceptButton);
+			this.buttonPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
+			this.buttonPanel.Location = new System.Drawing.Point(0, 413);
+			this.buttonPanel.Name = "buttonPanel";
+			this.buttonPanel.Size = new System.Drawing.Size(800, 37);
+			this.buttonPanel.TabIndex = 1;
 			// 
 			// abortButton
 			// 
@@ -77,23 +77,30 @@
 			this.attributePanel.Size = new System.Drawing.Size(800, 413);
 			this.attributePanel.TabIndex = 2;
 			// 
+			// toolTip
+			// 
+			this.toolTip.AutoPopDelay = 50000;
+			this.toolTip.InitialDelay = 500;
+			this.toolTip.ReshowDelay = 100;
+			// 
 			// EditServerConfig
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(800, 450);
 			this.Controls.Add(this.attributePanel);
-			this.Controls.Add(this.panel2);
+			this.Controls.Add(this.buttonPanel);
 			this.Name = "EditServerConfig";
 			this.Text = "Configure Server";
 			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.EditServerConfig_FormClosed);
-			this.panel2.ResumeLayout(false);
+			this.Load += new System.EventHandler(this.EditServerConfig_Load);
+			this.buttonPanel.ResumeLayout(false);
 			this.ResumeLayout(false);
 
 		}
 
 		#endregion
-		private System.Windows.Forms.Panel panel2;
+		private System.Windows.Forms.Panel buttonPanel;
 		private System.Windows.Forms.Button abortButton;
 		private System.Windows.Forms.Button acceptButton;
 		private System.Windows.Forms.Panel attributePanel;

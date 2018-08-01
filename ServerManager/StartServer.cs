@@ -34,7 +34,6 @@ namespace ServerManager
 		{
 			configFileName = Path.GetTempFileName();
 			EditServerConfig.GenerateConfigAt(configFileName);
-			configOkay = false;
 			saveGameOkay = false;
 			portOkay = false;
 			startButton.Enabled = false;
@@ -129,7 +128,6 @@ namespace ServerManager
 
 
 		private EditServerConfig editor = null;
-		private bool configOkay = false;
 		private bool saveGameOkay = false;
 
 		private void configureButton_Click(object sender, EventArgs e)
@@ -140,7 +138,7 @@ namespace ServerManager
 			else
 			{
 				editor = new EditServerConfig();
-				editor.Show(configFileName, "Accept Config", (str) => { configOkay = true; RecheckStartButton(); });
+				editor.Show(configFileName, "Accept Config", (str) => { });
 			}
 		}
 
@@ -151,7 +149,6 @@ namespace ServerManager
 				editor.Close();
 				editor.Dispose();
 				editor = null;
-				configOkay = false;
 				if (configFileName != null)
 				{
 					File.Delete(configFileName);
@@ -167,7 +164,7 @@ namespace ServerManager
 				return false;
 			if (loadSaveButton.Checked)
 				return saveGameOkay;
-			return configOkay;
+			return true;
 		}
 
 		private void RecheckStartButton()
@@ -183,7 +180,6 @@ namespace ServerManager
 
 		private void newGameButton_CheckedChanged(object sender, EventArgs e)
 		{
-			configureButton.Enabled = newGameButton.Checked;
 			RecheckStartButton();
 		}
 
@@ -231,6 +227,20 @@ namespace ServerManager
 			while (PortIsInUse(current))
 				current++;
 			portInput.Text = current.ToString();
+		}
+		public float FontScaleFactor
+		{
+			get
+			{
+				Graphics graphics = this.CreateGraphics();
+				float dpiX = graphics.DpiX;
+				return dpiX / 96.0f;
+			}
+		}
+
+		private void StartServer_Load(object sender, EventArgs e)
+		{
+			Program.ResizeFont(Controls, FontScaleFactor);
 		}
 	}
 }

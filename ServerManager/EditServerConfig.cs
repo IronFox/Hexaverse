@@ -22,8 +22,17 @@ namespace ServerManager
 		private Action<string> onCompleteHandlePath;
 		private string fileName;
 
+		public float FontScaleFactor
+		{
+			get
+			{
+				Graphics graphics = this.CreateGraphics();
+				float dpiX = graphics.DpiX;
+				return dpiX / 96.0f;
+			}
+		}
 
-		
+
 
 		abstract class ConfigEntry
 		{
@@ -93,12 +102,14 @@ namespace ServerManager
 				string tt = entry.Help != null ? string.Join("\n", entry.Help.Select((str) => str.Substring(1))) : "";
 
 				var ctrl = entry.Control;
+				Program.ResizeThis(ctrl, fontScaleFactor);
 				toolTip.SetToolTip(ctrl, tt);
 
 				if (!(ctrl is GroupBox))
 				{
 					var p = new Panel();
 					var l = new Label();
+					Program.ResizeThis(l, fontScaleFactor);
 					var pt = Box.PointToScreen(Point.Empty);
 					p.Width = 1000;
 					l.Text = entry.Name;
@@ -119,6 +130,10 @@ namespace ServerManager
 					p.Dock = DockStyle.Top;
 					Box.Controls.Add(p);
 					Box.Controls.SetChildIndex(p, 0);
+
+					ctrl.Height = ctrl.PreferredSize.Height;
+					l.Height = l.PreferredSize.Height;
+					p.Height = p.PreferredSize.Height;
 				}
 				else
 				{
@@ -399,8 +414,11 @@ namespace ServerManager
 		private Group root;
 
 
+		private static float fontScaleFactor = 1.0f;
+
 		private void Reload()
 		{
+			fontScaleFactor = FontScaleFactor;
 			attributePanel.Controls.Clear();
 			Group.toolTip = toolTip;
 
@@ -623,6 +641,11 @@ namespace ServerManager
 			fileName = existingConfiguration;
 			deleteOnExit = false;
 
+			Program.ResizeFont(this.Controls, FontScaleFactor);
+			acceptButton.Height = acceptButton.PreferredSize.Height;
+			abortButton.Height = acceptButton.PreferredSize.Height;
+			buttonPanel.Height = acceptButton.Height + 14;
+
 			Reload();
 
 			this.Show();
@@ -649,6 +672,11 @@ namespace ServerManager
 		{
 			if (deleteOnExit)
 				File.Delete(fileName);
+		}
+
+		private void EditServerConfig_Load(object sender, EventArgs e)
+		{
+			//Program.ResizeFont(this.Controls, FontScaleFactor);
 		}
 	}
 }

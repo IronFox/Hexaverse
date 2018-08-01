@@ -49,7 +49,7 @@
 			// 
 			// configureButton
 			// 
-			this.configureButton.Location = new System.Drawing.Point(196, 87);
+			this.configureButton.Location = new System.Drawing.Point(452, 4);
 			this.configureButton.Name = "configureButton";
 			this.configureButton.Size = new System.Drawing.Size(194, 23);
 			this.configureButton.TabIndex = 0;
@@ -70,7 +70,7 @@
 			// 
 			this.portInput.Location = new System.Drawing.Point(97, 6);
 			this.portInput.Name = "portInput";
-			this.portInput.Size = new System.Drawing.Size(159, 20);
+			this.portInput.Size = new System.Drawing.Size(349, 20);
 			this.portInput.TabIndex = 2;
 			this.portInput.Text = "10247";
 			this.portInput.TextChanged += new System.EventHandler(this.portInput_TextChanged);
@@ -80,7 +80,7 @@
 			this.dependentCheck.AutoSize = true;
 			this.dependentCheck.Checked = true;
 			this.dependentCheck.CheckState = System.Windows.Forms.CheckState.Checked;
-			this.dependentCheck.Location = new System.Drawing.Point(15, 32);
+			this.dependentCheck.Location = new System.Drawing.Point(12, 66);
 			this.dependentCheck.Name = "dependentCheck";
 			this.dependentCheck.Size = new System.Drawing.Size(220, 17);
 			this.dependentCheck.TabIndex = 3;
@@ -90,7 +90,7 @@
 			// startButton
 			// 
 			this.startButton.Enabled = false;
-			this.startButton.Location = new System.Drawing.Point(420, 145);
+			this.startButton.Location = new System.Drawing.Point(417, 179);
 			this.startButton.Name = "startButton";
 			this.startButton.Size = new System.Drawing.Size(104, 23);
 			this.startButton.TabIndex = 4;
@@ -101,7 +101,7 @@
 			// portStatusLabel
 			// 
 			this.portStatusLabel.AutoSize = true;
-			this.portStatusLabel.Location = new System.Drawing.Point(262, 9);
+			this.portStatusLabel.Location = new System.Drawing.Point(94, 38);
 			this.portStatusLabel.Name = "portStatusLabel";
 			this.portStatusLabel.Size = new System.Drawing.Size(44, 13);
 			this.portStatusLabel.TabIndex = 5;
@@ -110,7 +110,7 @@
 			// abortButton
 			// 
 			this.abortButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-			this.abortButton.Location = new System.Drawing.Point(542, 145);
+			this.abortButton.Location = new System.Drawing.Point(539, 179);
 			this.abortButton.Name = "abortButton";
 			this.abortButton.Size = new System.Drawing.Size(104, 23);
 			this.abortButton.TabIndex = 6;
@@ -127,7 +127,7 @@
 			// 
 			this.newGameButton.AutoSize = true;
 			this.newGameButton.Checked = true;
-			this.newGameButton.Location = new System.Drawing.Point(15, 90);
+			this.newGameButton.Location = new System.Drawing.Point(12, 124);
 			this.newGameButton.Name = "newGameButton";
 			this.newGameButton.Size = new System.Drawing.Size(78, 17);
 			this.newGameButton.TabIndex = 7;
@@ -139,7 +139,7 @@
 			// loadSaveButton
 			// 
 			this.loadSaveButton.AutoSize = true;
-			this.loadSaveButton.Location = new System.Drawing.Point(15, 113);
+			this.loadSaveButton.Location = new System.Drawing.Point(12, 147);
 			this.loadSaveButton.Name = "loadSaveButton";
 			this.loadSaveButton.Size = new System.Drawing.Size(108, 17);
 			this.loadSaveButton.TabIndex = 8;
@@ -150,7 +150,7 @@
 			// pickSaveGameButton
 			// 
 			this.pickSaveGameButton.Enabled = false;
-			this.pickSaveGameButton.Location = new System.Drawing.Point(196, 110);
+			this.pickSaveGameButton.Location = new System.Drawing.Point(193, 144);
 			this.pickSaveGameButton.Name = "pickSaveGameButton";
 			this.pickSaveGameButton.Size = new System.Drawing.Size(194, 23);
 			this.pickSaveGameButton.TabIndex = 9;
@@ -166,7 +166,7 @@
 			// saveGameLabel
 			// 
 			this.saveGameLabel.AutoSize = true;
-			this.saveGameLabel.Location = new System.Drawing.Point(396, 115);
+			this.saveGameLabel.Location = new System.Drawing.Point(393, 149);
 			this.saveGameLabel.Name = "saveGameLabel";
 			this.saveGameLabel.Size = new System.Drawing.Size(0, 13);
 			this.saveGameLabel.TabIndex = 10;
@@ -174,7 +174,7 @@
 			// fixPortButton
 			// 
 			this.fixPortButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.fixPortButton.Location = new System.Drawing.Point(571, 4);
+			this.fixPortButton.Location = new System.Drawing.Point(12, 33);
 			this.fixPortButton.Name = "fixPortButton";
 			this.fixPortButton.Size = new System.Drawing.Size(75, 23);
 			this.fixPortButton.TabIndex = 11;
@@ -186,7 +186,7 @@
 			// startOfflineCheck
 			// 
 			this.startOfflineCheck.AutoSize = true;
-			this.startOfflineCheck.Location = new System.Drawing.Point(15, 55);
+			this.startOfflineCheck.Location = new System.Drawing.Point(12, 89);
 			this.startOfflineCheck.Name = "startOfflineCheck";
 			this.startOfflineCheck.Size = new System.Drawing.Size(81, 17);
 			this.startOfflineCheck.TabIndex = 12;
@@ -199,7 +199,7 @@
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.CancelButton = this.abortButton;
-			this.ClientSize = new System.Drawing.Size(658, 178);
+			this.ClientSize = new System.Drawing.Size(658, 225);
 			this.Controls.Add(this.startOfflineCheck);
 			this.Controls.Add(this.fixPortButton);
 			this.Controls.Add(this.saveGameLabel);
@@ -219,6 +219,7 @@
 			this.Name = "StartServer";
 			this.Text = "Start Server";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.StartServer_FormClosing);
+			this.Load += new System.EventHandler(this.StartServer_Load);
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
