@@ -126,6 +126,8 @@ namespace ServerManager
 					Updates.Enqueue(new Info(new UUID(bytes, 0),BitConverter.ToUInt16(bytes, 18),(flags & 0x2) != 0, (flags &0x1) != 0));
 				}
 			}
+			catch (SocketException)
+			{ }
 			catch (Exception ex)
 			{
 				readEndEx = ex;
