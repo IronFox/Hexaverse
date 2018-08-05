@@ -237,7 +237,7 @@ CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sort
 CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to construct another hoverformer by selecting the plant and then choosing the Terraformer turret in the top row of its unit commands.") end,
 	function()
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Vehicle Plant' then
+			if u.typeName == 'Vehicle Plant' and u.productionQueue ~= nil then
 				local found = false;
 
 				for _,t in ipairs(u.productionQueue) do
