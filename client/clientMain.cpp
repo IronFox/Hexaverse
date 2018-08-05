@@ -1695,8 +1695,32 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::autoNewRound = true;
 			ScriptedAI::visualDebugActive = true;
 
+			static index_t checkReg;
+			checkReg = GlobalEvents::frameBegin.Register([]()
+			{
+				if (timer.GetSecondsSince(RuntimeConfig::programStart) > 15)
+				{
+					if (!Network::client.IsConnected())
+					{
+						LogEvent(EventSignificance::ClientFatal, "Unable to connect with 15 seconds. Shutting down");
+						application_shutting_down = true;
+					}
+					else
+						GlobalEvents::frameBegin.UnregisterAndSetInvalid(checkReg);
+				}
+			});
+			GlobalEvents::serverConnectionEstablished << []()
+			{
+				GlobalEvents::frameBegin.UnregisterAndSetInvalid(checkReg);
+			};
+
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
+		}
+		elif (key == "password")
+		{
+			RuntimeConfig::serverPassword = value;
+			LogEvent(EventClass::Preset::configuration,nullptr,"Using server password '"+value+"'");
 		}
 		elif (key == "profile")
 		{
@@ -1752,7 +1776,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		String parameterName;
 		bool expectValue = false;
-		Tokenizer::dequote(tokenList, cfg);
+		Tokenizer::DequoteAll(tokenList, cfg);
 		foreach(tokenList, token)
 		{
 			if (*token == '=')
@@ -1913,6 +1937,7 @@ int main( int argc, const char* argv[])
 {
 	Except::onFatal = MyFatal;
 	Vec::assertConsistency<float>();
+	RuntimeConfig::programStart = timer.Now();
 	
 	#ifndef HAS_WINDOW
 		String cfg;

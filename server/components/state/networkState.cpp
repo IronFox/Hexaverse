@@ -59,7 +59,6 @@ namespace Network
 {
 	Buffer0<PClient>	activePlayersAndSpectators,spectators;
 	HashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
-	HashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 	namespace Heartbeat
@@ -129,7 +128,10 @@ namespace Network
 		}
 
 
-
+		bool	IsActive()
+		{
+			return s != INVALID_SOCKET;
+		}
 
 
 		void	Check()
@@ -247,7 +249,7 @@ namespace Network
 		void		Stop()
 		{
 			updater.doEnd = true;
-			updater.awaitCompletion();
+			updater.AwaitCompletion();
 		}
 
 		bool	IsOnline()
@@ -261,7 +263,33 @@ namespace Network
 
 	namespace Config
 	{
-		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
+		UINT16		sessionBasePort = DEFAULT_SERVER_BASE_PORT;
+
+		//owner: main thread. Assume SetServerPassword is called by main thread only. Read access by main thread to serverPassword should be safe. still better not allow header-wise direct access
+		String			serverPassword;
+		static Sys::SpinLock		passwordLock;
+
+		String			GetServerPassword()
+		{
+			passwordLock.lock();
+				String rs = serverPassword;
+			passwordLock.unlock();
+			return rs;
+		}
+
+		bool			HasServerPassword()
+		{
+			return serverPassword.IsNotEmpty();
+		}
+
+		bool			SetServerPassword(const String&newpwd)
+		{
+			passwordLock.lock();
+				bool rs = serverPassword != newpwd;
+				serverPassword = newpwd;
+			passwordLock.unlock();
+			return rs;
+		}
 	}
 
 	namespace Session
@@ -278,20 +306,20 @@ namespace Network
 	{
 		if (server.IsOnline())
 		{
-			if (server.GetPort() == Config::sessionPort)
+			if (server.GetPort() == Config::sessionBasePort + PortOffset::Session)
 				return;
 			server.EndService();
 		}
 		server.OnDoneResolving([logStateAfterRestart]()
 		{
-			if (server.StartService(Config::sessionPort))
+			if (server.StartService(Config::sessionBasePort + PortOffset::Session))
 			{
-				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
+				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionBasePort + PortOffset::Session));
 				if (logStateAfterRestart)
 					LogServerState();
 			}
 			else
-				FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
+				FATAL__("Unable to start service in port "+String(Config::sessionBasePort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
 		});
 	}
 
@@ -408,6 +436,12 @@ namespace Network
 	{
 		Heartbeat::Start(basePort);
 	}
+
+	bool		RequiresHeartbeats()
+	{
+		return Heartbeat::IsActive();
+	}
+
 
 
 	void		Start(UINT16 basePort)
@@ -570,6 +604,11 @@ namespace Network
 	}
 
 
+	bool		SessionIsSuspended()
+	{
+		return Session::isStarted && !server.IsOnline();
+	}
+
 	bool		SessionIsStarted()
 	{
 		return Session::isStarted;
@@ -620,7 +659,6 @@ namespace Network
 
 
 		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
-		tokenMap.Clear();
 
 		World::Network::HandleSessionClosure();
 		Game::Network::HandleSessionClosure();
@@ -677,17 +715,19 @@ namespace Network
 		//FileIO::RefreshWindowTitle();
 
 		{
-			logConfig("AI is configured as follows:");
+			logConfig("AI:");
 			if (Game::Config::Nexus::enableAI)
 			{
 				logConfig(" -Nexus-AI enabled");
-				logConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
-				//LogConfig(" -NexusTurrets=" + implode(',', State::Config::Nexus::vehicleTurretNames));
+				if (Objects::Faction::nexus && Objects::Faction::nexus->aiScriptName.IsNotEmpty())
+					logConfig(" -Custom AI: " + Objects::Faction::nexus->aiScriptName.IsNotEmpty());
+				else
+					logConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
 			}
 			else
 				logConfig(" -Disabled");
 
-			logConfig("This game is configured as follows:");
+			logConfig("Game:");
 			#ifndef NO_HIBERNATION
 				logConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
 			#endif
@@ -760,6 +800,12 @@ namespace Network
 			else
 				logConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
+
+			logConfig("Server:");
+			if (Network::Config::HasServerPassword())
+				logConfig(" -Server Password: Clients must specify the password '"+Network::Config::GetServerPassword()+"' to play.");
+			else
+				logConfig(" -No Password: Anyone can play (who can see/connect to the server).");
 			if (FileIO::Config::saveEveryNRounds > 0)
 				logConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 			if (FileIO::Config::saveWhenAllQuit)

@@ -11,7 +11,8 @@
 
 namespace Reflection
 {
-	CLI::Interpreter	state;
+	CLI::PState	state{new CLI::State()};
+	CLI::PParser parser = state->NewParser();
 
 	static CLI::PFolder factionFolder,gameFolder;
 
@@ -36,6 +37,10 @@ namespace Reflection
 	{
 		PBase	planetType;	
 		typedef ::String	String;
+
+		/**/				Base::Base(const String&name, const String&type, Persistence persistence, count_t numElements,UINT32 protection):
+									Super(name,type,numElements,protection | (persistence == Persistence::GameInvariant || persistence == Persistence::GameInvariantNonConfigurable ? CLI::ReadOnly : 0)),persistence(persistence),parent(parser->GetFocus())	{}
+
 
 		void	Walk(const CLI::PFolder&f, const Variable::FCallback&callback)
 		{
@@ -161,6 +166,8 @@ namespace Reflection
 
 			/**/		StringVar(const String&name, Persistence persistence, const String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
 			{}
+			/**/		StringVar(const String&name, const String&type, Persistence persistence, const String&value, unsigned protection=CLI::EraseProtection) : Super(name,type,persistence, 1,protection),value(value),defaultValue(value)
+			{}
 			virtual String	ConvertToString()		const	override	{return value;}
 			virtual	bool	Set(const String&value)	override
 			{
@@ -191,6 +198,8 @@ namespace Reflection
 
 
 			/**/		StringReferenceVar(const String&name, Persistence persistence, String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
+			{}
+			/**/		StringReferenceVar(const String&name, const String&type, Persistence persistence, String&value, unsigned protection=CLI::EraseProtection) : Super(name,type,persistence, 1,protection),value(value),defaultValue(value)
 			{}
 			virtual String	ConvertToString()		const	override	{return value;}
 			virtual	bool	Set(const String&value)	override
@@ -364,7 +373,7 @@ namespace Reflection
 						if (!val)
 							AIProcess::End();
 						else
-							AIProcess::Begin(Objects::Faction::nexus->accessToken);
+							Game::StartAI();
 					}
 					OnChanged();
 				}
@@ -391,7 +400,7 @@ namespace Reflection
 		public:
 			String			defaultValue = "";
 
-			/**/			NexusAIScript(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "string", Persistence::Temporary,1,protection)	{}
+			/**/			NexusAIScript(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "AIScript",Persistence::RestoreFromSavegame,1,protection)	{}
 			virtual String	ConvertToString()		const	override	{return Objects::Faction::nexus ? Objects::Faction::nexus->aiScriptName : "";}
 			virtual	bool	Set(const String&value)	override
 			{
@@ -659,6 +668,31 @@ namespace Reflection
 		
 		
 
+		class Password : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue;
+
+			/**/			Password(const String&name, unsigned protection=CLI::EraseProtection):Super(name,"string",Persistence::ConfigOnly,1,protection)
+			{}
+			virtual String	ConvertToString()		const	override	{return Network::Config::GetServerPassword();}
+			virtual	bool	Set(const String&value)	override
+			{
+				if (Network::Config::SetServerPassword(value))
+					OnChanged();
+				return true;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = Network::Config::GetServerPassword();
+			}
+
+		};
 
 
 		class FactionsPerEMPZone : public Base
@@ -769,14 +803,28 @@ namespace Reflection
 		PBase	SetString(const String&name, const String&value, Persistence p)
 		{
 			PBase rs (new StringVar(name,p, value, CLI::EraseProtection));
-			state.SetVariable(rs);
+			parser->SetVariable(rs);
 			return rs;
 		}
 
+		PBase	SetString(const String&name, const String&type, const String&value, Persistence p)
+		{
+			PBase rs (new StringVar(name,type,p, value, CLI::EraseProtection));
+			parser->SetVariable(rs);
+			return rs;
+		}
+
+		
+		PBase	SetStringReference(const String&name, const String&type, String&value, Persistence p)
+		{
+			PBase rs (new StringReferenceVar(name,type, p, value, CLI::EraseProtection));
+			parser->SetVariable(rs);
+			return rs;
+		}
 		PBase	SetStringReference(const String&name, String&value, Persistence p)
 		{
 			PBase rs (new StringReferenceVar(name,p, value, CLI::EraseProtection));
-			state.SetVariable(rs);
+			parser->SetVariable(rs);
 			return rs;
 		}
 
@@ -784,7 +832,7 @@ namespace Reflection
 		PBase	Set(const String&name, T&reference, T min, T max, Persistence p)
 		{
 			PBase rs (new TypedVariable<T>(name,p,reference,min,max,CLI::EraseProtection));
-			state.SetVariable(rs);
+			parser->SetVariable(rs);
 			return rs;
 		}
 
@@ -793,14 +841,14 @@ namespace Reflection
 		PBase	SetEnum(const String&name, T&enumReference, Persistence p, bool readonly = false)
 		{
 			PBase rs (new EnumVariable<T>(name,p,enumReference,readonly ? CLI::FullProtection : CLI::EraseProtection));
-			state.SetVariable(rs);
+			parser->SetVariable(rs);
 			return rs;
 		}
 		template <typename T, typename RefT>
 		PBase	SetMappedEnum(const String&name, RefT&enumReference, Persistence p)
 		{
 			PBase rs (new MappedEnumVariable<T,RefT>(name,p,enumReference,CLI::EraseProtection));
-			state.SetVariable(rs);
+			parser->SetVariable(rs);
 			return rs;
 		}
 
@@ -808,7 +856,7 @@ namespace Reflection
 		PBase	SetReadOnlyCallbackVariable(const String&name, const String&type, const std::function<String()>&f)
 		{
 			PBase rs {new ReadOnlyCallbackVariable{name,type,f}};
-			state.SetVariable(rs);
+			parser->SetVariable(rs);
 			return rs;
 		}
 	}
@@ -836,7 +884,7 @@ namespace Reflection
 
 		void		TerminateCommand(const String&reason)
 		{
-			CLI::PFolder f = state.GetExecutionContext();
+			CLI::PFolder f = parser->GetExecutionContext();
 			Variable::PFactionAttachment attach = To<Variable::FactionAttachment>::DynamicCast(f->attachment);
 			if (!attach)
 			{
@@ -865,20 +913,26 @@ namespace Reflection
 			//}
 		}
 
-		void		ListNames()
+		void		ListNames(const CLI::PParser&parser, const CLI::PCommand&, CLI::Command::ArgumentList)
 		{
-			Objects::ForeachFaction([](const Objects::PFaction&f)
+			Objects::ForeachFaction([parser](const Objects::PFaction&f)
 			{
-				CLI::println(f->name + " - " + f->id.ConvertToString());
+				parser->PrintLine(f->name + " - " + f->id.ConvertToString());
 			});
 		}
 
-		void		FindName(const String&name)
+		void		FindName(const CLI::PParser&parser, const CLI::PCommand&, CLI::Command::ArgumentList arguments)
 		{
-			Objects::ForeachFaction([name](const Objects::PFaction&f)
+			if (arguments.Count() != 2)
+			{
+				parser->FailCommandExecution("Command requires one parameter");
+				return;
+			}
+			const auto name = arguments[1];
+			Objects::ForeachFaction([parser,name](const Objects::PFaction&f)
 			{
 				if (f->name.ContainsIgnoreCase(name))
-					CLI::println(f->name + " - " + f->id.ConvertToString());
+					parser->PrintLine(f->name + " - " + f->id.ConvertToString());
 			});
 		}
 
@@ -978,12 +1032,12 @@ namespace Reflection
 
 	static void MapConfig(Grid::TPlanetConfig::TLayer&layer, const CLI::PFolder&context)
 	{
-		state.PushAndReplaceFocus(context);
+		parser->PushAndReplaceFocus(context);
 			Variable::Set("baseHeight",layer.baseHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight, Variable::Persistence::PlanetConfig);
 			Variable::Set("noiseHeightScale",layer.heightScale,0.f, 10.f, Variable::Persistence::PlanetConfig);
 			Variable::Set("frequency",layer.frequency,0.f, 10.f, Variable::Persistence::PlanetConfig);
 			Variable::Set("dampening",layer.dampening,0, 10, Variable::Persistence::PlanetConfig);
-		state.PopFocus();
+		parser->PopFocus();
 	}
 
 	static bool SetHelp(CLI::NamedItem&item, String help)
@@ -1136,15 +1190,15 @@ namespace Reflection
 	{
 		XML::Container xml;
 		xml.root_node.name = "declaration";
-		ExportFolder(xml.root_node,state.GetRoot());
+		ExportFolder(xml.root_node,state->GetRoot());
 		xml.SaveToFile("./config/declaration.xml");
 	}
 
-	
-	void PrintLn(const String&line)
-	{
-		LogEvent(EventClass::Preset::remoteControlCommand,"Response: '"+line+"'");
-	}
+	//
+	//void PrintLn(const String&line)
+	//{
+	//	LogEvent(EventClass::Preset::remoteControlCommand,"Response: '"+line+"'");
+	//}
 
 
 	void	Create( )
@@ -1154,44 +1208,44 @@ namespace Reflection
 		#undef ENUMVAR
 		#define ENUMVAR( _NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
 
-		state.setMayCreateVariables = false;
-		CLI::InitDefaults(state,PrintLn);
+		state->setMayCreateVariables = false;
+		CLI::InitDefaults(state);
 
 		FactionCommands::Create();
 
-		gameFolder = state.EnterNewFolder("Game");
+		gameFolder = parser->EnterNewFolder("Game");
 		{
-			state.SetVariable(CLI::PVariable(new Variable::GameHasEnded()));
-			state.SetVariable(CLI::PVariable(new Variable::Winner()));
+			parser->SetVariable(CLI::PVariable(new Variable::GameHasEnded()));
+			parser->SetVariable(CLI::PVariable(new Variable::Winner()));
 
 			Variable::SetReadOnlyCallbackVariable("round","Round",[]()
 			{
 				return RuntimeConfig::roundNumber.ToString();
 			});
 
-			state.DefineCommand("endRound",RoundCommands::EndRound)->SetUniqueHelp("Ends the current round, regardless of timer state or player requests. Valid only if the server state is currently in any command phase");
+			parser->DefineCommand("endRound",RoundCommands::EndRound)->SetUniqueHelp("Ends the current round, regardless of timer state or player requests. Valid only if the server state is currently in any command phase");
 
 			Variable::SetEnum("phase",RuntimeConfig::phase,Variable::Persistence::Temporary,true);
 
-			factionFolder = state.EnterNewFolder("Factions");
-			state.DefineCommand("names", FactionCommands::ListNames);
-			state.DefineCommand("find name", FactionCommands::FindName);
-			state.ExitFolder();
+			factionFolder = parser->EnterNewFolder("Factions");
+				parser->DefineCommand("names", FactionCommands::ListNames);
+				parser->DefineCommand("find name", FactionCommands::FindName);
+			parser->ExitFolder();
 		}
-		state.ExitFolder();
+		parser->ExitFolder();
 
 		CLI::PAttachment persistenceAttachment(new Variable::PersistenceAttachment());
 
-		state.EnterNewFolder("World")->attachment = persistenceAttachment;
+		parser->EnterNewFolder("World")->attachment = persistenceAttachment;
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
-			Variable::SetStringReference("resourceDistribution",Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
+			Variable::SetStringReference("resourceDistribution","ResourceDistribution", Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 
 
-			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
-				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
+			parser->EnterNewFolder("Planet")->attachment = persistenceAttachment;
+				Variable::planetType = Variable::SetString("Type","PlanetName","LushGreen",Variable::Persistence::PlanetConfig);
 
-				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("../predefinedPlanets", "config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
+				parser->EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("../predefinedPlanets", "config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*
 					Important:
@@ -1199,47 +1253,47 @@ namespace Reflection
 					*/
 					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::PlanetConfig);
 					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::PlanetConfig);
-					state.EnterNewFolder("ExtendedCore")->attachment = persistenceAttachment;
+					parser->EnterNewFolder("ExtendedCore")->attachment = persistenceAttachment;
 						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.extendedCoreType,Variable::Persistence::PlanetConfig);
-					state.ExitFolder();
+					parser->ExitFolder();
 					
 					
-					CLI::PFolder mountains = state.EnterNewFolder("Mountains");
+					CLI::PFolder mountains = parser->EnterNewFolder("Mountains");
 						mountains->attachment = persistenceAttachment;
 //						Variable::SetMappedEnum<Grid::Content,BYTE>("top",Grid::currentPlanetConfig.topType,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.type,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("snowHeight",Grid::currentPlanetConfig.snowHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
-					state.ExitFolder();
+					parser->ExitFolder();
 
-					state.EnterNewFolder("Liquid")->attachment = persistenceAttachment;
+					parser->EnterNewFolder("Liquid")->attachment = persistenceAttachment;
 						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.liquidCoverage,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("level",Grid::currentPlanetConfig.liquidHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::SetMappedEnum<Grid::Content,BYTE>("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::PlanetConfig);
-					state.ExitFolder();
+					parser->ExitFolder();
 
-					MapConfig(Grid::currentPlanetConfig.extendedCore,state.GetFocus()->CreateOrGetChild("ExtendedCore"));
+					MapConfig(Grid::currentPlanetConfig.extendedCore,parser->GetFocus()->CreateOrGetChild("ExtendedCore"));
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
 
-					state.EnterNewFolder("Resources")->attachment = persistenceAttachment;
+					parser->EnterNewFolder("Resources")->attachment = persistenceAttachment;
 						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 						{
 							Objects::Resource res = Objects::Resource::Reinterpret(i);
-							state.EnterNewFolder(res.ToString())->attachment = persistenceAttachment;
+							parser->EnterNewFolder(res.ToString())->attachment = persistenceAttachment;
 								Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::PlanetConfig);
 								//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
 								Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::PlanetConfig);
-							state.ExitFolder();
+							parser->ExitFolder();
 						}
-					state.ExitFolder();
+					parser->ExitFolder();
 				}
-				state.ExitFolder();
-			state.ExitFolder();
-		state.ExitFolder();
-		state.EnterNewFolder("Rules")->attachment = persistenceAttachment;
+				parser->ExitFolder();
+			parser->ExitFolder();
+		parser->ExitFolder();
+		parser->EnterNewFolder("Rules")->attachment = persistenceAttachment;
 
 			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 
-			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
+			parser->SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::RestoreFromSavegame);
@@ -1252,34 +1306,34 @@ namespace Reflection
 			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 			
-			state.SetVariable(CLI::PVariable(new Variable::FactionsPerEMPZone("factionsPerEMPZone")));
-			state.SetVariable(CLI::PVariable(new Variable::EMPZones("empZones")));
+			parser->SetVariable(CLI::PVariable(new Variable::FactionsPerEMPZone("factionsPerEMPZone")));
+			parser->SetVariable(CLI::PVariable(new Variable::EMPZones("empZones")));
 
-			state.EnterNewFolder("UnitLimits")->attachment = persistenceAttachment;
+			parser->EnterNewFolder("UnitLimits")->attachment = persistenceAttachment;
 				RuntimeConfig::UnitLimits::Reset();
 
-				state.SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
+				parser->SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
 
-				state.EnterNewFolder("Structures")->attachment = persistenceAttachment;
+				parser->EnterNewFolder("Structures")->attachment = persistenceAttachment;
 					for (const Objects::PStructure&p:Objects::Prototypes::structures)
 					{
 						String key = p->GetTypeName();
 						key.FindAndReplace(' ','_');
-						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,p->GetType())));
+						parser->SetVariable(CLI::PVariable(new Variable::UnitLimit(key,p->GetType())));
 					}
-				state.ExitFolder();
+				parser->ExitFolder();
 
-				state.EnterNewFolder("MobileTurrets")->attachment = persistenceAttachment;
+				parser->EnterNewFolder("MobileTurrets")->attachment = persistenceAttachment;
 					for (const auto&c:Objects::Component::allTurretComponents)
 					{
 						String key = c->typeName;
 						key.FindAndReplace(' ','_');
-						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,c->constName)));
+						parser->SetVariable(CLI::PVariable(new Variable::UnitLimit(key,c->constName)));
 					}
-				state.ExitFolder();
-			state.ExitFolder();
+				parser->ExitFolder();
+			parser->ExitFolder();
 
-			state.EnterNewFolder("Nexus")->attachment = persistenceAttachment;
+			parser->EnterNewFolder("Nexus")->attachment = persistenceAttachment;
 				Variable::Set("spawnBases",Game::Config::Nexus::bases.doPlace,false,true,Variable::Persistence::ConfigOnly);
 				Variable::Set("haveBases",Game::Config::Nexus::bases.havePlaced,false,true,Variable::Persistence::GameInvariantNonConfigurable);
 				Variable::Set("spawnAllPorts",Game::Config::Nexus::allPorts.doPlace,false,true,Variable::Persistence::ConfigOnly);
@@ -1288,25 +1342,26 @@ namespace Reflection
 					Variable::Set("spawnSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.doPlace,false,true,Variable::Persistence::ConfigOnly);
 					Variable::Set("haveSatellitesAtopBases",Game::Config::Nexus::satellitesAtopBases.havePlaced,false,true,Variable::Persistence::GameInvariant);
 				#endif
-				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
-				state.SetVariable(CLI::PVariable(new Variable::NexusAIScript("aiScript")));
+				parser->SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
+				parser->SetVariable(CLI::PVariable(new Variable::NexusAIScript("aiScript")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::RestoreFromSavegame);
 				VAR(roundsPerResearchPoint,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
-				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
-			state.ExitFolder();
-		state.ExitFolder();
+				parser->SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
+			parser->ExitFolder();
+		parser->ExitFolder();
 
-		state.EnterNewFolder("Server")->attachment = persistenceAttachment;
+		parser->EnterNewFolder("Server")->attachment = persistenceAttachment;
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
-		state.ExitFolder();
+			parser->SetVariable(CLI::PVariable(new Variable::Password("password")));
+		parser->ExitFolder();
 
-		SetupBase(state.GetRoot());
+		SetupBase(state->GetRoot());
 
 		{
 			XML::Container xdecl("./config/declaration.xml");
-			if (!DeclareFolder(xdecl.root_node,state.GetRoot()))
+			if (!DeclareFolder(xdecl.root_node,state->GetRoot()))
 			{
 				CreatePrototypeDeclaration();
 			}
@@ -1317,27 +1372,25 @@ namespace Reflection
 
 	typedef std::function<PathString(FeedMode)>	FSourcePath;
 
-	static bool Feed(const CLI::PFolder&folder, const FSourcePath&, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
-	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
+	static bool Feed(const CLI::PFolder&folder, const FSourcePath&, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode);
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode);
 
-	static bool FeedSubDirectory( const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
+	static bool FeedSubDirectory( const CLI::PFolder&dir, const Config::Context*ctx, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction,FeedMode mode)
 	{
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
 		if (!a)	//externally created
 		{
-			DBG_ASSERT__(dir != state.GetRoot());	//should never be in here for root
+			DBG_ASSERT__(dir != state->GetRoot());	//should never be in here for root
 			return true;
 		}
 
 		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
 		if (ref)
 		{
-			if (testMode)
-				Variable::planetType->Set("LushGreen");
 
 			//PathString str = RuntimeConfig::Lookup( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ConvertToString() + ".ini"));
-			if (!Feed(dir,[ref](FeedMode mode) {return ref->Get(mode);},testMode,filterFunction,ref->mode))
+			if (!Feed(dir,[ref](FeedMode mode) {return ref->Get(mode);},readOnly,filterFunction,ref->mode))
 			{
 				LogEvent(EventSignificance::NonFatalError,"Warning: Failed to load referenced input configuration '"+ref->sourceVariable->ConvertToString()+".ini'");
 				return false;
@@ -1350,7 +1403,7 @@ namespace Reflection
 			{
 				allGood = false;
 			}
-			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction,mode);
+			bool innerGood = InnerFeed(dir,sub,readOnly,filterFunction,mode);
 			if (!innerGood)
 				allGood = false;
 
@@ -1485,7 +1538,13 @@ namespace Reflection
 				continue;
 			WriteHelp(outFile,var,indent,var->name+": ");
 			WriteIndent(outFile,indent);
-			outFile << var->name << '='<<var->ConvertToString() << nl;
+			outFile << var->name << '=';
+			const auto str = var->ConvertToString();
+			if (str.Contains(' ') || str.Contains('\t') || str.IsEmpty())
+				outFile << '\'' << str << '\'';
+			else
+				outFile << str;
+			outFile << nl;
 		}
 		for (const auto&dir : folder->folders)
 		{
@@ -1504,11 +1563,11 @@ namespace Reflection
 	}
 
 
-	static bool Feed( const CLI::PFolder&folder, const FSourcePath&sourcePath, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
+	static bool Feed( const CLI::PFolder&folder, const FSourcePath&sourcePath, bool readOnly, const std::function<bool(const Variable::PBase&)>&filterFunction, FeedMode mode)
 	{
 		bool needThis = true;
 		if (mode != FeedMode::Original)
-			needThis = !Feed(folder,sourcePath,testMode,filterFunction,FeedMode::Original);	//read original first
+			needThis = !Feed(folder,sourcePath,readOnly,filterFunction,FeedMode::Original);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
@@ -1555,10 +1614,10 @@ namespace Reflection
 
 		if (!ctx)
 			LogEvent(EventClass::Preset::configuration,"Default configuration loaded");
-		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,testMode,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
-		if (mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
+		bool allGood = (ctx || needThis) && InnerFeed(folder,ctx,readOnly,filterFunction,mode);	//will load defaults if executed with ctx=nullptr
+		if (!readOnly && mode != FeedMode::Original && ((ctx && !allGood) || rewrite))
 		{
-			//Feed(folder,sourcePath,testMode,filterFunction,true);
+			//Feed(folder,sourcePath,readOnly,filterFunction,true);
 			try
 			{
 				StringFile outFile;
@@ -1583,7 +1642,7 @@ namespace Reflection
 	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v, const CLI::PFolder&current)
 	{
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(current->attachment);
-		if (!a && current != state.GetRoot())	//externally created
+		if (!a && current != state->GetRoot())	//externally created
 			return CLI::PFolder();
 
 		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(current->attachment);
@@ -1602,7 +1661,7 @@ namespace Reflection
 
 	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v)
 	{
-		return FindFolderWithAttachmentSource(v,state.GetRoot());
+		return FindFolderWithAttachmentSource(v,state->GetRoot());
 	}
 
 	void	ReloadPlanet()
@@ -1646,7 +1705,7 @@ namespace Reflection
 	void Load( const PathString&customConfigPath)
 	{
 
-		Feed(state.GetRoot(),ConstructRootFeedFunction(customConfigPath), false,std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
+		Feed(state->GetRoot(),ConstructRootFeedFunction(customConfigPath), customConfigPath.IsNotEmpty(),std::function<bool(const Variable::PBase&)>(),FeedMode::ConstructIfMissing);
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}
@@ -1656,7 +1715,7 @@ namespace Reflection
 		StringFile outFile;
 		outFile.Create(outPath);
 		LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(outPath)+"'...");
-		DefineConfig(outFile,state.GetRoot(), 0);
+		DefineConfig(outFile,state->GetRoot(), 0);
 		outFile.Close();
 	}
 
@@ -1664,7 +1723,7 @@ namespace Reflection
 
 	void	VisitAllVariables(const Variable::FCallback&callback)
 	{
-		Variable::Walk(state.GetRoot(),callback);
+		Variable::Walk(state->GetRoot(),callback);
 	}
 
 
@@ -1691,7 +1750,7 @@ namespace Reflection
 			if (!attach)
 			{
 				LogEvent(EventClass::Preset::internalError, "Found faction folder '"+f->name+"' without attachment");
-				state.EraseFolder(f);
+				state->EraseFolder(f);
 				i--;
 				anyDeleted = true;
 				continue;
@@ -1699,7 +1758,7 @@ namespace Reflection
 
 			if (!Objects::Faction::FindByID(attach->id))
 			{
-				state.EraseFolder(f);
+				state->EraseFolder(f);
 				i--;
 				anyDeleted = true;
 				continue;

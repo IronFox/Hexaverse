@@ -41,6 +41,7 @@ namespace Network
 							roundTimer;
 	extern Timer::Time		phaseStarted;
 	extern bool				newRoundRequested;
+	extern bool				serverRequiresPassword;
 
 
 	bool	IsValidNickname(const String&candidate);
@@ -110,7 +111,12 @@ namespace Network
 
 	void AbandonCurrentFaction();
 	bool HaveFactionKeyForCurrentWorld();
-	void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes);
+
+	void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes, const String&serverPassword);
+	#ifdef HAS_WINDOW
+		void QueryPasswordAndLogin(bool forceNewFaction, UINT32 factionTypes);
+		void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes);
+	#endif
 
 	/**
 	Signals that server and client states have deteriorated to a point where communication cannot continue.

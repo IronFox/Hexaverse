@@ -1225,6 +1225,9 @@ namespace FileIO
 		}
 
 		{
+			CLI::PParser parser = Reflection::state->NewParser();
+
+
 			FactionMap	factionMap;
 			
 			/*
@@ -1335,7 +1338,7 @@ namespace FileIO
 													String key = "/"+line->SubStringRef(0,tabAt);
 													StringRef value = line->SubStringRef(tabAt+1);
 		
-													CLI::PVariable v = Reflection::state.FindVar(key);
+													CLI::PVariable v = parser->FindVar(key);
 													if (!v)
 													{
 														LogEvent(EventClass::Preset::fileError,"State::Load(): Unable to find variable '"+key+"' for update");
@@ -1588,8 +1591,6 @@ namespace FileIO
 											token.Generate();
 											faction->accessToken = token;
 										}
-										if (!isNexus)
-											::Network::tokenMap.Set(faction->accessToken,faction);	//dont even allow access if nexus
 
 										//BYTE k = 0;
 										//Protocol::WorldDelta	delta;
@@ -1723,9 +1724,15 @@ namespace FileIO
 	}
 
 
+	PathString GetAutoSavePath(index_t index, const StringRef&worldNiceName)
+	{
+		return RuntimeConfig::sharedConfig.Lookup(String("saves/auto/"+worldNiceName+"/snapshot")) + PathString(index)+RuntimeConfig::savFileExtension;
+	}
+
 	PathString GetAutoSavePath(index_t index)
 	{
-		return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
+		return GetAutoSavePath(index,World::worldID.ToNiceString().ToRef());
+		//return RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot") + PathString(index)+RuntimeConfig::savFileExtension;
 	}
 
 	bool			IsValidSavePhase(RuntimeConfig::Phase p)
@@ -1752,15 +1759,15 @@ namespace FileIO
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
 		}
-		PathString base = RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot");
-		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
-		if (FileSystem::IsFile(base+"0"+RuntimeConfig::savFileExtension))
+		//PathString base = RuntimeConfig::sharedConfig.Lookup("saves/auto/snapshot");
+		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(GetAutoSavePath(0)));
+		if (FileSystem::IsFile(GetAutoSavePath(0)))
 		{
-			FileSystem::UnlinkFile(base+"9"+RuntimeConfig::savFileExtension);
+			FileSystem::UnlinkFile(GetAutoSavePath(9));
 			for (int i = 8; i >= 0; i--)
-				FileSystem::MoveFile(base+PathString(i)+RuntimeConfig::savFileExtension,base+PathString(i+1)+RuntimeConfig::savFileExtension);
+				FileSystem::MoveFile(GetAutoSavePath(i),GetAutoSavePath(i+1));
 		}
-		Save(base+"0"+RuntimeConfig::savFileExtension, RuntimeConfig::Phase::CommandPhase);
+		Save(GetAutoSavePath(0), RuntimeConfig::Phase::CommandPhase);
 
 		#ifdef SAVE_FILE_TEST
 			State::Load(base+"0."+savFileExtension);
@@ -1790,6 +1797,7 @@ namespace FileIO
 	{
 		if (!CanSaveRightNow(savePhase))
 		{
+			//keep message in sync with ServerManager:
 			LogEvent(EventClass::Preset::commandRejected,"Unable to save game right now. Not in suitable phase");
 			return;
 		}
@@ -1977,13 +1985,14 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
+			//keep message in sync with ServerManager:
 			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+FileSystem::PathToString(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
-			//LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
+		{
+			//keep message in sync with ServerManager:
 			LogEvent(EventClass::Preset::error,"Unable to write world to "+FileSystem::PathToString(name));
-		//Grid::SaveToFiles(name+".grid");
-		//Objects::SaveToFiles(name+".objects");
+		}
 
 
 

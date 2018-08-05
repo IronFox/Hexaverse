@@ -331,8 +331,6 @@ namespace Game
 		void		Describe(Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
 		void		Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose);
 
-
-
 		/**
 		Detects resource coverage changes within the specified sphere, and notifies the local faction client, if any
 		Uses static fields. Do not call in parallel
@@ -361,6 +359,11 @@ namespace Game
 
 
 	}
+
+
+	void			StartAIIfEnabled();
+	void			StartAI();
+
 
 
 	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);

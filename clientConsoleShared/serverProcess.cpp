@@ -87,7 +87,7 @@ namespace ServerProcess
 				ASSERT__(Net::initNet());
 
 				Stop();
-				loopThread.CheckAwaitCompletion();
+				loopThread.AwaitCompletion();
 
 
 				s = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
@@ -146,7 +146,17 @@ namespace ServerProcess
 
 		void	Terminate()
 		{
-			process.Terminate();
+			if (process.IsRunning())
+			{
+				Array<HWND> windows;
+				process.GetWindows(windows);
+				foreach (windows,w)
+				{
+					SendNotifyMessage(*w,WM_CLOSE,0,0);
+				}
+				if (!process.AwaitCompletion(1000))
+					process.Terminate();
+			}
 			Heartbeat::Stop();
 		}
 

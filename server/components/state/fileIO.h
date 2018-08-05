@@ -69,6 +69,7 @@ namespace FileIO
 	Note that the respective doesn't necessarily exist.
 	*/
 	PathString		GetAutoSavePath(index_t index);
+	PathString		GetAutoSavePath(index_t index, const StringRef&worldNiceName);
 
 }
 

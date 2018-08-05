@@ -20,6 +20,7 @@ namespace RemoteControl
 		bool			created = false;
 
 
+
 		void Debug( void *ctx, int level, const char *file, int line, const char *str )
 		{
 			((void) level);
@@ -77,14 +78,43 @@ namespace RemoteControl
 		}
 
 
+
+		class Attachment : public TCP::Peer::Attachment
+		{
+		public:
+			const CLI::PParser	parser;
+			const TCP::WPeer	peer;
+
+
+			/**/			Attachment(TCP::PPeer&peer):peer(peer), parser(Reflection::state->NewParser())
+			{
+				parser->onFocusChanged = [this]()
+				{
+					const auto context = parser->GetFocus()->GetPath();
+					LogEvent(EventClass::Preset::remoteControlResponse,"Focus change to '"+context+"'");
+					Channels::context.SendTo(this->peer.lock(),context);
+				};
+				parser->onPrintLine = [this](const String&line)
+				{
+					//LogEvent(EventClass::Preset::remoteControlResponse,line);	//these may contain personal information, so do not log
+					Channels::response.SendTo(this->peer.lock(),line);
+				};
+				parser->onFocusChanged();
+			}
+
+		};
+		typedef std::shared_ptr<Attachment>	PAttachment;
+
 		void OnEvent(TCP::event_t event, TCP::Peer&origin)
 		{
-			LogEvent(EventSignificance::Debug,nullptr,"RemoteControl: "+origin.ToString()+": "+TCP::event2str(event));
+			ASSERT1__(origin.IsLocalhost(),origin.ToString());	//this should be implied through the way the server is created. but just in case something goes wrong, better crash than let someone remote control the system
+			LogEvent(EventClass::Preset::remoteControlCommand,nullptr,"Control connection: "+origin.ToString()+": "+TCP::event2str(event));
 			switch (event)
 			{
 				case TCP::Event::ConnectionEstablished:
-					Channels::context.SendTo(origin,Reflection::state.GetFocus()->GetPath());
-					//ASSERT__(Channels::hello.SendTo(client,Protocol::ProtocolVersion));
+				{
+					origin.attachment.reset(new Attachment(server.GetSharedPointerOfClient(&origin)));
+				}
 				break;
 
 			}
@@ -92,48 +122,45 @@ namespace RemoteControl
 		namespace ExecutionContext
 		{
 			TCP::Peer*currentPeer;
-
-
-			void PrintLn(const String&line)
-			{
-				LogEvent(EventClass::Preset::remoteControlResponse,line);
-				Channels::response.SendTo(*currentPeer,line);
-			}
-			void	OnFocusChange()
-			{
-				String context = Reflection::state.GetFocus()->GetPath();
-				LogEvent(EventClass::Preset::remoteControlResponse,"Focus change to '"+context+"'");
-				Channels::context.SendTo(*currentPeer,context);
-			}
 		}
+
+
+
 
 
 		void	Handler::OnCommand(Package::NetString<1024>&cmd, TCP::Peer&peer)
 		{
-			LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+">"+cmd);
-			CLI::println = ExecutionContext::PrintLn;
-			CLI::onFocusChange = ExecutionContext::OnFocusChange;
 			ExecutionContext::currentPeer = &peer;
+			PAttachment attach = To<Attachment>::Cast(peer.attachment);
+			auto parser = attach->parser;
+
+			const String ctx = parser->GetContext();
+			//LogEvent(EventClass::Preset::remoteControlCommand, parser->GetContext()+">"+cmd);
+			Channels::response.SendTo(peer,parser->GetContext()+">"+cmd);
 
 			index_t equalAt = cmd.Find('=');
 			if (equalAt != InvalidIndex)
 			{
 				cmd = "set "+cmd.subString(0,equalAt) + ' '+cmd.subString(equalAt+1);
 			}
-			if (!Reflection::state.Interpret(cmd))
+			if (!parser->Interpret(cmd))
 			{
-				LogEvent(EventClass::Preset::remoteControlError,Reflection::state.GetError());
-				Channels::error.SendTo(peer,Reflection::state.GetError());
+				LogEvent(EventClass::Preset::remoteControlError,ctx + ">"+cmd+" => "+ parser->GetError());
+				Channels::error.SendTo(peer,parser->GetError());
 			}
 
 			peer.SendSignal(Channels::ID::ExecutionDone);
+			ExecutionContext::currentPeer = nullptr;
 		}
 
 		void	Handler::OnComplete(Package::NetString<1024>&cmd, TCP::Peer&peer)
 		{
+			PAttachment attach = To<Attachment>::Cast(peer.attachment);
+			auto parser = attach->parser;
+
 			//LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+"complete:'"+cmd+"'");
 			Ctr::StringList alternatives;
-			String result = Reflection::state.ExtendedComplete(cmd,alternatives);
+			String result = parser->ExtendedComplete(cmd.ToRef(),alternatives);
 			if (alternatives > 1)
 			{
 				for (index_t i = 0; i < alternatives.Count() && i < 5; i++)
@@ -178,7 +205,10 @@ namespace RemoteControl
 
 	void	RelayEvent(const String&message)
 	{
-		Detail::Channels::response.SendTo(Detail::server,message);
+		if (Detail::ExecutionContext::currentPeer)
+			Detail::Channels::response.SendTo(*Detail::ExecutionContext::currentPeer,message);
+		else
+			Detail::Channels::response.SendTo(Detail::server,message);
 
 	}
 

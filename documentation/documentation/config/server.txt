@@ -3,32 +3,23 @@
 
 
 
-The server can be configured in three ways.
+The server can be configured in multiple ways.
 
-#Edit ''[[config/game folder|user]]\server\config\server.ini''. This file must be configured before starting the local server. Once started, the file's contents have no impact on any running server instance.
+#Edit ''[[config/game folder]]\server\config\server.ini''. This file must be configured before starting any local server. Once started, the file's contents have no impact on any running server instance. This file does not exist until the server (or other Hexaverse applications) have run for the first time.
 #Use the provided [[config/control console]] to manipulate a running server.
-#Start a server in [[config/interactive configuration mode]]. Any server started directly from the client GUI will be started that way. Alternatively you may provide the -c parameter to the server executable at startup.
+#Start a server via the client [[config/interactive configuration mode|interactive visual configurator]].
+# Use the [[config/server manager]].
 
 == Planet Types ==
 
 The server configuration loads planets as predefined templates. While their actual layout is mostly defined by fractal noise, the underlying rules are defined in separate configuration files located in ''[install]\server\config\myPlanets\[planet name].ini'' and
 ''[[config/game folder|user]]\server\config\myPlanets\[planet name].ini''.
-Configuration files located in the [[config/game folder|user folder]] directory override those found in the installation folder if they share the same name.
+Configuration files located in the [[config/game folder|user folder]] directory are prefixed with a * character.
 
-Planet configuration files may be edited or created anew. Check out ''[[config/game folder|user]]\server\config\myPlanets\Template.ini'' for a documented example of a new planet.
-Once defined, use the server.ini configuration file, [[config/control console]], or [[config/interactive configuration mode]] to load it by name.
+New planet types can be created by writing new .ini files, copying and modifying existing files from the install directory, or interactively via the [[config/interactive configuration mode|interactive visual configurator]].
+Once defined, use the server.ini configuration file, [[config/control console]], [[config/interactive configuration mode]], or [[config/server manager]] to load it by name.
 
 The currently available planets may be listed using the [[config/control console]] command ''/World/showPlanetTypes''.
-All predefined planet names are:
-*Desert
-*FloatingIslands
-*FloatingLands
-*HollowCore
-*IceDesert
-*Lava
-*LushGreen
-*Moon
-*Ocean
 
 == Research Script ==
 

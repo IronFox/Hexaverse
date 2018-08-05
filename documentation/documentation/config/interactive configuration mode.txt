@@ -1,6 +1,6 @@
-= Interactive Configuration Mode =
+= Interactive Visual Configuration =
 
-The Interactive Configuration Mode is a client runtime mode that allows interactively [[config/server|configuring the server]] before starting it.
+The configurator is run by the client, and allows interactively [[config/server|configuring the server]] before starting it.
 The client is presented with a custom user-interface which allows altering most server settings and planet configurations.
 
 {{ ICM.png?500|Interactive Configuration Mode on a lush green planet with Nexus bases and EMP zones}}

@@ -150,7 +150,14 @@ namespace ScriptCache
 		if (check != id)
 		{
 			LogEvent(EventClass::Preset::error,"Requested script "+Bin2Str::ConvertPOD(id)+" was cached to local drive but hash code does not match. Removing file");
-			FileSystem::UnlinkFile(path);
+			try
+			{
+				FileSystem::UnlinkFile(path);
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::error,"ScriptCache: "+String(ex.what()));
+			}
 			return rs;
 		}
 		LogEvent(EventClass::Preset::configuration,"Requested script "+Bin2Str::ConvertPOD(id)+" was cached to local drive. Restoring");
@@ -185,7 +192,14 @@ namespace ScriptCache
 				if (written != data.size())
 				{
 					LogEvent(EventClass::Preset::error,"Warning: Unable to write entire received resource "+Bin2Str::ConvertPOD(id)+" to file: "+FileSystem::PathToString(path)+". Erasing remains");
-					FileSystem::UnlinkFile(path);
+					try
+					{
+						FileSystem::UnlinkFile(path);
+					}
+					catch (const std::exception&ex)
+					{
+						LogEvent(EventClass::Preset::error,"ScriptCache: "+String(ex.what()));
+					}
 				}
 				else
 					LogEvent(EventClass::Preset::configuration,"Resource "+Bin2Str::ConvertPOD(id)+" cached to file: "+FileSystem::PathToString(path));
@@ -289,9 +303,13 @@ namespace ScriptCache
 					foreach (toDelete,f)
 					{
 						LogEvent(EventClass::Preset::common,"ScriptCache: Deleting "+String(f->GetLocation())+"...");
-						if (!f->Unlink())
+						try
 						{
-							LogEvent(EventClass::Preset::error,"ScriptCache: Warning: Unable to delete "+String(f->GetLocation())+"...");
+							f->Unlink();
+						}
+						catch (const std::exception&ex)
+						{
+							LogEvent(EventClass::Preset::error,"ScriptCache: "+String(ex.what()));
 						}
 					}
 				}

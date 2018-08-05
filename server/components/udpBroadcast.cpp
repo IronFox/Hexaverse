@@ -19,12 +19,24 @@ namespace UDPBroadCast
 	Timer::Time		lastAdapterQuery, lastBroadcast;
 
 	Protocol::THostBroadcastPacket	packet;
-
+	Protocol::THostToManagerPacket	managerPacket;
+	static sockaddr_in managerAddr;
+	static bool doBroadcast = false;
 
 
 	void UpdateOutAdapters(Ctr::BasicBuffer<sockaddr_in>&out)
 	{
 		out.Clear();
+
+
+
+		/*
+		note 1:
+			use HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid for unique machine id
+		note 2:
+			enumerate adapters and send one broadcast for each adapter&subnetmask | ~subnetmask
+		*/
+
 
 		IP_ADAPTER_ADDRESSES*addr = NULL;
 		ULONG size = 0;
@@ -91,7 +103,7 @@ namespace UDPBroadCast
 
 	}
 
-	void	Stop()
+	void	Destroy()
 	{
 		if (broadcastSocket != INVALID_SOCKET)
 		{
@@ -101,11 +113,14 @@ namespace UDPBroadCast
 	}
 
 
+
 	void		Create(UINT16 basePort, const TUniqueID&serverID)
 	{
-		GlobalEvents::applicationTerminate << Stop;
+		GlobalEvents::applicationTerminate << Destroy;
 		packet.hostID = serverID;
 		packet.serverBasePort = basePort;
+		managerPacket.hostID = serverID;
+		managerPacket.serverBasePort = basePort;
 		{
 			const char var[] = SERVER_NAME;
 			const size_t len = sizeof(var);
@@ -114,11 +129,7 @@ namespace UDPBroadCast
 			memcpy(packet.version,var,len);
 		}
 
-	}
 
-
-	bool		Start()
-	{
 		#ifdef _WIN32
 			//Start up Winsock…
 			WSADATA wsadata;
@@ -136,14 +147,6 @@ namespace UDPBroadCast
 		#endif
 
 
-		/*
-		note 1:
-			use HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid for unique machine id
-		note 2:
-			enumerate adapters and send one broadcast for each adapter&subnetmask | ~subnetmask
-		*/
-
-
 		broadcastSocket = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
 		ASSERT_NOT_EQUAL__(broadcastSocket,INVALID_SOCKET);
 		SOCKADDR_IN me;
@@ -156,9 +159,28 @@ namespace UDPBroadCast
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
-			LogEvent(EventClass::Preset::networkError,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
-			return false;
+			FATAL__("Unable to bind UDP broadcast socket.");	//this should never happen (random port)
+			return;
 		}
+		int so_broadcast = TRUE;
+		rc = setsockopt(broadcastSocket,SOL_SOCKET,SO_BROADCAST,(const char*)&so_broadcast,sizeof so_broadcast);
+		ASSERT_EQUAL__(rc,0);
+
+		memset(&managerAddr,0,sizeof(managerAddr));
+		managerAddr.sin_family=AF_INET;
+		managerAddr.sin_addr.s_addr= htonl( INADDR_LOOPBACK );
+		managerAddr.sin_port = htons(MANAGER_UNICAST_PORT);
+
+	}
+
+
+	bool		Start()
+	{
+	
+
+		UpdateOutAdapters(everyone);
+
+		doBroadcast = true;
 		{
 			struct sockaddr_in bound;
 			int addrlen = sizeof(bound);
@@ -170,47 +192,50 @@ namespace UDPBroadCast
 			else
 				LogEvent(EventClass::Preset::network,"UDP broadcast online, broadcasting from unknown port");
 		}
-		int so_broadcast = TRUE;
-		rc = setsockopt(broadcastSocket,SOL_SOCKET,SO_BROADCAST,(const char*)&so_broadcast,sizeof so_broadcast);
-		ASSERT_EQUAL__(rc,0);
 
-		UpdateOutAdapters(everyone);
+
 		lastBroadcast = lastAdapterQuery = timer.Now();
 
 		return true;
 	}
 
 
-
+	void		Stop()
+	{
+		doBroadcast = false;
+	}
 
 	bool		IsStarted()
 	{
-		return broadcastSocket != INVALID_SOCKET;
+		return doBroadcast;
 	}
 
 
 	void	Update()
 	{
+		if (timer.CheckIfOutdatedAndUpdate(lastBroadcast,1))
+		{
 
-		if (broadcastSocket == INVALID_SOCKET)
-			return;
-		if (timer.GetSecondsSince( lastAdapterQuery) > 5)
-		{
-			UpdateOutAdapters(everyone);
-			lastAdapterQuery = timer.Now();
-		}
-		if (timer.GetSecondsSince(lastBroadcast) > 1)
-		{
-			//strcpy(packet.gameName,"Terra Nova");
-			//packet.numClients = (UINT16)State::clients.Count();
-			//packet.numPlayers = (UINT16)State::activePlayersAndSpectators.Count();
-			//packet.roundNumber = (UINT32)State::roundNumber;
-			//packet.serverMode = (BYTE)State::mode;
-			foreach (everyone,someone)
+			managerPacket.flags = 0;
+			if (!Network::SessionIsStarted() || Network::SessionIsSuspended())
+				managerPacket.flags |= managerPacket.SessionClosed;
+			if (Network::RequiresHeartbeats())
+				managerPacket.flags |= managerPacket.RequireHeartbeats;
+			sendto(broadcastSocket,(const char*)&managerPacket,sizeof(managerPacket),0,(const sockaddr*)&managerAddr,(int)sizeof(sockaddr_in));
+
+			if (doBroadcast)
 			{
-				sendto(broadcastSocket,(const char*)&packet,sizeof(packet),0,(const sockaddr*)someone,(int)sizeof(sockaddr_in));
+				if (timer.CheckIfOutdatedAndUpdate( lastAdapterQuery,5))
+				{
+					UpdateOutAdapters(everyone);
+					lastAdapterQuery = timer.Now();
+				}
+
+				foreach (everyone,someone)
+				{
+					sendto(broadcastSocket,(const char*)&packet,sizeof(packet),0,(const sockaddr*)someone,(int)sizeof(sockaddr_in));
+				}
 			}
-			lastBroadcast = timer.Now();
 		}
 	}
 

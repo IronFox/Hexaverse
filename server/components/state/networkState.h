@@ -18,7 +18,10 @@ namespace Network
 
 	namespace Config
 	{
-		extern UINT16	sessionPort;
+		extern UINT16	sessionBasePort;
+		String			GetServerPassword();
+		bool			SetServerPassword(const String&);
+		bool			HasServerPassword();
 	}
 
 
@@ -42,14 +45,16 @@ namespace Network
 		//Timer::Time					lastPing;
 		Objects::PFaction	faction;
 		bool				wantNewRound=false;
-
-
+		CryptographicID		passwordChallenge;
 		/**
 		Indicates that this client sees everything, but has no faction to control
 		*/
 		bool				isSpectator=false;
 
-		
+		/**/				Client()
+		{
+			passwordChallenge.Generate();
+		}
 
 		String				ConvertToString() const;
 		bool				CanSee(const Objects::PWorldEntity&e, float t)	const;
@@ -70,7 +75,6 @@ namespace Network
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
 	extern HashTable<Objects::PFaction,PClient,Objects::OwnerHash>		playerMap;
-	extern HashTable<CryptographicID,Objects::PFaction>		tokenMap;
 
 
 
@@ -81,6 +85,7 @@ namespace Network
 	void		HandleConnectionLoss(PClient);
 
 	bool		SessionIsStarted();
+	bool		SessionIsSuspended();
 	/**
 	Disconnects all clients, flushes the scene, and disables the TCP server systems.
 	Clients will not be able to connect unless RestartSession is called.
@@ -135,6 +140,7 @@ namespace Network
 	Call only if the heartbeat system should be active. There is currently no method to again deactive it
 	*/
 	void		StartHeartbeat(UINT16 basePort);
+	bool		RequiresHeartbeats();
 
 	/**
 	Resolves network events

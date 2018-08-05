@@ -29,6 +29,21 @@ namespace Game
 
 	INT32				tutorialAt=1;
 
+
+
+	void StartAI()
+	{
+		AIProcess::Begin(Objects::Faction::nexus->accessToken, ::Network::Config::sessionBasePort, ::Network::Config::GetServerPassword);
+	}
+
+	void StartAIIfEnabled()
+	{
+		if (Config::Nexus::enableAI)
+		{
+			StartAI();
+		}
+	}
+
 	#pragma region vote
 
 	/*static*/ HashTable<TUniqueID,PVote>	Vote::all;
@@ -561,8 +576,7 @@ namespace Game
 
 		void		HandleSessionRestart()
 		{
-			if (Config::Nexus::enableAI)
-				AIProcess::Begin(Objects::Faction::nexus->accessToken);
+			Game::StartAIIfEnabled();
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
@@ -586,6 +600,8 @@ namespace Game
 				rs |= Protocol::GameFlag::SimulateLiquids;
 			if (Config::Nexus::allPorts.havePlaced)
 				rs |= Protocol::GameFlag::NexusPortsOnAllPoles;
+			if (::Network::Config::HasServerPassword())
+				rs |= Protocol::GameFlag::RequireServerPassword;
 			if (Config::Nexus::bases.havePlaced)
 				rs |= Protocol::GameFlag::NexusHasBases;
 
@@ -1531,7 +1547,6 @@ namespace Game
 								#if 0
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
-								::Network::tokenMap.Unset(faction->accessToken);
 								::Network::playerMap.Unset(faction);
 								faction->online = false;
 								if (client)

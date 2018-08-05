@@ -22,7 +22,7 @@ namespace Reflection
 	It may be accessed to query or modify the folder state, as well as execute commands.
 	It is currently utilized only by remote control access
 	*/
-	extern CLI::Interpreter	state;
+	extern CLI::PState	state;
 
 	namespace Variable
 	{
@@ -49,8 +49,7 @@ namespace Reflection
 			const CLI::WFolder	parent;
 
 			
-			/**/				Base(const String&name, const String&type, Persistence persistence, count_t numElements,UINT32 protection):
-									Super(name,type,numElements,protection | (persistence == Persistence::GameInvariant || persistence == Persistence::GameInvariantNonConfigurable ? CLI::ReadOnly : 0)),persistence(persistence),parent(state.GetFocus())	{}
+			/**/				Base(const String&name, const String&type, Persistence persistence, count_t numElements,UINT32 protection);
 
 
 			void				OnChanged();

@@ -19,7 +19,9 @@
 #pragma comment(lib, "IPHLPAPI.lib")
 
 
-#define BROADCAST_PORT				10246	//must be constant
+#define MANAGER_UNICAST_PORT		10245	//must be constant, not reused by any heartbeat port
+#define BROADCAST_PORT				10246	//must be constant, not reused by any heartbeat port
+
 #define DEFAULT_SERVER_BASE_PORT	10247
 
 namespace PortOffset
@@ -36,9 +38,6 @@ namespace PortOffset
 		Heartbeat = Info	//heartbeat is UDP. Can coexist with others
 	};
 }
-
-
-
 
 #ifdef ONE_COMPOUND_PER_FACTION
 	#define NAME_APPEND0	"o"
@@ -587,14 +586,10 @@ namespace Protocol
 
 	typedef Package::NetString<32>	ClientName,Hello;
 
-	//NETSTRUCT2(ClientState
-	//	, Package::NetString<64>, playerName
-	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
-	//)
-
-	NETSTRUCT3(HelloResponse
+	NETSTRUCT4(HelloResponse
 		, NET(bool), success
 		, UINT32, gameFlags
+		, CryptographicID, passwordChallenge	//to be hashed into the password, and faction access token
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -1316,12 +1311,20 @@ namespace Protocol
 	//typedef NET(SHA256::HashContainer) ResourceID;
 
 
+	/**
+	Configuration settings that should be forwarded to the client
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	NETSTRUCT3(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
 		, NET(BYTE), worldDiscovery
 	)	
 
+	/**
+	Information about the running game
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	NETSTRUCT6(GameInfo
 		, NET(UINT16), numFactionsOnline
 		, NET(UINT16), numFactionsCreated
@@ -1334,14 +1337,15 @@ namespace Protocol
 
 	NETSTRUCT4(ClientFactionResponse
 		, NET(UINT32), startFactionTypes
-		, NET(CryptographicID), factionToken
+		, NET(CryptographicID), newFactionAccessToken
 		, NET(Grid::TSharedPlanetConfig), planetConfig
 		, GameInfo, info
 	)
 
-	NETSTRUCT2(ClientFactionRequest
+	NETSTRUCT3(ClientFactionRequest
 		, NET(UINT32), startFactionTypes
-		, NET(CryptographicID), factionToken
+		, SHA256::HashContainer, hashedServerPassword
+		, SHA256::HashContainer, hashedFactionToken
 	)
 
 	NETSTRUCT4(GameProgress
@@ -1678,7 +1682,10 @@ namespace Protocol
 
 
 
-
+	/**
+	Primary UDP broadcast package to notify potential clients of the server's existence.
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs and [ServerManager:]UDP Receiver.cs
+	*/
 	struct THostBroadcastPacket
 	{
 		typedef THostBroadcastPacket Self;
@@ -1708,6 +1715,27 @@ namespace Protocol
 	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64 + 2, "Struct packing not appropriate for host broadcast packet");//make sure there are no gaps
 
 
+
+	struct THostToManagerPacket
+	{
+		enum flag_t
+		{
+			SessionClosed = 0x1,
+			RequireHeartbeats = 0x2,
+		};
+
+		TUniqueID	hostID;
+		UINT16		flags;
+		UINT16		serverBasePort;
+	};
+	static_assert(sizeof(THostToManagerPacket) == sizeof(TUniqueID) + 2 + 2, "Struct packing not appropriate for host manager packet");//make sure there are no gaps
+
+
+	/**
+	Flags that may or not be set for a game.
+	Each signifies a particular switch being on, or in absence off.
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	namespace GameFlag
 	{
 		enum flag_t
@@ -1722,6 +1750,7 @@ namespace Protocol
 			GameHasEnded = 0x80,
 			NexusHasBases = 0x100,
 			NexusPortsOnAllPoles = 0x200,
+			RequireServerPassword = 0x400,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,
@@ -1736,6 +1765,10 @@ namespace Protocol
 
 
 
+	/**
+	Info package regularly sent by the server to connected info listeners (TCP)
+	Keep in sync with [ServerManager:]ServerInfoReceiver.cs
+	*/
 	NETSTRUCT2(ServerInfo
 		, NET(THostBroadcastPacket), hostInfo
 		, GameInfo, gameInfo

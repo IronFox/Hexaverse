@@ -54,12 +54,11 @@ namespace Bin2Str
 	{
 		return Convert(v.pointer(),v.size());
 	}
-	inline void Convert(void*outData, size_t outDataSize, const char*source, size_t sourceLen)
+	
+	inline bool TryToConvert(void*outData, size_t outDataSize, const StringRef&source)
 	{
-		if (sourceLen != outDataSize * 2)
-		{
-			throw Except::Program::ParameterFault("Unable to decode byte-string '" + String(source,sourceLen) + "': Invalid length (" + String(sourceLen) + "). Expected "+String(outDataSize*2)+" characters");
-		}
+		if (source.GetLength() != outDataSize * 2)
+			return false;
 		BYTE*outBytes = (BYTE*)outData;
 		for (index_t i = 0; i < outDataSize; i++)
 		{
@@ -67,11 +66,18 @@ namespace Bin2Str
 			char a1 = source[i * 2 + 1];
 			outBytes[i] = _HexToByte(a0, a1);
 		}
+		return true;
+	}
+
+	inline void Convert(void*outData, size_t outDataSize, const StringRef&source)
+	{
+		if (!TryToConvert(outData,outDataSize, source))
+			throw Except::Program::ParameterFault(String("Unable to decode byte-string '" + source + "': Invalid length (" + String(source.GetLength()) + "). Expected "+String(outDataSize*2)+" characters"));
 	}
 
 	inline void Convert(void*outData, size_t outDataSize, const String&source)
 	{
-		Convert(outData,outDataSize,source.c_str(),source.GetLength());
+		Convert(outData,outDataSize,source.ToRef());
 	}
 
 }
@@ -195,27 +201,18 @@ struct TUniqueID
 		return rs;
 	}
 
-	bool		Decode(const char*str, size_t len)
+	bool		Decode(const StringRef&str)
 	{
-		if (len != NumBytes*2)
-			return false;
-		try
-		{
-			Bin2Str::Convert(bytes,NumBytes,str,len);
-			return true;
-		}
-		catch (...)
-		{}
-		return false;
+		return Bin2Str::TryToConvert(bytes,NumBytes,str);
 	}
 
 	bool		Decode(const char*str)
 	{
-		return Decode(str,strlen(str));
+		return Decode(StringRef(str));
 	}
 	bool		Decode(const String&str)
 	{
-		return Decode(str.c_str(),str.GetLength());
+		return Decode(str.ToRef());
 	}
 
 };
@@ -225,17 +222,19 @@ static_assert(sizeof(TUniqueID) == 16, "Struct packing not appropriate for uniqu
 class CryptographicID
 {
 	typedef CryptographicID Self;
-	BYTE	bytes[32];
-
 public:
+	static const count_t NumBytes = 32;
+
 	/**/	CryptographicID()
 	{
 		memset(bytes,0,sizeof(bytes));
 	}
 
+	const BYTE*	GetBytes() const {return bytes;}
+
 	bool	IsSet() const
 	{
-		for (index_t i = 0; i < ARRAYSIZE(bytes); i++)
+		for (index_t i = 0; i < NumBytes; i++)
 			if (bytes[i])
 				return true;
 		return false;
@@ -252,19 +251,19 @@ public:
 
 	void	Write(FILE*f) const
 	{
-		size_t written = fwrite(bytes,sizeof(bytes),1,f);
+		size_t written = fwrite(bytes,NumBytes,1,f);
 		ASSERT_EQUAL__(written,1);
 	}
 
 	void	Read(FILE*f)
 	{
-		size_t read = fread(bytes,sizeof(bytes),1,f);
+		size_t read = fread(bytes,NumBytes,1,f);
 		ASSERT_EQUAL__(read,1);
 	}
 
 	friend hash_t	Hash(const CryptographicID&id)
 	{
-		return StdMemHash(id.bytes,sizeof(id.bytes));
+		return StdMemHash(id.bytes,NumBytes);
 	}
 
 	String		ToString(count_t numBytes=4) const
@@ -274,46 +273,49 @@ public:
 
 	String		ToFullString() const
 	{
-		return Bin2Str::Convert(bytes, sizeof(bytes));
+		return Bin2Str::Convert(bytes, NumBytes);
 	}
 
 	void		Export(Array<BYTE>&outArray) const
 	{
-		outArray.ResizeAndCopy(bytes,ARRAYSIZE(bytes));
+		outArray.ResizeAndCopy(bytes,NumBytes);
 	}
 
 	void		Decode(const String&source)
 	{
-		Bin2Str::Convert(bytes, sizeof(bytes), source);
+		Bin2Str::Convert(bytes, NumBytes, source);
 	}
 
 	friend void Serialize(IWriteStream&s, const Self&v)
 	{
-		s.Write(v.bytes,sizeof(v.bytes));
+		s.Write(v.bytes,NumBytes);
 	}
 	friend void Deserialize(IReadStream&s, Self&v)
 	{
-		s.Read(v.bytes,sizeof(v.bytes));
+		s.Read(v.bytes,NumBytes);
 	}
 
 
 	bool		operator==(const CryptographicID&other)	const
 	{
-		return !memcmp(bytes,other.bytes,sizeof(bytes));
+		return !memcmp(bytes,other.bytes,NumBytes);
 	}
 	bool		operator!=(const CryptographicID&other)	const
 	{
-		return 0 != memcmp(bytes,other.bytes,sizeof(bytes));
+		return 0 != memcmp(bytes,other.bytes,NumBytes);
 	}
 
 	bool		operator==(const ArrayRef<BYTE>&other)	const
 	{
-		return other.GetLength() == sizeof(bytes) && !memcmp(bytes,other.pointer(),sizeof(bytes));
+		return other.GetLength() == NumBytes && !memcmp(bytes,other.pointer(),NumBytes);
 	}
 	bool		operator!=(const ArrayRef<BYTE>&other)	const
 	{
 		return !operator==(other);
 	}
+
+private:
+	BYTE	bytes[NumBytes];
 };
 
 

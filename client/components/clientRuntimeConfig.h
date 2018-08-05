@@ -5,6 +5,7 @@
 
 #include <uniqueID.h>
 #include <runtimeConfig.h>
+#include <general/timer.h>
 
 namespace Network
 {
@@ -16,7 +17,9 @@ namespace RuntimeConfig
 {
 	extern bool aiMode;
 	extern CryptographicID aiAccessToken;
+	extern String serverPassword;
 	extern bool udpListen;
+	extern Timer::Time				programStart;
 
 	extern Network::ServerAddress	serverAddress;
 
