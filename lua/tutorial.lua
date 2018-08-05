@@ -129,7 +129,7 @@ function HaveLab()
 end
 
 	
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.myFaction.resourceBalance.minerals .." per round, "..Game.myFaction.resourceStorage.minerals.." in storage. So let's press on.") end, HaveLab);
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%resources are available. The bottom left resource table tells us that we have sufficient %Minerals%minerals available: "..Game.myFaction.currentResources.supply.minerals .." per round, "..Game.myFaction.currentResources.storage.minerals.." in storage. So let's press on.") end, HaveLab);
 
 CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please request new rounds by using the 'End Round' command in the bottom left section of the screen, or by pressing the Enter/Return key."); end,
 	HaveLab
