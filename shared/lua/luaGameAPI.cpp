@@ -478,6 +478,7 @@ namespace Lua
 			myResearchQueue.ClearTable();
 			gameTable.UnsetField("selectedUnit");
 			gameTable.UnsetField("myFaction");
+			myFactionIsSet= false;
 		#endif
 
 		entityMappedToTable.Clear();
@@ -810,7 +811,10 @@ namespace Lua
 				factionIDMap.SetField(f->id.ToFullString(),found->table);
 				#ifdef CLIENT
 					if (f->isOwnedByMe)
-						gameTable.SetField("myFaction",t);
+					{
+						gameTable.SetField("myFaction",found->table);
+						myFactionIsSet= true;
+					}
 				#endif
 			}
 
@@ -832,7 +836,10 @@ namespace Lua
 
 			#ifdef CLIENT
 				if (f->isOwnedByMe)
+				{
 					gameTable.SetField("myFaction",t);
+					myFactionIsSet= true;
+				}
 			#endif
 		}
 
