@@ -289,7 +289,7 @@ namespace Tutorial
 			scriptAPI.AddFactionEntities(Objects::Faction::mine);
 			scriptAPI.SetSelectedUnit(Objects::selectedEntity,false);
 			scriptAPI.UpdateResearch();
-			ASSERT__(scriptAPI.myFactionIsSet);
+			//ASSERT__(scriptAPI.myFactionIsSet);	can't verify this: if disconnecting, order cannot be asserted, might trigger this while flushing objects, before closing down tutorial mode
 		}
 
 
