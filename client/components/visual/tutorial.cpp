@@ -289,6 +289,7 @@ namespace Tutorial
 			scriptAPI.AddFactionEntities(Objects::Faction::mine);
 			scriptAPI.SetSelectedUnit(Objects::selectedEntity,false);
 			scriptAPI.UpdateResearch();
+			ASSERT__(scriptAPI.myFactionIsSet);
 		}
 
 
