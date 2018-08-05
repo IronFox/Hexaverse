@@ -1860,6 +1860,9 @@ namespace Network
 				Channels::hello.SendTo(client,hello);	//elevate client state
 
 				//lastPong = timer.Now();
+				if (RuntimeConfig::tutorialMode)
+					Tutorial::SignalConnectedToTutorialServer();
+
 
 				GlobalEvents::serverConnectionEstablished();
 			}

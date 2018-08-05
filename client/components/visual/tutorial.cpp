@@ -590,6 +590,13 @@ namespace Tutorial
 	}
 
 
+	void	SignalConnectedToTutorialServer()
+	{
+		Interactive::expectStart = true;
+	}
+
+
+
 	void	StartTutorialServer()
 	{
 		using namespace Detail;

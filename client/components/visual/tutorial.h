@@ -29,6 +29,7 @@ namespace Tutorial
 	void	SetProgress(int);
 
 	void	StartTutorialServer();
+	void	SignalConnectedToTutorialServer();
 }
 
 #endif
