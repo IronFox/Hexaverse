@@ -643,7 +643,7 @@ namespace Lua
 				terrainContentTable = terrainTable.SetSubTable("Content");
 
 			researchTable = gameTable.SetSubTable("Research");
-				researchTopicList = researchTable.SetSubTable("Topics");
+				researchTopicList = researchTable.SetSubTable("topics");
 		
 			entityIDMap = gameTable.SetSubTable("units");
 

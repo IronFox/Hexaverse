@@ -11,6 +11,7 @@ v0.9.2	[Aug 5 2018]
 	* Fixed server always starting AI client with default game port.
 	* Fixed interactive tutorial.
 	* Fixed text wrapping.
+	* Fixed typo Research.Topics -> Research.topics as declared in documentation.
 
 v0.9.1	[Jul 14 2018]
 	> Improved some automated type descriptions.
