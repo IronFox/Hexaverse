@@ -806,7 +806,13 @@ namespace Lua
 		if (found)
 		{
 			if (factionMappedToTable.SetNew(f->id))
+			{
 				factionIDMap.SetField(f->id.ToFullString(),found->table);
+				#ifdef CLIENT
+					if (f->isOwnedByMe)
+						gameTable.SetField("myFaction",t);
+				#endif
+			}
 
 			if (!updateIfFound)
 				return found;
@@ -823,12 +829,13 @@ namespace Lua
 
 			factionMappedToTable.Set(f->id);
 			factionIDMap.SetField(f->id.ToFullString(),t);
+
+			#ifdef CLIENT
+				if (f->isOwnedByMe)
+					gameTable.SetField("myFaction",t);
+			#endif
 		}
 
-		#ifdef CLIENT
-			if (f->isOwnedByMe)
-				gameTable.SetField("myFaction",t);
-		#endif
 
 		t.SetField("name",f->name);
 		t.SetField("id",f->id.ToFullString());
