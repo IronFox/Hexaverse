@@ -22,3 +22,4 @@ Above surface, this forces [[units/turrets/radar]] units to be positioned in exp
 Beneath the planetary surface, on the other hand, this circumstance renders your units practically blind.
 The only unit types capable of scanning for subsurface activity are those equiped with a [[units/turret/surveyor]] turret.
 If you expect your enemies might attempt a subsurface attack, then early placement of [[units/structures/surveyor tower|surveyor towers]] can avert catastrophy.
+See [[concepts/best practices]] for details.
