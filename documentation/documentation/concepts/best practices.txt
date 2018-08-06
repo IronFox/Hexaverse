@@ -13,15 +13,18 @@ Lots of games are decided during this stage.
 
 Some tips and tricks are as follows.
 Note that it's impossible to do all of these things at the same time.
-You must prioritize them based on the scenario:
-* Start building a [[units/structures/vehicle plant]] early, ideally in round 0. Once done, build mainly [[units/turrets/terraformer]] and [[[[units/turrets/cannon]] hover vehicles in an alternating pattern. You will need both.
-* Your initial [[units/structures/generator]] can supply only one more active building (luckily the vehicle plant doesn't need %energy%energy, but additional mines will). Start building one or two additional generators, ideally surrounding a single clear cell of same height, to eventually place a [[units/structures/reactor core]] there.
-* Build **one** [[units/structures/laboratory]] such that you can later place at least two more next to it to form a triangle. Due to the proximity bonus of labs, a triangle is the smallest effective constellation, but building more than one in the beginning is often a waste of resources.
-* Research [[units/turrets/missle launcher|Launchers]], [[units/structures/reactor core|Reactor Cores]], [[units/vbases/heavy base|Heavy]] or [[units/vbases/catamaran base|Cat Bases]](depending on planet type), and finally the [[units/turrets/artillery|Artillery Turret]]. Different scenarios may necessitate a different order.
-* Build defense towers early, possibly to the point where you have one of your two initial [[units/turrets/terraformer|terraformers]] dedicated to it. Observe the range of your turrets. Make sure defense towers can [[concepts/scanning range|see]] where they can [[concepts/attack range|fire]].
-* Manually navigate your [[units/turrets/surveyor]] if you are in proximity to assumed dangerous areas. The automatic routing can only react to things you can actually see. A red goal marker is not regarded by surveyor routing.
+You must prioritize them based on the situation.
+=== Crucial Tactics ===
+* Start building a [[units/structures/vehicle plant]] early, ideally in round 0.
+** Once done, build mainly [[units/turrets/terraformer]] and [[[[units/turrets/cannon]] hover vehicles in an alternating pattern. You will need both.
+* Your initial [[units/structures/generator]] can supply only one more active building (luckily the vehicle plant doesn't need %energy%energy, but additional [[units/structures/mine|mines]] will). Start building one or two additional generators, ideally surrounding a single clear cell of same height, to eventually place a [[units/structures/reactor core]] there.
+* Build **one** [[units/structures/laboratory]] such that you can later place at least two more next to it to form a triangle. Due to the proximity bonus of labs, a triangle is the smallest benefitial constellation, but building more than one at this stage is usually a dangerous waste of resources.
+** Research [[units/turrets/missle launcher|Launchers]], [[units/structures/reactor core|Reactor Cores]], [[units/vbases/heavy base|Heavy]] or [[units/vbases/catamaran base|Cat Bases]](depending on planet type), and finally the [[units/turrets/artillery|Artillery Turret]]. Different scenarios may necessitate a different order.
+* Build defense towers early, possibly to the point where you have one [[units/turrets/terraformer]] dedicated to it from the start. Observe the range of your turrets. Make sure defense towers can [[concepts/scanning range|see]] where they can [[concepts/attack range|hit]].
+* Build [[units/structures/mine|mines]] on top of detected [[concepts/resources]], however with regard to the strategic environment, and where else you might need those [[units/turrets/terraformer|terraformers]] right now. Mines cannot sustain much enemy fire, and need %energy%energy to operate. In the early stages, a low-yield mine is not always worth the time it takes to build it. Also, newly discovered resources are usually outside your existing defense perimeter. Build towers or deploy tanks first, then construct the mines.
 
 === Optional Tactics  ===
+* Manually navigate your [[units/turrets/surveyor]] if you are in proximity of assumed dangerous areas. The automatic routing can only react to things you can actually see. A red goal marker is not regarded by surveyor routing.
 * Build a [[units/structures/fuel container]] to bridge shortage of fuel, and (temporarily) run more [[units/structures/generator|generators]].
 * Claim nearby mountains, and place tanks on top, even (or especially) if it requires terraforming to get up there. These can be very easy to defend, particularly once you have [[units/turrets/artillery]] tanks.
 * Dwarven Fortress: Dig down early (4 layers or more), and build your entire base beneath the ground. Hard to launch an offense from, harder to find and attack. In highly competitive scenarios this tactic can be used to simply disappear early on, having others fight it out above ground, while you can undermine their [[units/structures/mine|mines]], and eventually detonate their bases from below. Note that this tactic is slow, and not useful if you have just one enemy that anticipates such. It does pretty much lock out the AI, however.
@@ -31,8 +34,9 @@ You must prioritize them based on the scenario:
 * It may not appear that way, but the [[units/turrets/radar]] vehicle is the single most dangerous unit type the AI has. Everything it discovers is memorized. A hoverrader suddenly standing in the midst of your base is a harbinger of doom. Keep them at range, actively hunt them if necessary.
 
 ===  Don'ts ===
-* Stay clear of red goal markers if the AI is enabled. Give them a wide berth. See the distance between the red and blue markers? **That wide**.
+* Stay clear of red goal markers if the AI is enabled. At least until you have a working defense perimeter. Give them a wide berth. See the distance between the red and blue markers? **That wide**.
 * Do not send your [[units/turrets/terraformer|terraformers]] into distant, unexplored terrain. This is a recipe for terraformer loss, and possibly disaster.
+* While this may appear promising or even crucial, rushing way out of your defense perimeter into [[concepts/scanning range|unobserved territory]] to claim contested [[units/structures/nexus ports]] usually ends badly.
 
 == Mid to End Game ==
 
@@ -51,3 +55,4 @@ Usually you have a good idea of where your enemies are, your defense/offense is 
 * Have a standing [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/artillery]]+[[units/turrets/cannon]] (+[[units/turrets/radar]]) army, even if you don't appear to need it right now. [[units/turrets/cannon|Cannon tanks]] are the most effective hunters, and tend to not live long, so build most of those. Store them in [[units/structures/vehicle store|vehicle stores]].
 * Multiple [[units/structures/vehicle plant|vehicle plants]] are a good thing to have right now.
 * Construct large areas filled with [[units/structures/laboratory|laboratories]]. Once done with unlock-research, configure the four most important endless topics (usually [[units/turrets/radar]]/[[units/turrets/artillery]]/[[units/turrets/missile launcher]] range, or [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] health).
+* Claim as many mountains as you can. If you drill caves into them, those places are well defended and hard to observe from the outside.
