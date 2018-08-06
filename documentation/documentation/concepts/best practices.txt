@@ -32,6 +32,7 @@ You must prioritize them based on the scenario:
 ===  Don'ts ===
 * Stay clear of red goal markers if the AI is enabled. Give them a wide berth. See the distance between the red and blue markers? **That wide**.
 * Do not send your [[units/turrets/terraformer|terraformers]] into distant, unexplored terrain. This is a recipe for terraformer loss, and possibly disaster.
+* Do not try to build planes early on. While this seems to give you an immense edge, planes are also too expensive to build early on, and will cost precious research/construction time.
 
 == Mid to End Game ==
 
@@ -41,11 +42,16 @@ Usually you have a good idea of where your enemies are, your defense/offense is 
 === Tips ===
 
 * Put units to [[concepts/idle|sleep]] that you don't need right now, so you can focus on units that really need your attention (use the space key a lot).
+* Make sure your air defense is solid (place enough [[units/turrets/antiaircraft|anti-aircraft]] vehicles/towers).
+* Build a [[units/structures/plane factory]] (or more).
+** Try to gain air-superiority by placing [[units/planes/raptor|raptors]].
+** Extensive knowledge of enemy locations can be gathered by placing many [[units/planes/sensor drone|sensor drones]].
 * Use [[units/turrets/surveyor]] vehicles and towers to make sure nobody undermines your base.
 * If you intend to do so with your enemies, now is a good time to start digging, and researching the [[units/turrets/bomb]] turret. Dig deep (5 levels+), so regular hostile units can't see you. Use [[units/turrets/surveyor|surveyors]] to scan into the ground. Beware of enemy surveyors.
-* Start accumulating %uranium%uranium in [[units/structures/uranium storage|uranium storages]]. They are prone to explode if attacked when full, so either place them away from your core structures, or such that they are near impossible to attack.
+* Start accumulating %uranium%uranium and %fuel%fuel in [[units/structures/uranium storage|uranium storages]] and [[units/structures/fuel container|fuel containers]]. Both are prone to explode if attacked when full, so either place them away from your core structures, or such that they are near impossible to attack.
 * If you have sufficient %uranium%uranium, [[units/turrets/emp|EMP launchers]] can be very effective against enemy radars and launchers.
-* Build roads and bridges to connect your empire. [[units/structures/vehicle store|Vehicle stores]] may get blown to bits.
+* 300 units of %uranium%uranium (depending on configuration) enable nuclear air-to-ground attacks. If you fight above ground (and even if you don't), try to carve out a path to deploy [[units/planes/bomber|bombers]] above hostile terrain.
+* Build roads and bridges to connect your empire. [[units/structures/vehicle store|Vehicle stores]] may get blown to bits. [[units/planes/cargo plane|Cargo planes]] can also be used to quickly transport mobile units.
 * Build at least some [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/terraformer|terraformers]] as they build/dig twice as fast.
 * Have a standing [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/artillery]]+[[units/turrets/cannon]] (+[[units/turrets/radar]]) army, even if you don't appear to need it right now. [[units/turrets/cannon|Cannon tanks]] are the most effective hunters, and tend to not live long, so build most of those. Store them in [[units/structures/vehicle store|vehicle stores]].
 * Multiple [[units/structures/vehicle plant|vehicle plants]] are a good thing to have right now.
