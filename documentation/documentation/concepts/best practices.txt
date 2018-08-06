@@ -3,41 +3,44 @@
 Effective strategies will be listed here, as they become common place.
 Different terrain and unit constellations will require adjustments, particularly if there is no core, or the planet is covered by lava, but some tactics have generally been shown to be more effective than others.
 
+Even so, these are not fixed rules (even if they sound like it).
+If the situation warrants it, unconventional approaches may give you an edge.
+When you are reading this, however, you are probably new to the game, and should start by following these tactics until you have a deeper understanding of why they work (most of the time).
+
+
 
 ==Early Game==
 
-This is when you lack pretty much everything, particularly %time%**Time**.
+This is when you lack pretty much everything, particularly %time%**time**.
 You're living off your %minerals%mineral reserves, have little knowledge of the surrounding [[concepts/resources]],
 lack %energy%power or %fuel%fuel, and [[concepts/scanning range|see virtually nothing of the terrain]].
 Many matches are decided during this stage.
 
-Some tips and tricks are as follows.
-Note that it's impossible to do all of these things at the same time.
-You must prioritize them based on the situation.
 === Crucial Tactics ===
+
 * Start building a [[units/structures/vehicle plant]] early, ideally in round 0.
-** => When done, build mainly [[units/turrets/terraformer]] and [[units/turrets/cannon]] [[concepts/vehicle|hover vehicles]] in an alternating pattern. You will need both.
+** => Alternate between building [[units/turrets/terraformer]]s and [[units/turrets/cannon]]s. You will need both.
 * Your initial [[units/structures/generator]] can supply only one more active building (luckily the vehicle plant doesn't need %energy%energy, but additional [[units/structures/mine|mines]] will). Start building one or two additional generators, ideally surrounding a single clear cell of same height, to eventually place a [[units/structures/reactor core]] there.
 * Build **one** [[units/structures/laboratory]] such that you can later place at least two more next to it to form a triangle. Due to the proximity bonus of labs, a triangle is the smallest benefitial constellation, but building more than one at this stage is usually a dangerous waste of resources.
-** => Research [[units/turrets/missle launcher|Launchers]], [[units/structures/reactor core|Reactor Cores]], [[units/vbases/heavy base|Heavy]] or [[units/vbases/catamaran base|Cat Bases]](depending on planet type), and finally the [[units/turrets/artillery|Artillery Turret]]. Different scenarios may necessitate a different order.
+** => [[concepts/Research]] [[units/turrets/missle launcher|Launchers]], [[units/structures/reactor core|Reactor Cores]], [[units/vbases/heavy base|Heavy]] or [[units/vbases/catamaran base|Cat Bases]](depending on planet type), and finally the [[units/turrets/artillery|Artillery Turret]]. Different scenarios may necessitate a different order.
 * Build defense towers early, possibly to the point where you have one [[units/turrets/terraformer]] dedicated to this task from the start. Observe the range of your turrets. Make sure defense towers can [[concepts/scanning range|see]] where they can [[concepts/attack range|hit]].
-* Build [[units/structures/mine|mines]] on top of detected [[concepts/resources]], however with regard to the strategic environment, and where else you might need those [[units/turrets/terraformer|terraformers]] right now. Mines cannot sustain much enemy fire, and need %energy%energy to operate. In the early stages, a low-yield mine is not always worth the time it takes to build it, particularly if you do not yet have the %energy% to support it. Also, newly discovered resources are usually outside your existing defense perimeter. If assumed reachable by your enemies, build towers or deploy tanks first, then construct the mines.
+* Build lots of [[units/structures/mine|mines]], but do not risk your [[units/turrets/terraformer|terraformers]] (and/or mines) by leaving them alone in [[concepts/scanning range|unobserved territory]]. A lost terraformer is a terrible toll during this stage. Distant [[concepts/resource]] clusters might be too exposed/unknown to claim, even if your [[units/turrets/surveyor]] somehow managed to get through unscathed. Generally, if assumed reachable by your enemies, build towers or deploy tanks first, then construct the mines. Such expansion is always a gamble but you can tweak the odds.
 
 === Situational Tactics  ===
 * [[concepts/attack range|Tank trajectories]] benefit from elevation. Even one level higher than your opponent can make all the difference in the world. Sometimes it can be benefitial to build artificial elevations and put your tanks on top.
 * Manually navigate your [[units/turrets/surveyor]] if you are in proximity of assumed dangerous areas. The automatic routing can only react to things you can actually see. A red goal marker is not regarded by surveyor routing.
 * Build a [[units/structures/fuel container]] to bridge shortage of fuel, and (temporarily) run more [[units/structures/generator|generators]].
 * Claim nearby mountains, and place tanks on top, even (or especially) if it requires terraforming to get up there. These can be very easy to defend, particularly once you have [[units/turrets/artillery]] tanks.
-* Dwarven Fortress: Dig down early (4 layers or more), and build your entire base beneath the ground. Hard to launch an offense from, harder to find and attack. In highly competitive scenarios this tactic can be used to simply disappear early on, having others fight it out above ground, while you can undermine their [[units/structures/mine|mines]], and eventually detonate their bases from below. Note that this tactic is slow, and not useful if you have just one enemy that anticipates such. It does pretty much lock out the AI, however.
-* Walls (two levels or higher) represent an effective means to keep the AI out. Everything except [[units/turrets/surveyor|surveyors]] can see about one cell behind a wall, but not farther (**Important:** this also applies to your own units). Vehicles cannot climb more than one level so they cannot get over the wall, and the AI will not see it as hostile unless it detects your units on (or directly behind) the wall. Later on, you will want to place towers on the wall, but this transition can be tricky.
-* [[units/structures/vehicle store|Vehicle stores]] enable instant vehicle transportation to remote stores. They are also cheap to build, and preserve stored units upon destruction if enough other stores remain. You can build one directly next to your [[units/structures/vehicle plant]](s) and set its/their gathering point to the store.
+* Dwarven Fortress: Dig down early (4 layers or more), and build your entire base beneath the ground. Hard to launch an offense from, harder to find and attack. In highly competitive scenarios this tactic can be used to simply disappear early on, having others fight it out above ground while you can undermine their [[units/structures/mine|mines]], and eventually detonate their bases from below. Note that this tactic is slow, and not useful if you have just one enemy that anticipates such. It does pretty much lock out the AI, however. Beware of [[terrain|lava]].
+* Walls (two levels or higher) represent an effective means to keep the AI out. Everything except [[units/turrets/surveyor|surveyors]] can see about one cell behind a wall, but not farther (**Important:** this also applies to your own units). Vehicles cannot climb more than one level so they cannot get over the wall, and the AI will not consider attacking the wall itself unless it detects your units on (or directly behind) the wall. Later on, you will want to place towers on the wall. This transition can be tricky.
+* [[units/structures/vehicle store|Vehicle stores]] enable instant vehicle transportation to remote stores. They are also cheap to build, and preserve stored units upon destruction if enough other stores remain. It is often useful to build one directly next to your [[units/structures/vehicle plant]](s) and set its/their gathering point to the store.
 * Claim [[units/structures/nexus port|nexus ports]] beneath blue goal markers. Build next to them to conquer them. Apart from being a game goal, they also provide useful resources. If distant, assume others had the same idea. Note that until it is yours, the port is owned by the Nexus (AI) faction, and it will see your construction attempt. If the AI already has mobile units, and is not tied up elsewhere, it **will** move in your direction.
 * It may not appear that way, but the [[units/turrets/radar]] vehicle is the single most dangerous unit type the AI has. Everything it discovers is memorized. A hoverrader suddenly standing in the midst of your base is a harbinger of doom. Keep them at range, actively hunt them if necessary.
 
 ===  Don'ts ===
 * Stay clear of red goal markers if the AI is enabled; at least until you have a working defense perimeter. Give them a wide berth. See the distance between the red and blue markers? **That wide**.
 * Do not send your [[units/turrets/terraformer|terraformers]] into distant, unexplored terrain. This is a recipe for terraformer loss, and possibly disaster.
-* Do not enter alliances with people you do not trust. As soon as you accept an invitation, every alliance member knows where you are. The alliance does not protect you, even if it is not immediately dissolved.
+* Do not enter [[concepts/faction|alliances]] with people you do not trust. As soon as you accept an invitation, every alliance member knows where you are. The alliance does not protect you, even if it is not immediately dissolved.
 * While this may appear promising or even crucial, rushing way out of your defense perimeter into possibly [[concepts/scanning range|unobserved territory]] to claim contested [[units/structures/nexus ports]] usually ends badly. It's always better to be the one with the tank on the nearby mountain than the one that hastily built a storage next to the nexus port but failed to establish sufficient defense in time. Everyone can see where the nexus ports are. Assume your enemies expect you to go for them.
 
 == Mid to End Game ==
@@ -47,14 +50,19 @@ Usually you have a good idea of where your enemies are, your defense/offense is 
 
 === Tactics ===
 
-* Put units to [[concepts/idle|sleep]] that you don't need right now, so you can focus on units that really need your attention (use the space key a lot).
+* Put units to [[concepts/idle|sleep]] that you don't need right now, so you can focus on units that really need your attention (use the space key a lot). If available, put mobile units into [[units/structures/vehicle store|vehicle stores]] so you can deploy them instantly at any other store.
 * Use [[units/turrets/surveyor]] vehicles and towers to make sure nobody undermines your base.
 * If you intend to do so with your enemies, now is a good time to start digging, and researching the [[units/turrets/bomb]] turret. Dig deep (5 levels+), so regular hostile units can't see you. Use [[units/turrets/surveyor|surveyors]] to scan into the ground. Beware of enemy surveyors, or [[terrain|liquids (particularly lava)]].
-* Start accumulating %uranium%uranium in [[units/structures/uranium storage|uranium storages]]. They are prone to explode if attacked when full, so either place them away from your core structures, or such that they are near impossible to attack.
+* Start accumulating %uranium%uranium in [[units/structures/uranium storage|uranium storages]]. They are prone to explode if destroyed while non-empty, so either place them away from your core structures, or such that they are near impossible to attack.
 * If you have sufficient %uranium%uranium, [[units/turrets/emp|EMP launchers]] can be very effective against enemy radars and launchers.
 * Build roads and bridges to connect your empire. [[units/structures/vehicle store|Vehicle stores]] may get blown to bits.
 * Build at least some [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/terraformer|terraformers]] as they build/dig twice as fast.
-* Have a standing [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/artillery]]+[[units/turrets/cannon]] (+[[units/turrets/radar]]) army, even if you don't appear to need it right now. [[units/turrets/cannon|Cannon tanks]] are the most effective hunters, and tend to not live long, so build most of those. Store them in [[units/structures/vehicle store|vehicle stores]].
+* Have a standing [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/artillery]]+[[units/turrets/cannon]] (+[[units/turrets/radar]]) army, even if it isn't needed right now. [[units/turrets/cannon|Cannon tanks]] are the most effective hunters, and tend to not live long, so build most of those. Store them in [[units/structures/vehicle store|vehicle stores]].
 * Multiple [[units/structures/vehicle plant|vehicle plants]] are a good thing to have right now.
 * Construct large areas filled with [[units/structures/laboratory|laboratories]]. Once done with unlock-research, configure the four most important endless topics (usually [[units/turrets/radar]]/[[units/turrets/artillery]]/[[units/turrets/missile launcher]] range, or [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] health).
-* Claim as many mountains as you can. If you drill caves into them, those places are well defended and hard to observe from the outside.
+* Claim as many mountains as you can by putting [[units/turrets/artillery]]+[[units/structures/vehicle store]] on top. If you drill caves into them from a well protected side, those places are easily accessible (by you), well protected, and hard to observe from the outside.
+* To crack such a location there are a number of (bad) options:
+** [[concepts/Research]] [[units/vbases/heavy base]] or [[units/vbases/hoverbase]] health to rediculous levels, then rush a larger number of [[units/turrets/cannon]] tanks up the mountain, possibly in secluded paths constructed by a [[units/turrets/terraformer]]. The mountain peak can hold a limited number of tanks, each with a limited number of attacks per round. Also, the sensory of the defending party down to the valley may be partially blocked by the mountain itself.
+** Try to position an [[units/turrets/EMP]] tank such that the defending party cannot see it, but the top of the mountain is in attack range. Fire blindly. Good luck.
+** Dig a tunnel, then [[units/turrets/bomb|nuke]] the mountain.
+** All of the above.
