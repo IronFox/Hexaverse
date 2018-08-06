@@ -1,0 +1,3 @@
+
+Nexus ports surrounded by a base (marked by red goal markers) provide the shown resources.
+Isolated ones (blue goal markers) provide less but are still worthwhile to acquire.
