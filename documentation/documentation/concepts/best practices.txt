@@ -1,7 +1,7 @@
 = Best Practices =
 
 Effective strategies will be listed here, as they become common place.
-Different terrain and unit constellations will require adjustments, particularly if there is no core, or the planet is filled by lava, but some tactics have generally been shown to be more effective than others.
+Different terrain and unit constellations will require adjustments, particularly if there is no core, or the planet is covered by lava, but some tactics have generally been shown to be more effective than others.
 
 
 ==Early Game==
