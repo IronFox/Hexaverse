@@ -18,8 +18,9 @@ Shown attributes are updated once every couple seconds.
 
 ==Dependence==
 New servers will (by default) depend on the server manager, and not create a visible console window.
+Those are listed with a trailing (dep) in the Status column.
 If you try to close the server manager while dependent servers are detected, a confirmation dialog will appear.
-Server started by the client will also be listed as dependent, however close if the client closes.
+Servers started by the client will also be listed as dependent, however close when the client closes regularly or otherwise shuts down its server.
 To preserve the game beyond client-enforced closure, use the context menu to [[config/save game|save the game]], shut down the server, and add a new server with the created save game.
 
 ==NAT, Routers, etc.==

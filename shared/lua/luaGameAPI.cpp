@@ -478,6 +478,7 @@ namespace Lua
 			myResearchQueue.ClearTable();
 			gameTable.UnsetField("selectedUnit");
 			gameTable.UnsetField("myFaction");
+			myFactionIsSet= false;
 		#endif
 
 		entityMappedToTable.Clear();
@@ -643,7 +644,7 @@ namespace Lua
 				terrainContentTable = terrainTable.SetSubTable("Content");
 
 			researchTable = gameTable.SetSubTable("Research");
-				researchTopicList = researchTable.SetSubTable("Topics");
+				researchTopicList = researchTable.SetSubTable("topics");
 		
 			entityIDMap = gameTable.SetSubTable("units");
 
@@ -806,7 +807,16 @@ namespace Lua
 		if (found)
 		{
 			if (factionMappedToTable.SetNew(f->id))
+			{
 				factionIDMap.SetField(f->id.ToFullString(),found->table);
+				#ifdef CLIENT
+					if (f->isOwnedByMe)
+					{
+						gameTable.SetField("myFaction",found->table);
+						myFactionIsSet= true;
+					}
+				#endif
+			}
 
 			if (!updateIfFound)
 				return found;
@@ -823,12 +833,16 @@ namespace Lua
 
 			factionMappedToTable.Set(f->id);
 			factionIDMap.SetField(f->id.ToFullString(),t);
+
+			#ifdef CLIENT
+				if (f->isOwnedByMe)
+				{
+					gameTable.SetField("myFaction",t);
+					myFactionIsSet= true;
+				}
+			#endif
 		}
 
-		#ifdef CLIENT
-			if (f->isOwnedByMe)
-				gameTable.SetField("myFaction",t);
-		#endif
 
 		t.SetField("name",f->name);
 		t.SetField("id",f->id.ToFullString());

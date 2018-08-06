@@ -60,17 +60,12 @@ namespace Objects
 				wrappedLines << *l;
 				continue;
 			}
-			Array<StringRef>	lines;
 			Array<StringRef>	split;
-			explode('\n',l->first,lines);
-			foreach (lines,l2)
+			Wrap(l->first,60,split);
+			foreach (split,s)
 			{
-				Wrap(*l2,60,split);
-				foreach (split,s)
-				{
-					wrappedLines.Append().first = *s;
-					wrappedLines.Last().second = l->second;
-				}
+				wrappedLines.Append().first = *s;
+				wrappedLines.Last().second = l->second;
 			}
 		}
 	}

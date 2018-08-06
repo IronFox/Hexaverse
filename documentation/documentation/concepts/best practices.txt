@@ -1,0 +1,52 @@
+= Best Practices =
+
+Effective strategies will be listed here, as they become common place.
+Different terrain and unit constellations will require adjustments, particularly if there is no core, or the planet is filled by lava, but some tactics have generally been shown to be more effective than others.
+
+
+==Early Game==
+
+This is when you lack pretty much everything, particularly %time%**Time**.
+You're living off your %minerals%mineral reserves, have little knowledge of the surrounding [[concepts/resources]],
+lack %energy%power or %fuel%fuel, and [[concepts/scanning range|see virtually nothing of the terrain]].
+Lots of games are decided during this stage.
+
+Some tips and tricks are as follows.
+Note that it's impossible to do all of these things at the same time.
+You must prioritize them based on the scenario:
+* Start building a [[units/structures/vehicle plant]] early, ideally in round 0. Once done, build mainly [[units/turrets/terraformer]] and [[[[units/turrets/cannon]] hover vehicles, in an alternating pattern. You will need both.
+* Your initial [[units/structures/generator]] can supply only one more active building (luckily the vehicle plant doesn't need %energy%energy, but additional mines will). Start building one or two additional generators, ideally surrounding a single clear cell of same height, to eventually place a [[units/structures/reactor core]] there.
+* Build one [[units/structures/laboratory]], such that you can at least place two more next to it to form a triangle. Due to the proximity bonus of labs, a triangle is the smallest effective constellation, but building more than one in the beginning is often a waste of resources.
+* Research [[units/turrets/missle launcher|Launchers]], [[units/structures/reactor core|Reactor Cores]], [[units/vbases/heavy base|Heavy]] or [[units/vbases/catamaran base|Cat Bases]](depending on planet type), and finally the [[units/turrets/artillery|Artillery Turret]]. Different scenarios may necessitate a different order.
+* Build defense towers early, possibly to the point where you have one of your two initial [[units/turrets/terraformer|terraformers]] dedicated to it. Observe the range of your turrets. Make sure defense towers can [[concepts/scanning range|see]] where they can fire.
+* Manually navigate your [[units/turrets/surveyor]] if you are in proximity to assumed dangerous areas. The automatic routing can only react to things you can actually see. A red goal marker is not recognized by the routing.
+
+=== Tips ===
+* Claim nearby mountains, and place tanks on top, even (or especially) if it requires terraforming to get up there. These can be very easy to defend, particularly once you have [[units/turrets/artillery]] tanks.
+* Dwarven Fortress: Dig down early (4 layers or more), and build your entire base beneath the ground. Hard to launch an offense from, harder to find and attack. In highly competitive scenarios, this tactic can be used to simply disappear early on, having others fight it out above ground, while you can literally undermine all hostile mines, and eventually detonate their bases from below. Note that this tactic is slow, and not useful if you have just one enemy that anticipates such. It does pretty much lock out the AI, however.
+* Walls (two levels or higher) represent an effective means to keep the AI out. Everything except [[units/turrets/surveyor|surveyors]] can see about one cell behind a wall, but not farther, even [[units/turrets/radar|radars]] (**Important:** this also applies to your own units). Vehicles cannot climb more than one level, so they cannot get over the wall, and the AI will not see it as hostile unless it detects your units on (or directly behind) the wall. Later on, you will want to place towers on the wall, but this transition can be tricky.
+* [[units/structures/vehicle store|Vehicle stores]] enable instant vehicle transportation to remote stores. They are also cheap to build, and preserve stored units upon destruction if enough other stores remain. You can build one directly next to your [[units/structures/vehicle plant]](s) and set its/their gathering point to the store.
+* Claim [[units/structures/nexus port|nexus ports]] beneath blue goal markers. Build next to them to conquer them. Apart from being a game goal, they also provide useful resources. If distant, assume others had the same idea. Note that until it is yours, the port is owned by the Nexus (AI) faction, and it will see your construction attempt. If the AI already has mobile units, and is not tied up elsewhere, it **will** move in your direction.
+* It may not appear that way, but the [[units/turrets/radar]] vehicle is the single most dangerous unit type the AI has. Everything it discovers is memorized. A hoverrader suddenly standing in the midst of your base is a harbinger of doom. Keep them at range, actively hunt them if necessary.
+
+===  Don'ts ===
+* Stay clear of red goal markers if the AI is enabled. Give them a wide berth. See the distance between the red and blue markers? **That wide**.
+* Do not send your [[units/turrets/terraformer|terraformers]] into distant, unexplored terrain. This is a recipe for terraformer loss, and possibly disaster.
+
+== Mid to End Game ==
+
+Usually, when you get here, you have a decent tower network, vehicle plants, lots of mines, and start wondering what to build with that terraformer that just completed its jobs.
+Usually you have a good idea of where your enemies are, your defense/offense is somewhat balanced, and the battle fronts are semi-stable.
+
+=== Tips ===
+
+* Put units to [[concepts/idle|sleep]] that you don't need right now, so you can focus on units that really need your attention (use the space key a lot).
+* Use [[units/turrets/surveyor]] vehicles and towers to make sure nobody undermines your base.
+* If you intend to do so with your enemies, now is a good time to start digging, and researching the [[units/turrets/bomb]] turret. Dig deep (5 levels+), so regular hostile units can't see you. Use [[units/turrets/surveyor|surveyors]] to scan into the ground. Beware of enemy surveyors.
+* Start accumulating %uranium%uranium in [[units/structures/uranium storage|uranium storages]]. They are prone to explode if attacked when full, so either place them away from your core structures, or such that they are near impossible to attack.
+* If you have sufficient %uranium%uranium, [[units/turrets/emp|EMP launchers]] can be very effective against enemy radars and launchers.
+* Build roads and bridges to connect your empire. [[units/structures/vehicle store|Vehicle stores]] may get blown to bits.
+* Build at least some [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/terraformer|terraformers]] as they build/dig twice as fast.
+* Have a standing [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] [[units/turrets/artillery]]+[[units/turrets/cannon]] (+[[units/turrets/radar]]) army, even if you don't appear to need it right now. [[units/turrets/cannon|Cannon tanks]] are the most effective hunters, and tend to not live long, so build most of those. Store them in [[units/structures/vehicle store|vehicle stores]].
+* Multiple [[units/structures/vehicle plant|vehicle plants]] are a good thing to have right now.
+* Construct large areas filled with [[units/structures/laboratory|laboratories]]. Once done with unlock-research, configure the four most important endless topics (usually [[units/turrets/radar]]/[[units/turrets/artillery]]/[[units/turrets/missile launcher]] range, or [[units/vbases/heavy base|heavy]]/[[units/vbases/catamaran base|cat]] health).

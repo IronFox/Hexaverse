@@ -1929,13 +1929,15 @@ namespace Component
 						}
 						//const float swidth = textout.GetScaledWidth(*w);
 						//ASSERT__(M::Similar(swidth,accum));	//<- this may fail if the string contains special icons, since they are considered by CharWidth() but not by GetScaledWidth()
-						if (accum > width)
-						{
-							const index_t atWord = w - wrapped.pointer();
-							const char*const word = w->begin();
-							Array<StringRef>	wrapped2;
-							Wrap(raw,width,CharWidth,wrapped2);
-						}
+						#ifdef _DEBUG
+							if (accum > width)
+							{
+								const index_t atWord = w - wrapped.pointer();
+								const char*const word = w->begin();
+								Array<StringRef>	wrapped2;
+								Wrap(raw,width,CharWidth,wrapped2);
+							}
+						#endif
 						ASSERT_LESS_OR_EQUAL__(accum,width);
 					}
 			#endif

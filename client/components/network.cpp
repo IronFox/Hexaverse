@@ -1846,6 +1846,8 @@ namespace Network
 					World::allowRecompilation = false;	//until game begins
 					Tutorial::HideMessage("Servers");
 					Tutorial::lastDelayingEvent = timer.Now();
+					if (RuntimeConfig::tutorialMode)
+						Tutorial::SignalConnectedToTutorialServer();
 				#endif
 
 				amOnline = true;
@@ -1860,6 +1862,7 @@ namespace Network
 				Channels::hello.SendTo(client,hello);	//elevate client state
 
 				//lastPong = timer.Now();
+
 
 				GlobalEvents::serverConnectionEstablished();
 			}

@@ -787,6 +787,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
+		if (Game::Config::Nexus::enableAI && Password::HashMatch(client->passwordChallenge,Objects::Faction::nexus->accessToken,req.hashedFactionToken))
 		{
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;

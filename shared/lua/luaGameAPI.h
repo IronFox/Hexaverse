@@ -109,6 +109,7 @@ namespace Lua
 		HashTable<TUniqueID,Objects::WWorldEntity>	entityMap;
 		HashSet<TUniqueID>	entityMappedToTable, factionMappedToTable, allianceMappedToTable;
 		Objects::Pathfinding::ShortestPath	shortestPath;
+		bool									myFactionIsSet = false;
 
 		//feedback functions:
 		std::function<void(const TUniqueID&)>	onMarkerTouch,
