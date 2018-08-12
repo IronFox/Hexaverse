@@ -1440,15 +1440,15 @@ namespace Objects
 
 			viewCommands->Add( new GlobalCommand("Show Ranges", []()
 					{
-						showFriendlyRanges = !showFriendlyRanges;
+						Renderer::SetRenderFriendlyRanges(!Renderer::RenderingFriendlyRanges());
 					}
-					, Detail::GlobalPermaSwitch(showFriendlyRanges)
+					, Detail::GlobalPermaSwitch(Renderer::RenderingFriendlyRanges)
 				));
 			viewCommands->Add( new GlobalCommand("Show Hostile Ranges", []()
 					{
-						showHostileRanges = !showHostileRanges;
+						Renderer::SetRenderHostileRanges(!Renderer::RenderingHostileRanges());
 					}
-					,Detail::GlobalPermaSwitch(showHostileRanges)
+					,Detail::GlobalPermaSwitch(Renderer::RenderingHostileRanges)
 				));
 			viewCommands->Add( new GlobalCommand("Show Sensor Ranges", []()
 					{

@@ -1,4 +1,6 @@
-air defense for nexus base
+check if this still happens: if automatic round completion is on, has triggered, and round is manually resumed, any action that causes it to check completion will end the round again
+
+air and sub-surface defense for nexus base
 
 optimize camera terrain intersection test
 

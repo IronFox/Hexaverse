@@ -189,6 +189,9 @@ namespace Objects
 		SelectionPrimitive			generalPurposePrimitive(sphere);
 		Buffer0<SelectionPrimitive>	selectionPrimitives;
 
+		void	AddSensorsOf(const Objects::PWorldEntity&e);
+
+
 
 		void SelectionPrimitive::Render(bool outer)
 		{
@@ -271,46 +274,91 @@ namespace Objects
 		smokeTrails[!smokeTrailIndex.isOrbital].selectedSmokeTrail = InvalidIndex;
 	}
 
+	void	Renderer::AddSensorsOf(const Objects::PWorldEntity&e)
+	{
+		e->VisitSensors(e->location, [](const World::Sensor&sensor)
+		{
+			auto&prim = selectionPrimitives.Append();
+			prim.tint = float4(1, 1, 0, 0.8f);
+
+			switch (sensor.type)
+			{
+			case World::Sensor::ShadedSphere:
+			case World::Sensor::SolidSphere:
+				prim.geo = &sphere;
+				prim.SetSystems(M::Sphere<>(sensor.worldCenter, sensor.radius));
+				break;
+			case World::Sensor::UpperHalfSolidSphere:
+			{
+				prim.geo = &sphere;
+				prim.SetSystems(M::Sphere<>(sensor.worldCenter, sensor.radius));
+				const float radialHeight = Vec::length(sensor.worldCenter);
+				float radius = M::Min(sensor.radius, radialHeight);
+				const float flatRadialHeight = sqrt(M::Sqr(radialHeight) - M::Sqr(radius));
+					//(M::Sqr(radialHeight) - M::Sqr(radius)) / radialHeight;
+				//const float flatRadius = sqrt(M::Sqr(radialHeight) - M::Sqr(radius) - M::Sqr(flatRadialHeight));
+				prim.cutOffConfig.z = flatRadialHeight;
+				break;
+			}
+			case World::Sensor::ShadedCylinder:
+			case World::Sensor::SolidCylinder:
+				prim.geo = &cylinder;
+				prim.SetCylinderSystems(sensor.worldCenter, sensor.radius);
+				break;
+			}
+		}
+		,true);
+	}
+
 	void	Renderer::RefreshSelectedSensory()
 	{
 		selectionPrimitives.Clear();
+
+
 		if (Objects::selectedEntity)
-			Objects::selectedEntity->VisitSensors(Objects::selectedEntity->location, [](const World::Sensor&sensor)
-			{
-				auto&prim = selectionPrimitives.Append();
-				prim.tint = float4(1, 1, 0, 0.8f);
+			AddSensorsOf(Objects::selectedEntity);
 
-				switch (sensor.type)
+		if (showHostileRanges || showFriendlyRanges)
+		{
+			ForeachWorldEntity(
+				[](const PWorldEntity&e)
 				{
-				case World::Sensor::ShadedSphere:
-				case World::Sensor::SolidSphere:
-					prim.geo = &sphere;
-					prim.SetSystems(M::Sphere<>(sensor.worldCenter, sensor.radius));
-					break;
-				case World::Sensor::UpperHalfSolidSphere:
-				{
-					prim.geo = &sphere;
-					prim.SetSystems(M::Sphere<>(sensor.worldCenter, sensor.radius));
-					const float radialHeight = Vec::length(sensor.worldCenter);
-					float radius = M::Min(sensor.radius, radialHeight);
-					const float flatRadialHeight = sqrt(M::Sqr(radialHeight) - M::Sqr(radius));
-						//(M::Sqr(radialHeight) - M::Sqr(radius)) / radialHeight;
-					//const float flatRadius = sqrt(M::Sqr(radialHeight) - M::Sqr(radius) - M::Sqr(flatRadialHeight));
-					prim.cutOffConfig.z = flatRadialHeight;
-					break;
+					if (e != selectedEntity)
+					{
+						const bool mine = e->isOwnedByMe || (e->owner && e->owner->IsAlliedWithMe());
+
+						if ((mine && showFriendlyRanges && e->IsAlive()) || (!mine && showHostileRanges))
+							AddSensorsOf(e);
+					}
 				}
-				case World::Sensor::ShadedCylinder:
-				case World::Sensor::SolidCylinder:
-					prim.geo = &cylinder;
-					prim.SetCylinderSystems(sensor.worldCenter, sensor.radius);
-					break;
-				}
-			}
-			,true);
-
-
-
+				,Objects::IncludeGhosts::Living
+			);
+		}
 	}
+
+	bool	Renderer::RenderingFriendlyRanges()
+	{
+		return showFriendlyRanges;
+	}
+	bool	Renderer::RenderingHostileRanges()
+	{
+		return showHostileRanges;
+	}
+	void	Renderer::SetRenderFriendlyRanges(bool b)
+	{
+		if (b == showFriendlyRanges)
+			return;
+		showFriendlyRanges = b;
+		RefreshSelectedSensory();
+	}
+	void	Renderer::SetRenderHostileRanges(bool b)
+	{
+		if (b == showHostileRanges)
+			return;
+		showHostileRanges = b;
+		RefreshSelectedSensory();
+	}
+
 
 	void	Renderer::ClearSmokeTrailHighlighting()
 	{
@@ -1634,11 +1682,6 @@ namespace Objects
 						if ((mine && showFriendlyRanges && e->IsAlive()) || (!mine && showHostileRanges))
 						{
 							RenderAttackRangeOf(e,attackColor,extendedShadow,false);
-							if (showSensorRanges)
-								Renderer::RenderRangeSphere(e->system.w.xyz,e->GetScanningRange(),
-									sensorColor, extendedShadow
-									);
-
 						}
 					}
 				}

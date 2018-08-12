@@ -18,8 +18,6 @@ namespace Objects
 	namespace DX11 = Engine::DX11;
 
 	extern bool					resourceView, 
-								showFriendlyRanges,
-								showHostileRanges,
 								showSensorRanges,
 								objectView;
 
@@ -129,7 +127,10 @@ namespace Objects
 		void	CompileFlatDisc(Geometry&geo, int resolution, float r0, float r1, const float4&color0,const float4&color1);
 
 
-
+		bool	RenderingFriendlyRanges();
+		bool	RenderingHostileRanges();
+		void	SetRenderFriendlyRanges(bool);
+		void	SetRenderHostileRanges(bool);
 
 
 		void	RenderBeam(const M::TVec3<>&base, float height, float width, const float4&bottomColor, const M::TVec4<>&topColor);

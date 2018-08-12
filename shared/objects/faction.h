@@ -443,6 +443,7 @@ namespace Objects
 				Generator = 0x8,
 				VehiclePlant = 0x10,
 				Terraformer = 0x20,
+				NexusPort = 0x40,
 			};
 
 			UnitClass			hasUnitClasses = UnitClass::None;

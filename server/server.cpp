@@ -1077,14 +1077,15 @@ int main( int argc, const char* argv[])
 								LogEvent(EventClass::Preset::remoteControlError,ex.GetRawMessage());
 							}
 
-				})->SetUniqueHelp("Erases a specific auto saved world (only need to specify first few characters),\n"
-					"all empty if the parameter is set to 'empty',\n"
-					"all empty or older than two weeks if the parameter is set to 'old',\n"
-					"or all if the parameter is set to 'all'");
+				})->SetUniqueHelp("Erases a specific auto saved world (only need to specify first few characters).\n"
+					"Additionally, this command understands the following parameters:\n"
+					" 'empty': All empty world folders (no save games found)\n"
+					" 'old': All world folders with the most recent save game older than two weeks\n"
+					" 'all': All world folders with no exceptions");
 
 
 
-				parser->DefineCommand("loadAutoSave [index] [world ID]",(CLI::Command::function2_t)[](const StringRef&sindex, const StringRef&world)
+				parser->DefineCommand("loadAutoSave [index] [worldID]",(CLI::Command::function2_t)[](const StringRef&sindex, const StringRef&world)
 				{
 					index_t index;
 					if (sindex.IsEmpty())

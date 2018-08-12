@@ -289,7 +289,8 @@ namespace ApplicationInterface
 		{
 			Network::client.SendSignal(Protocol::ChannelID::RequestContinueRound);
 			Network::newRoundRequested = false;
-			LogEvent(EventClass::Preset::uncommon,nullptr,"Requested to continue new round");
+			PlayerControlBegin::pauseAutomaticRoundProgression = true;
+			LogEvent(EventClass::Preset::uncommon,nullptr,"Requested to resume current round");
 		}
 
 	}

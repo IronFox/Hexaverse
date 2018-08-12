@@ -2314,6 +2314,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				if (TimeLapse::enabled)
 					InputControl::saveScreenshot = true;
 			#endif
+			PlayerControlBegin::pauseAutomaticRoundProgression = false;	//events that undo this happen during the animation phase
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
