@@ -166,7 +166,7 @@ namespace Objects{ namespace Pathfinding
 			{
 				for (int i = 0; i < n.numNeighbors; i++)
 				{
-					auto	cell = Grid::LCellIdI(n.neighborID[i],location.height);
+					auto cell = Grid::LCellIdI(n.neighborID[i],location.height);
 
 					if (cell==destination)
 					{
@@ -184,7 +184,8 @@ namespace Objects{ namespace Pathfinding
 							if (!NoMobileEntityHereExcept(cell,v))
 								continue;
 					}
-					outWays.Add(cell);
+					if (ValidDestinationOf<false>(world,*v,cell, destination, destinationHangar, routingFlags, groundFlags))
+						outWays.Add(cell);
 				}	
 				const auto p = ((Objects::SubOrbital::Plane*)v);
 				int h = p->GetLandingHeight(location,*p);
