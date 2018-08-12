@@ -267,6 +267,7 @@ namespace ApplicationInterface
 		{
 			Network::client.SendSignal(Protocol::ChannelID::RequestContinueRound);
 			Network::newRoundRequested = false;
+			PlayerControlBegin::pauseAutomaticRoundProgression = true;
 			LogEvent(EventClass::Preset::uncommon,nullptr,"Requested to resume current round");
 		}
 
