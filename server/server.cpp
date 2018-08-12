@@ -1084,7 +1084,7 @@ int main( int argc, const char* argv[])
 
 
 
-				parser->DefineCommand("loadAutoSave [index] [world ID]",(CLI::Command::function2_t)[](const StringRef&sindex, const StringRef&world)
+				parser->DefineCommand("loadAutoSave [index] [worldID]",(CLI::Command::function2_t)[](const StringRef&sindex, const StringRef&world)
 				{
 					index_t index;
 					if (sindex.IsEmpty())
