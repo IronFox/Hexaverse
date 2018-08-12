@@ -264,7 +264,7 @@ namespace ScriptCache
 		LogEvent(EventClass::Preset::common,"Creating script cache");
 
 		#ifdef CLIENT
-			FileSystem::Folder f = GetCacheDirectory();
+			FileSystem::FolderScan f = GetCacheDirectory();
 			FileSystem::File file;
 			if (f.IsValidLocation())
 			{
@@ -272,7 +272,6 @@ namespace ScriptCache
 
 				Buffer0<TCacheSortEntry,Swap> entries;
 				Buffer0<FileSystem::File,Swap> toDelete;
-				f.Rewind();
 				while (f.NextFile(cacheFileExtension, file))
 				{
 					FileSystem::ftime_t t = file.GetModificationTime();

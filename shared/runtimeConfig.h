@@ -10,7 +10,8 @@
 
 namespace RuntimeConfig
 {
-	static const PathString	savFileExtension = ".hsf";	//hexaverse save file
+	#define SAVE_FILE_EXT_WITHOUT_DOT	"hsf"
+	static const PathString	savFileExtension = "." SAVE_FILE_EXT_WITHOUT_DOT;	//hexaverse save file
 
 	CONSTRUCT_ENUMERATION2(GameGoal, None, ConquerNexus);
 	CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);

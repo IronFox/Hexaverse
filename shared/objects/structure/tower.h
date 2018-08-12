@@ -177,7 +177,7 @@ namespace Objects
 			virtual void			FlushAutoAttacks() override;
 			virtual bool			AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;
 			virtual void			Attack(float&)	override;
-			virtual bool			FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
+			virtual bool			QueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
 		#endif
 
 	private:

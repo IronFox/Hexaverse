@@ -3119,10 +3119,9 @@ namespace Engine
 
 	void		DirectX11::ScanShaderHeader(const PathString&path)
 	{
-		FileSystem::Folder folder(path);
+		FileSystem::FolderScan folder(path);
 		if (!folder.IsValidLocation())
 			return;
-		folder.Rewind();
 		FileSystem::File file;
 		while (folder.NextFile(file))
 		{

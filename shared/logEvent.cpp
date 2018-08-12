@@ -147,13 +147,12 @@ namespace Logging
 	{
 		hasBegun = true;
 		activePath = path;
-		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
-		folder.Rewind();
+		auto scan = FileSystem::Folder(FileSystem::ExtractFileDir(path)).Scan();
 		FileSystem::File file;
 		PathString ext = FileSystem::ExtractFileExt(path);
 		typedef std::pair<FileSystem::ftime_t,PathString>  Entry;
 		Ctr::Buffer0<Entry>	entries;
-		while (folder.NextFile(ext,file))
+		while (scan.NextFile(ext,file))
 		{
 			entries << std::make_pair(file.GetModificationTime(), file.GetLocation());
 		}

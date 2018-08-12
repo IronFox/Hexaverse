@@ -417,29 +417,6 @@ namespace Objects
 
 		#ifndef CLIENT
 
-			/*virtual override*/ bool					Plane::FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice)
-			{
-				if (!CanAttack() || turret->dealsEMPDamage || turret->mainAttackIsDoomsday)
-				{
-					//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
-					return false;
-				}
-
-				{
-					const ResourceVector&storage = 
-						#ifndef ONE_COMPOUND_PER_FACTION
-							this->currentStorage
-						#else
-							this->owner->compound.total.storage
-						#endif
-					;
-
-					return (!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
-						&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location),*this, outChoice)
-						&& AttackFirst(outChoice.cellTarget,true);
-				}
-			}
-
 
 
 			/*virtual override*/ bool			Raptor::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const
@@ -470,7 +447,7 @@ namespace Objects
 
 
 
-			/*virtual override*/ bool	Plane::AttackFirst(Grid::LCellIdI target, bool autoTarget)
+			bool	Plane::AttackFirst(Grid::LCellIdI target, bool autoTarget)
 			{
 				ASSERT__(!TasksAreLocked());
 				if (!CanAttack())

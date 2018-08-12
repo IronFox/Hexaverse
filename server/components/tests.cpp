@@ -739,7 +739,7 @@ namespace Test
 			//faction1->knownWorld = World::actual;
 			faction1->CheckSensory();
 			Objects::TurretBase::TargetChoice choice;
-			bool wouldFire = v->FrontQueueAutoAttack(choice);
+			bool wouldFire = v->QueueAutoAttack(choice);
 			ASSERT__(!faction1->knownWorld.SensoryIsInvalid());
 			if (wouldFire)
 			{

@@ -29,12 +29,7 @@ namespace Objects
 		typedef MobileEntity	Super;
 	public:
 
-
-	
 		static count_t			CountTurretOccurrences(const PFaction&,Component::Turret*);
-
-
-
 
 		/**/					Vehicle(const OwnerParameter&owner, const Grid::LCellIdI&location, Component::VehicleBase*base, Component::Turret*turret) :
 									MobileEntity(owner,turret,location),base(base)
@@ -43,37 +38,15 @@ namespace Objects
 								}
 
 		Component::VehicleBase*	base;
-
-
-
-
-
-
-
-
-		//void					RotateTurretToFocusAndFire();
-
-
-
 		
 		#ifndef CLIENT
 			virtual bool		DirectTo(mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
-
-			virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)override;
-			bool				EnqueueAttack(Grid::LCellIdI destination);
-			bool				FrontEnqueueAttack(Grid::LCellIdI destination);
-
-
-
-
-
 
 			/**
 			Signals that a new round has started and production/movement should continue.
 			@return Number of actions left (to be passed into Tick() during a second run), or zero if operations have completed
 			*/
 			int					Tick(int actionsLeft);
-
 
 			/**
 			Positions the vehicle on the first possible level in or above the specified cell.
@@ -87,13 +60,7 @@ namespace Objects
 		
 			virtual void		OnInsert( float&atTime, bool freshConstruction ) override;
 
-		#else
-
 		#endif
-
-		
-
-		//virtual bool			CanBuild(const PStructureClass&) const { return true; }
 
 		/**
 		Checks whether or not the local object can climb the specified inclination level. Normal vehicles can climb an inclination of 1 up and down
@@ -104,12 +71,7 @@ namespace Objects
 		bool					IsAutomatedResourceDetector() const {return turret->detectsResources && isAutomated;}
 		bool					IsNonAutomatedResourceDetector() const {return turret->detectsResources && !isAutomated;}
 
-		//return abs(inclination) <= 1; }
-
-
 		static String			GetTypeName(const Component::VehicleBase*base, const Component::Turret*turret) {return base->shortName + turret->shortName;}
-		
-
 
 		#ifdef HAS_WINDOW
 			virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;

@@ -68,9 +68,6 @@ namespace Objects
 			//TurretBase overrides:
 			virtual float			GetFlatAttackRange() const override;
 			virtual String			DescribeFlatAttackRange() const override;
-			#ifndef CLIENT
-				virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice) override;
-			#endif
 
 			//WorldEntity overrides:
 			virtual int				GetMaxHealth() const override {return turret->healthMultiplier.GetValue(GetResearchState());}

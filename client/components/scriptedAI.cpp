@@ -1016,12 +1016,11 @@ namespace ScriptedAI
 			using namespace HUD::Component;
 			PWindow window = Window::Create();
 
-			FileSystem::Folder scripts = Details::GetScriptFolder();
+			FileSystem::FolderScan scripts = Details::GetScriptFolder();
 			if (!scripts.IsValidLocation())
-				FileSystem::CreateDirectory(scripts.GetLocation());
+				FileSystem::ForceCreateDirectory(scripts.GetLocation());
 
 			FileSystem::File file;
-			scripts.Rewind();
 			WWindow w = window;
 			while (scripts.NextFile(".lua",file))
 			{

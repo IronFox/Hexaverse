@@ -263,10 +263,10 @@ namespace Evolver
 
 				//if (v->IsSentry())
 				{
-					if (v->myTasks.IsEmpty() || (b->turret->independentAttackAndMotion && !v->NextTaskIsAttack()))
+					if (v->myTasks.IsEmpty() || (b->turret->independentAttackAndMotion))
 					{
 						Objects::TurretBase::TargetChoice choice;
-						while (v->FrontQueueAutoAttack(choice));
+						while (v->QueueAutoAttack(choice));
 					}
 				}
 
@@ -306,7 +306,7 @@ namespace Evolver
 						bool any = false;
 
 						Objects::TurretBase::TargetChoice choice;
-						while (t->FrontQueueAutoAttack(choice))
+						while (t->QueueAutoAttack(choice))
 							any = true;
 
 						if (!any)

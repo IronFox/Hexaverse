@@ -355,6 +355,9 @@ namespace Objects
 			void				BeginAttackPhase();
 
 
+			bool				FrontEnqueueAttack(Grid::LCellIdI destination);
+			bool				EnqueueAttack(Grid::LCellIdI destination);
+
 			/**
 			Clears all entity tasks
 			@param isReaction Set true to indicate that the clearing happens as a result of some unexpected event.
@@ -540,6 +543,7 @@ namespace Objects
 		virtual const WorldEntity&	ToEntity() const override {return *this;}
 		virtual float			GetZOffset() const override {return 0;}
 		#ifndef CLIENT
+			virtual bool		QueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
 			virtual void		FlushAutoAttacks() override;
 			virtual bool		AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;
 			virtual void		Attack(float&currentTime)	override;
