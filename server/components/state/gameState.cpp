@@ -1450,6 +1450,8 @@ namespace Game
 						if (mine->naturalResources.minerals >= 5)
 							uc |= Objects::Faction::UnitClass::MineralMine;
 					}
+					if (s->IsNexusPort())
+						uc |= Objects::Faction::UnitClass::NexusPort;
 					if (To<Objects::Generator>::DynamicCast(s))
 						uc |= Objects::Faction::UnitClass::Generator;
 

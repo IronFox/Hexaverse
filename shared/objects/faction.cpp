@@ -1360,8 +1360,8 @@ namespace Objects
 				return false;
 			}
 
-			const bool hasFuelMine = (hasUnitClasses & UnitClass::FuelMine);
-			const bool hasMineralMine = (hasUnitClasses & UnitClass::MineralMine);
+			const bool hasFuelMine = (hasUnitClasses & UnitClass::FuelMine) || (hasUnitClasses & UnitClass::NexusPort);
+			const bool hasMineralMine = (hasUnitClasses & UnitClass::MineralMine) || (hasUnitClasses & UnitClass::NexusPort);
 			const bool hasGenerator = (hasUnitClasses & UnitClass::Generator);
 			const bool hasMineralContainer = (hasUnitClasses & UnitClass::MineralContainer);
 			const bool hasTerraformer = (hasUnitClasses & UnitClass::Terraformer);
