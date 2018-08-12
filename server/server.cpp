@@ -6,7 +6,7 @@
 #include <boot.h>
 #include <grid/worldData.h>
 #include <objects.h>
-
+#include <ctime>
 #include "../client/version.h"
 #include <protocol.h>
 #include <runtimeConfig.h>
@@ -969,6 +969,120 @@ int main( int argc, const char* argv[])
 					}
 					FileIO::Load(file.GetLocation());
 				},CLI::FileCompletion);
+
+				parser->DefineCommand("listAutoWorlds",(CLI::Command::full_function_t)[](const CLI::PParser&parser, const CLI::PCommand&, CLI::Command::ArgumentList)
+				{
+					auto scan = FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup(String("saves/auto/"))).Scan();
+					FileSystem::File sub;
+					while (scan.NextFolder(sub))
+					{
+						FileSystem::FolderScan inner = sub;
+						count_t numSaves = 0;
+						FileSystem::ftime_t mostRecent = 0;
+						FileSystem::File f;
+						while (inner.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
+						{
+							numSaves++;
+							mostRecent = std::max(mostRecent,f.GetModificationTime());
+						}
+
+						if (numSaves == 0)
+							parser->PrintLine(FileSystem::PathToString(sub.GetInnerName())+" - [empty]");
+						else
+						{
+
+							struct tm *tm = localtime((time_t*)&mostRecent);
+							char date[0x100];
+							strftime(date, sizeof(date), "%Y-%m-%d %H:%m:%S", tm);
+							parser->PrintLine(FileSystem::PathToString(sub.GetInnerName())+" - "+String(numSaves)+" save(s), last from "+String(date));
+						}
+					}
+
+				})->SetUniqueHelp("Lists auto saved worlds with each the number of recorded save games, and date of last update.");
+				
+				parser->DefineCommand("deleteAutoWorld worldID",(CLI::Command::full_function_t)[](const CLI::PParser&parser, const CLI::PCommand&, CLI::Command::ArgumentList arguments)
+				{
+					auto scan = FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup(String("saves/auto/"))).Scan();
+					Buffer0<FileSystem::File> erase;
+
+					if (arguments.Count() <= 1)
+					{
+						LogEvent(EventClass::Preset::remoteControlError,"Missing parameter");
+						return;
+					}
+					FileSystem::File sub;
+
+					const PathString worldID = arguments[1];
+					if (worldID == "all")
+					{
+						while (scan.NextFolder(sub))
+							erase << sub;
+					}
+					elif (worldID == "old")
+					{
+						auto now = std::time(nullptr);
+						while (scan.NextFolder(sub))
+						{
+							FileSystem::FolderScan inner = sub;
+							count_t numSaves = 0;
+							FileSystem::ftime_t mostRecent = 0;
+							FileSystem::File f;
+							while (inner.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
+							{
+								numSaves++;
+								mostRecent = std::max(mostRecent,f.GetModificationTime());
+							}
+
+							if (numSaves == 0 || now - mostRecent > 3600 * 24 * 14)
+								erase << sub;
+
+						}
+					}
+					elif (worldID == "empty")
+					{
+						while (scan.NextFolder(sub))
+						{
+							FileSystem::FolderScan inner = sub;
+							count_t numSaves = 0;
+							FileSystem::File f;
+							while (inner.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
+							{
+								numSaves++;
+							}
+
+							if (numSaves == 0)
+								erase << sub;
+
+						}
+					}
+					else
+					{
+						while (scan.NextFolder(sub))
+						{
+							if (sub.GetInnerName().BeginsWithIgnoreCase(worldID))
+								erase << sub;
+						}
+					}
+					if (erase.IsEmpty())
+						LogEvent(EventClass::Preset::remoteControlError,"Nothing to erase");
+					else
+						foreach (erase,e)
+							try
+							{
+								FileSystem::RemoveFolder(*e);
+								parser->PrintLine("Erased "+FileSystem::PathToString( e->GetName()));
+							}
+							catch (const Except::IO::DriveAccess&ex)
+							{
+								LogEvent(EventClass::Preset::remoteControlError,ex.GetRawMessage());
+							}
+
+				})->SetUniqueHelp("Erases a specific auto saved world (only need to specify first few characters),\n"
+					"all empty if the parameter is set to 'empty',\n"
+					"all empty or older than two weeks if the parameter is set to 'old',\n"
+					"or all if the parameter is set to 'all'");
+
+
 
 				parser->DefineCommand("loadAutoSave [index] [world ID]",(CLI::Command::function2_t)[](const StringRef&sindex, const StringRef&world)
 				{
