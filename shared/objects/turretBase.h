@@ -146,14 +146,15 @@ namespace Objects
 			virtual void		Attack(float&currentTime) = 0;
 
 			/**
-			Queues a single auto-target to the front of the local task queue.
+			Queues a single auto-target such that it is executed after any leading queued attacks but before any other type of task.
+			{Example (max attacks 2): [A M A M] -> [A +A+ M A M] (true) -> [A +A+ M A M] (false)}
 			If the number of possible attacks per round are exhausted, insufficient ammunition is available,
-			or the local entity state/type otherwise prohibits auto-targeting, then the method returns false.
-			Internally typically uses GetSentryTarget()
+			or the local entity state/type otherwise prohibits auto-targeting, then the method must return false.
+			Internally typically uses GetSentryTarget().
 			@param[out] outChoice Container for data related to the chosen target
 			@return true if a target has been queued, false otherwise. For multi-targeting, the method may be called until it returns false
 			*/
-			virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice) = 0;
+			virtual bool		QueueAutoAttack(TurretBase::TargetChoice&outChoice) = 0;
 		#endif
 
 	private:

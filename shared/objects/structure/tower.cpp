@@ -140,7 +140,7 @@ namespace Objects
 
 		}
 
-		/*virtual override*/ bool Tower::FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)
+		/*virtual override*/ bool Tower::QueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
 			if (!CanAttack())
 				return false;

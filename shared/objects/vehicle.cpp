@@ -110,41 +110,6 @@ namespace Objects
 			}
 		}
 
-		/*virtual override*/ bool Vehicle::FrontQueueAutoAttack(TurretBase::TargetChoice&outChoice)
-		{
-			if (!CanAttack() || turret->dealsEMPDamage || turret->mainAttackIsDoomsday)
-			{
-				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
-				return false;
-			}
-			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
-			//if (attackQueue.Count() < CountPossibleAttacks())
-			{
-				Grid::LCellIdI target;
-
-				const ResourceVector&storage = 
-					#ifndef ONE_COMPOUND_PER_FACTION
-						this->currentStorage
-					#else
-						this->owner->compound.total.storage
-					#endif
-				;
-
-				if (		
-					(!NextTaskIsAttack() || (int)myTasks.GetOldest().foci.Count() < CountPossibleAttacks())   
-					&& 
-					GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, outChoice)
-					)
-				{
-					return FrontEnqueueAttack(outChoice.cellTarget);
-				}
-			}
-			//else
-				//return false;
-			return false;
-
-		}
-
 
 
 
@@ -470,72 +435,6 @@ namespace Objects
 
 
 
-		bool	Vehicle::EnqueueAttack(Grid::LCellIdI destination)
-		{
-			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
-			ASSERT__(!TasksAreLocked());
-			if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
-			{
-				if (myTasks.Count() >= MaxTasks)
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max tasks reached");
-					return false;
-				}
-
-				myTasks << Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode);
-				myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged);
-			}
-			else
-			{
-				if (myTasks.GetNewest().foci.Count() >= MaxFocusPoints)
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max focus points reached");
-					return false;
-				}
-
-				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
-				{
-					myTasks.GetNewest().foci.Push().target = destination;
-					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
-					RegisterChange(TasksChanged);
-				}
-			}
-			return true;
-		}
-
-		bool	Vehicle::FrontEnqueueAttack(Grid::LCellIdI destination)
-		{
-			Grid::LCellIdI pointOfOrigin = location;
-			ASSERT__(!TasksAreLocked());
-			if (!HasTasks() || !myTasks.GetOldest().IsMode(CursorMode::AttackMode))
-			{
-				if (myTasks.Count() >= MaxTasks)
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max tasks reached");
-					return false;
-				}
-
-				myTasks.PushFront(Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode));
-				myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged);
-			}
-			else
-			{
-				if (myTasks.GetOldest().foci.Count() >= MaxFocusPoints)
-				{
-					LogEvent(EventClass::Preset::commandRejected,this,"Task denied: Max focus points reached");
-					return false;
-				}
-				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
-				{
-					myTasks.GetOldest().foci.PushFront().target = destination;
-					myTasks.GetOldest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
-					RegisterChange(TasksChanged);
-				}
-			}
-			return true;
-		}
 
 		bool	Vehicle::DirectTo( mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/ )
 		{

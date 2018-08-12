@@ -1,5 +1,6 @@
 v0.9.3
 	+ Added control commands /IO/listAutoWorlds and /IO/deleteAutoWorld to control automatic save games via control console.
+	> Tanks with partially filled attack queues will not automatically pick the remaining targets.
 	
 v0.9.2	[Aug 5 2018]
 	+ Added control variable /IO/logFile.
