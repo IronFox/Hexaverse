@@ -1159,7 +1159,7 @@ namespace ConfigurationMode
 
 
 
-		void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder folder)
+		void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::FolderScan folder)
 		{
 			if (!folder.IsValidLocation())
 			{
@@ -1169,7 +1169,6 @@ namespace ConfigurationMode
 				return;
 			}
 			FileSystem::File file;
-			folder.Rewind();
 			while (folder.NextFile("ini",file))
 			{
 				auto&p = planetList.Append();
@@ -1197,7 +1196,7 @@ namespace ConfigurationMode
 		{
 			planetList.Clear();
 		
-			AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::sharedConfig.Lookup("config/myPlanets"));
+			AppendAvailablePlanetInitFilesFrom(false, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")));
 			AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("../predefinedPlanets"));
 		}
 	}

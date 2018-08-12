@@ -655,11 +655,10 @@ namespace Menu
 		}
 	};
 
-	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::Folder folder, const String&path)
+	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
 	{
-		folder.Rewind();
 		FileSystem::File f;
-		while (folder.NextFile(RuntimeConfig::savFileExtension,f))
+		while (scan.NextFile(RuntimeConfig::savFileExtension,f))
 		{
 			String path2 = path.IsNotEmpty() ? path +"/" : "";
 			auto&e = saves.Append();
@@ -668,8 +667,8 @@ namespace Menu
 			e.time = f.GetModificationTime();
 		}
 
-		folder.Rewind();
-		while (folder.NextFolder(f))
+		scan.Rewind();
+		while (scan.NextFolder(f))
 		{
 			String path2 = path.IsNotEmpty() ? path +"/" : "";
 			LookupSaveGames(saves,f,path2 + String(f.GetInnerName()));
@@ -685,7 +684,7 @@ namespace Menu
 		menu->Setup(0.25f,"Start Server with Saved Game",true);
 
 		Buffer0<TSaveGame> saves;
-		LookupSaveGames(saves, RuntimeConfig::sharedConfig.Lookup("saves"), "");
+		LookupSaveGames(saves, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("saves")), "");
 		if (saves.IsEmpty())
 			return false;
 		foreach (saves,s)
