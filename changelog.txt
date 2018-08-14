@@ -1,6 +1,6 @@
 v0.9.3
 	+ Added control commands /IO/listAutoWorlds and /IO/deleteAutoWorld to control automatic save games via control console.
-	> Tanks with partially filled attack queues will not automatically pick the remaining targets.
+	> Tanks with partially filled attack queues will now automatically pick targets to fill the remaining slots.
 	> Owned Nexus Ports now count as mineral and fuel mines when base survival is checked.
 	* Fixed plane pathfinding sometimes routing through EMP zones.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
