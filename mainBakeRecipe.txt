@@ -18,6 +18,8 @@ client/resources/tutorial/*.png
 client/resources/tutorial/*.jpg
 client/resources/tutorial/*.xml
 client/resources/audio/*.mp3
+client/resources/audio/*.wav
+client/resources/audio/sources.txt
 client/oalinst.exe
 client/dxwebsetup.exe
 client/OpenAL32.dll
