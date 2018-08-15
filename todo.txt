@@ -1,6 +1,5 @@
 new round sound: https://freesound.org/people/original_sound/sounds/366104/
 add option to not mute sounds when window is deactivated
-attribution check (full author name, product name, license)
 privacy notice: remove ip hashing (makes little sense)
 
 check if this still happens: if automatic round completion is on, has triggered, and round is manually resumed, any action that causes it to check completion will end the round again
@@ -195,6 +194,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+attribution check (full author name, product name, license)
 done: wrap progress line (not actually wrapped, just 'Progress:\n...')
 skipped: sharp shadow edge on pillars map (fixed maybe?)
 skipped: remove bug report email address. added privacy note and email encryption
