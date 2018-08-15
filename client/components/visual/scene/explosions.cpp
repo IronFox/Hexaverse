@@ -136,7 +136,7 @@ namespace Explosions
 	
 
 		float relative = progress/executionTime;
-		if (AudioInterface::isActive && timer.CheckIfOutdatedAndUpdate(lastAudioUpdate,0.2f))
+		if (AudioInterface::IsActive() && timer.CheckIfOutdatedAndUpdate(lastAudioUpdate,0.2f))
 		{
 			const float newVolume = 1.f *(1.f-relative);
 			source.SetVolume(newVolume);
@@ -203,7 +203,7 @@ namespace Explosions
 		size = size_;
 		executionTime = duration;
 		relativeParticleTime = std::min(0.4f, 1.f / duration);
-		if (AudioInterface::isActive)
+		if (AudioInterface::IsActive())
 		{
 			source.Create();
 			source.SetPosition(position);
@@ -297,7 +297,7 @@ namespace Explosions
 		}
 		particleInstruction.UpdateLayout();
 
-		if (AudioInterface::isActive)
+		if (AudioInterface::IsActive())
 		{
 			explosionSound = Engine::OpenAL::Load("resources/explode.wav");
 			if (explosionSound.IsEmpty())
@@ -331,7 +331,7 @@ namespace Explosions
 		particleTexture.Clear();
 		particleBuffer.Clear();
 		particleInstruction = DX11::BaseInstructionBlock();
-		if (AudioInterface::isActive)
+		if (AudioInterface::IsActive())
 		{
 			Engine::OpenAL::Discard(explosionSound);
 			Engine::OpenAL::Discard(empExplosionSound);

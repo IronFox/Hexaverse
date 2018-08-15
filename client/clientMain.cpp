@@ -2000,6 +2000,8 @@ int main( int argc, const char* argv[])
 				{
 					AudioInterface::Create();
 					AudioInterface::SetMasterVolume(StartConfig::GetFloat("runtime/soundVolume",1.f));
+					AudioInterface::SetMuteOnWindowFocusLoss(StartConfig::GetBool("runtime/muteOnWindowFocusLoss",true));
+
 					Music::SetVolume(StartConfig::GetFloat("runtime/musicVolume",0.5f));
 					Music::SetPlayMusicDuringGameplay(StartConfig::GetBool("runtime/musicDuringGameplay"));
 				}

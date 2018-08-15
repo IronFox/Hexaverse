@@ -304,7 +304,7 @@ namespace Menu
 			}
 		});
 
-		if (AudioInterface::isActive)
+		if (AudioInterface::IsActive())
 		{
 			AddOptionSlider("Sound Volume", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
 			{
@@ -320,6 +320,16 @@ namespace Menu
 				return String(M::Round(AudioInterface::GetMasterVolume() * 100))+"%";
 			}
 			)->SetupMarkers(0.25f,false);
+
+			AddCheckBox("Mute sound when tabbed out",AudioInterface::MutingOnWindowFocusLoss(), [](bool enabled)
+			{
+				auto old = AudioInterface::MutingOnWindowFocusLoss();
+				if (old != enabled)
+				{
+					AudioInterface::SetMuteOnWindowFocusLoss(enabled);
+					Configuration::Update("runtime/muteOnWindowFocusLoss",enabled);
+				}
+			});
 
 			AddOptionSlider("Music Volume", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
 			{

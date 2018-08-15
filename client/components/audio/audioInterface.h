@@ -7,13 +7,16 @@
 
 namespace AudioInterface
 {
-	extern bool	isActive;
-	
 	void	Create();
 	void	Destroy();
 	//void	UpdateListener(const Engine::Aspect<>&);
 	void	SetMasterVolume(float volume);
 	float	GetMasterVolume();
+
+	bool	IsActive();
+
+	void	SetMuteOnWindowFocusLoss(bool doMute);
+	bool	MutingOnWindowFocusLoss();
 }
 
 #endif
