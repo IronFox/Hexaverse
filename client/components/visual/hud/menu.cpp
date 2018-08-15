@@ -8,6 +8,7 @@
 #include "../../../version.h"
 #include "../../audio/audioInterface.h"
 #include "../../audio/music.h"
+#include "../../audio/newRoundSound.h"
 #include "../objectSelection.h"
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
@@ -328,6 +329,16 @@ namespace Menu
 				{
 					AudioInterface::SetMuteOnWindowFocusLoss(enabled);
 					Configuration::Update("runtime/muteOnWindowFocusLoss",enabled);
+				}
+			});
+
+			AddCheckBox("Play sound on round begin",NewRoundSound::IsEnabled(), [](bool enabled)
+			{
+				auto old = NewRoundSound::IsEnabled();
+				if (old != enabled)
+				{
+					NewRoundSound::SetEnabled(enabled);
+					Configuration::Update("runtime/playSoundOnNewRound",enabled);
 				}
 			});
 

@@ -65,6 +65,7 @@
 #include "components/visual/hud/menu.h"
 #include "components/visual/hud/uiScale.h"
 #include "components/audio/music.h"
+#include "components/audio/newRoundSound.h"
 #include "components/visual/hud/eventLog.h"
 #include <serverProcess.h>
 #include "components/audio/audioInterface.h"
@@ -2001,6 +2002,8 @@ int main( int argc, const char* argv[])
 					AudioInterface::Create();
 					AudioInterface::SetMasterVolume(StartConfig::GetFloat("runtime/soundVolume",1.f));
 					AudioInterface::SetMuteOnWindowFocusLoss(StartConfig::GetBool("runtime/muteOnWindowFocusLoss",true));
+
+					NewRoundSound::SetEnabled(StartConfig::GetBool("runtime/playSoundOnNewRound",true));
 
 					Music::SetVolume(StartConfig::GetFloat("runtime/musicVolume",0.5f));
 					Music::SetPlayMusicDuringGameplay(StartConfig::GetBool("runtime/musicDuringGameplay"));

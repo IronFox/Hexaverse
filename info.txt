@@ -4,8 +4,9 @@ https://www.hexaverse.net
 
 Third party content:
 http://findicons.com/icon/93659/guake?id=274746 (Console icon used in console applications)
-The origin of object sound sources is declared individually in
+The origin of sound sources, where required or appropriate, is declared individually in
 .\client\resources\objectSounds\sources.txt
+.\client\resources\audio\sources.txt
 
 
 This project uses the following libraries and acknowledges their priceless contribution:

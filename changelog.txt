@@ -1,6 +1,7 @@
 v0.9.3
 	+ Added checkbox to configure whether sound should be muted when tabbed out.
 	+ Added control commands /IO/listAutoWorlds and /IO/deleteAutoWorld to control automatic save games via control console.
+	+ Added optional round-begin sound playback.
 	> Tanks with partially filled attack queues will now automatically pick targets to fill the remaining slots.
 	> Owned Nexus Ports now count as mineral and fuel mines when base survival is checked.
 	> The button to view situational tutorial messages now pulses when messages are available.
