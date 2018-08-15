@@ -16,27 +16,43 @@
 
 namespace AudioInterface
 {
-
-	bool	isActive = false;
-	static float masterVolume = 1.f;
-
-
-	bool OnSourceCountReduce(count_t n)
+	namespace Details
 	{
-		if (n >= 8)
+		bool	isActive = false;
+		bool	muteOnWindowFocusLoss = true;
+		static float masterVolume = 1.f;
+
+		bool OnSourceCountReduce(count_t n)
 		{
-			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"OpenAL reports problems with max concurrent audio sources. Reduced max to "+String(n));
-			return true;
+			if (n >= 8)
+			{
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"OpenAL reports problems with max concurrent audio sources. Reduced max to "+String(n));
+				return true;
+			}
+			//don't report - this happens once per frame
+			return false;
 		}
-		//don't report - this happens once per frame
-		return false;
+
+
+		void	SignalWindowFocusLoss()
+		{
+			if (muteOnWindowFocusLoss)
+				Engine::OpenAL::SignalWindowFocusLoss();
+		}
 	}
+
+	bool	IsActive()
+	{
+		return Details::isActive;
+	}
+
 
 	void		UpdateListener();
 
 	void	Create()
 	{
 		namespace OpenAL = Engine::OpenAL;
+		using namespace Details;
 
 		isActive = true;
 		if (!OpenAL::Init())	//test
@@ -84,24 +100,38 @@ namespace AudioInterface
 
 			GlobalEvents::frameAfterCamera << UpdateListener;
 
-			display.RegisterFocusCallbacks(OpenAL::SignalWindowFocusLoss, OpenAL::SignalWindowFocusRestoration);
-
+			display.RegisterFocusCallbacks(SignalWindowFocusLoss, OpenAL::SignalWindowFocusRestoration);
 		}
 
 
 
 	}
 
+	void	SetMuteOnWindowFocusLoss(bool doMute)
+	{
+		Details::muteOnWindowFocusLoss = doMute;
+		if (!doMute)
+			Engine::OpenAL::SignalWindowFocusRestoration();
+		elif (!Engine::context.IsFocused())
+			Engine::OpenAL::SignalWindowFocusLoss();
+	}
+
+	bool	MutingOnWindowFocusLoss()
+	{
+		return Details::muteOnWindowFocusLoss;
+	}
+
+
 	void	SetMasterVolume(float volume)
 	{
-		masterVolume = volume;
-		if (isActive)
+		Details::masterVolume = volume;
+		if (Details::isActive)
 			Engine::OpenAL::Listener::SetGain(2.f * volume);
 	}
 
 	float	GetMasterVolume()
 	{
-		return masterVolume;
+		return Details::masterVolume;
 	}
 
 
@@ -114,7 +144,7 @@ namespace AudioInterface
 	void		UpdateListener()
 	{
 
-		if (isActive)
+		if (Details::isActive)
 		{
 			const Engine::Aspect<>&aspect = Camera::scene;
 			//static M::TVec3<> last;

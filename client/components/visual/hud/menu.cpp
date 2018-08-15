@@ -8,6 +8,7 @@
 #include "../../../version.h"
 #include "../../audio/audioInterface.h"
 #include "../../audio/music.h"
+#include "../../audio/newRoundSound.h"
 #include "../objectSelection.h"
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
@@ -304,7 +305,7 @@ namespace Menu
 			}
 		});
 
-		if (AudioInterface::isActive)
+		if (AudioInterface::IsActive())
 		{
 			AddOptionSlider("Sound Volume", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
 			{
@@ -320,6 +321,26 @@ namespace Menu
 				return String(M::Round(AudioInterface::GetMasterVolume() * 100))+"%";
 			}
 			)->SetupMarkers(0.25f,false);
+
+			AddCheckBox("Mute sound when tabbed out",AudioInterface::MutingOnWindowFocusLoss(), [](bool enabled)
+			{
+				auto old = AudioInterface::MutingOnWindowFocusLoss();
+				if (old != enabled)
+				{
+					AudioInterface::SetMuteOnWindowFocusLoss(enabled);
+					Configuration::Update("runtime/muteOnWindowFocusLoss",enabled);
+				}
+			});
+
+			AddCheckBox("Play sound on round begin",NewRoundSound::IsEnabled(), [](bool enabled)
+			{
+				auto old = NewRoundSound::IsEnabled();
+				if (old != enabled)
+				{
+					NewRoundSound::SetEnabled(enabled);
+					Configuration::Update("runtime/playSoundOnNewRound",enabled);
+				}
+			});
 
 			AddOptionSlider("Music Volume", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
 			{

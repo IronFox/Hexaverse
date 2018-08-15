@@ -922,17 +922,19 @@ namespace Objects
 				const UINT32 finer = target.stackID;
 			#endif
 
-			auto seq = World::actual.BeginChangeSequence(v.entityTime);
+			{
+				auto seq = World::actual.BeginChangeSequence(v.entityTime);
 
-			seq.Clear(Grid::HCellIdI(finer,target.height));
+				seq.Clear(Grid::HCellIdI(finer,target.height));
 
-			#ifdef HYBRID_GRID
-				for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-				{
-					UINT32 n = c.neighborhood.neighborID[j];
-					seq.Clear(Grid::HCellIdI(n,target.height));
-				}
-			#endif
+				#ifdef HYBRID_GRID
+					for (int j = 0; j < c.neighborhood.numNeighbors; j++)
+					{
+						UINT32 n = c.neighborhood.neighborID[j];
+						seq.Clear(Grid::HCellIdI(n,target.height));
+					}
+				#endif
+			}
 
 			MobilePlacementResult rc = v.PlaceExactlyAt(target, Times::Dig,v.entityTime);
 			if (!Succeeded(rc))

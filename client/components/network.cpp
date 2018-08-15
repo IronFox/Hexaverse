@@ -1885,7 +1885,7 @@ namespace Network
 					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
 				String err = client.GetError(true);
 
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : (ev == TCP::Event::ConnectionLost ? "Connection lost" : "Connection closed"));
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : "Connection closed or lost");
 				amOnline = false;
 
 				serverRequiresPassword = false;

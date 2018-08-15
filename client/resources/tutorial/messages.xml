@@ -24,7 +24,7 @@
 		2: Previously discovered terrain, but currently out of range
 		3: Discovered and currently visible terrain
 		4: EMP zones (inaccessible until more factions are created)
-		Everything you are not currently observing (everything not in 3) may change without you knowing. Half the trick of winning %PRODUCT_NAME% is knowing what you don't know.
+		Everything you are not currently observing (everything not in 3) may change without you knowing. Half the trick of winning %PRODUCT_NAME% is realizing what you don't know.
 	</message>
 	<message name='Controls'>
 		Basic controls:
@@ -69,13 +69,14 @@
 		<!--If they run out of %MINERALS%, they can restock from every owned structure, connector, or even vehicle in the vicinity.-->
 	</message>
 	<message name='Surveyor' image='surveyor.png'>
-		Surveyors detect natural resources within their scanning range. They are thus important in the initial phase of the game. They can be automated to search for resources on their own. While they are trying to be smart about it, their low scanning range inherently renders them prone to run into hostile attack ranges without noticing.
+		Surveyors detect natural resources within their scanning range. 
+		They can also see through the ground down to the core.
+		Initially, mobile surveyors help detect natural resources, and can be automated to search for resources on their own. While they are trying to be smart about it, their low scanning range inherently renders them prone to run into hostile attack ranges without noticing.
+		During later stages, their primary purpose lies in detecting hostile terraformers trying to undermine your base.
 	</message>
 	<message name='Move To' image='moveto.png'>
-		By right-clicking anywhere on the terrain with a vehicle selected, a new way-point can be added to the end of the vehicle's task list.
-		The vehicle will attempt to reach this point as quickly as possible from the last issued way-point (or its current location if none exist yet).
-		Note that pathfinding may fail if the destination is too far away, or cannot be reached by the selected vehicle due to other constraints.
-		Any issued motion will be executed as possible once the next round is computed. Prior to that you can undo a command by clicking on the respective vehicle's Undo or Abort buttons.
+		By right-clicking anywhere on the terrain, a selected vehicle will attempt to reach the given location as fast as possible during the next round(s). If the shift-key is held, a new way-point is instead added to the end of the vehicle's task list. Note that pathfinding may fail if the destination cannot be reached by the selected vehicle due to terrain constraints.
+		Until executed you can undo a command by clicking on the respective vehicle's Undo or Abort buttons.
 	</message>
 	<message name='End Round' image='End Round.png'>
 		%PRODUCT_NAME% is round based. Or rather, 'phase' based.
@@ -99,16 +100,11 @@
 	<message name='Hostile Contacts' image='contacts.png'>
 		Hostile contacts are visualized near the top of the window. Clicking on any of them will scroll the camera to view the respective contact.
 	</message>
-	<message name='Nexus Port'>
+	<message name='Nexus Port' image='nexusPort.jpg'>
 		Nexus Ports serve multiple purposes. They are indestructible, and in most game modes owning and enabling them counts towards winning the game.
 		By building any structure next to them, they will change ownership to your faction. If all player structures in their neighborhood are lost, they switch back to the Nexus faction.
-		They also provide a significant quantity of resources per round, and can be used as a basis for Sky Hubs.
-	</message>
-	<message name='Sky Hub' image='skyHub.jpg'>
-		Sky Hubs are your bridge into and out of orbit. They can build other satellites (including more Sky Hubs), as well as Sky Ports beneath them. Like other satellites, they require fuel to maintain their altitude.
-		When hovering atop Sky Ports or Nexus Ports, a connection is established (visualized by an intense blue beam), in which case they will no longer require any fuel, and instead are able to provide fuel to other satellites nearby.
-		The further a satellite is from the next connected Sky Hub, the more fuel is lost in transit. 
-		Sky Hubs also serve as powerful sensors, capable of not only sensing distant objects in orbit, but also a portion of the terrain beneath them.
+		They also provide a significant quantity of resources per round if you have enough %ENERGY%(energy) to keep them operational.
+		If bases are required, owned Nexus Ports count as both a %MINERALS%(mineral) and %FUEL%(fuel) mine.
 	</message>
 	<message name='Sky Guardian'>
 		Sky Guardians are currently the only defensive object in orbit. Think of them as partially mobile defense towers. Similarly to towers, they can interrupt-attack moving satellites.
@@ -120,12 +116,16 @@
 	</message>
 	<message name='Mine' image='mine.jpg'>
 		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
-		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Generators to provide the necessary %ENERGY%
+		The mined resources never run out, however a connection to the planet core is required. If lost, you can restore the link, assuming no vehicle or building is in the way.
+		You cannot stack mines.
+		<!--In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Generators to provide the necessary %ENERGY%-->
 		<!--You should directly or indirectly connect them with a Generator.-->
 	</message>
 	<message name='Generator' image='generator.jpg'>
-		Generators serve a crucial role in providing your structure networks with %ENERGY%(energy), while consuming %FUEL%(fuel). Mines-as well as most other buildings-require %ENERGY% to operate.
-		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Mines to provide the necessary %FUEL%
+		Enabled generators provide %ENERGY%(energy) in exchange for %FUEL%(fuel).
+		Many building types require %ENERGY% to operate.
+		Generator effectiveness can be increased by building a Reactor Core next to them.
+		<!--In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Mines to provide the necessary %FUEL%-->
 		<!--You should directly or indirectly connect them with a Mine that provides %FUEL%.-->
 	</message>
 	<message name='Vehicle Plant' image='vehiclePlant.jpg'>

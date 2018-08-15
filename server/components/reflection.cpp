@@ -1517,7 +1517,8 @@ namespace Reflection
 		}
 
 		static Ctr::Array<StringRef>	lines;
-		Wrap(outBuffer.ToRef(),80,lines);
+		auto cp = outBuffer.ToRef();
+		Wrap(cp,80,lines);
 		foreach (lines,line)
 		{
 			String trimmed = line->Trim();
