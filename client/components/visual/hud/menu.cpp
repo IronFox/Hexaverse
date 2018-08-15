@@ -589,7 +589,7 @@ namespace Menu
 				do
 				{
 					execPath.AppendRow(MAX_PATH);
-					len = GetModuleFileNameW(nullptr, execPath.GetPointer(), execPath.GetLength());
+					len = GetModuleFileNameW(nullptr, execPath.GetPointer(), (DWORD)execPath.GetLength());
 				}
 				while (len >= execPath.GetLength());
 
