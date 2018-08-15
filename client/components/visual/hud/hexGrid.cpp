@@ -623,7 +623,9 @@ namespace HexGrid
 
 		/*virtual override*/ void			TutorialCommand::Refresh(bool)
 		{
-			state = HUD::Dialog::HasMoreTutorials() && !HUD::WindowStack::IsModal() && !RuntimeConfig::tutorialMode ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			state = HUD::Dialog::HasMoreTutorials() && !HUD::WindowStack::IsModal() && !RuntimeConfig::tutorialMode
+				? (Objects::CommandFlags::IsEnabled | Objects::CommandFlags::IsFlashing | Objects::CommandFlags::SoftFlashing)
+				: Objects::CommandFlags::None;
 		}
 	}
 
