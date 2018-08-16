@@ -9,6 +9,7 @@ namespace GlobalEvents
 					serverConnectionEstablished,
 					serverConnectionLost,
 		serverConnectionFailed,
+		clientControlBegin,
 		playerControlBegin,
 		beginGame,
 		gridSensoryValid

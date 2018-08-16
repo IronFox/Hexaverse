@@ -6,6 +6,7 @@
 #include "objectNetworkHelper.h"
 #include "clientRuntimeConfig.h"
 #include "scriptedAI.h"
+#include "network.h"
 
 namespace PlayerControlBegin
 {
@@ -64,10 +65,13 @@ namespace PlayerControlBegin
 		Animation::UpdateAutomation(CLOCATION);
 		Objects::CheckMobileEntitySanity();
 
-		GlobalEvents::playerControlBegin();
+		GlobalEvents::clientControlBegin();
 
 		allowChecks = true;
 		CheckAutoNextRound();
+
+		if (!Network::newRoundRequested)
+			GlobalEvents::playerControlBegin();
 	}
 
 

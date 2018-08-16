@@ -26,13 +26,13 @@ namespace NewRoundSound
 	{
 		player.Destroy();
 		isEnabled = false;
-		GlobalEvents::phaseChange.UnregisterAndSetInvalid(registeredCallback);
+		GlobalEvents::playerControlBegin.UnregisterAndSetInvalid(registeredCallback);
 		GlobalEvents::frameAfterCamera.UnregisterAndSetInvalid(updatePositionCallback);
 	}
 
 	static void OnPhaseChange()
 	{
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::haveFaction)
+		if (Network::haveFaction)
 			if (!player.IsPlaying())
 			{
 				player.Rewind();
@@ -61,7 +61,7 @@ namespace NewRoundSound
 		player.Create();
 		player.SetVolume(0.5f);
 		player.ReplaceWaveBuffer(sound);
-		registeredCallback = GlobalEvents::phaseChange.Register(OnPhaseChange);
+		registeredCallback = GlobalEvents::playerControlBegin.Register(OnPhaseChange);
 		updatePositionCallback = GlobalEvents::frameAfterCamera.Register(OnFrameBegin);
 
 	}

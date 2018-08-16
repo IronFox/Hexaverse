@@ -449,7 +449,7 @@ namespace Tutorial
 
 				GlobalEvents::serverConnectionLost << SignalEnd;
 				GlobalEvents::serverConnectionFailed << SignalEnd;
-				GlobalEvents::playerControlBegin << SignalRoundStart;
+				GlobalEvents::clientControlBegin << SignalRoundStart;
 				GlobalEvents::beginGame << SignalStart;
 			}
 			catch (const std::exception&ex)
