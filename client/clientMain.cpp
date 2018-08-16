@@ -1343,20 +1343,6 @@ bool loop()
 
 			textout.SetColor(1,1,1);
 
-
-
-			if (HUD::showControlsAndContacts && !InputControl::saveScreenshot)
-			{
-				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
-				//textout.locate(0.f,1.f - textout.GetScaledHeight());
-				textout.PushState();
-				textout.Scale(0.8f,0.8f);
-				textout.MoveTo(1.f - textout.GetScaledWidth(line),textout.GetScaledHeight());
-				textout << line;
-				textout.PopState();
-
-			}
-
 			if (InputControl::saveScreenshot)
 			{
 				if (!TimeLapse::enabled 

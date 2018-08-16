@@ -492,6 +492,22 @@ namespace Menu
 			if (FileSystem::Folder().FindFile("..\\info.txt",f))
 				OpenDocumentExternally(f.GetLocation());
 		});
+
+		menu->AddCommand("About", []()
+		{
+			String text = PRODUCT_NAME " v" PRODUCT_VERSION "\n"
+				"Compiled "+String(__DATE__)+" "+String(__TIME__) +  "\n"
+				"(c) 2014-"+String(__DATE__).GetLastWord()+" Stefan Elsen\n"
+				"www.hexaverse.net"
+			;
+			//static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
+
+
+			Dialog::ShowImageMessage("about.png",text);
+
+		});
+
+
 		/*{
 			float2 margin = help->GetOutlineMargin();
 			margin.y *= 10.f;
