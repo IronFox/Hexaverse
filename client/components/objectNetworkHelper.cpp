@@ -220,7 +220,7 @@ namespace ObjectHelper
 		DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 		const bool moveTo = mode == Objects::CursorMode::Idle && !(flags & Protocol::DirectFlags::LeftClick);
 
-		if (!Objects::ShouldQueueCommands())
+		if (!Objects::ShouldQueueCommands() && v->SupportsTaskQueue())
 			ApplicationInterface::SignalDropAllTasks(v);
 
 		if (v->IsMobile() && moveTo)

@@ -344,6 +344,12 @@ namespace Objects
 		*/
 		virtual bool				IsBroad() const {return true;}
 
+		/**
+		Checks whether the local type supports a queue of tasks that can be cleared
+		*/
+		virtual bool				SupportsTaskQueue() const {return false;}
+
+
 		#ifndef NO_HIBERNATION
 			/**
 			Queries the bandwidth required for the local entity.
