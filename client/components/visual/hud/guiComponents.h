@@ -795,7 +795,7 @@ namespace Component
 		float			zoom = 1.f;
 		bool			widthLockedToIdeal=false;
 		bool			heightLockedToIdeal=true;
-		M::Quad<float>		padding;	//Vertical spacing is measured in multiples of line-heights, horizontal in multiples of X-letter-widths
+		M::Quad<float>	padding;	//Vertical spacing is measured in multiples of line-heights, horizontal in multiples of X-letter-widths
 
 		bool			UpdateIdealWidth();
 
@@ -827,15 +827,10 @@ namespace Component
 
 		bool			alignCenter = true;
 		
-		/**/			TextField()
-		{
-			padding.bottom = padding.top = 0.75f;
-			padding.left = padding.right = 1;
-			anchorConfig.GetVAxis().AnchorUpperUnknown();	//since heightLockedToIdeal is set by default
-		}
+		/**/			TextField();
 
 		/**
-		Sets the extra spacing at the top and bottom in multiples of line heights. Default is 0.75
+		Sets the extra spacing at the top and bottom in multiples of line heights. Default is 0.6
 		*/
 		void			SetVerticalPadding(float topAndBottom)	{SetVerticalPadding(topAndBottom,topAndBottom);}
 		void			SetVerticalPadding(float top, float bottom)	{padding.top = top; padding.bottom = bottom; ReWrapSetHeight();}

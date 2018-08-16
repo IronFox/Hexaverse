@@ -1894,6 +1894,13 @@ namespace Component
 		Super::UpdateDynamicSize(rec);
 	}
 
+	TextField::TextField()
+	{
+		padding.bottom = padding.top = 0.6f;
+		padding.left = padding.right = 1;
+		anchorConfig.GetVAxis().AnchorUpperUnknown();	//since heightLockedToIdeal is set by default
+	}
+
 	void		TextField::ReWrap()
 	{
 		textout.PushState();
