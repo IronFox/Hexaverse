@@ -109,11 +109,6 @@
 	<message name='Sky Guardian'>
 		Sky Guardians are currently the only defensive object in orbit. Think of them as partially mobile defense towers. Similarly to towers, they can interrupt-attack moving satellites.
 	</message>
-	<message name='Ragnarök' image='ragnarok.jpg'>
-		Ragnarök is no joke. Slow and vulnerable in space, with a high fuel upkeep, and extreme amounts of uranium needs per shot, these satellites pack a serious punch.
-		A single shot can instantaneously vaporize dozens of hostile vehicles and/or structures (possibly including your own, if you are not careful), and blast huge holes into the ground.
-		Note that, depending on server settings, Ragnarök detonations may be made visible to all parties, even if they could not otherwise see the impact.
-	</message>
 	<message name='Mine' image='mine.jpg'>
 		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
 		The mined resources never run out, however a connection to the planet core is required. If lost, you can restore the link, assuming no vehicle or building is in the way.
@@ -137,12 +132,5 @@
 	<message name='Attack' image='attack.jpg'>
 		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area.
 		Note that some locations colored in red may not actually be reachable, if there is no unobstructed trajectory to that destination. In this case intermediate explosions may occur.
-	</message>
-	<message name='Uplink Traffic' image='uplinkTraffic.jpg'>
-		All active units generate control traffic to the governing entity (that's you).
-		The server may impose a maximum uplink bandwidth. Once exhausted, units will enter hibernation depending on their uplink priority.
-		Units in hibernation cannot be controlled in any way, and do not generate uplink traffic. Lower uplink priorities cause units to shut off sooner.
-		The current total uplink traffic is shown in the bottom left of the window.
-		To avoid hibernation deadlock, try to limit the number of uplink-heavy buildings, and store unused vehicles in vehicle stores.
 	</message>
 </tutorial>
