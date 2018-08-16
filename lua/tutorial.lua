@@ -94,13 +94,13 @@ CreateTask(function() Game.DisplayMessage("Now that you have some understanding 
 CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator'; end);
 CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy while consuming %Fuel%fuel. This generator is enough to support your Mine and one more consumer. After that you will need more.","generator.jpg") end);
 
-CreateTask(function() Game.DescribeTask("Please find and select your Mine.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine'; end);
+CreateTask(function() Game.DescribeTask("Now, find and select your Mine.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine'; end);
 CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the planet core underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out but they are also rarely enough.","mine.jpg") end);
 
 --build lab:
 CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer'; end);
 CreateTask(function() Game.DisplayMessage("Terraformers are your primary working force. While not all terraformers are equally manuverable, resilient, or productive, they can all shape the terrain and build new structures.\n Now, let's build something!","terraformer.png") end);
-CreateTask(function() Game.DescribeTask("Please instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
+CreateTask(function() Game.DescribeTask("Instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
 	function() 
 		if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then 
 			for _,t in ipairs(Game.selectedUnit.tasks) do
@@ -143,7 +143,7 @@ CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the Reac
 	end
 );
 
-CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, please find and select your Surveyor.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor'; end);
+CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, find and select your Surveyor.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor'; end);
 
 CreateTask(function() Game.DisplayMessage("Surveyors automatically identify new natural resources in their yellow scanning sphere. The dark discs near your starting location indicate that there isn't anything there (except beneath your starting mine). Instruct your surveyor to move by right-clicking anywhere without discs.","surveyor.png") end);
 CreateTask(function() Game.DescribeTask("Please move your surveyor until it found some more %Fuel%fuel (a green bar atop the terrain). Select the vehicle and right-click anywhere on the terrain to schedule the motion. Request new rounds to execute movement operations") end, 
@@ -155,7 +155,7 @@ CreateTask(function() Game.DescribeTask("Please move your surveyor until it foun
 
 		
 CreateTask(function() Game.DisplayMessage("In some situations it may be smarter to survey the terrain manually, but for now let's instruct the unit to do so automatically.") end, SurveyorIsAutomated);
-CreateTask(function() Game.DescribeTask("Please automate your Surveyor by selecting it and clicking on the Automate button at the bottom screen section.") end, SurveyorIsAutomated);
+CreateTask(function() Game.DescribeTask("Automate your Surveyor by selecting it and clicking on the Automate button at the bottom screen section.") end, SurveyorIsAutomated);
 
 CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly found fuel resource using your terraformer. In the bottom screen section, select Build->Resources->Mine, and click on the terrain cell with the green bar. Request new rounds until done.") end,
 	function()
@@ -176,7 +176,7 @@ CreateTask(function() Game.DisplayMessage("The list in the bottom left section o
 );
 
 CreateTask(function() Game.DescribeTask(
-	"Please construct a second generator using your terraformer. In the bottom screen section, select Build->Resources->Generator, and click anywhere on the terrain.\n"
+	"Construct a second generator using your terraformer. In the bottom screen section, select Build->Resources->Generator, and click anywhere on the terrain.\n"
 		.."Don't worry about proximity, resources are transferred across any distance without visible connection.\n"
 		.."Request new rounds until done.") end,
 	function()
@@ -234,7 +234,7 @@ CreateTask(function() Game.DescribeTask("Next, construct a Vehicle Plant using y
 
 CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sorts of vehicles. Let's start with another terraformer.","vehiclePlant.jpg") end);
 
-CreateTask(function() Game.DescribeTask("Please task your Vehicle Plant to construct another hoverformer by selecting the plant and then choosing the Terraformer turret in the top row of its unit commands.") end,
+CreateTask(function() Game.DescribeTask("Task your Vehicle Plant to construct another hoverformer by selecting the plant and then choosing the Terraformer turret in the top row of its unit commands.") end,
 	function()
 		for _,u in pairs(Game.myUnits) do
 			if u.typeName == 'Vehicle Plant' and u.productionQueue ~= nil then
@@ -272,7 +272,7 @@ CreateTask(function() Game.DescribeTask("Please find some %Uranium%uranium, and 
 	end
 );
 
-CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core research to complete."); end,
+CreateTask(function() Game.DescribeTask("Wait for your Reactor Core research to complete."); end,
 	function()
 		local res = Game.Research.topics['Unlock:ReactorCore'];
 		return res and res.isCompleted;
@@ -282,7 +282,7 @@ CreateTask(function() Game.DescribeTask("Please wait for your Reactor Core resea
 
 --CreateTask(function() Game.DisplayMessage("Reactor Cores cause neighboring Generators to produce twice as much %Energy%energy each round. They are a very useful thing to have. The catch is that you need %Uranium%uranium.") end);
 
-CreateTask(function() Game.DescribeTask("Now, please construct a Reactor Core next to one of your Generators. It must be on the same level") end,
+CreateTask(function() Game.DescribeTask("Now, construct a Reactor Core next to one of your Generators. It must be on the same level") end,
 	function()
 		
 		for _,u in pairs(Game.myUnits) do
