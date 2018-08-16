@@ -304,7 +304,7 @@ CreateTask(function() Game.DescribeTask("Now, construct a Reactor Core next to o
 
 
 
-CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the %Energy%energy output of your compound. They require %Uranium%uranium, however, and do tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
+CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the %Energy%energy output of your compound. They require %Uranium%uranium, and tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
 
 CreateTask(function() Game.DisplayMessage("This concludes the interactive tutorial.\n"..
 "With the basics covered, you will undoubtedly quickly master all other features as well.\n"..
