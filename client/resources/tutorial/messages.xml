@@ -94,7 +94,7 @@
 		Hostile ghosts are preserved until their last known location is again visible, they are detected in some other location, or an explosion occurred in their vicinity.
 	</message>
 	<message name='Friendly Ghosts' image='friendlyGhost.png'>
-		Friendly ghosts-or 'tomb stones'-(shown in translucent black) are created whenever a unit you own is destroyed.
+		Friendly ghosts ('tomb stones'; shown in translucent black) are created whenever a unit you own is destroyed.
 		They naturally disappear after 10 rounds, or if you construct a new building in their place.
 	</message>
 	<message name='Hostile Contacts' image='contacts.png'>
