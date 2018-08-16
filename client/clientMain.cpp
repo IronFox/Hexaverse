@@ -591,7 +591,7 @@ namespace ApplicationInterface
 							filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						}
 						png.SaveToFile(image,filename);
-						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+String(filename));
+						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+FileSystem::PathToString(filename));
 					}
 					else
 					{
