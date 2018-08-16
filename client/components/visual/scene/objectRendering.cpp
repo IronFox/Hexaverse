@@ -2163,7 +2163,7 @@ namespace Objects
 		}
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+	void	Renderer::RenderTranslucentBeams( )
 	{
 	/*	if (!objectView)
 			return;
@@ -2243,7 +2243,7 @@ namespace Objects
 		{
 			for (int i = 0; i < 12; i++)
 			{
-				if (nexusSet[i])
+				if (nexusSet[i] || Grid::AffectedByEMP(Grid::LCellIdI(i,0)))
 					continue;
 				M::TVec3<> color;
 				const bool isolated = BaseGrid::IsIsolatedCorner(i);

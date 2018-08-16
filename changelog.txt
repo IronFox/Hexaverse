@@ -8,6 +8,7 @@ v0.9.3
 	> Tutorial message button now pulses when messages are available.
 	> Automatically fixed missing configuration entries are no longer visually displayed.
 	> Decreased vertical padding of buttons.
+	> Removed goal/Nexus markers in EMP zones.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
 	* Fixed access violation when repairing/generating configuration files.
 	
