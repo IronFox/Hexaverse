@@ -1821,10 +1821,10 @@ namespace StartConfig
 		{
 			comment = attrib->comment.ref();
 			def = attrib->value.ref();
-			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found. Defaulting to '"+(def)+"'");
+			LogEvent(EventClass::Preset::fixedConfigurationError,"Fixing config error: '"+path+"' not found. Defaulting to '"+(def)+"'");
 		}
 		else
-			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found in actual or base configuration. Defaulting to '"+(def)+"'");
+			LogEvent(EventClass::Preset::fixedConfigurationError,"Fixing config error: '"+path+"' not found in actual or base configuration. Defaulting to '"+(def)+"'");
 		destConfig.Define(path,def).comment = comment;
 		changed = true;
 	}

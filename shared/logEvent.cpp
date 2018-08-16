@@ -40,6 +40,7 @@ EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalErr
 			EventClass::Preset::configuration = EventClass(EventSignificance::Common,EventFlavor::Neutral),
 			EventClass::Preset::configurationPrint = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::configurationError = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
+			EventClass::Preset::fixedConfigurationError = EventClass(EventSignificance::FixedError,EventFlavor::UserError),
 			EventClass::Preset::fileError = EventClass(EventSignificance::NonFatalError,EventFlavor::SystemError),
 			EventClass::Preset::network = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::networkError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),

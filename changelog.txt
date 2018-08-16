@@ -5,6 +5,7 @@ v0.9.3
 	> Tanks with partially filled attack queues will now automatically pick targets to fill the remaining slots.
 	> Owned Nexus Ports now count as mineral and fuel mines when base survival is checked.
 	> Tutorial message button now pulses when messages are available.
+	> Automatically fixed missing configuration entries are no longer visually displayed.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
 	* Fixed access violation when fixing configuration files.
 	
