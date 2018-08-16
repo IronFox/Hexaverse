@@ -151,6 +151,7 @@ namespace Objects
 		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(table,prototype,owner,location,atTime));};
 		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = GetEffectiveFoundationHeight(); return To<Tower>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = GetEffectiveFoundationHeight(); return To<const Tower>::Cast(shared_from_this());}
+		virtual bool				SupportsTaskQueue() const override {return true;}
 
 		//Structure overrides:
 		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
