@@ -30,7 +30,7 @@ namespace NewRoundSound
 		GlobalEvents::frameAfterCamera.UnregisterAndSetInvalid(updatePositionCallback);
 	}
 
-	static void OnPhaseChange()
+	static void OnPlayerBegin()
 	{
 		if (Network::haveFaction)
 			if (!player.IsPlaying())
@@ -61,7 +61,7 @@ namespace NewRoundSound
 		player.Create();
 		player.SetVolume(0.5f);
 		player.ReplaceWaveBuffer(sound);
-		registeredCallback = GlobalEvents::playerControlBegin.Register(OnPhaseChange);
+		registeredCallback = GlobalEvents::playerControlBegin.Register(OnPlayerBegin);
 		updatePositionCallback = GlobalEvents::frameAfterCamera.Register(OnFrameBegin);
 
 	}
