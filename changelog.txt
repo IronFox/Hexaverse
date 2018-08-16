@@ -9,6 +9,7 @@ v0.9.3
 	> Automatically fixed missing configuration entries are no longer visually displayed.
 	> Decreased vertical padding of buttons.
 	> Removed goal/Nexus markers in EMP zones.
+	> Removed goal/Nexus markers in visual configurator.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
 	* Fixed access violation when repairing/generating configuration files.
 	
