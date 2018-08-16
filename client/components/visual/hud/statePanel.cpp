@@ -94,8 +94,8 @@ namespace StatePanel
 			while (numSpaces < text.Length() && text.GetChar(numSpaces) == ' ')
 				numSpaces++;
 			indent = textout.GetScaledWidth(text.SubStringRef(0,numSpaces));
-			auto toWrap = text.SubStringRef(numSpaces);
-			Wrap(toWrap,width,CharLen,wrapped);
+
+			Wrap(text.SubStringRef(numSpaces),width,CharLen,wrapped);
 		}
 
 
