@@ -485,13 +485,13 @@ namespace ScriptedAI
 		{
 			if (controlBeginRegistration != InvalidIndex)
 				return;
-			controlBeginRegistration = GlobalEvents::playerControlBegin.Register(ScriptedAI::Start);
+			controlBeginRegistration = GlobalEvents::clientControlBegin.Register(ScriptedAI::Start);
 
 		}
 
 		void			UnregisterExecution()
 		{
-			GlobalEvents::playerControlBegin.UnregisterAndSetInvalid(controlBeginRegistration);
+			GlobalEvents::clientControlBegin.UnregisterAndSetInvalid(controlBeginRegistration);
 			#ifdef HAS_WINDOW
 				Objects::onSelectionChanged.UnregisterAndSetInvalid(Details::selectionChangedRegistration);
 			#endif

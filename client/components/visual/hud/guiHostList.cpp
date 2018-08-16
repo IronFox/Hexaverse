@@ -63,7 +63,7 @@ namespace HUD{namespace HostList{
 		{
 			StringFile source("../changelog.txt",CM_RETURN_EMPTY_LINES);
 			changelog = Window::Create();
-			changelog->Anchor().Right().Bottom(0.1f);
+			changelog->Anchor().Right().Bottom(0.15f);
 			changelog->canBeImplicitlyClosed = false;
 			changelog->isModal = false;
 			changelog->SetWidth(HUD::Component::Distance(0.4f));

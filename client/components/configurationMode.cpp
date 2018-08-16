@@ -1259,6 +1259,7 @@ namespace ConfigurationMode
 		{
 			anyWorldLoaded = false;
 			showDiscovery = false;
+			Objects::Renderer::SetRenderGoalMarkers(true);
 			Objects::Faction::Kill(myNexus);
 			GlobalEvents::FlushAll();
 			myNexus = nullptr;
@@ -1275,7 +1276,7 @@ namespace ConfigurationMode
 			Grid::empZonesLocked = 0x0;
 		}
 		VisualTerrain::Invalidate();
-
+		Objects::Renderer::SetRenderGoalMarkers(false);
 
 		myNexus = Objects::Faction::GetOrCreate(TUniqueID::New());
 		Detail::Create();

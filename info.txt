@@ -1,15 +1,21 @@
-Hexaverse
-https://www.hexaverse.net
+Third party content used by Hexaverse (https://www.hexaverse.net):
 
+Sounds:
+newRound.wav: "begin.wav" by tim.kahn, CC BY 3.0, https://freesound.org/people/tim.kahn/sounds/85032/
+construct.wav: Cutout from "road_construction.wav" by aesqe, CC BY 3.0, https://www.freesound.org/people/aesqe/sounds/138214/
+catbase.wav: Cutout from "boat speeding, water.wav" by jazbavac, CC0 1.0, https://www.freesound.org/people/jazbavac/sounds/198519/
+beam.wav: Mix of "Laser 1 rev down.ogg" by jobro, CC0 1.0, https://freesound.org/people/jobro/sounds/245153/
 
-Third party content:
-http://findicons.com/icon/93659/guake?id=274746 (Console icon used in console applications)
-The origin of sound sources, where required or appropriate, is declared individually in
-.\client\resources\objectSounds\sources.txt
-.\client\resources\audio\sources.txt
+Libraries:
+libbzip2 (bzip2) by Julian Seward, bzip2 license, http://www.bzip.org/
+libpng by Guy Eric Schalnat, Andreas Dilger, Glenn Randers-Pehrson, et al., libpng license, http://www.libpng.org/
 
+Images:
+Console Client Icon: "TERMINAL ICON" by Github Octicons, MIT License, http://icons-for-free.com/icon/terminal_icon_298878.html
 
-This project uses the following libraries and acknowledges their priceless contribution:
-libbzip2: http://www.bzip.org/
-libpng: http://www.libpng.org/
-
+Referenced Licenses:
+CC BY 3.0: https://creativecommons.org/licenses/by/3.0/
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+lippng license: http://www.libpng.org/pub/png/src/libpng-LICENSE.txt
+bzip2 license: https://spdx.org/licenses/bzip2-1.0.6.html
+MIT license: https://opensource.org/licenses/MIT

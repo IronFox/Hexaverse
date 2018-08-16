@@ -208,6 +208,7 @@ namespace Objects
 		*/
 		void	RenderTranslucentBeams();
 
+		void	SetRenderGoalMarkers(bool);
 
 		/**
 		Renders all ranges (attack, sensor, etc) of the selected entity and other entities if the respective settings are active.

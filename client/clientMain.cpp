@@ -613,7 +613,7 @@ namespace ApplicationInterface
 							filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						}
 						png.SaveToFile(image,filename);
-						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+String(filename));
+						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+FileSystem::PathToString(filename));
 					}
 					else
 					{
@@ -1393,20 +1393,6 @@ bool loop()
 
 			textout.SetColor(1,1,1);
 
-
-
-			if (HUD::showControlsAndContacts && !InputControl::saveScreenshot)
-			{
-				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
-				//textout.locate(0.f,1.f - textout.GetScaledHeight());
-				textout.PushState();
-				textout.Scale(0.8f,0.8f);
-				textout.MoveTo(1.f - textout.GetScaledWidth(line),textout.GetScaledHeight());
-				textout << line;
-				textout.PopState();
-
-			}
-
 			if (InputControl::saveScreenshot)
 			{
 				if (!TimeLapse::enabled 
@@ -1871,10 +1857,10 @@ namespace StartConfig
 		{
 			comment = attrib->comment.ref();
 			def = attrib->value.ref();
-			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found. Defaulting to '"+(def)+"'");
+			LogEvent(EventClass::Preset::fixedConfigurationError,"Fixing config error: '"+path+"' not found. Defaulting to '"+(def)+"'");
 		}
 		else
-			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found in actual or base configuration. Defaulting to '"+(def)+"'");
+			LogEvent(EventClass::Preset::fixedConfigurationError,"Fixing config error: '"+path+"' not found in actual or base configuration. Defaulting to '"+(def)+"'");
 		destConfig.Define(path,def).comment = comment;
 		changed = true;
 	}

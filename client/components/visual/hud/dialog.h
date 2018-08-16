@@ -168,6 +168,12 @@ namespace Dialog
 	WDialog	ShowMessage(const String&msg);
 	WDialog	ShowMessage(const String&msg, const FCheckState&check);
 
+	/**
+	Creates a new modal dialog on top of any other active modal dialogs that shows a message with image, and 'got it' button
+	*/
+	WDialog	ShowImageMessage(const String&imageName, const String&msg);
+	WDialog	ShowImageMessage(const String&imageName, const String&msg, const FCheckState&check);
+
 
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs that attempts to read a string from the user

@@ -503,41 +503,44 @@ namespace Dialog
 		return WindowStack::Hide(dialog);
 	}
 
+
+	static DX11::Texture	GetTextureByName(const String&imageName)
+	{
+		if (imageName.IsEmpty())
+			return DX11::Texture();
+			
+		static StringTable<DX11::Texture, Strategy::Swap>	textureMap;
+
+		DX11::Texture*tex = textureMap.QueryPointer(imageName);
+		if (tex)
+			return *tex;
+
+		try
+		{
+			Image image;
+			Magic::LoadFromFile(image, PathString("resources/tutorial/" + imageName));
+			DX11::Texture setTexture;
+			setTexture.Load(image);
+			textureMap.Set(imageName, setTexture);
+			return setTexture;
+		}
+		catch (const std::exception&e)
+		{
+			LogEvent(EventClass::Preset::internalError, e.what());
+			DBG_FATAL__(e.what());
+		}
+		return DX11::Texture();
+	}
+
 	PDialog	CreateTutorialMessage(const String&key, const ArrayRef<const String>&text, const String&imageName /*= ""*/)
 	{
 
 		
-		static StringTable<DX11::Texture,Strategy::Swap>	textureMap;
 
 
 		PDialog d = Dialog::Create();
 
-
-		DX11::Texture setTexture;
-
-		if (imageName.IsNotEmpty())
-		{
-			DX11::Texture*tex = textureMap.QueryPointer(imageName);
-			if (tex)
-			{
-				setTexture = *tex;
-			}
-			else
-			{
-				try
-				{
-					Image image;
-					Magic::LoadFromFile(image,PathString("resources/tutorial/"+imageName));
-					setTexture.Load(image);
-					textureMap.Set(imageName,setTexture);
-				}
-				catch (const std::exception&e)
-				{
-					LogEvent(EventClass::Preset::internalError,e.what());
-					DBG_FATAL__(e.what());
-				}
-			}
-		}
+		const auto setTexture = GetTextureByName(imageName);
 		bool hasImage = setTexture.IsNotEmpty();
 		Detail::Configure(d,hasImage ?  Detail::ComponentFlags::ConfirmButton|Detail::ComponentFlags::Image : Detail::ComponentFlags::ConfirmButton, "Got it", true);
 		if (hasImage)
@@ -682,8 +685,23 @@ namespace Dialog
 		return d;
 	}
 
+	WDialog	ShowImageMessage( const String&imageName, const String&msg, const FCheckState&check )
+	{
+		WindowStack::VerifyIntegrity(CLOCATION);
 
-	WDialog	ShowMessage(const String&msg, const FCheckState&check)
+		const auto setTexture = GetTextureByName(imageName);
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::Image , "Got it", false);
+		d->image->SetTexture(setTexture);
+		d->textField->SetText(msg);
+		d->check = check;
+
+		d->ReLayout();
+
+		WindowStack::VerifyIntegrity(CLOCATION);
+		return d;
+	}
+
+	WDialog	ShowMessage( const String&msg, const FCheckState&check )
 	{
 		WindowStack::VerifyIntegrity(CLOCATION);
 
@@ -697,19 +715,20 @@ namespace Dialog
 
 		WindowStack::VerifyIntegrity(CLOCATION);
 		return d;
-
-
 	}
 
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs that simply shows a message
 	*/
-	WDialog	ShowMessage(const String&msg)
+	WDialog	ShowMessage( const String&msg )
 	{
-		return ShowMessage(msg,FCheckState());
+		return ShowMessage(msg,nullptr);
 	}
 
-
+	WDialog	ShowImageMessage( const String&imageName, const String&msg )
+	{
+		return ShowImageMessage(imageName,msg,nullptr);
+	}
 
 	void	Destroy()
 	{

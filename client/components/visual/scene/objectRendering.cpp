@@ -90,6 +90,7 @@ namespace Objects
 
 	namespace Renderer
 	{
+		static bool doRenderGoalMarkers = true;
 
 		class SelectionPrimitive
 		{
@@ -2263,12 +2264,19 @@ namespace Objects
 		}
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+	void	Renderer::SetRenderGoalMarkers(bool doRenderGoalMarkers)
+	{
+		Renderer::doRenderGoalMarkers = doRenderGoalMarkers;
+	}
+
+
+	void	Renderer::RenderTranslucentBeams( )
 	{
 	/*	if (!objectView)
 			return;
 	*/	
-
+		if (!doRenderGoalMarkers)
+			return;
 		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
 		display.SetDepthTest(true,false);
 		display.SetBlendMode(Engine::BlendMode::Add);
@@ -2349,7 +2357,7 @@ namespace Objects
 		{
 			for (int i = 0; i < 12; i++)
 			{
-				if (nexusSet[i])
+				if (nexusSet[i] || Grid::AffectedByEMP(Grid::LCellIdI(i,0)))
 					continue;
 				M::TVec3<> color;
 				const bool isolated = BaseGrid::IsIsolatedCorner(i);

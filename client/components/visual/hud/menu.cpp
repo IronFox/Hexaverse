@@ -445,19 +445,19 @@ namespace Menu
 
 	static void	CreateHelpMenu()
 	{
-		help = Menu::Create();
-		help->Setup(0.3f,"Help",true);
-		help->AddCommand("View Online Manual",[]()
+		auto menu = help = Menu::Create();
+		menu->Setup(0.3f,"Help",true);
+		menu->AddCommand("View Online Manual",[]()
 		{
 			OpenDocumentExternally("https://www.hexaverse.net/html.php");
 		});
 
-		help->AddCommand("Show Basic Controls",
+		menu->AddCommand("Show Basic Controls",
 			[]()
 			{
 				Tutorial::ShowMessage("Controls",true,true);
 			});
-		help->AddCommand("Revisit All Tutorial Messages",
+		menu->AddCommand("Revisit All Tutorial Messages",
 			[]()
 			{
 				HUD::Dialog::Confirm("You are about to reset the game's memory of tutorial messages you have been shown. All messages will be shown again where considered appropriate.\n"
@@ -467,11 +467,11 @@ namespace Menu
 						Tutorial::FlushMemory();
 					});
 			});
-		help->AddCommand("Start Interactive Tutorial",
+		menu->AddCommand("Start Interactive Tutorial",
 			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
-		help->AddCommand("Report Bug",
+		menu->AddCommand("Report Bug",
 			[]()
 			{
 				SetFullScreen(false);
@@ -479,11 +479,32 @@ namespace Menu
 			}	
 		);
 
-		help->AddCommand("View Changelog",[]()
+		menu->AddCommand("View Changelog",[]()
 		{
 			FileSystem::File f;
 			if (FileSystem::Folder().FindFile("..\\changelog.txt",f))
 				OpenDocumentExternally(f.GetLocation());
+		});
+
+		menu->AddCommand("View Third Party Sources",[]()
+		{
+			FileSystem::File f;
+			if (FileSystem::Folder().FindFile("..\\info.txt",f))
+				OpenDocumentExternally(f.GetLocation());
+		});
+
+		menu->AddCommand("About", []()
+		{
+			String text = PRODUCT_NAME " v" PRODUCT_VERSION "\n"
+				"Compiled "+String(__DATE__)+" "+String(__TIME__) +  "\n"
+				"(c) 2014-"+String(__DATE__).GetLastWord()+" Stefan Elsen\n"
+				"www.hexaverse.net"
+			;
+			//static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
+
+
+			Dialog::ShowImageMessage("about.png",text);
+
 		});
 
 

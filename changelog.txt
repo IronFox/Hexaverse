@@ -1,13 +1,19 @@
-v0.9.3
+v0.9.3	[Aug 16 2018]
 	+ Added checkbox to configure whether sound should be muted when tabbed out.
 	+ Added control commands /IO/listAutoWorlds and /IO/deleteAutoWorld to control automatic save games via control console.
 	+ Added optional round-begin sound playback.
+	+ Added menu option to view list of used third party content.
 	> Tanks with partially filled attack queues will now automatically pick targets to fill the remaining slots.
 	> Owned Nexus Ports now count as mineral and fuel mines when base survival is checked.
 	> Tutorial message button now pulses when messages are available.
+	> Automatically fixed missing configuration entries are no longer visually displayed.
+	> Decreased vertical padding of buttons.
+	> Removed goal/Nexus markers in EMP zones.
+	> Removed goal/Nexus markers in visual configurator.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
 	* Fixed plane pathfinding sometimes routing through EMP zones.	
-	* Fixed access violation when fixing configuration files.
+	* Fixed access violation when repairing/generating configuration files.
+
 	
 v0.9.2	[Aug 5 2018]
 	+ Added control variable /IO/logFile.

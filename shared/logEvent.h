@@ -7,10 +7,11 @@
 
 
 
-CONSTRUCT_ENUMERATION9(EventSignificance,
+CONSTRUCT_ENUMERATION10(EventSignificance,
 						Common,
 						Debug,
 						PerformanceMeasurement,
+						FixedError,
 						Uncommon,		//this and everything downwards is logged on the console and sent to clients
 						Important,
 						NonFatalError,
@@ -77,6 +78,7 @@ struct EventClass
 							configuration,
 							configurationPrint,
 							configurationError,
+							fixedConfigurationError,
 							fileError,
 							network,
 							networkError,

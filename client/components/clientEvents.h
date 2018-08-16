@@ -29,9 +29,17 @@ namespace GlobalEvents
 	extern Observable<>	serverConnectionFailed;
 
 	/**
-	The player is given control in a new round. Triggered exactly once per round, after all hardcoded effects have been executed
+	The local client is given control in a new round. Triggered exactly once per round, 
+	after all hardcoded effects have been executed, but before round is possibly ended by automatic processes
 	*/
-	extern Observable<>	playerControlBegin;
+	extern Observable<>	clientControlBegin;
+
+	/**
+	The local player is given control in a new round. Triggered after clientControlBegin,
+	after a possible automatic round progression has not happened early on.
+	Late automatic round progression is not covered
+	*/
+	extern Observable<> playerControlBegin;
 
 	/**
 	Triggered when a previous initialized concurrent sensor painting operation has finished, and sensory is now valid

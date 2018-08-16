@@ -85,7 +85,7 @@ namespace ObjectHelper
 		void	Create()
 		{
 			GlobalEvents::objectFlush << Reset;
-			GlobalEvents::playerControlBegin << Retry;
+			GlobalEvents::clientControlBegin << Retry;
 			GlobalEvents::gridSensoryValid << Retry;
 		}
 	}
