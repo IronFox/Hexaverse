@@ -486,7 +486,12 @@ namespace Menu
 				OpenDocumentExternally(f.GetLocation());
 		});
 
-
+		help->AddCommand("View Third Party Sources",[]()
+		{
+			FileSystem::File f;
+			if (FileSystem::Folder().FindFile("..\\info.txt",f))
+				OpenDocumentExternally(f.GetLocation());
+		});
 		/*{
 			float2 margin = help->GetOutlineMargin();
 			margin.y *= 10.f;
