@@ -4,7 +4,8 @@
 *  Health: 10
 *  Price: %Minerals% 50
 *  [[concepts/scanning range|Scanning range]]: 2 [=4-2 (tower modifier)]
-*  [[concepts/attack range|Hrz. Attack range]]: 7=[5]+2 (Tower Bonus) (AAMissile)
+*  [[concepts/attack range|Hrz. Attack range]]: 7 [=5+2 (tower modifier)] (AAMissile)
+*  Sub-orbital [[concepts/scanning range]]: 5
 *  Does not require ammunition
 *  1 attack per round
 *  Explosion radius: 1
