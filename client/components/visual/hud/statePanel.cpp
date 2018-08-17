@@ -285,7 +285,7 @@ namespace StatePanel
 			#endif
 			if (m->turret->CanAttack())
 				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative);
-			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound(m->owner);
+			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound(e.owner);
 			if (m->turret->CanAttack())
 			{
 				if (m->turret->independentAttackAndMotion)
@@ -314,12 +314,12 @@ namespace StatePanel
 			}
 			if (m->turret->CanDo(Objects::Component::Construct))
 			{
-				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Construct, m->owner);
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Construct, e.owner);
 				cachedLines << " Converts "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
 			if (m->turret->CanDo(Objects::Component::Repair))
 			{
-				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Repair, m->owner);
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Repair, e.owner);
 				cachedLines << " Repairs "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
 	
@@ -389,7 +389,7 @@ namespace StatePanel
 				if (t->turret->CanAttack())
 				{
 					const Objects::Tower*v = t;	//rename
-					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(m->owner);
+					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(e.owner);
 					cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
 					cachedLines << " "+String((char)(tagOffset+v->turret->ammoType))+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 				}

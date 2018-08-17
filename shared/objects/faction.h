@@ -520,7 +520,7 @@ namespace Objects
 			Counts the number of structures owned by the local faction that share the specified type
 			Operates in O(n), n = number of structures owned by the local faction
 			*/
-			count_t		CountStructureType(ConstName structureType) const;
+			count_t		CountStructureType(EntityType structureType) const;
 			/**
 			Counts the number of mobiles/structures owned by the local faction that provide the specified turret type.
 			Includes stored mobile entities

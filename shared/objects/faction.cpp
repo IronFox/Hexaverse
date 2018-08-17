@@ -1520,7 +1520,7 @@ namespace Objects
 			}
 			EntityType type = e->GetType();
 			if (e->IsStructure())
-				return researchState.CheckUnlocked(type.baseType,errorOut) && CheckLimit(CountStructureType(type.baseType), RuntimeConfig::UnitLimits::Get(type.baseType), errorOut);
+				return researchState.CheckUnlocked(type.baseType,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}
@@ -1548,7 +1548,7 @@ namespace Objects
 			return rs;
 		}
 
-		count_t		Faction::CountStructureType(ConstName structureType) const
+		count_t		Faction::CountStructureType(EntityType structureType) const
 		{
 			count_t rs = 0;
 			foreach (this->structures, s0)
