@@ -380,7 +380,7 @@ namespace Game
 	Updates game phase to EndOfGame, and notifies all clients.
 	Winner must have been empty before.
 	*/
-	void			DeclareWinner(const Objects::PAlliance&);
+	void			DeclareWinner(const Objects::PAlliance&, const String&reason);
 
 	/**
 	Redetermines the mineral value offset used to calculate when to spawn AI units

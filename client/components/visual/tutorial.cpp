@@ -489,13 +489,15 @@ namespace Tutorial
 
 	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/, bool overrideMemory/*=false*/)
 	{
-		if (RuntimeConfig::aiMode || RuntimeConfig::tutorialMode || ConfigurationMode::IsActive())
+		if (RuntimeConfig::aiMode || ConfigurationMode::IsActive())
 			return;
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
 			return;
 		if (!Detail::RegisterMemory(msg->shown,name) && !overrideMemory)
 			return;
+		if (RuntimeConfig::tutorialMode)
+			return;	//don't enqueue anything. assume known
 		HUD::Dialog::EnqueueTutorial(name,msg->lines,msg->image,forceOpenNow);
 		if (forceOpenNow)
 			HUD::Dialog::ShowNextTutorial(!overrideMemory);

@@ -756,7 +756,7 @@ namespace Game
 						}
 					});
 					if (newWinner)
-						DeclareWinner(newWinner);
+						DeclareWinner(newWinner,"Phase change to EndOfGame");
 				}
 
 				foreach (::Network::activePlayersAndSpectators,p)
@@ -1377,13 +1377,13 @@ namespace Game
 	}
 
 
-	void	DeclareWinner( const Objects::PAlliance&w )
+	void	DeclareWinner( const Objects::PAlliance&w, const String&reason )
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(winner.expired());
 		if (!::Network::SessionIsStarted())
 		{
-			LogEvent(EventSignificance::NonFatalError,"Trying to declare winner while session is closed.");
+			LogEvent(EventSignificance::NonFatalError,"Trying to declare winner while session is closed ("+reason+").");
 			DBG_FATAL__("Bad state");
 			return;
 		}
@@ -1393,7 +1393,7 @@ namespace Game
 			return;
 		}
 		postEvolutionWinner.reset();
-		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winning alliance: "+w->id.ConvertToString());
+		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winning alliance: "+w->id.ConvertToString()+" ("+reason+")");
 
 		Buffer0<String> winners;
 		w->ForeachMember([&winners](const Objects::PFaction&f)
@@ -1579,12 +1579,14 @@ namespace Game
 					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
 
 					winner.reset();
-					Objects::Alliance::Foreach([](const Objects::PAlliance&a)
+					Objects::PAlliance newWinner;
+					Objects::Alliance::Foreach([&newWinner](const Objects::PAlliance&a)
 					{
-						if (a != Objects::Faction::nexus->alliance)
-							winner = a;
+						
+						if (a != Objects::Faction::nexus->alliance && a->CountLivingMembers() > 0)
+							newWinner = a;
 					});
-					DeclareWinner(winner.lock());
+					DeclareWinner(newWinner, "Bases required + Closed game + Only one player faction left alive");
 				}
 			}
 

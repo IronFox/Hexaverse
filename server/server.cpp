@@ -316,7 +316,7 @@ namespace ApplicationInterface
 			auto stats  = a->GetNexusStats();
 
 			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus && stats.nexusControl >= Game::Config::GetTargetNexusCount())
-				Game::DeclareWinner(a);
+				Game::DeclareWinner(a, "Game goal ConquerNexus achieved with "+String(stats.nexusControl)+"/"+String(Game::Config::GetTargetNexusCount()));
 			else
 			{
 				a->ForeachMember([&stats](const Objects::PFaction&f)
@@ -1395,7 +1395,7 @@ int main( int argc, const char* argv[])
 					Game::FinishRoundProcessing();
 					Objects::PAlliance a = Game::postEvolutionWinner.lock();
 					if (a)
-						Game::DeclareWinner(a);
+						Game::DeclareWinner(a, "Post evolution winner declaration");
 					if (FileIO::postEvolutionAutoSave)
 						FileIO::AutoSave();
 					else
