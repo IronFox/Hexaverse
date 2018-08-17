@@ -378,7 +378,7 @@ namespace Objects
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t,true);
 					#ifndef NO_SATELLITES
 						elif (IsSatellite())
-							cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+							cnt = Satellite::CountTurretOccurrences(overrideOwner,t,true);
 					#endif
 					else
 						FATAL__("Unexpected mobile entity type: "+GetTypeName());
