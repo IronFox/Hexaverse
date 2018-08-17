@@ -1,4 +1,4 @@
-v0.9.3	[Aug 16 2018]
+v0.9.3	[Aug 17 2018]
 	+ Added checkbox to configure whether sound should be muted when tabbed out.
 	+ Added control commands /IO/listAutoWorlds and /IO/deleteAutoWorld to control automatic save games via control console.
 	+ Added optional round-begin sound playback.
@@ -10,6 +10,7 @@ v0.9.3	[Aug 16 2018]
 	> Decreased vertical padding of buttons.
 	> Removed goal/Nexus markers in EMP zones.
 	> Removed goal/Nexus markers in visual configurator.
+	> Removed deprecated Rules variables uplinkBandwidth and newVehiclesHaveFullAmmo.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
 	* Fixed access violation when repairing/generating configuration files.
 	* Fixed error message when trying to set vehicle plant gathering point.

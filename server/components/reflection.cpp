@@ -1302,8 +1302,12 @@ namespace Reflection
 			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame);
-			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
+			#ifndef NO_MUNITION
+				VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame);
+			#endif
+			#ifndef NO_HIBERNATION
+				VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
+			#endif
 			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 			
 			parser->SetVariable(CLI::PVariable(new Variable::FactionsPerEMPZone("factionsPerEMPZone")));

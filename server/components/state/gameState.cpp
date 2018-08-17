@@ -424,7 +424,9 @@ namespace Game
 	namespace Config
 	{
 		int			roundTimer = -1;
-		UINT32		uplinkBandwidth = 500;
+		#ifndef NO_HIBERNATION
+			UINT32		uplinkBandwidth = 500;
+		#endif
 
 		bool		closedGame = false,
 					startBases = false,
