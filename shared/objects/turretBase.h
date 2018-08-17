@@ -96,8 +96,9 @@ namespace Objects
 		float					GetAttackExplosionRadius() const;
 		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const = 0;
 		String					DescribeFlatAttackRange() const;
-		virtual float			GetSubOrbitalScanningRange() const;
-		virtual String			DescribeSubOrbitalScanningRange() const;
+		virtual float			GetSubOrbitalScanningRange(const OwnerParameter&) const;
+		float					GetSubOrbitalScanningRange() const;
+		virtual String			DescribeSubOrbitalScanningRange(const OwnerParameter&) const;
 		virtual WorldEntity&	ToEntity() = 0;
 		virtual const WorldEntity&	ToEntity() const = 0;
 		virtual float			GetZOffset() const = 0;

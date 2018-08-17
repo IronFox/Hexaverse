@@ -465,6 +465,8 @@ namespace Objects
 				{
 					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange(owner)+" ("+b->turret->trajectoryType.ToString()+")";
 				}
+				if (b->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+					outResult <<"Sub-orbital scanning range: "+b->DescribeSubOrbitalScanningRange(owner);
 				b->turret->DescribeType(outResult,true, false, IsPlane() ? "Plane" : (IF_SATELLITES(IsSatellite() ? "Satellite" :) (IsPureVehicle() ? "Vehicle":"Tower")),owner);
 			}
 		}

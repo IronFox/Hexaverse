@@ -353,14 +353,14 @@ namespace Objects
 	{
 		return turret->operationSpeed[op].Describe(GetResearchState(owner));
 	}
-	/*virtual override*/ float				Tower::GetSubOrbitalScanningRange() const
+	/*virtual override*/ float				Tower::GetSubOrbitalScanningRange(const OwnerParameter&owner) const
 	{
 		if (empDamageLevel)
 			return 0;
-		return EMPModify(turret->subOrbitalScanningRange.GetValue(GetResearchState()),1);
+		return EMPModify(turret->subOrbitalScanningRange.GetValue(GetResearchState(owner)),1);
 	}
 
-	/*virtual override*/ String				Tower::DescribeSubOrbitalScanningRange() const
+	/*virtual override*/ String				Tower::DescribeSubOrbitalScanningRange(const OwnerParameter&) const
 	{
 		if (empDamageLevel)
 			return 0;

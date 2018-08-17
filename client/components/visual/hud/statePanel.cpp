@@ -210,7 +210,7 @@ namespace StatePanel
 		cachedLines << "";
 		cachedLines << " Scanning-Range: "+e.DescribeScanningRange();
 		if (base && base->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
-			cachedLines << " Sub-Orbital Scanning-Range: "+base->DescribeSubOrbitalScanningRange();
+			cachedLines << " Sub-Orbital Scanning-Range: "+base->DescribeSubOrbitalScanningRange(e.owner);
 		#ifndef NO_HIBERNATION
 			cachedLines << " "<<Objects::TrafficResourceTag()  <<e.GetUplinkTraffic() << nl;
 			if (h)

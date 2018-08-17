@@ -168,17 +168,24 @@ namespace Objects
 	}
 
 
-	/*virtual*/ float			TurretBase::GetSubOrbitalScanningRange() const
+	/*virtual*/ float			TurretBase::GetSubOrbitalScanningRange(const OwnerParameter&owner) const
 	{
 		const auto&e = ToEntity();
 		if (e.empDamageLevel)
 			return 0;
-		return turret->subOrbitalScanningRange.GetValue(e.GetResearchState());
+		return turret->subOrbitalScanningRange.GetValue(WorldEntity::GetResearchState(owner));
 	}
-	/*virtual*/ String			TurretBase::DescribeSubOrbitalScanningRange() const
+	/*virtual*/ String			TurretBase::DescribeSubOrbitalScanningRange(const OwnerParameter&owner) const
 	{
-		return turret->subOrbitalScanningRange.Describe(ToEntity().GetResearchState());
+		return turret->subOrbitalScanningRange.Describe(WorldEntity::GetResearchState(owner));
 	}
+
+	float						TurretBase::GetSubOrbitalScanningRange() const
+	{
+		return GetSubOrbitalScanningRange(ToEntity().owner);
+	}
+
+
 
 	 
 

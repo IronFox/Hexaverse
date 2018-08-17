@@ -168,8 +168,9 @@ namespace Objects
 		virtual WorldEntity&		ToEntity() override {return *this;}
 		virtual const WorldEntity&	ToEntity() const override {return *this;}
 		virtual float				GetZOffset() const override {return GetEffectiveFoundationHeight();}
-		virtual float				GetSubOrbitalScanningRange() const override;
-		virtual String				DescribeSubOrbitalScanningRange() const override;
+		virtual float				GetSubOrbitalScanningRange(const OwnerParameter&) const override;
+		using						TurretBase::GetSubOrbitalScanningRange;
+		virtual String				DescribeSubOrbitalScanningRange(const OwnerParameter&) const override;
 
 		virtual bool				AttacksMovingHostilesDuringMotionPhase() const {return true;}
 		virtual int					GetOperationSpeed(Component::operation_t, const OwnerParameter&owner) const override;
