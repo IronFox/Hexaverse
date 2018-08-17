@@ -398,7 +398,7 @@ namespace Objects
 				if (limit == 0xffff)
 					return "";
 
-				return " Deployed: "+String(cnt)+"/"+String(limit);
+				return "Deployed: "+String(cnt)+"/"+String(limit);
 
 			}
 			return "";
