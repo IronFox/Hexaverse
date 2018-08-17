@@ -361,7 +361,7 @@ namespace Tutorial
 				if (!Detail::WaitingForUserOkay())
 					Interactive::CheckTaskConditions();
 			}
-			catch (const Lua::Exception&ex)
+			catch (const std::exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
 			}
@@ -378,7 +378,7 @@ namespace Tutorial
 				Interactive::RebuildResearchState();
 				Interactive::Trigger::begin(Detail::progress);
 			}
-			catch (const Lua::Exception&ex)
+			catch (const std::exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
 			}
@@ -394,7 +394,7 @@ namespace Tutorial
 				if (!Detail::WaitingForUserOkay())
 					Interactive::CheckTaskConditions();
 			}
-			catch (const Lua::Exception&ex)
+			catch (const std::exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
 			}
@@ -481,7 +481,7 @@ namespace Tutorial
 			if (!Detail::WaitingForUserOkay())
 				Interactive::CheckTaskConditions();
 		}
-		catch (const Lua::Exception&ex)
+		catch (const std::exception&ex)
 		{
 			LogEvent(EventClass::Preset::configurationError,ex.what());
 		}
@@ -594,7 +594,7 @@ namespace Tutorial
 			if (Interactive::started)
 				Interactive::Trigger::begin(Detail::progress);
 		}
-		catch (const Lua::Exception&ex)
+		catch (const std::exception&ex)
 		{
 			LogEvent(EventClass::Preset::configurationError,ex.what());
 		}
