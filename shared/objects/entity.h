@@ -186,7 +186,9 @@ namespace Objects
 
 		#endif
 
+		static const Research::Attributes::Table& GetResearchState(const OwnerParameter&owner);
 		const Research::Attributes::Table&GetResearchState() const;
+
 		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
 		
@@ -394,19 +396,23 @@ namespace Objects
 
 		String						GetNameAndOwner() const;
 
-		virtual int					GetMaxHealth() const;
-		virtual String				DescribeMaxHealth() const;
+		virtual int					GetMaxHealth(const OwnerParameter&) const;
+		virtual String				DescribeMaxHealth(const OwnerParameter&) const;
+		int							GetMaxHealth() const	{return GetMaxHealth(owner);}
+		String						DescribeMaxHealth() const	{return DescribeMaxHealth(owner);}
 		/**
 		Queries the current scanning radius of the local entity, including research and EMP effects.
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
-		virtual float				GetScanningRange() const;
+		virtual float				GetScanningRange(const OwnerParameter&) const;
+		float						GetScanningRange() const	{return GetScanningRange(owner);}
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		float3						GetScanningCenter() const {return GetScanningCenter(location);}
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
-		virtual String				DescribeScanningRange() const;
+		virtual String				DescribeScanningRange(const OwnerParameter&) const;
+		String						DescribeScanningRange() const	{return DescribeScanningRange(owner);}
 		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
 		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2.f);}
@@ -527,8 +533,10 @@ namespace Objects
 			Stores a description of the local type in the specified label
 			@param[out] label Label to store the description in
 			@param deskFlags Combination of descFlag_t to fine-tune the generation process
+			@param overrideOwner Owner to use
 			*/
-			virtual void	DescribeType(Description&label, UINT32 descFlags);
+			virtual void	DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&);
+			void			DescribeTypeOfThis(Description&label, UINT32 descFlags)	{DescribeType(label,descFlags,owner);}
 		#endif
 		void				AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const;
 

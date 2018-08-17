@@ -280,10 +280,10 @@ namespace Objects
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
 
-			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags) 
+			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner) 
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags, owner);
 				label.MarkBriefEnd();
 			}
 
@@ -330,37 +330,38 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float			Tower::GetAttackExplosionRadius() const
+	/*virtual override*/ float			Tower::GetAttackExplosionRadius(const OwnerParameter&owner) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return turret->explosionRadius.GetValue(GetResearchState());
+		return turret->explosionRadius.GetValue(GetResearchState(owner));
 	}
 
-	/*virtual override*/ int			Tower::GetOperationSpeed(Component::operation_t op) const
+	/*virtual override*/ int			Tower::GetOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
 	{
-		return turret->operationSpeed[op].GetValue(GetResearchState());
+		return turret->operationSpeed[op].GetValue(GetResearchState(owner));
 	}
 
-	/*virtual override*/ String			Tower::DescribeOperationSpeed(Component::operation_t op) const
+	/*virtual override*/ String			Tower::DescribeOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
 	{
-		return turret->operationSpeed[op].Describe(GetResearchState());
+		return turret->operationSpeed[op].Describe(GetResearchState(owner));
 	}
 	
 
-	/*virtual override*/ float			Tower::GetFlatAttackRange() const
+	/*virtual override*/ float			Tower::GetFlatAttackRange(const OwnerParameter&owner) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState())+2.f,2.f);
+		return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState(owner))+2.f,2.f);
 	}
 
-	/*virtual override*/ String			Tower::DescribeFlatAttackRange() const
+	/*virtual override*/ String			Tower::DescribeFlatAttackRange(const OwnerParameter&owner) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		String rs = turret->horizontalAttackRange.Describe(GetResearchState());
-		const auto final = turret->horizontalAttackRange.GetValue(GetResearchState())+2.f;
+		const auto&state = GetResearchState(owner);
+		const String rs = turret->horizontalAttackRange.Describe(state);
+		const auto final = turret->horizontalAttackRange.GetValue(state)+2.f;
 		return String(M::Round(final*10.f)/10.f)+"=["+rs+"]+2 (Tower Bonus)";
 	}
 

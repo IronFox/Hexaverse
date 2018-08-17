@@ -77,9 +77,9 @@ namespace Objects
 
 		#else
 			#ifdef HAS_WINDOW
-				virtual void			DescribeType(Description&label, UINT32 descFlags) override
+				virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 				{
-					Super::DescribeType(label,descFlags);
+					Super::DescribeType(label,descFlags,owner);
 					if (maxStorage.IsNotEmpty())
 					{
 						label.MarkBriefEnd();
@@ -233,10 +233,10 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags,owner);
 				label.MarkBriefEnd();
 				#ifdef NO_MUNITION
 					label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."

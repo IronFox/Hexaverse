@@ -180,7 +180,7 @@ namespace AutoDocumentation
 				foreach (Objects::Prototypes::structures,s)
 				{
 					Objects::Command::Base::Label label;
-					(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth);
+					(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth,nullptr);
 					String pretext;
 					auto tb = (*s)->GetTurretBase();
 					if (tb)

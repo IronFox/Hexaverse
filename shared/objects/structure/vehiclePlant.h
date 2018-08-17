@@ -49,7 +49,7 @@ namespace Objects
 			Component::VehicleBase*	GetProductionBase() const;
 
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&) override;
 			#endif
 
 			/**

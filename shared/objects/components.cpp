@@ -1539,7 +1539,7 @@ namespace Objects
 				if (!compound && RuntimeConfig::UnitLimits::AnySet())
 				{
 					count_t cnt = 0, limit = 0;
-					cnt = Vehicle::CountTurretOccurrences(owner,this)
+					cnt = Vehicle::CountTurretOccurrences(owner,this,true)
 						#ifndef NO_SATELLITES
 						+
 						Satellite::CountTurretOccurrences(owner,this)

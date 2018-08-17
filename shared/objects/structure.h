@@ -384,10 +384,10 @@ namespace Objects
 		#endif
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags,owner);
 				label.MarkBriefEnd();
 				label << "Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
 				;
@@ -509,7 +509,7 @@ namespace Objects
 			virtual void			OnSleepChange(float&t) override;
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 			#endif
 
 		#endif
@@ -733,7 +733,7 @@ namespace Objects
 			virtual void			OnInsert( float&atTime, bool freshConstruction )	{Super::OnInsert(atTime,freshConstruction); if (freshConstruction) SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 			#endif
 		#endif
 
@@ -825,7 +825,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 		#endif
 
 	};
@@ -856,7 +856,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override;
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 		#endif
 
 		//WorldEntity overrides:

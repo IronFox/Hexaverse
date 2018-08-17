@@ -29,7 +29,7 @@ namespace Objects
 		typedef MobileEntity	Super;
 	public:
 
-		static count_t			CountTurretOccurrences(const PFaction&,Component::Turret*);
+		static count_t			CountTurretOccurrences(const PFaction&,Component::Turret*, bool includeStored);
 
 		/**/					Vehicle(const OwnerParameter&owner, const Grid::LCellIdI&location, Component::VehicleBase*base, Component::Turret*turret) :
 									MobileEntity(owner,turret,location),base(base)
@@ -97,23 +97,26 @@ namespace Objects
 		#endif
 		virtual bool			IsUnlockedAtState(const Research::Attributes::Table&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual bool			CanBeUnlocked() const {return base->isUnlocked.IsFunctionOrConstNonZero() && turret->isUnlocked.IsFunctionOrConstNonZero();}
-		virtual int				GetMaxHealth() const override;
-		virtual String			DescribeMaxHealth() const override;
+		virtual int				GetMaxHealth(const OwnerParameter&) const override;
+		using					WorldEntity::GetMaxHealth;
+		virtual String			DescribeMaxHealth(const OwnerParameter&) const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return std::make_shared<Vehicle>(owner,location,base,turret);};
-		virtual float			GetScanningRange() const override;
-		virtual String			DescribeScanningRange() const override;
+		virtual float			GetScanningRange(const OwnerParameter&) const override;
+		using					WorldEntity::GetScanningRange;
+		virtual String			DescribeScanningRange(const OwnerParameter&) const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
-			virtual void		DescribeType(Command::Base::Label&label, UINT32 descFlags) override;
+			virtual void		DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&) override;
 			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion
 		#endif
 
 		//MobileEntity overrides:
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
-		virtual int				GetMovementStepsPerRound() const override;
-		virtual String			DescribeMovementStepsPerRound() const override;
+		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const override;
+		using					MobileEntity::GetMovementStepsPerRound;
+		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
 		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const override {return base->acceleration[op];}
 		virtual int				GetMaxClimbingHeight() const override {return base->maxClimbUp;}
@@ -128,12 +131,12 @@ namespace Objects
 
 
 		//TurretBase overrides:
-		virtual float			GetFlatAttackRange() const override;
-		virtual String			DescribeFlatAttackRange() const override;
+		virtual float			GetFlatAttackRange(const OwnerParameter&) const override;
+		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const override;
 		virtual float			GetZOffset() const override {return base->height;}
-		virtual int				GetOperationSpeed(Component::operation_t) const override;
+		virtual int				GetOperationSpeed(Component::operation_t, const OwnerParameter&) const override;
 		virtual int				GetOperationAccelerationExponent(Component::operation_t) const override;
-		virtual String			DescribeOperationSpeed(Component::operation_t) const override;
+		virtual String			DescribeOperationSpeed(Component::operation_t, const OwnerParameter&) const override;
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION

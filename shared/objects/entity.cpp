@@ -299,9 +299,9 @@ namespace Objects
 		return StaticEMPModify(raw,min,empDamageLevel);
 	}
 
-	/*virtual*/ float		WorldEntity::GetScanningRange() const
+	/*virtual*/ float		WorldEntity::GetScanningRange(const OwnerParameter&owner) const
 	{
-		return EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState()),2);
+		return EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState(owner)),2);
 	}
 
 	/*virtual*/ float3		WorldEntity::GetScanningCenter(const Grid::LCellIdI&loc) const
@@ -320,28 +320,31 @@ namespace Objects
 		return GetTable()->constructionCost.GetValue(state);
 	}
 
-	/*virtual*/ int			WorldEntity::GetMaxHealth() const
+	/*virtual*/ int			WorldEntity::GetMaxHealth(const OwnerParameter&owner) const
 	{
-		return GetTable()->maxHealth.GetValue(GetResearchState());
+		return GetTable()->maxHealth.GetValue(GetResearchState(owner));
 	}
 
-	/*virtual*/ String		WorldEntity::DescribeMaxHealth() const
+	/*virtual*/ String		WorldEntity::DescribeMaxHealth(const OwnerParameter&owner) const
 	{
-		return GetTable()->maxHealth.Describe(GetResearchState());
+		return GetTable()->maxHealth.Describe(GetResearchState(owner));
 	}
 
 
-
+	/*static*/ const Research::Attributes::Table& WorldEntity::GetResearchState(const OwnerParameter&owner)
+	{
+		return owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
+	}
 
 	const Research::Attributes::Table& WorldEntity::GetResearchState() const
 	{
-		return this && owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
+		return GetResearchState( this ? owner : nullptr);
 	}
 
 
-	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
+	/*virtual*/ String		WorldEntity::DescribeScanningRange(const OwnerParameter&owner) const
 	{
-		return GetTable()->maxScanningRange.Describe(GetResearchState());
+		return GetTable()->maxScanningRange.Describe(GetResearchState(owner));
 	}
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
@@ -372,7 +375,7 @@ namespace Objects
 				{
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
 					if (IsVehicle())
-						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
+						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t,true);
 					#ifndef NO_SATELLITES
 						elif (IsSatellite())
 							cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
@@ -408,7 +411,7 @@ namespace Objects
 			}
 		}
 
-		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags)
+		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			if (descFlags & DescIncludeName)
 				outResult << GetTypeName();
@@ -419,18 +422,18 @@ namespace Objects
 				if (descFlags & DescIncludeMaxHealth)
 				{
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth();
+						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth(owner);
 					else
-						outResult << "Health: " + this->DescribeMaxHealth();
+						outResult << "Health: " + this->DescribeMaxHealth(owner);
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
 						outResult << "Health: " +String(this->health);
 			}
 			
-			if (!owner && Faction::mine && IsAlive())	//prototype
+			if (!this->owner && IsAlive())	//prototype
 			{
-				if (!this->IsUnlockedAtState(Faction::mine->researchState.attributeTable))
+				if (!this->IsUnlockedAtState(GetResearchState(owner)))
 				{
 					outResult << "[More Research Required]";
 				}
@@ -438,12 +441,12 @@ namespace Objects
 			
 
 			if (descFlags & DescIncludePrice)
-				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost());
+				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost(owner));
 			if ((descFlags & DescIncludeUnitCount))
 			{
 				AppendDeploymentCount(outResult,owner);
 			}
-			outResult << "Scanning range: "+DescribeScanningRange();
+			outResult << "Scanning range: "+DescribeScanningRange(owner);
 			#ifndef NO_HIBERNATION
 					outResult << " "+String(TrafficResourceTag()) +String(GetUplinkTraffic());
 
@@ -457,7 +460,7 @@ namespace Objects
 			{
 				if (b->turret->CanAttack())
 				{
-					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange()+" ("+b->turret->trajectoryType.ToString()+")";
+					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange(owner)+" ("+b->turret->trajectoryType.ToString()+")";
 				}
 				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}

@@ -137,7 +137,7 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &prototype->commands;}
 			virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
-			virtual void			DescribeType(Description&, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&, UINT32 descFlags, const OwnerParameter&owner) override;
 		#endif
 		#ifndef CLIENT
 			virtual void			OnInsert(float&atTime, bool freshConstruction) override;
@@ -160,16 +160,17 @@ namespace Objects
 		//TurretBase overrides:
 		virtual bool				NextTaskIsAttack() const override {return IsAlive() && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
-		virtual float				GetFlatAttackRange() const override;
-		virtual String				DescribeFlatAttackRange() const override;
+		virtual float				GetFlatAttackRange(const OwnerParameter&owner) const override;
+		virtual String				DescribeFlatAttackRange(const OwnerParameter&) const override;
 		virtual bool				HasAmmoForShot() override;
-		virtual float				GetAttackExplosionRadius() const override;
+		virtual float				GetAttackExplosionRadius(const OwnerParameter&owner) const override;
+		using						TurretBase::GetAttackExplosionRadius;
 		virtual WorldEntity&		ToEntity() override {return *this;}
 		virtual const WorldEntity&	ToEntity() const override {return *this;}
 		virtual float				GetZOffset() const override {return GetEffectiveFoundationHeight();}
 		virtual bool				AttacksMovingHostilesDuringMotionPhase() const {return true;}
-		virtual int					GetOperationSpeed(Component::operation_t) const override;
-		virtual String				DescribeOperationSpeed(Component::operation_t) const override;
+		virtual int					GetOperationSpeed(Component::operation_t, const OwnerParameter&owner) const override;
+		virtual String				DescribeOperationSpeed(Component::operation_t, const OwnerParameter&owner) const override;
 
 		#ifndef CLIENT
 			virtual void			FlushAutoAttacks() override;

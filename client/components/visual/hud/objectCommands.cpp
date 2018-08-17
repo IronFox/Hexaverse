@@ -189,7 +189,7 @@ namespace Objects
 			PWorldEntity ref = topic->prototypeReference;
 			if (ref)
 			{
-				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth,Objects::Faction::mine);
 				return;
 			}
 
@@ -368,7 +368,7 @@ namespace Objects
 
 			if (ref)
 			{
-				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
+				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount,Objects::Faction::mine);
 				return;
 			}
 
@@ -376,7 +376,7 @@ namespace Objects
 			{
 
 				PVehicle v(new Vehicle(selectedEntity->owner, selectedEntity->location, base,turret));
-				v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
+				v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount,Objects::Faction::mine);
 			}
 			else
 			{
@@ -410,7 +410,7 @@ namespace Objects
 			{
 				outResult << "Deploy mobile unit: "+name;
 
-				vehicle->DescribeType(outResult,Objects::WorldEntity::DescIncludeCurrentHealth | Objects::WorldEntity::DescIncludeMaxHealth | WorldEntity::DescIncludeUnitCount);
+				vehicle->DescribeType(outResult,Objects::WorldEntity::DescIncludeCurrentHealth | Objects::WorldEntity::DescIncludeMaxHealth | WorldEntity::DescIncludeUnitCount,Objects::Faction::mine);
 			}
 		}
 

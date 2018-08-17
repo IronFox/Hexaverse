@@ -446,7 +446,8 @@ namespace Objects
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackAndMotionAreIndependent() const {return turret->independentAttackAndMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
-		float					GetAttackExplosionRadius() const override;
+		float					GetAttackExplosionRadius(const OwnerParameter&) const override;
+		using					TurretBase::GetAttackExplosionRadius;
 		bool					CanRepair() const {return turret->CanRepair();}
 		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const {return 0;}
 
@@ -488,8 +489,9 @@ namespace Objects
 
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
-		virtual int				GetMovementStepsPerRound() const =0;
-		virtual String			DescribeMovementStepsPerRound() const =0;
+		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const =0;
+		int						GetMovementStepsPerRound() const {return GetMovementStepsPerRound(owner);}
+		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner) const =0;
 		virtual float			GetBaseMovementInitiative() const {return 100;}
 		/**
 		Retrieves the visual breath of compiled paths. Purely cosmetic.
@@ -568,8 +570,9 @@ namespace Objects
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
 		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
-		virtual float			GetScanningRange() const override;
-		virtual String			DescribeScanningRange() const override;
+		virtual float			GetScanningRange(const OwnerParameter&) const override;
+		using					WorldEntity::GetScanningRange;
+		virtual String			DescribeScanningRange(const OwnerParameter&) const override;
 		#ifndef CLIENT
 			virtual void		OnDestroy(RemovalType, float&atTime) override;	
 			virtual void		SignalTerrainChange(float atTime) override;

@@ -77,11 +77,11 @@ namespace Objects
 	}
 
 
-	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadius() const
+	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadius(const OwnerParameter&owner) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return turret->explosionRadius.GetValue(GetResearchState());
+		return turret->explosionRadius.GetValue(GetResearchState(owner));
 	}
 
 
@@ -90,7 +90,7 @@ namespace Objects
 		if (turret->detectsResources)
 		{
 			const auto center = GetScanningCenter(loc);
-			float range = GetScanningRange();
+			float range = GetScanningRange(owner);
 
 			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
 			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
@@ -100,14 +100,14 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float		MobileEntity::GetScanningRange() const
+	/*virtual override*/ float		MobileEntity::GetScanningRange( const OwnerParameter&owner ) const
 	{
-		return EMPModify(turret->scanningRange.GetValue(GetResearchState()),2);
+		return EMPModify(turret->scanningRange.GetValue(GetResearchState(owner)),2);
 	}
 
-	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const
+	/*virtual override*/ String		MobileEntity::DescribeScanningRange(const OwnerParameter&owner) const
 	{
-		return turret->scanningRange.Describe(GetResearchState());
+		return turret->scanningRange.Describe(GetResearchState(owner));
 	}
 
 

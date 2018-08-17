@@ -244,7 +244,7 @@ namespace HexGrid
 				outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
 			outResult.MarkBriefEnd();
-			target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
+			target->DescribeTypeOfThis(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
 
 		}
 
@@ -334,10 +334,7 @@ namespace HexGrid
 //					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
 			outResult.MarkBriefEnd(true);
-			Objects::OwnerParameter old = proto->owner;
-			proto->owner = instance->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
-			proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
-			proto->owner = old;
+			proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/,instance->owner);
 
 			//if (e->IsVehicle())
 			//{
