@@ -101,16 +101,40 @@ namespace Objects
 	
 	}
 
+	int						TurretBase::GetOperationSpeed(Component::operation_t op) const
+	{
+		return GetOperationSpeed(op,ToEntity().owner);
+	}
+
+
 	int						TurretBase::GetAttacksPerRound() const
 	{
 		return turret->GetAttacksPerRound(ToEntity().GetResearchState());
 	}
+	int						TurretBase::GetAttacksPerRound(const OwnerParameter&owner) const
+	{
+		return turret->GetAttacksPerRound(WorldEntity::GetResearchState(owner));
+	}
+
 
 	int						TurretBase::GetDamagePotentialPerRound() const
 	{
 		const auto&state = ToEntity().GetResearchState(); 
 		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
 	}
+
+	int						TurretBase::GetDamagePotentialPerRound(const OwnerParameter&owner) const
+	{
+		const auto&state = WorldEntity::GetResearchState(owner); 
+		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
+	}
+
+	float					TurretBase::GetFlatAttackRange() const {return GetFlatAttackRange(ToEntity().owner);}
+	float					TurretBase::GetAttackExplosionRadius() const {return GetAttackExplosionRadius(ToEntity().owner);}
+	String					TurretBase::DescribeFlatAttackRange() const {return DescribeFlatAttackRange(ToEntity().owner);}
+
+
+
 
 	/*static*/ bool TurretBase::IsSafeHit( const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult )
 	{

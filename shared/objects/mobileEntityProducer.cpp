@@ -262,6 +262,15 @@ namespace Objects
 				FATAL__("should be disabled: "+parent->GetName());
 			}
 
+			String error;
+			if (!parent->owner->CanSpawnType(queue.First().producing, error))
+			{
+				LogEvent(EventClass::Preset::commandRejected,parent,"Unable to continue construction of "+queue.First().producing->GetTypeName()+": "+error);
+				AbortConstruction(queue.First().id);
+				return;
+			}
+			
+
 			productionRoundsLeft = ProductionRounds(queue.First().producing,true);
 
 			if (productionRoundsLeft == 0)

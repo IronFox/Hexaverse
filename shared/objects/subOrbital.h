@@ -63,15 +63,15 @@ namespace Objects
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const {return false;}
 				virtual bool		ProcessRound(float&atTime);
 			#endif
-			float					GetMaxAirSpeed() const {return 100.f / turret->weight.GetValue(GetResearchState());};
+			float					GetMaxAirSpeed(const OwnerParameter&owner) const {return 100.f / turret->weight.GetValue(GetResearchState(owner));};
 
 			//TurretBase overrides:
-			virtual float			GetFlatAttackRange() const override;
-			virtual String			DescribeFlatAttackRange() const override;
+			virtual float			GetFlatAttackRange(const OwnerParameter&) const override;
+			virtual String			DescribeFlatAttackRange(const OwnerParameter&) const override;
 
 			//WorldEntity overrides:
-			virtual int				GetMaxHealth() const override {return turret->healthMultiplier.GetValue(GetResearchState());}
-			virtual String			DescribeMaxHealth() const override {return turret->healthMultiplier.Describe(GetResearchState());}
+			virtual int				GetMaxHealth(const OwnerParameter&owner) const override {return turret->healthMultiplier.GetValue(GetResearchState(owner));}
+			virtual String			DescribeMaxHealth(const OwnerParameter&owner) const override {return turret->healthMultiplier.Describe(GetResearchState(owner));}
 			virtual int				GetConstructionCost(const Objects::PFaction&owner) const override;
 			virtual bool			IsGroundBoundVehicle() const {return !IsAboveTerrain(location);}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
@@ -82,7 +82,7 @@ namespace Objects
 			virtual bool			CanBeUnlocked() const override {return turret->isUnlocked.IsFunctionOrConstNonZero();}
 
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&outResult, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&outResult, UINT32 descFlags,const OwnerParameter&) override;
 				virtual float		GetSoundLevel() const {return IsGroundBoundVehicle() ? 0.f : GetActivityLevel()*0.25f;}	//save 75% for motion
 			#endif
 
@@ -95,9 +95,9 @@ namespace Objects
 			virtual float			GetBaseMovementInitiative() const override {return turret->initiative;}	//reuse turret initiative for motion
 			virtual bool			IsAffectedByGravity() const override {return !IsAboveTerrain(location);}
 			virtual bool			IsAffectedByGravity(const Grid::LCellIdI&loc) const override {return !IsAboveTerrain(loc);}
-			virtual int				GetMovementStepsPerRound() const override
+			virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const override
 			{
-				return (int)ceil(EMPModify(GetMaxAirSpeed(),1.f));
+				return (int)ceil(EMPModify(GetMaxAirSpeed(owner),1.f));
 			}
 			#ifndef ONE_COMPOUND_PER_FACTION
 				virtual ResourceVector		GetMaxStorageCapacity()	const override

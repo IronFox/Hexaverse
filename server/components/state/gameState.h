@@ -141,7 +141,9 @@ namespace Game
 
 
 		extern int		roundTimer/* = -1*/;
-		extern UINT32	uplinkBandwidth/* = 500*/;
+		#ifndef NO_HIBERNATION
+			extern UINT32	uplinkBandwidth/* = 500*/;
+		#endif
 		extern bool		closedGame/* = false*/,
 						startBases /*= false*/,
 						basesRequired/* = false*/,

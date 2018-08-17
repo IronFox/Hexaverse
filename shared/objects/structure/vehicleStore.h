@@ -140,7 +140,7 @@ namespace Objects
 		#endif
 		#ifdef HAS_WINDOW
 			virtual const CC*		GetCommands(CC&dynamicStorage) const override;
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&) override;
 		#endif
 	protected:
 		virtual void				OnStorageChanged() override;

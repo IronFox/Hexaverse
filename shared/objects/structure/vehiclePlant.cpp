@@ -111,10 +111,10 @@ namespace Objects
 				return &dynamicStorage;
 			}
 
-			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,  descFlags);
+				Super::DescribeType(label,  descFlags, owner);
 				label.MarkBriefEnd();
 				label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
 				+String(ResourceTag(Resource::Minerals))+", and "+String(TimeResourceTag())+"."

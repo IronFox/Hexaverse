@@ -104,7 +104,9 @@ namespace World
 	{
 		extern Grid::WorldDiscovery	worldDiscovery;
 
-		extern UINT32	uplinkBandwidth/* = 500*/;
+		#ifndef NO_HIBERNATION
+			extern UINT32	uplinkBandwidth/* = 500*/;
+		#endif
 		extern bool		simulateLiquids/* = true*/;
 
 	}

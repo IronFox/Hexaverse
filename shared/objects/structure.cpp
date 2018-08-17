@@ -1003,10 +1003,10 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Nexus Ports are indestructible structures of unknown origin."
 			" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
@@ -1020,10 +1020,10 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Enabled generators provide energy for the local compound."
 			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
@@ -1031,10 +1031,10 @@ namespace Objects
 			;
 		}
 
-		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags,owner);
 			label.MarkBriefEnd();
 			label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
 			" but multiple generators may be connected to the same reactor core."
@@ -1043,10 +1043,10 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 
 			ResourceVector balance,discard,maxStorage;
 

@@ -1526,7 +1526,8 @@ namespace Objects
 		}
 		bool		Faction::CanSpawnFromStorage(const PWorldEntity&e, String&errorOut)	const
 		{
-			return CanSpawnType(e,errorOut);
+			return true;
+			//return CanSpawnType(e,errorOut);	we count all units. no exception for stored units, therefore deployment will always succeed from storage
 		}
 
 		count_t		Faction::CountMobileType(ConstName turretType) const

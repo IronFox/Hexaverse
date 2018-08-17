@@ -269,10 +269,10 @@ namespace Objects
 
 	#ifdef CLIENT
 		#ifdef HAS_WINDOW
-			/*virtual override*/ void			VehicleStore::DescribeType(Description&label, UINT32 descFlags)
+			/*virtual override*/ void			VehicleStore::DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner)
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags,owner);
 				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 				label.MarkBriefEnd();
 				label << "Vehicle stores can be used to store a number of mobile units."

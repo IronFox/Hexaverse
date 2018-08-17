@@ -28,7 +28,7 @@ namespace Objects
 */
 
 
-	/*static*/ count_t			Vehicle::CountTurretOccurrences(const PFaction&o,Component::Turret*t)
+	/*static*/ count_t			Vehicle::CountTurretOccurrences(const PFaction&o,Component::Turret*t, bool includeStored)
 	{
 		count_t rs = 0;
 		vehicles.Foreach([&rs,o,t](const PVehicle&v)
@@ -36,6 +36,12 @@ namespace Objects
 			if (v->owner == o && v->turret == t)
 				rs++;
 		});
+		if (includeStored)
+			storedMobileEntities.Foreach([&rs,o,t](const PMobileEntity&m)
+			{
+				if (m->owner == o && m->turret == t)
+					rs++;
+			});
 		return rs;
 	}
 
@@ -60,15 +66,15 @@ namespace Objects
 
 
 
-	/*virtual override*/ float		Vehicle::GetScanningRange() const
+	/*virtual override*/ float		Vehicle::GetScanningRange(const OwnerParameter&owner) const
 	{
-		const auto& state = GetResearchState();
+		const auto& state = GetResearchState(owner);
 		return EMPModify(turret->scanningRange.GetValue(state) + (turret->CanAttack() ? 0.f : base->turretRangeModifier.GetValue(state)),2.f);
 	}
 
-	/*virtual override*/ String		Vehicle::DescribeScanningRange() const
+	/*virtual override*/ String		Vehicle::DescribeScanningRange(const OwnerParameter&owner) const
 	{
-		const auto& state = GetResearchState();
+		const auto& state = GetResearchState(owner);
 		String rs = turret->scanningRange.Describe(state);
 		if (!turret->CanAttack() && base->turretRangeModifier.GetValue(state) != 0)
 		{
@@ -77,19 +83,19 @@ namespace Objects
 		return rs;
 	}
 
-	/*virtual override*/ int				Vehicle::GetMaxHealth() const
+	/*virtual override*/ int				Vehicle::GetMaxHealth(const OwnerParameter&owner) const
 	{
-		const auto& state = GetResearchState();
+		const auto& state = GetResearchState(owner);
 		return base->health.GetValue(state) * turret->healthMultiplier.GetValue(state);
 	}
 
-	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
+	/*virtual override*/ String				Vehicle::DescribeMaxHealth(const OwnerParameter&owner) const
 	{
-		const auto& state = GetResearchState();
+		const auto& state = GetResearchState(owner);
 		String multiplier = turret->healthMultiplier.Describe(state);
 		if (multiplier == "1" || multiplier == "1.0")
 			return base->health.Describe(state);
-		return String(GetMaxHealth())+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]";
+		return String(base->health.GetValue(state))+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]";
 	}
 
 	
@@ -142,22 +148,22 @@ namespace Objects
 
 
 
-	/*virtual override*/int			Vehicle::GetMovementStepsPerRound()	const
+	/*virtual override*/int			Vehicle::GetMovementStepsPerRound(const OwnerParameter&owner)	const
 	{
 		return (int)ceil(EMPModify(
-				base->GetBaseMovementSpeed(GetResearchState()) 
+				base->GetBaseMovementSpeed(GetResearchState(owner)) 
 				* GetTurretOverweightFactor(),
 				1.f));
 	}
 
-	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound()	const
+	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound(const OwnerParameter&owner)	const
 	{
-		return String(GetMovementStepsPerRound());
+		return String(GetMovementStepsPerRound(owner));
 	}
 
-	/*virtual override*/ String			Vehicle::DescribeFlatAttackRange() const
+	/*virtual override*/ String			Vehicle::DescribeFlatAttackRange(const OwnerParameter&owner) const
 	{
-		const auto& state = GetResearchState();
+		const auto& state = GetResearchState(owner);
 		String rs = turret->horizontalAttackRange.Describe(state);
 		{
 			String mod = base->turretRangeModifier.Describe(state);
@@ -168,9 +174,9 @@ namespace Objects
 	}
 
 	
-	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const
+	/*virtual override*/ float			Vehicle::GetFlatAttackRange(const OwnerParameter&owner) const
 	{
-		const auto& state = GetResearchState();
+		const auto& state = GetResearchState(owner);
 		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
 	}
 
@@ -181,15 +187,15 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op) const
+	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
 	{
-		const auto&state = GetResearchState();
+		const auto&state = GetResearchState(owner);
 		return (int)floor(turret->GetOperationSpeed(op,state) * base->operationSpeedMultiplier.GetValue(state));
 	}
 
-	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::operation_t op) const
+	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
 	{
-		const auto&state = GetResearchState();
+		const auto&state = GetResearchState(owner);
 		String rs = turret->operationSpeed[op].Describe(state);
 		const auto multiplier = base->operationSpeedMultiplier.GetValue(state);
 		if (multiplier == 1)
@@ -373,14 +379,14 @@ namespace Objects
 		}
 
 
-		void Vehicle::DescribeType(Command::Base::Label&outResult, UINT32 descFlags)
+		void Vehicle::DescribeType(Command::Base::Label&outResult, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			outResult.BeginBrief();
-			Super::DescribeType(outResult,descFlags);
+			Super::DescribeType(outResult,descFlags, owner);
 			base->DescribeType(outResult,true,true,owner);
 			outResult.BeginBrief();
 
-			const auto&state = GetResearchState();
+			const auto&state = GetResearchState(owner);
 
 			const float capacity = floor(base->GetCarryingCapacity(state));
 			const float weight = turret->weight.GetValue(state);
@@ -389,8 +395,9 @@ namespace Objects
 			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(state));
 			if (baseMovement > 0)
 			{
-				String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
-				if (GetMovementStepsPerRound() != baseMovement)
+				const auto move = this->GetMovementStepsPerRound(owner);
+				String speed = "Effective speed: "+String(move);
+				if (move != baseMovement)
 					speed += " /"+String(baseMovement);
 				outResult << speed;
 			}
@@ -404,7 +411,7 @@ namespace Objects
 				if (base->moveOnWater)
 					outResult.GetLastLine() += " (supported by water)";
 
-			int opSpeed = std::max(GetOperationSpeed(Component::Construct),GetOperationSpeed(Component::TerrainAdd));
+			int opSpeed = std::max(GetOperationSpeed(Component::Construct, owner),GetOperationSpeed(Component::TerrainAdd,owner));
 			if (opSpeed)
 				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
@@ -412,7 +419,7 @@ namespace Objects
 				if (turret->baseStorageCapacity.IsNotEmpty())
 				{
 					outResult << "Effective storage capacity:";
-					ResourceVector vec = this->GetMaxStorageCapacity();
+					ResourceVector vec = this->GetMaxStorageCapacity(owner);
 					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 					{
 						if (vec.level[i])

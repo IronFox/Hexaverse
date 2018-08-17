@@ -82,14 +82,20 @@ namespace Objects
 
 		virtual float			GetAttackActionLeft() const=0;
 
+		int						GetAttacksPerRound(const OwnerParameter&) const;
 		int						GetAttacksPerRound() const;
 		int						GetDamagePotentialPerRound() const;
-		float					GetAttackInitiative()const	{return turret->initiative * GetAttackActionLeft();}
+		int						GetDamagePotentialPerRound(const OwnerParameter&) const;
+		float					GetAttackInitiative() const	{return turret->initiative * GetAttackActionLeft();}
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
+		int						CountPossibleAttacks(const OwnerParameter&owner) const {return GetAttacksPerRound(owner) * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
-		virtual float			GetFlatAttackRange() const = 0;
-		virtual float			GetAttackExplosionRadius() const = 0;
-		virtual String			DescribeFlatAttackRange() const = 0;
+		virtual float			GetFlatAttackRange(const OwnerParameter&) const = 0;
+		float					GetFlatAttackRange() const;
+		virtual float			GetAttackExplosionRadius(const OwnerParameter&) const = 0;
+		float					GetAttackExplosionRadius() const;
+		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const = 0;
+		String					DescribeFlatAttackRange() const;
 		virtual float			GetSubOrbitalScanningRange() const;
 		virtual String			DescribeSubOrbitalScanningRange() const;
 		virtual WorldEntity&	ToEntity() = 0;
@@ -108,9 +114,10 @@ namespace Objects
 		Retrieves the amount of resources that can be converted into the specified operation per action by the local entity
 		@return Amount of consumed (or virtual) resources that can be converted per action by the local entity. 0 for entities that cannot perform the requested operation
 		*/
-		virtual int				GetOperationSpeed(Component::operation_t) const = 0;
+		virtual int				GetOperationSpeed(Component::operation_t, const OwnerParameter&) const = 0;
+		int						GetOperationSpeed(Component::operation_t) const;
 		virtual int				GetOperationAccelerationExponent(Component::operation_t) const {return 0;}
-		virtual String			DescribeOperationSpeed(Component::operation_t) const = 0;
+		virtual String			DescribeOperationSpeed(Component::operation_t, const OwnerParameter&) const = 0;
 		bool					CanAttack();
 		bool					CanAttackIgnoreAmmo() const;
 

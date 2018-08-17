@@ -36,7 +36,7 @@ namespace Objects
 		#ifdef CLIENT
 			void					SetLinkedToCore(bool, bool controlEnabled);
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 			#endif
 
 		#endif

@@ -2,7 +2,7 @@
 
 {{ img:game.png?400}}
 
-Hexaverse is a round based strategy game. Thrive and expand around the globe, or get whooped by someone that is better at that than you.
+Hexaverse is a turn based strategy game. Thrive and expand around the globe, or get whooped by someone that is better at that than you.
 
 If you are new, check out [[controls]], [[concepts/best practices]], an explanation of the [[terrain]], or all [[units/list|supported unit types]].
 You may also be interested in game concepts such as [[concepts/round|round processing]], [[concepts/faction|factions]], [[concepts/scanning range|sensory]], [[concepts/research]], or [[concepts/AI development]].

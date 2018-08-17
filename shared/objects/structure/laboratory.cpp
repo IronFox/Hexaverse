@@ -8,10 +8,10 @@ namespace Objects
 	
 	#ifdef HAS_WINDOW
 	
-		/*virtual override*/ void			Laboratory::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			Laboratory::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Laboratories research new components and buildings, or improve their attributes."
 			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."

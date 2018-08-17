@@ -64,21 +64,20 @@ namespace Objects
 
 
 
-			/*virtual override*/ void Plane::DescribeType(Description&outResult, UINT32 descFlags)
+			/*virtual override*/ void Plane::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner)
 			{
-				Super::DescribeType(outResult,descFlags);
-				String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (aerial)";
+				Super::DescribeType(outResult,descFlags,owner);
+				String speed = "Speed: "+this->DescribeMovementStepsPerRound(owner) + " (aerial)";
 
 				outResult << speed;
-				int opSpeed = GetOperationSpeed(Component::Construct);
-				if (opSpeed)
-					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
+				if (turret->CanDo(Component::Construct))
+					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+DescribeOperationSpeed(Component::Construct,owner)+" per round";
 
-				const String fuel (ResourceTag(Resource::Fuel));
 
 				int demand = 0;
 				if (demand)
 				{
+					static const String fuel(ResourceTag(Resource::Fuel));
 					outResult << "Consumes"+fuel+String(demand)+" per round";
 				}
 
@@ -309,7 +308,7 @@ namespace Objects
 						return false;
 
 					case CursorMode::BuildConnectorChainMode:
-						if (!GetOperationSpeed(Component::Construct))
+						if (!turret->CanDo(Component::Construct))
 							return false;
 
 						if (leftClick)
@@ -385,15 +384,15 @@ namespace Objects
 			Hangar::OnDestroy(t);
 		}
 
-		/*virtual override*/ String	Plane::DescribeFlatAttackRange() const
+		/*virtual override*/ String	Plane::DescribeFlatAttackRange(const OwnerParameter&owner) const
 		{
-			return turret->horizontalAttackRange.Describe(GetResearchState());
+			return turret->horizontalAttackRange.Describe(GetResearchState(owner));
 		}
 
 	
-		/*virtual override*/ float	Plane::GetFlatAttackRange() const
+		/*virtual override*/ float	Plane::GetFlatAttackRange(const OwnerParameter&owner) const
 		{
-			return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState()),1);
+			return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState(owner)),1);
 		}
 
 

@@ -107,10 +107,10 @@ namespace Objects
 
 
 	#ifdef HAS_WINDOW
-		/*virtual override*/ void			Mine::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			Mine::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
 			" Mines should be build only on known occurrences of natural resources."

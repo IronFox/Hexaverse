@@ -49,9 +49,9 @@ namespace Objects
 		#endif
 		#ifdef HAS_WINDOW
 			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 			{
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags,owner);
 				//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 				label.MarkBriefEnd();
 				label  << "Plane factories produce planes";
