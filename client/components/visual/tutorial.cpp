@@ -190,6 +190,14 @@ namespace Tutorial
 
 			Buffer0<TTrigger>	activeTriggers;
 
+			void	EnableWorkingStructure(const TUniqueID&entityID, bool doEnable)
+			{
+				Protocol::EnableStructure cmd;
+				cmd.enable = doEnable;
+				cmd.id = entityID;
+				Network::Channels::enableStructure.SendTo(Network::client, cmd);
+			}
+
 
 			//void	NextTask()
 			//{
@@ -353,7 +361,7 @@ namespace Tutorial
 				if (!Detail::WaitingForUserOkay())
 					Interactive::CheckTaskConditions();
 			}
-			catch (const Lua::Exception&ex)
+			catch (const std::exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
 			}
@@ -370,7 +378,7 @@ namespace Tutorial
 				Interactive::RebuildResearchState();
 				Interactive::Trigger::begin(Detail::progress);
 			}
-			catch (const Lua::Exception&ex)
+			catch (const std::exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
 			}
@@ -386,7 +394,7 @@ namespace Tutorial
 				if (!Detail::WaitingForUserOkay())
 					Interactive::CheckTaskConditions();
 			}
-			catch (const Lua::Exception&ex)
+			catch (const std::exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
 			}
@@ -420,6 +428,8 @@ namespace Tutorial
 		{
 			try
 			{
+				scriptAPI.onEnableWorkingStructure = API::EnableWorkingStructure;
+
 				scriptAPI.Create("Tutorial");
 				scriptAPI.AddGrid();
 				scriptAPI.gameTable.SetFunction("DisplayMessage",API::DisplayMessage);
@@ -471,7 +481,7 @@ namespace Tutorial
 			if (!Detail::WaitingForUserOkay())
 				Interactive::CheckTaskConditions();
 		}
-		catch (const Lua::Exception&ex)
+		catch (const std::exception&ex)
 		{
 			LogEvent(EventClass::Preset::configurationError,ex.what());
 		}
@@ -584,7 +594,7 @@ namespace Tutorial
 			if (Interactive::started)
 				Interactive::Trigger::begin(Detail::progress);
 		}
-		catch (const Lua::Exception&ex)
+		catch (const std::exception&ex)
 		{
 			LogEvent(EventClass::Preset::configurationError,ex.what());
 		}
