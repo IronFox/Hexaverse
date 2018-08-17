@@ -15,7 +15,7 @@ The terrain is shown in three shades:
 
 Obviously, it is benefitial to observe as much of the terrain surrounding your locations as possible, but it may be of higher priority to first focus on finding your enemies.
 
-==Terrain Penetration==
+==Terrain Occlusion==
 Regular sensory has very limited capacity to scan through terrain.
 Above surface, this forces [[units/turrets/radar]] units to be positioned in exposed locations.
 
