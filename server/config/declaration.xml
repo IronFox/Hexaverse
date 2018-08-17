@@ -191,13 +191,13 @@
 				<variable name="Uranium_Storage" default="8" />
 				<variable name="Nexus_Port" default="0" />
 				<variable name="Vehicle_Store" default="8" />
+				<variable name="Plane_Factory" default="2" />
 				<variable name="Missile_Launcher_Tower" default="6" />
 				<variable name="Rocket_Launcher_Tower" default="8" />
 				<variable name="Radar_Tower" default="8" />
 				<variable name="Cannon_Tower" default="0" />
+				<variable name="Anti_Aircraft_Tower" default="6" />
 				<variable name="Surveyor_Tower" default="6" />
-				<variable name="Plane_Factory" default="2" />
-				<variable name="AntiAircraft_Tower" default="6" />
 			</context>
 			<context name="MobileTurrets">Limits for mobile turrets. The used base, if variable, is ignored.
 				<variable name="Terraformer" default="4" />
@@ -207,14 +207,14 @@
 				<variable name="Missile_Launcher" default="0" />
 				<variable name="Rocket_Launcher" default="0" />
 				<variable name="EMP" default="3" />
-				<variable name="Bomb" default="4" />
-				<variable name="Surveyor" default="16" />
-				<variable name="Mechanic" default="4" />
-				<variable name="AntiAircraft" default="5" />
+				<variable name="Anti_Aircraft" default="6" />
 				<variable name="Raptor" default="6" />
 				<variable name="Bomber" default="3" />
 				<variable name="Cargo_Plane" default="2" />
 				<variable name="Sensor_Drone" default="8" />
+				<variable name="Bomb" default="4" />
+				<variable name="Surveyor" default="16" />
+				<variable name="Mechanic" default="4" />
 			</context>
 		</context>
 		<context name="Nexus">Nexus faction settings

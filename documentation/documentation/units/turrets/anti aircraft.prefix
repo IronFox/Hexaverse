@@ -1,5 +1,5 @@
-{{ img:units/AntiAircraft.png|AntiAircraft}}
-=AntiAircraft=
+{{ img:units/Anti Aircraft.png|Anti Aircraft}}
+=Anti Aircraft=
 *  Cost: %Minerals%10
 *  [[concepts/initiative|Initiative]]: 80
 *  [[concepts/vehicle|Weight]]: 3
@@ -13,4 +13,4 @@
 *  Explosion radius: 1
 *  Damage: 10
 Sub-orbital planes can be detected and attacked in flight.
-The AntiAircraft turret intercepts hostile mobile units during their movement [[concepts/phase]] even if itself mounted on a mobile unit. It is thus particularly well suited to establish an ad hoc defense perimeter, or to permanently defend strategically important regions if mounted on a tower.
+The Anti Aircraft turret intercepts hostile mobile units during their movement [[concepts/phase]] even if itself mounted on a mobile unit. It is thus particularly well suited to establish an ad hoc defense perimeter, or to permanently defend strategically important regions if mounted on a tower.

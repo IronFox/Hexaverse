@@ -1040,7 +1040,7 @@ namespace Objects
 			#endif
 
 
-			component.typeName = "AntiAircraft";
+			component.typeName = "Anti Aircraft";
 			component.shortName = " AA";
 			component.constName = ConstName::Turret_AntiAircraft;
 			component.isScanner = true;
