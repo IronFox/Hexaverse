@@ -431,7 +431,7 @@ namespace Objects
 						outResult << "Health: " +String(this->health);
 			}
 			
-			if (!this->owner && IsAlive())	//prototype
+			if (!this->owner && owner)	//prototype. Could ignore null-owner, but that would probably add notes in documentation
 			{
 				if (!this->IsUnlockedAtState(GetResearchState(owner)))
 				{
