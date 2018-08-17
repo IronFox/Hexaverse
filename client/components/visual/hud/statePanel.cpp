@@ -200,7 +200,7 @@ namespace StatePanel
 				{
 					PushCurrentColor();
 					currentColor.rgb = float3(0.6,0.7,1.f);
-					cachedLines << lastDeployed;
+					cachedLines << " "+lastDeployed;
 
 					PopCurrentColor();
 				}
