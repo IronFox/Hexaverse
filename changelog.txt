@@ -11,6 +11,7 @@ v0.9.3	[Aug 17 2018]
 	> Removed goal/Nexus markers in EMP zones.
 	> Removed goal/Nexus markers in visual configurator.
 	> Removed deprecated Rules variables uplinkBandwidth and newVehiclesHaveFullAmmo.
+	> Unified description of attack and sensor ranges.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
 	* Fixed access violation when repairing/generating configuration files.
 	* Fixed error message when trying to set vehicle plant gathering point.
