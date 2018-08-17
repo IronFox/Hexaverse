@@ -78,7 +78,7 @@ CreateTask(function() Game.DisplayMessage(
 		"2: Known terrain, but currently out of range\n"..
 		"3: Discovered and currently visible terrain\n"..
 		"4: EMP zones (currently inaccessible)\n"..
-		"Everything you are not currently observing (everything not in 3) may change without you knowing. Half the trick of winning Hexaverse is knowing what you don't know.\n"
+		"Everything you are not currently observing (everything not in 3) may change without you knowing. Half the trick of winning Hexaverse is realizing what you don't know.\n"
 		,'areas.png') end);
 
 
