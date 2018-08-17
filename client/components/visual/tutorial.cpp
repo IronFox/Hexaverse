@@ -190,6 +190,14 @@ namespace Tutorial
 
 			Buffer0<TTrigger>	activeTriggers;
 
+			void	EnableWorkingStructure(const TUniqueID&entityID, bool doEnable)
+			{
+				Protocol::EnableStructure cmd;
+				cmd.enable = doEnable;
+				cmd.id = entityID;
+				Network::Channels::enableStructure.SendTo(Network::client, cmd);
+			}
+
 
 			//void	NextTask()
 			//{
@@ -420,6 +428,8 @@ namespace Tutorial
 		{
 			try
 			{
+				scriptAPI.onEnableWorkingStructure = API::EnableWorkingStructure;
+
 				scriptAPI.Create("Tutorial");
 				scriptAPI.AddGrid();
 				scriptAPI.gameTable.SetFunction("DisplayMessage",API::DisplayMessage);
