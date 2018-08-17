@@ -376,7 +376,7 @@ namespace Objects
 				{
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
 					if (IsPlane())
-						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t);
+						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t,true);
 					elif (IsPureVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t,true);
 					#ifndef NO_SATELLITES

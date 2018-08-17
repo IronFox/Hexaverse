@@ -10,7 +10,7 @@ namespace Objects
 	{
 		SharedContainer<Plane>	planes;
 
-		/*static*/ count_t			Plane::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
+		/*static*/ count_t			Plane::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t, bool includeStored)
 		{
 			count_t rs = 0;
 			planes.Foreach([&rs,o,t](const PPlane&m)
@@ -18,6 +18,13 @@ namespace Objects
 				if (m->owner == o && m->turret == t)
 					rs++;
 			});
+			if (includeStored)
+				storedMobileEntities.Foreach([&rs,o,t](const PMobileEntity&m)
+				{
+					if (m->owner == o && m->turret == t)
+						rs++;
+				});
+
 			return rs;
 		}
 

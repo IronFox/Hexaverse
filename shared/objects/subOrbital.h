@@ -47,7 +47,7 @@ namespace Objects
 			*/
 			PClientAttachment		shape;
 		#endif
-			static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*);
+			static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*, bool includeStored);
 
 
 			int						GetLandingHeight() const	{return GetLandingHeight(location,*this);}
