@@ -41,7 +41,7 @@ namespace Objects
 		enum class RoutingFlags
 		{
 			None = 0x0,
-			IgnoreMobilesOnDestination = 0x1,	//!< If any mobile is found on final destination, route there anyways
+			IgnoreMobilesOnDestination = 0x1,	//!< If any (stationary) mobile is found on final destination, route there anyways. Moving mobiles on destination are always ignored
 			IgnoreOwnMobilesOnRoute = 0x2,		//!< Assume my own mobile entities are temporary obstructions and route through
 			ForceRevertible = 0x4,				//!< Only assume steps that can be taken in either direction
 			IgnoreLimit = 0x8,					//!< Disables the hardcoded step limit to avoid server overload

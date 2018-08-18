@@ -189,7 +189,7 @@ namespace Objects{ namespace Pathfinding
 
 				if (cell==destination)
 				{
-					if (!ignoreMobilesOnDestination && !NoMobileEntityHereExcept(cell,v))
+					if (!ignoreMobilesOnDestination && !NoStationaryMobileEntityHereExcept(cell,v))
 						continue;
 				}
 				else

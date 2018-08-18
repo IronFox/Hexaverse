@@ -427,6 +427,15 @@ namespace Objects
 			#endif
 		;
 	}
+	bool NoStationaryMobileEntityHereExcept( const Grid::LCellIdI&cellID, const MobileEntity*v )
+	{
+		PMobileEntity vh = GetMobileEntity(cellID);
+		return !vh || vh.get() == v || (vh->owner == v->owner && vh->IsMoving())
+			#ifndef CLIENT
+				|| !v->owner->CanSee(vh,v->entityTime)
+			#endif
+		;
+	}
 
 	void			RemoveFromGrid(const PWorldEntity&e,const Grid::LCellIdI&location)
 	{
