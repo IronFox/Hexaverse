@@ -18,8 +18,8 @@ Obviously, it is benefitial to observe as much of the terrain surrounding your l
 ==Sky Sensory==
 
 {{sky sensor.png |Coverage of a sensor drone}}
-[[concepts/vehicle|Planes]] have cylindrical sensors that allow coverage of a wider area beneath them, however, with limited ability to peer into the ground.
-Coupled with the increased speed and regular radar invisibility of planes, this allows them to cover and oberserve large stretches of the terrain beneath with relative ease.
+[[concepts/vehicle|Planes]] have cylindrical sensors that allow coverage of a wider area, with limited ability to peer into the ground.
+Coupled with increased mobility, and invisibility to regular radar, this allows planes to oberserve large stretches of the terrain with relative ease.
 
 
 
