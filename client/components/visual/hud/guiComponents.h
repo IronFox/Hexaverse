@@ -349,6 +349,84 @@ namespace Component
 	};
 
 
+	/**
+	Main component shape. Box-like.
+	Optionally renders shadow, background, and edges.
+	Edges can be enabled individually for each of the four directions.
+	Shadow is disabled by default.
+	*/
+	class Decoration
+	{
+	public:
+		struct Context
+		{
+			float		opacity;
+
+			explicit	Context(float opacity);
+			Context		Recurse() const;
+		};
+
+
+		/**/			Decoration();
+		/**
+		Updates the shape location of this decoration.
+		*/
+		void			UpdateLocation(const M::Rect<>&rect)	{location = rect; recompileShadow = true; recompileBackground=true; recompileEdges=true;}
+
+		void			SetEdges(const M::Quad<bool>&edges) {if (edges != renderEdges) {renderEdges = edges; recompileEdges=true;}}
+		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
+		void			SetShadow(bool shade) {if (shade != shadow) {shadow = shade; recompileShadow = true;}}
+
+		void			SetEdgeColor(const float3&edgeColor)	{this->edgeColor = edgeColor;}
+		void			SetBackgroundColor(const float3&backgroundColor) {SetBackground(true); this->backgroundColor = backgroundColor;}
+		void			SetOpacity(float opacity) {SetBackground(true); this->bottomOpacity = this->topOpacity = opacity;}
+		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = top; this->topOpacity = bottom;}
+		void			SetShadow(const float4&tint, bool blurBack) {SetShadow(true); shadowTint = tint; blurBackground = blurBack;}
+
+		void			OnScreenSizeOrUIScaleChange()	{recompileShadow = recompileEdges = recompileBackground =true;}
+
+		/**
+		Renders the local decoration depending on internal configuration.
+		May recompile local shapes if changes have been registered
+		*/
+		Context			Render(bool lit, bool pressed, bool enabled, const Context&ctx)	{RenderBackground(lit,pressed,enabled,ctx); return RenderEdges(lit,pressed,enabled,ctx);}
+
+		/**
+		Renders shadow and background only (if enabled).
+		Updates colors where necessary.
+		*/
+		Context			RenderBackground(bool lit, bool pressed, bool enabled, const Context&);
+		/**
+		Renders edges (if enabled).
+		*/
+		Context			RenderEdges(bool lit, bool pressed, bool enabled, const Context&);
+
+		/**
+		Gets the accessible client area, inside any decoration
+		Valid after any Update*() has been called
+		*/
+		M::Rect<>		GetClientArea() const;
+
+		static void		StaticCreate();
+
+	private:
+		M::Rect<>					location;
+		DX11::InstructionBlock16	shadowInstruction,backgroundInstruction,blurInstruction,edgeInstruction;
+		bool						recompileShadow=true,
+									recompileBackground=true,
+									recompileEdges=true,
+									shadow=false,
+									background=true,
+									blurBackground=true;
+		M::Quad<bool>				renderEdges = true;
+		float4						shadowTint;
+		float3						backgroundColor,
+									edgeColor = float3(1.f);
+		float						topOpacity=1.f,
+									bottomOpacity=1.f;
+	};
+
+
 	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation, public M::Graph::NodeAttachment
 	{
 		typedef ComponentLocation Super;
@@ -371,9 +449,6 @@ namespace Component
 		friend void		SignalScreenResize();
 
 	protected:
-		static void		Darken(const M::Rect<>&rect, float alpha=0.9f, bool flush=false);
-		static void		RenderArea(const M::Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity=1, float highOpacity=1);
-		static void		RenderBorder(const M::Rect<>&rect, const float3&backgroundTone, const M::Quad<bool>&edges, float lowOpacity=1, float highOpacity=1);
 
 		virtual bool	ClientIsLit() const {return true;}
 
@@ -404,7 +479,7 @@ namespace Component
 
 
 	public:
-
+		typedef Decoration::Context	Ctx;
 
 		/**/			Component();
 		virtual			~Component();
@@ -475,7 +550,7 @@ namespace Component
 		
 		virtual void	UpdateDynamicSize(ChangeRecorder&);
 
-		virtual void	Render(float opacity);
+		virtual Ctx		Render(const Decoration::Context&);
 
 		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&);
 
@@ -537,7 +612,7 @@ namespace Component
 		void			SetAutoHeight(bool b)	{if (autoSetHeight == b) return; ASSERT__(!b || !anchorConfig.GetVAxis().RequiresFixedParentSize()); autoSetHeight = b; SignalLayoutChangeUp();}
 		void			SetTexture(const DX11::Texture&tex) {texture = tex;SignalLayoutChangeUp();}
 
-		virtual void	Render(float opacity) override;
+		virtual Ctx		Render(const Decoration::Context&) override;
 		//virtual bool	HandleClick() override {return ContainsMouse();}
 	protected:
 		virtual float	GetContentHeight() const override;
@@ -549,39 +624,47 @@ namespace Component
 	class Box : public Component
 	{
 	protected:
-		void			BaseRender(float opacity,bool lit, bool flipped, bool fill=true, bool border=true);
+		Decoration		decoration;
 	public:
 		typedef Component	Super;
 
-		M::Quad<bool>	edges = M::Quad<bool>(true);
-		bool			fillBackground = true,
-						renderBorder = true;
-		
-		float			bottomOpacity = 1.f,
-						topOpacity = 1.f;
-		float3			backgroundTone = float3(1);
+		virtual void	OnRectChange() override
+		{
+			decoration.UpdateLocation(this->GetRect());
+			Super::OnRectChange();
+		}
+
+		virtual void	OnScreenSizeOrUIScaleChange() override
+		{
+			decoration.OnScreenSizeOrUIScaleChange();
+			Super::OnScreenSizeOrUIScaleChange();
+		}
+
+		void			SetBackgroundTone(const float3&color)	{decoration.SetBackgroundColor(color);}
+		void			SetRenderEdge(const M::Quad<bool>&edges) {decoration.SetEdges(edges);}
+		void			SetBackground(bool back) {decoration.SetBackground(back);}
+
 
 		void			SetBackgroundTransparent()
 		{
-			fillBackground = false;
-			renderBorder = false;
+			decoration.SetBackground(false);
 		}
 
-		void			SetBorderBackground()
+		void			SetEdgesNoBackground(const M::Quad<bool>&edges)
 		{
-			fillBackground = false;
-			renderBorder = true;
+			decoration.SetBackground(false);
+			decoration.SetEdges(edges);
 		}
-		virtual void	Render( float opacity ) override	{Super::Render(opacity); BaseRender(opacity,false,false,fillBackground,renderBorder);}
+		virtual Ctx		Render( const Decoration::Context&ctx ) override	{Super::Render(ctx); return decoration.Render(this->IsLit(),false,this->IsEnabled(),ctx);}
 	};
 
 	/**
 	Multi-plot drawing component.
 	May display plots as percentual stacks, or overlapping lines
 	*/
-	class MultiPlot : public Component
+	class MultiPlot : public Box
 	{
-		typedef Component	Super;
+		typedef Box	Super;
 	
 		/**
 		Set of X-Y-coordinates that form the final plot
@@ -672,7 +755,7 @@ namespace Component
 		}
 
 
-		virtual void	Render(float opacity) override;
+		virtual Ctx		Render(const Decoration::Context&) override;
 
 		void			SignalAxesChanged()	{axesChanged = true;}
 		float			SampleStackedHeight(index_t) const;
@@ -748,8 +831,8 @@ namespace Component
 		*/
 		std::function<void(Key::Name)> onSpecialKey;
 
-		virtual void	Render(float opacity) override;
-		virtual void	SetActive( bool isActive ) override {SetInputActive(isActive); Super::SetActive(isActive);}
+		virtual Ctx			Render(const Decoration::Context&) override;
+		virtual void		SetActive( bool isActive ) override {SetInputActive(isActive); Super::SetActive(isActive);}
 
 	};
 
@@ -809,7 +892,7 @@ namespace Component
 		void			HandleTextChange();
 
 	protected:
-		void			RenderText(float opacity,bool lit);
+		void			RenderText(const Decoration::Context&ctx,bool lit);
 
 		virtual float	GetIdealWidth() const;
 		virtual void	OnTextChange() {};
@@ -878,7 +961,7 @@ namespace Component
 		}
 
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
-		virtual void	Render(float opacity) override;
+		virtual Ctx		Render(const Decoration::Context&) override;
 	};
 
 
@@ -927,6 +1010,8 @@ namespace Component
 	{
 	public:
 		typedef std::function<void()>	FTrigger;
+
+		friend class TabBar;
 	private:
 		typedef TextField	Super;
 
@@ -957,7 +1042,6 @@ namespace Component
 
 		void			SetAlwaysDown(bool down) {alwaysDown = down;}
 		bool			IsAlwaysDown() const {return alwaysDown;}
-
 
 		/**
 		Updates the trigger function executed with the local button is pressed
@@ -1009,7 +1093,7 @@ namespace Component
 			return changed;
 		}
 
-		virtual void Render(float opacity) override;
+		virtual Ctx	 Render(const Decoration::Context&) override;
 
 		virtual PComponent	OnMouseDown() override
 		{
@@ -1119,7 +1203,7 @@ namespace Component
 			return changed;
 		}
 
-		virtual void Render(float opacity) override;
+		virtual Ctx	 Render(const Decoration::Context&) override;
 
 		virtual PComponent	OnMouseDown() override
 		{
@@ -1163,15 +1247,16 @@ namespace Component
 		/**/			ScrollButton(direction_t dir,std::function<void()> onPress = std::function<void()>()):Super("",onPress), direction(dir)
 		{}
 
-		virtual void	Render( float opacity ) override
+		virtual Ctx		Render( const Decoration::Context&ctx ) override
 		{
-			bool lit = IsLit();
-			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender(opacity,lit && !flipped,lit && flipped);
-			RenderArrow(opacity,GetRect(),direction,lit);
+			const bool lit = IsLit();
+			const bool flipped = mousePressedComponent.get() == this;
+			auto cld = decoration.Render(lit,flipped,IsEnabled(),ctx);
+			RenderArrow(cld,GetRect(),direction,lit);
+			return cld;
 		}
 
-		static void		RenderArrow(float opacity,const M::Rect<>&, direction_t, bool lit);
+		static void		RenderArrow(const Decoration::Context&ctx,const M::Rect<>&, direction_t, bool lit);
 
 		virtual void	SetLocation(const M::Rect<>&loc) override {Super::SetLocation(loc);}
 
@@ -1179,12 +1264,19 @@ namespace Component
 
 
 
-	class Slider : public Component
+	class Slider : public Box
 	{
-		typedef Component	Super;
+		typedef Box	Super;
+
+		Decoration			slider;
 
 	protected:
 		virtual void		OnScreenSizeOrUIScaleChange() override;
+		virtual void		OnRectChange() override
+		{
+			slider.UpdateLocation(this->GetRect());
+			Super::OnRectChange();
+		}
 	public:
 		typedef std::function<void(float&)>	FOnChange;
 
@@ -1193,7 +1285,7 @@ namespace Component
 		//virtual WheelRs	OnMouseWheel(short) override;
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
-		virtual void		Render(float opacity) override;
+		virtual Ctx			Render(const Decoration::Context&) override;
 		void				Setup(float current, float max, float slideStep) {this->current = current; this->max = max; this->slideStep = slideStep;numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		void				SetupMarkers(float markerStep, bool show)	{this->markersEvery = markerStep; showMarkers = show; numMarkers = markersEvery ? 1+(max / markersEvery) : 0;}
 		float				GetMax() const {return max;}
@@ -1235,6 +1327,7 @@ namespace Component
 	class Panel : public Box
 	{
 		typedef Box Super;
+		friend class TabCollection;
 
 		struct TScrollbar
 		{
@@ -1258,7 +1351,7 @@ namespace Component
 			void		OnMouseUp();
 			void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const M::Rect<>&rect);
-			void		Render(float opacity,const M::Rect<>&rect);
+			void		Render(const Decoration::Context&ctx,const M::Rect<>&rect);
 			float		GetOffset() const {return visible ? -viewTop : 0;}
 
 			static float	GetPixelWidth();
@@ -1283,10 +1376,10 @@ namespace Component
 			foreach (components,c)
 				(*c)->AcceptStateFromParent(p);
 		}
-		void			RenderChildren( float opacity )
+		void			RenderChildren( const Decoration::Context&ctx )
 		{
 			foreach (components,c) 
-				(*c)->Render(opacity);
+				(*c)->Render(ctx);
 		}
 
 		Buffer0<PComponent>	components;
@@ -1329,7 +1422,7 @@ namespace Component
 		}
 		void			RecomputeOrder(AnchorAxis);
 	public:
-		/**/			Panel()	{topOpacity = 0.75f; bottomOpacity = 0.75f; Anchor().FillHorizontally().Top();}
+		/**/			Panel()	{decoration.SetBackgroundColor(float3(0.75f)); Anchor().FillHorizontally().Top();}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
@@ -1350,7 +1443,7 @@ namespace Component
 		
 		virtual void	SetActive(bool isActive) override;
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
-		virtual void	Render(float opacity) override;
+		virtual Ctx		Render(const Decoration::Context&) override;
 		virtual void	ResolveAnchorAxis(AnchorAxis axis, const M::Rect<>&context, ChangeRecorder&) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
@@ -1444,7 +1537,7 @@ namespace Component
 		bool	OnComponentsChanged() {lastLitTriState = -1; return true;};
 
 	public:
-		/**/			ButtonPanel()	{topOpacity = 1.f; bottomOpacity = 1.f;}
+		/**/			ButtonPanel()	{}
 
 		virtual void	SetActive(bool isActive) override
 		{
@@ -1506,12 +1599,13 @@ namespace Component
 
 
 
-		virtual void Render( float opacity ) override
+		virtual Ctx	 Render( const Decoration::Context&ctx ) override
 		{
-			bool lit = IsLit();
-			bool flipped = mousePressedComponent.get() == this;
-			Super::BaseRender(opacity,lit && !flipped,lit && flipped);
-			Super::RenderChildren(opacity);
+			const bool lit = IsLit();
+			const bool flipped = mousePressedComponent.get() == this;
+			auto child = decoration.Render(lit,flipped,IsEnabled(),ctx);
+			Super::RenderChildren(child);
+			return child;
 		}
 
 		virtual PComponent	OnMouseDown() override
@@ -1711,10 +1805,6 @@ namespace Component
 		count_t			CountTabs() const {return tabs.Count();}
 
 	
-		virtual void Render( float opacity ) override
-		{
-			Super::Render(opacity);
-		}
 
 	protected:
 		virtual void	OnTabChange();
@@ -1776,6 +1866,8 @@ namespace Component
 		{
 			anchorConfig.GetHAxis().SetAutoCenter();
 			anchorConfig.GetVAxis().SetAutoCenter();
+			decoration.SetShadow(true);
+			decoration.SetShadow(float4(0,0,0,0.5f),true);
 		}
 
 		template <typename T>	
@@ -1803,7 +1895,6 @@ namespace Component
 		M::Rect<>			context = M::Rect<>(0,0,1,1);
 		bool				canBeImplicitlyClosed = true;	//!< Indicates that this window can be closed by events such as the Escape being pressed
 		bool				isModal = true;
-		bool				darkenOutline = true;
 
 		#ifdef _DEBUG
 			bool			breakOnHide = false;
@@ -1829,15 +1920,9 @@ namespace Component
 		const float2&		GetOutlineMargin() const {return outlineMargin;}
 
 
-		virtual void		Render( float opacity) override
+		void				SetDarkenedOutline(bool outline)
 		{
-			if (darkenOutline)
-			{
-				if (isModal)
-					Darken(context,0.7f*opacity);
-				Darken(outerRect,0.9f*opacity);
-			}
-			Super::Render(opacity);
+			decoration.SetShadow(outline);
 		}
 
 		virtual void		SignalLayoutChangeUp()	override

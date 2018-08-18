@@ -251,14 +251,14 @@ namespace ConfigurationMode
 				if (i == Grid::Content::Unknown)
 					name = "Natural";
 				PButton button(new Button(name));
-				button->backgroundTone = Grid::CellStack::Cell::typeColor[i];
-				Vec::abs(button->backgroundTone);
-				float max = Vec::max(button->backgroundTone);
+				auto col = Grid::CellStack::Cell::typeColor[i];
+				Vec::abs(col);
+				float max = Vec::max(col);
 				if (max > 0.5f)
-					button->backgroundTone /= max;
-				button->SetColor(float4(button->backgroundTone,1.f));
-				button->fillBackground = true;
-				button->renderBorder = true;
+					col /= max;
+				button->SetColor(float4(col,1.f));
+				button->SetBackgroundTone(col);
+				button->SetRenderEdge(true);
 				float b = 0.2f * (window->CountComponents()/4);
 				float x = 0.25f * (window->CountComponents()%4);
 				float x2 = 0.25f * (3-(window->CountComponents()%4));

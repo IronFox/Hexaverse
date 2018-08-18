@@ -69,9 +69,9 @@ namespace HUD{namespace HostList{
 			changelog->SetWidth(HUD::Component::Distance(0.4f));
 			//changelog->SetAutomaticHeight(false);
 			//changelog->SetHeight(0.6f);
-			changelog->fillBackground = false;
-			changelog->renderBorder = false;
-			changelog->darkenOutline = false;
+			changelog->SetBackground(false);
+			changelog->SetRenderEdge(false);
+			changelog->SetDarkenedOutline(false);
 			changelog->SetMaxAutoHeight(0.5f);
 			count_t cnt = 0;
 			String line;
@@ -405,7 +405,7 @@ namespace HUD{namespace HostList{
 		}
 
 		p->SetAutoHeightSpacing(0.01f);
-		p->backgroundTone = color.rgb * 0.75f;
+		p->SetBackgroundTone(color.rgb * 0.75f);
 
 		return p;
 	}

@@ -59,7 +59,7 @@ namespace HUD
 				PPanel rs{new Panel{}};
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
-				rs->SetBorderBackground();
+				rs->SetEdgesNoBackground(true);
 
 				if (labelText.IsNotEmpty())
 				{
@@ -136,8 +136,8 @@ namespace HUD
 								Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(now->alliance->id,Objects::Faction::mine->id,Protocol::AllianceInviteType::Accept));
 							});
 
-							inviteButton->fillBackground = false;
-							inviteButton->renderBorder = false;
+							inviteButton->SetBackground(false);
+							inviteButton->SetRenderEdge(false);
 							inviteButton->SetColor(faction->color);
 							inviteButton->LockToIdealWidth(true);
 							//joinButton->LockToIdealHeight(true);
@@ -175,8 +175,8 @@ namespace HUD
 								});
 							}
 
-							inviteButton->fillBackground = false;
-							inviteButton->renderBorder = false;
+							inviteButton->SetBackground(false);
+							inviteButton->SetRenderEdge(false);
 							inviteButton->SetColor(faction->color);
 							inviteButton->LockToIdealWidth(true);
 							//joinButton->LockToIdealHeight(true);
@@ -310,13 +310,13 @@ namespace HUD
 				{
 					PPanel wrapper{new Panel{}};
 					wrapper->Anchor().BeneathLastOf(factionTable);
-					wrapper->fillBackground = false;
-					wrapper->renderBorder = a->CountLivingMembers()  > 1;
+					wrapper->SetBackground(false);
+					wrapper->SetRenderEdge(a->CountLivingMembers() > 1);
 					factionTable->AddComponent(wrapper,CLOCATION);
 
 					PPanel alliancePanel{new Panel{}};
-					alliancePanel->fillBackground = false;
-					alliancePanel->renderBorder = false;
+					alliancePanel->SetBackground(false);
+					alliancePanel->SetRenderEdge(false);
 					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
 
 
@@ -358,8 +358,8 @@ namespace HUD
 						leaveButton->LockToIdealWidth(true);
 						//joinButton->LockToIdealHeight(true);
 						leaveButton->SetPadding(M::Quad<float>(0.2f));
-						leaveButton->fillBackground = false;
-						leaveButton->renderBorder = false;
+						leaveButton->SetBackground(false);
+						leaveButton->SetRenderEdge(false);
 						leaveButton->SetLocalFontScale(0.85f);
 
 						leaveButton->Anchor().Right(0.01f).Top(0.01f);

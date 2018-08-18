@@ -617,8 +617,10 @@ namespace Component
 
 
 
-	/*virtual*/ void	Component::Render( float opacity )
-	{}
+	/*virtual*/ Decoration::Context	Component::Render( const Decoration::Context&ctx )
+	{
+		return ctx.Recurse();
+	}
 
 
 	/*virtual*/ void	Component::SetLocation(const M::Rect<>&loc)
@@ -817,6 +819,209 @@ namespace Component
 
 
 
+
+
+	namespace DecorationDetails
+	{
+		DX11::ObjectBuffer<float4>
+			topBackgroundColor,
+			bottomBackgroundColor,
+			topEdgeColor,
+			bottomEdgeColor,
+			shadowColor;
+
+		DX11::BaseInstructionBlock
+			backgroundShader,
+			shadowShader,
+			blurShader,
+			edgeShader;
+
+
+		namespace Bakery
+		{
+
+			namespace Details
+			{
+				struct TVertex
+				{
+					float2	position;
+					float2	uv;
+				};
+
+				Buffer0<UINT16> indices;
+				Buffer0<TVertex> vertices;
+				UINT16 vOffset = 0;
+
+				void	Reset()
+				{
+					indices.Clear();
+					vertices.Clear();
+					vOffset = 0;
+				}
+
+			}
+
+
+			void	Vertex(const float2&position, const float2&uv)
+			{
+				using namespace Details;
+				DBG_ASSERT_LESS__(vertices.Count(),0x10000);
+				auto&v = vertices.Append();
+				v.position = position;
+				v.uv = uv;
+			}
+
+			void	SetVOffset()
+			{
+				using namespace Details;
+				vOffset = (UINT16)vertices.Count();
+			}
+
+			void	Index(index_t v)
+			{
+				using namespace Details;
+				index_t final = vOffset + v;
+				DBG_ASSERT_LESS__(final,0x10000);
+				DBG_ASSERT_LESS__(final,vertices.Count());
+
+				indices << (UINT16)(final);
+			}
+
+			void	Triangle(index_t v0, index_t v1, index_t v2)
+			{
+				Index(v0);
+				Index(v1);
+				Index(v2);
+			}
+
+			void	Quad(index_t v0, index_t v1, index_t v2, index_t v3)
+			{
+				Triangle(v0,v1,v2);
+				Triangle(v0,v2,v3);
+			}
+
+			void	Complete(DX11::InstructionBlock16&target)
+			{
+				using namespace Details;
+				target.vbo.CreateFromStructs(vertices);
+				target.ibo.Create(indices);
+				Reset();
+			}
+		}
+	}
+
+
+
+
+
+
+	Decoration::Decoration()
+	{
+		using namespace DecorationDetails;
+		((DX11::BaseInstructionBlock&)backgroundInstruction) = backgroundShader;
+		((DX11::BaseInstructionBlock&)shadowInstruction) = shadowShader;
+		((DX11::BaseInstructionBlock&)edgeInstruction) = edgeShader;
+		((DX11::BaseInstructionBlock&)blurInstruction) = blurShader;
+	}
+
+
+	Decoration::Context			Decoration::RenderBackground(bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
+	{
+		using namespace DecorationDetails;
+
+		if (shadow)
+		{
+			shadowColor.Update(shadowTint);
+			if (recompileShadow)
+			{
+				recompileShadow = false;
+
+			}
+
+		}
+
+		if (background)
+		{
+			topBackgroundColor.Update(float4(backgroundColor,topOpacity));
+			bottomBackgroundColor.Update(float4(backgroundColor,bottomOpacity));
+
+			if (recompileBackground)
+			{
+				recompileBackground = false;
+
+				M::Rect<> pixels = location;
+				const float scale = UI::GetScale();
+				const float xScale = scale * ViewPortWidth();
+				const float yScale = scale * ViewPortHeight();
+				pixels.x.Scale(xScale);
+				pixels.y.Scale(yScale);
+				static const float dent = 64.f;
+
+				if (pixels.x.GetExtent() >= dent*2.f && pixels.y.GetExtent() >= dent*2.f)
+				{
+					//Bakery::Vertex(float2(pixels.x.min
+
+
+				}
+
+
+
+
+
+			}
+
+
+			display.Render(backgroundInstruction);
+
+
+		}
+
+
+		return ctx.Recurse();
+	}
+
+	Decoration::Context			Decoration::RenderEdges(bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
+	{
+		using namespace DecorationDetails;
+
+		if (renderEdges.Max())
+		{
+			topEdgeColor.Update(float4(edgeColor,topOpacity));
+			bottomEdgeColor.Update(float4(edgeColor,bottomOpacity));
+
+
+
+		}
+
+		return ctx.Recurse();
+	}
+
+
+	M::Rect<>		Decoration::GetClientArea() const
+	{
+		auto rs = location;
+		rs.Scale(0.9);	//temporary
+		return rs;
+	}
+
+	/*static*/ void		Decoration::StaticCreate()
+	{
+		using namespace DecorationDetails;
+		shadowColor.Create(float4());
+		topBackgroundColor.Create(float4());
+		bottomBackgroundColor.Create(float4());
+		topEdgeColor.Create(float4());
+		bottomEdgeColor.Create(float4());
+
+
+	}
+
+
+
+
+
+
+
 	/*virtual*/ bool		Panel::AddComponent( const PComponent&c, const TCodeLocation&caller)
 	{
 		if (!c)
@@ -886,6 +1091,7 @@ namespace Component
 	/*virtual override*/ void		Slider::OnScreenSizeOrUIScaleChange() 
 	{
 		Super::OnScreenSizeOrUIScaleChange();
+		slider.OnScreenSizeOrUIScaleChange();
 		relativeHeight = GetPixelHeight() / ViewPortHeight();
 		relativeThumbWidth = GetThumbPixelWidth() / ViewPortWidth();
 		UpdateDynamicSize(ChangeRecorder());
@@ -919,31 +1125,36 @@ namespace Component
 	}
 
 	Slider::Slider()
-	{}
-
-
-
-	/*virtual override*/ void	Slider::Render( float opacity )
 	{
-		const auto&rect = GetRect();
+		slider.SetBackground(true);
+		slider.SetEdges(true);
+	}
+
+
+
+	/*virtual override*/ Decoration::Context	Slider::Render( const Decoration::Context&ctx )
+	{
+		const auto rect = decoration.GetClientArea();
 		const float top = rect.y.max;
 		const float bottom = rect.y.min;
 
 		const float left = rect.x.min;
 		const float right = rect.x.max;
 
-		barBack = M::Rect<>(left,bottom,right,top);
-		SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
-		SurfaceRenderer::Rasterize(barBack);
+		const auto child = decoration.Render(false,false,IsEnabled(),ctx);
+		//barBack = M::Rect<>(left,bottom,right,top);
+		//SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
+		//SurfaceRenderer::Rasterize(barBack);
 
 
 		dragRange = M::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
 		const float barCenter = dragRange.Derelativate(current/max);
 		bar = M::Rect<>(barCenter-relativeThumbWidth/2.f,barBack.y.min,barCenter+relativeThumbWidth/2.f,barBack.y.max);
 
+
 		if (showMarkers)
 		{
-			float4 markerColor(1,1,1,0.5f*opacity);
+			float4 markerColor(1,1,1,0.5f*child.opacity);
 			float y0 = rect.y.Derelativate(0.2f);
 			float y1 = rect.y.Derelativate(0.8f);
 			M::Rect<> marker;
@@ -961,9 +1172,9 @@ namespace Component
 				}
 			}
 		}
-
-		RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
-		RenderBorder(bar,float3(1),true,opacity,opacity);
+		slider.UpdateLocation(bar);
+		slider.Render(barContainsMouse,dragging,IsEnabled(),child);
+		return child;
 	}
 
 
@@ -1049,9 +1260,9 @@ namespace Component
 
 
 
-	void	Panel::TScrollbar::Render( float opacity, const M::Rect<>&rect )
+	void	Panel::TScrollbar::Render( const Decoration::Context&ctx, const M::Rect<>&rect )
 	{
-		
+		#if 0
 		targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
 		float speed = M::Max(1.f,fabs(targetViewTop - viewTop))*2.f;
 		if (targetViewTop > viewTop)
@@ -1085,6 +1296,7 @@ namespace Component
 		up->Render(opacity);
 		down->SetLocation(bottomButton);
 		down->Render(opacity);
+		#endif /*0*/
 	}
 
 
@@ -1218,18 +1430,19 @@ namespace Component
 		}
 	}
 
-	/*virtual override*/ void Button::Render( float opacity )
+	/*virtual override*/ Decoration::Context Button::Render( const Decoration::Context&ctx )
 	{
 		bool lit = IsLit();
 		bool flipped = mousePressedComponent.get() == this;
-		Super::BaseRender(opacity, (lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown), fillBackground, renderBorder);
-		Super::RenderText(opacity, lit || alwaysDown);
+		const auto child = decoration.Render(lit,(lit && !flipped)  || alwaysDown, IsEnabled(),ctx);
+		Super::RenderText(child, lit || alwaysDown);
+		return child;
 	}
 
 
-	/*static*/ void		ScrollButton::RenderArrow( float opacity, const M::Rect<>&r, direction_t dir, bool lit )
+	/*static*/ void		ScrollButton::RenderArrow( const Decoration::Context&ctx, const M::Rect<>&r, direction_t dir, bool lit )
 	{
-		SurfaceRenderer::SetColor(float4(1,1,1,(lit?0.75f:0.5f) * opacity));
+		SurfaceRenderer::SetColor(float4(1,1,1,(lit?0.75f:0.5f) * ctx.opacity));
 
 		switch (dir)
 		{
@@ -1247,21 +1460,22 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void	Panel::Render( float opacity )
+	/*virtual override*/ Decoration::Context		Panel::Render( const Decoration::Context&ctx )
 	{
 		const auto&rect = GetRect();
 		if (!rect.IsValid())
-			return;
-		Super::Render(opacity); 
+			return ctx;
+		const auto chld = Super::Render(ctx); 
 		if (vscroll.visible)
 		{
-			vscroll.Render(opacity, rect);
+			vscroll.Render(ctx, rect);
 			Detail::PushLoadView(rect,float2(0,-vscroll.viewTop));
 		}
 		else
 			Detail::PushLoadView(rect);
-		RenderChildren(opacity);
+		RenderChildren(chld);
 		Detail::PopLoadView();
+		return chld;
 	}
 
 
@@ -1371,6 +1585,7 @@ namespace Component
 			active = false;
 	}
 
+	#if 0
 
 	/*static*/ void				Component::RenderArea(const M::Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
@@ -1407,6 +1622,7 @@ namespace Component
 		LineRenderer::Flush();
 	}
 	
+	#endif /*0*/
 
 	static float CharWidth(char c)
 	{
@@ -1495,7 +1711,7 @@ namespace Component
 		AddComponent(newComponent,caller);
 	}
 
-
+	#if 0
 	void				Box::BaseRender( float opacity, bool lit, bool flipped, bool fill, bool outline )
 	{
 		const M::Rect<>&r = GetRect();
@@ -1504,6 +1720,7 @@ namespace Component
 		if (outline)
 			RenderBorder(r,backgroundTone,true,bottomOpacity*opacity,topOpacity*opacity);
 	}
+	#endif /*0*/
 
 	static const float CellSize = 0.01f;
 
@@ -1696,18 +1913,15 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void			BaseInput::Render( float opacity )
+	/*virtual override*/ Decoration::Context			BaseInput::Render( const Decoration::Context&ctx )
 	{
-		core = GetRect();
+		core = decoration.GetClientArea();
 		textout.PushState();
 		textout.Scale(Detail::textZoom);
 		core.Expand(-textout.GetScaledHeight()*0.4f);
 		//core.Scale(0.97f);
 
-		if (fillBackground)
-			RenderArea(core,false,true,backgroundTone,opacity,opacity);
-		if (renderBorder)
-			RenderBorder(core,backgroundTone,true,opacity,opacity);
+		const auto child = decoration.Render(false,false,IsEnabled(),ctx);
 
 		StringRef text = GetTextRef();
 
@@ -1721,9 +1935,9 @@ namespace Component
 
 		float4 baseColor;
 		if (IsEnabled())
-			baseColor = (IsLit() ? float4(1,1,1,opacity) : float4(0.75,0.75,0.75,opacity));
+			baseColor = (IsLit() ? float4(1,1,1,child.opacity) : float4(0.75,0.75,0.75,child.opacity));
 		else
-			baseColor = float4(0.5,0.5,0.5,opacity);
+			baseColor = float4(0.5,0.5,0.5,child.opacity);
 
 		textout.SetColor(baseColor);
 
@@ -1753,7 +1967,7 @@ namespace Component
 
 
 		textout.PopState();
-
+		return child;
 
 	}
 
@@ -1973,15 +2187,15 @@ namespace Component
 
 
 
-	/*virtual override*/ void			TextField::Render( float opacity )
+	/*virtual override*/ Decoration::Context			TextField::Render( const Decoration::Context&ctx )
 	{
-		bool lit = IsLit();
-
-		Super::BaseRender(opacity,lit,false,fillBackground,renderBorder);
-		RenderText(opacity,lit);
+		const bool lit = IsLit();
+		auto child = decoration.Render(lit,false,IsEnabled(),ctx);
+		RenderText(child,lit);
+		return child;
 	}
 
-	void TextField::RenderText( float opacity, bool lit )
+	void TextField::RenderText( const Decoration::Context&ctx, bool lit )
 	{
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
@@ -1992,14 +2206,15 @@ namespace Component
 
 		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
 		//float lineHeight = textout.GetScaledHeight();
-		const float top = GetRect().y.max;
-		const float left = GetRect().x.min;
+		const auto rect = decoration.GetClientArea();
+		const float top = rect.y.max;
+		const float left = rect.x.min;
 
 		float4 baseColor;
 		if (IsEnabled())
-			baseColor = (lit ? float4(1,1,1,opacity) : float4(0.75,0.75,0.75,opacity));
+			baseColor = (lit ? float4(1,1,1,ctx.opacity) : float4(0.75,0.75,0.75,ctx.opacity));
 		else
-			baseColor = float4(0.5,0.5,0.5,opacity);
+			baseColor = float4(0.5,0.5,0.5,ctx.opacity);
 
 		textout.SetColor(baseColor & this->color);
 		for (index_t i = 0; i < wrappedText.Count(); i++)
@@ -2037,10 +2252,10 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void			Image::Render( float opacity )
+	/*virtual override*/ Decoration::Context			Image::Render( const Decoration::Context&ctx )
 	{
 		if (texture.IsEmpty())
-			return;
+			return ctx;
 
 		const bool lit = IsLit();
 	
@@ -2071,8 +2286,9 @@ namespace Component
 
 		display.SetObjectMatrix(matrix);
 		texturedQuad.quickSlots.First() = texture;
-		texturedQuadColor.Update(float4(1,1,1,opacity));
+		texturedQuadColor.Update(float4(1,1,1,ctx.opacity));
 		display.RenderVertices(texturedQuad);
+		return ctx;
 	}
 
 	/*virtual*/ void	Component::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
@@ -2301,7 +2517,7 @@ namespace Component
 		return area.Contains(Engine::mouse.location.windowRelative);
 	}
 
-
+	#if 0
 	/*static*/ void	Component::Darken(const M::Rect<>&rect, float alpha/*=0.9f*/, bool flush/*=false*/)
 	{
 		SurfaceRenderer::SetColor(float4(0,0,0,alpha));
@@ -2310,6 +2526,7 @@ namespace Component
 			SurfaceRenderer::Flush();
 	
 	}
+	#endif /*0*/
 
 	/*virtual override*/ float	Checkbox::GetIdealWidth() const
 	{
@@ -2327,18 +2544,18 @@ namespace Component
 		return Math::Max(textHeight,checkBoxHeight);
 	}
 
-	/*virtual override*/ void Checkbox::Render( float opacity )
+	/*virtual override*/ Decoration::Context Checkbox::Render( const Decoration::Context&ctx )
 	{
 		bool lit = IsLit();
 		//Super::BaseRender(lit,false);
-		Super::RenderText(opacity, lit);
-		SurfaceRenderer::SetColor((lit ? float4(0.7f):float4(0.5f)) & float4(1,1,1,opacity));
+		Super::RenderText(ctx, lit);
+		SurfaceRenderer::SetColor((lit ? float4(0.7f):float4(0.5f)) & float4(1,1,1,ctx.opacity));
 		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
 		float checkBoxWidth = checkBoxHeight / ViewPortAspect();
 		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		M::TFloatRect box = M::TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);
-		const float4 color = lit ? float4(1,1,1,opacity):float4(float3(0.7f), 0.7*opacity);
+		const float4 color = lit ? float4(1,1,1,ctx.opacity):float4(float3(0.7f), 0.7*ctx.opacity);
 		if (isChecked)
 		{
 			//SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.4f));
@@ -2351,6 +2568,7 @@ namespace Component
 		LineRenderer::SetColor(color);
 		LineRenderer::Rasterize(box);
 		LineRenderer::Flush();
+		return ctx;
 	}
 
 	void		Panel::SetAutomaticHeight(bool b)
@@ -2475,12 +2693,10 @@ namespace Component
 	/*static*/ void		TabBar::ConfigureInactive(const PButton&active)
 	{
 		active->SetAlwaysDown(false);
-		active->edges = M::Quad<bool>(true);
-		active->bottomOpacity = 1;
+		active->decoration.SetEdges(true);
+		active->decoration.SetOpacity(0.85f);
 		active->Anchor().Top();
 		active->LockToIdealHeight(true);
-		active->topOpacity = 0.85f;
-		active->bottomOpacity = 0.85f;
 		active->SetColor(float4(1,1,1,0.85f));
 
 	}
@@ -2490,9 +2706,8 @@ namespace Component
 		active->LockToIdealHeight(false);
 		active->Anchor().FillVertically();
 //			GetVAxis().lower.Set(0);
-		active->topOpacity = 1.f;
-		active->bottomOpacity = 0;
-		active->edges = M::Quad<bool>(true,false,true,true);
+		active->decoration.SetOpacity(1,0);
+		active->decoration.SetEdges(M::Quad<bool>(true,false,true,true));
 		active->SetColor(float4(1));
 	}
 
@@ -2545,7 +2760,7 @@ namespace Component
 
 		auto&tab = tabs.Append();
 		tab.panel.reset(new Panel());
-		tab.panel->edges.top = false;
+		tab.panel->decoration.SetEdges(M::Quad<bool>(true,true,true,false));
 		{
 			auto mod = tab.panel->Anchor();
 			mod.GetHAxis().Fill();
@@ -2697,9 +2912,12 @@ namespace Component
 		lines.Rasterize(float4(1,1,1,opacity));
 	}
 
-	/*virtual override*/ void	MultiPlot::Render( float opacity )
+	/*virtual override*/ Decoration::Context	MultiPlot::Render( const Decoration::Context&ctx )
 	{
-		Super::Render(opacity);
+		//Super::Render(opacity);
+		
+		const auto chld = decoration.RenderBackground(false,false,IsEnabled(),ctx);
+
 		bool anyChanged = axesChanged;
 		foreach (plots,g)
 			if (g->changed)
@@ -2713,15 +2931,15 @@ namespace Component
 		display.StoreRendererState();
 		display.SetRasterizer(true,true);
 		foreach (plots,g)
-			g->RenderSurfaces(opacity);
+			g->RenderSurfaces(chld.opacity);
 
 		display.RestoreRendererState();
 
 		foreach (plots,g)
-			g->RenderLines(opacity);
+			g->RenderLines(chld.opacity);
 
 
-		axes.Rasterize(float4(1,1,1,opacity));
+		axes.Rasterize(float4(1,1,1,chld.opacity));
 
 		{
 			BeginLabelPrint();
@@ -2733,9 +2951,7 @@ namespace Component
 
 			EndLabelPrint();
 		}
-
-
-		Box::RenderBorder(GetRect(),float3(1),true,opacity,opacity);
+		return decoration.RenderEdges(false,false,IsEnabled(),ctx);
 	}
 
 	void MultiPlot::BeginLabelPrint()

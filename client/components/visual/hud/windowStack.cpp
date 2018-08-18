@@ -149,6 +149,7 @@ namespace HUD
 		void		Create()
 		{
 			Component::Image::StaticCreate();
+			Component::Decoration::StaticCreate();
 
 			GlobalEvents::uiScaleChanged += []()
 			{
@@ -552,7 +553,7 @@ namespace HUD
 				if (w->isModal && d.IsVisible())
 					break;
 				if (d.opacity > 0)
-					w->Render(d.opacity * d.opacity);
+					w->Render(Component::Decoration::Context(d.opacity * d.opacity));
 			}
 		}
 
@@ -598,7 +599,7 @@ namespace HUD
 						w->OnMouseMove(lastMouseLocation,true);
 					}
 
-					w->Render(d.opacity * d.opacity);
+					w->Render(Component::Decoration::Context(d.opacity * d.opacity));
 				}
 			}
 		}
