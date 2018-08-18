@@ -57,7 +57,7 @@ namespace Objects
 			v.level[Resource::Fuel] -= FuelDemand;
 
 			float t = 0.f;	//buildings always come at the beginning
-			MobileEntityProducer::Tick(v,t);
+			MobileEntityProducer::Tick(v,t,true);
 		}
 	#else
 		#ifdef HAS_WINDOW

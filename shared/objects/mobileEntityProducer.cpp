@@ -8,7 +8,6 @@
 #include "faction.h"
 
 
-
 namespace Objects
 {
 
@@ -204,35 +203,66 @@ namespace Objects
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
 			Grid::LCellIdI c;
-			if (gatheringPoint.current != Grid::LCellIdI::Invalid)
+			if (movementChoices.Count() == 1)
+				c = movementChoices.First().location;
+			else
 			{
-				if (movementChoices.Contains(gatheringPoint.current))
-					c = gatheringPoint.current;
-				else
+				if (gatheringPoint.current != Grid::LCellIdI::Invalid)
 				{
-					
-					float distance = std::numeric_limits<float>::max();
-					foreach (movementChoices,choice)
+					if (movementChoices.Contains(gatheringPoint.current))
+						c = gatheringPoint.current;
+					else
 					{
-						float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
-						if (d < distance)
+					
+						float distance = std::numeric_limits<float>::max();
+						foreach (movementChoices,choice)
 						{
-							c = choice->location;
-							distance = d;
+							float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
+							if (d < distance)
+							{
+								c = choice->location;
+								distance = d;
+							}
 						}
 					}
 				}
-			}
-			else
-			{
-				Buffer0<Choice>	highChoices;
-				foreach (movementChoices,c)
+				else
+				{
+					Buffer0<Choice>	highChoices;
+					foreach (movementChoices,c)
 					if (WorldEntity::IsAboveTerrain(c->location))
 						highChoices << *c;
 
-				c = highChoices.IsNotEmpty()
-							? highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location
-							: movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;
+					if (highChoices.IsNotEmpty())
+						c = highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location;
+					else
+					{
+
+					auto owner = parent->owner;
+					float distance = 0;
+					foreach (movementChoices,choice)
+					{
+						float d = std::numeric_limits<float>::max();
+						owner->VisitVisibleForeignEntities([&d,owner,choice](const Objects::PWorldEntity&e)
+						{
+							if (!owner->IsFriendly(e->owner))
+								d = std::min(d,Grid::GetQuadraticGeometricDistance(choice->location,e->location));
+						});
+						foreach (owner->markers,m)
+							if (m->type == Objects::Marker::Type::EntityDeath || m->type == Objects::Marker::Type::HostileContact)
+							{
+								d = std::min(d,Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+							}
+						if (d > distance)
+						{
+							distance = d;
+							c = choice->location;
+						}
+					}
+					if (distance == std::numeric_limits<float>::max())
+						c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
+					}
+				}
 			}
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
@@ -252,7 +282,7 @@ namespace Objects
 		}
 
 
-		void MobileEntityProducer::Tick(ResourceVector&v, float&t)
+		void MobileEntityProducer::Tick( ResourceVector&v, float&t, bool forceAutoSpawn )
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
@@ -304,14 +334,14 @@ namespace Objects
 				LogEvent(EventSignificance::Debug,parent,"Construction of "+queue.First().producing->GetName()+" completed");
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,parent,"Construction of "+queue.First().producing->GetNiceName()+" completed");
 
-				if (gatheringPoint.current != Grid::LCellIdI::Invalid || !queue.First().IsPureVehicle())
+				if (gatheringPoint.current != Grid::LCellIdI::Invalid || forceAutoSpawn)
 				{
 					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity...");
 					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere(t);
 					if (v)
 					{
 						LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
-						if (v->IsPureVehicle())
+						if (gatheringPoint.current != Grid::LCellIdI::Invalid && v->IsPureVehicle())
 						{
 							LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 							v->PlotCourse(gatheringPoint.current,false);

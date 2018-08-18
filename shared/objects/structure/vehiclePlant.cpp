@@ -2,6 +2,7 @@
 #include "vehiclePlant.h"
 #include "../prototypes.h"
 #include "../vehicle.h"
+#include <runtimeConfig.h>
 
 namespace Objects
 {
@@ -16,7 +17,7 @@ namespace Objects
 			v.level[Resource::Energy] -= EnergyConsumption;
 
 			float t = 0.f;	//buildings always come at the beginning
-			MobileEntityProducer::Tick(v,t);
+			MobileEntityProducer::Tick(v,t, RuntimeConfig::autoSpawnFromVehiclePlants);
 		}
 
 

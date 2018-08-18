@@ -1308,6 +1308,7 @@ namespace Reflection
 			#ifndef NO_HIBERNATION
 				VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
 			#endif
+			VAR(autoSpawnFromVehiclePlants,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 			
 			parser->SetVariable(CLI::PVariable(new Variable::FactionsPerEMPZone("factionsPerEMPZone")));

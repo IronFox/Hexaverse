@@ -18,6 +18,7 @@ namespace RuntimeConfig
 		bool		loadingPhase = false;
 	#endif
 
+	bool		autoSpawnFromVehiclePlants = true;
 	DoomsdayWeapons doomsdayWeapons;
 	bool empZones = true, autoNewRound = false;
 	GameGoal gameGoal;

@@ -25,6 +25,7 @@ namespace RuntimeConfig
 							Uninitialized
 							);
 
+	extern bool		autoSpawnFromVehiclePlants;
 	extern DoomsdayWeapons doomsdayWeapons;
 	extern GameGoal gameGoal;
 	extern bool		empZones, autoNewRound;
