@@ -8,7 +8,6 @@
 #include "faction.h"
 
 
-
 namespace Objects
 {
 
@@ -226,7 +225,7 @@ namespace Objects
 		}
 
 
-		void MobileEntityProducer::Tick(ResourceVector&v, float&t)
+		void MobileEntityProducer::Tick( ResourceVector&v, float&t, bool forceAutoSpawn )
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
@@ -278,14 +277,14 @@ namespace Objects
 				LogEvent(EventSignificance::Debug,parent,"Construction of "+queue.First().producing->GetName()+" completed");
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,parent,"Construction of "+queue.First().producing->GetNiceName()+" completed");
 
-				if (gatheringPoint.current != Grid::LCellIdI::Invalid IF_SATELLITES( || queue.First().IsSatellite() ) )
+				if (gatheringPoint.current != Grid::LCellIdI::Invalid || forceAutoSpawn)
 				{
 					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity...");
 					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere(t);
 					if (v)
 					{
 						LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
-						if (v->IsVehicle())
+						if (gatheringPoint.current != Grid::LCellIdI::Invalid && v->IsVehicle())
 						{
 							LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 							v->PlotCourse(gatheringPoint.current,false);

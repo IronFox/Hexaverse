@@ -1,4 +1,5 @@
 v0.9.4
+	> Vehicle Plants can now be configured server-side to automatically spawn their production.
 
 v0.9.3	[Aug 17 2018]
 	+ Added checkbox to configure whether sound should be muted when tabbed out.
