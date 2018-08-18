@@ -1,3 +1,16 @@
+Cons:
+1. Not very appealing UI and Menu
+2. Too few options, like for example separate sound option for sound and (menu-) music (there is no music in the game yet)
+3. The tutorial is too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics.
+4. Singleplayer is a local server...
+5. I'm having a hard time to distinguish vehicles/buildings as they look very similar to each other.
+6. It's difficult to find out which building/vehicle is doing something and which is idling
+
+
+
+
+
+
 web site: blend gallery image loading
 privacy notice: remove ip hashing (makes little sense)
 
