@@ -211,6 +211,7 @@ namespace Objects
 
 	bool			NoMobileEntityHere(const Grid::LCellIdI&cellID);
 	bool			NoMobileEntityHereExcept(const Grid::LCellIdI&cellID, const MobileEntity*);
+	bool			NoStationaryMobileEntityHereExcept(const Grid::LCellIdI&cellID, const MobileEntity*v);
 	#ifndef NO_SATELLITES
 		bool		NoSatelliteHere(const UINT32 cellID);
 	#endif

@@ -283,6 +283,7 @@ namespace Objects
 		bool					IsBusy() const {return myTasks.IsNotEmpty();}
 		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().IsJob();}
 		bool					IsFinishedBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->continuationsToJobCompletion == 0;}
+		bool					IsMoving() const {return myTasks.IsNotEmpty() && myTasks.Peek().ContainsMovement();}
 		std::pair<int,int>		GetBuildingProgress() const;
 
 		#ifndef CLIENT

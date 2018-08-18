@@ -239,27 +239,29 @@ namespace Objects
 					{
 
 					auto owner = parent->owner;
-					float distance = 0;
+					float best = std::numeric_limits<float>::max();
 					foreach (movementChoices,choice)
 					{
-						float d = std::numeric_limits<float>::max();
-						owner->VisitVisibleForeignEntities([&d,owner,choice](const Objects::PWorldEntity&e)
+						float badness = 0;
+						owner->VisitVisibleForeignEntities([&badness,owner,choice](const Objects::PWorldEntity&e)
 						{
 							if (!owner->IsFriendly(e->owner))
-								d = std::min(d,Grid::GetQuadraticGeometricDistance(choice->location,e->location));
+								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,e->location));
 						});
 						foreach (owner->markers,m)
 							if (m->type == Objects::Marker::Type::EntityDeath || m->type == Objects::Marker::Type::HostileContact)
 							{
-								d = std::min(d,Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
 							}
-						if (d > distance)
+						if (badness < best)
 						{
-							distance = d;
+							best = badness;
 							c = choice->location;
 						}
+						if (best == 0)
+							break;
 					}
-					if (distance == std::numeric_limits<float>::max())
+					if (best == 0)
 						c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
 					}
 				}
