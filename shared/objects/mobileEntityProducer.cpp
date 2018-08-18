@@ -186,27 +186,56 @@ namespace Objects
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
 			Grid::LCellIdI c;
-			if (gatheringPoint.current != Grid::LCellIdI::Invalid)
+			if (movementChoices.Count() == 1)
+				c = movementChoices.First().location;
+			else
 			{
-				if (movementChoices.Contains(gatheringPoint.current))
-					c = gatheringPoint.current;
-				else
+				if (gatheringPoint.current != Grid::LCellIdI::Invalid)
 				{
-					
-					float distance = std::numeric_limits<float>::max();
-					foreach (movementChoices,choice)
+					if (movementChoices.Contains(gatheringPoint.current))
+						c = gatheringPoint.current;
+					else
 					{
-						float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
-						if (d < distance)
+					
+						float distance = std::numeric_limits<float>::max();
+						foreach (movementChoices,choice)
 						{
-							c = choice->location;
-							distance = d;
+							float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
+							if (d < distance)
+							{
+								c = choice->location;
+								distance = d;
+							}
 						}
 					}
 				}
+				else
+				{
+					auto owner = parent->owner;
+					float distance = 0;
+					foreach (movementChoices,choice)
+					{
+						float d = std::numeric_limits<float>::max();
+						owner->VisitVisibleForeignEntities([&d,owner,choice](const Objects::PWorldEntity&e)
+						{
+							if (!owner->IsFriendly(e->owner))
+								d = std::min(d,Grid::GetQuadraticGeometricDistance(choice->location,e->location));
+						});
+						foreach (owner->markers,m)
+							if (m->type == Objects::Marker::Type::EntityDeath || m->type == Objects::Marker::Type::HostileContact)
+							{
+								d = std::min(d,Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+							}
+						if (d > distance)
+						{
+							distance = d;
+							c = choice->location;
+						}
+					}
+					if (distance == std::numeric_limits<float>::max())
+						c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
+				}
 			}
-			else
-				c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
