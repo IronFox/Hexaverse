@@ -362,16 +362,17 @@ namespace Component
 		{
 			float		opacity;
 
-			explicit	Context(float opacity);
-			Context		Recurse() const;
+			explicit	Context(float opacity):opacity(opacity){};
+			Context		Recurse() const {return Context(opacity);}
 		};
-
+		
 
 		/**/			Decoration();
 		/**
 		Updates the shape location of this decoration.
 		*/
 		void			UpdateLocation(const M::Rect<>&rect)	{location = rect; recompileShadow = true; recompileBackground=true; recompileEdges=true;}
+		void			AssertLocationMatch(const M::Rect<>&rect) const {ASSERT_EQUAL__(location,rect);}
 
 		void			SetEdges(const M::Quad<bool>&edges) {if (edges != renderEdges) {renderEdges = edges; recompileEdges=true;}}
 		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
@@ -389,23 +390,24 @@ namespace Component
 		Renders the local decoration depending on internal configuration.
 		May recompile local shapes if changes have been registered
 		*/
-		Context			Render(bool lit, bool pressed, bool enabled, const Context&ctx)	{RenderBackground(lit,pressed,enabled,ctx); return RenderEdges(lit,pressed,enabled,ctx);}
+		Context			Render(const float2&mouse, bool lit, bool pressed, bool enabled, const Context&ctx)	{RenderBackground(mouse, lit,pressed,enabled,ctx); return RenderEdges(mouse, lit,pressed,enabled,ctx);}
 
 		/**
 		Renders shadow and background only (if enabled).
 		Updates colors where necessary.
 		*/
-		Context			RenderBackground(bool lit, bool pressed, bool enabled, const Context&);
+		Context			RenderBackground(const float2&mouse, bool lit, bool pressed, bool enabled, const Context&);
 		/**
 		Renders edges (if enabled).
 		*/
-		Context			RenderEdges(bool lit, bool pressed, bool enabled, const Context&);
+		Context			RenderEdges(const float2&mouse, bool lit, bool pressed, bool enabled, const Context&);
 
 		/**
 		Gets the accessible client area, inside any decoration
 		Valid after any Update*() has been called
 		*/
 		M::Rect<>		GetClientArea() const;
+		float			GetClientHeightLoss() const;
 
 		static void		StaticCreate();
 
@@ -419,11 +421,13 @@ namespace Component
 									background=true,
 									blurBackground=true;
 		M::Quad<bool>				renderEdges = true;
-		float4						shadowTint;
-		float3						backgroundColor,
-									edgeColor = float3(1.f);
+		float4						shadowTint = float4(1,1,1,0.5f);
+		float3						backgroundColor = float3(0.2f),
+									edgeColor = float3(0.6f);
 		float						topOpacity=1.f,
 									bottomOpacity=1.f;
+
+
 	};
 
 
@@ -449,8 +453,9 @@ namespace Component
 		friend void		SignalScreenResize();
 
 	protected:
+		float2			relativeMouse;
 
-		virtual bool	ClientIsLit() const {return true;}
+		virtual bool	ClientIsLit() const {return false;}
 
 
 		virtual void	OnEnableChange()	{};
@@ -485,7 +490,7 @@ namespace Component
 		virtual			~Component();
 
 		bool			IsEnabled() const {return localState.isEnabled && parentState.isEnabled;}
-		bool			IsLit() const {return ClientIsLit() && parentState.isLit;}
+		bool			IsLit() const {return ClientIsLit() /*&& parentState.isLit*/;}
 		bool			IsActive() const {return active;}
 
 			
@@ -655,7 +660,7 @@ namespace Component
 			decoration.SetBackground(false);
 			decoration.SetEdges(edges);
 		}
-		virtual Ctx		Render( const Decoration::Context&ctx ) override	{Super::Render(ctx); return decoration.Render(this->IsLit(),false,this->IsEnabled(),ctx);}
+		virtual Ctx		Render( const Decoration::Context&ctx ) override	{Super::Render(ctx); return decoration.Render(relativeMouse,this->IsLit(),false,this->IsEnabled(),ctx);}
 	};
 
 	/**
@@ -886,7 +891,7 @@ namespace Component
 		{
 			ReWrap();
 			if (heightLockedToIdeal) 
-				SetHeight(textHeight);
+				SetHeight(textHeight + decoration.GetClientHeightLoss());
 		}
 
 		void			HandleTextChange();
@@ -973,11 +978,13 @@ namespace Component
 		/**/			Label()
 		{
 			Super::SetBackgroundTransparent();
+			Super::SetRenderEdge(false);
 		}
 		/**/			Label(const String&text, float scale=1.f)
 		{
 			Super::SetBackgroundTransparent();
 			Super::SetLocalFontScale(scale);
+			Super::SetRenderEdge(false);
 			SetText(text);
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
@@ -1251,7 +1258,7 @@ namespace Component
 		{
 			const bool lit = IsLit();
 			const bool flipped = mousePressedComponent.get() == this;
-			auto cld = decoration.Render(lit,flipped,IsEnabled(),ctx);
+			auto cld = decoration.Render(relativeMouse,lit,flipped,IsEnabled(),ctx);
 			RenderArrow(cld,GetRect(),direction,lit);
 			return cld;
 		}
@@ -1422,7 +1429,7 @@ namespace Component
 		}
 		void			RecomputeOrder(AnchorAxis);
 	public:
-		/**/			Panel()	{decoration.SetBackgroundColor(float3(0.75f)); Anchor().FillHorizontally().Top();}
+		/**/			Panel()	{Anchor().FillHorizontally().Top();}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
@@ -1603,7 +1610,7 @@ namespace Component
 		{
 			const bool lit = IsLit();
 			const bool flipped = mousePressedComponent.get() == this;
-			auto child = decoration.Render(lit,flipped,IsEnabled(),ctx);
+			auto child = decoration.Render(relativeMouse,lit,flipped,IsEnabled(),ctx);
 			Super::RenderChildren(child);
 			return child;
 		}

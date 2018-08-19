@@ -308,11 +308,12 @@ namespace Component
 		DBG_ASSERT_IS_CONSTRAINED__(range.min,Lower,Upper);
 		DBG_ASSERT_IS_CONSTRAINED__(range.max,Lower,Upper);
 
+		OnRectChange();
+
 		if (hChange)
 			OnHorizontalRectChange();
 		if (widthChange)
 			OnWidthChange();
-		OnRectChange();
 	}
 
 	void			ComponentLocation::SetVertical(const M::TFloatRange<>&range)
@@ -329,11 +330,12 @@ namespace Component
 		DBG_ASSERT_IS_CONSTRAINED__(range.min,Lower,Upper);
 		DBG_ASSERT_IS_CONSTRAINED__(range.max,Lower,Upper);
 
+		OnRectChange();
+
 		if (vChange)
 			OnVerticalRectChange();
 		if (heightChange)
 			OnHeightChange();
-		OnRectChange();
 	}
 
 
@@ -355,6 +357,7 @@ namespace Component
 		DBG_ASSERT_IS_CONSTRAINED__(rect.y.min,Lower,Upper);
 		DBG_ASSERT_IS_CONSTRAINED__(rect.y.max,Lower,Upper);
 
+		OnRectChange();
 		if (hChange)
 			OnHorizontalRectChange();
 		if (vChange)
@@ -363,7 +366,6 @@ namespace Component
 			OnWidthChange();
 		if (heightChange)
 			OnHeightChange();
-		OnRectChange();
 	}
 
 
@@ -836,17 +838,215 @@ namespace Component
 			blurShader,
 			edgeShader;
 
+		DX11::ObjectBuffer<float2>	mouseAt;
+
+		struct TVertex
+		{
+			float2	position;
+			float2	uv;
+
+			/**/	TVertex()	{}
+			/**/	TVertex(float x, float y, float u, float v):position(x,y),uv(u,v){}
+		};
+
+		struct Plane
+		{
+			/**/		Plane(const float2&normal,const float2&base):normal(normal),base(base)
+			{}
+			/**/		Plane(const float2&normal,const float2&base, bool flip):normal(flip ? -normal : normal),base(base)
+			{}
+
+			bool		Cut(const TVertex&p0, const TVertex&p1, TVertex&outCut) const
+			{
+				const float d0 = GetEdgeDistance(p0),
+							d1 = GetEdgeDistance(p1);
+				if ((d0 >= 0) == (d1 >= 0))
+					return false;
+				const float at = fabs(d0 / (d1 - d0));
+				if (at <= M::GetError<float>() || at >= 1.f - M::GetError<float>())
+					return false;
+				Vec::interpolate(p0.position,p1.position,at,outCut.position);
+				Vec::interpolate(p0.uv,p1.uv,at,outCut.uv);
+				return true;
+			}
+
+			float		GetEdgeDistance(const TVertex&p) const
+			{
+				return Vec::dot((p.position - base),normal);
+			}
+
+			bool		IsInside(const TVertex&p) const
+			{
+				return GetEdgeDistance(p) <= 0;
+			}
+
+
+			float2	normal,base;
+
+		};
+
+		struct Shape
+		{
+			struct TNode : TVertex
+			{
+				/**/	TNode()	{}
+				/**/	TNode(float x, float y, float u, float v, bool edge=true, index_t edgeIndex=0)
+					:TVertex(x,y,u,v),hasOutEdge(edge),outEdgeIndex(edgeIndex)	{}
+
+				bool	hasOutEdge=true;
+				index_t	outEdgeIndex=0;
+			};
+
+			/**/		Shape(const M::Rect<>&loc)
+			{
+				SetBox(loc,true);
+			}
+
+			/**/		Shape(M::Rect<> loc, float ext)
+			{
+				float extX = ext;
+				float extY = ext * ViewPortAspect();
+				loc.x.Expand(extX);
+				loc.y.Expand(extY);
+				SetBox(loc,true);
+			}
+
+			/**/		Shape(M::Rect<> loc, float ext, const M::Quad<bool>&edges)
+			{
+				float extX = ext;
+				float extY = ext * ViewPortAspect();
+				loc.x.Expand(extX);
+				loc.y.Expand(extY);
+				SetBox(loc,edges);
+			}
+			/**/		Shape(M::Rect<> box, float ext, bool, index_t edgeIndex)
+			{
+				float extX = ext;
+				float extY = ext * ViewPortAspect();
+				box.x.Expand(extX);
+				box.y.Expand(extY);
+				boundingBox = box;
+				loop=false;
+				switch (edgeIndex)
+				{
+					case 0:
+						corners 
+							<< TNode(box.x.min,box.y.max,0,1, true, 0) 
+							<< TNode(box.x.min,box.y.min,0,0, false, 1);
+					break;
+					case 1:
+						corners 
+							<< TNode(box.x.min,box.y.min,0,0, true, 1)
+							<< TNode(box.x.max,box.y.min,1,0, false, 2);
+					break;
+					case 2:
+						corners
+							<< TNode(box.x.max,box.y.min,1,0, true, 2)
+							<< TNode(box.x.max,box.y.max,1,1, false, 3);
+					break;
+					case 3:
+						corners
+							<< TNode(box.x.max,box.y.max,1,1, true, 3)
+							<< TNode(box.x.min,box.y.max,0,1, false, 0);
+					break;
+				}
+			}
+
+			void		CutCorner(const Plane&plane)
+			{
+				static Buffer0<TNode> newPoints;
+				if (corners.IsEmpty())
+					return;
+				TNode at;
+
+				const count_t cnt = corners.Count();
+				for (index_t i = 0; i < cnt; i++)
+				{
+					const auto&here = corners[i];
+					if (plane.IsInside(here) && (newPoints.IsEmpty() || newPoints.Last().position != here.position))
+						newPoints << here;
+					const auto&next = corners[(i+1)%corners.Count()];
+					if ((i+1 < cnt || loop) && plane.Cut(here,next,at))
+					{
+						at.hasOutEdge = here.hasOutEdge;
+						at.outEdgeIndex = here.outEdgeIndex;
+						newPoints << at;
+					}
+				}
+
+				corners.swap(newPoints);
+				newPoints.Clear();
+			}
+
+			void		CutCorner(index_t cornerIndex, float aspect, float intrusion, bool negative)
+			{
+
+				CutCorner(MakePlane(cornerIndex,aspect,intrusion,negative));
+			}
+
+			Plane		MakePlane(index_t cornerIndex, float aspect, float intrusion, bool negative)
+			{
+				/*
+						Type			left,
+										bottom,
+										right,
+										top;
+				*/
+				intrusion *= (1.f / 1.41421f);
+				const auto&location = boundingBox;
+				switch (cornerIndex)
+				{
+					case 0:
+						return Plane(float2(-1,aspect).Normal(),float2(location.x.min,location.y.min + aspect * intrusion),negative);
+					case 1:
+						return Plane(float2(-1,-aspect).Normal(),float2(location.x.max,location.y.min + aspect * intrusion),negative);
+					case 2:
+						return Plane(float2(1,-aspect).Normal(),float2(location.x.max,location.y.max - aspect * intrusion),negative);
+					case 3:
+						return Plane(float2(1,aspect).Normal(),float2(location.x.min,location.y.max - aspect * intrusion),negative);
+				}
+				throw Except::Program::ParameterFault(CLOCATION,"Invalid corner index "+String(cornerIndex));
+			}
+
+			void		CutCorners(const M::Quad<bool>&renderEdges, float intrusion)
+			{
+				const auto&location = boundingBox;
+				const float aspect = ViewPortAspect();
+				for (index_t i = 0; i < 4; i++)
+					if (renderEdges.value[i] && renderEdges.value[(i+1)%4])
+						CutCorner(i,aspect,intrusion,false);
+			}
+
+			void	SetBox(const M::Rect<>&box, const M::Quad<bool>&edges)
+			{
+				boundingBox = box;
+				corners.Clear();
+				corners 
+					<< TNode(box.x.min,box.y.min,0,0, edges.bottom, 1)
+					<< TNode(box.x.max,box.y.min,1,0, edges.right, 2)
+					<< TNode(box.x.max,box.y.max,1,1, edges.top, 3)
+					<< TNode(box.x.min,box.y.max,0,1, edges.left, 0);
+
+
+				/*
+						Type			left,
+										bottom,
+										right,
+										top;
+				*/
+			}
+			bool			loop=true;
+			Buffer0<TNode>	corners;
+			M::Rect<>		boundingBox;
+		};
+
 
 		namespace Bakery
 		{
 
 			namespace Details
 			{
-				struct TVertex
-				{
-					float2	position;
-					float2	uv;
-				};
+
 
 				Buffer0<UINT16> indices;
 				Buffer0<TVertex> vertices;
@@ -861,6 +1061,12 @@ namespace Component
 
 			}
 
+			void	Vertex(const TVertex&v)
+			{
+				using namespace Details;
+				DBG_ASSERT_LESS__(vertices.Count(),0x10000);
+				vertices.Append(v);
+			}
 
 			void	Vertex(const float2&position, const float2&uv)
 			{
@@ -869,6 +1075,12 @@ namespace Component
 				auto&v = vertices.Append();
 				v.position = position;
 				v.uv = uv;
+			}
+
+			const TVertex& GetVertex(index_t at)
+			{
+				using namespace Details;
+				return vertices[at];
 			}
 
 			void	SetVOffset()
@@ -900,6 +1112,15 @@ namespace Component
 				Triangle(v0,v2,v3);
 			}
 
+			void	Include(const Shape&shape)
+			{
+				SetVOffset();
+				foreach (shape.corners,c)
+					Vertex(*c);
+				for (index_t i = 1; i+1 < shape.corners.Count(); i++)
+					Triangle(0,i,(i+1));
+			}
+
 			void	Complete(DX11::InstructionBlock16&target)
 			{
 				using namespace Details;
@@ -908,6 +1129,12 @@ namespace Component
 				Reset();
 			}
 		}
+
+
+		static const constexpr float	cornerSize = 0.02f;
+		static const constexpr float	shadowExt = 0.03f;
+		static const constexpr float	edgeWidth = 0.005f;
+
 	}
 
 
@@ -925,82 +1152,162 @@ namespace Component
 	}
 
 
-	Decoration::Context			Decoration::RenderBackground(bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
+	Decoration::Context			Decoration::RenderBackground(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
 	{
 		using namespace DecorationDetails;
 
+		mouseAt.Update(relativeMouse);
+
 		if (shadow)
 		{
-			shadowColor.Update(shadowTint);
+			shadowColor.Update(float4(shadowTint.rgb,shadowTint.a * ctx.opacity));
 			if (recompileShadow)
 			{
 				recompileShadow = false;
 
+
+				auto shape = Shape(location,shadowExt);
+				shape.CutCorners(renderEdges,cornerSize * (1.4142136f * 1.4142136f));
+
+				foreach (shape.corners,c)
+					Bakery::Vertex(*c);
+				for (index_t i = 1; i+1 < shape.corners.Count(); i++)
+					Bakery::Triangle(0,i,(i+1));
+				Bakery::Complete(shadowInstruction);
+
 			}
+			display.Render(shadowInstruction);
 
 		}
 
 		if (background)
 		{
-			topBackgroundColor.Update(float4(backgroundColor,topOpacity));
-			bottomBackgroundColor.Update(float4(backgroundColor,bottomOpacity));
+			{
+				auto col = backgroundColor;
+				if (lit)
+					col *= 1.6f;
+				if (!enabled)
+					col *= 0.5f;
+				topBackgroundColor.Update(float4(col,topOpacity * ctx.opacity));
+				bottomBackgroundColor.Update(float4(col,bottomOpacity * ctx.opacity));
+			}
 
 			if (recompileBackground)
 			{
 				recompileBackground = false;
 
-				M::Rect<> pixels = location;
-				const float scale = UI::GetScale();
-				const float xScale = scale * ViewPortWidth();
-				const float yScale = scale * ViewPortHeight();
-				pixels.x.Scale(xScale);
-				pixels.y.Scale(yScale);
-				static const float dent = 64.f;
+				auto shape = Shape(location);
+				shape.CutCorners(renderEdges,cornerSize);
 
-				if (pixels.x.GetExtent() >= dent*2.f && pixels.y.GetExtent() >= dent*2.f)
-				{
-					//Bakery::Vertex(float2(pixels.x.min
-
-
-				}
-
-
-
-
-
+				Bakery::Include(shape);
+				Bakery::Complete(backgroundInstruction);
 			}
-
-
 			display.Render(backgroundInstruction);
-
-
 		}
 
 
 		return ctx.Recurse();
 	}
 
-	Decoration::Context			Decoration::RenderEdges(bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
+	Decoration::Context			Decoration::RenderEdges(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
 	{
 		using namespace DecorationDetails;
+		mouseAt.Update(relativeMouse);
 
 		if (renderEdges.Max())
 		{
-			topEdgeColor.Update(float4(edgeColor,topOpacity));
-			bottomEdgeColor.Update(float4(edgeColor,bottomOpacity));
+			{
+				auto edge = edgeColor;
+				if (lit)
+					edge *= 1.2f;
+				if (!enabled)
+					edge *= 0.5f;
+				topEdgeColor.Update(float4(edge,topOpacity * ctx.opacity));
+				bottomEdgeColor.Update(float4(edge,bottomOpacity * ctx.opacity));
+			}
+
+			if (recompileEdges)
+			{
+				recompileEdges = false;
 
 
+				static Buffer0<index_t> indexes, outIndexes;
+				for (index_t i = 0; i < 4; i++)
+				{
+					if (renderEdges.value[i])
+					{
+						auto outerShape = Shape(location,0,false,i);
+						auto innerShape = Shape(location,-edgeWidth,false,i);
+						outerShape.CutCorners(renderEdges,cornerSize);
+						innerShape.CutCorners(renderEdges,cornerSize-edgeWidth);
+						Bakery::SetVOffset();
+						foreach (outerShape.corners,c)
+							Bakery::Vertex(*c);
+						for (index_t j = innerShape.corners.Count()-1; j < innerShape.corners.Count(); j--)
+							Bakery::Vertex(innerShape.corners[j]);
+						for (index_t j = 1; j+1 < innerShape.corners.Count() + outerShape.corners.Count(); j++)
+							Bakery::Triangle(0,j,(j+1));
+					}
+				//	if (false)
+					if (renderEdges.value[i] && renderEdges.value[(i+1)%4])
+					{
+						auto shape = Shape(location,0,renderEdges);
+						shape.CutCorners(renderEdges,cornerSize);
+						shape.CutCorner(i,ViewPortAspect(),cornerSize+edgeWidth*2.f,true);
+						Bakery::Include(shape);
+					}
+				}
+				
+				Bakery::Complete(edgeInstruction);
+			}
 
+			display.Render(edgeInstruction);
 		}
 
 		return ctx.Recurse();
 	}
 
 
+	float			Decoration::GetClientHeightLoss() const
+	{
+		using namespace DecorationDetails;
+		return (renderEdges.top ? edgeWidth : 0) + (renderEdges.bottom ? edgeWidth : 0);
+	}
+
 	M::Rect<>		Decoration::GetClientArea() const
 	{
+		using namespace DecorationDetails;
 		auto rs = location;
-		rs.Scale(0.9);	//temporary
+		const float h = rs.GetHeight();
+		if (renderEdges.left)
+		{
+			if (renderEdges.bottom || renderEdges.top)
+			{
+				if (h > 2.f * cornerSize)
+					rs.x.min += cornerSize;
+				else
+					rs.x.min += h*0.5f;
+			}
+			else
+				rs.x.min += edgeWidth;
+		}
+		if (renderEdges.right)
+		{
+			if (renderEdges.bottom || renderEdges.top)
+			{
+				if (h > 2.f * cornerSize)
+					rs.x.max -= cornerSize;
+				else
+					rs.x.max -= h*0.5f;
+			}
+			else
+				rs.x.max -= edgeWidth;
+		}
+		const float ew = edgeWidth * ViewPortAspect();
+		if (renderEdges.bottom)
+			rs.y.min += ew;
+		if (renderEdges.top)
+			rs.y.max -= ew;
 		return rs;
 	}
 
@@ -1012,8 +1319,51 @@ namespace Component
 		bottomBackgroundColor.Create(float4());
 		topEdgeColor.Create(float4());
 		bottomEdgeColor.Create(float4());
+		mouseAt.Create(float2());
 
+		Engine::VertexBinding vtx;
+		vtx.vertex.Set(0,4);
+		vtx.normal.Unset();
+		vtx.floats_per_vertex = 4;
+		{
+			backgroundShader.binding = vtx;
 
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(mouseAt,"MouseAt"),
+				DX11::Shader::Binding(bottomBackgroundColor,"BottomBackgroundColor"),
+				DX11::Shader::Binding(topBackgroundColor,"TopBackgroundColor"),
+			};
+
+			backgroundShader.shader.LoadFromFile("shaders/guiBackground.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			backgroundShader.UpdateLayout();
+			backgroundShader.SetTriangles();
+		}
+		{
+			shadowShader.binding = vtx;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(mouseAt,"MouseAt"),
+				DX11::Shader::Binding(shadowColor,"ShadowColor"),
+			};
+
+			shadowShader.shader.LoadFromFile("shaders/guiShadow.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			shadowShader.UpdateLayout();
+			shadowShader.SetTriangles();
+		}
+
+		{
+			edgeShader.binding = vtx;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(mouseAt,"MouseAt"),
+				DX11::Shader::Binding(bottomEdgeColor,"BottomEdgeColor"),
+				DX11::Shader::Binding(topEdgeColor,"TopEdgeColor"),
+			};
+
+			edgeShader.shader.LoadFromFile("shaders/guiEdge.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			edgeShader.UpdateLayout();
+			edgeShader.SetTriangles();
+		}
 	}
 
 
@@ -1077,7 +1427,7 @@ namespace Component
 	{
 		resolvingAxis = true;
 		Super::ResolveAnchorAxis(axis,context,rec); 
-		M::Rect<> childSpace = GetRect();
+		M::Rect<> childSpace = decoration.GetClientArea();
 		if (vscroll.visible)
 			childSpace.x.max = M::Max(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
 		if (order[axis].Count() != components.Count())
@@ -1141,7 +1491,7 @@ namespace Component
 		const float left = rect.x.min;
 		const float right = rect.x.max;
 
-		const auto child = decoration.Render(false,false,IsEnabled(),ctx);
+		const auto child = decoration.Render(relativeMouse,false,false,IsEnabled(),ctx);
 		//barBack = M::Rect<>(left,bottom,right,top);
 		//SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
 		//SurfaceRenderer::Rasterize(barBack);
@@ -1173,7 +1523,7 @@ namespace Component
 			}
 		}
 		slider.UpdateLocation(bar);
-		slider.Render(barContainsMouse,dragging,IsEnabled(),child);
+		slider.Render(relativeMouse,barContainsMouse,dragging,IsEnabled(),child);
 		return child;
 	}
 
@@ -1434,7 +1784,7 @@ namespace Component
 	{
 		bool lit = IsLit();
 		bool flipped = mousePressedComponent.get() == this;
-		const auto child = decoration.Render(lit,(lit && !flipped)  || alwaysDown, IsEnabled(),ctx);
+		const auto child = decoration.Render(relativeMouse,lit,(lit && !flipped)  || alwaysDown, IsEnabled(),ctx);
 		Super::RenderText(child, lit || alwaysDown);
 		return child;
 	}
@@ -1484,11 +1834,11 @@ namespace Component
 		Super::UpdateDynamicSize(rec);
 		foreach (components,c)
 			(*c)->UpdateDynamicSize(rec);
-
+		const auto rect = decoration.GetClientArea();
 		float lowest = std::numeric_limits<float>::max();
 		foreach (components,c)
 		{
-			float newLowest = (*c)->GetAnchorConfig().GetVAxis().GetMinimumEdge(GetRect().y.max, (*c)->GetRect().y);
+			float newLowest = (*c)->GetAnchorConfig().GetVAxis().GetMinimumEdge(rect.y.max, (*c)->GetRect().y);
 			if (newLowest < lowest)
 			{
 				lowest = newLowest;
@@ -1497,9 +1847,9 @@ namespace Component
 		if (lowest == std::numeric_limits<float>::max())
 			lowest = GetRect().y.max;
 		float newY = lowest - autoHeightSpacing;
-		const float currentHeight = GetRect().y.max - newY;
+		const float currentHeight = GetRect().y.max - newY - decoration.GetClientHeightLoss() * 0.5f;
 
-		const float maxHeight = autoHeight ? this->maxHeight : GetRect().y.GetExtent();
+		const float maxHeight = autoHeight ? this->maxHeight : rect.y.GetExtent();
 
 		bool newVScroll = currentHeight > maxHeight;
 		if (vscroll.visible != newVScroll)
@@ -1508,12 +1858,12 @@ namespace Component
 		{
 			vscroll.scrollMax = currentHeight;
 			vscroll.viewSize = maxHeight;
-			float barSize = M::Max(maxHeight,0.2f * GetHeight()*currentHeight);
+			float barSize = M::Max(maxHeight,0.2f * rect.GetHeight()*currentHeight);
 			float overSize = barSize - maxHeight;
 			vscroll.scrollMax += overSize;
 			vscroll.viewSize += overSize;
 
-			newY = GetRect().y.max - maxHeight;
+			newY = GetRect().y.max - maxHeight - decoration.GetClientHeightLoss();
 
 			if (autoHeight)
 			{
@@ -1921,7 +2271,7 @@ namespace Component
 		core.Expand(-textout.GetScaledHeight()*0.4f);
 		//core.Scale(0.97f);
 
-		const auto child = decoration.Render(false,false,IsEnabled(),ctx);
+		const auto child = decoration.Render(relativeMouse,false,false,IsEnabled(),ctx);
 
 		StringRef text = GetTextRef();
 
@@ -2097,7 +2447,7 @@ namespace Component
 
 	/*virtual override*/ float		TextField::GetContentHeight() const
 	{
-		return heightLockedToIdeal ? textHeight : -1;
+		return heightLockedToIdeal ? textHeight  + decoration.GetClientHeightLoss() : -1;
 	}
 
 	/*virtual override*/ void	TextField::UpdateDynamicSize(ChangeRecorder&rec)
@@ -2119,10 +2469,12 @@ namespace Component
 	{
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
+
+		decoration.AssertLocationMatch(GetRect());
 		
 		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
 		const float rightPadding = textout.GetScaledWidth('X') * padding.right;
-		const float width = GetWidth() - leftPadding - rightPadding;
+		const float width = decoration.GetClientArea().x.GetExtent() - leftPadding - rightPadding;
 		const float center = width/2 + leftPadding;
 		#ifdef _DEBUG
 			wrappedAtWidth = width;
@@ -2190,7 +2542,7 @@ namespace Component
 	/*virtual override*/ Decoration::Context			TextField::Render( const Decoration::Context&ctx )
 	{
 		const bool lit = IsLit();
-		auto child = decoration.Render(lit,false,IsEnabled(),ctx);
+		auto child = decoration.Render(relativeMouse,lit,false,IsEnabled(),ctx);
 		RenderText(child,lit);
 		return child;
 	}
@@ -2293,6 +2645,7 @@ namespace Component
 
 	/*virtual*/ void	Component::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
+		relativeMouse = mouseAt;
 		containsMouse = clipAreaContainsMouse && GetRect().Contains(mouseAt);
 	}
 
@@ -2916,7 +3269,7 @@ namespace Component
 	{
 		//Super::Render(opacity);
 		
-		const auto chld = decoration.RenderBackground(false,false,IsEnabled(),ctx);
+		const auto chld = decoration.RenderBackground(relativeMouse,false,false,IsEnabled(),ctx);
 
 		bool anyChanged = axesChanged;
 		foreach (plots,g)
@@ -2951,7 +3304,7 @@ namespace Component
 
 			EndLabelPrint();
 		}
-		return decoration.RenderEdges(false,false,IsEnabled(),ctx);
+		return decoration.RenderEdges(relativeMouse,false,false,IsEnabled(),ctx);
 	}
 
 	void MultiPlot::BeginLabelPrint()
@@ -3232,41 +3585,41 @@ namespace Component
 				};
 
 				Array<TPoint> points(data.Count());
-				for (index_t i = 0; i < data.Count(); i++)
+				for (index_t j = 0; j < data.Count(); j++)
 				{
-					const float rX = dataRect.x.Relativate(i + start);
+					const float rX = dataRect.x.Relativate(j + start);
 					ASSERT_IS_CONSTRAINED__(rX,0,1);
 					const float x = componentRect.x.Derelativate( rX );
-					const float y = componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yRaw) );
-					points[i].raw.x = x * w;
-					points[i].raw.y = y * h;
+					const float y = componentRect.y.Derelativate( dataRect.y.Relativate(data[j].yRaw) );
+					points[j].raw.x = x * w;
+					points[j].raw.y = y * h;
 
 					MakeVertex(x,y);
 				}
 
-				for (index_t i = 0; i+1 < points.Count(); i++)
+				for (index_t j = 0; j+1 < points.Count(); j++)
 				{
-					auto&p = points[i];
-					p.dir = points[i+1].raw - points[i].raw;
+					auto&p = points[j];
+					p.dir = points[j+1].raw - points[j].raw;
 					p.normal = float2{p.dir.y,-p.dir.x}.Normalize0();
 					p.base = p.raw + p.normal * 20 * UI::GetScale();
 				}
 
-				for (index_t i = 1; i+1 < points.Count(); i++)
+				for (index_t j = 1; j+1 < points.Count(); j++)
 				{
-					const float2&n1 = points[i].normal;
-					const float2&b0 = points[i-1].base,
-								&b1 = points[i].base,
-								&d0 = points[i-1].dir;
+					const float2&n1 = points[j].normal;
+					const float2&b0 = points[j-1].base,
+								&b1 = points[j].base,
+								&d0 = points[j-1].dir;
 					const float2 bd = b1 - b0;
 					const float div = Vec::dot(d0,n1);
 					if (fabs(div) > TypeInfo<float>::error)
 					{
 						const float alpha = Vec::dot(n1, b1 - b0) / div;
-						points[i].final = b0 + alpha * d0;
+						points[j].final = b0 + alpha * d0;
 					}
 					else
-						points[i].final = points[i].base;
+						points[j].final = points[j].base;
 				}
 
 				{
@@ -3280,12 +3633,12 @@ namespace Component
 
 
 
-				for (index_t i = 1; i < data.Count(); i++)
+				for (index_t j = 1; j < data.Count(); j++)
 				{
-					surface.AddQuadInv(i-1,i,i+data.Count(),i+data.Count()-1);
+					surface.AddQuadInv(j-1,j,j+data.Count(),j+data.Count()-1);
 					lines.AddLine(
-						i-1,
-						i);
+						j-1,
+						j);
 				}
 
 			}

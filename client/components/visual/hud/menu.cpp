@@ -68,7 +68,7 @@ namespace Menu
 		hintLabel.reset();
 		myTitle = title;
 		Super::Anchor().CenterHorizontally(initialAbsoluteWidth);
-		Super::SetBackgroundTransparent();
+		//Super::SetBackgroundTransparent();
 
 		if (title.IsNotEmpty())
 		{
