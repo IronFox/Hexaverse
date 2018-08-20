@@ -1325,7 +1325,7 @@ namespace ConfigurationMode
 			empZoneButtonWindow->SetAutomaticHeight(true);
 			empZoneButtonWindow->canBeImplicitlyClosed = false;
 			empZoneButtonWindow->isModal = false;
-			empZoneButtonWindow->Anchor().Right(0.1f,HUD::Component::Distance::Pixels(200.f * UI::GetScale())).Top(0.1f);
+			empZoneButtonWindow->Anchor().Right(0.05f,HUD::Component::Distance::Pixels(200.f * UI::GetScale())).Top(0.1f);
 			//empZoneButtonWindow->edges = false;
 			empZoneButtonWindow->fillBackground = false;
 			empZoneButtonWindow->renderBorder = false;
