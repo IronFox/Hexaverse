@@ -1490,7 +1490,7 @@ bool loop()
 
 			if (ConfigurationMode::IsActive())
 			{
-				static const String line = "Interactive Configuration Mode";
+				static const String line = "Visual Game Configurator";
 
 				textout.PushState();
 				textout.Scale(2.0f,2.0f);
