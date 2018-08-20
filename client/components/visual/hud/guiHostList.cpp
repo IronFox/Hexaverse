@@ -49,6 +49,14 @@ namespace HUD{namespace HostList{
 		}
 	}
 
+	static void RefreshVerticalChangelogLayout()
+	{
+		float bottom = 0.1f * UI::GetScale();
+		float top = 0.15f * UI::GetScale();
+		changelog->Anchor().Right().Bottom(bottom);
+		changelog->SetMaxAutoHeight(0.75f-bottom-top);
+	}
+
 	void	Create()
 	{
 		GlobalEvents::frameBegin << TickRefresh;
@@ -63,7 +71,6 @@ namespace HUD{namespace HostList{
 		{
 			StringFile source("../changelog.txt",CM_RETURN_EMPTY_LINES);
 			changelog = Window::Create();
-			changelog->Anchor().Right().Bottom(0.15f);
 			changelog->canBeImplicitlyClosed = false;
 			changelog->isModal = false;
 			changelog->SetWidth(HUD::Component::Distance(0.4f));
@@ -72,7 +79,7 @@ namespace HUD{namespace HostList{
 			changelog->fillBackground = false;
 			changelog->renderBorder = false;
 			changelog->darkenOutline = false;
-			changelog->SetMaxAutoHeight(0.5f);
+			RefreshVerticalChangelogLayout();
 			count_t cnt = 0;
 			String line;
 			while (source >> line)
@@ -87,6 +94,8 @@ namespace HUD{namespace HostList{
 				label->SetVerticalPadding(0.01f);
 				changelog->AnchorBelowPrevious(CLOCATION,label,0,0);
 			}
+
+			GlobalEvents::uiScaleChanged << RefreshVerticalChangelogLayout;
 		}
 		catch (...)
 		{
