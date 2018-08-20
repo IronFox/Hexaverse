@@ -5,6 +5,7 @@
 #include "surfaceRenderer.h"
 #include "../display.h"
 #include "../objectSelection.h"
+#include "../../configurationMode.h"
 
 #include <image/converter/magic.h>
 #include <general/random.h>
@@ -603,7 +604,12 @@ namespace ResourceGauges
 
 	void	Render()
 	{
-		if (!showControlsAndContacts /*|| !Objects::selectedEntity*/)
+		if (!showControlsAndContacts 
+			#ifndef ONE_COMPOUND_PER_FACTION
+			|| !Objects::selectedEntity
+			#endif
+			|| ConfigurationMode::IsActive()
+			)
 			return;
 		display.StoreRendererState();
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
