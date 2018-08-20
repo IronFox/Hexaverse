@@ -127,6 +127,7 @@ namespace Component
 
 		static Distance GameWindow(float d) {return Distance(d,Type::RelativeToGameWindow);}
 		static Distance OfParentSize(float d) {return Distance(d,Type::RelativeToParentComponent);}
+		static Distance Pixels(float pixels) {return Distance(pixels,Type::AbsolutePixels);}
 		static const Distance Unknown, Disabled;
 
 		void	VerifyIntegrity() const;
