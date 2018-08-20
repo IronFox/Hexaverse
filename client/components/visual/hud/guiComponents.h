@@ -1975,6 +1975,8 @@ namespace Component
 		virtual void	OnHide() {visible = false;}
 		virtual void	OnShow();
 		virtual bool	SignalChange() {return true;}
+
+		virtual Ctx		Render(const Decoration::Context&ctx) override;
 	};
 
 	

@@ -1,18 +1,21 @@
 #include "common.inc.hlsl"
 
 
-cbuffer BottomBackgroundColor
+cbuffer TopColor
 {
-	float4 BottomBackgroundColor;
+	float4 TopColor;
 }
-cbuffer TopBackgroundColor
+cbuffer BottomColor
 {
-	float4 TopBackgroundColor;
+	float4 BottomColor;
 }
 cbuffer MouseAt
 {
 	float2 MouseAt;
 }
+
+Texture2D<float4> BackgroundTexture;
+SamplerState BackgroundSampler;
 
 
 struct A2V
@@ -23,8 +26,8 @@ struct A2V
 
 struct V2P
 {
-	float4 position : SV_POSITION;
-	float2 world : World;	
+	float4 position : SV_POSITION;	
+	float2 world : World;
 	float2 uv : UV;
 };
 
@@ -39,11 +42,10 @@ void vsMain(in A2V input, out V2P output)
 
 float4 psMain(V2P input) : SV_TARGET
 {
-	float4 rs = lerp(BottomBackgroundColor,TopBackgroundColor,input.uv.y);
+	float4 rs = lerp(BottomColor,TopColor,input.uv.y);
 	float2 delta = MouseAt - input.world;
 	rs.rgb *= 0.8 + 0.3 * (1.0 / (1.0 + 50.0 * dot(delta,delta)));
 	return rs;
-	
 	//return float4(input.uv,1,1);
 }
 

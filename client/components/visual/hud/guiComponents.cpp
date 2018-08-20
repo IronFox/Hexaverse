@@ -826,19 +826,30 @@ namespace Component
 	namespace DecorationDetails
 	{
 		DX11::ObjectBuffer<float4>
-			topBackgroundColor,
-			bottomBackgroundColor,
-			topEdgeColor,
-			bottomEdgeColor,
-			shadowColor;
+			topColor,
+			bottomColor;
 
 		DX11::BaseInstructionBlock
-			backgroundShader,
-			shadowShader,
-			blurShader,
-			edgeShader;
+			shader,shrinkShader;
+		DX11::FBO 
+			backbufferCopy,
+			shrunkTarget,
+			blurredTarget;
 
 		DX11::ObjectBuffer<float2>	mouseAt;
+
+
+		void	SignalScreenResize()
+		{
+			shrunkTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+			blurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+		}
+
+		void	UpdateBackground()
+		{
+			display.DirectX11::Capture(backbufferCopy);
+
+		}
 
 		struct TVertex
 		{
@@ -1145,10 +1156,10 @@ namespace Component
 	Decoration::Decoration()
 	{
 		using namespace DecorationDetails;
-		((DX11::BaseInstructionBlock&)backgroundInstruction) = backgroundShader;
-		((DX11::BaseInstructionBlock&)shadowInstruction) = shadowShader;
-		((DX11::BaseInstructionBlock&)edgeInstruction) = edgeShader;
-		((DX11::BaseInstructionBlock&)blurInstruction) = blurShader;
+		((DX11::BaseInstructionBlock&)backgroundInstruction) = shader;
+		((DX11::BaseInstructionBlock&)shadowInstruction) = shader;
+		((DX11::BaseInstructionBlock&)edgeInstruction) = shader;
+		((DX11::BaseInstructionBlock&)blurInstruction) = shader;
 	}
 
 
@@ -1160,7 +1171,8 @@ namespace Component
 
 		if (shadow)
 		{
-			shadowColor.Update(float4(shadowTint.rgb,shadowTint.a * ctx.opacity));
+			topColor.Update(float4(shadowTint.rgb,shadowTint.a * ctx.opacity));
+			bottomColor.Update(float4(shadowTint.rgb,shadowTint.a * ctx.opacity));
 			if (recompileShadow)
 			{
 				recompileShadow = false;
@@ -1188,8 +1200,8 @@ namespace Component
 					col *= 1.6f;
 				if (!enabled)
 					col *= 0.5f;
-				topBackgroundColor.Update(float4(col,topOpacity * ctx.opacity));
-				bottomBackgroundColor.Update(float4(col,bottomOpacity * ctx.opacity));
+				topColor.Update(float4(col,topOpacity * ctx.opacity));
+				bottomColor.Update(float4(col,bottomOpacity * ctx.opacity));
 			}
 
 			if (recompileBackground)
@@ -1222,8 +1234,8 @@ namespace Component
 					edge *= 1.2f;
 				if (!enabled)
 					edge *= 0.5f;
-				topEdgeColor.Update(float4(edge,topOpacity * ctx.opacity));
-				bottomEdgeColor.Update(float4(edge,bottomOpacity * ctx.opacity));
+				topColor.Update(float4(edge,topOpacity * ctx.opacity));
+				bottomColor.Update(float4(edge,bottomOpacity * ctx.opacity));
 			}
 
 			if (recompileEdges)
@@ -1314,55 +1326,36 @@ namespace Component
 	/*static*/ void		Decoration::StaticCreate()
 	{
 		using namespace DecorationDetails;
-		shadowColor.Create(float4());
-		topBackgroundColor.Create(float4());
-		bottomBackgroundColor.Create(float4());
-		topEdgeColor.Create(float4());
-		bottomEdgeColor.Create(float4());
+		topColor.Create(float4());
+		bottomColor.Create(float4());
 		mouseAt.Create(float2());
+
+		DecorationDetails::SignalScreenResize();
 
 		Engine::VertexBinding vtx;
 		vtx.vertex.Set(0,4);
 		vtx.normal.Unset();
 		vtx.floats_per_vertex = 4;
 		{
-			backgroundShader.binding = vtx;
+			shader.binding = vtx;
 
 			DX11::Shader::Binding bindings[] = {
 				DX11::Shader::Binding(mouseAt,"MouseAt"),
-				DX11::Shader::Binding(bottomBackgroundColor,"BottomBackgroundColor"),
-				DX11::Shader::Binding(topBackgroundColor,"TopBackgroundColor"),
+				DX11::Shader::Binding(bottomColor,"BottomColor"),
+				DX11::Shader::Binding(topColor,"TopColor"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Linear,1,"BackgroundSampler"),
 			};
 
-			backgroundShader.shader.LoadFromFile("shaders/guiBackground.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
-			backgroundShader.UpdateLayout();
-			backgroundShader.SetTriangles();
-		}
-		{
-			shadowShader.binding = vtx;
-
-			DX11::Shader::Binding bindings[] = {
-				DX11::Shader::Binding(mouseAt,"MouseAt"),
-				DX11::Shader::Binding(shadowColor,"ShadowColor"),
-			};
-
-			shadowShader.shader.LoadFromFile("shaders/guiShadow.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
-			shadowShader.UpdateLayout();
-			shadowShader.SetTriangles();
+			shader.shader.LoadFromFile("shaders/guiShape.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			shader.UpdateLayout();
+			shader.SetTriangles();
 		}
 
 		{
-			edgeShader.binding = vtx;
+			shrinkShader
 
-			DX11::Shader::Binding bindings[] = {
-				DX11::Shader::Binding(mouseAt,"MouseAt"),
-				DX11::Shader::Binding(bottomEdgeColor,"BottomEdgeColor"),
-				DX11::Shader::Binding(topEdgeColor,"TopEdgeColor"),
-			};
 
-			edgeShader.shader.LoadFromFile("shaders/guiEdge.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
-			edgeShader.UpdateLayout();
-			edgeShader.SetTriangles();
 		}
 	}
 
@@ -1846,6 +1839,8 @@ namespace Component
 		}
 		if (lowest == std::numeric_limits<float>::max())
 			lowest = GetRect().y.max;
+		else
+			lowest -= decoration.GetClientHeightLoss()*0.5f;
 		float newY = lowest - autoHeightSpacing;
 		const float currentHeight = GetRect().y.max - newY - decoration.GetClientHeightLoss() * 0.5f;
 
@@ -2952,6 +2947,14 @@ namespace Component
 	}
 
 
+
+	/*virtual override*/ Decoration::Context		Window::Render( const Decoration::Context&ctx )
+	{
+		DecorationDetails::UpdateBackground();
+		return Super::Render(ctx);
+	}
+
+
 	/*virtual override*/ PWindow	Window::GetWindow()
 	{
 		return To<Window>::Cast(shared_from_this());
@@ -3653,6 +3656,7 @@ namespace Component
 	void SignalScreenResize()
 	{
 		Detail::lastClientSpace = display.GetClientSize();
+		DecorationDetails::SignalScreenResize();
 	}
 
 }
