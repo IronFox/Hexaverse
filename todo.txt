@@ -1,3 +1,11 @@
+Interactive configuration mode:
+	button to toggle EMP zones on screen
+	fix selection of nexus units
+		disable status panel
+		disable resource panel
+		
+	
+
 Revise UI and menu (cluster hex icons, flatter, stronger outlined regular menu with hex shapes)
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
 Icon for idling structures and vehicles
