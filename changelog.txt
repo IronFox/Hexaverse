@@ -1,3 +1,5 @@
+v0.9.5
+
 v0.9.4	[Aug 20 2018]
 	> Vehicle Plants can now be configured server-side to automatically spawn their production.
 	> Automatic mobile production deployment now takes hostile and ghost presences into account.
