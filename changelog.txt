@@ -1,6 +1,6 @@
 v0.9.5
 	> Removed resource panel while configuration mode is active.
-	> Replaced 'EMP Zones On/Off' on screen message with pressable button.
+	> Replaced 'EMP Zones On/Off' on-screen message with pressable button.
 	> Updated configuration mode on-screen title.
 	* Fixed rendering of Nexus structures in configuration mode.
 
