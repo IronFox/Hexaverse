@@ -208,9 +208,9 @@ namespace NexusPresence
 					{
 						if (field.distance[i] == MissileDistance)
 						{
-							#ifndef _DEBUG
+							//#ifndef _DEBUG
 								Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),launcherPrototype);
-							#endif
+							//#endif
 						}
 						if (field.distance[i] == RadarDistance)
 						{

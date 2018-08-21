@@ -18,6 +18,7 @@
 #include "gridControl.h"
 #include "../version.h"
 #include "clientEvents.h"
+#include "visual/hud/uiScale.h"
 
 namespace ConfigurationMode
 {
@@ -32,6 +33,9 @@ namespace ConfigurationMode
 
 		static const String		previousPlanetFileName = "Previous";
 		const PathString		sharedPlanetsSub = "config/myPlanets";
+
+		HUD::Component::PWindow	empZoneButtonWindow;
+		HUD::Component::PButton	empZoneButton;
 
 
 		bool isActive = false;
@@ -232,6 +236,33 @@ namespace ConfigurationMode
 			}
 		}
 
+		void	SetZoneButtonText()
+		{
+			if (empZoneButton)
+			{
+				empZoneButton->SetText("EMP Zones "+String(RuntimeConfig::empZones?"On":"Off"));
+			}
+
+		}
+
+		void	SetEMPZones(bool set)
+		{
+			if (set == RuntimeConfig::empZones)
+				return;
+			if (set)
+			{
+				Grid::empZonesUnlocked = 0x1;
+				Grid::empZonesLocked = ~0x1;
+			}
+			else
+			{
+				Grid::empZonesUnlocked = 0xffff;
+				Grid::empZonesLocked = 0x0;
+			}
+			RuntimeConfig::empZones = set;
+			Detail::Update();
+			SetZoneButtonText();
+		}
 
 		void				MaterialDialog::Create(bool allowUnknown, bool allowLiquids)
 		{
@@ -989,18 +1020,7 @@ namespace ConfigurationMode
 			AppendRuleButton(ruleGroup,"Simulate Liquids", "World/simulateLiquids",Detail::Rules::simulateLiquids);
 			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","Rules/empZones",RuntimeConfig::empZones,[](bool set)
 			{
-				if (set)
-				{
-					Grid::empZonesUnlocked = 0x1;
-					Grid::empZonesLocked = ~0x1;
-				}
-				else
-				{
-					Grid::empZonesUnlocked = 0xffff;
-					Grid::empZonesLocked = 0x0;
-				}
-				RuntimeConfig::empZones = set;
-				Detail::Update();
+				SetEMPZones(set);
 				//VisualTerrain::Invalidate(); //force rebuild
 			});
 			Objects::Command::PCommandGroup goals = AddChild(*ruleGroup,"Game Goal");
@@ -1231,7 +1251,7 @@ namespace ConfigurationMode
 		ClientGrid::Apply(cfg);
 	}
 
-	void	SetGameConfig(UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc)
+	void	SetGameConfig( UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc )
 	{
 		return;
 		Detail::Rules::basesRequired = (gameFlags & Protocol::GameFlag::BasesRequired) != 0;
@@ -1248,7 +1268,7 @@ namespace ConfigurationMode
 	}
 
 
-	void	SetActive(bool newActive)
+	void	SetActive( bool newActive )
 	{
 		using namespace Detail;
 		if (isActive == newActive)
@@ -1263,6 +1283,11 @@ namespace ConfigurationMode
 			Objects::Faction::Kill(myNexus);
 			GlobalEvents::FlushAll();
 			myNexus = nullptr;
+			if (empZoneButtonWindow)
+			{
+				HUD::WindowStack::Hide(empZoneButtonWindow);
+				empZoneButtonWindow = nullptr;
+			}
 			return;
 		}
 		if (RuntimeConfig::empZones)
@@ -1282,6 +1307,31 @@ namespace ConfigurationMode
 		Detail::Create();
 		HUD::HexGrid::Configure(Objects::selectedEntity);
 		Detail::Update();
+
+		if (!empZoneButtonWindow)
+		{
+			empZoneButtonWindow = HUD::Component::Window::Create();
+			empZoneButton = HUD::Component::PButton{new HUD::Component::Button{"EMP Zones",[]()
+			{
+				SetEMPZones(!RuntimeConfig::empZones);
+			}}};
+			//empZoneButton->edges = false;
+			empZoneButton->fillBackground = false;
+			empZoneButton->renderBorder = false;
+			SetZoneButtonText();
+			empZoneButton->LockToIdealHeight();
+			empZoneButtonWindow->AddComponent(empZoneButton,CLOCATION);
+			empZoneButton->Anchor().FillHorizontally();
+			empZoneButtonWindow->SetAutomaticHeight(true);
+			empZoneButtonWindow->canBeImplicitlyClosed = false;
+			empZoneButtonWindow->isModal = false;
+			empZoneButtonWindow->Anchor().Right(0.05f,HUD::Component::Distance::Pixels(200.f * UI::GetScale())).Top(0.1f);
+			//empZoneButtonWindow->edges = false;
+			empZoneButtonWindow->fillBackground = false;
+			empZoneButtonWindow->renderBorder = false;
+			empZoneButtonWindow->darkenOutline = false;
+			HUD::WindowStack::ShowBottom(empZoneButtonWindow);
+		}
 	}
 
 	bool	IsActive()
