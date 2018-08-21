@@ -1316,8 +1316,8 @@ namespace ConfigurationMode
 				SetEMPZones(!RuntimeConfig::empZones);
 			}}};
 			//empZoneButton->edges = false;
-			empZoneButton->fillBackground = false;
-			empZoneButton->renderBorder = false;
+			empZoneButton->SetBackground(false);
+			empZoneButton->SetRenderEdge(false);
 			SetZoneButtonText();
 			empZoneButton->LockToIdealHeight();
 			empZoneButtonWindow->AddComponent(empZoneButton,CLOCATION);
@@ -1327,9 +1327,9 @@ namespace ConfigurationMode
 			empZoneButtonWindow->isModal = false;
 			empZoneButtonWindow->Anchor().Right(0.05f,HUD::Component::Distance::Pixels(200.f * UI::GetScale())).Top(0.1f);
 			//empZoneButtonWindow->edges = false;
-			empZoneButtonWindow->fillBackground = false;
-			empZoneButtonWindow->renderBorder = false;
-			empZoneButtonWindow->darkenOutline = false;
+			empZoneButtonWindow->SetBackground(false);
+			empZoneButtonWindow->SetRenderEdge(false);
+			empZoneButtonWindow->SetDarkenedOutline(false);
 			HUD::WindowStack::ShowBottom(empZoneButtonWindow);
 		}
 	}

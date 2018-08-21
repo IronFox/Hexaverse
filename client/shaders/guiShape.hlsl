@@ -9,6 +9,10 @@ cbuffer BottomColor
 {
 	float4 BottomColor;
 }
+cbuffer Viewport
+{
+	float4 Viewport;
+}
 cbuffer MouseAt
 {
 	float2 MouseAt;
@@ -42,9 +46,16 @@ void vsMain(in A2V input, out V2P output)
 
 float4 psMain(V2P input) : SV_TARGET
 {
+	float2 uv = input.position.xy * Viewport.xy;
+	uv += Viewport.zw;
+	float4 tex = BackgroundTexture.Sample(BackgroundSampler,uv);
+	
 	float4 rs = lerp(BottomColor,TopColor,input.uv.y);
 	float2 delta = MouseAt - input.world;
 	rs.rgb *= 0.8 + 0.3 * (1.0 / (1.0 + 50.0 * dot(delta,delta)));
+	
+	rs.rgb = lerp(tex.rgb,rs.rgb,rs.a);
+	
 	return rs;
 	//return float4(input.uv,1,1);
 }

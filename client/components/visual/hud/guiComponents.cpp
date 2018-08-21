@@ -720,23 +720,11 @@ namespace Component
 	/*static*/ DX11::ObjectBuffer<float4>	Image::texturedQuadColor;
 
 
-	static UINT ViewPortWidth()
-	{
-		return std::max(100U,Detail::lastClientSpace.width);
-	}
-	static UINT ViewPortHeight()
-	{
-		return std::max(100U,Detail::lastClientSpace.height);
-	}
-	static float ViewPortAspect()
-	{
-		return float(ViewPortWidth()) / ViewPortHeight();
-	}
-	
+
 
 	static float2 ViewPortSizef()
 	{
-		return float2(ViewPortWidth(),ViewPortHeight());
+		return float2(Detail::ViewPortWidth(),Detail::ViewPortHeight());
 	}
 
 
@@ -796,7 +784,7 @@ namespace Component
 			case Type::RelativeToGameWindow:
 				return value;
 			case Type::AbsolutePixels:
-				return value / float(myAxis == AnchorAxis::Horizontal ? ViewPortWidth() : ViewPortHeight());
+				return value / float(myAxis == AnchorAxis::Horizontal ? Detail::ViewPortWidth() : Detail::ViewPortHeight());
 			case Type::Disabled:
 				return NAN;
 		}
@@ -835,8 +823,13 @@ namespace Component
 			backbufferCopy,
 			shrunkTarget,
 			blurredTarget;
+		DX11::Texture
+			backgroundTexture;
 
 		DX11::ObjectBuffer<float2>	mouseAt;
+
+		bool	backgroundChanged = true;
+		float	backgroundOpacity = 1.f;
 
 
 		void	SignalScreenResize()
@@ -845,10 +838,21 @@ namespace Component
 			blurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
 		}
 
-		void	UpdateBackground()
+		void	CopyBackground()
 		{
+			if (!backgroundChanged)
+				return;
+			
+			backgroundChanged = false;
 			display.DirectX11::Capture(backbufferCopy);
+			backgroundTexture = backbufferCopy.GetColorTarget();
 
+		}
+
+		void	UpdateBackground(const Decoration::Context&ctx)
+		{
+			backgroundChanged = true;
+			backgroundOpacity = ctx.opacity;
 		}
 
 		struct TVertex
@@ -916,7 +920,7 @@ namespace Component
 			/**/		Shape(M::Rect<> loc, float ext)
 			{
 				float extX = ext;
-				float extY = ext * ViewPortAspect();
+				float extY = ext * Detail::ViewPortAspect();
 				loc.x.Expand(extX);
 				loc.y.Expand(extY);
 				SetBox(loc,true);
@@ -925,7 +929,7 @@ namespace Component
 			/**/		Shape(M::Rect<> loc, float ext, const M::Quad<bool>&edges)
 			{
 				float extX = ext;
-				float extY = ext * ViewPortAspect();
+				float extY = ext * Detail::ViewPortAspect();
 				loc.x.Expand(extX);
 				loc.y.Expand(extY);
 				SetBox(loc,edges);
@@ -933,7 +937,7 @@ namespace Component
 			/**/		Shape(M::Rect<> box, float ext, bool, index_t edgeIndex)
 			{
 				float extX = ext;
-				float extY = ext * ViewPortAspect();
+				float extY = ext * Detail::ViewPortAspect();
 				box.x.Expand(extX);
 				box.y.Expand(extY);
 				boundingBox = box;
@@ -1022,7 +1026,7 @@ namespace Component
 			void		CutCorners(const M::Quad<bool>&renderEdges, float intrusion)
 			{
 				const auto&location = boundingBox;
-				const float aspect = ViewPortAspect();
+				const float aspect = Detail::ViewPortAspect();
 				for (index_t i = 0; i < 4; i++)
 					if (renderEdges.value[i] && renderEdges.value[(i+1)%4])
 						CutCorner(i,aspect,intrusion,false);
@@ -1166,8 +1170,15 @@ namespace Component
 	Decoration::Context			Decoration::RenderBackground(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
 	{
 		using namespace DecorationDetails;
+		if (!shadow && !background)
+			return ctx.Recurse();
 
 		mouseAt.Update(relativeMouse);
+
+
+		display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::None);
+			CopyBackground();
 
 		if (shadow)
 		{
@@ -1188,6 +1199,7 @@ namespace Component
 				Bakery::Complete(shadowInstruction);
 
 			}
+			shadowInstruction.quickSlots.First() = backgroundTexture;
 			display.Render(shadowInstruction);
 
 		}
@@ -1214,9 +1226,11 @@ namespace Component
 				Bakery::Include(shape);
 				Bakery::Complete(backgroundInstruction);
 			}
+			backgroundInstruction.quickSlots.First() = backgroundTexture;
 			display.Render(backgroundInstruction);
 		}
 
+		display.RestoreRendererState();
 
 		return ctx.Recurse();
 	}
@@ -1228,6 +1242,7 @@ namespace Component
 
 		if (renderEdges.Max())
 		{
+			CopyBackground();
 			{
 				auto edge = edgeColor;
 				if (lit)
@@ -1265,7 +1280,7 @@ namespace Component
 					{
 						auto shape = Shape(location,0,renderEdges);
 						shape.CutCorners(renderEdges,cornerSize);
-						shape.CutCorner(i,ViewPortAspect(),cornerSize+edgeWidth*2.f,true);
+						shape.CutCorner(i,Detail::ViewPortAspect(),cornerSize+edgeWidth*2.f,true);
 						Bakery::Include(shape);
 					}
 				}
@@ -1273,7 +1288,11 @@ namespace Component
 				Bakery::Complete(edgeInstruction);
 			}
 
-			display.Render(edgeInstruction);
+			display.StoreRendererState();
+				display.SetBlendMode(Engine::BlendMode::None);
+				edgeInstruction.quickSlots.First() = backgroundTexture;
+				display.Render(edgeInstruction);
+			display.RestoreRendererState();
 		}
 
 		return ctx.Recurse();
@@ -1315,7 +1334,7 @@ namespace Component
 			else
 				rs.x.max -= edgeWidth;
 		}
-		const float ew = edgeWidth * ViewPortAspect();
+		const float ew = edgeWidth * Detail::ViewPortAspect();
 		if (renderEdges.bottom)
 			rs.y.min += ew;
 		if (renderEdges.top)
@@ -1329,6 +1348,7 @@ namespace Component
 		topColor.Create(float4());
 		bottomColor.Create(float4());
 		mouseAt.Create(float2());
+		Detail::viewportVector.Create(float4());
 
 		DecorationDetails::SignalScreenResize();
 
@@ -1343,17 +1363,19 @@ namespace Component
 				DX11::Shader::Binding(mouseAt,"MouseAt"),
 				DX11::Shader::Binding(bottomColor,"BottomColor"),
 				DX11::Shader::Binding(topColor,"TopColor"),
+				DX11::Shader::Binding(Detail::viewportVector,"Viewport"),
 				DX11::Shader::Binding(0,"BackgroundTexture"),
 				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Linear,1,"BackgroundSampler"),
 			};
 
+			shader.quickSlots.SetSize(1);
 			shader.shader.LoadFromFile("shaders/guiShape.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			shader.UpdateLayout();
 			shader.SetTriangles();
 		}
 
 		{
-			shrinkShader
+			//shrinkShader
 
 
 		}
@@ -1435,8 +1457,8 @@ namespace Component
 	{
 		Super::OnScreenSizeOrUIScaleChange();
 		slider.OnScreenSizeOrUIScaleChange();
-		relativeHeight = GetPixelHeight() / ViewPortHeight();
-		relativeThumbWidth = GetThumbPixelWidth() / ViewPortWidth();
+		relativeHeight = GetPixelHeight() / Detail::ViewPortHeight();
+		relativeThumbWidth = GetThumbPixelWidth() / Detail::ViewPortWidth();
 		UpdateDynamicSize(ChangeRecorder());
 	}
 
@@ -1448,12 +1470,12 @@ namespace Component
 	
 	/*static*/ float		Panel::TScrollbar::GetScreenWidth()
 	{
-		return float(GetPixelWidth()) / ViewPortWidth();
+		return float(GetPixelWidth()) / Detail::ViewPortWidth();
 	}
 
 	/*static*/ float		Panel::TScrollbar::GetButtonScreenHeight()
 	{
-		return float(GetPixelWidth()) / ViewPortHeight();
+		return float(GetPixelWidth()) / Detail::ViewPortHeight();
 	}
 
 
@@ -1508,7 +1530,7 @@ namespace Component
 				float fi = dragRange.Derelativate((float(i) * markersEvery) / max);
 				if (!bar.x.Contains(fi))
 				{
-					marker.x.SetCenter(fi,2.f/ViewPortWidth());
+					marker.x.SetCenter(fi,2.f/Detail::ViewPortWidth());
 					SurfaceRenderer::Rasterize(marker);
 					//LineRenderer::Rasterize(float3(fi,rect.y.min,0.f), markerColor, float3(fi,y0,0.f),markerColor);
 					//LineRenderer::Rasterize(float3(fi,rect.y.max,0.f), markerColor, float3(fi,y1,0.f),markerColor);
@@ -2587,7 +2609,7 @@ namespace Component
 
 
 		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
-		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
+		const float wantRelativeHeight = wantPixelImageHeight / float(Detail::ViewPortHeight());
 
 		if (isnan(wantRelativeHeight))
 		{
@@ -2878,7 +2900,7 @@ namespace Component
 
 	/*virtual override*/ float	Checkbox::GetIdealWidth() const
 	{
-		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / ViewPortAspect() * 1.5f;
+		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / Detail::ViewPortAspect() * 1.5f;
 		return Super::GetIdealWidth() + checkBoxWidth;
 	}
 
@@ -2899,7 +2921,7 @@ namespace Component
 		Super::RenderText(ctx, lit);
 		SurfaceRenderer::SetColor((lit ? float4(0.7f):float4(0.5f)) & float4(1,1,1,ctx.opacity));
 		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
-		float checkBoxWidth = checkBoxHeight / ViewPortAspect();
+		float checkBoxWidth = checkBoxHeight / Detail::ViewPortAspect();
 		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		M::TFloatRect box = M::TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);
@@ -2950,7 +2972,7 @@ namespace Component
 
 	/*virtual override*/ Decoration::Context		Window::Render( const Decoration::Context&ctx )
 	{
-		DecorationDetails::UpdateBackground();
+		DecorationDetails::UpdateBackground(ctx);
 		return Super::Render(ctx);
 	}
 

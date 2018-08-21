@@ -23,6 +23,7 @@ namespace Detail
 	};
 	extern Buffer0<Viewport>	viewportStack;
 	extern float2	totalOffset;
+	extern DX11::ObjectBuffer<float4>	viewportVector;
 
 	void	LoadView(const M::Rect<>&view, const float2&offset);
 	void	PushLoadView(const M::Rect<>&view, const float2&offset=float2());
@@ -33,6 +34,9 @@ namespace Detail
 	void	DeactivateInput(Engine::Keyboard::CharacterBuffer*destBufferContent);
 	bool	InputIsActive();
 
+	UINT	ViewPortWidth();
+	UINT	ViewPortHeight();
+	float	ViewPortAspect();
 
 	extern Buffer<Component*>	allComponents;
 }
