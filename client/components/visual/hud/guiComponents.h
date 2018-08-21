@@ -379,8 +379,9 @@ namespace Component
 		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
 		void			SetShadow(bool shade) {if (shade != shadow) {shadow = shade; recompileShadow = true;}}
 
-		void			SetEdgeColor(const float3&edgeColor)	{this->edgeColor = edgeColor;}
-		void			SetBackgroundColor(const float3&backgroundColor) {SetBackground(true); this->backgroundColor = backgroundColor;}
+		void			SetEdgeColor(const float4&edgeColor)	{this->edgeColor = edgeColor;}
+		void			SetBackgroundColor(const float4&backgroundColor) {SetBackground(true); this->backgroundColor = backgroundColor;}
+		void			SetBackgroundTone(const float3&backgroundColor) {SetBackground(true); this->backgroundColor.rgb = backgroundColor;}
 		void			SetOpacity(float opacity) {SetBackground(true); this->bottomOpacity = this->topOpacity = opacity;}
 		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = top; this->topOpacity = bottom;}
 		void			SetShadow(const float4&tint, bool blurBack) {SetShadow(true); shadowTint = tint; blurBackground = blurBack;}
@@ -423,8 +424,8 @@ namespace Component
 									blurBackground=true;
 		M::Quad<bool>				renderEdges = true;
 		float4						shadowTint = float4(1,1,1,0.5f);
-		float3						backgroundColor = float3(0.2f),
-									edgeColor = float3(0.6f);
+		float4						backgroundColor = float4(float3(0.25f),0.8f),
+									edgeColor = float4(float3(0.6f),1.f);
 		float						topOpacity=1.f,
 									bottomOpacity=1.f;
 
@@ -646,7 +647,8 @@ namespace Component
 			Super::OnScreenSizeOrUIScaleChange();
 		}
 
-		void			SetBackgroundTone(const float3&color)	{decoration.SetBackgroundColor(color);}
+		void			SetBackgroundColor(const float4&color)	{decoration.SetBackgroundColor(color);}
+		void			SetBackgroundTone(const float3&color)	{decoration.SetBackgroundTone(color);}
 		void			SetRenderEdge(const M::Quad<bool>&edges) {decoration.SetEdges(edges);}
 		void			SetBackground(bool back) {decoration.SetBackground(back);}
 

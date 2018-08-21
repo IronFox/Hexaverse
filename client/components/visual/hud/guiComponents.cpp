@@ -818,15 +818,23 @@ namespace Component
 			bottomColor;
 
 		DX11::BaseInstructionBlock
-			shader,shrinkShader;
+			shader;
+		DX11::InstructionBlock16
+			shrinkShader,
+			hBlur,
+			vBlur;
+		DX11::VBO	quadVBO;
+		DX11::IBO16	quadIBO;
 		DX11::FBO 
 			backbufferCopy,
 			shrunkTarget,
-			blurredTarget;
+			hBlurredTarget,
+			vBlurredTarget;
 		DX11::Texture
 			backgroundTexture;
 
 		DX11::ObjectBuffer<float2>	mouseAt;
+		DX11::ObjectBuffer<float2>	shrinkPixelScale;
 
 		bool	backgroundChanged = true;
 		float	backgroundOpacity = 1.f;
@@ -835,7 +843,8 @@ namespace Component
 		void	SignalScreenResize()
 		{
 			shrunkTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
-			blurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+			hBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+			vBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
 		}
 
 		void	CopyBackground()
@@ -845,7 +854,28 @@ namespace Component
 			
 			backgroundChanged = false;
 			display.DirectX11::Capture(backbufferCopy);
-			backgroundTexture = backbufferCopy.GetColorTarget();
+			//backgroundTexture = backbufferCopy.GetColorTarget();
+
+			shrinkShader.quickSlots.First() = backbufferCopy.GetColorTarget();
+			shrinkPixelScale.Update(float2(1.f / Detail::ViewPortWidth(), 1.f / Detail::ViewPortHeight()));
+			display.TargetFBO(shrunkTarget);
+				display.Render(shrinkShader);
+			//display.TargetBackbuffer();
+
+			hBlur.quickSlots.First() = shrunkTarget.GetColorTarget();
+			shrinkPixelScale.Update(float2(4.f / Detail::ViewPortWidth(), 4.f / Detail::ViewPortHeight()));
+			display.TargetFBO(hBlurredTarget);
+				display.Render(hBlur);
+			//display.TargetBackbuffer();
+
+			vBlur.quickSlots.First() = hBlurredTarget.GetColorTarget();
+			display.TargetFBO(vBlurredTarget);
+				display.Render(vBlur);
+			display.TargetBackbuffer();
+
+
+			backgroundTexture = vBlurredTarget.GetColorTarget();
+			
 
 		}
 
@@ -1212,8 +1242,8 @@ namespace Component
 					col *= 1.6f;
 				if (!enabled)
 					col *= 0.5f;
-				topColor.Update(float4(col,topOpacity * ctx.opacity));
-				bottomColor.Update(float4(col,bottomOpacity * ctx.opacity));
+				topColor.Update(float4(col.rgb,col.a * topOpacity * ctx.opacity));
+				bottomColor.Update(float4(col.rgb,col.a * bottomOpacity * ctx.opacity));
 			}
 
 			if (recompileBackground)
@@ -1249,8 +1279,8 @@ namespace Component
 					edge *= 1.2f;
 				if (!enabled)
 					edge *= 0.5f;
-				topColor.Update(float4(edge,topOpacity * ctx.opacity));
-				bottomColor.Update(float4(edge,bottomOpacity * ctx.opacity));
+				topColor.Update(float4(edge.rgb,edge.a * topOpacity * ctx.opacity));
+				bottomColor.Update(float4(edge.rgb,edge.a * bottomOpacity * ctx.opacity));
 			}
 
 			if (recompileEdges)
@@ -1349,6 +1379,7 @@ namespace Component
 		bottomColor.Create(float4());
 		mouseAt.Create(float2());
 		Detail::viewportVector.Create(float4());
+		shrinkPixelScale.Create(float2());
 
 		DecorationDetails::SignalScreenResize();
 
@@ -1375,9 +1406,67 @@ namespace Component
 		}
 
 		{
-			//shrinkShader
+			quadVBO.CreateFromStructs({float2(0,0),float2(1,0),float2(1,1),float2(0,1)});
+			quadIBO.Create({0,1,2, 0,2,3});
+
+			shrinkShader.quickSlots.SetSize(1);
+			
+			Engine::VertexBinding bind;
+			bind.vertex.Set(0,2);
+			bind.normal.Unset();
+			bind.floats_per_vertex = 2;
+			shrinkShader.binding = bind;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(shrinkPixelScale,"PixelScale"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::None,1,"BackgroundSampler"),
+			};
 
 
+			shrinkShader.shader.LoadFromFile("shaders/guiBackgroundShrink.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			shrinkShader.UpdateLayout();
+			shrinkShader.SetTriangles();
+			shrinkShader.vbo = quadVBO;
+			shrinkShader.ibo = quadIBO;
+		}
+
+		{
+
+			hBlur.quickSlots.SetSize(1);
+			hBlur.binding = shrinkShader.binding;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(shrinkPixelScale,"PixelScale"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::None,1,"BackgroundSampler"),
+			};
+
+
+			hBlur.shader.LoadFromFile("shaders/guiBackgroundHBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			hBlur.UpdateLayout();
+			hBlur.SetTriangles();
+			hBlur.vbo = quadVBO;
+			hBlur.ibo = quadIBO;
+		}
+
+		{
+
+			vBlur.quickSlots.SetSize(1);
+			vBlur.binding = shrinkShader.binding;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(shrinkPixelScale,"PixelScale"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::None,1,"BackgroundSampler"),
+			};
+
+
+			vBlur.shader.LoadFromFile("shaders/guiBackgroundVBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			vBlur.UpdateLayout();
+			vBlur.SetTriangles();
+			vBlur.vbo = quadVBO;
+			vBlur.ibo = quadIBO;
 		}
 	}
 
