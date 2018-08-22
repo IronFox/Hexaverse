@@ -1177,7 +1177,7 @@ namespace Component
 
 
 		static const constexpr float	cornerSize = 0.02f;
-		static const constexpr float	shadowExt = 0.03f;
+		static const constexpr float	shadowExt = 0.005f;
 		static const constexpr float	edgeWidth = 0.005f;
 
 	}
@@ -1220,7 +1220,7 @@ namespace Component
 
 
 				auto shape = Shape(location,shadowExt);
-				shape.CutCorners(renderEdges,cornerSize * (1.4142136f * 1.4142136f));
+				shape.CutCorners(includeEdges && cutCorners,cornerSize);// * (1.4142136f * 1.4142136f));
 
 				foreach (shape.corners,c)
 					Bakery::Vertex(*c);
@@ -1251,7 +1251,7 @@ namespace Component
 				recompileBackground = false;
 
 				auto shape = Shape(location);
-				shape.CutCorners(renderEdges,cornerSize);
+				shape.CutCorners(includeEdges && cutCorners,cornerSize);
 
 				Bakery::Include(shape);
 				Bakery::Complete(backgroundInstruction);
@@ -1270,7 +1270,7 @@ namespace Component
 		using namespace DecorationDetails;
 		mouseAt.Update(relativeMouse);
 
-		if (renderEdges.Max())
+		if (renderEdges)
 		{
 			CopyBackground();
 			{
@@ -1291,12 +1291,12 @@ namespace Component
 				static Buffer0<index_t> indexes, outIndexes;
 				for (index_t i = 0; i < 4; i++)
 				{
-					if (renderEdges.value[i])
+					if (includeEdges.value[i])
 					{
 						auto outerShape = Shape(location,0,false,i);
 						auto innerShape = Shape(location,-edgeWidth,false,i);
-						outerShape.CutCorners(renderEdges,cornerSize);
-						innerShape.CutCorners(renderEdges,cornerSize-edgeWidth);
+						outerShape.CutCorners(includeEdges && cutCorners,cornerSize);
+						innerShape.CutCorners(includeEdges && cutCorners,cornerSize-edgeWidth);
 						Bakery::SetVOffset();
 						foreach (outerShape.corners,c)
 							Bakery::Vertex(*c);
@@ -1306,10 +1306,10 @@ namespace Component
 							Bakery::Triangle(0,j,(j+1));
 					}
 				//	if (false)
-					if (renderEdges.value[i] && renderEdges.value[(i+1)%4])
+					if (includeEdges.value[i] && includeEdges.value[(i+1)%4])
 					{
 						auto shape = Shape(location,0,renderEdges);
-						shape.CutCorners(renderEdges,cornerSize);
+						shape.CutCorners(includeEdges && cutCorners,cornerSize);
 						shape.CutCorner(i,Detail::ViewPortAspect(),cornerSize+edgeWidth*2.f,true);
 						Bakery::Include(shape);
 					}
@@ -1332,43 +1332,52 @@ namespace Component
 	float			Decoration::GetClientHeightLoss() const
 	{
 		using namespace DecorationDetails;
-		return (renderEdges.top ? edgeWidth : 0) + (renderEdges.bottom ? edgeWidth : 0);
+		return (renderEdges && includeEdges.top ? edgeWidth : 0) + (renderEdges && includeEdges.bottom ? edgeWidth : 0);
 	}
 
 	M::Rect<>		Decoration::GetClientArea() const
 	{
+		if (!renderEdges)
+			return location;
 		using namespace DecorationDetails;
 		auto rs = location;
 		const float h = rs.GetHeight();
-		if (renderEdges.left)
+		//if (renderEdges && includeEdges.left)
+		//{
+		//	if (includeEdges.bottom || includeEdges.top)
+		//	{
+		//		if (h > 2.f * cornerSize)
+		//			rs.x.min += cornerSize;
+		//		else
+		//			rs.x.min += h*0.5f;
+		//	}
+		//	else
+		//		rs.x.min += edgeWidth;
+		//}
+		//if (renderEdges && includeEdges.right)
+		//{
+		//	if (includeEdges.bottom || includeEdges.top)
+		//	{
+		//		if (h > 2.f * cornerSize)
+		//			rs.x.max -= cornerSize;
+		//		else
+		//			rs.x.max -= h*0.5f;
+		//	}
+		//	else
+		//		rs.x.max -= edgeWidth;
+		//}
+		const float ew = edgeWidth * Detail::ViewPortAspect();
+		if (renderEdges)
 		{
-			if (renderEdges.bottom || renderEdges.top)
-			{
-				if (h > 2.f * cornerSize)
-					rs.x.min += cornerSize;
-				else
-					rs.x.min += h*0.5f;
-			}
-			else
+			if (includeEdges.bottom)
+				rs.y.min += ew;
+			if (includeEdges.top)
+				rs.y.max -= ew;
+			if (includeEdges.left)
 				rs.x.min += edgeWidth;
-		}
-		if (renderEdges.right)
-		{
-			if (renderEdges.bottom || renderEdges.top)
-			{
-				if (h > 2.f * cornerSize)
-					rs.x.max -= cornerSize;
-				else
-					rs.x.max -= h*0.5f;
-			}
-			else
+			if (includeEdges.right)
 				rs.x.max -= edgeWidth;
 		}
-		const float ew = edgeWidth * Detail::ViewPortAspect();
-		if (renderEdges.bottom)
-			rs.y.min += ew;
-		if (renderEdges.top)
-			rs.y.max -= ew;
 		return rs;
 	}
 
@@ -1531,7 +1540,7 @@ namespace Component
 	{
 		resolvingAxis = true;
 		Super::ResolveAnchorAxis(axis,context,rec); 
-		M::Rect<> childSpace = decoration.GetClientArea();
+		M::Rect<> childSpace = Decoration::GetClientArea();
 		if (vscroll.visible)
 			childSpace.x.max = M::Max(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
 		if (order[axis].Count() != components.Count())
@@ -1588,14 +1597,14 @@ namespace Component
 
 	/*virtual override*/ Decoration::Context	Slider::Render( const Decoration::Context&ctx )
 	{
-		const auto rect = decoration.GetClientArea();
+		const auto rect = Decoration::GetClientArea();
 		const float top = rect.y.max;
 		const float bottom = rect.y.min;
 
 		const float left = rect.x.min;
 		const float right = rect.x.max;
 
-		const auto child = decoration.Render(relativeMouse,false,false,IsEnabled(),ctx);
+		const auto child = Decoration::Render(relativeMouse,false,false,IsEnabled(),ctx);
 		//barBack = M::Rect<>(left,bottom,right,top);
 		//SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
 		//SurfaceRenderer::Rasterize(barBack);
@@ -1888,7 +1897,7 @@ namespace Component
 	{
 		bool lit = IsLit();
 		bool flipped = mousePressedComponent.get() == this;
-		const auto child = decoration.Render(relativeMouse,lit,(lit && !flipped)  || alwaysDown, IsEnabled(),ctx);
+		const auto child = Decoration::Render(relativeMouse,lit,(lit && !flipped)  || alwaysDown, IsEnabled(),ctx);
 		Super::RenderText(child, lit || alwaysDown);
 		return child;
 	}
@@ -1938,7 +1947,7 @@ namespace Component
 		Super::UpdateDynamicSize(rec);
 		foreach (components,c)
 			(*c)->UpdateDynamicSize(rec);
-		const auto rect = decoration.GetClientArea();
+		const auto rect = Decoration::GetClientArea();
 		float lowest = std::numeric_limits<float>::max();
 		foreach (components,c)
 		{
@@ -1951,9 +1960,9 @@ namespace Component
 		if (lowest == std::numeric_limits<float>::max())
 			lowest = GetRect().y.max;
 		else
-			lowest -= decoration.GetClientHeightLoss()*0.5f;
+			lowest -= Decoration::GetClientHeightLoss();
 		float newY = lowest - autoHeightSpacing;
-		const float currentHeight = GetRect().y.max - newY - decoration.GetClientHeightLoss() * 0.5f;
+		const float currentHeight = GetRect().y.max - newY - Decoration::GetClientHeightLoss() * 0.5f;
 
 		const float maxHeight = autoHeight ? this->maxHeight : rect.y.GetExtent();
 
@@ -1969,7 +1978,7 @@ namespace Component
 			vscroll.scrollMax += overSize;
 			vscroll.viewSize += overSize;
 
-			newY = GetRect().y.max - maxHeight - decoration.GetClientHeightLoss();
+			newY = GetRect().y.max - maxHeight - Decoration::GetClientHeightLoss();
 
 			if (autoHeight)
 			{
@@ -2371,13 +2380,13 @@ namespace Component
 
 	/*virtual override*/ Decoration::Context			BaseInput::Render( const Decoration::Context&ctx )
 	{
-		core = decoration.GetClientArea();
+		core = Decoration::GetClientArea();
 		textout.PushState();
 		textout.Scale(Detail::textZoom);
 		core.Expand(-textout.GetScaledHeight()*0.4f);
 		//core.Scale(0.97f);
 
-		const auto child = decoration.Render(relativeMouse,false,false,IsEnabled(),ctx);
+		const auto child = Decoration::Render(relativeMouse,false,false,IsEnabled(),ctx);
 
 		StringRef text = GetTextRef();
 
@@ -2553,7 +2562,7 @@ namespace Component
 
 	/*virtual override*/ float		TextField::GetContentHeight() const
 	{
-		return heightLockedToIdeal ? textHeight  + decoration.GetClientHeightLoss() : -1;
+		return heightLockedToIdeal ? textHeight  + Decoration::GetClientHeightLoss() : -1;
 	}
 
 	/*virtual override*/ void	TextField::UpdateDynamicSize(ChangeRecorder&rec)
@@ -2576,11 +2585,11 @@ namespace Component
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
 
-		decoration.AssertLocationMatch(GetRect());
+		Decoration::AssertLocationMatch(GetRect());
 		
 		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
 		const float rightPadding = textout.GetScaledWidth('X') * padding.right;
-		const float width = decoration.GetClientArea().x.GetExtent() - leftPadding - rightPadding;
+		const float width = Decoration::GetClientArea().x.GetExtent() - leftPadding - rightPadding;
 		const float center = width/2 + leftPadding;
 		#ifdef _DEBUG
 			wrappedAtWidth = width;
@@ -2648,7 +2657,7 @@ namespace Component
 	/*virtual override*/ Decoration::Context			TextField::Render( const Decoration::Context&ctx )
 	{
 		const bool lit = IsLit();
-		auto child = decoration.Render(relativeMouse,lit,false,IsEnabled(),ctx);
+		auto child = Decoration::Render(relativeMouse,lit,false,IsEnabled(),ctx);
 		RenderText(child,lit);
 		return child;
 	}
@@ -2664,7 +2673,7 @@ namespace Component
 
 		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
 		//float lineHeight = textout.GetScaledHeight();
-		const auto rect = decoration.GetClientArea();
+		const auto rect = Decoration::GetClientArea();
 		const float top = rect.y.max;
 		const float left = rect.x.min;
 
@@ -3109,7 +3118,7 @@ namespace Component
 	/**/			TabBar::TabBar()
 	{
 		SetAutomaticHeight(true);
-		SetBackgroundTransparent();
+		Decoration::SetBackground(false);
 		SetAutoHeightSpacing(0.02f);
 
 	}
@@ -3160,8 +3169,8 @@ namespace Component
 	/*static*/ void		TabBar::ConfigureInactive(const PButton&active)
 	{
 		active->SetAlwaysDown(false);
-		active->decoration.SetEdges(true);
-		active->decoration.SetOpacity(0.85f);
+		active->Decoration::SetEdgeVisibility(true);
+		active->Decoration::SetOpacity(0.85f);
 		active->Anchor().Top();
 		active->LockToIdealHeight(true);
 		active->SetColor(float4(1,1,1,0.85f));
@@ -3173,8 +3182,8 @@ namespace Component
 		active->LockToIdealHeight(false);
 		active->Anchor().FillVertically();
 //			GetVAxis().lower.Set(0);
-		active->decoration.SetOpacity(1,0);
-		active->decoration.SetEdges(M::Quad<bool>(true,false,true,true));
+		active->Decoration::SetOpacity(1,0);
+		active->Decoration::SetEdgeVisibility(M::Quad<bool>(true,false,true,true));
 		active->SetColor(float4(1));
 	}
 
@@ -3204,7 +3213,7 @@ namespace Component
 	{
 		if (tabBar)
 			return;
-		this->SetBackgroundTransparent();
+		Decoration::SetBackground(false);
 		tabBar.reset(new TabBar());
 		{
 			auto mod = tabBar->Anchor();
@@ -3227,7 +3236,7 @@ namespace Component
 
 		auto&tab = tabs.Append();
 		tab.panel.reset(new Panel());
-		tab.panel->decoration.SetEdges(M::Quad<bool>(true,true,true,false));
+		tab.panel->Decoration::SetEdgeVisibility(M::Quad<bool>(true,true,true,false));
 		{
 			auto mod = tab.panel->Anchor();
 			mod.GetHAxis().Fill();
@@ -3383,7 +3392,7 @@ namespace Component
 	{
 		//Super::Render(opacity);
 		
-		const auto chld = decoration.RenderBackground(relativeMouse,false,false,IsEnabled(),ctx);
+		const auto chld = Decoration::RenderBackground(relativeMouse,false,false,IsEnabled(),ctx);
 
 		bool anyChanged = axesChanged;
 		foreach (plots,g)
@@ -3418,7 +3427,7 @@ namespace Component
 
 			EndLabelPrint();
 		}
-		return decoration.RenderEdges(relativeMouse,false,false,IsEnabled(),ctx);
+		return Decoration::RenderEdges(relativeMouse,false,false,IsEnabled(),ctx);
 	}
 
 	void MultiPlot::BeginLabelPrint()

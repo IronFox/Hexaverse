@@ -59,7 +59,8 @@ namespace HUD
 				PPanel rs{new Panel{}};
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
-				rs->SetEdgesNoBackground(true);
+				rs->SetEdges(true);
+				rs->SetBackground(false);
 
 				if (labelText.IsNotEmpty())
 				{
@@ -74,7 +75,7 @@ namespace HUD
 					label->LockToIdealHeight();
 				}
 				else
-					rs->SetBackgroundTransparent();
+					rs->SetBackground(false);
 
 				window->AnchorBelowPrevious(CLOCATION,rs,0,0.01f);
 				rs->Anchor().FillHorizontally(0.01f,0.01f);
@@ -137,7 +138,7 @@ namespace HUD
 							});
 
 							inviteButton->SetBackground(false);
-							inviteButton->SetRenderEdge(false);
+							inviteButton->SetEdges(false);
 							inviteButton->SetColor(faction->color);
 							inviteButton->LockToIdealWidth(true);
 							//joinButton->LockToIdealHeight(true);
@@ -176,7 +177,7 @@ namespace HUD
 							}
 
 							inviteButton->SetBackground(false);
-							inviteButton->SetRenderEdge(false);
+							inviteButton->SetEdges(false);
 							inviteButton->SetColor(faction->color);
 							inviteButton->LockToIdealWidth(true);
 							//joinButton->LockToIdealHeight(true);
@@ -210,7 +211,7 @@ namespace HUD
 				panel->AddComponent(nameLabel,CLOCATION);
 				//statusLabel->dbgMarked = true;
 				panel->AddComponent(statusLabel,CLOCATION);
-				panel->SetBackgroundTransparent();
+				panel->SetBackground(false);
 
 				toPanel->AnchorBelowPrevious(CLOCATION,panel,0,0);
 			}
@@ -244,14 +245,14 @@ namespace HUD
 						chatBack->AnchorBelowPrevious(CLOCATION,chatHistory,0,0);
 						chatHistory->SetMaxAutoHeight(0.3f);
 						chatHistory->SetAutomaticHeight(true);
-						chatHistory->SetBackgroundTransparent();
+						chatHistory->SetBackground(false);
 					}
 					{
 						factionTable.reset(new Panel{});
 						factionBack->AnchorBelowPrevious(CLOCATION,factionTable,0,0);
 						factionTable->SetMaxAutoHeight(0.3f);
 						factionTable->SetAutomaticHeight(true);
-						factionTable->SetBackgroundTransparent();
+						factionTable->SetBackground(false);
 					}
 					{
 						PButton close{new Button{"Close",Hide}};
@@ -311,12 +312,12 @@ namespace HUD
 					PPanel wrapper{new Panel{}};
 					wrapper->Anchor().BeneathLastOf(factionTable);
 					wrapper->SetBackground(false);
-					wrapper->SetRenderEdge(a->CountLivingMembers() > 1);
+					wrapper->SetEdges(a->CountLivingMembers() > 1);
 					factionTable->AddComponent(wrapper,CLOCATION);
 
 					PPanel alliancePanel{new Panel{}};
 					alliancePanel->SetBackground(false);
-					alliancePanel->SetRenderEdge(false);
+					alliancePanel->SetEdges(false);
 					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
 
 
@@ -359,7 +360,7 @@ namespace HUD
 						//joinButton->LockToIdealHeight(true);
 						leaveButton->SetPadding(M::Quad<float>(0.2f));
 						leaveButton->SetBackground(false);
-						leaveButton->SetRenderEdge(false);
+						leaveButton->SetEdges(false);
 						leaveButton->SetLocalFontScale(0.85f);
 
 						leaveButton->Anchor().Right(0.01f).Top(0.01f);
@@ -488,7 +489,7 @@ namespace HUD
 			chatEntry->AddComponent(timeLabel,CLOCATION);
 			chatEntry->AddComponent(senderLabel,CLOCATION);
 			chatEntry->AddComponent(textLabel,CLOCATION);
-			chatEntry->SetBackgroundTransparent();
+			chatEntry->SetBackground(false);
 
 			chatHistory->AnchorBelowPrevious(CLOCATION,chatEntry,0,0);
 

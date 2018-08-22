@@ -289,7 +289,7 @@ namespace ConfigurationMode
 					col /= max;
 				button->SetColor(float4(col,1.f));
 				button->SetBackgroundTone(col);
-				button->SetRenderEdge(true);
+				button->SetEdges(true);
 				float b = 0.2f * (window->CountComponents()/4);
 				float x = 0.25f * (window->CountComponents()%4);
 				float x2 = 0.25f * (3-(window->CountComponents()%4));
@@ -380,7 +380,7 @@ namespace ConfigurationMode
 			planetListWindow->SetWidth(0.7f);
 			planetListWindow->SetAutomaticHeight(true);
 			planetListWindow->SetMaxAutoHeight(0.7f);
-			planetListWindow->SetBackgroundTransparent();
+			planetListWindow->SetBackground(false);
 			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f),CLOCATION);
 			{
 				auto cfg = label->GetAnchorConfig();
@@ -1317,7 +1317,7 @@ namespace ConfigurationMode
 			}}};
 			//empZoneButton->edges = false;
 			empZoneButton->SetBackground(false);
-			empZoneButton->SetRenderEdge(false);
+			empZoneButton->SetEdges(false);
 			SetZoneButtonText();
 			empZoneButton->LockToIdealHeight();
 			empZoneButtonWindow->AddComponent(empZoneButton,CLOCATION);
@@ -1328,7 +1328,7 @@ namespace ConfigurationMode
 			empZoneButtonWindow->Anchor().Right(0.05f,HUD::Component::Distance::Pixels(200.f * UI::GetScale())).Top(0.1f);
 			//empZoneButtonWindow->edges = false;
 			empZoneButtonWindow->SetBackground(false);
-			empZoneButtonWindow->SetRenderEdge(false);
+			empZoneButtonWindow->SetEdges(false);
 			empZoneButtonWindow->SetDarkenedOutline(false);
 			HUD::WindowStack::ShowBottom(empZoneButtonWindow);
 		}

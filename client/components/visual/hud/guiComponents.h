@@ -375,16 +375,18 @@ namespace Component
 		void			UpdateLocation(const M::Rect<>&rect)	{location = rect; recompileShadow = true; recompileBackground=true; recompileEdges=true;}
 		void			AssertLocationMatch(const M::Rect<>&rect) const {ASSERT_EQUAL__(location,rect);}
 
-		void			SetEdges(const M::Quad<bool>&edges) {if (edges != renderEdges) {renderEdges = edges; recompileEdges=true;}}
+		void			SetCutCorners(const M::Quad<bool>&edges) {if (edges != this->cutCorners) {cutCorners = edges; recompileEdges=true;}}
+		void			SetEdgeVisibility(const M::Quad<bool>&edges) {if (edges != this->includeEdges) {includeEdges = edges; recompileEdges=true;}}
+		void			SetEdges(bool renderEdges) {this->renderEdges = renderEdges;}
 		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
 		void			SetShadow(bool shade) {if (shade != shadow) {shadow = shade; recompileShadow = true;}}
 
-		void			SetEdgeColor(const float4&edgeColor)	{this->edgeColor = edgeColor;}
+		void			SetEdgeColor(const float4&edgeColor)	{renderEdges = true; this->edgeColor = edgeColor;}
 		void			SetBackgroundColor(const float4&backgroundColor) {SetBackground(true); this->backgroundColor = backgroundColor;}
 		void			SetBackgroundTone(const float3&backgroundColor) {SetBackground(true); this->backgroundColor.rgb = backgroundColor;}
 		void			SetOpacity(float opacity) {SetBackground(true); this->bottomOpacity = this->topOpacity = opacity;}
 		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = top; this->topOpacity = bottom;}
-		void			SetShadow(const float4&tint, bool blurBack) {SetShadow(true); shadowTint = tint; blurBackground = blurBack;}
+		void			SetShadow(const float4&tint/*, bool blurBack*/) {SetShadow(true); shadowTint = tint; /*blurBackground = blurBack;*/}
 
 		void			OnScreenSizeOrUIScaleChange()	{recompileShadow = recompileEdges = recompileBackground =true;}
 
@@ -420,9 +422,12 @@ namespace Component
 									recompileBackground=true,
 									recompileEdges=true,
 									shadow=false,
-									background=true,
-									blurBackground=true;
-		M::Quad<bool>				renderEdges = true;
+									renderEdges = true,
+									background=true
+			//						blurBackground=true
+			;
+		M::Quad<bool>				includeEdges = true,
+									cutCorners = true;
 		float4						shadowTint = float4(1,1,1,0.5f);
 		float4						backgroundColor = float4(float3(0.25f),0.8f),
 									edgeColor = float4(float3(0.6f),1.f);
@@ -628,42 +633,24 @@ namespace Component
 
 
 
-	class Box : public Component
+	class Box : public Component, public Decoration
 	{
-	protected:
-		Decoration		decoration;
 	public:
 		typedef Component	Super;
 
 		virtual void	OnRectChange() override
 		{
-			decoration.UpdateLocation(this->GetRect());
+			Decoration::UpdateLocation(this->GetRect());
 			Super::OnRectChange();
 		}
 
 		virtual void	OnScreenSizeOrUIScaleChange() override
 		{
-			decoration.OnScreenSizeOrUIScaleChange();
+			Decoration::OnScreenSizeOrUIScaleChange();
 			Super::OnScreenSizeOrUIScaleChange();
 		}
 
-		void			SetBackgroundColor(const float4&color)	{decoration.SetBackgroundColor(color);}
-		void			SetBackgroundTone(const float3&color)	{decoration.SetBackgroundTone(color);}
-		void			SetRenderEdge(const M::Quad<bool>&edges) {decoration.SetEdges(edges);}
-		void			SetBackground(bool back) {decoration.SetBackground(back);}
-
-
-		void			SetBackgroundTransparent()
-		{
-			decoration.SetBackground(false);
-		}
-
-		void			SetEdgesNoBackground(const M::Quad<bool>&edges)
-		{
-			decoration.SetBackground(false);
-			decoration.SetEdges(edges);
-		}
-		virtual Ctx		Render( const Decoration::Context&ctx ) override	{Super::Render(ctx); return decoration.Render(relativeMouse,this->IsLit(),false,this->IsEnabled(),ctx);}
+		virtual Ctx		Render( const Decoration::Context&ctx ) override	{Super::Render(ctx); return Decoration::Render(relativeMouse,this->IsLit(),false,this->IsEnabled(),ctx);}
 	};
 
 	/**
@@ -894,7 +881,7 @@ namespace Component
 		{
 			ReWrap();
 			if (heightLockedToIdeal) 
-				SetHeight(textHeight + decoration.GetClientHeightLoss());
+				SetHeight(textHeight + Decoration::GetClientHeightLoss());
 		}
 
 		void			HandleTextChange();
@@ -980,14 +967,14 @@ namespace Component
 	public:
 		/**/			Label()
 		{
-			Super::SetBackgroundTransparent();
-			Super::SetRenderEdge(false);
+			Decoration::SetBackground(false);
+			Decoration::SetEdges(false);
 		}
 		/**/			Label(const String&text, float scale=1.f)
 		{
-			Super::SetBackgroundTransparent();
+			Decoration::SetBackground(false);
+			Decoration::SetEdges(false);
 			Super::SetLocalFontScale(scale);
-			Super::SetRenderEdge(false);
 			SetText(text);
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
@@ -1143,7 +1130,8 @@ namespace Component
 		{
 			Super::alignCenter = false;
 			Super::ScaleVerticalPadding(0.5f);
-			Super::SetBackgroundTransparent();
+			Decoration::SetBackground(false);
+			Decoration::SetEdges(false);
 			auto padding = Super::GetPadding();
 			padding.left = 2;
 			Super::SetPadding(padding);
@@ -1261,7 +1249,7 @@ namespace Component
 		{
 			const bool lit = IsLit();
 			const bool flipped = mousePressedComponent.get() == this;
-			auto cld = decoration.Render(relativeMouse,lit,flipped,IsEnabled(),ctx);
+			auto cld = Decoration::Render(relativeMouse,lit,flipped,IsEnabled(),ctx);
 			RenderArrow(cld,GetRect(),direction,lit);
 			return cld;
 		}
@@ -1613,7 +1601,7 @@ namespace Component
 		{
 			const bool lit = IsLit();
 			const bool flipped = mousePressedComponent.get() == this;
-			auto child = decoration.Render(relativeMouse,lit,flipped,IsEnabled(),ctx);
+			auto child = Decoration::Render(relativeMouse,lit,flipped,IsEnabled(),ctx);
 			Super::RenderChildren(child);
 			return child;
 		}
@@ -1876,8 +1864,7 @@ namespace Component
 		{
 			anchorConfig.GetHAxis().SetAutoCenter();
 			anchorConfig.GetVAxis().SetAutoCenter();
-			decoration.SetShadow(true);
-			decoration.SetShadow(float4(0,0,0,0.5f),true);
+			Decoration::SetShadow(float4(0,0,0,0.5f));
 		}
 
 		template <typename T>	
@@ -1932,7 +1919,7 @@ namespace Component
 
 		void				SetDarkenedOutline(bool outline)
 		{
-			decoration.SetShadow(outline);
+			Decoration::SetShadow(outline);
 		}
 
 		virtual void		SignalLayoutChangeUp()	override

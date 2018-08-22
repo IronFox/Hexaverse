@@ -53,6 +53,14 @@ namespace Menu
 			check
 		));
 		Super::RemoveComponent(hintLabel);
+		if (Super::CountComponents() > 1)
+		{
+			if (Super::CountComponents() > 2)
+				To<HUD::Component::Button>::Cast( Super::GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,false));
+			else
+				To<HUD::Component::Button>::Cast( Super::GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,true));
+			button->SetCutCorners(M::Quad<bool>(true,true,true,false));
+		}
 		Super::AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 		if (hintLabel)
 			Super::AnchorBelowPrevious(CLOCATION, hintLabel,0.015f,0.015f);
@@ -65,10 +73,11 @@ namespace Menu
 	{
 		canBeImplicitlyClosed = escapeCloses;
 		Super::ClearComponents();
+		Super::SetEdges(false);
 		hintLabel.reset();
 		myTitle = title;
 		Super::Anchor().CenterHorizontally(initialAbsoluteWidth);
-		//Super::SetBackgroundTransparent();
+		//Super::SetBackground(false);
 
 		if (title.IsNotEmpty())
 		{
@@ -142,13 +151,13 @@ namespace Menu
 
 
 
-		l->SetBackgroundTransparent();
+		l->SetBackground(false);
 		l->alignCenter = false;
 		l->Anchor().CenterVertically().Left(0,MinTextWidth);
 		c->Anchor().FillHorizontally(MinTextWidth,0.01f).CenterVertically();
 
 		p->SetAutomaticHeight(true);
-		p->SetBackgroundTransparent();
+		p->SetBackground(false);
 
 		options->AnchorBelowPrevious(CLOCATION,p);
 		return l;

@@ -83,10 +83,12 @@ namespace Dialog
 			else
 				dialog->SetWidth(0.5f);
 			
-			dialog->SetBackgroundTransparent();
+			dialog->SetBackground(false);
+			dialog->SetEdges(false);
 			//HUD::Component::PComponent	common(new HUD::Component::Area());
 
 			HUD::Component::PPanel	textPanel(new HUD::Component::Panel());
+			//textPanel->SetEdges(false);
 			HUD::Component::PLabel textField(new HUD::Component::Label());
 			textField->Anchor().FillHorizontally().Top();
 			textPanel->AddComponent(textField,CLOCATION);
@@ -238,12 +240,17 @@ namespace Dialog
 					return canConfirmNow;
 				});
 				confirmButton->SetTriggerFunction(std::bind(&Dialog::Confirm,d,false));
+				confirmButton->SetCutCorners(M::Quad<bool>(true,true,!cancelButton,false));
 			}
 
 			if (cancelButton)
 			{
 				cancelButton->SetTriggerFunction(std::bind(&Dialog::DumpMe,dialog.get()));
+				cancelButton->SetCutCorners(M::Quad<bool>(!confirmButton,true,true,false));
 			}
+
+			if (confirmButton || cancelButton)
+				textPanel->SetCutCorners(M::Quad<bool>(true,false,true,true));
 
 
 			dialog->ReLayout();

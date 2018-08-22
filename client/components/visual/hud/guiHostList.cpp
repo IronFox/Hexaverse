@@ -77,7 +77,7 @@ namespace HUD{namespace HostList{
 			//changelog->SetAutomaticHeight(false);
 			//changelog->SetHeight(0.6f);
 			changelog->SetBackground(false);
-			changelog->SetRenderEdge(false);
+			changelog->SetEdges(false);
 			changelog->SetDarkenedOutline(false);
 			RefreshVerticalChangelogLayout();
 			count_t cnt = 0;
@@ -106,7 +106,7 @@ namespace HUD{namespace HostList{
 		headerRow->FillHorizontally(0);
 		headerRow->Anchor().Top();
 		headerRow->SetAutomaticHeight(true);
-		headerRow->SetBackgroundTransparent();
+		headerRow->SetBackground(false);
 		
 		Update();
 	}
@@ -451,7 +451,7 @@ namespace HUD{namespace HostList{
 
 		serverChoice->ClearComponents();
 
-		serverChoice->SetBackgroundTransparent();
+		serverChoice->SetBackground(false);
 		serverChoice->isModal = false;
 		SetTop(serverChoice,0.1f);
 		serverChoice->SetMaxAutoHeight(0.8f);
@@ -474,7 +474,7 @@ namespace HUD{namespace HostList{
 			serverListPanel->Anchor().FillHorizontally().Top();
 			serverListPanel->SetAutomaticHeight(true);
 			serverListPanel->SetMaxAutoHeight(0.5f);
-			serverListPanel->SetBackgroundTransparent();
+			serverListPanel->SetBackground(false);
 		}
 		serverListPanel->ClearComponents();
 		serverListPanel->Anchor().BeneathAllOf(serverChoice);
@@ -490,7 +490,7 @@ namespace HUD{namespace HostList{
 				.BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ))
 				.FillHorizontally();
 			//p->SetAutomaticHeight(true);
-			p->SetBackgroundTransparent();
+			p->SetBackground(false);
 
 			PPanel pb(new Panel());
 			//pb->autoHeight = true;
@@ -556,7 +556,7 @@ namespace HUD{namespace HostList{
 			PPanel p(new Panel());
 			p->Anchor().BeneathAllOf(serverChoice, Distance::GameWindow(0.025f ));
 			serverChoice->AddComponent( p ,CLOCATION);
-			p->SetBackgroundTransparent();
+			p->SetBackground(false);
 
 			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f,0);
 			label->Anchor().Left(Distance::GameWindow( 0.1f ));
