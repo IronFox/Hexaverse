@@ -235,10 +235,18 @@ namespace HUD
 					window->SetWidth(0.75f);
 					
 					PPanel factionBack = AddPanel("Factions/Alliances");
+					factionBack->SetCutCorners(M::Quad<bool>(true,false,true,true));
 					PPanel chatBack = AddPanel("Chat History");
+					chatBack->SetCutCorners(false);
 					chatInput = AddPanel("");
+					chatInput->SetCutCorners(false);
+					chatInput->SetEdges(false);
+					chatInput->SetBackground(false);
+					chatInput->SetAutomaticHeight(true);
 					buttons = AddPanel("");
-
+					buttons->SetEdges(false);
+					buttons->SetBackground(false);
+					window->SetAutoHeightSpacing(0.01f);
 					
 					{
 						chatHistory.reset(new Panel{});
@@ -258,14 +266,17 @@ namespace HUD
 						PButton close{new Button{"Close",Hide}};
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
+						close->SetCutCorners(M::Quad<bool>(true,true,true,false));
 						buttons->AddComponent(close,CLOCATION);
 						close->Anchor().GetVAxis().AnchorUpperUnknown();
 					}
 
 					{
 						PButton filter = std::make_shared<Button>("All");
-						filter->LockToIdealHeight();
+						filter->LockToIdealHeight(false);
 						filter->LockToIdealWidth();
+						filter->Anchor().FillVertically();
+						filter->SetCutCorners(false);
 						WButton wFilter = filter;
 						static bool sendToAlliance = false;
 
@@ -281,7 +292,7 @@ namespace HUD
 
 						});
 
-						chatMessage.reset(new Input{});
+						chatMessage = std::make_shared<Input>();
 						chatMessage->SetAllowedAlphabet(Network::allowedChatCharacters);
 						PButton send{new Button{"Send",[](){
 							if (sendToAlliance)
@@ -296,9 +307,11 @@ namespace HUD
 								Hide();
 						};
 						send->SetVerticalPadding(0.5f);
-						send->Anchor().CenterVertically().Right(0.01f);
+						//send->Anchor().CenterVertically().Right(0.01f);
 						send->LockToIdealWidth();
-						send->LockToIdealHeight();
+						send->LockToIdealHeight(false);
+						send->Anchor().FillVertically().Right();
+						send->SetCutCorners(false);
 						chatMessage->Anchor().Top().FillHBetween(filter,send);
 						chatInput->AddComponent(filter,CLOCATION);
 						chatInput->AddComponent(send,CLOCATION);

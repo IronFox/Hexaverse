@@ -819,6 +819,7 @@ namespace Component
 		virtual StringRef	GetTextRef();
 		virtual float		GetContentHeight() const override;
 	public:
+		/**/				BaseInput();
 		void				Focus() {SetInputActive(IsActive());}
 		bool				IsFocused() const;
 

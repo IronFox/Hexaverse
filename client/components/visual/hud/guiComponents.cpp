@@ -2258,6 +2258,13 @@ namespace Component
 
 
 
+	/**/				BaseInput::BaseInput()
+	{
+		SetCutCorners(false);
+		SetEdges(false);
+		SetBackgroundTone(GetBackgroundTone() * 0.5f);
+	}
+
 	/*virtual override*/ float			BaseInput::GetContentHeight() const
 	{
 		textout.PushState();
