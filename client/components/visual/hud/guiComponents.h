@@ -381,10 +381,16 @@ namespace Component
 		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
 		void			SetShadow(bool shade) {if (shade != shadow) {shadow = shade; recompileShadow = true;}}
 
-		void			SetEdgeColor(const float4&edgeColor)	{renderEdges = true; this->edgeColor = edgeColor;}
-		void			SetBackgroundColor(const float4&backgroundColor) {SetBackground(true); this->backgroundColor = backgroundColor;}
+		void			SetEdgeColor(const float4&edgeColor)	{renderEdges = edgeColor.a > 0; this->edgeColor = edgeColor;}
+		void			SetEdgeOpacity(float opacity) {renderEdges = opacity > 0; edgeColor.a = opacity;}
+		float			GetEdgeOpacity() const {return edgeColor.a;}
+		const float4&	GetEdgeColor() const {return edgeColor;}
+		void			SetBackgroundColor(const float4&backgroundColor) {SetBackground(backgroundColor.a > 0); this->backgroundColor = backgroundColor;}
+		void			SetBackgroundOpacity(float opacity) {SetBackground(opacity > 0); backgroundColor.a = opacity;}
+		float			GetBackgroundOpacity() const {return backgroundColor.a;}
 		void			SetBackgroundTone(const float3&backgroundColor) {SetBackground(true); this->backgroundColor.rgb = backgroundColor;}
-		void			SetOpacity(float opacity) {SetBackground(true); this->bottomOpacity = this->topOpacity = opacity;}
+		float3			GetBackgroundTone() {return backgroundColor.rgb;}
+		void			SetOpacity(float opacity) {SetBackground(opacity > 0); this->bottomOpacity = this->topOpacity = opacity;}
 		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = top; this->topOpacity = bottom;}
 		void			SetShadow(const float4&tint/*, bool blurBack*/) {SetShadow(true); shadowTint = tint; /*blurBackground = blurBack;*/}
 
@@ -1018,17 +1024,21 @@ namespace Component
 		bool			alwaysDown = false;
 		bool			flipWhenAlwaysDown = true;
 
+		void			Setup();
+
 	protected:
 		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
 
 	public:
 		/**/			Button()
 		{
+			Setup();
 			SetText("[-]");
 		}
 
 		/**/			Button(const String&text, std::function<void()> onPress = std::function<void()>(), std::function<bool()> check = std::function<bool()>() )
 		{
+			Setup();
 			this->onPress = onPress;
 			this->check = check;
 			SetText(text);

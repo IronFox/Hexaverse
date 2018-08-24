@@ -1590,7 +1590,13 @@ namespace Component
 	Slider::Slider()
 	{
 		slider.SetBackground(true);
-		slider.SetEdges(true);
+		slider.SetEdges(false);
+		slider.SetCutCorners(false);
+		slider.SetBackgroundTone((float3)0.6f);
+		Decoration::SetEdges(false);
+		Decoration::SetBackground(true);
+		Decoration::SetCutCorners(false);
+		Decoration::SetBackgroundTone((float3)0.1f);
 	}
 
 
@@ -1605,7 +1611,7 @@ namespace Component
 		const float right = rect.x.max;
 
 		const auto child = Decoration::Render(relativeMouse,false,false,IsEnabled(),ctx);
-		//barBack = M::Rect<>(left,bottom,right,top);
+		barBack = M::Rect<>(left,bottom,right,top);
 		//SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
 		//SurfaceRenderer::Rasterize(barBack);
 
@@ -3770,6 +3776,12 @@ namespace Component
 
 		lines.Bake();
 		surface.Bake();
+	}
+
+	void Button::Setup()
+	{
+		Super::SetEdges(false);
+		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
 	}
 
 
