@@ -54,8 +54,8 @@ float4 psMain(V2P input) : SV_TARGET
 	float2 delta = MouseAt - input.world;
 	rs.rgb *= 0.8 + 0.3 * (1.0 / (1.0 + 50.0 * dot(delta,delta)));
 	
-	rs.rgb = lerp(tex.rgb,rs.rgb,rs.a);
-	
+	rs.rgb = lerp(tex.rgb,rs.rgb*max(1.0,rs.a),saturate(rs.a));
+	rs.a = 1.0;
 	return rs;
 	//return float4(input.uv,1,1);
 }
