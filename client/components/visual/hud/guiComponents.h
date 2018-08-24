@@ -1420,7 +1420,7 @@ namespace Component
 		}
 		void			RecomputeOrder(AnchorAxis);
 	public:
-		/**/			Panel()	{Anchor().FillHorizontally().Top();}
+		/**/			Panel()	{Anchor().FillHorizontally().Top(); Decoration::SetEdges(false);}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}
