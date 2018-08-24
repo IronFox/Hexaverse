@@ -52,23 +52,16 @@ namespace Menu
 			},
 			check
 		));
-		Super::RemoveComponent(hintLabel);
-		if (Super::CountComponents() > 1)
+		if (mainPanel->CountComponents() > 0)
 		{
-			//if (Super::CountComponents() > 2)
-				To<HUD::Component::Button>::Cast( Super::GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,false));
-			//else
-				//To<HUD::Component::Button>::Cast( Super::GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,true));
+			To<HUD::Component::Button>::Cast(mainPanel->GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,false));
 			button->SetCutCorners(M::Quad<bool>(true,true,true,false));
 		}
-		Super::AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
-		if (hintLabel)
-			Super::AnchorBelowPrevious(CLOCATION, hintLabel,0.015f,0.015f);
+		mainPanel->AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
 		button->SetBackgroundTone((float3)0.6f);
 		button->SetBackgroundOpacity(0.9f);
-		button->Anchor().FillHorizontally(0.005f,0.005f);
 		return button;
 	}
 
@@ -78,11 +71,10 @@ namespace Menu
 		Super::ClearComponents();
 		Super::SetEdges(false);
 		Super::SetBackgroundOpacity(0.65f);
-		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.2f);
+		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
 		hintLabel.reset();
 		myTitle = title;
 		Super::Anchor().CenterHorizontally(initialAbsoluteWidth);
-		//Super::SetBackground(false);
 
 		if (title.IsNotEmpty())
 		{
@@ -90,13 +82,27 @@ namespace Menu
 			label->SetText(title);
 			label->SetVerticalPadding( 0.1f );
 			label->SetBackground(true);
-			Super::AnchorBelowPrevious(CLOCATION,label,0.015f,0.005f);
-			label->Anchor().FillHorizontally(0.005f,0.005f);
+			Super::AnchorBelowPrevious(CLOCATION,label,0.005f,0.005f);
 			label->SetCutCorners(M::Quad<bool>(true,false,true,true));
 			label->SetVerticalPadding(0.2f,0);
 			label->SetBackgroundTone((float3)0.75f);
 			label->SetBackgroundOpacity(0.9f);
 		}
+
+		if (mainPanel)
+			mainPanel->ClearComponents();
+		else
+		{
+			mainPanel.reset(new HUD::Component::Panel());
+			mainPanel->SetEdges(false);
+			mainPanel->SetBackground(false);
+			mainPanel->SetAutomaticHeight(true);
+			mainPanel->SetMaxAutoHeight(0.5f);
+		}
+
+		Super::AnchorBelowPrevious(CLOCATION,mainPanel,0.005f,0.005f);
+
+
 
 		if (escapeCloses)
 		{
@@ -104,7 +110,7 @@ namespace Menu
 			hintLabel->SetLocalFontScale(0.75f);
 			hintLabel->SetText("Press Escape to close");
 			hintLabel->SetVerticalPadding( 0.1f );
-			Super::AnchorBelowPrevious(CLOCATION,hintLabel,0.015f,0.f);
+			Super::AnchorBelowPrevious(CLOCATION,hintLabel,0.005f,0.f);
 		}
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
 	}

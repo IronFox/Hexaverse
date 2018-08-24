@@ -1728,10 +1728,17 @@ namespace Component
 
 
 
-
-	void	Panel::TScrollbar::Render( const Decoration::Context&ctx, const M::Rect<>&rect )
+	Panel::TScrollbar::TScrollbar()
 	{
-		#if 0
+		decoration.SetEdges(false);
+		decoration.SetCutCorners(false);
+		decoration.SetBackgroundTone(decoration.GetBackgroundTone() * 1.5f);
+	}
+
+
+
+	void	Panel::TScrollbar::Render( const float2&relativeMouse, const Decoration::Context&ctx, const M::Rect<>&rect )
+	{
 		targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
 		float speed = M::Max(1.f,fabs(targetViewTop - viewTop))*2.f;
 		if (targetViewTop > viewTop)
@@ -1754,18 +1761,21 @@ namespace Component
 		M::Rect<> bottomButton(left,bottom,right,bottom + buttonHeight);
 
 		outline = M::Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
-		SurfaceRenderer::SetColor(float4(0,0,0,0.9 * opacity));
-		SurfaceRenderer::Rasterize(outline);
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9 * ctx.opacity));
+		//SurfaceRenderer::Rasterize(outline);
 
 		bar = M::Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
-		RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
-		RenderBorder(bar,float3(1),true,opacity,opacity);
+
+		decoration.UpdateLocation(bar);
+		decoration.Render(relativeMouse,barContainsMouse,dragging,true,ctx);
+
+		//RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
+		//RenderBorder(bar,float3(1),true,opacity,opacity);
 
 		up->SetLocation(topButton);
-		up->Render(opacity);
+		up->Render(ctx);
 		down->SetLocation(bottomButton);
-		down->Render(opacity);
-		#endif /*0*/
+		down->Render(ctx);
 	}
 
 
@@ -1881,6 +1891,8 @@ namespace Component
 				targetViewTop += viewSize;
 				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
 			}));
+			up->SetCutCorners(false);
+			down->SetCutCorners(false);
 			up->SetActive(p->IsActive());
 			down->SetActive(p->IsActive());
 		}
@@ -1937,7 +1949,7 @@ namespace Component
 		const auto chld = Super::Render(ctx); 
 		if (vscroll.visible)
 		{
-			vscroll.Render(ctx, rect);
+			vscroll.Render(this->relativeMouse, ctx, rect);
 			Detail::PushLoadView(rect,float2(0,-vscroll.viewTop));
 		}
 		else

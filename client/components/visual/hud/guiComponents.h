@@ -1339,6 +1339,7 @@ namespace Component
 
 		struct TScrollbar
 		{
+			Decoration	decoration;
 			bool		visible=false;
 			float		scrollMax=1.f;
 			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
@@ -1352,6 +1353,7 @@ namespace Component
 			bool		mouseDown = false,scrollDownOnClick =false;
 			float		dragRelative = 0;
 
+			/**/		TScrollbar();
 			void		ScrollToTop();
 			void		ScrollToBottom();
 			PComponent	OnMouseDown();
@@ -1359,7 +1361,7 @@ namespace Component
 			void		OnMouseUp();
 			void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const M::Rect<>&rect);
-			void		Render(const Decoration::Context&ctx,const M::Rect<>&rect);
+			void		Render(const float2&relativeMouse, const Decoration::Context&ctx,const M::Rect<>&rect);
 			float		GetOffset() const {return visible ? -viewTop : 0;}
 
 			static float	GetPixelWidth();
