@@ -1287,7 +1287,7 @@ namespace Component
 			{
 				recompileEdges = false;
 
-
+				const auto cut = includeEdges && cutCorners;
 				static Buffer0<index_t> indexes, outIndexes;
 				for (index_t i = 0; i < 4; i++)
 				{
@@ -1295,8 +1295,8 @@ namespace Component
 					{
 						auto outerShape = Shape(location,0,false,i);
 						auto innerShape = Shape(location,-edgeWidth,false,i);
-						outerShape.CutCorners(includeEdges && cutCorners,cornerSize);
-						innerShape.CutCorners(includeEdges && cutCorners,cornerSize-edgeWidth);
+						outerShape.CutCorners(cut,cornerSize);
+						innerShape.CutCorners(cut,cornerSize-edgeWidth);
 						Bakery::SetVOffset();
 						foreach (outerShape.corners,c)
 							Bakery::Vertex(*c);
@@ -1306,10 +1306,10 @@ namespace Component
 							Bakery::Triangle(0,j,(j+1));
 					}
 				//	if (false)
-					if (includeEdges.value[i] && includeEdges.value[(i+1)%4])
+					if (cut.value[i] && cut.value[(i+1)%4])
 					{
 						auto shape = Shape(location,0,renderEdges);
-						shape.CutCorners(includeEdges && cutCorners,cornerSize);
+						shape.CutCorners(cut,cornerSize);
 						shape.CutCorner(i,Detail::ViewPortAspect(),cornerSize+edgeWidth*2.f,true);
 						Bakery::Include(shape);
 					}
