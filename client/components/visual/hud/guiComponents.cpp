@@ -821,6 +821,7 @@ namespace Component
 			shader;
 		DX11::InstructionBlock16
 			shrinkShader,
+			blend,
 			hBlur,
 			vBlur;
 		DX11::VBO	quadVBO;
@@ -835,6 +836,7 @@ namespace Component
 
 		DX11::ObjectBuffer<float2>	mouseAt;
 		DX11::ObjectBuffer<float2>	shrinkPixelScale;
+		DX11::ObjectBuffer<float>	blurOpacity;
 
 		bool	backgroundChanged = true;
 		float	backgroundOpacity = 1.f;
@@ -847,7 +849,7 @@ namespace Component
 			vBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
 		}
 
-		void	CopyBackground()
+		void	CopyBackground(float opacity)
 		{
 			if (!backgroundChanged)
 				return;
@@ -871,10 +873,20 @@ namespace Component
 			vBlur.quickSlots.First() = hBlurredTarget.GetColorTarget();
 			display.TargetFBO(vBlurredTarget);
 				display.Render(vBlur);
+			//display.TargetBackbuffer();
+
+			display.StoreRendererState();
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+				blurOpacity.Update(opacity);
+				blend.quickSlots.First() = vBlurredTarget.GetColorTarget();
+				display.TargetFBO(backbufferCopy);
+					display.Render(blend);
+			display.RestoreRendererState();
 			display.TargetBackbuffer();
 
 
-			backgroundTexture = vBlurredTarget.GetColorTarget();
+
+			backgroundTexture = backbufferCopy.GetColorTarget();
 			
 
 		}
@@ -1208,8 +1220,8 @@ namespace Component
 
 		display.StoreRendererState();
 			display.SetBlendMode(Engine::BlendMode::None);
-			CopyBackground();
-
+			CopyBackground(ctx.opacity);
+			
 		if (shadow)
 		{
 			topColor.Update(float4(shadowTint.rgb,shadowTint.a * ctx.opacity));
@@ -1272,7 +1284,7 @@ namespace Component
 
 		if (renderEdges)
 		{
-			CopyBackground();
+			CopyBackground(ctx.opacity);
 			{
 				auto edge = edgeColor;
 				if (lit)
@@ -1389,6 +1401,7 @@ namespace Component
 		mouseAt.Create(float2());
 		Detail::viewportVector.Create(float4());
 		shrinkPixelScale.Create(float2());
+		blurOpacity.Create(0);
 
 		DecorationDetails::SignalScreenResize();
 
@@ -1476,6 +1489,23 @@ namespace Component
 			vBlur.SetTriangles();
 			vBlur.vbo = quadVBO;
 			vBlur.ibo = quadIBO;
+		}
+		{
+			blend.quickSlots.SetSize(1);
+			blend.binding = shrinkShader.binding;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(blurOpacity,"BlurOpacity"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Linear,1,"BackgroundSampler"),
+			};
+
+
+			blend.shader.LoadFromFile("shaders/guiBackgroundBlend.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			blend.UpdateLayout();
+			blend.SetTriangles();
+			blend.vbo = quadVBO;
+			blend.ibo = quadIBO;
 		}
 	}
 
