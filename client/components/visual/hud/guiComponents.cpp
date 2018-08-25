@@ -1347,6 +1347,12 @@ namespace Component
 		return (renderEdges && includeEdges.top ? edgeWidth : 0) + (renderEdges && includeEdges.bottom ? edgeWidth : 0);
 	}
 
+	float			Decoration::GetClientWidthLoss() const
+	{
+		using namespace DecorationDetails;
+		return (renderEdges && includeEdges.left ? edgeWidth : 0) + (renderEdges && includeEdges.right ? edgeWidth : 0);
+	}
+
 	M::Rect<>		Decoration::GetClientArea() const
 	{
 		if (!renderEdges)
@@ -2592,7 +2598,7 @@ namespace Component
 			w = std::max(w,w1);
 		}
 		w *= 1.01f;
-		w += textout.GetScaledWidth('X') * (padding.left + padding.right);
+		w += textout.GetScaledWidth('X') * (padding.left + padding.right) + Decoration::GetClientWidthLoss();
 		textout.PopState();
 		return w;
 	}

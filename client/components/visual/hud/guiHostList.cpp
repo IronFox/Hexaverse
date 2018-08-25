@@ -435,6 +435,14 @@ namespace HUD{namespace HostList{
 
 	PPanel	serverListPanel;
 
+	void	ConfigureButton( const HUD::Component::PButton&b )
+	{
+		b->SetEdges(true);
+		b->LockToIdealWidth();
+		b->SetEdgeOpacity(0.7f);
+		b->SetEdgeVisibility(b->GetCutCorners());
+	}
+
 	void	Update( )
 	{
 
@@ -540,6 +548,7 @@ namespace HUD{namespace HostList{
 			auto&info = Network::servers[i];
 
 			PButtonPanel p = ConstructPanel(info);
+			p->SetBackgroundTone((float3)0.3f);
 
 			p->Anchor().BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ));
 			serverListPanel->AddComponent( p ,CLOCATION);
@@ -594,6 +603,13 @@ namespace HUD{namespace HostList{
 				mod.BeneathLastOf(serverChoice, Distance::GameWindow( 0.025f )).Left();
 			}
 			b->LockToIdealWidth();
+			{
+				auto cp = b->GetPadding();
+				cp.left = 3;
+				b->SetPadding(cp);
+			}
+			b->SetCutCorners(M::Quad<bool>(true,true,false,true));
+			ConfigureButton(b);
 
 			serverChoice->AddComponent( b ,CLOCATION);
 			
@@ -607,6 +623,8 @@ namespace HUD{namespace HostList{
 			bool running = ServerProcess::IsRunning();
 			stop->SetEnabled(running);
 			start->SetEnabled(!running);
+			start->SetCutCorners(M::Quad<bool>(false,true,false,true));
+			stop->SetCutCorners(M::Quad<bool>(false,true,true,true));
 			WButton wstart = start;
 			WButton wstop = stop;
 			start->SetTriggerFunction([wstart,wstop]()
@@ -641,14 +659,21 @@ namespace HUD{namespace HostList{
 				auto mod = start->Anchor();
 
 				mod.GetVAxis() = addHostButton->GetAnchorConfig().GetVAxis();
-				mod.RightOf(addHostButton,0.02f);
+				mod.RightOf(addHostButton,0.01f);
 			}
 			{
 				auto mod = stop->Anchor();
 				mod.GetVAxis() = addHostButton->GetAnchorConfig().GetVAxis();
-				mod.RightOf(start,0.02f);
+				mod.RightOf(start,0.01f);
 			}
 
+			{
+				auto cp = stop->GetPadding();
+				cp.right = 3;
+				stop->SetPadding(cp);
+			}
+			ConfigureButton(start);
+			ConfigureButton(stop);
 			serverChoice->AddComponent(start,CLOCATION);
 			serverChoice->AddComponent(stop,CLOCATION);
 		}

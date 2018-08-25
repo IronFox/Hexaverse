@@ -112,6 +112,8 @@ namespace Menu
 			hintLabel->SetVerticalPadding( 0.1f );
 			Super::AnchorBelowPrevious(CLOCATION,hintLabel,0.005f,0.f);
 		}
+		else
+			mainPanel->SetAutoHeightSpacing(0.01f);
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
 	}
 

@@ -376,6 +376,7 @@ namespace Component
 		void			AssertLocationMatch(const M::Rect<>&rect) const {ASSERT_EQUAL__(location,rect);}
 
 		void			SetCutCorners(const M::Quad<bool>&edges) {if (edges != this->cutCorners) {cutCorners = edges; recompileEdges=true;}}
+		M::Quad<bool>	GetCutCorners() const {return cutCorners;}
 		void			SetEdgeVisibility(const M::Quad<bool>&edges) {if (edges != this->includeEdges) {includeEdges = edges; recompileEdges=true;}}
 		void			SetEdges(bool renderEdges) {this->renderEdges = renderEdges;}
 		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
@@ -418,6 +419,7 @@ namespace Component
 		*/
 		M::Rect<>		GetClientArea() const;
 		float			GetClientHeightLoss() const;
+		float			GetClientWidthLoss() const;
 
 		static void		StaticCreate();
 
