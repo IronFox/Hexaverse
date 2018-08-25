@@ -548,7 +548,7 @@ namespace HUD{namespace HostList{
 			auto&info = Network::servers[i];
 
 			PButtonPanel p = ConstructPanel(info);
-			p->SetBackgroundTone((float3)0.3f);
+			p->SetBackgroundTone((float3)0.5f);
 
 			p->Anchor().BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ));
 			serverListPanel->AddComponent( p ,CLOCATION);

@@ -60,8 +60,13 @@ namespace Menu
 		mainPanel->AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
-		button->SetBackgroundTone((float3)0.6f);
+		button->SetBackgroundTone((float3)0.7f);
 		button->SetBackgroundOpacity(0.9f);
+		button->SetEdgeColor(float4(button->GetBackgroundTone(),0.95f));
+		button->SetEdgeOpacity(1.f);
+		button->SetEdges(true);
+		button->SetVerticalPadding(0.25f);
+		button->SetEnabledTextAlwaysLit(true);
 		return button;
 	}
 
@@ -87,6 +92,7 @@ namespace Menu
 			label->SetVerticalPadding(0.2f,0);
 			label->SetBackgroundTone((float3)0.75f);
 			label->SetBackgroundOpacity(0.9f);
+			label->SetEnabledTextAlwaysLit(true);
 		}
 
 		if (mainPanel)

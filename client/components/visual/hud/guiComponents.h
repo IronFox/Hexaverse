@@ -882,6 +882,7 @@ namespace Component
 		float			zoom = 1.f;
 		bool			widthLockedToIdeal=false;
 		bool			heightLockedToIdeal=true;
+		bool			enabledAlwaysLit = false;
 		M::Quad<float>	padding;	//Vertical spacing is measured in multiples of line-heights, horizontal in multiples of X-letter-widths
 
 		bool			UpdateIdealWidth();
@@ -948,7 +949,10 @@ namespace Component
 		void			LockToIdealHeight(bool doLock=true)	{DBG_ASSERT__(!HeightChangesDynamically()); heightLockedToIdeal = doLock; if (doLock) SetHeight(textHeight);}
 		bool			IsLockedToIdealHeight() const {return heightLockedToIdeal;}
 
-		virtual void		SetAnchorConfig(const AnchorConfig&cfg)	override 
+		void			SetEnabledTextAlwaysLit(bool lit) {enabledAlwaysLit = lit;}
+		bool			GetEnabledTextAlwaysLit() const {return enabledAlwaysLit;}
+
+		virtual void	SetAnchorConfig(const AnchorConfig&cfg)	override 
 		{
 			Super::SetAnchorConfig(cfg);
 			if (WidthChangesDynamically())

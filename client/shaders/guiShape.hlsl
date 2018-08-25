@@ -52,9 +52,15 @@ float4 psMain(V2P input) : SV_TARGET
 	
 	float4 rs = lerp(BottomColor,TopColor,input.uv.y);
 	float2 delta = MouseAt - input.world;
+	rs.a *= smoothstep(0.0,1.0,(0.5 - abs(0.5 - input.uv.x)*0.5)*2.0);
 	rs.rgb *= 0.8 + 0.3 * (1.0 / (1.0 + 50.0 * dot(delta,delta)));
 	
-	rs.rgb = lerp(tex.rgb,rs.rgb*max(1.0,rs.a),saturate(rs.a));
+	rs.a = saturate(rs.a);
+	rs.rgb *= max(1.0,rs.a);
+	
+	tex.rgb *= (1.0 - rs.a) * (1.0 - rs.a);
+	rs.rgb = lerp(tex.rgb,rs.rgb,rs.a);
+	//rs.rgb = tex.rgb * (1.0 - rs.a) + rs.rgb;
 	rs.a = 1.0;
 	return rs;
 	//return float4(input.uv,1,1);

@@ -2725,6 +2725,7 @@ namespace Component
 
 	void TextField::RenderText( const Decoration::Context&ctx, bool lit )
 	{
+		lit |= enabledAlwaysLit;
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
 
@@ -2740,7 +2741,7 @@ namespace Component
 
 		float4 baseColor;
 		if (IsEnabled())
-			baseColor = (lit ? float4(1,1,1,ctx.opacity) : float4(0.75,0.75,0.75,ctx.opacity));
+			baseColor = (lit  ? float4(1,1,1,ctx.opacity) : float4(0.75,0.75,0.75,ctx.opacity));
 		else
 			baseColor = float4(0.5,0.5,0.5,ctx.opacity);
 
