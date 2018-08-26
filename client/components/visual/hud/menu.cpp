@@ -62,8 +62,6 @@ namespace Menu
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
 		button->SetBackgroundTone((float3)0.7f);
 		button->SetBackgroundOpacity(0.8f);
-		button->SetEdgeColor(float4(button->GetBackgroundTone(),0.95f));
-		button->SetEdgeOpacity(1.f);
 		button->SetEdges(true);
 		button->SetVerticalPadding(0.25f);
 		button->SetEnabledTextAlwaysLit(true);

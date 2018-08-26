@@ -60,7 +60,8 @@ namespace HUD
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
 				rs->SetEdges(true);
-				rs->SetBackground(false);
+				rs->SetBackgroundOpacity(0.7f);
+				rs->SetBackgroundTone((float3)0.6f);
 
 				if (labelText.IsNotEmpty())
 				{

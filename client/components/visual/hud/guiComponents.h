@@ -382,10 +382,6 @@ namespace Component
 		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
 		void			SetShadow(bool shade) {if (shade != shadow) {shadow = shade; recompileShadow = true;}}
 
-		void			SetEdgeColor(const float4&edgeColor)	{renderEdges = edgeColor.a > 0; this->edgeColor = edgeColor;}
-		void			SetEdgeOpacity(float opacity) {renderEdges = opacity > 0; edgeColor.a = opacity;}
-		float			GetEdgeOpacity() const {return edgeColor.a;}
-		const float4&	GetEdgeColor() const {return edgeColor;}
 		void			SetBackgroundColor(const float4&backgroundColor) {SetBackground(backgroundColor.a > 0); this->backgroundColor = backgroundColor;}
 		void			SetBackgroundOpacity(float opacity) {SetBackground(opacity > 0); backgroundColor.a = opacity;}
 		float			GetBackgroundOpacity() const {return backgroundColor.a;}
@@ -437,8 +433,7 @@ namespace Component
 		M::Quad<bool>				includeEdges = true,
 									cutCorners = true;
 		float4						shadowTint = float4(1,1,1,0.5f);
-		float4						backgroundColor = float4(float3(0.25f),0.8f),
-									edgeColor = float4(float3(0.6f),1.f);
+		float4						backgroundColor = float4(float3(0.25f),0.8f);
 		float						topOpacity=1.f,
 									bottomOpacity=1.f;
 
@@ -976,17 +971,16 @@ namespace Component
 	class Label : public TextField
 	{
 		typedef TextField	Super;
+		void			Setup();
 
 	public:
 		/**/			Label()
 		{
-			Decoration::SetBackground(false);
-			Decoration::SetEdges(false);
+			Setup();
 		}
 		/**/			Label(const String&text, float scale=1.f)
 		{
-			Decoration::SetBackground(false);
-			Decoration::SetEdges(false);
+			Setup();
 			Super::SetLocalFontScale(scale);
 			SetText(text);
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
@@ -1551,12 +1545,13 @@ namespace Component
 		bool					active = false;
 		int						lastLitTriState = -1;
 
+		void					Setup();
 	protected:
 		virtual bool	ClientIsLit() const override {return active && IsEnabled() && ContainsMouse();}
 		bool	OnComponentsChanged() {lastLitTriState = -1; return true;};
 
 	public:
-		/**/			ButtonPanel()	{}
+		/**/			ButtonPanel()	{Setup();}
 
 		virtual void	SetActive(bool isActive) override
 		{

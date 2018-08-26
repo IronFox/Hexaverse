@@ -439,7 +439,6 @@ namespace HUD{namespace HostList{
 	{
 		b->SetEdges(true);
 		b->LockToIdealWidth();
-		b->SetEdgeOpacity(0.7f);
 		b->SetEdgeVisibility(b->GetCutCorners());
 	}
 

@@ -1238,7 +1238,7 @@ namespace Component
 
 
 				auto shape = Shape(location,shadowExt);
-				shape.CutCorners(includeEdges && cutCorners,cornerSize);// * (1.4142136f * 1.4142136f));
+				shape.CutCorners(includeEdges && cutCorners,cornerSize*1.1f);// * (1.4142136f * 1.4142136f));
 
 				foreach (shape.corners,c)
 					Bakery::Vertex(*c);
@@ -1292,8 +1292,11 @@ namespace Component
 		{
 			CopyBackground(ctx.opacity);
 			{
-				auto edge = edgeColor;
+				float4 edge;
 				edge.rgb = backgroundColor.rgb;
+				//edge.a = std::min(1.f,backgroundColor.a * 1.2f);
+				edge.a = std::min(1.f,backgroundColor.a + 0.1f);
+
 				if (lit)
 					edge *= 1.2f;
 				if (!enabled)
@@ -3848,17 +3851,31 @@ namespace Component
 		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
 	}
 
+	void ButtonPanel::Setup()
+	{
+		Super::SetBackgroundTone((float3)0.7f);
+		Super::SetBackgroundOpacity(0.8f);
+		Super::SetEdges(true);
+	}
+
+
 	void Button::Setup()
 	{
 		//Super::SetEdges(false);
 		//Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
 		Super::SetBackgroundTone((float3)0.7f);
 		Super::SetBackgroundOpacity(0.8f);
-		Super::SetEdgeColor(float4(Super::GetBackgroundTone(),0.95f));
 		//Super::SetEdgeOpacity(1.f);
 		Super::SetEdges(true);
-		Super::SetEnabledTextAlwaysLit(true);
+		//Super::SetEnabledTextAlwaysLit(true);
 		Super::SetVerticalPadding(0.25f);
+	}
+
+	void Label::Setup()
+	{
+		Decoration::SetBackground(false);
+		Decoration::SetEdges(false);
+		Super::SetEnabledTextAlwaysLit(true);
 	}
 
 
