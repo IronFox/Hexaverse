@@ -89,7 +89,7 @@ namespace HUD{namespace HostList{
 				cnt ++;
 				PLabel label{new Label{line,0.7f}};
 				label->Anchor().FillHorizontally();
-				label->alignCenter = false;
+				label->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				label->SetColor(float4(1,1,1,0.6f));
 				label->SetVerticalPadding(0.01f);
 				changelog->AnchorBelowPrevious(CLOCATION,label,0,0);
@@ -104,7 +104,6 @@ namespace HUD{namespace HostList{
 
 		headerRow.reset(new Panel());
 		headerRow->FillHorizontally(0);
-		headerRow->Anchor().Top();
 		headerRow->SetAutomaticHeight(true);
 		headerRow->SetBackground(false);
 		
@@ -149,7 +148,7 @@ namespace HUD{namespace HostList{
 	PLabel	MakeHeaderLabel(const String&text, float zoom, index_t tabIndex)
 	{
 		PLabel label (new Label());
-		label->alignCenter = false;
+		label->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 		label->Anchor().Top(Distance::GameWindow( 0.01f )).Left( Distance::GameWindow(0.01f) );
 		label->SetWidth(VisualTabWidth[std::min(tabIndex,ARRAYSIZE(VisualTabWidth))]);
 		label->SetText(text);

@@ -865,6 +865,9 @@ namespace Component
 		void				WipeInput();
 	};
 
+	CONSTRUCT_ENUMERATION3(HorizontalTextAlign,Center, Left, Right);
+	CONSTRUCT_ENUMERATION3(VerticalTextAlign,Top, Center, Bottom);
+
 	class TextField : public Box
 	{
 	private:
@@ -910,9 +913,9 @@ namespace Component
 		void			ReWrap();
 	public:
 		typedef Box	Super;
+		typedef HorizontalTextAlign	HAlign;
+		typedef VerticalTextAlign	VAlign;
 
-		bool			alignCenter = true;
-		
 		/**/			TextField();
 
 		/**
@@ -925,6 +928,11 @@ namespace Component
 		void			ScaleVerticalPadding(float factor)			{padding.bottom *= factor; padding.top *= factor; ReWrapSetHeight();}
 		void			SetPadding(const M::Quad<float>&padding)		{this->padding = padding; if (this->widthLockedToIdeal) SetToIdealWidth(); ReWrapSetHeight();}
 		const M::Quad<float>&GetPadding() const {return padding;}
+		
+		void			SetAlign(VAlign align);
+		void			SetAlign(HAlign align);
+		HAlign			GetHorizontalTextAlign() const	{return hAlign;}
+		VAlign			GetVerticalTextAlign() const	{return vAlign;}
 
 		void			SetColor(const float4&color)	{this->color = color;}
 		void			SetColor(const float3&color, float alpha = 1.f)	{this->color.rgb = color; this->color.a = alpha;}
@@ -968,6 +976,9 @@ namespace Component
 
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
 		virtual Ctx		Render(const Decoration::Context&) override;
+	private:
+		HAlign			hAlign;
+		VAlign			vAlign;
 	};
 
 
@@ -1142,7 +1153,7 @@ namespace Component
 
 		void			Setup()
 		{
-			Super::alignCenter = false;
+			Super::SetAlign(HAlign::Left);
 			Super::ScaleVerticalPadding(0.5f);
 			Decoration::SetBackground(false);
 			Decoration::SetEdges(false);

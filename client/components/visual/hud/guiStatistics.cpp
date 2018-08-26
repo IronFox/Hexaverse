@@ -114,7 +114,7 @@ namespace HUD
 			static void AddLine(const String&line)
 			{
 				PLabel caption{new Label{line}};
-				caption->alignCenter = false;
+				caption->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				//caption->SetVerticalPadding(linePadding);
 				caption->SetPadding(0);
 				AddRow(caption);
@@ -127,7 +127,7 @@ namespace HUD
 				panel->SetAutomaticHeight(true);
 
 				PLabel prefixLabel{new Label{prefix+' '}};
-				prefixLabel->alignCenter = false;
+				prefixLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				prefixLabel->Anchor().Top().Left();
 				prefixLabel->LockToIdealHeight();
 				prefixLabel->LockToIdealWidth();
@@ -137,7 +137,7 @@ namespace HUD
 				panel->AddComponent(prefixLabel,CLOCATION);
 			
 				PLabel factionLabel{new Label{f->GetName()}};
-				factionLabel->alignCenter = false;
+				factionLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				factionLabel->SetColor(f->color);
 				factionLabel->Anchor().Top().RightOf(prefixLabel);
 				//factionLabel->SetVerticalPadding(linePadding);
@@ -149,7 +149,7 @@ namespace HUD
 				{
 					PLabel postFixLabel{new Label{' '+postFix}};
 					postFixLabel->Anchor().Top().RightOf(factionLabel);
-					postFixLabel->alignCenter = false;
+					postFixLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 					//postFixLabel->SetVerticalPadding(linePadding);
 					postFixLabel->SetPadding(0.f);
 					postFixLabel->LockToIdealWidth();
@@ -165,7 +165,7 @@ namespace HUD
 				panel->SetAutomaticHeight(true);
 
 				PLabel prefixLabel{new Label{prefix+' '}};
-				prefixLabel->alignCenter = false;
+				prefixLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				prefixLabel->Anchor().Top().Left();
 				prefixLabel->LockToIdealHeight();
 				prefixLabel->LockToIdealWidth();
@@ -179,7 +179,7 @@ namespace HUD
 				a->VisitMembers([&last,panel](const Objects::PFaction&f)
 				{
 					PLabel factionLabel{new Label{f->GetName()+' '}};
-					factionLabel->alignCenter = false;
+					factionLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 					factionLabel->SetColor(f->color);
 					factionLabel->Anchor().Top().RightOf(last);
 					factionLabel->SetPadding(0.f);
@@ -193,7 +193,7 @@ namespace HUD
 				{
 					PLabel postFixLabel{new Label{postFix}};
 					postFixLabel->Anchor().Top().RightOf(last);
-					postFixLabel->alignCenter = false;
+					postFixLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 					//postFixLabel->SetVerticalPadding(linePadding);
 					postFixLabel->SetPadding(0.f);
 					postFixLabel->LockToIdealWidth();
@@ -320,7 +320,7 @@ namespace HUD
 					title += " (WINNER)";
 				PLabel caption{new Label{title,1.2f}};
 				caption->SetColor(f->color);
-				//caption->alignCenter = false;
+				//caption->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				statsPanel->AnchorBelowPrevious(CLOCATION,caption);
 			}
 
