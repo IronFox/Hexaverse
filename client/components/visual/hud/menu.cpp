@@ -175,7 +175,7 @@ namespace Menu
 
 
 		l->SetBackground(false);
-		l->alignCenter = false;
+		l->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 		l->Anchor().CenterVertically().Left(0,MinTextWidth);
 		c->Anchor().FillHorizontally(MinTextWidth,0.01f).CenterVertically();
 

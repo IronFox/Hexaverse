@@ -104,7 +104,7 @@ namespace HUD
 
 				nameLabel->SetWidth(0.15f);
 				nameLabel->Anchor().GetHAxis().AnchorLowerUnknown();
-				nameLabel->alignCenter = false;
+				nameLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				nameLabel->SetPadding(0.2f);
 				nameLabel->SetHorizontalPadding(1,1);
 				if (!faction->online)
@@ -203,7 +203,7 @@ namespace HUD
 			
 				statusLabel->SetPadding(0.2f);
 				//textLabel->Anchor().Top().Set(0);
-				statusLabel->alignCenter = false;
+				statusLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 
 				//timeLabel->fillBackground = true;
 				//senderLabel->fillBackground = true;
@@ -410,7 +410,7 @@ namespace HUD
 				//	:"   -    offline");
 
 				//d->textField->SetText( list );
-				//d->textField->alignCenter = false;
+				//d->textField->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				//d->textField->SetLocalFontScale(0.9f);
 				//d->ReLayout();
 
@@ -471,7 +471,7 @@ namespace HUD
 			PLabel timeLabel{new Label{timeStr,0.75f}},senderLabel,textLabel{new Label{msg}};
 			timeLabel->SetPadding(M::Quad<float>{0.5f,0,0.5f,0});
 			timeLabel->LockToIdealWidth();
-			//timeLabel->alignCenter = false;
+			//timeLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 			timeLabel->Anchor().GetVAxis().AnchorLowerUnknown();
 			timeLabel->Anchor().GetHAxis().AnchorUpperUnknown();
 			if (owner)
@@ -481,7 +481,7 @@ namespace HUD
 				senderLabel->LockToIdealWidth();
 				senderLabel->Anchor().GetHAxis().AnchorLowerUnknown();
 				//senderLabel->Anchor().Top().Set(0);
-				senderLabel->alignCenter = false;
+				senderLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				senderLabel->LockToIdealHeight();
 				senderLabel->SetPadding(0);
 				senderLabel->SetVerticalPadding(0.25f);
@@ -502,7 +502,7 @@ namespace HUD
 			textLabel->SetVerticalPadding(0.25f);
 			textLabel->Anchor().FillHBetween(senderLabel,timeLabel);
 			//textLabel->Anchor().Top().Set(0);
-			textLabel->alignCenter = false;
+			textLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 			textLabel->LockToIdealHeight();
 
 			//timeLabel->fillBackground = true;

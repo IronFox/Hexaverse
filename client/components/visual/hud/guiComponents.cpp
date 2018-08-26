@@ -2588,6 +2588,19 @@ namespace Component
 	}
 
 
+	void			TextField::SetAlign(VAlign align)
+	{
+		vAlign = align;
+
+	}
+
+	void			TextField::SetAlign(HAlign align)
+	{
+		hAlign = align;
+		ReWrap();
+	}
+
+
 	float			TextField::GetTotalFontScale() const
 	{
 		return zoom * Detail::textZoom;
@@ -2681,7 +2694,7 @@ namespace Component
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
 
-		Decoration::AssertLocationMatch(GetRect());
+		//Decoration::AssertLocationMatch(GetRect());
 		
 		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
 		const float rightPadding = textout.GetScaledWidth('X') * padding.right;
@@ -2722,7 +2735,7 @@ namespace Component
 								Wrap(raw,width,CharWidth,wrapped2);
 							}
 						#endif
-						ASSERT_LESS_OR_EQUAL__(accum,width);
+						//ASSERT_LESS_OR_EQUAL__(accum,width);
 					}
 			#endif
 			wrappedText.MoveAppendAll(wrapped);
@@ -2734,13 +2747,26 @@ namespace Component
 		const float y = -lineHeight*(padding.top);
 		for (index_t i = 0; i < lineAt.Count(); i++)
 		{
+			float fx;
+			switch (hAlign)
+			{
+				case HAlign::Center:
+					fx = center - textout.QueryScaledWidth(wrappedText[i])*0.5f;
+					break;
+				case HAlign::Left:
+					fx = leftPadding;
+					break;
+				case HAlign::Right:
+					fx = width - textout.QueryScaledWidth(wrappedText[i]) + leftPadding;
+					break;
+				default:
+					fx = 0;
+			}
+
+
+
 			lineAt[i] =
-				float2(
-					
-					(	alignCenter ? 
-						center - textout.QueryScaledWidth(wrappedText[i])*0.5f
-						:
-						leftPadding),
+				float2(fx,
 				y - lineHeight * (i));
 		}
 		textHeight = textout.GetScaledHeight() * (float(wrappedText.Count()) + padding.top + padding.bottom);
@@ -2772,7 +2798,17 @@ namespace Component
 		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
 		//float lineHeight = textout.GetScaledHeight();
 		const auto rect = Decoration::GetClientArea();
-		const float top = rect.y.max - (contextHeight - textHeight) * 0.5f;
+		float top = rect.y.max;
+		switch (vAlign)
+		{
+			case VAlign::Center:
+				top -= (contextHeight - textHeight) * 0.5f;
+				break;
+			case VAlign::Top:
+				break;
+			case VAlign::Bottom:
+				top -= (contextHeight - textHeight);
+		}
 		const float left = rect.x.min;
 
 		float4 baseColor;
@@ -3221,6 +3257,12 @@ namespace Component
 
 	}
 
+	void	TabBar::SetCornerStyle(CornerStyle style)
+	{
+		cornerStyle = style;
+		//todo: update existing tabs
+	}
+
 	
 	PButton			TabBar::AddTab(const String&caption)
 	{
@@ -3241,9 +3283,27 @@ namespace Component
 		}
 		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
-		tab->SetCutCorners({false,false,true,true});
+		switch (cornerStyle)
+		{
+			case CornerStyle::LeftAligned:
+				tab->SetCutCorners({false,false,true,true});
+			break;
+			case CornerStyle::Compact:
+			{
+				tab->SetCutCorners({!HasComponents(),false,true,true});
+				if (HasComponents())
+				{
+					auto b = To<Button>::Cast(GetLastChild());
+					auto c = b->GetCutCorners();
+					c.right = false;
+					b->SetCutCorners(c);
+				}
+			}
+			break;
+		}
 		tab->SetEdges(false);
-		tab->SetPadding({1,0.25f,4,0.25f});
+		tab->SetPadding({1.5f,0.25f,1.5f,0.25f});
+		tab->SetAlign(VerticalTextAlign::Top);
 
 		ConfigureInactive(tab);
 

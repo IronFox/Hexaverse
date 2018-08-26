@@ -865,6 +865,9 @@ namespace Component
 		void				WipeInput();
 	};
 
+	CONSTRUCT_ENUMERATION3(HorizontalTextAlign,Center, Left, Right);
+	CONSTRUCT_ENUMERATION3(VerticalTextAlign,Top, Center, Bottom);
+
 	class TextField : public Box
 	{
 	private:
@@ -910,9 +913,9 @@ namespace Component
 		void			ReWrap();
 	public:
 		typedef Box	Super;
+		typedef HorizontalTextAlign	HAlign;
+		typedef VerticalTextAlign	VAlign;
 
-		bool			alignCenter = true;
-		
 		/**/			TextField();
 
 		/**
@@ -925,6 +928,11 @@ namespace Component
 		void			ScaleVerticalPadding(float factor)			{padding.bottom *= factor; padding.top *= factor; ReWrapSetHeight();}
 		void			SetPadding(const M::Quad<float>&padding)		{this->padding = padding; if (this->widthLockedToIdeal) SetToIdealWidth(); ReWrapSetHeight();}
 		const M::Quad<float>&GetPadding() const {return padding;}
+		
+		void			SetAlign(VAlign align);
+		void			SetAlign(HAlign align);
+		HAlign			GetHorizontalTextAlign() const	{return hAlign;}
+		VAlign			GetVerticalTextAlign() const	{return vAlign;}
 
 		void			SetColor(const float4&color)	{this->color = color;}
 		void			SetColor(const float3&color, float alpha = 1.f)	{this->color.rgb = color; this->color.a = alpha;}
@@ -968,6 +976,9 @@ namespace Component
 
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
 		virtual Ctx		Render(const Decoration::Context&) override;
+	private:
+		HAlign			hAlign;
+		VAlign			vAlign;
 	};
 
 
@@ -1142,7 +1153,7 @@ namespace Component
 
 		void			Setup()
 		{
-			Super::alignCenter = false;
+			Super::SetAlign(HAlign::Left);
 			Super::ScaleVerticalPadding(0.5f);
 			Decoration::SetBackground(false);
 			Decoration::SetEdges(false);
@@ -1664,6 +1675,12 @@ namespace Component
 	public:
 		typedef std::function<void()>	FOnTabChange;
 
+		CONSTRUCT_ENUMERATION2(CornerStyle,
+			LeftAligned,
+			Compact
+		);
+
+
 		/**/			TabBar();
 		/**
 		Adds a new tab to the bar, to the right of the last added tab (if any).
@@ -1719,6 +1736,9 @@ namespace Component
 		float			GetActiveTopOpacity() const {return activeTopOpacity;}
 		void			SetInactiveOpacity(float op);
 		float			GetInactiveOpacity() const {return inactiveOpacity;}
+
+		CornerStyle		GetCornerStyle() const {return cornerStyle;}
+		void			SetCornerStyle(CornerStyle);
 	
 	protected:
 		virtual void	OnTabChange();
@@ -1736,6 +1756,7 @@ namespace Component
 		FOnTabChange	onTabChange;
 		PButton			active;
 		index_t			activeIndex = InvalidIndex;
+		CornerStyle		cornerStyle;
 
 		void			SetActiveTab(index_t, bool triggerCallback);
 	};

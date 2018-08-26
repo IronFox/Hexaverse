@@ -211,7 +211,7 @@ namespace Dialog
 					imageField->SetAnchorConfig(cfg);
 				}
 				textField->Anchor().FillHorizontally(HUD::Component::Distance::OfParentSize(0.405f),0).CenterVertically();
-				textField->alignCenter = false;
+				textField->SetAlign(HUD::Component::HorizontalTextAlign::Left);
 				textPanel->AddComponent(imageField,CLOCATION);
 			}
 
