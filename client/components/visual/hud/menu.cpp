@@ -347,7 +347,7 @@ namespace Menu
 			}
 		);
 
-		AddCheckBox(game,"Terrain Camera Intersection Correction (slow)",Camera::terrainIntersectionTest,[](bool enabled)
+		AddCheckBox(visual,"Terrain Camera Intersection Correction (slow)",Camera::terrainIntersectionTest,[](bool enabled)
 		{
 			bool old = Camera::terrainIntersectionTest;
 			if (old != enabled)
