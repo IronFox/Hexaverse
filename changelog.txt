@@ -3,6 +3,7 @@ v0.9.5
 	> Replaced 'EMP Zones On/Off' on-screen message with pressable button.
 	> Updated configuration mode on-screen title.
 	* Fixed rendering of Nexus structures in configuration mode.
+	* Fixed loading of ended save games.
 
 v0.9.4	[Aug 20 2018]
 	> Vehicle Plants can now be configured server-side to automatically spawn their production.

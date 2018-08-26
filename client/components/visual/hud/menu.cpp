@@ -700,7 +700,7 @@ namespace Menu
 	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
 	{
 		FileSystem::File f;
-		while (scan.NextFile(RuntimeConfig::savFileExtension,f))
+		while (scan.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
 		{
 			String path2 = path.IsNotEmpty() ? path +"/" : "";
 			auto&e = saves.Append();
