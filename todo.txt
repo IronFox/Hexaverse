@@ -199,6 +199,11 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+Interactive configuration mode:
+	button to toggle EMP zones on screen
+	fix selection of nexus units
+		disable status panel
+		disable resource panel
 add option to not mute sounds when window is deactivated
 attribution check (full author name, product name, license)
 done: wrap progress line (not actually wrapped, just 'Progress:\n...')

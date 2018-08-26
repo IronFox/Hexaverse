@@ -1,7 +1,18 @@
+v0.9.5
+	> Removed resource panel while configuration mode is active.
+	> Replaced 'EMP Zones On/Off' on-screen message with pressable button.
+	> Updated configuration mode on-screen title.
+	> Options are now tabbed.
+	> Revised component based GUI.
+	* Fixed rendering of Nexus structures in configuration mode.
+	* Fixed save game loading via client GUI.
+	* Fixed loading of ended save games.
+
 v0.9.4	[Aug 20 2018]
 	> Vehicle Plants can now be configured server-side to automatically spawn their production.
 	> Automatic mobile production deployment now takes hostile and ghost presences into account.
-	> Moving mobile units at a routing destination no longer cause routing to fail.
+	> Mobile moving units located at a routing destination no longer cause routing to fail.
+	* Fixed vertical position of server list changelog display.
 
 v0.9.3	[Aug 17 2018]
 	+ Added checkbox to configure whether sound should be muted when tabbed out.

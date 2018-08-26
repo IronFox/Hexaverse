@@ -279,6 +279,8 @@ namespace Objects
 	{
 		e->VisitSensors(e->location, [](const World::Sensor&sensor)
 		{
+			if (sensor.radius <= 0)
+				return;
 			auto&prim = selectionPrimitives.Append();
 			prim.tint = float4(1, 1, 0, 0.8f);
 

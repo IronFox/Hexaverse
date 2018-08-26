@@ -323,7 +323,7 @@ namespace Objects
 
 	/*virtual*/ int			WorldEntity::GetMaxHealth(const OwnerParameter&owner) const
 	{
-		return GetTable()->maxHealth.GetValue(GetResearchState(owner));
+		return std::max(1,GetTable()->maxHealth.GetValue(GetResearchState(owner)));
 	}
 
 	/*virtual*/ String		WorldEntity::DescribeMaxHealth(const OwnerParameter&owner) const

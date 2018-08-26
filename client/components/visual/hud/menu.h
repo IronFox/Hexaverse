@@ -21,7 +21,7 @@ namespace Menu
 
 		String		myTitle;
 		HUD::Component::PLabel	hintLabel;
-
+		HUD::Component::PPanel	mainPanel;
 		friend class Super;
 	protected:
 		/**/		Menu(){Super::logFullAutoLayout = true;}

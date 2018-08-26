@@ -1540,17 +1540,17 @@ bool loop()
 
 			if (ConfigurationMode::IsActive())
 			{
-				static const String line = "Interactive Configuration Mode";
+				static const String line = "Visual Game Configurator";
 
 				textout.PushState();
 				textout.Scale(2.0f,2.0f);
 				textout.MoveTo(0.95f - textout.GetScaledWidth(line),0.95f);
 				textout << line<<nl;
 				textout.Scale(0.75f,0.75f);
-				if (RuntimeConfig::empZones)
-					textout << nl << "EMP Zones On";
-				else
-					textout << nl << "EMP Zones Off";
+				//if (RuntimeConfig::empZones)
+				//	textout << nl << "EMP Zones On";
+				//else
+				//	textout << nl << "EMP Zones Off";
 				#ifdef _DEBUG
 					textout << nl << ConfigurationMode::GetServerSeed();
 				#endif

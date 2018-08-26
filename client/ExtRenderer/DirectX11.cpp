@@ -3264,6 +3264,27 @@ namespace Engine
 		Copy(_backbuffer.colorTarget[0].GetHandle2D(),target);
 	}
 
+	void						DirectX11::Capture(FBO&fbo)
+	{
+		auto source = _backbuffer.colorTarget[0].GetHandle2D();
+		D3D11_TEXTURE2D_DESC desc;
+		source->GetDesc(&desc);
+		DXGI_FORMAT format = desc.Format;
+
+		
+		Resolution res(desc.Width,desc.Height);
+		if (fbo.GetResolution() != res || fbo.CountColorTargets() != 1 || fbo.GetColorTarget(0).GetFormat() != format)
+			fbo.Create(res,format);
+
+		if (desc.SampleDesc.Count > 1)	
+		{
+			devcon->ResolveSubresource(fbo.GetColorTarget().GetHandle2D(),D3D11CalcSubresource(0,0,1),source,D3D11CalcSubresource(0,0,1),format);
+		}
+		else
+			devcon->CopyResource(fbo.GetColorTarget().GetHandle2D(),source);
+	}
+
+
 
 }
 

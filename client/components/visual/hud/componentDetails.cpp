@@ -16,6 +16,22 @@ namespace Detail
 		Buffer0<Viewport>	viewportStack;
 		float2	totalOffset;
 
+		DX11::ObjectBuffer<float4>	viewportVector;
+
+		UINT ViewPortWidth()
+		{
+			return std::max(100U,Detail::lastClientSpace.width);
+		}
+		UINT ViewPortHeight()
+		{
+			return std::max(100U,Detail::lastClientSpace.height);
+		}
+		float ViewPortAspect()
+		{
+			return float(ViewPortWidth()) / ViewPortHeight();
+		}
+	
+
 		void	LoadView(const M::Rect<>&view, const float2&offset)
 		{
 			if (!view.IsValid())
@@ -27,6 +43,12 @@ namespace Detail
 			aspect.UpdateProjection(view2,-1,1);
 			aspect.region = view;
 			display.Pick(aspect);
+
+			float4 vViewport;
+			vViewport.x = 1.f / ViewPortWidth();
+			vViewport.y = 1.f / ViewPortHeight();
+			vViewport.zw = -offset;
+			viewportVector.Update(vViewport);
 		}
 
 		void	PushLoadView(const M::Rect<>&view, const float2&offset/*=float2()*/)
