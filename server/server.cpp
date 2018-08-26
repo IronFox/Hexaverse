@@ -1159,7 +1159,7 @@ int main( int argc, const char* argv[])
 		//	inTestMode = true;
 		#endif
 
-		if (!inTestMode)
+		if (!inTestMode && !ParameterConfig::startInTutorial)
 		{
 			Reflection::Load(ParameterConfig::customConfigPath);
 			if (ParameterConfig::eraseCustomConfigAfterLoad && ParameterConfig::customConfigPath.IsNotEmpty())
