@@ -3435,7 +3435,7 @@ namespace Component
 		}
 		tab.button = tabBar->AddTab(caption);
 		//tab.panel->SetBackgroundColor(tab.button->GetBackgroundColor());
-		tab.panel->SetBackgroundTone((float3)0.6f);
+		tab.panel->SetBackgroundTone((float3)0.5f);
 		tab.panel->SetBackgroundOpacity(0.65f);
 		return tab.panel;
 	}
