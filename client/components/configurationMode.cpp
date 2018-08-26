@@ -1020,8 +1020,8 @@ namespace ConfigurationMode
 			AppendRuleButton(ruleGroup,"Simulate Liquids", "World/simulateLiquids",Detail::Rules::simulateLiquids);
 			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","Rules/empZones",RuntimeConfig::empZones,[](bool set)
 			{
+				RuntimeConfig::empZones= !set;	//force update
 				SetEMPZones(set);
-				//VisualTerrain::Invalidate(); //force rebuild
 			});
 			Objects::Command::PCommandGroup goals = AddChild(*ruleGroup,"Game Goal");
 			SetHint(*goals,FindDeclaration("/Rules/gameGoal"));
