@@ -409,7 +409,7 @@ namespace HUD
 
 			filterButtons.Set(myID,button);
 
-			button->SetVerticalPadding(0.5f);
+			button->SetVerticalPadding(0.25f);
 
 			if (metricPanel->HasComponents())
 			{
@@ -417,11 +417,15 @@ namespace HUD
 				auto c = b->GetCutCorners();
 				c.bottom = false;
 				b->SetCutCorners(c);
-				button->SetCutCorners({true,true,true,false});
-				metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
+				button->SetCutCorners({true,true,false,false});
+				metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f,0.01f);
 			}
 			else
+			{
 				metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f,0);
+				button->SetCutCorners({true,true,false,true});
+
+			}
 
 			WButton w = button;
 			button->SetTriggerFunction([filter,w,myID,integrate]()
