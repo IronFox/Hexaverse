@@ -1378,6 +1378,17 @@ namespace Component
 		return (renderEdges && includeEdges.left ? edgeWidth : 0) + (renderEdges && includeEdges.right ? edgeWidth : 0);
 	}
 
+
+	float			Decoration::GetClientHeight() const
+	{
+		return location.GetHeight() - GetClientHeightLoss();
+	}
+
+	float			Decoration::GetClientWidth() const
+	{
+		return location.GetWidth() - GetClientWidthLoss();
+	}
+
 	M::Rect<>		Decoration::GetClientArea() const
 	{
 		if (!renderEdges)
@@ -1410,7 +1421,6 @@ namespace Component
 		//		rs.x.max -= edgeWidth;
 		//}
 		const float ew = edgeWidth * Detail::ViewPortAspect();
-		if (renderEdges)
 		{
 			if (includeEdges.bottom)
 				rs.y.min += ew;
@@ -2750,6 +2760,7 @@ namespace Component
 
 	void TextField::RenderText( const Decoration::Context&ctx, bool lit )
 	{
+		const auto contextHeight = Decoration::GetClientHeight();
 		lit |= enabledAlwaysLit;
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
@@ -2761,7 +2772,7 @@ namespace Component
 		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
 		//float lineHeight = textout.GetScaledHeight();
 		const auto rect = Decoration::GetClientArea();
-		const float top = rect.y.max;
+		const float top = rect.y.max - (contextHeight - textHeight) * 0.5f;
 		const float left = rect.x.min;
 
 		float4 baseColor;

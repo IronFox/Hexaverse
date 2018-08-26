@@ -415,6 +415,8 @@ namespace Component
 		Valid after any Update*() has been called
 		*/
 		M::Rect<>		GetClientArea() const;
+		float			GetClientHeight() const;
+		float			GetClientWidth() const;
 		float			GetClientHeightLoss() const;
 		float			GetClientWidthLoss() const;
 
