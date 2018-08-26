@@ -144,7 +144,7 @@ namespace Component
 
 	bool	Distance::IsWellDefined() const
 	{
-		return !isnan(value) && !isinf(value) && value >= 0;
+		return !isnan(value) && !isinf(value) /*&& value >= 0*/;
 	}
 
 	bool	Distance::IsWellDefinedNonZero() const
@@ -1256,14 +1256,25 @@ namespace Component
 		{
 			{
 				auto col = backgroundColor;
-				if (lit)
-					col += 0.3f;
+				//if (lit)
+					//col += 0.3f;
 				if (pressed)
 					col *= 0.9f;
 				if (!enabled)
 					col *= 0.5f;
-				topColor.Update(float4(col.rgb,col.a * topOpacity * ctx.opacity));
-				bottomColor.Update(float4(col.rgb,col.a * bottomOpacity * ctx.opacity));
+				
+				auto top = float4(col.rgb,col.a * topOpacity * ctx.opacity);
+				auto bottom = float4(col.rgb,col.a * bottomOpacity * ctx.opacity);
+				if (lit)
+				{
+					top += 0.3f * topOpacity;
+					bottom += 0.3f * bottomOpacity;
+				}
+				topColor.Update(top);
+				bottomColor.Update(bottom);
+				
+				//topColor.Update(float4(col.rgb,col.a * topOpacity * ctx.opacity));
+				//bottomColor.Update(float4(col.rgb,col.a * bottomOpacity * ctx.opacity));
 			}
 
 			if (recompileBackground)
@@ -3219,6 +3230,9 @@ namespace Component
 		}
 		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
+		tab->SetCutCorners({false,false,true,true});
+		tab->SetEdges(false);
+		tab->SetPadding({1,0.25f,4,0.25f});
 
 		ConfigureInactive(tab);
 
@@ -3242,26 +3256,52 @@ namespace Component
 			onTabChange();
 	}
 
-	/*static*/ void		TabBar::ConfigureInactive(const PButton&active)
+	void		TabBar::ConfigureInactive(const PButton&active)	const
 	{
-		active->SetAlwaysDown(false);
+		//active->SetAlwaysDown(false);
 		active->Decoration::SetEdgeVisibility(true);
-		active->Decoration::SetOpacity(0.85f);
+		active->SetOpacity(inactiveOpacity);
+		//active->SetBackgroundTone((float3)0.4f);
 		active->Anchor().Top();
 		active->LockToIdealHeight(true);
-		active->SetColor(float4(1,1,1,0.85f));
+	//	active->SetColor(float4(1,1,1,0.85f));
 
 	}
-	/*static*/ void		TabBar::ConfigureActive(const PButton&active)
+	void		TabBar::ConfigureActive(const PButton&active)	const
 	{
-		active->SetAlwaysDown(true);
+		//active->SetAlwaysDown(true);
 		active->LockToIdealHeight(false);
 		active->Anchor().FillVertically();
 //			GetVAxis().lower.Set(0);
-		active->Decoration::SetOpacity(1,0);
-		active->Decoration::SetEdgeVisibility(M::Quad<bool>(true,false,true,true));
-		active->SetColor(float4(1));
+		//active->SetOpacity(0.75f);
+		active->SetOpacity(activeTopOpacity,activeBottomOpacity);
+		//active->SetBackgroundTone((float3)0.6f);
+		//active->Decoration::SetEdgeVisibility(M::Quad<bool>(true,false,true,true));
+	//	active->SetColor(float4(1));
 	}
+
+	void			TabBar::SetActiveBottomOpacity(float op)
+	{
+		activeBottomOpacity = op;
+		if (active)
+			ConfigureActive(active);
+	}
+
+	void			TabBar::SetActiveTopOpacity(float op)
+	{
+		activeTopOpacity = op;
+		if (active)
+			ConfigureActive(active);
+	}
+
+	void			TabBar::SetInactiveOpacity(float op)
+	{
+		inactiveOpacity = op;
+		foreach (this->components,tab)
+			if (active != *tab)
+				ConfigureInactive(To<Button>::Cast(*tab));
+	}
+
 
 
 	void			TabBar::SetActiveTab( index_t tabIndex, bool triggerCallback)
@@ -3275,7 +3315,7 @@ namespace Component
 		}
 
 		activeIndex = tabIndex;
-		active = To<Button>::Cast( GetReferences()[tabIndex] );
+		active = To<Button>::Cast(GetReferences()[tabIndex]);
 		{
 			ConfigureActive(active);
 		}
@@ -3301,6 +3341,7 @@ namespace Component
 			if (tabBar->GetActiveTabIndex() != InvalidIndex)
 				this->SetActiveTab(tabBar->GetActiveTabIndex(),true);
 		});
+		tabBar->SetActiveBottomOpacity(0.75f);
 
 		Super::AddComponent(tabBar,CLOCATION);
 	}
@@ -3312,7 +3353,9 @@ namespace Component
 
 		auto&tab = tabs.Append();
 		tab.panel.reset(new Panel());
-		tab.panel->Decoration::SetEdgeVisibility({true,true,true,false});
+		//tab.panel->Decoration::SetEdgeVisibility({true,true,true,false});
+		//tab.panel->SetEdges(true);
+		tab.panel->SetCutCorners({false,false,true,true});
 		{
 			auto mod = tab.panel->Anchor();
 			mod.GetHAxis().Fill();
@@ -3320,6 +3363,9 @@ namespace Component
 			mod.GetVAxis().upper.Set(tabBar,Distance());
 		}
 		tab.button = tabBar->AddTab(caption);
+		//tab.panel->SetBackgroundColor(tab.button->GetBackgroundColor());
+		tab.panel->SetBackgroundTone((float3)0.6f);
+		tab.panel->SetBackgroundOpacity(0.65f);
 		return tab.panel;
 	}
 

@@ -237,6 +237,7 @@ namespace Menu
 		menu->AnchorBelowPrevious(CLOCATION,optionsLabel);
 		auto closeButton = std::make_shared<Component::Button>("OK",[](){WindowStack::Hide(options);});
 		closeButton->Anchor().FillHorizontally().Bottom();
+		closeButton->SetCutCorners({true,true,true,false});
 		menu->AddComponent(closeButton,CLOCATION);
 
 		const auto tabs = std::make_shared<Component::TabCollection>();

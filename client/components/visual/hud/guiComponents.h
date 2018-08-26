@@ -383,12 +383,13 @@ namespace Component
 		void			SetShadow(bool shade) {if (shade != shadow) {shadow = shade; recompileShadow = true;}}
 
 		void			SetBackgroundColor(const float4&backgroundColor) {SetBackground(backgroundColor.a > 0); this->backgroundColor = backgroundColor;}
+		const float4&	GetBackgroundColor() const {return backgroundColor;}
 		void			SetBackgroundOpacity(float opacity) {SetBackground(opacity > 0); backgroundColor.a = opacity;}
 		float			GetBackgroundOpacity() const {return backgroundColor.a;}
 		void			SetBackgroundTone(const float3&backgroundColor) {SetBackground(true); this->backgroundColor.rgb = backgroundColor;}
 		float3			GetBackgroundTone() {return backgroundColor.rgb;}
 		void			SetOpacity(float opacity) {SetBackground(opacity > 0); this->bottomOpacity = this->topOpacity = opacity;}
-		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = top; this->topOpacity = bottom;}
+		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = bottom; this->topOpacity = top;}
 		void			SetShadow(const float4&tint/*, bool blurBack*/) {SetShadow(true); shadowTint = tint; /*blurBackground = blurBack;*/}
 
 		void			OnScreenSizeOrUIScaleChange()	{recompileShadow = recompileEdges = recompileBackground =true;}
@@ -1709,17 +1710,27 @@ namespace Component
 		bool			IsEmpty() const {return !Super::HasComponents();}
 		bool			IsNotEmpty() const {return Super::HasComponents();}
 		count_t			CountTabs() const {return Super::CountComponents();}
+
+		void			SetActiveBottomOpacity(float op);
+		float			GetActiveBottomOpacity() const {return activeBottomOpacity;}
+		void			SetActiveTopOpacity(float op);
+		float			GetActiveTopOpacity() const {return activeTopOpacity;}
+		void			SetInactiveOpacity(float op);
+		float			GetInactiveOpacity() const {return inactiveOpacity;}
 	
 	protected:
 		virtual void	OnTabChange();
 
 	private:
-		static void		ConfigureInactive(const PButton&);
-		static void		ConfigureActive(const PButton&);
+		void			ConfigureInactive(const PButton&) const;
+		void			ConfigureActive(const PButton&) const;
 		virtual bool	AddComponent(const PComponent&c, const TCodeLocation&caller) override	{return false;}
 		virtual bool	RemoveComponent(const PComponent&c) override {return false;}
 		virtual bool	ClearComponents() override {return false;}
 
+		float			activeTopOpacity = 1.f,
+						activeBottomOpacity = 0.f,
+						inactiveOpacity = 0.75f;
 		FOnTabChange	onTabChange;
 		PButton			active;
 		index_t			activeIndex = InvalidIndex;
