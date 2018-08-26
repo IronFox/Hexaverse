@@ -410,7 +410,19 @@ namespace HUD
 			filterButtons.Set(myID,button);
 
 			button->SetVerticalPadding(0.5f);
-			metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
+
+			if (metricPanel->HasComponents())
+			{
+				auto b = To<Button>::Cast(metricPanel->GetLastChild());
+				auto c = b->GetCutCorners();
+				c.bottom = false;
+				b->SetCutCorners(c);
+				button->SetCutCorners({true,true,true,false});
+				metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
+			}
+			else
+				metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f,0);
+
 			WButton w = button;
 			button->SetTriggerFunction([filter,w,myID,integrate]()
 			{
@@ -480,6 +492,7 @@ namespace HUD
 				}});
 				closeButton->SetVerticalPadding(0.5f);
 				closeButton->SetLocalFontScale(0.8f);
+				closeButton->SetCutCorners({false,false,true,true});
 
 				overviewGraph.reset(new MultiPlot{});
 
@@ -498,7 +511,7 @@ namespace HUD
 
 
 				metricPanel->SetAutomaticHeight(false);
-				metricPanel->Anchor().Left().FillVertically();
+				metricPanel->Anchor().Left().FillVertically(0.02f,0.02f);
 				metricPanel->SetWidth(0.15f);
 
 				factionPanel->SetAutomaticHeight(false);
@@ -572,12 +585,15 @@ namespace HUD
 						{
 							PButton other = factionButtonMap.Require(old.get());
 							other->SetAlwaysDown(false);
+							other->SetCutCorners({true,true,false,true});	//arrow-like
 						}
 						chosenFaction = f2.lock();
 					}
 					button->SetAlwaysDown(!button->IsAlwaysDown());
+					button->SetCutCorners({!button->IsAlwaysDown(),true,false,true});	//arrow-like
 					RebuildStackedGraphAndStats();
 				});
+				button->SetCutCorners({true,true,false,true});	//arrow-like
 				factionPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
 				if (f == chosenFaction.lock())
 					button->Trigger();
