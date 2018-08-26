@@ -285,7 +285,7 @@ namespace HUD
 
 			Objects::PAlliance winner = Objects::Alliance::FindByID(Network::winningAllianceID);
 			if (winner)
-				Stats::AddUserLine("Winner:",winner,"");
+				Stats::AddUserLine("Winner(s):",winner,"");
 
 			TVictor	warlord, punchingBag, largestArmy, mostTerraformers, mostStructuresBuilt, mostMobilesBuilt;
 			Objects::ForeachFaction([&](const Objects::PFaction&f)
