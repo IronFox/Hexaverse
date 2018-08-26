@@ -89,6 +89,7 @@ namespace Dialog
 
 			HUD::Component::PPanel	textPanel(new HUD::Component::Panel());
 			textPanel->SetEdges(true);
+			textPanel->SetBackgroundTone((float3)0.6f);
 			HUD::Component::PLabel textField(new HUD::Component::Label());
 			textField->Anchor().FillHorizontally().Top();
 			textPanel->AddComponent(textField,CLOCATION);
