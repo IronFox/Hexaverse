@@ -240,6 +240,10 @@ namespace ConfigurationMode
 		{
 			if (empZoneButton)
 			{
+				if (RuntimeConfig::empZones)
+					empZoneButton->SetColor(float4(0.6f,0.7f,1.8f,1.f));
+				else
+					empZoneButton->SetColor(float4(1.f));
 				empZoneButton->SetText("EMP Zones "+String(RuntimeConfig::empZones?"On":"Off"));
 			}
 
