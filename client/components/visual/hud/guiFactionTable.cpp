@@ -59,7 +59,9 @@ namespace HUD
 				PPanel rs{new Panel{}};
 				rs->SetAutomaticHeight(true);
 				rs->SetMaxAutoHeight(0.4f);
-				rs->SetBorderBackground();
+				rs->SetEdges(true);
+				rs->SetBackgroundOpacity(0.7f);
+				rs->SetBackgroundTone((float3)0.6f);
 
 				if (labelText.IsNotEmpty())
 				{
@@ -74,7 +76,7 @@ namespace HUD
 					label->LockToIdealHeight();
 				}
 				else
-					rs->SetBackgroundTransparent();
+					rs->SetBackground(false);
 
 				window->AnchorBelowPrevious(CLOCATION,rs,0,0.01f);
 				rs->Anchor().FillHorizontally(0.01f,0.01f);
@@ -136,8 +138,8 @@ namespace HUD
 								Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(now->alliance->id,Objects::Faction::mine->id,Protocol::AllianceInviteType::Accept));
 							});
 
-							inviteButton->fillBackground = false;
-							inviteButton->renderBorder = false;
+							inviteButton->SetBackground(false);
+							inviteButton->SetEdges(false);
 							inviteButton->SetColor(faction->color);
 							inviteButton->LockToIdealWidth(true);
 							//joinButton->LockToIdealHeight(true);
@@ -175,8 +177,8 @@ namespace HUD
 								});
 							}
 
-							inviteButton->fillBackground = false;
-							inviteButton->renderBorder = false;
+							inviteButton->SetBackground(false);
+							inviteButton->SetEdges(false);
 							inviteButton->SetColor(faction->color);
 							inviteButton->LockToIdealWidth(true);
 							//joinButton->LockToIdealHeight(true);
@@ -210,7 +212,7 @@ namespace HUD
 				panel->AddComponent(nameLabel,CLOCATION);
 				//statusLabel->dbgMarked = true;
 				panel->AddComponent(statusLabel,CLOCATION);
-				panel->SetBackgroundTransparent();
+				panel->SetBackground(false);
 
 				toPanel->AnchorBelowPrevious(CLOCATION,panel,0,0);
 			}
@@ -234,37 +236,48 @@ namespace HUD
 					window->SetWidth(0.75f);
 					
 					PPanel factionBack = AddPanel("Factions/Alliances");
+					factionBack->SetCutCorners(M::Quad<bool>(true,false,true,true));
 					PPanel chatBack = AddPanel("Chat History");
+					chatBack->SetCutCorners(false);
 					chatInput = AddPanel("");
+					chatInput->SetCutCorners(false);
+					chatInput->SetEdges(false);
+					chatInput->SetBackground(false);
+					chatInput->SetAutomaticHeight(true);
 					buttons = AddPanel("");
-
+					buttons->SetEdges(false);
+					buttons->SetBackground(false);
+					window->SetAutoHeightSpacing(0.01f);
 					
 					{
 						chatHistory.reset(new Panel{});
 						chatBack->AnchorBelowPrevious(CLOCATION,chatHistory,0,0);
 						chatHistory->SetMaxAutoHeight(0.3f);
 						chatHistory->SetAutomaticHeight(true);
-						chatHistory->SetBackgroundTransparent();
+						chatHistory->SetBackground(false);
 					}
 					{
 						factionTable.reset(new Panel{});
 						factionBack->AnchorBelowPrevious(CLOCATION,factionTable,0,0);
 						factionTable->SetMaxAutoHeight(0.3f);
 						factionTable->SetAutomaticHeight(true);
-						factionTable->SetBackgroundTransparent();
+						factionTable->SetBackground(false);
 					}
 					{
 						PButton close{new Button{"Close",Hide}};
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
+						close->SetCutCorners(M::Quad<bool>(true,true,true,false));
 						buttons->AddComponent(close,CLOCATION);
 						close->Anchor().GetVAxis().AnchorUpperUnknown();
 					}
 
 					{
 						PButton filter = std::make_shared<Button>("All");
-						filter->LockToIdealHeight();
+						filter->LockToIdealHeight(false);
 						filter->LockToIdealWidth();
+						filter->Anchor().FillVertically();
+						filter->SetCutCorners(false);
 						WButton wFilter = filter;
 						static bool sendToAlliance = false;
 
@@ -280,7 +293,7 @@ namespace HUD
 
 						});
 
-						chatMessage.reset(new Input{});
+						chatMessage = std::make_shared<Input>();
 						chatMessage->SetAllowedAlphabet(Network::allowedChatCharacters);
 						PButton send{new Button{"Send",[](){
 							if (sendToAlliance)
@@ -295,9 +308,11 @@ namespace HUD
 								Hide();
 						};
 						send->SetVerticalPadding(0.5f);
-						send->Anchor().CenterVertically().Right(0.01f);
+						//send->Anchor().CenterVertically().Right(0.01f);
 						send->LockToIdealWidth();
-						send->LockToIdealHeight();
+						send->LockToIdealHeight(false);
+						send->Anchor().FillVertically().Right();
+						send->SetCutCorners(false);
 						chatMessage->Anchor().Top().FillHBetween(filter,send);
 						chatInput->AddComponent(filter,CLOCATION);
 						chatInput->AddComponent(send,CLOCATION);
@@ -310,13 +325,22 @@ namespace HUD
 				{
 					PPanel wrapper{new Panel{}};
 					wrapper->Anchor().BeneathLastOf(factionTable);
-					wrapper->fillBackground = false;
-					wrapper->renderBorder = a->CountLivingMembers()  > 1;
+					if (a->CountLivingMembers() > 1)
+					{
+						wrapper->SetBackgroundOpacity(0.7f);
+						wrapper->SetBackgroundTone((float3)0.7f);
+						wrapper->SetEdges(true);
+						//wrapper->SetBackground(false);
+						wrapper->SetEdgeVisibility(M::Quad<bool>(true,false,true,false));
+						wrapper->SetCutCorners(false);
+					}
+					else
+						wrapper->SetBackground(false);
 					factionTable->AddComponent(wrapper,CLOCATION);
 
 					PPanel alliancePanel{new Panel{}};
-					alliancePanel->fillBackground = false;
-					alliancePanel->renderBorder = false;
+					alliancePanel->SetBackground(false);
+					alliancePanel->SetEdges(false);
 					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
 
 
@@ -358,8 +382,8 @@ namespace HUD
 						leaveButton->LockToIdealWidth(true);
 						//joinButton->LockToIdealHeight(true);
 						leaveButton->SetPadding(M::Quad<float>(0.2f));
-						leaveButton->fillBackground = false;
-						leaveButton->renderBorder = false;
+						leaveButton->SetBackground(false);
+						leaveButton->SetEdges(false);
 						leaveButton->SetLocalFontScale(0.85f);
 
 						leaveButton->Anchor().Right(0.01f).Top(0.01f);
@@ -488,7 +512,7 @@ namespace HUD
 			chatEntry->AddComponent(timeLabel,CLOCATION);
 			chatEntry->AddComponent(senderLabel,CLOCATION);
 			chatEntry->AddComponent(textLabel,CLOCATION);
-			chatEntry->SetBackgroundTransparent();
+			chatEntry->SetBackground(false);
 
 			chatHistory->AnchorBelowPrevious(CLOCATION,chatEntry,0,0);
 

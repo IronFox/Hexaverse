@@ -3,6 +3,7 @@ v0.9.5
 	> Replaced 'EMP Zones On/Off' on-screen message with pressable button.
 	> Updated configuration mode on-screen title.
 	> Options are now tabbed.
+	> Revised component based GUI.
 	* Fixed rendering of Nexus structures in configuration mode.
 	* Fixed save game loading via client GUI.
 	* Fixed loading of ended save games.

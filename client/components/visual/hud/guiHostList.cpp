@@ -76,9 +76,9 @@ namespace HUD{namespace HostList{
 			changelog->SetWidth(HUD::Component::Distance(0.4f));
 			//changelog->SetAutomaticHeight(false);
 			//changelog->SetHeight(0.6f);
-			changelog->fillBackground = false;
-			changelog->renderBorder = false;
-			changelog->darkenOutline = false;
+			changelog->SetBackground(false);
+			changelog->SetEdges(false);
+			changelog->SetDarkenedOutline(false);
 			RefreshVerticalChangelogLayout();
 			count_t cnt = 0;
 			String line;
@@ -106,7 +106,7 @@ namespace HUD{namespace HostList{
 		headerRow->FillHorizontally(0);
 		headerRow->Anchor().Top();
 		headerRow->SetAutomaticHeight(true);
-		headerRow->SetBackgroundTransparent();
+		headerRow->SetBackground(false);
 		
 		Update();
 	}
@@ -414,7 +414,7 @@ namespace HUD{namespace HostList{
 		}
 
 		p->SetAutoHeightSpacing(0.01f);
-		p->backgroundTone = color.rgb * 0.75f;
+		p->SetBackgroundTone(color.rgb * 0.75f);
 
 		return p;
 	}
@@ -435,6 +435,13 @@ namespace HUD{namespace HostList{
 
 	PPanel	serverListPanel;
 
+	void	ConfigureButton( const HUD::Component::PButton&b )
+	{
+		b->SetEdges(true);
+		b->LockToIdealWidth();
+		b->SetEdgeVisibility(b->GetCutCorners());
+	}
+
 	void	Update( )
 	{
 
@@ -451,7 +458,7 @@ namespace HUD{namespace HostList{
 
 		serverChoice->ClearComponents();
 
-		serverChoice->SetBackgroundTransparent();
+		serverChoice->SetBackground(false);
 		serverChoice->isModal = false;
 		SetTop(serverChoice,0.1f);
 		serverChoice->SetMaxAutoHeight(0.8f);
@@ -474,7 +481,7 @@ namespace HUD{namespace HostList{
 			serverListPanel->Anchor().FillHorizontally().Top();
 			serverListPanel->SetAutomaticHeight(true);
 			serverListPanel->SetMaxAutoHeight(0.5f);
-			serverListPanel->SetBackgroundTransparent();
+			serverListPanel->SetBackground(false);
 		}
 		serverListPanel->ClearComponents();
 		serverListPanel->Anchor().BeneathAllOf(serverChoice);
@@ -490,7 +497,7 @@ namespace HUD{namespace HostList{
 				.BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ))
 				.FillHorizontally();
 			//p->SetAutomaticHeight(true);
-			p->SetBackgroundTransparent();
+			p->SetBackground(false);
 
 			PPanel pb(new Panel());
 			//pb->autoHeight = true;
@@ -540,6 +547,7 @@ namespace HUD{namespace HostList{
 			auto&info = Network::servers[i];
 
 			PButtonPanel p = ConstructPanel(info);
+			p->SetBackgroundTone((float3)0.5f);
 
 			p->Anchor().BeneathLastOf(serverListPanel,Distance::GameWindow( 0.015f ));
 			serverListPanel->AddComponent( p ,CLOCATION);
@@ -556,7 +564,7 @@ namespace HUD{namespace HostList{
 			PPanel p(new Panel());
 			p->Anchor().BeneathAllOf(serverChoice, Distance::GameWindow(0.025f ));
 			serverChoice->AddComponent( p ,CLOCATION);
-			p->SetBackgroundTransparent();
+			p->SetBackground(false);
 
 			PLabel label = MakeHeaderLabel(" No Servers Found",0.7f,0);
 			label->Anchor().Left(Distance::GameWindow( 0.1f ));
@@ -594,6 +602,13 @@ namespace HUD{namespace HostList{
 				mod.BeneathLastOf(serverChoice, Distance::GameWindow( 0.025f )).Left();
 			}
 			b->LockToIdealWidth();
+			{
+				auto cp = b->GetPadding();
+				cp.left = 3;
+				b->SetPadding(cp);
+			}
+			b->SetCutCorners(M::Quad<bool>(true,true,false,true));
+			ConfigureButton(b);
 
 			serverChoice->AddComponent( b ,CLOCATION);
 			
@@ -607,6 +622,8 @@ namespace HUD{namespace HostList{
 			bool running = ServerProcess::IsRunning();
 			stop->SetEnabled(running);
 			start->SetEnabled(!running);
+			start->SetCutCorners(M::Quad<bool>(false,true,false,true));
+			stop->SetCutCorners(M::Quad<bool>(false,true,true,true));
 			WButton wstart = start;
 			WButton wstop = stop;
 			start->SetTriggerFunction([wstart,wstop]()
@@ -641,14 +658,21 @@ namespace HUD{namespace HostList{
 				auto mod = start->Anchor();
 
 				mod.GetVAxis() = addHostButton->GetAnchorConfig().GetVAxis();
-				mod.RightOf(addHostButton,0.02f);
+				mod.RightOf(addHostButton,0.01f);
 			}
 			{
 				auto mod = stop->Anchor();
 				mod.GetVAxis() = addHostButton->GetAnchorConfig().GetVAxis();
-				mod.RightOf(start,0.02f);
+				mod.RightOf(start,0.01f);
 			}
 
+			{
+				auto cp = stop->GetPadding();
+				cp.right = 3;
+				stop->SetPadding(cp);
+			}
+			ConfigureButton(start);
+			ConfigureButton(stop);
 			serverChoice->AddComponent(start,CLOCATION);
 			serverChoice->AddComponent(stop,CLOCATION);
 		}

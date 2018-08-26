@@ -123,7 +123,7 @@ namespace HUD
 			static void AddUserLine(const String&prefix,const Objects::PFaction&f,const String&postFix="")
 			{
 				PPanel panel{new Panel{}};
-				panel->SetBackgroundTransparent();
+				panel->SetBackground(false);
 				panel->SetAutomaticHeight(true);
 
 				PLabel prefixLabel{new Label{prefix+' '}};
@@ -161,7 +161,7 @@ namespace HUD
 			static void AddUserLine(const String&prefix,const Objects::PAlliance&a,const String&postFix="")
 			{
 				PPanel panel{new Panel{}};
-				panel->SetBackgroundTransparent();
+				panel->SetBackground(false);
 				panel->SetAutomaticHeight(true);
 
 				PLabel prefixLabel{new Label{prefix+' '}};
@@ -409,8 +409,24 @@ namespace HUD
 
 			filterButtons.Set(myID,button);
 
-			button->SetVerticalPadding(0.5f);
-			metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
+			button->SetVerticalPadding(0.25f);
+
+			if (metricPanel->HasComponents())
+			{
+				auto b = To<Button>::Cast(metricPanel->GetLastChild());
+				auto c = b->GetCutCorners();
+				c.bottom = false;
+				b->SetCutCorners(c);
+				button->SetCutCorners({true,true,false,false});
+				metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f,0.01f);
+			}
+			else
+			{
+				metricPanel->AnchorBelowPrevious(CLOCATION,button,0.005f,0);
+				button->SetCutCorners({true,true,false,true});
+
+			}
+
 			WButton w = button;
 			button->SetTriggerFunction([filter,w,myID,integrate]()
 			{
@@ -480,6 +496,7 @@ namespace HUD
 				}});
 				closeButton->SetVerticalPadding(0.5f);
 				closeButton->SetLocalFontScale(0.8f);
+				closeButton->SetCutCorners({false,false,true,true});
 
 				overviewGraph.reset(new MultiPlot{});
 
@@ -487,9 +504,9 @@ namespace HUD
 				factionPanel.reset(new Panel{});
 				statsPanel.reset(new Panel{});
 
-				statsPanel->SetBackgroundTransparent();
-				factionPanel->SetBackgroundTransparent();
-				metricPanel->SetBackgroundTransparent();
+				statsPanel->SetBackground(false);
+				factionPanel->SetBackground(false);
+				metricPanel->SetBackground(false);
 
 				window->AddComponent(factionPanel,CLOCATION);
 				window->AddComponent(metricPanel,CLOCATION);
@@ -498,7 +515,7 @@ namespace HUD
 
 
 				metricPanel->SetAutomaticHeight(false);
-				metricPanel->Anchor().Left().FillVertically();
+				metricPanel->Anchor().Left().FillVertically(0.02f,0.02f);
 				metricPanel->SetWidth(0.15f);
 
 				factionPanel->SetAutomaticHeight(false);
@@ -572,12 +589,15 @@ namespace HUD
 						{
 							PButton other = factionButtonMap.Require(old.get());
 							other->SetAlwaysDown(false);
+							other->SetCutCorners({true,true,false,true});	//arrow-like
 						}
 						chosenFaction = f2.lock();
 					}
 					button->SetAlwaysDown(!button->IsAlwaysDown());
+					button->SetCutCorners({!button->IsAlwaysDown(),true,false,true});	//arrow-like
 					RebuildStackedGraphAndStats();
 				});
+				button->SetCutCorners({true,true,false,true});	//arrow-like
 				factionPanel->AnchorBelowPrevious(CLOCATION,button,0.005f);
 				if (f == chosenFaction.lock())
 					button->Trigger();

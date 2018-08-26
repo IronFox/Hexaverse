@@ -1098,7 +1098,7 @@ namespace Engine
 		void						Copy(const DX11::Handle<ID3D11Texture2D>&source, Image&destination);
 
 		void						Capture(Image&target);
-
+		void						Capture(FBO&);
 
 		void						ScanShaderHeader(const PathString&path);
 

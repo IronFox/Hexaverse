@@ -272,6 +272,7 @@ namespace ConfigurationMode
 		{
 			materialButtons.Clear();
 			window = Window::Create();
+			window->SetWidth(0.35f);
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
 			{
@@ -286,17 +287,20 @@ namespace ConfigurationMode
 				if (i == Grid::Content::Unknown)
 					name = "Natural";
 				PButton button(new Button(name));
-				button->backgroundTone = Grid::CellStack::Cell::typeColor[i];
-				Vec::abs(button->backgroundTone);
-				float max = Vec::max(button->backgroundTone);
+				auto col = Grid::CellStack::Cell::typeColor[i];
+				Vec::abs(col);
+				float max = Vec::max(col);
 				if (max > 0.5f)
-					button->backgroundTone /= max;
-				button->SetColor(float4(button->backgroundTone,1.f));
-				button->fillBackground = true;
-				button->renderBorder = true;
-				float b = 0.2f * (window->CountComponents()/4);
-				float x = 0.25f * (window->CountComponents()%4);
-				float x2 = 0.25f * (3-(window->CountComponents()%4));
+					col /= max;
+				button->SetColor(float4(col,1.f));
+				button->SetBackgroundTone(col);
+				button->SetEdges(true);
+				const auto iy = window->CountComponents()/4;
+				const auto ix = window->CountComponents()%4;
+				button->SetCutCorners(M::Quad<bool>(ix == 0, false, ix == 3,iy == 0));
+				float b = 0.2f * iy;
+				float x = 0.25f * ix;
+				float x2 = 0.25f * (3-ix);
 				{
 					auto m = button->Anchor();
 					m.FillHorizontally(Distance( x,Distance::Type::RelativeToParentComponent),Distance(x2,Distance::Type::RelativeToParentComponent));
@@ -324,7 +328,7 @@ namespace ConfigurationMode
 				PButton button(new Button("Abort"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
 				button->Anchor().FillHorizontally().BeneathLastOf(window,Distance::GameWindow(0.01f),Distance::GameWindow(0.2f));
-			
+				button->SetCutCorners(M::Quad<bool>(true,true,true,false));
 				button->SetTriggerFunction([this]()
 				{
 					HUD::WindowStack::Hide(window);
@@ -384,7 +388,7 @@ namespace ConfigurationMode
 			planetListWindow->SetWidth(0.7f);
 			planetListWindow->SetAutomaticHeight(true);
 			planetListWindow->SetMaxAutoHeight(0.7f);
-			planetListWindow->SetBackgroundTransparent();
+			planetListWindow->SetBackground(false);
 			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f),CLOCATION);
 			{
 				auto cfg = label->GetAnchorConfig();
@@ -1320,8 +1324,8 @@ namespace ConfigurationMode
 				SetEMPZones(!RuntimeConfig::empZones);
 			}}};
 			//empZoneButton->edges = false;
-			empZoneButton->fillBackground = false;
-			empZoneButton->renderBorder = false;
+			empZoneButton->SetBackground(false);
+			empZoneButton->SetEdges(false);
 			SetZoneButtonText();
 			empZoneButton->LockToIdealHeight();
 			empZoneButtonWindow->AddComponent(empZoneButton,CLOCATION);
@@ -1331,9 +1335,9 @@ namespace ConfigurationMode
 			empZoneButtonWindow->isModal = false;
 			empZoneButtonWindow->Anchor().Right(0.05f,HUD::Component::Distance::Pixels(200.f * UI::GetScale())).Top(0.1f);
 			//empZoneButtonWindow->edges = false;
-			empZoneButtonWindow->fillBackground = false;
-			empZoneButtonWindow->renderBorder = false;
-			empZoneButtonWindow->darkenOutline = false;
+			empZoneButtonWindow->SetBackground(false);
+			empZoneButtonWindow->SetEdges(false);
+			empZoneButtonWindow->SetDarkenedOutline(false);
 			HUD::WindowStack::ShowBottom(empZoneButtonWindow);
 		}
 	}

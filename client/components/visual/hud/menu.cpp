@@ -52,12 +52,19 @@ namespace Menu
 			},
 			check
 		));
-		Super::RemoveComponent(hintLabel);
-		Super::AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
-		if (hintLabel)
-			Super::AnchorBelowPrevious(CLOCATION, hintLabel,0.015f,0.015f);
+		if (mainPanel->CountComponents() > 0)
+		{
+			To<HUD::Component::Button>::Cast(mainPanel->GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,false));
+			button->SetCutCorners(M::Quad<bool>(true,true,true,false));
+		}
+		mainPanel->AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
+		button->SetBackgroundTone((float3)0.7f);
+		button->SetBackgroundOpacity(0.8f);
+		button->SetEdges(true);
+		button->SetVerticalPadding(0.25f);
+		button->SetEnabledTextAlwaysLit(true);
 		return button;
 	}
 
@@ -65,18 +72,41 @@ namespace Menu
 	{
 		canBeImplicitlyClosed = escapeCloses;
 		Super::ClearComponents();
+		Super::SetEdges(false);
+		Super::SetBackgroundOpacity(0.45f);
+		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
 		hintLabel.reset();
 		myTitle = title;
 		Super::Anchor().CenterHorizontally(initialAbsoluteWidth);
-		Super::SetBackgroundTransparent();
 
 		if (title.IsNotEmpty())
 		{
 			HUD::Component::PLabel label(new HUD::Component::Label());
 			label->SetText(title);
 			label->SetVerticalPadding( 0.1f );
-			Super::AnchorBelowPrevious(CLOCATION,label,0.015f,0.f);
+			label->SetBackground(true);
+			Super::AnchorBelowPrevious(CLOCATION,label,0.005f,0.005f);
+			label->SetCutCorners(M::Quad<bool>(true,false,true,true));
+			label->SetVerticalPadding(0.2f,0);
+			label->SetBackgroundTone((float3)0.75f);
+			label->SetBackgroundOpacity(0.9f);
+			label->SetEnabledTextAlwaysLit(true);
 		}
+
+		if (mainPanel)
+			mainPanel->ClearComponents();
+		else
+		{
+			mainPanel.reset(new HUD::Component::Panel());
+			mainPanel->SetEdges(false);
+			mainPanel->SetBackground(false);
+			mainPanel->SetAutomaticHeight(true);
+			mainPanel->SetMaxAutoHeight(0.5f);
+		}
+
+		Super::AnchorBelowPrevious(CLOCATION,mainPanel,0.005f,0.005f);
+
+
 
 		if (escapeCloses)
 		{
@@ -84,8 +114,10 @@ namespace Menu
 			hintLabel->SetLocalFontScale(0.75f);
 			hintLabel->SetText("Press Escape to close");
 			hintLabel->SetVerticalPadding( 0.1f );
-			Super::AnchorBelowPrevious(CLOCATION,hintLabel,0.015f,0.f);
+			Super::AnchorBelowPrevious(CLOCATION,hintLabel,0.005f,0.f);
 		}
+		else
+			mainPanel->SetAutoHeightSpacing(0.01f);
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"]::Setup("+String(initialAbsoluteWidth)+","+myTitle+")");
 	}
 
@@ -142,13 +174,13 @@ namespace Menu
 
 
 
-		l->SetBackgroundTransparent();
+		l->SetBackground(false);
 		l->alignCenter = false;
 		l->Anchor().CenterVertically().Left(0,MinTextWidth);
 		c->Anchor().FillHorizontally(MinTextWidth,0.01f).CenterVertically();
 
 		p->SetAutomaticHeight(true);
-		p->SetBackgroundTransparent();
+		p->SetBackground(false);
 
 		panel->AnchorBelowPrevious(CLOCATION,p);
 		return l;
@@ -205,6 +237,7 @@ namespace Menu
 		menu->AnchorBelowPrevious(CLOCATION,optionsLabel);
 		auto closeButton = std::make_shared<Component::Button>("OK",[](){WindowStack::Hide(options);});
 		closeButton->Anchor().FillHorizontally().Bottom();
+		closeButton->SetCutCorners({true,true,true,false});
 		menu->AddComponent(closeButton,CLOCATION);
 
 		const auto tabs = std::make_shared<Component::TabCollection>();

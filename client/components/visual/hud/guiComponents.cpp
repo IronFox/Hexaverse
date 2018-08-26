@@ -144,7 +144,7 @@ namespace Component
 
 	bool	Distance::IsWellDefined() const
 	{
-		return !isnan(value) && !isinf(value) && value >= 0;
+		return !isnan(value) && !isinf(value) /*&& value >= 0*/;
 	}
 
 	bool	Distance::IsWellDefinedNonZero() const
@@ -308,11 +308,12 @@ namespace Component
 		DBG_ASSERT_IS_CONSTRAINED__(range.min,Lower,Upper);
 		DBG_ASSERT_IS_CONSTRAINED__(range.max,Lower,Upper);
 
+		OnRectChange();
+
 		if (hChange)
 			OnHorizontalRectChange();
 		if (widthChange)
 			OnWidthChange();
-		OnRectChange();
 	}
 
 	void			ComponentLocation::SetVertical(const M::TFloatRange<>&range)
@@ -329,11 +330,12 @@ namespace Component
 		DBG_ASSERT_IS_CONSTRAINED__(range.min,Lower,Upper);
 		DBG_ASSERT_IS_CONSTRAINED__(range.max,Lower,Upper);
 
+		OnRectChange();
+
 		if (vChange)
 			OnVerticalRectChange();
 		if (heightChange)
 			OnHeightChange();
-		OnRectChange();
 	}
 
 
@@ -355,6 +357,7 @@ namespace Component
 		DBG_ASSERT_IS_CONSTRAINED__(rect.y.min,Lower,Upper);
 		DBG_ASSERT_IS_CONSTRAINED__(rect.y.max,Lower,Upper);
 
+		OnRectChange();
 		if (hChange)
 			OnHorizontalRectChange();
 		if (vChange)
@@ -363,7 +366,6 @@ namespace Component
 			OnWidthChange();
 		if (heightChange)
 			OnHeightChange();
-		OnRectChange();
 	}
 
 
@@ -617,8 +619,10 @@ namespace Component
 
 
 
-	/*virtual*/ void	Component::Render( float opacity )
-	{}
+	/*virtual*/ Decoration::Context	Component::Render( const Decoration::Context&ctx )
+	{
+		return ctx.Recurse();
+	}
 
 
 	/*virtual*/ void	Component::SetLocation(const M::Rect<>&loc)
@@ -716,23 +720,11 @@ namespace Component
 	/*static*/ DX11::ObjectBuffer<float4>	Image::texturedQuadColor;
 
 
-	static UINT ViewPortWidth()
-	{
-		return std::max(100U,Detail::lastClientSpace.width);
-	}
-	static UINT ViewPortHeight()
-	{
-		return std::max(100U,Detail::lastClientSpace.height);
-	}
-	static float ViewPortAspect()
-	{
-		return float(ViewPortWidth()) / ViewPortHeight();
-	}
-	
+
 
 	static float2 ViewPortSizef()
 	{
-		return float2(ViewPortWidth(),ViewPortHeight());
+		return float2(Detail::ViewPortWidth(),Detail::ViewPortHeight());
 	}
 
 
@@ -792,7 +784,7 @@ namespace Component
 			case Type::RelativeToGameWindow:
 				return value;
 			case Type::AbsolutePixels:
-				return value / float(myAxis == AnchorAxis::Horizontal ? ViewPortWidth() : ViewPortHeight());
+				return value / float(myAxis == AnchorAxis::Horizontal ? Detail::ViewPortWidth() : Detail::ViewPortHeight());
 			case Type::Disabled:
 				return NAN;
 		}
@@ -814,6 +806,753 @@ namespace Component
 
 		return std::numeric_limits<float>::max();
 	}
+
+
+
+
+
+	namespace DecorationDetails
+	{
+		DX11::ObjectBuffer<float4>
+			topColor,
+			bottomColor;
+
+		DX11::BaseInstructionBlock
+			shader;
+		DX11::InstructionBlock16
+			shrinkShader,
+			blend,
+			hBlur,
+			vBlur;
+		DX11::VBO	quadVBO;
+		DX11::IBO16	quadIBO;
+		DX11::FBO 
+			backbufferCopy,
+			shrunkTarget,
+			hBlurredTarget,
+			vBlurredTarget;
+		DX11::Texture
+			backgroundTexture;
+
+		DX11::ObjectBuffer<float4>	mouseAt_fadeRange;
+		DX11::ObjectBuffer<float2>	shrinkPixelScale;
+		DX11::ObjectBuffer<float>	blurOpacity;
+
+		bool	backgroundChanged = true;
+		float	backgroundOpacity = 1.f;
+
+
+		void	SignalScreenResize()
+		{
+			shrunkTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+			hBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+			vBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+		}
+
+		void	CopyBackground(float opacity)
+		{
+			if (!backgroundChanged)
+				return;
+			
+			backgroundChanged = false;
+			display.DirectX11::Capture(backbufferCopy);
+			//backgroundTexture = backbufferCopy.GetColorTarget();
+
+			shrinkShader.quickSlots.First() = backbufferCopy.GetColorTarget();
+			shrinkPixelScale.Update(float2(1.f / Detail::ViewPortWidth(), 1.f / Detail::ViewPortHeight()));
+			display.TargetFBO(shrunkTarget);
+				display.Render(shrinkShader);
+			//display.TargetBackbuffer();
+
+			hBlur.quickSlots.First() = shrunkTarget.GetColorTarget();
+			shrinkPixelScale.Update(float2(4.f / Detail::ViewPortWidth(), 4.f / Detail::ViewPortHeight()));
+			display.TargetFBO(hBlurredTarget);
+				display.Render(hBlur);
+			//display.TargetBackbuffer();
+
+			vBlur.quickSlots.First() = hBlurredTarget.GetColorTarget();
+			display.TargetFBO(vBlurredTarget);
+				display.Render(vBlur);
+			//display.TargetBackbuffer();
+
+			display.StoreRendererState();
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+				blurOpacity.Update(opacity);
+				blend.quickSlots.First() = vBlurredTarget.GetColorTarget();
+				display.TargetFBO(backbufferCopy);
+					display.Render(blend);
+			display.RestoreRendererState();
+			display.TargetBackbuffer();
+
+
+
+			backgroundTexture = backbufferCopy.GetColorTarget();
+			
+
+		}
+
+		void	UpdateBackground(const Decoration::Context&ctx)
+		{
+			backgroundChanged = true;
+			backgroundOpacity = ctx.opacity;
+		}
+
+		void	UpdateMouseAndFade(const float2&relativeMouse,const M::Rect<>&location)
+		{
+			mouseAt_fadeRange.Update(float4(relativeMouse,location.x.GetCenter(),std::max(0.25f,location.x.GetExtent()*1.5f) ));
+		}
+
+
+		struct TVertex
+		{
+			float2	position;
+			float2	uv;
+
+			/**/	TVertex()	{}
+			/**/	TVertex(float x, float y, float u, float v):position(x,y),uv(u,v){}
+		};
+
+		struct Plane
+		{
+			/**/		Plane(const float2&normal,const float2&base):normal(normal),base(base)
+			{}
+			/**/		Plane(const float2&normal,const float2&base, bool flip):normal(flip ? -normal : normal),base(base)
+			{}
+
+			bool		Cut(const TVertex&p0, const TVertex&p1, TVertex&outCut) const
+			{
+				const float d0 = GetEdgeDistance(p0),
+							d1 = GetEdgeDistance(p1);
+				if ((d0 >= 0) == (d1 >= 0))
+					return false;
+				const float at = fabs(d0 / (d1 - d0));
+				if (at <= M::GetError<float>() || at >= 1.f - M::GetError<float>())
+					return false;
+				Vec::interpolate(p0.position,p1.position,at,outCut.position);
+				Vec::interpolate(p0.uv,p1.uv,at,outCut.uv);
+				return true;
+			}
+
+			float		GetEdgeDistance(const TVertex&p) const
+			{
+				return Vec::dot((p.position - base),normal);
+			}
+
+			bool		IsInside(const TVertex&p) const
+			{
+				return GetEdgeDistance(p) <= 0;
+			}
+
+
+			float2	normal,base;
+
+		};
+
+		struct Shape
+		{
+			struct TNode : TVertex
+			{
+				/**/	TNode()	{}
+				/**/	TNode(float x, float y, float u, float v, bool edge=true, index_t edgeIndex=0)
+					:TVertex(x,y,u,v),hasOutEdge(edge),outEdgeIndex(edgeIndex)	{}
+
+				bool	hasOutEdge=true;
+				index_t	outEdgeIndex=0;
+			};
+
+			/**/		Shape(const M::Rect<>&loc)
+			{
+				SetBox(loc,true);
+			}
+
+			/**/		Shape(M::Rect<> loc, float ext)
+			{
+				float extX = ext;
+				float extY = ext * Detail::ViewPortAspect();
+				loc.x.Expand(extX);
+				loc.y.Expand(extY);
+				SetBox(loc,true);
+			}
+
+			/**/		Shape(M::Rect<> loc, float ext, const M::Quad<bool>&edges)
+			{
+				float extX = ext;
+				float extY = ext * Detail::ViewPortAspect();
+				loc.x.Expand(extX);
+				loc.y.Expand(extY);
+				SetBox(loc,edges);
+			}
+			/**/		Shape(M::Rect<> box, float ext, bool, index_t edgeIndex)
+			{
+				float extX = ext;
+				float extY = ext * Detail::ViewPortAspect();
+				box.x.Expand(extX);
+				box.y.Expand(extY);
+				boundingBox = box;
+				loop=false;
+				switch (edgeIndex)
+				{
+					case 0:
+						corners 
+							<< TNode(box.x.min,box.y.max,0,1, true, 0) 
+							<< TNode(box.x.min,box.y.min,0,0, false, 1);
+					break;
+					case 1:
+						corners 
+							<< TNode(box.x.min,box.y.min,0,0, true, 1)
+							<< TNode(box.x.max,box.y.min,1,0, false, 2);
+					break;
+					case 2:
+						corners
+							<< TNode(box.x.max,box.y.min,1,0, true, 2)
+							<< TNode(box.x.max,box.y.max,1,1, false, 3);
+					break;
+					case 3:
+						corners
+							<< TNode(box.x.max,box.y.max,1,1, true, 3)
+							<< TNode(box.x.min,box.y.max,0,1, false, 0);
+					break;
+				}
+			}
+
+			void		CutCorner(const Plane&plane)
+			{
+				static Buffer0<TNode> newPoints;
+				if (corners.IsEmpty())
+					return;
+				TNode at;
+
+				const count_t cnt = corners.Count();
+				for (index_t i = 0; i < cnt; i++)
+				{
+					const auto&here = corners[i];
+					if (plane.IsInside(here) && (newPoints.IsEmpty() || newPoints.Last().position != here.position))
+						newPoints << here;
+					const auto&next = corners[(i+1)%corners.Count()];
+					if ((i+1 < cnt || loop) && plane.Cut(here,next,at))
+					{
+						at.hasOutEdge = here.hasOutEdge;
+						at.outEdgeIndex = here.outEdgeIndex;
+						newPoints << at;
+					}
+				}
+
+				corners.swap(newPoints);
+				newPoints.Clear();
+			}
+
+			void		CutCorner(index_t cornerIndex, float aspect, float intrusion, bool negative)
+			{
+
+				CutCorner(MakePlane(cornerIndex,aspect,intrusion,negative));
+			}
+
+			Plane		MakePlane(index_t cornerIndex, float aspect, float intrusion, bool negative)
+			{
+				/*
+						Type			left,
+										bottom,
+										right,
+										top;
+				*/
+				intrusion *= (1.f / 1.41421f);
+				const auto&location = boundingBox;
+				switch (cornerIndex)
+				{
+					case 0:
+						return Plane(float2(-1,aspect).Normal(),float2(location.x.min,location.y.min + aspect * intrusion),negative);
+					case 1:
+						return Plane(float2(-1,-aspect).Normal(),float2(location.x.max,location.y.min + aspect * intrusion),negative);
+					case 2:
+						return Plane(float2(1,-aspect).Normal(),float2(location.x.max,location.y.max - aspect * intrusion),negative);
+					case 3:
+						return Plane(float2(1,aspect).Normal(),float2(location.x.min,location.y.max - aspect * intrusion),negative);
+				}
+				throw Except::Program::ParameterFault(CLOCATION,"Invalid corner index "+String(cornerIndex));
+			}
+
+			void		CutCorners(const M::Quad<bool>&renderEdges, float intrusion)
+			{
+				const auto&location = boundingBox;
+				const float aspect = Detail::ViewPortAspect();
+				for (index_t i = 0; i < 4; i++)
+					if (renderEdges.value[i] && renderEdges.value[(i+1)%4])
+						CutCorner(i,aspect,intrusion,false);
+			}
+
+			void	SetBox(const M::Rect<>&box, const M::Quad<bool>&edges)
+			{
+				boundingBox = box;
+				corners.Clear();
+				corners 
+					<< TNode(box.x.min,box.y.min,0,0, edges.bottom, 1)
+					<< TNode(box.x.max,box.y.min,1,0, edges.right, 2)
+					<< TNode(box.x.max,box.y.max,1,1, edges.top, 3)
+					<< TNode(box.x.min,box.y.max,0,1, edges.left, 0);
+
+
+				/*
+						Type			left,
+										bottom,
+										right,
+										top;
+				*/
+			}
+			bool			loop=true;
+			Buffer0<TNode>	corners;
+			M::Rect<>		boundingBox;
+		};
+
+
+		namespace Bakery
+		{
+
+			namespace Details
+			{
+
+
+				Buffer0<UINT16> indices;
+				Buffer0<TVertex> vertices;
+				UINT16 vOffset = 0;
+
+				void	Reset()
+				{
+					indices.Clear();
+					vertices.Clear();
+					vOffset = 0;
+				}
+
+			}
+
+			void	Vertex(const TVertex&v)
+			{
+				using namespace Details;
+				DBG_ASSERT_LESS__(vertices.Count(),0x10000);
+				vertices.Append(v);
+			}
+
+			void	Vertex(const float2&position, const float2&uv)
+			{
+				using namespace Details;
+				DBG_ASSERT_LESS__(vertices.Count(),0x10000);
+				auto&v = vertices.Append();
+				v.position = position;
+				v.uv = uv;
+			}
+
+			const TVertex& GetVertex(index_t at)
+			{
+				using namespace Details;
+				return vertices[at];
+			}
+
+			void	SetVOffset()
+			{
+				using namespace Details;
+				vOffset = (UINT16)vertices.Count();
+			}
+
+			void	Index(index_t v)
+			{
+				using namespace Details;
+				index_t final = vOffset + v;
+				DBG_ASSERT_LESS__(final,0x10000);
+				DBG_ASSERT_LESS__(final,vertices.Count());
+
+				indices << (UINT16)(final);
+			}
+
+			void	Triangle(index_t v0, index_t v1, index_t v2)
+			{
+				Index(v0);
+				Index(v1);
+				Index(v2);
+			}
+
+			void	Quad(index_t v0, index_t v1, index_t v2, index_t v3)
+			{
+				Triangle(v0,v1,v2);
+				Triangle(v0,v2,v3);
+			}
+
+			void	Include(const Shape&shape)
+			{
+				SetVOffset();
+				foreach (shape.corners,c)
+					Vertex(*c);
+				for (index_t i = 1; i+1 < shape.corners.Count(); i++)
+					Triangle(0,i,(i+1));
+			}
+
+			void	Complete(DX11::InstructionBlock16&target)
+			{
+				using namespace Details;
+				target.vbo.CreateFromStructs(vertices);
+				target.ibo.Create(indices);
+				Reset();
+			}
+		}
+
+
+		static const constexpr float	cornerSize = 0.02f;
+		static const constexpr float	shadowExt = 0.005f;
+		static const constexpr float	edgeWidth = 0.005f;
+
+	}
+
+
+
+
+
+
+	Decoration::Decoration()
+	{
+		using namespace DecorationDetails;
+		((DX11::BaseInstructionBlock&)backgroundInstruction) = shader;
+		((DX11::BaseInstructionBlock&)shadowInstruction) = shader;
+		((DX11::BaseInstructionBlock&)edgeInstruction) = shader;
+		((DX11::BaseInstructionBlock&)blurInstruction) = shader;
+	}
+
+
+	Decoration::Context			Decoration::RenderBackground(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
+	{
+		using namespace DecorationDetails;
+		if (!shadow && !background)
+			return ctx.Recurse();
+
+		UpdateMouseAndFade(relativeMouse,location);
+
+
+		display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::None);
+			CopyBackground(ctx.opacity);
+			
+		if (shadow)
+		{
+			topColor.Update(float4(shadowTint.rgb,shadowTint.a * ctx.opacity));
+			bottomColor.Update(float4(shadowTint.rgb,shadowTint.a * ctx.opacity));
+			if (recompileShadow)
+			{
+				recompileShadow = false;
+
+
+				auto shape = Shape(location,shadowExt);
+				shape.CutCorners(includeEdges && cutCorners,cornerSize*1.1f);// * (1.4142136f * 1.4142136f));
+
+				foreach (shape.corners,c)
+					Bakery::Vertex(*c);
+				for (index_t i = 1; i+1 < shape.corners.Count(); i++)
+					Bakery::Triangle(0,i,(i+1));
+				Bakery::Complete(shadowInstruction);
+
+			}
+			shadowInstruction.quickSlots.First() = backgroundTexture;
+			display.Render(shadowInstruction);
+
+		}
+
+		if (background)
+		{
+			{
+				auto col = backgroundColor;
+				//if (lit)
+					//col += 0.3f;
+				if (pressed)
+					col *= 0.9f;
+				if (!enabled)
+					col *= 0.5f;
+				
+				auto top = float4(col.rgb,col.a * topOpacity * ctx.opacity);
+				auto bottom = float4(col.rgb,col.a * bottomOpacity * ctx.opacity);
+				if (lit)
+				{
+					top += 0.3f * topOpacity;
+					bottom += 0.3f * bottomOpacity;
+				}
+				topColor.Update(top);
+				bottomColor.Update(bottom);
+				
+				//topColor.Update(float4(col.rgb,col.a * topOpacity * ctx.opacity));
+				//bottomColor.Update(float4(col.rgb,col.a * bottomOpacity * ctx.opacity));
+			}
+
+			if (recompileBackground)
+			{
+				recompileBackground = false;
+
+				auto shape = Shape(location);
+				shape.CutCorners(includeEdges && cutCorners,cornerSize);
+
+				Bakery::Include(shape);
+				Bakery::Complete(backgroundInstruction);
+			}
+			backgroundInstruction.quickSlots.First() = backgroundTexture;
+			display.Render(backgroundInstruction);
+		}
+
+		display.RestoreRendererState();
+
+		return ctx.Recurse();
+	}
+
+	Decoration::Context			Decoration::RenderEdges(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
+	{
+		using namespace DecorationDetails;
+		UpdateMouseAndFade(relativeMouse,location);
+
+		if (renderEdges)
+		{
+			CopyBackground(ctx.opacity);
+			{
+				float4 edge;
+				edge.rgb = backgroundColor.rgb;
+				//edge.a = std::min(1.f,backgroundColor.a * 1.2f);
+				edge.a = std::min(1.f,backgroundColor.a + 0.1f);
+
+				if (lit)
+					edge *= 1.2f;
+				if (pressed)
+					edge *= 1.1f;
+				if (!enabled)
+					edge *= 0.5f;
+				topColor.Update(float4(edge.rgb,edge.a * topOpacity * ctx.opacity));
+				bottomColor.Update(float4(edge.rgb,edge.a * bottomOpacity * ctx.opacity));
+			}
+
+			if (recompileEdges)
+			{
+				recompileEdges = false;
+
+				const auto cut = includeEdges && cutCorners;
+				static Buffer0<index_t> indexes, outIndexes;
+				for (index_t i = 0; i < 4; i++)
+				{
+					if (includeEdges.value[i])
+					{
+						auto outerShape = Shape(location,0,false,i);
+						auto innerShape = Shape(location,-edgeWidth,false,i);
+						outerShape.CutCorners(cut,cornerSize);
+						innerShape.CutCorners(cut,cornerSize-edgeWidth);
+						Bakery::SetVOffset();
+						foreach (outerShape.corners,c)
+							Bakery::Vertex(*c);
+						for (index_t j = innerShape.corners.Count()-1; j < innerShape.corners.Count(); j--)
+							Bakery::Vertex(innerShape.corners[j]);
+						for (index_t j = 1; j+1 < innerShape.corners.Count() + outerShape.corners.Count(); j++)
+							Bakery::Triangle(0,j,(j+1));
+					}
+				//	if (false)
+					if (cut.value[i] && cut.value[(i+1)%4])
+					{
+						auto shape = Shape(location,0,renderEdges);
+						shape.CutCorners(cut,cornerSize);
+						shape.CutCorner(i,Detail::ViewPortAspect(),cornerSize+edgeWidth*2.f,true);
+						Bakery::Include(shape);
+					}
+				}
+				
+				Bakery::Complete(edgeInstruction);
+			}
+
+			display.StoreRendererState();
+				display.SetBlendMode(Engine::BlendMode::None);
+				edgeInstruction.quickSlots.First() = backgroundTexture;
+				display.Render(edgeInstruction);
+			display.RestoreRendererState();
+		}
+
+		return ctx.Recurse();
+	}
+
+
+	float			Decoration::GetClientHeightLoss() const
+	{
+		using namespace DecorationDetails;
+		return (renderEdges && includeEdges.top ? edgeWidth : 0) + (renderEdges && includeEdges.bottom ? edgeWidth : 0);
+	}
+
+	float			Decoration::GetClientWidthLoss() const
+	{
+		using namespace DecorationDetails;
+		return (renderEdges && includeEdges.left ? edgeWidth : 0) + (renderEdges && includeEdges.right ? edgeWidth : 0);
+	}
+
+
+	float			Decoration::GetClientHeight() const
+	{
+		return location.GetHeight() - GetClientHeightLoss();
+	}
+
+	float			Decoration::GetClientWidth() const
+	{
+		return location.GetWidth() - GetClientWidthLoss();
+	}
+
+	M::Rect<>		Decoration::GetClientArea() const
+	{
+		if (!renderEdges)
+			return location;
+		using namespace DecorationDetails;
+		auto rs = location;
+		const float h = rs.GetHeight();
+		//if (renderEdges && includeEdges.left)
+		//{
+		//	if (includeEdges.bottom || includeEdges.top)
+		//	{
+		//		if (h > 2.f * cornerSize)
+		//			rs.x.min += cornerSize;
+		//		else
+		//			rs.x.min += h*0.5f;
+		//	}
+		//	else
+		//		rs.x.min += edgeWidth;
+		//}
+		//if (renderEdges && includeEdges.right)
+		//{
+		//	if (includeEdges.bottom || includeEdges.top)
+		//	{
+		//		if (h > 2.f * cornerSize)
+		//			rs.x.max -= cornerSize;
+		//		else
+		//			rs.x.max -= h*0.5f;
+		//	}
+		//	else
+		//		rs.x.max -= edgeWidth;
+		//}
+		const float ew = edgeWidth * Detail::ViewPortAspect();
+		{
+			if (includeEdges.bottom)
+				rs.y.min += ew;
+			if (includeEdges.top)
+				rs.y.max -= ew;
+			if (includeEdges.left)
+				rs.x.min += edgeWidth;
+			if (includeEdges.right)
+				rs.x.max -= edgeWidth;
+		}
+		return rs;
+	}
+
+	/*static*/ void		Decoration::StaticCreate()
+	{
+		using namespace DecorationDetails;
+		topColor.Create(float4());
+		bottomColor.Create(float4());
+		mouseAt_fadeRange.Create(float4());
+		Detail::viewportVector.Create(float4());
+		shrinkPixelScale.Create(float2());
+		blurOpacity.Create(0);
+
+		DecorationDetails::SignalScreenResize();
+
+		Engine::VertexBinding vtx;
+		vtx.vertex.Set(0,4);
+		vtx.normal.Unset();
+		vtx.floats_per_vertex = 4;
+		{
+			shader.binding = vtx;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(mouseAt_fadeRange,"MouseAt_FadeRange"),
+				DX11::Shader::Binding(bottomColor,"BottomColor"),
+				DX11::Shader::Binding(topColor,"TopColor"),
+				DX11::Shader::Binding(Detail::viewportVector,"Viewport"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Linear,1,"BackgroundSampler"),
+			};
+
+			shader.quickSlots.SetSize(1);
+			shader.shader.LoadFromFile("shaders/guiShape.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			shader.UpdateLayout();
+			shader.SetTriangles();
+		}
+
+		{
+			quadVBO.CreateFromStructs({float2(0,0),float2(1,0),float2(1,1),float2(0,1)});
+			quadIBO.Create({0,1,2, 0,2,3});
+
+			shrinkShader.quickSlots.SetSize(1);
+			
+			Engine::VertexBinding bind;
+			bind.vertex.Set(0,2);
+			bind.normal.Unset();
+			bind.floats_per_vertex = 2;
+			shrinkShader.binding = bind;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(shrinkPixelScale,"PixelScale"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::None,1,"BackgroundSampler"),
+			};
+
+
+			shrinkShader.shader.LoadFromFile("shaders/guiBackgroundShrink.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			shrinkShader.UpdateLayout();
+			shrinkShader.SetTriangles();
+			shrinkShader.vbo = quadVBO;
+			shrinkShader.ibo = quadIBO;
+		}
+
+		{
+
+			hBlur.quickSlots.SetSize(1);
+			hBlur.binding = shrinkShader.binding;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(shrinkPixelScale,"PixelScale"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::None,1,"BackgroundSampler"),
+			};
+
+
+			hBlur.shader.LoadFromFile("shaders/guiBackgroundHBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			hBlur.UpdateLayout();
+			hBlur.SetTriangles();
+			hBlur.vbo = quadVBO;
+			hBlur.ibo = quadIBO;
+		}
+
+		{
+
+			vBlur.quickSlots.SetSize(1);
+			vBlur.binding = shrinkShader.binding;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(shrinkPixelScale,"PixelScale"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::None,1,"BackgroundSampler"),
+			};
+
+
+			vBlur.shader.LoadFromFile("shaders/guiBackgroundVBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			vBlur.UpdateLayout();
+			vBlur.SetTriangles();
+			vBlur.vbo = quadVBO;
+			vBlur.ibo = quadIBO;
+		}
+		{
+			blend.quickSlots.SetSize(1);
+			blend.binding = shrinkShader.binding;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(blurOpacity,"BlurOpacity"),
+				DX11::Shader::Binding(0,"BackgroundTexture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Linear,1,"BackgroundSampler"),
+			};
+
+
+			blend.shader.LoadFromFile("shaders/guiBackgroundBlend.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			blend.UpdateLayout();
+			blend.SetTriangles();
+			blend.vbo = quadVBO;
+			blend.ibo = quadIBO;
+		}
+	}
+
+
+
+
 
 
 
@@ -872,7 +1611,7 @@ namespace Component
 	{
 		resolvingAxis = true;
 		Super::ResolveAnchorAxis(axis,context,rec); 
-		M::Rect<> childSpace = GetRect();
+		M::Rect<> childSpace = Decoration::GetClientArea();
 		if (vscroll.visible)
 			childSpace.x.max = M::Max(childSpace.x.min, childSpace.x.max - GetVisibleScrollbarContentExpansion());
 		if (order[axis].Count() != components.Count())
@@ -886,8 +1625,9 @@ namespace Component
 	/*virtual override*/ void		Slider::OnScreenSizeOrUIScaleChange() 
 	{
 		Super::OnScreenSizeOrUIScaleChange();
-		relativeHeight = GetPixelHeight() / ViewPortHeight();
-		relativeThumbWidth = GetThumbPixelWidth() / ViewPortWidth();
+		slider.OnScreenSizeOrUIScaleChange();
+		relativeHeight = GetPixelHeight() / Detail::ViewPortHeight();
+		relativeThumbWidth = GetThumbPixelWidth() / Detail::ViewPortWidth();
 		UpdateDynamicSize(ChangeRecorder());
 	}
 
@@ -899,12 +1639,12 @@ namespace Component
 	
 	/*static*/ float		Panel::TScrollbar::GetScreenWidth()
 	{
-		return float(GetPixelWidth()) / ViewPortWidth();
+		return float(GetPixelWidth()) / Detail::ViewPortWidth();
 	}
 
 	/*static*/ float		Panel::TScrollbar::GetButtonScreenHeight()
 	{
-		return float(GetPixelWidth()) / ViewPortHeight();
+		return float(GetPixelWidth()) / Detail::ViewPortHeight();
 	}
 
 
@@ -919,31 +1659,42 @@ namespace Component
 	}
 
 	Slider::Slider()
-	{}
-
-
-
-	/*virtual override*/ void	Slider::Render( float opacity )
 	{
-		const auto&rect = GetRect();
+		slider.SetBackground(true);
+		slider.SetEdges(false);
+		slider.SetCutCorners(false);
+		slider.SetBackgroundTone((float3)0.6f);
+		Decoration::SetEdges(false);
+		Decoration::SetBackground(true);
+		Decoration::SetCutCorners(false);
+		Decoration::SetBackgroundTone((float3)0.1f);
+	}
+
+
+
+	/*virtual override*/ Decoration::Context	Slider::Render( const Decoration::Context&ctx )
+	{
+		const auto rect = Decoration::GetClientArea();
 		const float top = rect.y.max;
 		const float bottom = rect.y.min;
 
 		const float left = rect.x.min;
 		const float right = rect.x.max;
 
+		const auto child = Decoration::Render(relativeMouse,false,false,IsEnabled(),ctx);
 		barBack = M::Rect<>(left,bottom,right,top);
-		SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
-		SurfaceRenderer::Rasterize(barBack);
+		//SurfaceRenderer::SetColor(float4(0,0,0,0.9*opacity));
+		//SurfaceRenderer::Rasterize(barBack);
 
 
 		dragRange = M::FloatRange(left + relativeThumbWidth/2.f,right-relativeThumbWidth/2.f);
 		const float barCenter = dragRange.Derelativate(current/max);
 		bar = M::Rect<>(barCenter-relativeThumbWidth/2.f,barBack.y.min,barCenter+relativeThumbWidth/2.f,barBack.y.max);
 
+
 		if (showMarkers)
 		{
-			float4 markerColor(1,1,1,0.5f*opacity);
+			float4 markerColor(1,1,1,0.5f*child.opacity);
 			float y0 = rect.y.Derelativate(0.2f);
 			float y1 = rect.y.Derelativate(0.8f);
 			M::Rect<> marker;
@@ -954,16 +1705,16 @@ namespace Component
 				float fi = dragRange.Derelativate((float(i) * markersEvery) / max);
 				if (!bar.x.Contains(fi))
 				{
-					marker.x.SetCenter(fi,2.f/ViewPortWidth());
+					marker.x.SetCenter(fi,2.f/Detail::ViewPortWidth());
 					SurfaceRenderer::Rasterize(marker);
 					//LineRenderer::Rasterize(float3(fi,rect.y.min,0.f), markerColor, float3(fi,y0,0.f),markerColor);
 					//LineRenderer::Rasterize(float3(fi,rect.y.max,0.f), markerColor, float3(fi,y1,0.f),markerColor);
 				}
 			}
 		}
-
-		RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
-		RenderBorder(bar,float3(1),true,opacity,opacity);
+		slider.UpdateLocation(bar);
+		slider.Render(relativeMouse,barContainsMouse,dragging,IsEnabled(),child);
+		return child;
 	}
 
 
@@ -1048,10 +1799,17 @@ namespace Component
 
 
 
-
-	void	Panel::TScrollbar::Render( float opacity, const M::Rect<>&rect )
+	Panel::TScrollbar::TScrollbar()
 	{
-		
+		decoration.SetEdges(false);
+		decoration.SetCutCorners(false);
+		decoration.SetBackgroundTone(decoration.GetBackgroundTone() * 1.5f);
+	}
+
+
+
+	void	Panel::TScrollbar::Render( const float2&relativeMouse, const Decoration::Context&ctx, const M::Rect<>&rect )
+	{
 		targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
 		float speed = M::Max(1.f,fabs(targetViewTop - viewTop))*2.f;
 		if (targetViewTop > viewTop)
@@ -1074,17 +1832,21 @@ namespace Component
 		M::Rect<> bottomButton(left,bottom,right,bottom + buttonHeight);
 
 		outline = M::Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
-		SurfaceRenderer::SetColor(float4(0,0,0,0.9 * opacity));
-		SurfaceRenderer::Rasterize(outline);
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9 * ctx.opacity));
+		//SurfaceRenderer::Rasterize(outline);
 
 		bar = M::Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
-		RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
-		RenderBorder(bar,float3(1),true,opacity,opacity);
+
+		decoration.UpdateLocation(bar);
+		decoration.Render(relativeMouse,barContainsMouse,dragging,true,ctx);
+
+		//RenderArea(bar,barContainsMouse,dragging,float3(1),opacity,opacity);
+		//RenderBorder(bar,float3(1),true,opacity,opacity);
 
 		up->SetLocation(topButton);
-		up->Render(opacity);
+		up->Render(ctx);
 		down->SetLocation(bottomButton);
-		down->Render(opacity);
+		down->Render(ctx);
 	}
 
 
@@ -1200,6 +1962,8 @@ namespace Component
 				targetViewTop += viewSize;
 				targetViewTop = M::Min(targetViewTop,scrollMax - viewSize);
 			}));
+			up->SetCutCorners(false);
+			down->SetCutCorners(false);
 			up->SetActive(p->IsActive());
 			down->SetActive(p->IsActive());
 		}
@@ -1218,18 +1982,19 @@ namespace Component
 		}
 	}
 
-	/*virtual override*/ void Button::Render( float opacity )
+	/*virtual override*/ Decoration::Context Button::Render( const Decoration::Context&ctx )
 	{
 		bool lit = IsLit();
 		bool flipped = mousePressedComponent.get() == this;
-		Super::BaseRender(opacity, (lit && !flipped)  || alwaysDown,(lit && flipped) || (alwaysDown && flipWhenAlwaysDown), fillBackground, renderBorder);
-		Super::RenderText(opacity, lit || alwaysDown);
+		const auto child = Decoration::Render(relativeMouse,lit,(lit && !flipped)  || alwaysDown, IsEnabled(),ctx);
+		Super::RenderText(child, lit || alwaysDown);
+		return child;
 	}
 
 
-	/*static*/ void		ScrollButton::RenderArrow( float opacity, const M::Rect<>&r, direction_t dir, bool lit )
+	/*static*/ void		ScrollButton::RenderArrow( const Decoration::Context&ctx, const M::Rect<>&r, direction_t dir, bool lit )
 	{
-		SurfaceRenderer::SetColor(float4(1,1,1,(lit?0.75f:0.5f) * opacity));
+		SurfaceRenderer::SetColor(float4(1,1,1,(lit?0.75f:0.5f) * ctx.opacity));
 
 		switch (dir)
 		{
@@ -1247,21 +2012,22 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void	Panel::Render( float opacity )
+	/*virtual override*/ Decoration::Context		Panel::Render( const Decoration::Context&ctx )
 	{
 		const auto&rect = GetRect();
 		if (!rect.IsValid())
-			return;
-		Super::Render(opacity); 
+			return ctx;
+		const auto chld = Super::Render(ctx); 
 		if (vscroll.visible)
 		{
-			vscroll.Render(opacity, rect);
+			vscroll.Render(this->relativeMouse, ctx, rect);
 			Detail::PushLoadView(rect,float2(0,-vscroll.viewTop));
 		}
 		else
 			Detail::PushLoadView(rect);
-		RenderChildren(opacity);
+		RenderChildren(chld);
 		Detail::PopLoadView();
+		return chld;
 	}
 
 
@@ -1270,11 +2036,11 @@ namespace Component
 		Super::UpdateDynamicSize(rec);
 		foreach (components,c)
 			(*c)->UpdateDynamicSize(rec);
-
+		const auto rect = Decoration::GetClientArea();
 		float lowest = std::numeric_limits<float>::max();
 		foreach (components,c)
 		{
-			float newLowest = (*c)->GetAnchorConfig().GetVAxis().GetMinimumEdge(GetRect().y.max, (*c)->GetRect().y);
+			float newLowest = (*c)->GetAnchorConfig().GetVAxis().GetMinimumEdge(rect.y.max, (*c)->GetRect().y);
 			if (newLowest < lowest)
 			{
 				lowest = newLowest;
@@ -1282,10 +2048,12 @@ namespace Component
 		}
 		if (lowest == std::numeric_limits<float>::max())
 			lowest = GetRect().y.max;
+		else
+			lowest -= Decoration::GetClientHeightLoss();
 		float newY = lowest - autoHeightSpacing;
-		const float currentHeight = GetRect().y.max - newY;
+		const float currentHeight = GetRect().y.max - newY - Decoration::GetClientHeightLoss() * 0.5f;
 
-		const float maxHeight = autoHeight ? this->maxHeight : GetRect().y.GetExtent();
+		const float maxHeight = autoHeight ? this->maxHeight : rect.y.GetExtent();
 
 		bool newVScroll = currentHeight > maxHeight;
 		if (vscroll.visible != newVScroll)
@@ -1294,12 +2062,12 @@ namespace Component
 		{
 			vscroll.scrollMax = currentHeight;
 			vscroll.viewSize = maxHeight;
-			float barSize = M::Max(maxHeight,0.2f * GetHeight()*currentHeight);
+			float barSize = M::Max(maxHeight,0.2f * rect.GetHeight()*currentHeight);
 			float overSize = barSize - maxHeight;
 			vscroll.scrollMax += overSize;
 			vscroll.viewSize += overSize;
 
-			newY = GetRect().y.max - maxHeight;
+			newY = GetRect().y.max - maxHeight - Decoration::GetClientHeightLoss();
 
 			if (autoHeight)
 			{
@@ -1371,6 +2139,7 @@ namespace Component
 			active = false;
 	}
 
+	#if 0
 
 	/*static*/ void				Component::RenderArea(const M::Rect<>&rect, bool lit, bool flip, const float3&backgroundTone, float lowOpacity/*=1*/, float highOpacity/*=1*/)
 	{
@@ -1407,6 +2176,7 @@ namespace Component
 		LineRenderer::Flush();
 	}
 	
+	#endif /*0*/
 
 	static float CharWidth(char c)
 	{
@@ -1495,7 +2265,7 @@ namespace Component
 		AddComponent(newComponent,caller);
 	}
 
-
+	#if 0
 	void				Box::BaseRender( float opacity, bool lit, bool flipped, bool fill, bool outline )
 	{
 		const M::Rect<>&r = GetRect();
@@ -1504,6 +2274,7 @@ namespace Component
 		if (outline)
 			RenderBorder(r,backgroundTone,true,bottomOpacity*opacity,topOpacity*opacity);
 	}
+	#endif /*0*/
 
 	static const float CellSize = 0.01f;
 
@@ -1557,6 +2328,13 @@ namespace Component
 	//}
 
 
+
+	/**/				BaseInput::BaseInput()
+	{
+		SetCutCorners(false);
+		SetEdges(false);
+		SetBackgroundTone(GetBackgroundTone() * 0.5f);
+	}
 
 	/*virtual override*/ float			BaseInput::GetContentHeight() const
 	{
@@ -1696,18 +2474,15 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void			BaseInput::Render( float opacity )
+	/*virtual override*/ Decoration::Context			BaseInput::Render( const Decoration::Context&ctx )
 	{
-		core = GetRect();
+		core = Decoration::GetClientArea();
 		textout.PushState();
 		textout.Scale(Detail::textZoom);
 		core.Expand(-textout.GetScaledHeight()*0.4f);
 		//core.Scale(0.97f);
 
-		if (fillBackground)
-			RenderArea(core,false,true,backgroundTone,opacity,opacity);
-		if (renderBorder)
-			RenderBorder(core,backgroundTone,true,opacity,opacity);
+		const auto child = Decoration::Render(relativeMouse,false,false,IsEnabled(),ctx);
 
 		StringRef text = GetTextRef();
 
@@ -1721,9 +2496,9 @@ namespace Component
 
 		float4 baseColor;
 		if (IsEnabled())
-			baseColor = (IsLit() ? float4(1,1,1,opacity) : float4(0.75,0.75,0.75,opacity));
+			baseColor = (IsLit() ? float4(1,1,1,child.opacity) : float4(0.75,0.75,0.75,child.opacity));
 		else
-			baseColor = float4(0.5,0.5,0.5,opacity);
+			baseColor = float4(0.5,0.5,0.5,child.opacity);
 
 		textout.SetColor(baseColor);
 
@@ -1753,7 +2528,7 @@ namespace Component
 
 
 		textout.PopState();
-
+		return child;
 
 	}
 
@@ -1858,7 +2633,7 @@ namespace Component
 			w = std::max(w,w1);
 		}
 		w *= 1.01f;
-		w += textout.GetScaledWidth('X') * (padding.left + padding.right);
+		w += textout.GetScaledWidth('X') * (padding.left + padding.right) + Decoration::GetClientWidthLoss();
 		textout.PopState();
 		return w;
 	}
@@ -1883,7 +2658,7 @@ namespace Component
 
 	/*virtual override*/ float		TextField::GetContentHeight() const
 	{
-		return heightLockedToIdeal ? textHeight : -1;
+		return heightLockedToIdeal ? textHeight  + Decoration::GetClientHeightLoss() : -1;
 	}
 
 	/*virtual override*/ void	TextField::UpdateDynamicSize(ChangeRecorder&rec)
@@ -1905,10 +2680,12 @@ namespace Component
 	{
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
+
+		Decoration::AssertLocationMatch(GetRect());
 		
 		const float leftPadding = textout.GetScaledWidth('X') * padding.left;
 		const float rightPadding = textout.GetScaledWidth('X') * padding.right;
-		const float width = GetWidth() - leftPadding - rightPadding;
+		const float width = Decoration::GetClientArea().x.GetExtent() - leftPadding - rightPadding;
 		const float center = width/2 + leftPadding;
 		#ifdef _DEBUG
 			wrappedAtWidth = width;
@@ -1973,16 +2750,18 @@ namespace Component
 
 
 
-	/*virtual override*/ void			TextField::Render( float opacity )
+	/*virtual override*/ Decoration::Context			TextField::Render( const Decoration::Context&ctx )
 	{
-		bool lit = IsLit();
-
-		Super::BaseRender(opacity,lit,false,fillBackground,renderBorder);
-		RenderText(opacity,lit);
+		const bool lit = IsLit();
+		auto child = Decoration::Render(relativeMouse,lit,false,IsEnabled(),ctx);
+		RenderText(child,lit);
+		return child;
 	}
 
-	void TextField::RenderText( float opacity, bool lit )
+	void TextField::RenderText( const Decoration::Context&ctx, bool lit )
 	{
+		const auto contextHeight = Decoration::GetClientHeight();
+		lit |= enabledAlwaysLit;
 		textout.PushState();
 		textout.Scale(Detail::textZoom*zoom);
 
@@ -1992,14 +2771,15 @@ namespace Component
 
 		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.GetScaledHeight()*1.5f);
 		//float lineHeight = textout.GetScaledHeight();
-		const float top = GetRect().y.max;
-		const float left = GetRect().x.min;
+		const auto rect = Decoration::GetClientArea();
+		const float top = rect.y.max - (contextHeight - textHeight) * 0.5f;
+		const float left = rect.x.min;
 
 		float4 baseColor;
 		if (IsEnabled())
-			baseColor = (lit ? float4(1,1,1,opacity) : float4(0.75,0.75,0.75,opacity));
+			baseColor = (lit  ? float4(1,1,1,ctx.opacity) : float4(0.75,0.75,0.75,ctx.opacity));
 		else
-			baseColor = float4(0.5,0.5,0.5,opacity);
+			baseColor = float4(0.5,0.5,0.5,ctx.opacity);
 
 		textout.SetColor(baseColor & this->color);
 		for (index_t i = 0; i < wrappedText.Count(); i++)
@@ -2025,7 +2805,7 @@ namespace Component
 
 
 		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
-		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
+		const float wantRelativeHeight = wantPixelImageHeight / float(Detail::ViewPortHeight());
 
 		if (isnan(wantRelativeHeight))
 		{
@@ -2037,10 +2817,10 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void			Image::Render( float opacity )
+	/*virtual override*/ Decoration::Context			Image::Render( const Decoration::Context&ctx )
 	{
 		if (texture.IsEmpty())
-			return;
+			return ctx;
 
 		const bool lit = IsLit();
 	
@@ -2071,12 +2851,14 @@ namespace Component
 
 		display.SetObjectMatrix(matrix);
 		texturedQuad.quickSlots.First() = texture;
-		texturedQuadColor.Update(float4(1,1,1,opacity));
+		texturedQuadColor.Update(float4(1,1,1,ctx.opacity));
 		display.RenderVertices(texturedQuad);
+		return ctx;
 	}
 
 	/*virtual*/ void	Component::OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
+		relativeMouse = mouseAt;
 		containsMouse = clipAreaContainsMouse && GetRect().Contains(mouseAt);
 	}
 
@@ -2301,7 +3083,7 @@ namespace Component
 		return area.Contains(Engine::mouse.location.windowRelative);
 	}
 
-
+	#if 0
 	/*static*/ void	Component::Darken(const M::Rect<>&rect, float alpha/*=0.9f*/, bool flush/*=false*/)
 	{
 		SurfaceRenderer::SetColor(float4(0,0,0,alpha));
@@ -2310,10 +3092,11 @@ namespace Component
 			SurfaceRenderer::Flush();
 	
 	}
+	#endif /*0*/
 
 	/*virtual override*/ float	Checkbox::GetIdealWidth() const
 	{
-		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / ViewPortAspect() * 1.5f;
+		float checkBoxWidth = GetTotalFontScale() * textout.GetScaledHeight() / Detail::ViewPortAspect() * 1.5f;
 		return Super::GetIdealWidth() + checkBoxWidth;
 	}
 
@@ -2327,18 +3110,18 @@ namespace Component
 		return Math::Max(textHeight,checkBoxHeight);
 	}
 
-	/*virtual override*/ void Checkbox::Render( float opacity )
+	/*virtual override*/ Decoration::Context Checkbox::Render( const Decoration::Context&ctx )
 	{
 		bool lit = IsLit();
 		//Super::BaseRender(lit,false);
-		Super::RenderText(opacity, lit);
-		SurfaceRenderer::SetColor((lit ? float4(0.7f):float4(0.5f)) & float4(1,1,1,opacity));
+		Super::RenderText(ctx, lit);
+		SurfaceRenderer::SetColor((lit ? float4(0.7f):float4(0.5f)) & float4(1,1,1,ctx.opacity));
 		float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight();
-		float checkBoxWidth = checkBoxHeight / ViewPortAspect();
+		float checkBoxWidth = checkBoxHeight / Detail::ViewPortAspect();
 		float top = GetRect().y.center() + checkBoxHeight*0.7f;// Super::extraSpacing * checkBoxHeight;
 		M::TFloatRect box = M::TFloatRect(GetRect().x.min,top - checkBoxHeight,GetRect().x.min+checkBoxWidth,top);
 		SurfaceRenderer::Rasterize(box);
-		const float4 color = lit ? float4(1,1,1,opacity):float4(float3(0.7f), 0.7*opacity);
+		const float4 color = lit ? float4(1,1,1,ctx.opacity):float4(float3(0.7f), 0.7*ctx.opacity);
 		if (isChecked)
 		{
 			//SurfaceRenderer::SetColor(lit ? float4(0.7f):float4(0.4f));
@@ -2351,6 +3134,7 @@ namespace Component
 		LineRenderer::SetColor(color);
 		LineRenderer::Rasterize(box);
 		LineRenderer::Flush();
+		return ctx;
 	}
 
 	void		Panel::SetAutomaticHeight(bool b)
@@ -2378,6 +3162,14 @@ namespace Component
 		}
 		foreach (components,c)
 			(*c)->VerifyAnchorIntegrity(sender);
+	}
+
+
+
+	/*virtual override*/ Decoration::Context		Window::Render( const Decoration::Context&ctx )
+	{
+		DecorationDetails::UpdateBackground(ctx);
+		return Super::Render(ctx);
 	}
 
 
@@ -2424,7 +3216,7 @@ namespace Component
 	/**/			TabBar::TabBar()
 	{
 		SetAutomaticHeight(true);
-		SetBackgroundTransparent();
+		Decoration::SetBackground(false);
 		SetAutoHeightSpacing(0.02f);
 
 	}
@@ -2449,6 +3241,9 @@ namespace Component
 		}
 		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
+		tab->SetCutCorners({false,false,true,true});
+		tab->SetEdges(false);
+		tab->SetPadding({1,0.25f,4,0.25f});
 
 		ConfigureInactive(tab);
 
@@ -2472,29 +3267,52 @@ namespace Component
 			onTabChange();
 	}
 
-	/*static*/ void		TabBar::ConfigureInactive(const PButton&active)
+	void		TabBar::ConfigureInactive(const PButton&active)	const
 	{
-		active->SetAlwaysDown(false);
-		active->edges = M::Quad<bool>(true);
-		active->bottomOpacity = 1;
+		//active->SetAlwaysDown(false);
+		active->Decoration::SetEdgeVisibility(true);
+		active->SetOpacity(inactiveOpacity);
+		//active->SetBackgroundTone((float3)0.4f);
 		active->Anchor().Top();
 		active->LockToIdealHeight(true);
-		active->topOpacity = 0.85f;
-		active->bottomOpacity = 0.85f;
-		active->SetColor(float4(1,1,1,0.85f));
+	//	active->SetColor(float4(1,1,1,0.85f));
 
 	}
-	/*static*/ void		TabBar::ConfigureActive(const PButton&active)
+	void		TabBar::ConfigureActive(const PButton&active)	const
 	{
-		active->SetAlwaysDown(true);
+		//active->SetAlwaysDown(true);
 		active->LockToIdealHeight(false);
 		active->Anchor().FillVertically();
 //			GetVAxis().lower.Set(0);
-		active->topOpacity = 1.f;
-		active->bottomOpacity = 0;
-		active->edges = M::Quad<bool>(true,false,true,true);
-		active->SetColor(float4(1));
+		//active->SetOpacity(0.75f);
+		active->SetOpacity(activeTopOpacity,activeBottomOpacity);
+		//active->SetBackgroundTone((float3)0.6f);
+		//active->Decoration::SetEdgeVisibility(M::Quad<bool>(true,false,true,true));
+	//	active->SetColor(float4(1));
 	}
+
+	void			TabBar::SetActiveBottomOpacity(float op)
+	{
+		activeBottomOpacity = op;
+		if (active)
+			ConfigureActive(active);
+	}
+
+	void			TabBar::SetActiveTopOpacity(float op)
+	{
+		activeTopOpacity = op;
+		if (active)
+			ConfigureActive(active);
+	}
+
+	void			TabBar::SetInactiveOpacity(float op)
+	{
+		inactiveOpacity = op;
+		foreach (this->components,tab)
+			if (active != *tab)
+				ConfigureInactive(To<Button>::Cast(*tab));
+	}
+
 
 
 	void			TabBar::SetActiveTab( index_t tabIndex, bool triggerCallback)
@@ -2508,7 +3326,7 @@ namespace Component
 		}
 
 		activeIndex = tabIndex;
-		active = To<Button>::Cast( GetReferences()[tabIndex] );
+		active = To<Button>::Cast(GetReferences()[tabIndex]);
 		{
 			ConfigureActive(active);
 		}
@@ -2522,7 +3340,7 @@ namespace Component
 	{
 		if (tabBar)
 			return;
-		this->SetBackgroundTransparent();
+		Decoration::SetBackground(false);
 		tabBar.reset(new TabBar());
 		{
 			auto mod = tabBar->Anchor();
@@ -2534,6 +3352,7 @@ namespace Component
 			if (tabBar->GetActiveTabIndex() != InvalidIndex)
 				this->SetActiveTab(tabBar->GetActiveTabIndex(),true);
 		});
+		tabBar->SetActiveBottomOpacity(0.75f);
 
 		Super::AddComponent(tabBar,CLOCATION);
 	}
@@ -2545,8 +3364,9 @@ namespace Component
 
 		auto&tab = tabs.Append();
 		tab.panel.reset(new Panel());
-		tab.panel->fillBackground = false;
-		tab.panel->edges.top = false;
+		//tab.panel->Decoration::SetEdgeVisibility({true,true,true,false});
+		//tab.panel->SetEdges(true);
+		tab.panel->SetCutCorners({false,false,true,true});
 		{
 			auto mod = tab.panel->Anchor();
 			mod.GetHAxis().Fill();
@@ -2554,6 +3374,9 @@ namespace Component
 			mod.GetVAxis().upper.Set(tabBar,Distance());
 		}
 		tab.button = tabBar->AddTab(caption);
+		//tab.panel->SetBackgroundColor(tab.button->GetBackgroundColor());
+		tab.panel->SetBackgroundTone((float3)0.6f);
+		tab.panel->SetBackgroundOpacity(0.65f);
 		return tab.panel;
 	}
 
@@ -2698,9 +3521,12 @@ namespace Component
 		lines.Rasterize(float4(1,1,1,opacity));
 	}
 
-	/*virtual override*/ void	MultiPlot::Render( float opacity )
+	/*virtual override*/ Decoration::Context	MultiPlot::Render( const Decoration::Context&ctx )
 	{
-		Super::Render(opacity);
+		//Super::Render(opacity);
+		
+		const auto chld = Decoration::RenderBackground(relativeMouse,false,false,IsEnabled(),ctx);
+
 		bool anyChanged = axesChanged;
 		foreach (plots,g)
 			if (g->changed)
@@ -2714,15 +3540,15 @@ namespace Component
 		display.StoreRendererState();
 		display.SetRasterizer(true,true);
 		foreach (plots,g)
-			g->RenderSurfaces(opacity);
+			g->RenderSurfaces(chld.opacity);
 
 		display.RestoreRendererState();
 
 		foreach (plots,g)
-			g->RenderLines(opacity);
+			g->RenderLines(chld.opacity);
 
 
-		axes.Rasterize(float4(1,1,1,opacity));
+		axes.Rasterize(float4(1,1,1,chld.opacity));
 
 		{
 			BeginLabelPrint();
@@ -2734,9 +3560,7 @@ namespace Component
 
 			EndLabelPrint();
 		}
-
-
-		Box::RenderBorder(GetRect(),float3(1),true,opacity,opacity);
+		return Decoration::RenderEdges(relativeMouse,false,false,IsEnabled(),ctx);
 	}
 
 	void MultiPlot::BeginLabelPrint()
@@ -3017,41 +3841,41 @@ namespace Component
 				};
 
 				Array<TPoint> points(data.Count());
-				for (index_t i = 0; i < data.Count(); i++)
+				for (index_t j = 0; j < data.Count(); j++)
 				{
-					const float rX = dataRect.x.Relativate(i + start);
+					const float rX = dataRect.x.Relativate(j + start);
 					ASSERT_IS_CONSTRAINED__(rX,0,1);
 					const float x = componentRect.x.Derelativate( rX );
-					const float y = componentRect.y.Derelativate( dataRect.y.Relativate(data[i].yRaw) );
-					points[i].raw.x = x * w;
-					points[i].raw.y = y * h;
+					const float y = componentRect.y.Derelativate( dataRect.y.Relativate(data[j].yRaw) );
+					points[j].raw.x = x * w;
+					points[j].raw.y = y * h;
 
 					MakeVertex(x,y);
 				}
 
-				for (index_t i = 0; i+1 < points.Count(); i++)
+				for (index_t j = 0; j+1 < points.Count(); j++)
 				{
-					auto&p = points[i];
-					p.dir = points[i+1].raw - points[i].raw;
+					auto&p = points[j];
+					p.dir = points[j+1].raw - points[j].raw;
 					p.normal = float2{p.dir.y,-p.dir.x}.Normalize0();
 					p.base = p.raw + p.normal * 20 * UI::GetScale();
 				}
 
-				for (index_t i = 1; i+1 < points.Count(); i++)
+				for (index_t j = 1; j+1 < points.Count(); j++)
 				{
-					const float2&n1 = points[i].normal;
-					const float2&b0 = points[i-1].base,
-								&b1 = points[i].base,
-								&d0 = points[i-1].dir;
+					const float2&n1 = points[j].normal;
+					const float2&b0 = points[j-1].base,
+								&b1 = points[j].base,
+								&d0 = points[j-1].dir;
 					const float2 bd = b1 - b0;
 					const float div = Vec::dot(d0,n1);
 					if (fabs(div) > TypeInfo<float>::error)
 					{
 						const float alpha = Vec::dot(n1, b1 - b0) / div;
-						points[i].final = b0 + alpha * d0;
+						points[j].final = b0 + alpha * d0;
 					}
 					else
-						points[i].final = points[i].base;
+						points[j].final = points[j].base;
 				}
 
 				{
@@ -3065,12 +3889,12 @@ namespace Component
 
 
 
-				for (index_t i = 1; i < data.Count(); i++)
+				for (index_t j = 1; j < data.Count(); j++)
 				{
-					surface.AddQuadInv(i-1,i,i+data.Count(),i+data.Count()-1);
+					surface.AddQuadInv(j-1,j,j+data.Count(),j+data.Count()-1);
 					lines.AddLine(
-						i-1,
-						i);
+						j-1,
+						j);
 				}
 
 			}
@@ -3081,10 +3905,45 @@ namespace Component
 		surface.Bake();
 	}
 
+	void Panel::Setup()
+	{
+		Super::SetEdges(false);
+		Super::SetBackgroundOpacity(0.45f);
+		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
+	}
+
+	void ButtonPanel::Setup()
+	{
+		Super::SetBackgroundTone((float3)0.7f);
+		Super::SetBackgroundOpacity(0.8f);
+		Super::SetEdges(true);
+	}
+
+
+	void Button::Setup()
+	{
+		//Super::SetEdges(false);
+		//Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
+		Super::SetBackgroundTone((float3)0.7f);
+		Super::SetBackgroundOpacity(0.8f);
+		//Super::SetEdgeOpacity(1.f);
+		Super::SetEdges(true);
+		//Super::SetEnabledTextAlwaysLit(true);
+		Super::SetVerticalPadding(0.25f);
+	}
+
+	void Label::Setup()
+	{
+		Decoration::SetBackground(false);
+		Decoration::SetEdges(false);
+		Super::SetEnabledTextAlwaysLit(true);
+	}
+
 
 	void SignalScreenResize()
 	{
 		Detail::lastClientSpace = display.GetClientSize();
+		DecorationDetails::SignalScreenResize();
 	}
 
 }

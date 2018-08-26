@@ -37,10 +37,10 @@ namespace HUD
 							yesButton->SetAlwaysDown(true);
 						else
 							noButton->SetAlwaysDown(true);
-						panel->fillBackground = false;
+						panel->SetBackground(false);
 					}
 					else
-						panel->fillBackground = true;
+						panel->SetBackground(true);
 				}
 			};
 
