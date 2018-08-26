@@ -375,7 +375,7 @@ namespace Component
 		void			UpdateLocation(const M::Rect<>&rect)	{location = rect; recompileShadow = true; recompileBackground=true; recompileEdges=true;}
 		void			AssertLocationMatch(const M::Rect<>&rect) const {ASSERT_EQUAL__(location,rect);}
 
-		void			SetCutCorners(const M::Quad<bool>&edges) {if (edges != this->cutCorners) {cutCorners = edges; recompileEdges=true;}}
+		void			SetCutCorners(const M::Quad<bool>&edges) {if (edges != this->cutCorners) {cutCorners = edges; recompileEdges=true; recompileBackground=true;}}
 		M::Quad<bool>	GetCutCorners() const {return cutCorners;}
 		void			SetEdgeVisibility(const M::Quad<bool>&edges) {if (edges != this->includeEdges) {includeEdges = edges; recompileEdges=true;}}
 		void			SetEdges(bool renderEdges) {this->renderEdges = renderEdges;}
