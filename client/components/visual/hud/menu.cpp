@@ -128,7 +128,7 @@ namespace Menu
 	static const float MinTextWidth=0.2f;	//measured in multiples of a whole screen width
 
 
-	static Component::PLabel AddOption(const String&name, const Component::PComponent&c)
+	static Component::PLabel AddOption(const Component::PPanel&panel, const String&name, const Component::PComponent&c)
 	{
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu()["+String(options.get())+"].AddOption("+name+", ...)");
 
@@ -150,15 +150,15 @@ namespace Menu
 		p->SetAutomaticHeight(true);
 		p->SetBackgroundTransparent();
 
-		options->AnchorBelowPrevious(CLOCATION,p);
+		panel->AnchorBelowPrevious(CLOCATION,p);
 		return l;
 	}
 
-	static Component::PSlider AddOptionSlider(const String&name, float min, float max, float slide, float initial, const std::function<void(float&)>&onChange, const std::function<String()>&toString)
+	static Component::PSlider AddOptionSlider(const Component::PPanel&panel, const String&name, float min, float max, float slide, float initial, const std::function<void(float&)>&onChange, const std::function<String()>&toString)
 	{
 		Component::PSlider s(new Component::Slider());
 		s->Setup(initial-min,max-min, slide);
-		auto label = AddOption(name,s);
+		auto label = AddOption(panel,name,s);
 		std::weak_ptr<Component::Label> w = label;
 		s->SetOnChange([onChange,toString,w,name,min](float&f0)
 		{
@@ -175,7 +175,7 @@ namespace Menu
 		return s;
 	}
 
-	static Component::PCheckbox AddCheckBox(const String&name,bool initial, const std::function<void(bool)>&onChange)
+	static Component::PCheckbox AddCheckBox(const Component::PPanel&panel, const String&name,bool initial, const std::function<void(bool)>&onChange)
 	{	
 		Component::PCheckbox c(new Component::Checkbox("",initial,[onChange,name](bool b)
 		{
@@ -183,8 +183,15 @@ namespace Menu
 			onChange(b);	
 			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' done");
 		}));
-		AddOption(name,c);
+		AddOption(panel,name,c);
 		return c;
+	}
+
+	static Component::PPanel MakeTab(const Component::PTabCollection&tabs, const String&title)
+	{
+		auto result = tabs->AddTab(title);
+		result->SetAutoHeightSpacing(0.02f);
+		return result;
 	}
 
 	static void CreateOptionsMenu()
@@ -192,10 +199,22 @@ namespace Menu
 		auto menu = options = Component::Window::Create();
 		LogEvent(EventClass::Preset::gui,"CreateOptionsMenu(): "+String(menu.get()));
 		menu->logFullAutoLayout = true;
-		menu->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f);
-		menu->AnchorBelowPrevious(CLOCATION,new Component::Label("Options",2.f));
+		menu->SetAutomaticHeight(false);
+		menu->Anchor().FillHorizontally(0.1f,0.1f).Top(0.1f,0.8f);
+		auto optionsLabel = std::make_shared<Component::Label>("Options",2.f);
+		menu->AnchorBelowPrevious(CLOCATION,optionsLabel);
+		auto closeButton = std::make_shared<Component::Button>("OK",[](){WindowStack::Hide(options);});
+		closeButton->Anchor().FillHorizontally().Bottom();
+		menu->AddComponent(closeButton,CLOCATION);
+
+		const auto tabs = std::make_shared<Component::TabCollection>();
+		const auto visual = MakeTab(tabs,"Visual");
+		const auto game = MakeTab(tabs,"Game");
+		tabs->Anchor().FillHorizontally().GetVAxis().FillBetween(closeButton,optionsLabel);
+		menu->AddComponent(tabs,CLOCATION);
+
 		
-		AddOptionSlider("UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
+		AddOptionSlider(visual,"UI Scale", 0.5f, 2.f, 0.125f,UI::GetScale(), [](float&q)
 		{
 			q = M::Round(q * 8.f)*0.125f;
 			UI::SetScale(q);
@@ -208,7 +227,7 @@ namespace Menu
 		)->SetupMarkers(0.25f,true);
 
 
-		AddOptionSlider("Shadow Quality", 0, ShadedInstruction::Quality::N-1, 1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
+		AddOptionSlider(visual,"Shadow Quality", 0, ShadedInstruction::Quality::N-1, 1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
 			{
 				auto old = ShadedInstruction::chosenQuality;
 				ShadedInstruction::chosenQuality.Load(ShadedInstruction::Quality::N-1 -M::Round(q));
@@ -227,7 +246,7 @@ namespace Menu
 		const auto modes = display.GetMSAAModes();
 		if (modes.Count() > 1)
 		{
-			AddOptionSlider("Anti-Aliasing", 0, modes.Count()-1, 1,display.GetCurrentMSAAMode(), [](float&q)
+			AddOptionSlider(visual,"Anti-Aliasing", 0, modes.Count()-1, 1,display.GetCurrentMSAAMode(), [](float&q)
 			{
 				auto old = display.GetCurrentMSAAMode();
 				const index_t mode = Math::Max(0.f,M::Round(q));
@@ -248,7 +267,7 @@ namespace Menu
 		}
 
 
-		AddCheckBox("Vertical Sync",display.IsVSyncActive(),[](bool enabled)
+		AddCheckBox(visual,"Vertical Sync",display.IsVSyncActive(),[](bool enabled)
 		{
 			bool old = display.IsVSyncActive();
 			if (old != enabled)
@@ -259,7 +278,7 @@ namespace Menu
 		});
 
 		{
-			Component::PCheckbox box = AddCheckBox("Full Screen (Alt+Enter)",IsFullScreen(),[](bool enabled)
+			Component::PCheckbox box = AddCheckBox(visual,"Full Screen (Alt+Enter)",IsFullScreen(),[](bool enabled)
 			{
 				bool old = IsFullScreen();
 				if (old != enabled)
@@ -280,7 +299,7 @@ namespace Menu
 							maxExponent = ceil(log(maxParticles) / log(expBase));
 		const float		current = log(Explosions::maxConcurrentParticles) / log(expBase);
 		
-		AddOptionSlider("Max Explosion Particles", minExponent, maxExponent, 2, current, [](float&q)
+		AddOptionSlider(visual,"Max Explosion Particles", minExponent, maxExponent, 2, current, [](float&q)
 			{
 				count_t nVal = pow(expBase,q);
 				if (Explosions::maxConcurrentParticles != nVal)
@@ -295,7 +314,7 @@ namespace Menu
 			}
 		);
 
-		AddCheckBox("Terrain Camera Intersection Correction (slow)",Camera::terrainIntersectionTest,[](bool enabled)
+		AddCheckBox(game,"Terrain Camera Intersection Correction (slow)",Camera::terrainIntersectionTest,[](bool enabled)
 		{
 			bool old = Camera::terrainIntersectionTest;
 			if (old != enabled)
@@ -307,7 +326,8 @@ namespace Menu
 
 		if (AudioInterface::IsActive())
 		{
-			AddOptionSlider("Sound Volume", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
+			const auto audio = MakeTab(tabs,"Sound");
+			AddOptionSlider(audio,"Sound Volume", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
 			{
 				auto old = AudioInterface::GetMasterVolume();
 				if (old != q)
@@ -322,7 +342,7 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 
-			AddCheckBox("Mute sound when tabbed out",AudioInterface::MutingOnWindowFocusLoss(), [](bool enabled)
+			AddCheckBox(audio,"Mute sound when tabbed out",AudioInterface::MutingOnWindowFocusLoss(), [](bool enabled)
 			{
 				auto old = AudioInterface::MutingOnWindowFocusLoss();
 				if (old != enabled)
@@ -332,7 +352,7 @@ namespace Menu
 				}
 			});
 
-			AddCheckBox("Play sound on round begin",NewRoundSound::IsEnabled(), [](bool enabled)
+			AddCheckBox(audio,"Play sound on round begin",NewRoundSound::IsEnabled(), [](bool enabled)
 			{
 				auto old = NewRoundSound::IsEnabled();
 				if (old != enabled)
@@ -342,7 +362,7 @@ namespace Menu
 				}
 			});
 
-			AddOptionSlider("Music Volume", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
+			AddOptionSlider(audio,"Music Volume", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
 			{
 				auto old = Music::GetVolume();
 				if (old != q)
@@ -357,7 +377,7 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 			
-			AddCheckBox("Mute music during gameplay",!Music::PlayMusicDuringGameplay(),[](bool enabled)
+			AddCheckBox(audio,"Mute music during gameplay",!Music::PlayMusicDuringGameplay(),[](bool enabled)
 			{
 				bool old = !Music::PlayMusicDuringGameplay();
 				if (old != enabled)
@@ -370,7 +390,7 @@ namespace Menu
 
 		}
 
-		AddCheckBox("Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
+		AddCheckBox(game,"Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
 		{
 			bool old = !Objects::ShiftMeansQueue();
 			if (old != enabled)
@@ -380,7 +400,7 @@ namespace Menu
 			}
 		});
 
-		AddCheckBox("Debug Tools for Scripted AI", ScriptedAI::visualDebugActive, [](bool enabled)
+		AddCheckBox(game,"Debug Tools for Scripted AI", ScriptedAI::visualDebugActive, [](bool enabled)
 		{
 			bool old = ScriptedAI::visualDebugActive;
 			if (old != enabled)
@@ -393,16 +413,11 @@ namespace Menu
 			}
 		});
 
-		{
-			Component::PButton button(new Component::Button("OK",[](){WindowStack::Hide(options);}));
-			//button->LockIdealWidth();
-			options->AnchorBelowPrevious(CLOCATION,button);
-			button->SetCenteredWidth(HUD::Component::Distance::GameWindow( 0.5f ));
-		}
 
-		options->SetAutoHeightSpacing(0.02f);
 
-		options->SetAutomaticHeight(true);
+//		options->SetAutoHeightSpacing(0.02f);
+
+	//	options->SetAutomaticHeight(true);
 		options->FullAutoLayout(CLOCATION);
 	}
 

@@ -2545,6 +2545,7 @@ namespace Component
 
 		auto&tab = tabs.Append();
 		tab.panel.reset(new Panel());
+		tab.panel->fillBackground = false;
 		tab.panel->edges.top = false;
 		{
 			auto mod = tab.panel->Anchor();
