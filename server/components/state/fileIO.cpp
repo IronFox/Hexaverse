@@ -1694,7 +1694,7 @@ namespace FileIO
 			{
 				auto al = Objects::Alliance::FindByID(winnerID);
 				if (al)
-					Game::DeclareWinner(al, "Restored from save game");
+					Game::DeclareWinner(al, "Restored from save game", true);
 			}
 
 		}

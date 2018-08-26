@@ -1368,11 +1368,11 @@ namespace Game
 	}
 
 
-	void	DeclareWinner( const Objects::PAlliance&w, const String&reason )
+	void	DeclareWinner( const Objects::PAlliance&w, const String&reason, bool ignoreSessionState )
 	{
 		DBG_ASSERT__(w);
 		DBG_ASSERT__(winner.expired());
-		if (!::Network::SessionIsStarted())
+		if (!::Network::SessionIsStarted() && !ignoreSessionState)
 		{
 			LogEvent(EventSignificance::NonFatalError,"Trying to declare winner while session is closed ("+reason+").");
 			DBG_FATAL__("Bad state");
