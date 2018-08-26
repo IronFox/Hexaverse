@@ -199,7 +199,7 @@ namespace Dialog
 
 				{
 					auto cfg = imageField->GetAnchorConfig();
-					cfg.GetHAxis().Fill(0,HUD::Component::Distance::OfParentSize( 0.6f));
+					cfg.GetHAxis().Fill(0.01,HUD::Component::Distance::OfParentSize( 0.6f));
 					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,0.05f);
 					if (confirmButton)
 					{
