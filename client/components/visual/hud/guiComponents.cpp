@@ -1257,7 +1257,9 @@ namespace Component
 			{
 				auto col = backgroundColor;
 				if (lit)
-					col *= 1.6f;
+					col += 0.3f;
+				if (pressed)
+					col *= 0.9f;
 				if (!enabled)
 					col *= 0.5f;
 				topColor.Update(float4(col.rgb,col.a * topOpacity * ctx.opacity));
@@ -1299,6 +1301,8 @@ namespace Component
 
 				if (lit)
 					edge *= 1.2f;
+				if (pressed)
+					edge *= 1.1f;
 				if (!enabled)
 					edge *= 0.5f;
 				topColor.Update(float4(edge.rgb,edge.a * topOpacity * ctx.opacity));
