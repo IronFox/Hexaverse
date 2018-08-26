@@ -1675,6 +1675,12 @@ namespace Component
 	public:
 		typedef std::function<void()>	FOnTabChange;
 
+		CONSTRUCT_ENUMERATION2(CornerStyle,
+			LeftAligned,
+			Compact
+		);
+
+
 		/**/			TabBar();
 		/**
 		Adds a new tab to the bar, to the right of the last added tab (if any).
@@ -1730,6 +1736,9 @@ namespace Component
 		float			GetActiveTopOpacity() const {return activeTopOpacity;}
 		void			SetInactiveOpacity(float op);
 		float			GetInactiveOpacity() const {return inactiveOpacity;}
+
+		CornerStyle		GetCornerStyle() const {return cornerStyle;}
+		void			SetCornerStyle(CornerStyle);
 	
 	protected:
 		virtual void	OnTabChange();
@@ -1747,6 +1756,7 @@ namespace Component
 		FOnTabChange	onTabChange;
 		PButton			active;
 		index_t			activeIndex = InvalidIndex;
+		CornerStyle		cornerStyle;
 
 		void			SetActiveTab(index_t, bool triggerCallback);
 	};

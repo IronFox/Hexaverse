@@ -2735,7 +2735,7 @@ namespace Component
 								Wrap(raw,width,CharWidth,wrapped2);
 							}
 						#endif
-						ASSERT_LESS_OR_EQUAL__(accum,width);
+						//ASSERT_LESS_OR_EQUAL__(accum,width);
 					}
 			#endif
 			wrappedText.MoveAppendAll(wrapped);
@@ -3257,6 +3257,12 @@ namespace Component
 
 	}
 
+	void	TabBar::SetCornerStyle(CornerStyle style)
+	{
+		cornerStyle = style;
+		//todo: update existing tabs
+	}
+
 	
 	PButton			TabBar::AddTab(const String&caption)
 	{
@@ -3277,9 +3283,26 @@ namespace Component
 		}
 		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
-		tab->SetCutCorners({false,false,true,true});
+		switch (cornerStyle)
+		{
+			case CornerStyle::LeftAligned:
+				tab->SetCutCorners({false,false,true,true});
+			break;
+			case CornerStyle::Compact:
+			{
+				tab->SetCutCorners({!HasComponents(),false,true,true});
+				if (HasComponents())
+				{
+					auto b = To<Button>::Cast(GetLastChild());
+					auto c = b->GetCutCorners();
+					c.right = false;
+					b->SetCutCorners(c);
+				}
+			}
+			break;
+		}
 		tab->SetEdges(false);
-		tab->SetPadding({1,0.25f,4,0.25f});
+		tab->SetPadding({1.5f,0.25f,1.5f,0.25f});
 		tab->SetAlign(VerticalTextAlign::Top);
 
 		ConfigureInactive(tab);
