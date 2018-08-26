@@ -3312,7 +3312,7 @@ namespace Component
 
 		auto&tab = tabs.Append();
 		tab.panel.reset(new Panel());
-		tab.panel->Decoration::SetEdgeVisibility(M::Quad<bool>(true,true,true,false));
+		tab.panel->Decoration::SetEdgeVisibility({true,true,true,false});
 		{
 			auto mod = tab.panel->Anchor();
 			mod.GetHAxis().Fill();

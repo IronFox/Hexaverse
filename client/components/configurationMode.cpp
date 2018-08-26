@@ -240,6 +240,10 @@ namespace ConfigurationMode
 		{
 			if (empZoneButton)
 			{
+				if (RuntimeConfig::empZones)
+					empZoneButton->SetColor(float4(0.6f,0.7f,1.8f,1.f));
+				else
+					empZoneButton->SetColor(float4(1.f));
 				empZoneButton->SetText("EMP Zones "+String(RuntimeConfig::empZones?"On":"Off"));
 			}
 
@@ -1024,8 +1028,8 @@ namespace ConfigurationMode
 			AppendRuleButton(ruleGroup,"Simulate Liquids", "World/simulateLiquids",Detail::Rules::simulateLiquids);
 			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","Rules/empZones",RuntimeConfig::empZones,[](bool set)
 			{
+				RuntimeConfig::empZones= !set;	//force update
 				SetEMPZones(set);
-				//VisualTerrain::Invalidate(); //force rebuild
 			});
 			Objects::Command::PCommandGroup goals = AddChild(*ruleGroup,"Game Goal");
 			SetHint(*goals,FindDeclaration("/Rules/gameGoal"));
