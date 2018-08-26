@@ -325,8 +325,17 @@ namespace HUD
 				{
 					PPanel wrapper{new Panel{}};
 					wrapper->Anchor().BeneathLastOf(factionTable);
-					wrapper->SetBackground(false);
-					wrapper->SetEdges(a->CountLivingMembers() > 1);
+					if (a->CountLivingMembers() > 1)
+					{
+						wrapper->SetBackgroundOpacity(0.7f);
+						wrapper->SetBackgroundTone((float3)0.7f);
+						wrapper->SetEdges(true);
+						//wrapper->SetBackground(false);
+						wrapper->SetEdgeVisibility(M::Quad<bool>(true,false,true,false));
+						wrapper->SetCutCorners(false);
+					}
+					else
+						wrapper->SetBackground(false);
 					factionTable->AddComponent(wrapper,CLOCATION);
 
 					PPanel alliancePanel{new Panel{}};
