@@ -1381,6 +1381,8 @@ namespace Component
 
 		TScrollbar		vscroll;
 		bool			resolvingAxis = false;
+
+		void			Setup();
 	protected:
 		virtual void	PropagateToChildren(const PWindow&w)	override
 		{
@@ -1439,7 +1441,7 @@ namespace Component
 		}
 		void			RecomputeOrder(AnchorAxis);
 	public:
-		/**/			Panel()	{Anchor().FillHorizontally().Top(); Decoration::SetEdges(false);}
+		/**/			Panel()	{Anchor().FillHorizontally().Top(); Setup();}
 		bool			DeterminesHeightAutomatically() const {return autoHeight;}
 		void			SetAutomaticHeight(bool b);
 		float			GetAutoHeightSpacing() const {return autoHeightSpacing;}

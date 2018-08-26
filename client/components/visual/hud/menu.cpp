@@ -61,7 +61,7 @@ namespace Menu
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
 		button->SetBackgroundTone((float3)0.7f);
-		button->SetBackgroundOpacity(0.9f);
+		button->SetBackgroundOpacity(0.8f);
 		button->SetEdgeColor(float4(button->GetBackgroundTone(),0.95f));
 		button->SetEdgeOpacity(1.f);
 		button->SetEdges(true);
@@ -75,7 +75,7 @@ namespace Menu
 		canBeImplicitlyClosed = escapeCloses;
 		Super::ClearComponents();
 		Super::SetEdges(false);
-		Super::SetBackgroundOpacity(0.65f);
+		Super::SetBackgroundOpacity(0.45f);
 		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
 		hintLabel.reset();
 		myTitle = title;

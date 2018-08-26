@@ -834,7 +834,7 @@ namespace Component
 		DX11::Texture
 			backgroundTexture;
 
-		DX11::ObjectBuffer<float2>	mouseAt;
+		DX11::ObjectBuffer<float4>	mouseAt_fadeRange;
 		DX11::ObjectBuffer<float2>	shrinkPixelScale;
 		DX11::ObjectBuffer<float>	blurOpacity;
 
@@ -896,6 +896,12 @@ namespace Component
 			backgroundChanged = true;
 			backgroundOpacity = ctx.opacity;
 		}
+
+		void	UpdateMouseAndFade(const float2&relativeMouse,const M::Rect<>&location)
+		{
+			mouseAt_fadeRange.Update(float4(relativeMouse,location.x.GetCenter(),std::max(0.25f,location.x.GetExtent()*1.5f) ));
+		}
+
 
 		struct TVertex
 		{
@@ -1215,7 +1221,7 @@ namespace Component
 		if (!shadow && !background)
 			return ctx.Recurse();
 
-		mouseAt.Update(relativeMouse);
+		UpdateMouseAndFade(relativeMouse,location);
 
 
 		display.StoreRendererState();
@@ -1280,13 +1286,14 @@ namespace Component
 	Decoration::Context			Decoration::RenderEdges(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
 	{
 		using namespace DecorationDetails;
-		mouseAt.Update(relativeMouse);
+		UpdateMouseAndFade(relativeMouse,location);
 
 		if (renderEdges)
 		{
 			CopyBackground(ctx.opacity);
 			{
 				auto edge = edgeColor;
+				edge.rgb = backgroundColor.rgb;
 				if (lit)
 					edge *= 1.2f;
 				if (!enabled)
@@ -1404,7 +1411,7 @@ namespace Component
 		using namespace DecorationDetails;
 		topColor.Create(float4());
 		bottomColor.Create(float4());
-		mouseAt.Create(float2());
+		mouseAt_fadeRange.Create(float4());
 		Detail::viewportVector.Create(float4());
 		shrinkPixelScale.Create(float2());
 		blurOpacity.Create(0);
@@ -1419,7 +1426,7 @@ namespace Component
 			shader.binding = vtx;
 
 			DX11::Shader::Binding bindings[] = {
-				DX11::Shader::Binding(mouseAt,"MouseAt"),
+				DX11::Shader::Binding(mouseAt_fadeRange,"MouseAt_FadeRange"),
 				DX11::Shader::Binding(bottomColor,"BottomColor"),
 				DX11::Shader::Binding(topColor,"TopColor"),
 				DX11::Shader::Binding(Detail::viewportVector,"Viewport"),
@@ -3834,10 +3841,24 @@ namespace Component
 		surface.Bake();
 	}
 
-	void Button::Setup()
+	void Panel::Setup()
 	{
 		Super::SetEdges(false);
+		Super::SetBackgroundOpacity(0.45f);
 		Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
+	}
+
+	void Button::Setup()
+	{
+		//Super::SetEdges(false);
+		//Super::SetBackgroundTone(Super::GetBackgroundTone() * 1.5f);
+		Super::SetBackgroundTone((float3)0.7f);
+		Super::SetBackgroundOpacity(0.8f);
+		Super::SetEdgeColor(float4(Super::GetBackgroundTone(),0.95f));
+		//Super::SetEdgeOpacity(1.f);
+		Super::SetEdges(true);
+		Super::SetEnabledTextAlwaysLit(true);
+		Super::SetVerticalPadding(0.25f);
 	}
 
 

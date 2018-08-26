@@ -13,9 +13,10 @@ cbuffer Viewport
 {
 	float4 Viewport;
 }
-cbuffer MouseAt
+cbuffer MouseAt_FadeRange
 {
-	float2 MouseAt;
+	float2 	MouseAt;
+	float	ShapeCenter, FadeStretch;
 }
 
 Texture2D<float4> BackgroundTexture;
@@ -52,7 +53,8 @@ float4 psMain(V2P input) : SV_TARGET
 	
 	float4 rs = lerp(BottomColor,TopColor,input.uv.y);
 	float2 delta = MouseAt - input.world;
-	rs.a *= smoothstep(0.0,1.0,(0.5 - abs(0.5 - input.uv.x)*0.5)*2.0);
+	rs.a *= smoothstep(0.0,1.0, 1.0 - abs(input.world.x - ShapeCenter) / FadeStretch);
+//	(0.5 - abs(0.5 - input.uv.x)*0.5)*2.0);
 	rs.rgb *= 0.8 + 0.3 * (1.0 / (1.0 + 50.0 * dot(delta,delta)));
 	
 	rs.a = saturate(rs.a);

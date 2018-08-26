@@ -268,6 +268,7 @@ namespace ConfigurationMode
 		{
 			materialButtons.Clear();
 			window = Window::Create();
+			window->SetWidth(0.35f);
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
 			{
@@ -290,9 +291,12 @@ namespace ConfigurationMode
 				button->SetColor(float4(col,1.f));
 				button->SetBackgroundTone(col);
 				button->SetEdges(true);
-				float b = 0.2f * (window->CountComponents()/4);
-				float x = 0.25f * (window->CountComponents()%4);
-				float x2 = 0.25f * (3-(window->CountComponents()%4));
+				const auto iy = window->CountComponents()/4;
+				const auto ix = window->CountComponents()%4;
+				button->SetCutCorners(M::Quad<bool>(ix == 0, false, ix == 3,iy == 0));
+				float b = 0.2f * iy;
+				float x = 0.25f * ix;
+				float x2 = 0.25f * (3-ix);
 				{
 					auto m = button->Anchor();
 					m.FillHorizontally(Distance( x,Distance::Type::RelativeToParentComponent),Distance(x2,Distance::Type::RelativeToParentComponent));
@@ -320,7 +324,7 @@ namespace ConfigurationMode
 				PButton button(new Button("Abort"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
 				button->Anchor().FillHorizontally().BeneathLastOf(window,Distance::GameWindow(0.01f),Distance::GameWindow(0.2f));
-			
+				button->SetCutCorners(M::Quad<bool>(true,true,true,false));
 				button->SetTriggerFunction([this]()
 				{
 					HUD::WindowStack::Hide(window);
