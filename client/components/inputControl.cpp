@@ -12,6 +12,7 @@
 #include "objectNetworkHelper.h"
 #include <objects/pathfinding.h>
 #include "visual/commandDefinitions.h"
+#include "visual/hud/tooltip.h"
 
 void	OnTutorialsChanged();
 
@@ -608,6 +609,7 @@ namespace InputControl
 		{
 			Tutorial::lastDelayingEvent = timer.Now();
 
+			HUD::Tooltip::Hide();
 			if (HUD::WindowStack::OnMouseDown() || HUD::HexGrid::HandleClick())
 				return;
 			if (M::Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))

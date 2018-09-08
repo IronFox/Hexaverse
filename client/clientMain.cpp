@@ -1483,7 +1483,7 @@ bool loop()
 			display.Pick(Camera::hud);
 			HUD::WindowStack::RenderNonModal();
 
-			HUD::HexGrid::RenderHint();
+			HUD::Tooltip::Render();
 			display.Pick(Camera::hud);
 			HUD::WindowStack::RenderModal();
 
@@ -2188,6 +2188,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Explosions", Explosions::Create);
 			Loading::Stage("Object Commands", Objects::Commands::DefineAll);
 			Loading::Stage("Resource Gauge", HUD::ResourceGauges::Create);
+			Loading::Stage("Tooltip", HUD::Tooltip::Create);
 			Loading::Stage("HexGrid", HUD::HexGrid::Create);
 		#endif
 		Loading::Stage("Animation", Animation::Create);

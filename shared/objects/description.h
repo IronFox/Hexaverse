@@ -50,6 +50,7 @@ namespace Objects
 		void				MarkBriefEnd(bool permanently = false);
 		String&				GetLastLine();
 		Description&		operator<<(const String&line);
+		const Storage&		GetStorage() const {return rawLines;}
 	};
 
 
