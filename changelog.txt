@@ -1,3 +1,5 @@
+v0.9.6
+
 v0.9.5	[Aug 26 2018]
 	> Removed resource panel while configuration mode is active.
 	> Replaced 'EMP Zones On/Off' on-screen message with pressable button.
