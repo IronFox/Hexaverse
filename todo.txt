@@ -1,4 +1,6 @@
-Revise UI and menu (cluster hex icons, flatter, stronger outlined regular menu with hex shapes)
+Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
+Complete tooltips for regular UI
+
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
 Icon for idling structures and vehicles
 
@@ -199,6 +201,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+partially done: Revise UI and menu (cluster hex icons, flatter, stronger outlined regular menu with hex shapes). Some of that done, no grouping (yet)
 Interactive configuration mode:
 	button to toggle EMP zones on screen
 	fix selection of nexus units
