@@ -147,7 +147,7 @@ namespace Component
 		return !isnan(value) && !isinf(value) /*&& value >= 0*/;
 	}
 
-	bool	Distance::IsWellDefinedNonZero() const
+	bool	Distance::IsWellDefinedGreaterZero() const
 	{
 		return !isnan(value) && !isinf(value) && value > 0;
 	}

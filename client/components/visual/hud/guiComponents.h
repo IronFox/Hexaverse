@@ -113,33 +113,92 @@ namespace Component
 		bool			any = false;
 	};
 
-
+	/**
+	Component anchor distance/size descriptor.
+	Can be measured in different units and applied accordingly
+	*/
 	struct Distance
 	{
+		/**
+		Distance unit type
+		*/
 		CONSTRUCT_ENUMERATION5(Type,RelativeToParentComponent,RelativeToGameWindow,AbsolutePixels,Placeholder,Disabled);
 
-
+		/**
+		Actual distance value.
+		Significance depends on type and possibly surrounding constellation.
+		May be NAN, indicating that distance/size is unknown/invalid
+		*/
 		float	value = 0;
+		/**
+		Distance unit
+		*/
 		Type	type;
 
 		/**/	Distance()	{}
 		/**/	Distance(float d, Type t = Type::RelativeToGameWindow) : value(d),type(t)	{}
 
+		/**
+		Defines a distance value relative to the size of the game window
+		*/
 		static Distance GameWindow(float d) {return Distance(d,Type::RelativeToGameWindow);}
+		/**
+		Defines a distance value relative to the size of the respective parent component
+		*/
 		static Distance OfParentSize(float d) {return Distance(d,Type::RelativeToParentComponent);}
+		/**
+		Defines a distance value in absolute pixels
+		*/
 		static Distance Pixels(float pixels) {return Distance(pixels,Type::AbsolutePixels);}
-		static const Distance Unknown, Disabled;
+		
+		static const Distance	Unknown;	//!< Defines a placeholder distance/size that is effectively defined completely by external factors
+		static const Distance	Disabled;	//!< Disabled distance/size. Typically utilized to disable the anchor that the distance is recorded in
 
+		/**
+		Asserts that the local distance is neither NAN nor INF if the local type is defined (IsDefined()), enforces NAN otherwise
+		*/
 		void	VerifyIntegrity() const;
+		/**
+		Determines whether the local value is neither NAN nor INF
+		*/
 		bool	IsWellDefined() const;
-		bool	IsWellDefinedNonZero() const;
+		/**
+		Determines whether the local value is neither NAN, INF, nor <=0
+		*/
+		bool	IsWellDefinedGreaterZero() const;
+		/**
+		Determines whether the local distance/size is a placeholder and defined by external factors.
+		True for Distance::Unknown
+		*/
 		bool	IsPlaceholder() const {return type == Type::Placeholder;}
+		/**
+		Determines whether the local distance/size is deactivated.
+		True for Distance::Disabled
+		*/
 		bool	IsDisabled() const {return type == Type::Disabled;}
+		/**
+		Determines whether the local distance/size is defined and 0
+		*/
 		bool	IsZero() const {return IsDefined() && value ==0;}
+		/**
+		Determines whether the local distance/size is defined and non-0
+		*/
 		bool	IsNonZero() const {return IsDefined() && value != 0;}
+		/**
+		Determines whether the local distance/size is defined and >0
+		*/
 		bool	IsPositiveNonZero() const {return IsDefined() && value > 0;}
+		/**
+		Determines whether the local distance/size is not disabled and either a placeholder or >0
+		*/
 		bool	IsPositiveNonZeroOrPlaceholder() const {return !IsDisabled() && ( value > 0 || type == Type::Placeholder);}
+		/**
+		Determines whether the local distance/size has an actual value (i.e. neither a placeholder nor disabled)
+		*/
 		bool	IsDefined() const {return type != Type::Placeholder && type != Type::Disabled;}
+		/**
+		Checks whether or not the local size/distance requires a parent of invariant size
+		*/
 		bool	RequiresFixedParentSize() const {return type == Type::RelativeToParentComponent && value != 0;}
 
 		void	operator=(const Distance&other)
@@ -150,6 +209,14 @@ namespace Component
 			value = other.value;
 		}
 
+		/**
+		Converts the local value to a size/distance applicable in screen size (ideally in [0,1]).
+		Automatically queries the global display size, as necessary.
+
+		@param parentSize screen-space size of the parent component. 1 if none
+		@param myAxis Axis this size/distance is measured along
+		@return Screen space size/distance, ideally in [0,1] (may fall outside this range in weird conditions)
+		*/
 		float	ToScreenDistance(float parentSize, AnchorAxis myAxis) const;
 		bool	operator==(const Distance&other) const
 		{
