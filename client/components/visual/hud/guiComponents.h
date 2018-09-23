@@ -238,15 +238,36 @@ namespace Component
 	typedef std::function<void(const PComponent&)> FVerification;
 	typedef std::function<bool(const PComponent&)> FSelector;
 
+	/**
+	Individual component anchor.
+	Each component has four in total -one along each direction- which affects its location or size along that extreme.
+	The local struct may be anchored to one or more components to enforce a distance to.
+	This distance is measured between the local and opposite remote component anchor (or window edge if no component is referenced).
+	Symmetry should be avoided. If one anchor is enabled, its referenced opposite anchor should not be set, or instead anchor to some other component.
+	If multiple remote components are referenced, the one of currently closest distance (chosen dynamically) takes precedence.
+	*/
 	struct Anchor
 	{
 		typedef Buffer0<WComponent>	Components;
 
+		/**
+		Disables the local anchor.
+		The size of the owning component along this axis becomes fixed.
+		The opposing anchor is expected to be set
+		*/
 		void			Disable()
 		{
 			enabled = false;
 			references.Clear();
 		}
+
+		/**
+		Sets the local anchor.
+		If the opposing anchor is not also set, this anchor defines the location of the owning component but not its size.
+		If both are set, then the component either centers or stretches, depending on axis configuration
+		@param c Singular component to anchor to. An existing anchor components are cleared
+		@param dist Distance to the referenced component. Relative to screen edge if @a c is null
+		*/
 		void			Set(const PComponent&c, const Distance&dist)
 		{
 			enabled = true;
@@ -255,6 +276,13 @@ namespace Component
 			if (c)
 				references.Append(c);
 		}
+		/**
+		Sets the local anchor.
+		If the opposing anchor is not also set, this anchor defines the location of the owning component but not its size.
+		If both are set, then the component either centers or stretches, depending on axis configuration.
+		Any existing anchor components are cleared.
+		@param dist Distance to the respective screen edge
+		*/
 		void			Set(const Distance&dist)
 		{
 			enabled = true;
@@ -264,15 +292,53 @@ namespace Component
 
 		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&, const AnchorAxis&, bool isUpper) const;
 
-		void			SetAllOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
-		void			SetSomeOf(const PPanel&, const Distance&distance, const FSelector&, const Component*mustNotInclude);
-		void			SetLastOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
+		/**
+		Sets the same distance to all components contained by the specified panel.
+		@param p Panel to reference components of. The method does nothing if this parameter is null or empty. Subsequent changes to (or destruction of) the referenced panel has no significance
+		@param distance Distance to enforce to all referenced components
+		@param mustNotInclude Optional debugging parameter. Typically set to the owning component. Asserts that no matching component is added
+		*/
+		void			SetAllOf(const PPanel&p, const Distance&distance, const Component*mustNotInclude);
+		/**
+		More selective version of SetAllOf().
+		Only adds references which are marked true by the specified selector function.
+		@param p Panel to reference components of. The method does nothing if this parameter is null or empty. Subsequent changes to (or destruction of) the referenced panel has no significance
+		@param distance Distance to enforce to all referenced components
+		@param del Selector function which returns true for all components that should be added and false for all else
+		@param mustNotInclude Optional debugging parameter. Typically set to the owning component. Asserts that no matching component is added
+		*/
+		void			SetSomeOf(const PPanel&p, const Distance&distance, const FSelector&sel, const Component*mustNotInclude);
+		/**
+		Sets only the last component found in the given component.
+		Identical Set(p->GetLastChild(),distance)
+		@param p Panel to reference components of. The method does nothing if this parameter is null or empty. Subsequent changes to (or destruction of) the referenced panel has no significance
+		@param distance Distance to enforce to all referenced components
+		@param mustNotInclude Optional debugging parameter. Typically set to the owning component. Asserts that no matching component is added
+		*/
+		void			SetLastOf(const PPanel&p, const Distance&distance, const Component*mustNotInclude);
 
+		/**
+		Checks whether the local anchor is enabled
+		*/
 		bool			IsEnabled() const {return enabled;}
 		bool			IsInactive() const {return !enabled;}
+		/**
+		Fetches the configured distance to the referenced component (if any).
+		If not set, returns default distance (0)
+		*/
 		const Distance&	GetOffset() const {return distanceFromReference;}
+		/**
+		Returns a list reference of all referenced components. May be empty
+		*/
 		const Components&GetReferences() const {return references;}
+		/**
+		Adds another component to the list of references.
+		The local anchor must be set
+		*/
 		void			AddReference(const PComponent&c);
+		/**
+		Checks whether the local anchor is enabled and requires a parent of fixed size
+		*/
 		bool			RequiresFixedParentSize() const {return IsEnabled() && distanceFromReference.RequiresFixedParentSize();}
 	private:
 		bool			enabled = true;
