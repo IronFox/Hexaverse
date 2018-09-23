@@ -160,6 +160,22 @@ namespace HUD
 
 			GlobalEvents::applicationTerminate << Destroy;
 
+			Tooltip::tooltipQuery << []()->const Tooltip::IProvider*
+			{
+				for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
+				{
+					auto&w = Detail::visibleWindows[i];
+					if (!w.IsVisible())
+						continue;
+					auto comp = w.window->GetClickCandidate();
+					if (comp)
+						return comp.get();
+					if (w.window->isModal)
+						return nullptr;
+				}
+				return nullptr;
+			};
+
 		}
 
 

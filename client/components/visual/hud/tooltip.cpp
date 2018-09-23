@@ -14,7 +14,7 @@ namespace HUD
 			
 			float			hoveringWidth = 0;
 			bool			hoveringBrief = true;
-			IProvider*		hoveringOver = nullptr;
+			const IProvider*	hoveringOver = nullptr;
 			String				shortText,longText;
 			Array<StringRef>	lines;
 
@@ -38,7 +38,7 @@ namespace HUD
 
 				if (stationary)
 				{
-					IProvider* next = nullptr;
+					const IProvider* next = nullptr;
 					foreach (tooltipQuery,q)
 					{
 						next = (*q)();
@@ -118,23 +118,24 @@ namespace HUD
 			}
 			
 			const count_t lineCount = lines.Count();
+			const float fullH = textout.GetScaledHeight()*lineCount;
 			float h = textout.GetScaledHeight()*(lineCount-1);
 			M::Rect<> r;
 
 
 			const bool flipX = Engine::mouse.location.windowRelative.x > 1.f - hoveringWidth;
-			const bool flipY = Engine::mouse.location.windowRelative.y > 0.75f;
+			const bool flipY = Engine::mouse.location.windowRelative.y > fullH;
 
 			if (flipX)
 			{
 				if (flipY)
 				{
 					textout.MoveTo(base - float2(hoveringWidth,textout.GetScaledHeight()));
-					r = M::Rect<>(base -float2(hoveringWidth,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(0,-textout.GetScaledHeight()*0.8f));
+					r = M::Rect<>(base -float2(hoveringWidth,textout.GetScaledHeight() + fullH),base + float2(0,-textout.GetScaledHeight()*0.8f));
 				}
 				else
 				{
-					textout.MoveTo(base + float2(-hoveringWidth,h + textout.GetScaledHeight()));
+					textout.MoveTo(base + float2(-hoveringWidth,fullH));
 					r = M::Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.GetScaledHeight()*1.2f));
 				}
 			}
@@ -145,11 +146,11 @@ namespace HUD
 				if (flipY)
 				{
 					textout.MoveTo(base - float2(0,textout.GetScaledHeight()));
-					r = M::Rect<>(base -float2(0,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(hoveringWidth,-textout.GetScaledHeight()*0.8f));
+					r = M::Rect<>(base -float2(0,textout.GetScaledHeight() + fullH),base + float2(hoveringWidth,-textout.GetScaledHeight()*0.8f));
 				}
 				else
 				{
-					textout.MoveTo(base + float2(0,h + textout.GetScaledHeight()));
+					textout.MoveTo(base + float2(0,fullH));
 					r = M::Rect<>(base ,base + float2(hoveringWidth,h + textout.GetScaledHeight()*1.2f));
 				}
 			}

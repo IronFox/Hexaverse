@@ -16,6 +16,7 @@
 #include "uiScale.h"
 #include "surfaceRenderer.h"
 #include "../lineRenderer.h"
+#include "tooltip.h"
 #include <math/graph.h>
 
 
@@ -577,7 +578,8 @@ namespace Component
 	};
 
 
-	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation, public M::Graph::NodeAttachment
+
+	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation, public M::Graph::NodeAttachment, public Tooltip::IProvider
 	{
 		typedef ComponentLocation Super;
 	protected:
@@ -648,6 +650,7 @@ namespace Component
 		virtual PComponent GetChild(index_t i) const {return nullptr;}
 		PComponent		GetLastChild() const {const count_t cnt = CountChildren(); if (cnt) return GetChild(cnt-1); return nullptr;}
 
+		virtual std::pair<String,String>	GetTooltip() const override {return std::make_pair("","");}
 		
 		bool			SetWidth(const Distance&w)
 		{

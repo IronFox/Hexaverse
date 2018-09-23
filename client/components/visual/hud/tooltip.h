@@ -20,7 +20,7 @@ namespace HUD
 			*/
 			virtual std::pair<D::String,D::String>	GetTooltip() const=0;
 		};
-		typedef std::function<IProvider*()>	FGet;
+		typedef std::function<const IProvider*()>	FGet;
 
 		/**
 		Registry function to retrieve the tooltip provider based on the current mouse position.
