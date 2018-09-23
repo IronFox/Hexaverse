@@ -1483,9 +1483,9 @@ bool loop()
 			display.Pick(Camera::hud);
 			HUD::WindowStack::RenderNonModal();
 
-			HUD::Tooltip::Render();
 			display.Pick(Camera::hud);
 			HUD::WindowStack::RenderModal();
+			HUD::Tooltip::Render();
 
 
 			if (ConfigurationMode::IsActive())
