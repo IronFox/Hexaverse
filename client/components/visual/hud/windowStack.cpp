@@ -450,8 +450,13 @@ namespace HUD
 				auto&w = Detail::visibleWindows[i];
 				if (!w.IsVisible())
 					continue;
-				Component::mousePressedComponent = w.window->OnMouseDown();
-				if (Component::mousePressedComponent || w.window->isModal)
+				Component::mousePressedComponent = w.window->GetClickCandidate();
+				if (Component::mousePressedComponent)
+				{
+					Component::mousePressedComponent->OnMouseDown();
+					return true;
+				}
+				if (w.window->isModal)
 					return true;
 			}
 			Component::mousePressedComponent.reset();

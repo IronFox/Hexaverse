@@ -1780,11 +1780,17 @@ namespace Component
 		changed = false;
 	}
 
-	/*virtual override*/ PComponent	Slider::OnMouseDown()
+	
+
+	/*virtual override*/ PComponent	Slider::GetClickCandidate()
 	{
 		if (!ContainsMouse())
 			return PComponent();
+		return shared_from_this();
+	}
 
+	/*virtual override*/ void	Slider::OnMouseDown()
+	{
 		if (outlineContainsMouse)
 		{
 			mouseDown = true;
@@ -1793,8 +1799,6 @@ namespace Component
 		{
 			dragging = true;
 		}
-
-		return shared_from_this();
 	}
 
 
@@ -1921,29 +1925,35 @@ namespace Component
 
 	}
 
-	PComponent	Panel::TScrollbar::OnMouseDown()
+	PComponent	Panel::TScrollbar::GetClickCandidate()
 	{
 		if (visible)
 		{
 			PComponent c;
-			c = up->OnMouseDown();
+			c = up->GetClickCandidate();
 			if (c)
 				return c;
-			c = down->OnMouseDown();
+			c = down->GetClickCandidate();
 			if (c)
 				return c;
-			if (outlineContainsMouse)
-			{
-				mouseDown = true;
+			if (outlineContainsMouse || barContainsMouse)
 				return owner->shared_from_this();
-			}
-			if (barContainsMouse)
-			{
-				dragging = true;
-				return owner->shared_from_this();
-			}
 		}
 		return PComponent();
+	}
+
+	void	Panel::TScrollbar::OnMouseDown()
+	{
+		if (outlineContainsMouse)
+		{
+			mouseDown = true;
+			return;
+		}
+		if (barContainsMouse)
+		{
+			dragging = true;
+			return;
+		}
 	}
 
 	void	Panel::TScrollbar::Enable(Panel*p,const M::Rect<>&rect)
@@ -2231,9 +2241,9 @@ namespace Component
 	}
 
 
-	/*virtual override*/ PComponent	Panel::OnMouseDown()
+	/*virtual override*/ PComponent	Panel::GetClickCandidate()
 	{
-		PComponent c = vscroll.OnMouseDown();
+		PComponent c = vscroll.GetClickCandidate();
 		if (c)
 			return c;
 
@@ -2244,11 +2254,11 @@ namespace Component
 
 		for (index_t i = components.Count()-1; i < components.Count(); --i)
 		{
-			PComponent c = components[i]->OnMouseDown();
+			PComponent c = components[i]->GetClickCandidate();
 			if (c)
 				return c;
 		}
-		return Super::OnMouseDown();
+		return Super::GetClickCandidate();
 	}
 
 

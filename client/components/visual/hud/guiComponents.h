@@ -694,8 +694,22 @@ namespace Component
 		virtual void	SetActive( bool isActive ) {active = isActive;}
 		virtual bool	DetectEnabledState() {return false;}
 		
-		virtual PComponent	OnMouseDown() {return PComponent();}
 		virtual WheelRs	OnMouseWheel(short) {return ContainsMouse() ? WheelRs::Ignored : WheelRs::NotContained;}
+		/**
+		Fetches the component currently beneath the mouse cursor that can actively react to a click.
+		The method must test on its own, whether it contains the mouse cursor and return null otherwise
+		@return Component that should receive any occurring OnMouseDown() event, null if none
+		*/
+		virtual PComponent	GetClickCandidate() {return PComponent();}
+		/**
+		Notifies that the local component has been chosen as a click candidate, and the mouse button has been pressed.
+		Called only if the local component was previously returned by a GetClickCandidate() invokation.
+		*/
+		virtual void	OnMouseDown() {}
+		/**
+		Notifies that the local component has been chosen as a click dandidate, the mouse button has been pressed, and now released.
+		Called only if the local component was previously returned by a GetClickCandidate() invokation, and OnMouseDown() has been called.
+		*/
 		virtual void	OnMouseUp()	{}
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 		
@@ -1148,7 +1162,7 @@ namespace Component
 		/**/			LinkLabel(const String&text, float scale=1.f, const FOnPress&onPress = FOnPress()):Super(text,scale),onPress(onPress){}
 
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
-		virtual PComponent	OnMouseDown() override {return ContainsMouse() ? shared_from_this() : nullptr;}
+		virtual PComponent	GetClickCandidate() override {return ContainsMouse() ? shared_from_this() : nullptr;}
 
 		virtual void	OnMouseUp() override
 		{
@@ -1250,7 +1264,7 @@ namespace Component
 
 		virtual Ctx	 Render(const Decoration::Context&) override;
 
-		virtual PComponent	OnMouseDown() override
+		virtual PComponent	GetClickCandidate() override
 		{
 			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
@@ -1361,7 +1375,7 @@ namespace Component
 
 		virtual Ctx	 Render(const Decoration::Context&) override;
 
-		virtual PComponent	OnMouseDown() override
+		virtual PComponent	GetClickCandidate() override
 		{
 			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
@@ -1437,8 +1451,9 @@ namespace Component
 		typedef std::function<void(float&)>	FOnChange;
 
 		/**/				Slider();
-		virtual PComponent	OnMouseDown() override;
+		virtual PComponent	GetClickCandidate() override;
 		//virtual WheelRs	OnMouseWheel(short) override;
+		virtual void		OnMouseDown() override;
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 		virtual Ctx			Render(const Decoration::Context&) override;
@@ -1504,8 +1519,9 @@ namespace Component
 			/**/		TScrollbar();
 			void		ScrollToTop();
 			void		ScrollToBottom();
-			PComponent	OnMouseDown();
+			PComponent	GetClickCandidate();
 			WheelRs		OnMouseWheel(short);
+			void		OnMouseDown();
 			void		OnMouseUp();
 			void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const M::Rect<>&rect);
@@ -1609,7 +1625,8 @@ namespace Component
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
 		virtual WheelRs	OnMouseWheel(short) override;
-		virtual PComponent	OnMouseDown() override;
+		virtual PComponent	GetClickCandidate() override;
+		virtual void	OnMouseDown() override {vscroll.OnMouseDown();}
 		virtual void	OnMouseUp() override {vscroll.OnMouseUp();}
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
@@ -1769,14 +1786,14 @@ namespace Component
 			return child;
 		}
 
-		virtual PComponent	OnMouseDown() override
+		virtual PComponent	GetClickCandidate() override
 		{
 			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
 			{
 				for (index_t i = components.Count()-1; i < components.Count(); --i)
 				{
-					PComponent c = components[i]->OnMouseDown();
+					PComponent c = components[i]->GetClickCandidate();
 					if (c)
 						return c;
 				}
