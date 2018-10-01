@@ -21,6 +21,7 @@
 #include "hexGrid.h"
 #include "../commandDefinitions.h"
 #include "../autoDocumentation.h"
+#include <string/converter.h>
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -207,9 +208,32 @@ namespace Menu
 		return s;
 	}
 
-	static Component::PCheckbox AddCheckBox(const Component::PPanel&panel, const String&name,bool initial, const std::function<void(bool)>&onChange)
+	static Component::PCheckbox AddCheckBox(const Component::PPanel&panel, const String&name, const String&configKey, const std::function<bool()>&getValue, const std::function<void(bool)>&setValue)
 	{	
-		Component::PCheckbox c(new Component::Checkbox("",initial,[onChange,name](bool b)
+		auto var = Configuration::config->GetAttrib(configKey);
+		bool b;
+		if (var && Convert(var->value,b))
+			setValue(b);
+		String comment = var ? var->comment : "";
+		Component::PCheckbox c(new Component::Checkbox("",comment,getValue(),[getValue,setValue,name,configKey](bool b)
+		{
+			if (b == getValue())
+				return;
+			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' -> "+String(b));
+			Configuration::Update(configKey,b ? 1 : 0);
+			setValue(b);	
+			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' done");
+		}));
+		AddOption(panel,name,c);
+		return c;
+	}
+	static Component::PCheckbox AddNegatedCheckBox(const Component::PPanel&panel, const String&name, const String&configKey, const std::function<bool()>&getValue, const std::function<void(bool)>&setValue)
+	{	
+		return AddCheckBox(panel,name,configKey,[getValue](){return !getValue();},[setValue](bool b){setValue(!b);});
+	}
+	static Component::PCheckbox AddNonCFGCheckBox(const Component::PPanel&panel, const String&name, const Component::TooltipDeclaration&tooltip, bool initial, const std::function<void(bool)>&onChange)
+	{	
+		Component::PCheckbox c(new Component::Checkbox("",tooltip,initial,[onChange,name](bool b)
 		{
 			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' -> "+String(b));
 			onChange(b);	
@@ -300,18 +324,13 @@ namespace Menu
 		}
 
 
-		AddCheckBox(visual,"Vertical Sync",display.IsVSyncActive(),[](bool enabled)
+		AddCheckBox(visual,"Vertical Sync","runtime/vsync",[](){return display.IsVSyncActive();},[](bool enabled)
 		{
-			bool old = display.IsVSyncActive();
-			if (old != enabled)
-			{
-				display.SetVSyncActive(enabled);
-				Configuration::Update("runtime/vsync",enabled ? 1 : 0);
-			}
+			display.SetVSyncActive(enabled);
 		});
 
 		{
-			Component::PCheckbox box = AddCheckBox(visual,"Full Screen (Alt+Enter)",IsFullScreen(),[](bool enabled)
+			Component::PCheckbox box = AddNonCFGCheckBox(visual,"Full Screen (Alt+Enter)","Toggle borderless-window full screen mode",IsFullScreen(),[](bool enabled)
 			{
 				bool old = IsFullScreen();
 				if (old != enabled)
@@ -347,14 +366,9 @@ namespace Menu
 			}
 		);
 
-		AddCheckBox(visual,"Terrain Camera Intersection Correction (slow)",Camera::terrainIntersectionTest,[](bool enabled)
+		AddCheckBox(visual,"Terrain Camera Intersection Correction (slow)","runtime/terrainCameraIntersectionCorrection",[](){return Camera::terrainIntersectionTest;},[](bool enabled)
 		{
-			bool old = Camera::terrainIntersectionTest;
-			if (old != enabled)
-			{
-				Camera::terrainIntersectionTest = enabled;
-				Configuration::Update("runtime/terrainCameraIntersectionCorrection",enabled);
-			}
+			Camera::terrainIntersectionTest = enabled;
 		});
 
 		if (AudioInterface::IsActive())
@@ -375,25 +389,8 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 
-			AddCheckBox(audio,"Mute sound when tabbed out",AudioInterface::MutingOnWindowFocusLoss(), [](bool enabled)
-			{
-				auto old = AudioInterface::MutingOnWindowFocusLoss();
-				if (old != enabled)
-				{
-					AudioInterface::SetMuteOnWindowFocusLoss(enabled);
-					Configuration::Update("runtime/muteOnWindowFocusLoss",enabled);
-				}
-			});
-
-			AddCheckBox(audio,"Play sound on round begin",NewRoundSound::IsEnabled(), [](bool enabled)
-			{
-				auto old = NewRoundSound::IsEnabled();
-				if (old != enabled)
-				{
-					NewRoundSound::SetEnabled(enabled);
-					Configuration::Update("runtime/playSoundOnNewRound",enabled);
-				}
-			});
+			AddCheckBox(audio,"Mute sound when tabbed out","runtime/muteOnWindowFocusLoss",AudioInterface::MutingOnWindowFocusLoss, AudioInterface::SetMuteOnWindowFocusLoss);
+			AddCheckBox(audio,"Play sound on round begin","runtime/playSoundOnNewRound",NewRoundSound::IsEnabled, NewRoundSound::SetEnabled);
 
 			AddOptionSlider(audio,"Music Volume", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
 			{
@@ -410,40 +407,18 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 			
-			AddCheckBox(audio,"Mute music during gameplay",!Music::PlayMusicDuringGameplay(),[](bool enabled)
-			{
-				bool old = !Music::PlayMusicDuringGameplay();
-				if (old != enabled)
-				{
-					Music::SetPlayMusicDuringGameplay(!enabled);
-					Configuration::Update("runtime/musicDuringGameplay",!enabled);
-				}
-			});
+			AddNegatedCheckBox(audio,"Mute music during gameplay","runtime/musicDuringGameplay",Music::PlayMusicDuringGameplay,Music::SetPlayMusicDuringGameplay);
 
 
 		}
 
-		AddCheckBox(game,"Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
-		{
-			bool old = !Objects::ShiftMeansQueue();
-			if (old != enabled)
-			{
-				Objects::SetShiftMeansQueue(!enabled);
-				Configuration::Update("runtime/alwaysQueueUnitCommands",enabled);
-			}
-		});
+		AddCheckBox(game,"Auto-Queue Unit Commands","runtime/alwaysQueueUnitCommands",Objects::AutoQueue,Objects::SetAutoQueue);
 
-		AddCheckBox(game,"Debug Tools for Scripted AI", ScriptedAI::visualDebugActive, [](bool enabled)
+		AddCheckBox(game,"Debug Tools for Scripted AI","runtime/aiDebugMode", [](){return ScriptedAI::visualDebugActive;}, [](bool enabled)
 		{
-			bool old = ScriptedAI::visualDebugActive;
-			if (old != enabled)
-			{
-				ScriptedAI::visualDebugActive = enabled;
-				Configuration::Update("runtime/aiDebugMode", enabled);
-
-				Objects::Commands::RedefineGlobalCommands();
-				HUD::HexGrid::Configure(Objects::selectedEntity);
-			}
+			ScriptedAI::visualDebugActive = enabled;
+			Objects::Commands::RedefineGlobalCommands();
+			HUD::HexGrid::Configure(Objects::selectedEntity);
 		});
 
 

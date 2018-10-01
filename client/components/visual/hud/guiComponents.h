@@ -1347,9 +1347,7 @@ namespace Component
 		std::function<void(bool)>	onChanged;
 		std::function<bool()>		check;
 		bool						isChecked = false;
-
-		//String					baseLabel;
-//		TextField::SetText;
+		TooltipDeclaration			tooltip;
 
 		void			Setup()
 		{
@@ -1371,7 +1369,7 @@ namespace Component
 		/**/			Checkbox()
 		{
 			Setup();
-			SetText("");
+			SetText("","");
 		}
 
 		/**/			Checkbox(const String&text, bool checked, std::function<void(bool)> onChanged = std::function<void(bool)>(), std::function<bool()> check = std::function<bool()>() )
@@ -1380,7 +1378,17 @@ namespace Component
 			this->onChanged = onChanged;
 			this->check = check;
 			isChecked = checked;
-			SetText(text);
+			SetText(text,"");
+			SetToIdealWidth();
+		}
+
+		/**/			Checkbox(const String&text, const TooltipDeclaration&tooltip, bool checked, std::function<void(bool)> onChanged = std::function<void(bool)>(), std::function<bool()> check = std::function<bool()>() )
+		{
+			Setup();
+			this->onChanged = onChanged;
+			this->check = check;
+			isChecked = checked;
+			SetText(text,tooltip);
 			SetToIdealWidth();
 		}
 
@@ -1427,6 +1435,23 @@ namespace Component
 		}
 
 		virtual Ctx	 Render(const Decoration::Context&) override;
+
+		void			SetText(const ArrayRef<const String>&lines, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(lines);
+			this->tooltip = tooltip;
+		}
+
+		void			SetText(const String&text, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(text);
+			this->tooltip = tooltip;
+		}
+		
+		virtual Tooltip::Info	ResolveTooltip() const override
+		{
+			return tooltip();
+		}
 
 		virtual PComponent	GetClickCandidate() override
 		{

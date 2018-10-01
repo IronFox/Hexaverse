@@ -1959,7 +1959,7 @@ int main( int argc, const char* argv[])
 				if (!val.EqualsIgnoreCase("off"))
 					convert(val.c_str(),RuntimeConfig::FromFile::capFPS);
 				RuntimeConfig::FromFile::alwaysDay = StartConfig::GetBool("runtime/alwaysDay",true);
-				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");
+				display.config.vertical_sync = StartConfig::GetBool("runtime/vsync") ? 1 : 0;
 				display.config.vertical_sync = display.config.vertical_sync > 0 ? 1 : 0;
 				display.config.fsaa_samples = StartConfig::GetInt("runtime/fsaa",4);
 
