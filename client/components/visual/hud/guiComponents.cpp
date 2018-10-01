@@ -2316,7 +2316,7 @@ namespace Component
 	//DX11::BaseInstructionBlock	Area::shader;
 
 
-	//void		Area::Render(bool lit)
+	//void		Area::Build(bool lit)
 	//{
 	//	display.RenderVertices(instruction);
 	//
@@ -2633,7 +2633,7 @@ namespace Component
 		if (this->widthLockedToIdeal || this->heightLockedToIdeal)
 			this->SignalLayoutChangeUp();
 	}
-	void			TextField::SetText(const Array<String>&string)
+	void			TextField::SetText(const ArrayRef<const String>&string)
 	{
 		if (rawText == string)
 			return;
@@ -3151,7 +3151,7 @@ namespace Component
 	{
 		const float textHeight = Super::GetContentHeight();
 		
-		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//compensate vertical translation (see Render())
+		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//compensate vertical translation (see Build())
 
 		return Math::Max(textHeight,checkBoxHeight);
 	}
@@ -3274,10 +3274,10 @@ namespace Component
 	}
 
 	
-	PButton			TabBar::AddTab(const String&caption)
+	PButton			TabBar::AddTab(const String&caption, const TooltipDeclaration&tooltip)
 	{
 		//auto&tab = tabs.Append();
-		PButton tab(new Button(caption));
+		PButton tab(new Button(caption,tooltip));
 		WButton b = tab;
 		tab->SetTriggerFunction([this,b]()
 		{
@@ -3428,7 +3428,7 @@ namespace Component
 	}
 
 
-	PPanel			TabCollection::AddTab(const String&caption)
+	PPanel			TabCollection::AddTab( const String&caption, const TooltipDeclaration&tooltip )
 	{
 		Setup();
 
@@ -3443,7 +3443,7 @@ namespace Component
 			mod.GetVAxis().Fill();
 			mod.GetVAxis().upper.Set(tabBar,Distance());
 		}
-		tab.button = tabBar->AddTab(caption);
+		tab.button = tabBar->AddTab(caption,tooltip);
 		//tab.panel->SetBackgroundColor(tab.button->GetBackgroundColor());
 		tab.panel->SetBackgroundTone((float3)0.5f);
 		tab.panel->SetBackgroundOpacity(0.65f);
@@ -3460,13 +3460,13 @@ namespace Component
 		return InvalidIndex;
 	}
 
-	void			TabCollection::SetCaptionOf(const PPanel&tabPanel, const String&caption)
+	void			TabCollection::SetCaptionOf(const PPanel&tabPanel, const String&caption, const TooltipDeclaration&tooltip)
 	{
 		if (!tabPanel)
 			return;
 		index_t at = GetTabIndex(tabPanel);
 		ASSERT__(at != InvalidIndex);
-		tabs[at].button->SetText(caption);
+		tabs[at].button->SetText(caption,tooltip);
 	}
 
 	const String&	TabCollection::GetCaptionOf(const PPanel&tabPanel)	const
@@ -3593,7 +3593,7 @@ namespace Component
 
 	/*virtual override*/ Decoration::Context	MultiPlot::Render( const Decoration::Context&ctx )
 	{
-		//Super::Render(opacity);
+		//Super::Build(opacity);
 		
 		const auto chld = Decoration::RenderBackground(relativeMouse,false,false,IsEnabled(),ctx);
 

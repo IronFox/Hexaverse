@@ -219,9 +219,9 @@ namespace Menu
 		return c;
 	}
 
-	static Component::PPanel MakeTab(const Component::PTabCollection&tabs, const String&title)
+	static Component::PPanel MakeTab(const Component::PTabCollection&tabs, const String&title, const Component::TooltipDeclaration&tooltip)
 	{
-		auto result = tabs->AddTab(title);
+		auto result = tabs->AddTab(title,tooltip);
 		result->SetAutoHeightSpacing(0.02f);
 		return result;
 	}
@@ -241,8 +241,8 @@ namespace Menu
 		menu->AddComponent(closeButton,CLOCATION);
 
 		const auto tabs = std::make_shared<Component::TabCollection>();
-		const auto visual = MakeTab(tabs,"Visual");
-		const auto game = MakeTab(tabs,"Game");
+		const auto visual = MakeTab(tabs,"Visual","Graphics and window options");
+		const auto game = MakeTab(tabs,"Game","General game related settings");
 		tabs->Anchor().FillHorizontally().GetVAxis().FillBetween(closeButton,optionsLabel);
 		menu->AddComponent(tabs,CLOCATION);
 
@@ -359,7 +359,7 @@ namespace Menu
 
 		if (AudioInterface::IsActive())
 		{
-			const auto audio = MakeTab(tabs,"Sound");
+			const auto audio = MakeTab(tabs,"Sound","Audio output settings");
 			AddOptionSlider(audio,"Sound Volume", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
 			{
 				auto old = AudioInterface::GetMasterVolume();

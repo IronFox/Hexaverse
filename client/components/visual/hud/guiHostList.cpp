@@ -511,7 +511,7 @@ namespace HUD{namespace HostList{
 			label->Anchor().Top(Distance::GameWindow( 0.01f )).FillHorizontally();//.Right(Distance::GameWindow( 0.01f ));
 			pb->AddComponent( label,CLOCATION );
 			Network::ServerAddress url = *failed;
-			PButton forget(new Button("Forget this host",
+			PButton forget(new Button("Forget this host","Removes this host from the list of queried TCP game servers",
 			[url]()
 			{
 				HUD::Dialog::Confirm("'"+ToString(url)+"' will be removed from the list of actively checked hosts. Please confirm.",
@@ -577,7 +577,7 @@ namespace HUD{namespace HostList{
 
 		PButton addHostButton;
 		{
-			PButton b(new Button("Add new host...",[]()
+			PButton b(new Button("Add new host...","Queries for a host name or IP address to begin querying. Preserved across game restarts",[]()
 			{
 				HUD::Dialog::Query("Enter a new host address to attempt connection to.","",allowedHostChars,CheckHostName,
 				[](const String&url)
@@ -616,8 +616,8 @@ namespace HUD{namespace HostList{
 		
 
 		{
-			PButton start(new Button("Start local server..."));
-			PButton stop(new Button("Stop local server"));
+			PButton start(new Button("Start local server...","Opens a menu to start a local server, load save games, or begin a tutorial message"));
+			PButton stop(new Button("Stop local server","Closes down the first detected locally running server. Not recommended when using the server manager"));
 			bool running = ServerProcess::IsRunning();
 			stop->SetEnabled(running);
 			start->SetEnabled(!running);

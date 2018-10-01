@@ -127,7 +127,7 @@ namespace HUD
 					{
 						if (faction->alliance->HaveInvited(Objects::Faction::mine))
 						{
-							inviteButton.reset(new Button{"Accept Invitation"});
+							inviteButton.reset(new Button{"Accept Invitation","Accepts the invitation and instantly joins this alliance. Note: other alliance members will see all your units"});
 							Objects::WFaction wf = faction;
 							inviteButton->SetTriggerFunction(
 							[wf]()
@@ -151,7 +151,7 @@ namespace HUD
 						}
 						else
 						{
-							inviteButton.reset(new Button{"Invite"});
+							inviteButton.reset(new Button{"Invite","Invite this faction to join your alliance (or create one if you are currently not part of any)"});
 							Objects::WFaction wf = faction;
 							if (!Objects::Faction::mine->alliance->HaveInvited(faction))
 							{
@@ -166,7 +166,7 @@ namespace HUD
 							}
 							else
 							{
-								inviteButton->SetText("Cancel Invitation");
+								inviteButton->SetText("Cancel Invitation","An invite has been sent to this faction. Press to cancel the invitation.");
 								inviteButton->SetTriggerFunction(
 								[wf]()
 								{
@@ -264,7 +264,7 @@ namespace HUD
 						factionTable->SetBackground(false);
 					}
 					{
-						PButton close{new Button{"Close",Hide}};
+						PButton close{new Button{"Close","Closes this dialog",Hide}};
 						close->SetVerticalPadding(0.5f);
 						close->FillHorizontally(0);
 						close->SetCutCorners(M::Quad<bool>(true,true,true,false));
@@ -287,15 +287,17 @@ namespace HUD
 								return;
 							sendToAlliance = !sendToAlliance;
 							if (sendToAlliance)
-								b->SetText("Alliance");
+								b->SetText("Alliance","Only alliance members will receive your messages");
 							else
-								b->SetText("All");
+								b->SetText("All","Everyone will receive your messages including hostile factions");
 
 						});
 
 						chatMessage = std::make_shared<Input>();
 						chatMessage->SetAllowedAlphabet(Network::allowedChatCharacters);
-						PButton send{new Button{"Send",[](){
+						PButton send{new Button{"Send",
+							Tooltip::FInfo{[](){return Tooltip::Build(sendToAlliance?"Send your entered message to all only members of your alliance":"Send your entered message to all online factions");}},
+							[](){
 							if (sendToAlliance)
 								Network::SendChatMessage(chatMessage->GetText(),Objects::Faction::mine);
 							else
@@ -362,7 +364,7 @@ namespace HUD
 	
 					if (isMine && a->CountLivingMembers() > 1)
 					{
-						PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString()}};
+						PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString(),"Instantly leave this alliance. Note that non-allied, hostile units will fire at you automatically"}};
 						leaveButton->SetTriggerFunction(
 						[]()
 						{

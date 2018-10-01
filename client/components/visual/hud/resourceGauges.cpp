@@ -664,7 +664,7 @@ namespace ResourceGauges
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
 			#ifndef NO_HIBERNATION
-				trafficGauge.Render(0);
+				trafficGauge.Build(0);
 			#endif
 			if (showExtraGauges)
 			{
@@ -676,7 +676,7 @@ namespace ResourceGauges
 
 			display.SetBlendMode(Engine::BlendMode::FlareBlend);
 			#ifndef NO_HIBERNATION
-				trafficGauge.Render(1);
+				trafficGauge.Build(1);
 			#endif
 
 			if (showExtraGauges)

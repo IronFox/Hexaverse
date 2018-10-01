@@ -1152,7 +1152,7 @@ bool loop()
 
 
 		{
-			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
+			//Atmosphere::Build(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
 
 	//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
@@ -1235,7 +1235,7 @@ bool loop()
 
 			#ifndef NO_SATELLITES
 			if (Camera::SkyGridIsVisible())
-				Grid::visibleOrbitGrid.Render(frustum);
+				Grid::visibleOrbitGrid.Build(frustum);
 			#endif
 
 			Objects::Renderer::RenderTranslucent(true);
@@ -1382,7 +1382,7 @@ bool loop()
 					HUD::StatePanel::Render(*Objects::selectedEntity);
 
 				//if (Objects::Network::Transfer::isActive)
-				//	TransferPanel::Render(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
+				//	TransferPanel::Build(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
 				//else
 				//	TransferPanel::Invalidate();
 			}

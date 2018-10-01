@@ -403,7 +403,7 @@ namespace HUD
 
 		static PButton AddStackFilter(const String&name, const FFilter&filter, bool trigger=false, bool integrate=false)
 		{
-			PButton button{new Button{name}};
+			PButton button{new Button{name,"Show "+name+" over time"}};
 			static index_t idCounter = 0;
 			const index_t myID = idCounter++;
 
@@ -490,7 +490,7 @@ namespace HUD
 
 
 
-				closeButton.reset(new Button{"Close (Esc)",[]()
+				closeButton.reset(new Button{"Close (Esc)","Close this dialog. You can reopen it via the main menu",[]()
 				{
 					WindowStack::Hide(window);
 				}});
@@ -570,7 +570,7 @@ namespace HUD
 			factionButtonMap.Clear();
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
-				PButton button{new Button{f->GetName()}};
+				PButton button{new Button{f->GetName(),"Show statistics only for "+f->GetName()}};
 				factionButtonMap.Set(f.get(),button);
 				button->SetColor(f->color);
 				Objects::WFaction f2 = f;

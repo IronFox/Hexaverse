@@ -834,7 +834,7 @@ namespace Objects
 	#ifndef NO_SATELLITES
 		static void _RenderSimpleLocated(Satellite&s, const M::TMatrix4<>&system)
 		{
-			display.Render(*s.baseRenderingInstruction, true);
+			display.Build(*s.baseRenderingInstruction, true);
 			Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
 		}
 	#endif
@@ -996,7 +996,7 @@ namespace Objects
 
 
 	#ifndef NO_SATELLITES
-		void	Renderer::Render(Satellite&s, float light)
+		void	Renderer::Build(Satellite&s, float light)
 		{
 			display.SetObjectMatrix(s.system);
 			{
@@ -1013,7 +1013,7 @@ namespace Objects
 							//WorkingStructure*ws = static_cast<WorkingStructure*>(&s);
 							if (s.AwaitsUserInteraction())
 							{
-								display.Render(userInteractionNotifier,true);
+								display.Build(userInteractionNotifier,true);
 							}
 						}
 					}
@@ -1243,7 +1243,7 @@ namespace Objects
 			//	//if (s.compiledShape.vbo.IsSet())
 			//	//{
 			//	//	display.SetObjectMatrix(M::Matrix<>::eye4);
-			//	//	display.Render(s.compiledShape,true);
+			//	//	display.Build(s.compiledShape,true);
 			//	//}
 			//	_RenderSimple(s);
 			//}
@@ -1293,12 +1293,12 @@ namespace Objects
 				{
 					display.SetObjectMatrix(v->system);
 					keyColor.Update(float4(v->owner->activeEntityColor,light));
-					display.Render(cordon,true);
+					display.Build(cordon,true);
 				}
 				if (v != selectedEntity)
 				{
 					ApplyStateTint(*v,baseTint,false);
-					Renderer::Render(*v,light);
+					Renderer::Build(*v,light);
 					ApplyBaseTint(*v,baseTint);
 				}
 			}
@@ -1374,7 +1374,7 @@ namespace Objects
 						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
 					#ifndef NO_SATELLITES
 						elif (selectedMobileEntity->IsSatellite())
-							Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
+							Renderer::Build(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
 					#endif
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());

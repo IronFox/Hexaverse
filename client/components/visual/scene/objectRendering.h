@@ -145,7 +145,7 @@ namespace Objects
 		void	Render(Structure&s);
 
 		#ifndef NO_SATELLITES
-			void	Render(Satellite&s, float light);
+			void	Build(Satellite&s, float light);
 		#endif
 
 		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);

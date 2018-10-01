@@ -767,7 +767,7 @@ namespace VisualTerrain
 	//	config.z = color;
 	//	Mat::transpose(config);
 	//	blockConfig.Update(config);
-	//	display.Render(blockInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
+	//	display.Build(blockInstruction, cells[stackID].voffset, cells[stackID].numCorners * 3);
 	//}
 
 	bool	BoxCheck(const TBounds&bounds, const M::TVec3<>&b, const M::TVec3<>&d, float dist)

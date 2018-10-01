@@ -590,7 +590,7 @@ namespace HexGrid
 		*/
 		bool		Contains(const M::TVec2<>&p) const;
 
-		virtual std::pair<String,String>	GetTooltip() const override;
+		virtual std::pair<String,String>	ResolveTooltip() const override;
 	};
 
 

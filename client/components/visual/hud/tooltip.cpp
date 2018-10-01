@@ -51,7 +51,7 @@ namespace HUD
 						hoveringOver = next;
 						if (hoveringOver)
 						{
-							auto cp = next->GetTooltip();
+							auto cp = next->ResolveTooltip();
 							shortText.adoptData(cp.first);
 							longText.adoptData(cp.second);
 
@@ -123,7 +123,7 @@ namespace HUD
 			M::Rect<> r;
 
 
-			const bool flipX = Engine::mouse.location.windowRelative.x > 1.f - hoveringWidth;
+			const bool flipX = Engine::mouse.location.windowRelative.x > 1.f - 0.5f * hoveringWidth;	//right to left
 			const bool flipY = Engine::mouse.location.windowRelative.y > fullH;
 
 			if (flipX)
@@ -165,8 +165,20 @@ namespace HUD
 			textout.PopState();
 		}
 
+		Info	Build()
+		{
+			return Build("");
+		}
 
 
+		Info	Build(const D::String&info)
+		{
+			return std::make_pair(info,info);
+		}
+		Info	Build(const D::String&shortInfo, const D::String&longInfo)
+		{
+			return std::make_pair(shortInfo,longInfo);
+		}
 
 	}
 }

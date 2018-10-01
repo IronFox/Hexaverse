@@ -114,6 +114,29 @@ namespace Component
 		bool			any = false;
 	};
 
+
+	/**
+	Container class for tooltip generation.
+	May be decleared via constrant string(s) or dynamic function
+	*/
+	class TooltipDeclaration
+	{
+		Tooltip::FInfo	getInfo;
+	public:
+		/**/			TooltipDeclaration() {}
+		/**/			TooltipDeclaration(const char*tooltip):getInfo{[tooltip](){return Tooltip::Build(tooltip);}}{}
+		/**/			TooltipDeclaration(const String&tooltip):getInfo{[tooltip](){return Tooltip::Build(tooltip);}}{}
+		/**/			TooltipDeclaration(const String&shortTooltip, const String&longTooltip):getInfo{[shortTooltip,longTooltip](){return Tooltip::Build(shortTooltip,longTooltip);}}{}
+		/**/			TooltipDeclaration(const char*shortTooltip, const char*longTooltip):getInfo{[shortTooltip,longTooltip](){return Tooltip::Build(shortTooltip,longTooltip);}}{}
+		/**/			TooltipDeclaration(const Tooltip::FInfo&info):getInfo{info}	{}
+
+		/**
+		Resolves tooltip text
+		*/
+		Tooltip::Info	operator()() const {return getInfo != nullptr ? getInfo() : Tooltip::Build();}
+	};
+
+
 	/**
 	Component anchor distance/size descriptor.
 	Can be measured in different units and applied accordingly
@@ -650,7 +673,7 @@ namespace Component
 		virtual PComponent GetChild(index_t i) const {return nullptr;}
 		PComponent		GetLastChild() const {const count_t cnt = CountChildren(); if (cnt) return GetChild(cnt-1); return nullptr;}
 
-		virtual std::pair<String,String>	GetTooltip() const override {return std::make_pair("","");}
+		virtual Tooltip::Info	ResolveTooltip() const override {return Tooltip::Info();}
 		
 		bool			SetWidth(const Distance&w)
 		{
@@ -1092,7 +1115,7 @@ namespace Component
 		float			GetTotalFontScale() const;
 
 		void			SetText(const String&string);
-		void			SetText(const Array<String>&string);
+		void			SetText(const ArrayRef<const String>&string);
 
 		const Array<String>&GetText() const {return rawText;}
 
@@ -1188,6 +1211,7 @@ namespace Component
 
 		bool			alwaysDown = false;
 		bool			flipWhenAlwaysDown = true;
+		TooltipDeclaration tooltip;
 
 		void			Setup();
 
@@ -1198,7 +1222,7 @@ namespace Component
 		/**/			Button()
 		{
 			Setup();
-			SetText("[-]");
+			SetText("[-]","Undefined button title");
 		}
 
 		/**/			Button(const String&text, std::function<void()> onPress = std::function<void()>(), std::function<bool()> check = std::function<bool()>() )
@@ -1206,11 +1230,37 @@ namespace Component
 			Setup();
 			this->onPress = onPress;
 			this->check = check;
-			SetText(text);
+			SetText(text,"");
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
 		}
 
+		/**/			Button(const String&text, const TooltipDeclaration&tooltip, std::function<void()> onPress = std::function<void()>(), std::function<bool()> check = std::function<bool()>() )
+		{
+			Setup();
+			this->onPress = onPress;
+			this->check = check;
+			SetText(text,tooltip);
+			anchorConfig.GetHAxis().AnchorLowerUnknown();
+			SetToIdealWidth();
+		}
+
+		void			SetText(const ArrayRef<const String>&lines, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(lines);
+			this->tooltip = tooltip;
+		}
+
+		void			SetText(const String&text, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(text);
+			this->tooltip = tooltip;
+		}
+		
+		virtual Tooltip::Info	ResolveTooltip() const override
+		{
+			return tooltip();
+		}
 
 		void			SetAlwaysDown(bool down) {alwaysDown = down;}
 		bool			IsAlwaysDown() const {return alwaysDown;}
@@ -1841,7 +1891,7 @@ namespace Component
 		@param caption Caption to use for the tab. May be empty or already in use (but probably should not)
 		@return Handle to the panel of the new tab. The panel is anchored to fill most of the local collection area
 		*/
-		PButton			AddTab(const String&caption);
+		PButton			AddTab(const String&caption, const TooltipDeclaration&tooltip);
 		/**
 		Retrieves the index of the specified tab.
 		This method may be used to determine if a button belongs to this bar.
@@ -1926,7 +1976,7 @@ namespace Component
 		@param caption Caption to use for the tab. May be empty or already in use (but probably should not)
 		@return Handle to the panel of the new tab. The panel is anchored to fill most of the local collection area
 		*/
-		PPanel			AddTab(const String&caption);
+		PPanel			AddTab(const String&caption, const TooltipDeclaration&tooltip);
 		/**
 		Retrieves the index of the specified tab.
 		This method may be used to determine if a panel belongs to this collection.
@@ -1951,7 +2001,7 @@ namespace Component
 		Updates the caption associated with the specified tab panel.
 		The method triggers a fatal exception if the specified panel is not found.
 		*/
-		void			SetCaptionOf(const PPanel&, const String&caption);
+		void			SetCaptionOf(const PPanel&, const String&caption, const TooltipDeclaration&tooltip);
 		/**
 		Retrieves the caption of the tab associated with the specified panel.
 		The method triggers a fatal exception if the specified panel is not found.

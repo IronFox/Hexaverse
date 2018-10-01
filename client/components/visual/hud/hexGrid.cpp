@@ -653,7 +653,7 @@ namespace HexGrid
 		return -1.f + float(1 - (cellY % 2)) * cfg.stepX;
 	}
 
-	/*virtual override*/ std::pair<String,String> GridCell::GetTooltip() const
+	/*virtual override*/ std::pair<String,String> GridCell::ResolveTooltip() const
 	{
 		Objects::Description desc;
 		command->CompileLabel(desc);

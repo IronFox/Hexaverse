@@ -1024,7 +1024,7 @@ namespace ScriptedAI
 			WWindow w = window;
 			while (scripts.NextFile(".lua",file))
 			{
-				PButton button {new Button{FileSystem::PathToString(file.GetInnerName()),[file,w]()
+				PButton button {new Button{FileSystem::PathToString(file.GetInnerName()),"Load this AI script",[file,w]()
 				{
 					PWindow window = w.lock();
 					WindowStack::Hide(window);
