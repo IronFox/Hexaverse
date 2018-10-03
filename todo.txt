@@ -1,3 +1,5 @@
+Read configuration tooltips from factory default .ini file instead of user directory copy
+
 Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
 Complete tooltips for regular UI
 
