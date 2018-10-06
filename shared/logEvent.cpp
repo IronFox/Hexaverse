@@ -13,6 +13,7 @@
 #include "./objects/faction.h"
 #include <io/file_system.h>
 #include <io/monitoredProcess.h>
+#include <startProcess.h>
 
 #ifndef CLIENT
 	#include "../server/components/state.h"
@@ -129,14 +130,12 @@ namespace Logging
 
 	void	CallBugReporter()
 	{
-		MonitoredProcess	process(false);
-		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
+		StartProcess("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
 	}
 
 	void	CallBugReporter(const String&message)
 	{
-		MonitoredProcess	process(false);
-		process.Start("../BugReporter/","BugReporter.exe","\""+activePath+"\" -m \""+PathString(message.Escape("\""))+"\"");	//start and abandon
+		StartProcess("../BugReporter/","BugReporter.exe","\""+activePath+"\" -m \""+PathString(message.Escape("\""))+"\"");	//start and abandon
 	}
 
 	bool	HasBegun()

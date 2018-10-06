@@ -13,7 +13,7 @@
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
 #include "guiFactionTable.h"
-#include <io/monitoredProcess.h>
+//#include <io/monitoredProcess.h>
 #include "../../configurationMode.h"
 #include "../../io.h"
 #include "../../cameraControl.h"
@@ -22,6 +22,7 @@
 #include "../commandDefinitions.h"
 #include "../autoDocumentation.h"
 #include <string/converter.h>
+#include <startProcess.h>
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -611,11 +612,10 @@ namespace Menu
 		menu->AddCommand("Local server control console","Launches a server control console to connect to your local server",[]()
 		{
 			SetFullScreen(false);
-			MonitoredProcess	process(false);
 			if (Network::amOnline && Network::client.IsLocalhost())
-				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+				StartProcess("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
 			else
-				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
+				StartProcess("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
 		});
 
 		menu->AddCommand("New client with custom profile","Launches another instance of the local client under a different profile. Profiles allow control of each one faction per server",[]()
@@ -627,7 +627,6 @@ namespace Menu
 				"abcdefghijklmnopqrstuvwxyz_0123456789",[](const StringRef&str){return true;},[](const String&str)
 			{
 				SetFullScreen(false);
-				MonitoredProcess	process(false);
 				PathString parameters = PathString("profile="+str);
 				if (Network::client.IsConnected())
 					parameters += PathString(" serverURL="+ToString(Network::lastServerAddress));
@@ -642,15 +641,14 @@ namespace Menu
 				}
 				while (len >= execPath.GetLength());
 
-				process.Start("./",execPath.GetPointer(),parameters);
+				StartProcess("./",execPath.GetPointer(),parameters);
 			});
 		});
 
 		menu->AddCommand("Server Manager","Launches the server manager app to review and control locally running servers",[]()
 		{
 			SetFullScreen(false);
-			MonitoredProcess	process(false);
-			process.Start("../ServerManager","ServerManager.exe","");
+			StartProcess("../ServerManager","ServerManager.exe");
 		});
 
 
