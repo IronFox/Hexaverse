@@ -36,7 +36,7 @@ namespace Menu
 
 		virtual void				OnScreenSizeOrUIScaleChange() override;
 
-		HUD::Component::PButton		AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true);
+		HUD::Component::PButton		AddCommand(const String&name, const HUD::Component::TooltipDeclaration&tooltip, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true);
 
 
 	};
@@ -47,7 +47,7 @@ namespace Menu
 
 	namespace Configuration
 	{
-		void	Assign(::DeltaWorks::Configuration&, const ::DeltaWorks::PathString&userConfigPath);
+		void	Assign(const DeltaWorks::Configuration*baseCFG, DeltaWorks::Configuration*cfg, const PathString&userConfigPath);
 	}
 
 

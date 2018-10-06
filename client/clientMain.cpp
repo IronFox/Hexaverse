@@ -1487,6 +1487,7 @@ bool loop()
 			HUD::WindowStack::RenderModal();
 			HUD::Tooltip::Render();
 
+			display.Pick(Camera::hud);
 
 			if (ConfigurationMode::IsActive())
 			{
@@ -1953,7 +1954,7 @@ int main( int argc, const char* argv[])
 
 			#ifdef HAS_WINDOW
 
-				HUD::Menu::Configuration::Assign(StartConfig::destConfig, userConfigPath);
+				HUD::Menu::Configuration::Assign(&StartConfig::baseConfig, &StartConfig::destConfig, userConfigPath);
 
 				String val = StartConfig::GetString("runtime/capFPS","-1");
 				if (!val.EqualsIgnoreCase("off"))

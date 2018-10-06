@@ -42,9 +42,9 @@ namespace Menu
 		Super::OnScreenSizeOrUIScaleChange();
 	}
 
-	HUD::Component::PButton				Menu::AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check /*= std::function<bool()>()*/, bool autoHide/*=true*/)
+	HUD::Component::PButton				Menu::AddCommand(const String&name, const HUD::Component::TooltipDeclaration&tooltip,  const std::function<void()>&execute, const std::function<bool()>&check /*= std::function<bool()>()*/, bool autoHide/*=true*/)
 	{
-		HUD::Component::PButton button(new HUD::Component::Button(name,
+		HUD::Component::PButton button(new HUD::Component::Button(name,tooltip,
 			[execute,this,autoHide]()
 			{
 				if (autoHide)
@@ -140,11 +140,13 @@ namespace Menu
 
 		PathString	outConfigPath;
 
-		DeltaWorks::Configuration*config;
+		DeltaWorks::Configuration*config = nullptr;
+		const DeltaWorks::Configuration*defaultConfig = nullptr;
 
-		void	Assign(DeltaWorks::Configuration&cfg, const PathString&userConfigPath)
+		void	Assign(const DeltaWorks::Configuration*baseCFG, DeltaWorks::Configuration*cfg, const PathString&userConfigPath)
 		{
-			config = &cfg;
+			defaultConfig = baseCFG;
+			config = cfg;
 			outConfigPath = userConfigPath;
 		}
 
@@ -214,7 +216,10 @@ namespace Menu
 		bool b;
 		if (var && Convert(var->value,b))
 			setValue(b);
-		String comment = var ? var->comment : "";
+
+		auto var2 = Configuration::defaultConfig->GetAttrib(configKey);
+		String comment = var2 ? var2->comment : "";
+
 		Component::PCheckbox c(new Component::Checkbox("",comment,getValue(),[getValue,setValue,name,configKey](bool b)
 		{
 			if (b == getValue())
@@ -434,11 +439,11 @@ namespace Menu
 		game = Menu::Create();
 		game->Setup(0.3f,"Game",true);
 
-		game->AddCommand("Change Nickname",HUD::Dialog::QueryNickname);
-		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
-		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
-		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
-		game->AddCommand("Save game as...",[]()
+		game->AddCommand("Change Nickname","Change your in game alias. Not unique", HUD::Dialog::QueryNickname);
+		game->AddCommand("Abandon faction","Flags your current faction as abandoned, and displays a selection to create a new faction (if desired)",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Show factions (Tab)","Opens a dialog presenting factions, alliances, and chat messages" ,FactionTable::Show,[](){return Network::amOnline;});
+		game->AddCommand("Show statistics","Shows statistics of the completed local game" ,Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Save game as...","Signals the server to save the game under a given name",[]()
 		{
 			Dialog::Query("Please specify a name","","ABCDEFGHIJKLMNOPQRSTUVWXZYabcdefghijklmnopqrstuvwxyz0123456789 ",[](const String&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ');},
 				[](const String&name)
@@ -470,17 +475,17 @@ namespace Menu
 	{
 		auto menu = help = Menu::Create();
 		menu->Setup(0.3f,"Help",true);
-		menu->AddCommand("View Online Manual",[]()
+		menu->AddCommand("View Online Manual","Opens your installed browser to display the game documentation",[]()
 		{
 			OpenDocumentExternally("https://www.hexaverse.net/html.php");
 		});
 
-		menu->AddCommand("Show Basic Controls",
+		menu->AddCommand("Show Basic Controls","Opens a dialog showing all main controls. For a full list open the online manual",
 			[]()
 			{
 				Tutorial::ShowMessage("Controls",true,true);
 			});
-		menu->AddCommand("Revisit All Tutorial Messages",
+		menu->AddCommand("Revisit Game Hints","Flushes memory of shown game hints (notifications) such that they are shown again where appropriate",
 			[]()
 			{
 				HUD::Dialog::Confirm("You are about to reset the game's memory of tutorial messages you have been shown. All messages will be shown again where considered appropriate.\n"
@@ -490,11 +495,11 @@ namespace Menu
 						Tutorial::FlushMemory();
 					});
 			});
-		menu->AddCommand("Start Interactive Tutorial",
+		menu->AddCommand("Start Interactive Tutorial","Starts a private tutorial server and connects to it. Interactive tasks introduce the most common mechanics",
 			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
-		menu->AddCommand("Report Bug",
+		menu->AddCommand("Report Bug","Opens the bug reporter externally",
 			[]()
 			{
 				SetFullScreen(false);
@@ -502,21 +507,21 @@ namespace Menu
 			}	
 		);
 
-		menu->AddCommand("View Changelog",[]()
+		menu->AddCommand("View Changelog","Opens the game changelog (txt file) in any associated external text viewer",[]()
 		{
 			FileSystem::File f;
 			if (FileSystem::Folder().FindFile("..\\changelog.txt",f))
 				OpenDocumentExternally(f.GetLocation());
 		});
 
-		menu->AddCommand("View Third Party Sources",[]()
+		menu->AddCommand("View Third Party Sources","Opens a text file describing all currently used third party sources (txt file) in any associated external text viewer",[]()
 		{
 			FileSystem::File f;
 			if (FileSystem::Folder().FindFile("..\\info.txt",f))
 				OpenDocumentExternally(f.GetLocation());
 		});
 
-		menu->AddCommand("About", []()
+		menu->AddCommand("About","Who made this game, when was it compiled, etc.", []()
 		{
 			String text = PRODUCT_NAME " v" PRODUCT_VERSION "\n"
 				"Compiled "+String(__DATE__)+" "+String(__TIME__) +  "\n"
@@ -545,17 +550,17 @@ namespace Menu
 		main = Menu::Create();
 		main->Setup(0.25f,"Main",true);
 
-		main->AddCommand("Return to Server List",
+		main->AddCommand("Return to Server List","Closes the connection to your current server (if any) and displays available servers. You can resume your current faction (if any) by reconnecting",
 		[]()
 		{
 			ConfigurationMode::SetActive(false);
 			Network::client.Disconnect();
 		},
 		[](){return Network::client.IsConnected() || ConfigurationMode::IsActive();});
-		main->AddCommand("Game...",[](){WindowStack::Show(game);},std::function<bool()>(),false);
-		main->AddCommand("Launch...",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
+		main->AddCommand("Game...","Actions related to the game as a whole",[](){WindowStack::Show(game);},std::function<bool()>(),false);
+		main->AddCommand("Launch...","Start external programs (e.g. server manager)",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
 		
-		main->AddCommand("Help...",
+		main->AddCommand("Help...","Displays help topics",
 			[]()
 			{
 				WindowStack::Show(help);
@@ -563,14 +568,14 @@ namespace Menu
 			std::function<bool()>(),
 			false
 			);
-		main->AddCommand("Options",
+		main->AddCommand("Options","Shows the options dialog",
 			[]()
 			{
 				WindowStack::Show(options);
 			});
 
 		#ifdef _DEBUG
-			main->AddCommand("Update Automatic Documentation...",
+			main->AddCommand("Update Automatic Documentation...","Queries for a target directory then recomputes all entity renderings and prefix texts" ,
 			[]()
 			{
 				if (!Network::client.IsConnected() || !Network::gameHasBegun)
@@ -594,7 +599,7 @@ namespace Menu
 
 		#endif
 
-		main->AddCommand("Quit to Desktop",[](){HUD::Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return HUD::Dialog::CheckResult::OkayContinue;});});
+		main->AddCommand("Quit to Desktop","Shuts this client down. Dependent servers are also shut down",[](){HUD::Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return HUD::Dialog::CheckResult::OkayContinue;});});
 		//main->FullAutoLayout();
 	}
 
@@ -603,7 +608,7 @@ namespace Menu
 		auto menu = launch = Menu::Create();
 		menu->Setup(0.3f,"Launch...",true);
 
-		menu->AddCommand("Local server control console",[]()
+		menu->AddCommand("Local server control console","Launches a server control console to connect to your local server",[]()
 		{
 			SetFullScreen(false);
 			MonitoredProcess	process(false);
@@ -613,7 +618,7 @@ namespace Menu
 				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
 		});
 
-		menu->AddCommand("New client with custom profile",[]()
+		menu->AddCommand("New client with custom profile","Launches another instance of the local client under a different profile. Profiles allow control of each one faction per server",[]()
 		{
 			Dialog::Query("Please enter a profile name to continue (empty for none).\n"
 				"Servers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation.\n"
@@ -641,7 +646,7 @@ namespace Menu
 			});
 		});
 
-		menu->AddCommand("Server Manager",[]()
+		menu->AddCommand("Server Manager","Launches the server manager app to review and control locally running servers",[]()
 		{
 			SetFullScreen(false);
 			MonitoredProcess	process(false);
@@ -654,7 +659,7 @@ namespace Menu
 
 	static void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
 	{
-		login->AddCommand(line,
+		login->AddCommand(line,"Faction Option",
 		[typeFlags,supportFactionFlag]()
 		{
 			if (Network::HaveFactionKeyForCurrentWorld() && typeFlags != Protocol::FactionType::SpectatorFaction)
@@ -691,7 +696,7 @@ namespace Menu
 		login = Menu::Create();
 		login->Setup(0.25f,"Login",false); 	//once visible, must explicitly close
 
-		login->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
+		login->AddCommand("Continue existing faction","If you have access to an existing faction, select this option to resume control",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
 		[]()
 		{
 			return Network::amOnline && !Network::haveFaction 
@@ -760,7 +765,7 @@ namespace Menu
 			char date[64];
 			strftime(date, sizeof(date), "%Y-%m-%d %H:%M", tm);
 
-			menu->AddCommand(s->title+"\n"+date,[p]()
+			menu->AddCommand(s->title+"\n"+date,"Start a new local server from this save game",[p]()
 			{
 				ServerProcess::Begin(true,false,"-l \""+p+"\"");
 				HUD::WindowStack::SignalSituationChange();
@@ -774,14 +779,14 @@ namespace Menu
 	{
 		auto menu = startServer = Menu::Create();
 		menu->Setup(0.25f,"Start Server",true);
-		menu->AddCommand("Configure visually...",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
-		menu->AddCommand("Start using current configuration",
+		menu->AddCommand("Configure visually...","Opens the interactive visual server configuration and planet editor. A server is not started until completed. New planet types may be saved without starting a server",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
+		menu->AddCommand("Start using current configuration","Directly starts a server using your current server configuration",
 			[]()
 		{
 			ServerProcess::Begin(true,false);
 			HUD::WindowStack::SignalSituationChange();
 		},[](){return !Network::amOnline;});
-		menu->AddCommand("Load saved game...",
+		menu->AddCommand("Load saved game...","Scans all available server save games and opens a dialog to choose one",
 			[]()
 		{
 			if (RefreshSaveGames())
@@ -789,7 +794,7 @@ namespace Menu
 			else
 				Dialog::ShowMessage("Apparently, there are no save games to load. Please try again later.");
 		});
-		menu->AddCommand("Start Interactive Tutorial",
+		menu->AddCommand("Start Interactive Tutorial","Starts a private tutorial server and connects to it. Interactive tasks introduce the most common mechanics",
 			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 	}

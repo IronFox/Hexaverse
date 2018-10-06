@@ -616,7 +616,7 @@ namespace HUD{namespace HostList{
 		
 
 		{
-			PButton start(new Button("Start local server...","Opens a menu to start a local server, load save games, or begin a tutorial message"));
+			PButton start(new Button("Start local server...","Opens a menu to start a local server, load save games, or begin a tutorial session"));
 			PButton stop(new Button("Stop local server","Closes down the first detected locally running server. Not recommended when using the server manager"));
 			bool running = ServerProcess::IsRunning();
 			stop->SetEnabled(running);
