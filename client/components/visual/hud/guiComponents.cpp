@@ -1215,6 +1215,11 @@ namespace Component
 	}
 
 
+	/*static*/ void	Decoration::SignalBackgroundChange()
+	{
+		DecorationDetails::backgroundChanged = true;
+	}
+
 	Decoration::Context			Decoration::RenderBackground(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
 	{
 		using namespace DecorationDetails;

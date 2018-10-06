@@ -4,6 +4,7 @@
 #include "../display.h"
 #include "resourceGauges.h"
 #include "surfaceRenderer.h"
+#include "guiComponents.h"
 
 namespace HUD
 {
@@ -86,9 +87,14 @@ namespace HUD
 
 
 		D::Buffer0<FGet,D::Swap>	tooltipQuery;
+		HUD::Component::Decoration decoration;
 
 		void	Create()
 		{
+			decoration= HUD::Component::Decoration();
+			decoration.SetCutCorners(false);
+			decoration.SetBackgroundColor(float4(0,0,0,0.4f));
+			decoration.SetShadow(float4(0,0,0,0.3f));
 			GlobalEvents::frameBegin << Details::Check;
 		}
 
@@ -103,6 +109,8 @@ namespace HUD
 			using namespace Details;
 			if (!hoveringOver)
 				return;
+
+
 			
 			display.Pick(ResourceGauges::textoutCamera);
 
@@ -155,9 +163,13 @@ namespace HUD
 				}
 			}
 
+			decoration.SignalBackgroundChange();
+			decoration.UpdateLocation(r);
+			decoration.RenderBackground(float2(),false,false,true,HUD::Component::Decoration::Context(1.f));
 
-			SurfaceRenderer::Rasterize(r);
-			SurfaceRenderer::Flush();
+
+	//		SurfaceRenderer::Rasterize(r);
+		//	SurfaceRenderer::Flush();
 
 			textout.SetColor(1,1,1);
 			foreach (lines,l)

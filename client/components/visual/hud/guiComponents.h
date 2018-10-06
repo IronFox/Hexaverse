@@ -549,6 +549,12 @@ namespace Component
 		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = bottom; this->topOpacity = top;}
 		void			SetShadow(const float4&tint/*, bool blurBack*/) {SetShadow(true); shadowTint = tint; /*blurBackground = blurBack;*/}
 
+		/**
+		Notifies the decoration renderer that background content can be expected to have changed and should be re-copied/blurred.
+		This is normally unnecessary to be calle explicitly.
+		*/
+		static void		SignalBackgroundChange();
+
 		void			OnScreenSizeOrUIScaleChange()	{recompileShadow = recompileEdges = recompileBackground =true;}
 
 		/**
