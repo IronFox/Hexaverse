@@ -1,6 +1,8 @@
+further delay tooltip appearance on components
+check client starting server manager
+
 asynchronous configuration editor start
 
-Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
 Complete tooltips for regular UI
 
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
@@ -203,6 +205,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
 done: Documentation: controls (hint-overlay -> tooltip, end round: no yet -> not yet)
 done: Read configuration tooltips from factory default .ini file instead of user directory copy
 partially done: Revise UI and menu (cluster hex icons, flatter, stronger outlined regular menu with hex shapes). Some of that done, no grouping (yet)
