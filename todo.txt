@@ -1,3 +1,4 @@
+asynchronous configuration editor start
 Documentation: controls (hint-overlay -> tooltip, end round: no yet -> not yet)
 
 Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
