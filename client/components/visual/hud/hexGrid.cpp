@@ -653,18 +653,24 @@ namespace HexGrid
 		return -1.f + float(1 - (cellY % 2)) * cfg.stepX;
 	}
 
-	/*virtual override*/ std::pair<String,String> GridCell::ResolveTooltip() const
+	/*virtual override*/ Tooltip::Info	GridCell::ResolveTooltip(float t, float lastT) const
 	{
-		Objects::Description desc;
-		command->CompileLabel(desc);
-		Buffer0<StringRef> brief,ext;
-		foreach(desc,line)
+		if (lastT == 0 || lastT < 1.5f && t >= 1.5f)
 		{
-			if (line->second)
-				brief << line->first.ToRef();
-			ext << line->first.ToRef();
+			Objects::Description desc;
+			command->CompileLabel(desc);
+			const bool wantShort = t > 1.5f;
+
+			Buffer0<StringRef> lines;
+			foreach(desc,line)
+			{
+				if (!wantShort || line->second)
+					lines << line->first.ToRef();
+			}
+			tooltip = implode('\n',lines.ToRef());
+			return tooltip.c_str();
 		}
-		return std::make_pair(implode('\n',brief.ToRef()),implode('\n',ext.ToRef()));
+		return nullptr;
 	}
 
 	void		GridCell::Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect, CellAnchor anchor)

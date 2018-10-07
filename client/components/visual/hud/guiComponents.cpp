@@ -26,6 +26,8 @@ namespace Component
 	/*static*/ PBaseInput	BaseInput::focusedInput = nullptr;
 	/*static*/ const Distance Distance::Unknown = Distance(NAN,Type::Placeholder);
 	/*static*/ const Distance Distance::Disabled = Distance(NAN,Type::Disabled);
+	/*static*/ float	TooltipDeclaration::delay = 1.f;
+
 
 	ChangeRecorder::TChange::TChange(const PComponent&c, const PComponent&cause, const TCodeLocation&loc) : component(c), cause(cause), loc(loc),componentRect(c->GetRect())
 	{}

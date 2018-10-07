@@ -550,6 +550,7 @@ namespace HexGrid
 	*/
 	class GridCell : public Tooltip::IProvider
 	{
+		mutable String	tooltip;
 	public:
 		/**
 		Command to draw texture and callback functions from.
@@ -590,7 +591,7 @@ namespace HexGrid
 		*/
 		bool		Contains(const M::TVec2<>&p) const;
 
-		virtual std::pair<String,String>	ResolveTooltip() const override;
+		virtual Tooltip::Info	ResolveTooltip(float t, float lastT) const override;
 	};
 
 

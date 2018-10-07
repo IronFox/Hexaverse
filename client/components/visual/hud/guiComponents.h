@@ -123,17 +123,20 @@ namespace Component
 	{
 		Tooltip::FInfo	getInfo;
 	public:
+		/**
+		Popup delay in seconds. Defaults to 1
+		*/
+		static float	delay;
+
 		/**/			TooltipDeclaration() {}
-		/**/			TooltipDeclaration(const char*tooltip):getInfo{[tooltip](){return Tooltip::Build(tooltip);}}{}
-		/**/			TooltipDeclaration(const String&tooltip):getInfo{[tooltip](){return Tooltip::Build(tooltip);}}{}
-		/**/			TooltipDeclaration(const String&shortTooltip, const String&longTooltip):getInfo{[shortTooltip,longTooltip](){return Tooltip::Build(shortTooltip,longTooltip);}}{}
-		/**/			TooltipDeclaration(const char*shortTooltip, const char*longTooltip):getInfo{[shortTooltip,longTooltip](){return Tooltip::Build(shortTooltip,longTooltip);}}{}
+		/**/			TooltipDeclaration(const char*tooltip):getInfo{[tooltip](float t, float){return t > delay ? tooltip : nullptr;}}{}
+		/**/			TooltipDeclaration(const String&tooltip):getInfo{[tooltip](float t, float){return t > delay ? tooltip.c_str() : nullptr;}}{}
 		/**/			TooltipDeclaration(const Tooltip::FInfo&info):getInfo{info}	{}
 
 		/**
 		Resolves tooltip text
 		*/
-		Tooltip::Info	operator()() const {return getInfo != nullptr ? getInfo() : Tooltip::Build();}
+		Tooltip::Info	operator()(float t, float lastT) const {return getInfo != nullptr ? getInfo(t,lastT) : nullptr;}
 	};
 
 
@@ -679,7 +682,7 @@ namespace Component
 		virtual PComponent GetChild(index_t i) const {return nullptr;}
 		PComponent		GetLastChild() const {const count_t cnt = CountChildren(); if (cnt) return GetChild(cnt-1); return nullptr;}
 
-		virtual Tooltip::Info	ResolveTooltip() const override {return Tooltip::Info();}
+		virtual Tooltip::Info	ResolveTooltip(float t, float) const override {return nullptr;}
 		
 		bool			SetWidth(const Distance&w)
 		{
@@ -1263,9 +1266,9 @@ namespace Component
 			this->tooltip = tooltip;
 		}
 		
-		virtual Tooltip::Info	ResolveTooltip() const override
+		virtual Tooltip::Info	ResolveTooltip(float t, float lastT) const override
 		{
-			return tooltip();
+			return tooltip(t, lastT);
 		}
 
 		void			SetAlwaysDown(bool down) {alwaysDown = down;}
@@ -1454,9 +1457,9 @@ namespace Component
 			this->tooltip = tooltip;
 		}
 		
-		virtual Tooltip::Info	ResolveTooltip() const override
+		virtual Tooltip::Info	ResolveTooltip(float t, float lastT) const override
 		{
-			return tooltip();
+			return tooltip(t, lastT);
 		}
 
 		virtual PComponent	GetClickCandidate() override

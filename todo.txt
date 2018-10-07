@@ -1,4 +1,3 @@
-further delay tooltip appearance on components
 check client starting server manager
 
 asynchronous configuration editor start
@@ -205,6 +204,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: further delay tooltip appearance on components
 fixed: Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
 done: Documentation: controls (hint-overlay -> tooltip, end round: no yet -> not yet)
 done: Read configuration tooltips from factory default .ini file instead of user directory copy

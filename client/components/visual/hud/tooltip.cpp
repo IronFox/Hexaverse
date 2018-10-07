@@ -13,75 +13,75 @@ namespace HUD
 		namespace Details
 		{
 			
-			float			hoveringWidth = 0;
-			bool			hoveringBrief = true;
-			const IProvider*	hoveringOver = nullptr;
-			String				shortText,longText;
-			Array<StringRef>	lines;
+			const IProvider*	hoveringOver = nullptr;	//!< Components that can display tooltips
+
+			
+
+			Array<StringRef>	lines;	//!< Rendering of the current tooltip text
+
+			float				hoveringWidth = 0;
+			Info				hoveringInfo=nullptr;
+			String				hoveringText;
+
+			float				stationaryCounter = 0, lastCall = 0;
 
 
+			void			RefreshText()
+			{
+				auto next = hoveringOver ? hoveringOver->ResolveTooltip(stationaryCounter,lastCall) : nullptr;
+				lastCall = stationaryCounter;
+				if (next == hoveringInfo || next == nullptr)
+					return;
+				hoveringInfo = next;
+				if (hoveringInfo[0] == 0)
+				{
+					hoveringInfo = nullptr;
+					return;
+				}
+				hoveringText = hoveringInfo;
+				Wrap(hoveringText,60,lines);
+				hoveringWidth = 0;
+			}
 
 			void			Check()
 			{
-				static float stationaryCounter = 0;
 				static int2 refPos;
 
 				if (!Vec::similar(refPos, Engine::mouse.location.absolute,10))
 				{
-					stationaryCounter = 0;
+					Hide();
 					refPos = Engine::mouse.location.absolute;
 				}
 				else
 					stationaryCounter += Engine::timing.delta;
 
-				const bool stationary = stationaryCounter > 0.25f;
-				const bool extStationary = stationaryCounter > 1.5f;
+				const bool minStationary = stationaryCounter > 0.25f;
+				//const bool extStationary = stationaryCounter > 1.5f;
 
-				if (stationary)
+				if (minStationary)
 				{
-					const IProvider* next = nullptr;
+					const IProvider* candidate = nullptr;
 					foreach (tooltipQuery,q)
 					{
-						next = (*q)();
-						if (next)
+						candidate = (*q)();
+						if (candidate)
 							break;
 					}
 
-					if (next != hoveringOver)
+					if (!candidate)
 					{
-						hoveringOver = next;
-						if (hoveringOver)
-						{
-							auto cp = next->ResolveTooltip();
-							shortText.adoptData(cp.first);
-							longText.adoptData(cp.second);
+						Hide();
+						return;
+					}
+					if (hoveringOver && candidate != hoveringOver)
+					{
+						Hide();
+						return;
+					}
+					hoveringOver = candidate;
+					RefreshText();
+				}
 
-							Wrap(shortText,60,lines);
-						}
-						else
-						{
-							shortText = "";
-							longText = "";
-							lines.Clear();
-						}
-						hoveringWidth = 0;
-						hoveringBrief = true;
-					}
-					else
-					{
-						bool wasBefore = hoveringBrief;
-						hoveringBrief = !extStationary;
-						if (wasBefore != hoveringBrief)
-						{
-							Wrap(longText,60,lines);
-							hoveringWidth = 0;
-						}
-					}
-				}
-				else
-				{
-					Hide();
-				}
 			}
 		}
 
@@ -101,13 +101,15 @@ namespace HUD
 		void	Hide()
 		{
 			Details::hoveringOver = nullptr;
-			Details::hoveringBrief = true;
+			Details::stationaryCounter = 0;
+			Details::lastCall = 0;
+			Details::hoveringInfo = nullptr;
 		}
 
 		void	Render()
 		{
 			using namespace Details;
-			if (!hoveringOver)
+			if (!hoveringInfo)
 				return;
 
 
@@ -177,20 +179,6 @@ namespace HUD
 			textout.PopState();
 		}
 
-		Info	Build()
-		{
-			return Build("");
-		}
-
-
-		Info	Build(const D::String&info)
-		{
-			return std::make_pair(info,info);
-		}
-		Info	Build(const D::String&shortInfo, const D::String&longInfo)
-		{
-			return std::make_pair(shortInfo,longInfo);
-		}
 
 	}
 }

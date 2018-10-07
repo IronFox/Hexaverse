@@ -12,18 +12,24 @@ namespace HUD
 	{
 		namespace D = DeltaWorks;
 
-		typedef std::pair<D::String,D::String>	Info;
+		typedef const char*	Info;
 
 		interface IProvider
 		{
 			/**
-			Retrieves a pair of tooltip texts.
-			The first returned is the short, the second the long text
+			Retrieves the tooltip text at the specified number of hovering seconds (>= 0.25).
+			The returned pointer will be used for comparison and instantly consumed.
+			Must be provided by the IProvider instance but need not be maintained beyond the lifetime of the object itself.
+			Called by the main thread only. Synchronization is necessary only in case of separately updating thread(s).
+			Result may be null.
+			Once any non-null return value was detected, subsequent null values merely preserve the current value.
+			@param hoverSeconds Seconds since cursor remained stationary. Always >= 0.25
+			@param lastCall Last time this provider was called since the cursor became stationary. 0 if this is the first call
 			*/
-			virtual Info	ResolveTooltip() const=0;
+			virtual Info	ResolveTooltip(float hoverSeconds, float lastCall) const=0;
 		};
 		typedef std::function<const IProvider*()>	FGet;
-		typedef std::function<Info()>	FInfo;
+		typedef std::function<Info(float t, float lastT)>	FInfo;
 
 		/**
 		Registry function to retrieve the tooltip provider based on the current mouse position.
@@ -36,11 +42,6 @@ namespace HUD
 		void	Create();
 		void	Render();
 		void	Hide();
-
-		Info	Build();
-		Info	Build(const D::String&info);
-		Info	Build(const D::String&shortInfo, const D::String&longInfo);
-
 	}
 }
 

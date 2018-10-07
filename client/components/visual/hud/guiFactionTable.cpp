@@ -287,16 +287,16 @@ namespace HUD
 								return;
 							sendToAlliance = !sendToAlliance;
 							if (sendToAlliance)
-								b->SetText("Alliance","Only alliance members will receive your messages");
+								b->SetText("Alliance","Only online alliance members will receive your messages");
 							else
-								b->SetText("All","Everyone will receive your messages including hostile factions");
+								b->SetText("All","Everyone online will receive your messages including hostile factions");
 
 						});
 
 						chatMessage = std::make_shared<Input>();
 						chatMessage->SetAllowedAlphabet(Network::allowedChatCharacters);
 						PButton send{new Button{"Send",
-							Tooltip::FInfo{[](){return Tooltip::Build(sendToAlliance?"Send your entered message to all only members of your alliance":"Send your entered message to all online factions");}},
+							Tooltip::FInfo{[](float t,float)->Tooltip::Info{if (t < TooltipDeclaration::delay) return nullptr; return sendToAlliance?"Send your message only to members of your alliance":"Send your message to all online factions";}},
 							[](){
 							if (sendToAlliance)
 								Network::SendChatMessage(chatMessage->GetText(),Objects::Faction::mine);
