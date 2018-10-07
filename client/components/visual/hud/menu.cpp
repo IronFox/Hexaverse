@@ -440,7 +440,7 @@ namespace Menu
 		game = Menu::Create();
 		game->Setup(0.3f,"Game",true);
 
-		game->AddCommand("Change Nickname","Change your in game alias. Not unique", HUD::Dialog::QueryNickname);
+		game->AddCommand("Change Nickname","Change your ingame alias. Nicknames are not unique", HUD::Dialog::QueryNickname);
 		game->AddCommand("Abandon faction","Flags your current faction as abandoned, and displays a selection to create a new faction (if desired)",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Show factions (Tab)","Opens a dialog presenting factions, alliances, and chat messages" ,FactionTable::Show,[](){return Network::amOnline;});
 		game->AddCommand("Show statistics","Shows statistics of the completed local game" ,Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
@@ -561,7 +561,7 @@ namespace Menu
 		main->AddCommand("Game...","Actions related to the game as a whole",[](){WindowStack::Show(game);},std::function<bool()>(),false);
 		main->AddCommand("Launch...","Start external programs (e.g. server manager)",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
 		
-		main->AddCommand("Help...","Displays help topics",
+		main->AddCommand("Help...","Various help topics",
 			[]()
 			{
 				WindowStack::Show(help);
@@ -569,7 +569,7 @@ namespace Menu
 			std::function<bool()>(),
 			false
 			);
-		main->AddCommand("Options","Shows the options dialog",
+		main->AddCommand("Options","Modify the client configuration",
 			[]()
 			{
 				WindowStack::Show(options);
