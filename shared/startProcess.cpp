@@ -24,7 +24,7 @@ void StartProcess(const DeltaWorks::PathString&workingDirectory, const DeltaWork
 	}
 	paths.executablePath = f->GetLocation();
 
-	paths.workingDirectory = f->GetLocation();
+	paths.workingDirectory = folder.GetLocation();
 	MonitoredProcess::Sanitize(paths);
 
 
