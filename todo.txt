@@ -1,3 +1,12 @@
+Lua API documentation:
+FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
+Game.CreateMarker: note max marker count
+Cell.index: wrong range
+isMovile, heigh
+has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
+
+
+
 asynchronous configuration editor start
 
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
