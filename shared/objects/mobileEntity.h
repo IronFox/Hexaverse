@@ -555,6 +555,7 @@ namespace Objects
 
 
 		//WorldEntity overrides:
+		virtual bool			IsAutomated() const override {return isAutomated;}
 		virtual bool			SupportsTaskQueue() const override {return true;}
 		//virtual bool			IsActive() const override {return !IsHibernating() && Super::IsActive();}
 		#ifndef CLIENT

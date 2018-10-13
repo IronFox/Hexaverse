@@ -205,6 +205,12 @@ namespace Objects
 		*/
 		void	RenderTranslucentBeams();
 
+		/**
+		Passes visible entity status icons to the sprite renderer.
+		Depth-tested, cutout, limited transparency
+		*/
+		void	RenderStatusIcons();
+
 		void	SetRenderGoalMarkers(bool);
 
 		/**

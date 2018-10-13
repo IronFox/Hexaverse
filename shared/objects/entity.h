@@ -431,6 +431,7 @@ namespace Objects
 		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;
 		bool						CanHit(const TrajectoryEndPoint&dest) const;
 		bool						IsSleeping() const {return sleeping;}
+		virtual bool				IsAutomated() const {return false;}
 
 		bool						IsAlive() const {return health > 0;}
 		bool						IsDeadOrGhost() const {return health <= 0;}

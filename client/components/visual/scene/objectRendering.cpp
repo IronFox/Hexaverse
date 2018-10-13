@@ -21,6 +21,7 @@
 #include "../../clientEvents.h"
 #include "lighting.h"
 #include "../../clientRuntimeConfig.h"
+#include "spriteRenderer.h"
 
 namespace Camera
 {
@@ -82,6 +83,9 @@ namespace Objects
 
 	M::TMatrix4<>							structureToPlaceSystem;
 
+
+	SpriteRenderer				sleepIcon, automationIcon;
+			//test.CreateOrLoad("resources/icons/Abort.png","resources/floaters/Abort.png",true);
 
 
 
@@ -780,6 +784,13 @@ namespace Objects
 			Objects::resourceView = true;
 			Objects::objectView = true;
 		};
+
+		bool forceReload = false;
+		SpriteRenderer::StaticCreate();
+		sleepIcon.CreateOrLoadFromIcon("resources/icons/Sleep.png","resources/floaters/sleep.png",forceReload);
+		automationIcon.CreateOrLoadFromIcon("resources/icons/Automate.png","resources/floaters/automate.png",forceReload,2);
+
+
 	}
 
 
@@ -1668,6 +1679,41 @@ namespace Objects
 				overallTint.Update(float4(1, 0, 0, 1));
 			Renderer::RenderSimple(*s,s->HasFoundation());
 		});
+	}
+
+
+	static void RenderIcon(const PWorldEntity&e, SpriteRenderer&renderer, float scale=1.f)
+	{
+		SpriteRenderer::Instance inst;
+		float h = Grid::GetLayerHeight(e->location.height);
+		const bool m = e->IsMobile();
+		Vec::mad(e->system.w.xyz,e->system.z.xyz,m ? h*1.5f : h*(1 + e->GetHeight()),inst.location);
+		if (!m)
+			Vec::mad(inst.location,Camera::scene.GetForwardDirection(),-h);
+		inst.size = h * scale;
+		//inst.color = float4{0,0,0,1};
+		renderer.Render(inst);
+	}
+
+
+	void	Renderer::RenderStatusIcons()
+	{
+		if (!objectView)
+			return;
+		display.SetRasterizer(true,false);
+
+		ForeachWorldEntity([](const Objects::PWorldEntity&e)
+		{
+			if (e->IsAutomated())
+				RenderIcon(e,automationIcon,0.5f);
+			else
+			if (e->IsSleeping())
+			{
+				RenderIcon(e, sleepIcon);
+			}
+		});
+		automationIcon.Flush();
+		sleepIcon.Flush();
 	}
 
 
