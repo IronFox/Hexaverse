@@ -798,6 +798,7 @@ namespace Engine
 
 
 			void					Load(const Image&image, bool generateMipMaps=true);
+			void					Load(const Image16&image, bool generateMipMaps=true);
 			void					Load(const UnclampedFloatImage&image, bool generateMipMaps=false);
 			void					LoadCube(const Image image[6], bool generateMipMaps=true);
 

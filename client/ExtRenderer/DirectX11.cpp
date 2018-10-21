@@ -2808,8 +2808,9 @@ namespace Engine
 
 
 	static const DXGI_FORMAT formatMap[4] = {DXGI_FORMAT_R8_UNORM,DXGI_FORMAT_R8G8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM };
+	static const DXGI_FORMAT formatMap16[4] = {DXGI_FORMAT_R16_UNORM,DXGI_FORMAT_R16G16_UNORM,DXGI_FORMAT_R16G16B16A16_UNORM,DXGI_FORMAT_R16G16B16A16_UNORM };
 
-	void					DX11::Texture::Load(const Image&image, bool generateMipMaps/*=true*/)
+	void					DX11::Texture::Load( const Image&image, bool generateMipMaps/*=true*/ )
 	{
 		switch (image.GetChannels())
 		{
@@ -2824,6 +2825,28 @@ namespace Engine
 				tmp.SetChannels(4,BaseImage::CA_MAX);
 				//dbgForce255 = true;
 				this->Load(Resolution(image.GetWidth(),image.GetHeight()),DXGI_FORMAT_R8G8B8A8_UNORM,tmp.GetData(),generateMipMaps);
+			}
+			break;
+			default:
+				FATAL__("Unsupported number of channels");
+		}
+	}
+
+	void					DX11::Texture::Load( const Image16&image, bool generateMipMaps/*=true*/ )
+	{
+		switch (image.GetChannels())
+		{
+			case 1:
+			case 2:
+			case 4:
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),formatMap16[image.GetChannels()-1],image.GetData(),generateMipMaps);
+			break;
+			case 3:
+			{
+				Image16 tmp = image;
+				tmp.SetChannels(4,BaseImage::CA_MAX);
+				//dbgForce255 = true;
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),DXGI_FORMAT_R16G16B16A16_UNORM,tmp.GetData(),generateMipMaps);
 			}
 			break;
 			default:
