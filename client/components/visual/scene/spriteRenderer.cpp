@@ -42,39 +42,20 @@ namespace Objects
 
 		void EncodeQuadraticDistance(float d, BYTE classification, float edgeScale, BYTE*rsPixels)
 		{
-			//ASSERT__(d < std::numeric_limits<float>::max());
-			//return classification ? 128 : M::Clamp(sqrt(d),0,255);
-
 			float fs = std::min(sqrt(d)/edgeScale*4,127.f);
 			if (!classification)
 				fs = -fs;
 			rsPixels[0] = (BYTE)(128 + fs);
-//
-//			static const float cutoffPixels = 8;
-//			const bool edge = d < M::Sqr(edgeScale * cutoffPixels);
-//			if (edge)
-//			{
-//				rsPixels[0] = rsPixels[1] = rsPixels[2] = classification ? 255 : 0;
-//				//rsPixels[3] = 255;
-//			}
-//			else
-//				if (classification)
-//				{
-//					//inside
-//					rsPixels[0] = rsPixels[1] = rsPixels[2] = 192;//d < (14*14) ? 255: 192;
-//				}
-//				else
-//				{
-//					//outside
-//					rsPixels[0] = rsPixels[1] = rsPixels[2] = 0;
-////					rsPixels[3] = 128-sqrt(d);
-//				}
-//			if (!classification)
-//				fs = -fs;
-//			fs += cutoffPixels;
-//			BYTE ds = (BYTE)(128 + fs);
-//			rsPixels[3] = ds;
 		}
+
+		void EncodeQuadraticDistance(float d, BYTE classification, float edgeScale, uint16_t*rsPixels)
+		{
+			float fs = std::min(sqrt(d)/edgeScale*4*256,32767.f);
+			if (!classification)
+				fs = -fs;
+			rsPixels[0] = (uint16_t)(32768 + fs);
+		}
+	
 	
 
 		struct TDistanceSample
@@ -99,8 +80,8 @@ namespace Objects
 
 	void	SpriteRenderer::Load(const D::PathString&source)
 	{
-		Image img;
-		Magic::LoadFromFile(img,source);
+		Image16 img;
+		png.LoadFromFile16(img,source);
 		texture.Load(img);
 	}
 
@@ -196,14 +177,14 @@ namespace Objects
 		}
 		ASSERT_GREATER_OR_EQUAL__(numProcessed,distanceImage.Count());
 
-		Image result{classified.GetWidth(),classified.GetHeight(),1};
+		Image16 result{classified.GetWidth(),classified.GetHeight(),1};
 		Concurrency::parallel_for(index_t(0),classified.CountPixels(),[&distanceImage,&result,&classified,edgeScale](index_t idx)
 		{
 			EncodeQuadraticDistance(distanceImage[idx].d,classified.GetLinear(idx)[0],edgeScale,result.GetLinear(idx));
 		});
 		result.ScaleHalf();
 		result.ScaleHalf();
-		png.SaveToFileQ(result,cacheTo);
+		png.SaveToFile16(result,cacheTo,9);
 
 		//ShowMessage(timer.GetSecondsSince(t0));
 
