@@ -87,7 +87,7 @@ namespace Objects
 
 	void	SpriteRenderer::CreateOrLoadFromIcon(const D::PathString&source, const D::PathString&cacheTo, bool forceRenew, float edgeScale/*=1.f*/)
 	{
-		if (!forceRenew && (FileSystem::IsFile(cacheTo) && FileSystem::GetModificationTime(cacheTo) >= FileSystem::GetModificationTime(source)))
+		if (!forceRenew && (FileSystem::IsFile(cacheTo) /*&& FileSystem::GetModificationTime(cacheTo) >= FileSystem::GetModificationTime(source)*/))
 		{
 			Load(cacheTo);
 			return;
