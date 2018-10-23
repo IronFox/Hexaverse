@@ -609,6 +609,7 @@ namespace Tutorial
 	}
 
 
+	static Random random;
 
 	void	StartTutorialServer()
 	{
@@ -636,9 +637,11 @@ namespace Tutorial
 
 		Interactive::expectStart = true;
 
+		const UINT16 port = TUTORIAL_BASE_PORTS_FROM + random.Next((65535 - TUTORIAL_BASE_PORTS_FROM)/3) * 3;
 
-		LogEvent(EventClass::Preset::uncommon,"Starting tutorial server...");
-		RuntimeConfig::serverAddress = Network::ServerAddress("localhost");
+		LogEvent(EventClass::Preset::uncommon,"Starting tutorial server ...");
+		LogEvent(EventClass::Preset::debug,"Starting tutorial server on port "+String(port));
+		RuntimeConfig::serverAddress = Network::ServerAddress("localhost:"+String(port));
 		holdOn = HUD::Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->HUD::Dialog::CheckResult
 		{
 			if (Network::haveFaction)
@@ -674,7 +677,7 @@ namespace Tutorial
 
 			});
 			
-		ServerProcess::Begin(true,true,"");
+		ServerProcess::Begin(true,true,"",port);
 	}
 
 }

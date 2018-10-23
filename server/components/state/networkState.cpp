@@ -312,14 +312,15 @@ namespace Network
 		}
 		server.OnDoneResolving([logStateAfterRestart]()
 		{
-			if (server.StartService(Config::sessionBasePort + PortOffset::Session))
+			const auto port = Config::sessionBasePort + PortOffset::Session;
+			if (server.StartService(port))
 			{
 				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionBasePort + PortOffset::Session));
 				if (logStateAfterRestart)
 					LogServerState();
 			}
 			else
-				FATAL__("Unable to start service in port "+String(Config::sessionBasePort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
+				FATAL__("Unable to start service on port "+String(port)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
 		});
 	}
 

@@ -1,5 +1,6 @@
 v0.9.6
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do
+	> Tutorial servers now use random ports in the dynamic port range to avoid port collisions.
 
 v0.9.5	[Aug 26 2018]
 	> Removed resource panel while configuration mode is active.

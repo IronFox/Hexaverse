@@ -23,6 +23,7 @@
 #define BROADCAST_PORT				10246	//must be constant, not reused by any heartbeat port
 
 #define DEFAULT_SERVER_BASE_PORT	10247
+#define TUTORIAL_BASE_PORTS_FROM	50000
 
 namespace PortOffset
 {

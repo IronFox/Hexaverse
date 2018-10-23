@@ -228,7 +228,7 @@ namespace ServerProcess
 	}
 
 
-	void Begin(bool remoteControl, bool tutorialMode, const PathString&customFlags, USHORT basePort /*= DEFAULT_SERVER_BASE_PORT*/)
+	void Begin( bool remoteControl, bool tutorialMode, const PathString&customFlags, USHORT basePort /*= DEFAULT_SERVER_BASE_PORT*/ )
 	{
 		if (Detail::process.IsRunning())
 			return;
