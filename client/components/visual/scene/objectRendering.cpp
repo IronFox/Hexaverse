@@ -122,7 +122,13 @@ namespace Objects
 				float h = Grid::GetLayerHeight(e->location.height);
 				Vec::mad(e->system.w.xyz,e->system.z.xyz,m ? h*1.5f : h*(1 + e->GetHeight()),inst.location);
 				if (!m)
-					Vec::mad(inst.location,Camera::scene.GetForwardDirection(),-h);
+				{
+					M::TVec3<> dir;
+					Vec::sub(Camera::scene.GetAbsoluteLocation(),inst.location,dir);
+					Vec::setLen(dir,h);
+					Vec::add(inst.location,dir);
+//					Vec::mad(inst.location,Camera::scene.GetForwardDirection(),-h);
+				}
 				inst.size = h * scale;
 
 				renderer.Render(inst);
