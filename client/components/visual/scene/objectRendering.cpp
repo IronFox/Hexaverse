@@ -86,9 +86,11 @@ namespace Objects
 
 	SpriteRenderer				sleepIcon
 								,automationIcon
+								,questionIcon
 								;
 	SpriteRenderer::Baked		sleepBaked
 								,automationBaked
+								,questionBaked
 								;
 
 
@@ -794,6 +796,7 @@ namespace Objects
 		SpriteRenderer::StaticCreate();
 		sleepIcon.CreateOrLoadFromIcon("resources/icons/Sleep.png","resources/floaters/sleep.png",forceReload);
 		automationIcon.CreateOrLoadFromIcon("resources/icons/Automate.png","resources/floaters/automate.png",forceReload,2);
+		questionIcon.CreateOrLoadFromIcon("resources/icons/Question-Mark.png","resources/floaters/question.png",forceReload,2);
 
 
 	}
@@ -1731,6 +1734,7 @@ namespace Objects
 
 		automationBaked = automationIcon.Bake(automated.ToRef());
 		sleepBaked = sleepIcon.Bake(sleeping.ToRef());
+		questionBaked = questionIcon.Bake(question.ToRef());
 	}
 
 
