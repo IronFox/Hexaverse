@@ -268,6 +268,7 @@ namespace Objects
 		void	ClearSmokeTrails();
 
 		void	RefreshSelectedSensory();
+		void	RefreshIcons();
 
 
 

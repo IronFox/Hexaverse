@@ -22,6 +22,15 @@ namespace Objects
 			D::float4	color = D::float4(1);
 		};
 
+		class Baked
+		{
+			friend class SpriteRenderer;
+		public:
+			void	Render() const;
+		private:
+			Engine::DX11::BaseInstructionBlock	clipped,blended;
+		};
+
 		static const count_t MaxInstancesPerRow = 64;
 
 		/**
@@ -50,6 +59,8 @@ namespace Objects
 		Must be called before changing camera
 		*/
 		void		Flush();
+
+		Baked		Bake(const D::ArrayRef<Instance>&) const;
 
 		/**
 		Must be called at least once for the system to work

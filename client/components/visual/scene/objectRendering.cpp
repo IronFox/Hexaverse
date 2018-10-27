@@ -84,8 +84,12 @@ namespace Objects
 	M::TMatrix4<>							structureToPlaceSystem;
 
 
-	SpriteRenderer				sleepIcon, automationIcon;
-			//test.CreateOrLoad("resources/icons/Abort.png","resources/floaters/Abort.png",true);
+	SpriteRenderer				sleepIcon
+								,automationIcon
+								;
+	SpriteRenderer::Baked		sleepBaked
+								,automationBaked
+								;
 
 
 
@@ -774,6 +778,7 @@ namespace Objects
 		
 		GlobalEvents::invalidateObjectCache << ClearSmokeTrailHighlighting;
 		GlobalEvents::invalidateObjectCache << RefreshSelectedSensory;
+		GlobalEvents::invalidateObjectCache << RefreshIcons;
 
 		GlobalEvents::frameBegin << Renderer::AdvanceTurretAnimations;
 
@@ -1682,17 +1687,15 @@ namespace Objects
 	}
 
 
-	static void RenderIcon(const PWorldEntity&e, SpriteRenderer&renderer, float scale=1.f)
+	static void PutIcon(const PWorldEntity&e, BasicBuffer<SpriteRenderer::Instance>&ctr, float scale=1.f)
 	{
-		SpriteRenderer::Instance inst;
+		SpriteRenderer::Instance&inst = ctr.Append();
 		float h = Grid::GetLayerHeight(e->location.height);
 		const bool m = e->IsMobile();
 		Vec::mad(e->system.w.xyz,e->system.z.xyz,m ? h*1.5f : h*(1 + e->GetHeight()),inst.location);
 		if (!m)
 			Vec::mad(inst.location,Camera::scene.GetForwardDirection(),-h);
 		inst.size = h * scale;
-		//inst.color = float4{0,0,0,1};
-		renderer.Render(inst);
 	}
 
 
@@ -1702,18 +1705,32 @@ namespace Objects
 			return;
 		display.SetRasterizer(true,false);
 
+		automationBaked.Render();
+		sleepBaked.Render();
+		questionBaked.Render();
+	}
+
+	void	Renderer::RefreshIcons()
+	{
+		static Buffer0<SpriteRenderer::Instance>	automated,sleeping,question;
+		automated.Clear();
+		sleeping.Clear();
+		question.Clear();
+
+
 		ForeachWorldEntity([](const Objects::PWorldEntity&e)
 		{
 			if (e->IsAutomated())
-				RenderIcon(e,automationIcon,0.5f);
+				PutIcon(e,automated,0.5f);
 			else
 			if (e->IsSleeping())
 			{
-				RenderIcon(e, sleepIcon);
+				PutIcon(e, sleeping);
 			}
 		});
-		automationIcon.Flush();
-		sleepIcon.Flush();
+
+		automationBaked = automationIcon.Bake(automated.ToRef());
+		sleepBaked = sleepIcon.Bake(sleeping.ToRef());
 	}
 
 

@@ -217,6 +217,37 @@ namespace Objects
 		instances.Clear();
 	}
 
+
+	void	SpriteRenderer::Baked::Render() const
+	{
+		if (clipped.vbo.IsEmpty())
+			return;
+		display.SetDepthTest(true,true);
+		display.SetBlendMode(Engine::BlendMode::None);
+		display.RenderVertices(clipped);
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		display.RenderVertices(blended);
+	}
+
+	SpriteRenderer::Baked		SpriteRenderer::Bake(const D::ArrayRef<Instance>&instances) const
+	{
+		if (instances.IsEmpty())
+			return Baked();
+		using namespace Details;
+		Baked rs;
+		rs.blended = blendedInstruction;
+		rs.clipped = clippedInstruction;
+		rs.blended.quickSlots.First() =
+			rs.clipped.quickSlots.First() =
+			texture;
+		Engine::DX11::VBO vbo;
+		vbo.CreateFromStructs(instances);
+		rs.blended.vbo = rs.clipped.vbo = vbo;
+		return rs;
+	}
+
+
 	/*static*/ void	SpriteRenderer::StaticCreate()
 	{
 		using namespace Details;
