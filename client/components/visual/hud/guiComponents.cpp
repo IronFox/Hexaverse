@@ -2819,7 +2819,7 @@ namespace Component
 		switch (vAlign)
 		{
 			case VAlign::Center:
-				top -= (contextHeight - textHeight) * 0.5f;
+				top = rect.y.GetCenter() + textHeight * 0.5f;
 				break;
 			case VAlign::Top:
 				break;
@@ -4007,6 +4007,7 @@ namespace Component
 		Super::SetEdges(true);
 		//Super::SetEnabledTextAlwaysLit(true);
 		Super::SetVerticalPadding(0.25f);
+		Super::SetAlign(TextField::VAlign::Center);
 	}
 
 	void Label::Setup()

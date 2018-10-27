@@ -1,6 +1,10 @@
 #include "common.inc.hlsl"
 
 
+cbuffer Time
+{
+	float	Time;
+};
 
 Texture2D <float> Texture;
 SamplerState Sampler;
@@ -10,7 +14,8 @@ struct A2G
 {
 	float3 position : Position;
 	float2 size : Size;
-	float4 color : Color;
+	float3 color : Color;
+	float3 pulse : Pulse;
 };
 
 
@@ -19,7 +24,8 @@ struct G2P
 {
 	float4 position : SV_POSITION;
 	float2 uv : UV;
-	float4 color : Color;
+	float3 color : Color;
+	float3 pulse : Pulse;
 };
 
 
@@ -38,6 +44,7 @@ void gsMain(inout TriangleStream<G2P> stream, point A2G input[1])
 {
 	G2P output;
 	output.color = input[0].color;
+	output.pulse = input[0].pulse;
 
 	float size = 0.02;
 	float3	x = WorldCamera[0].xyz*input[0].size.x,
@@ -72,8 +79,8 @@ float4 psMain(G2P input) : SV_TARGET
 {
 	float texel = Texture.SampleBias(Sampler,input.uv,0.5);
 	float4 result;
-	result.rgb = input.color.rgb;
-	result.a = input.color.a * texel;
+	result.rgb = input.color * lerp(input.pulse.x,input.pulse.y,0.5 + 0.5 * sin(input.pulse.z*Time ) );
+	result.a = texel;
 	float step = max(abs(ddx(result.a)), abs(ddy(result.a)));
 	float cutoff = 0.4;
 	#ifdef CLIPPED

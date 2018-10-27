@@ -15,11 +15,21 @@ namespace Objects
 	class SpriteRenderer
 	{
 	public:
+		struct Attributes
+		{
+			D::float3	color = D::float3(1);
+			/**
+			Brightness pulse.
+			X and Y denote the two brightness extremes, the Z value the sine frequency when pulsing between the two
+			*/
+			D::float3	pulse = D::float3(1);
+		};
+
 		struct Instance
 		{
 			D::float3	location;
 			D::float2	size;
-			D::float4	color = D::float4(1);
+			Attributes	attributes;
 		};
 
 		class Baked

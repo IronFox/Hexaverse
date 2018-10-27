@@ -257,13 +257,15 @@ namespace Objects
 		created = true;
 
 
-		static_assert(sizeof(Instance) == 9 * sizeof(float), "Please adjust struct alignment");
+		static_assert(sizeof(Instance) == 11 * sizeof(float), "Please adjust struct alignment");
 		instanceBuffer.Create(MaxInstancesPerRow,sizeof(Instance));
 
 		clippedInstruction.vbo = instanceBuffer;
 		clippedInstruction.binding.Append("Position",0,DXGI_FORMAT_R32G32B32_FLOAT);
 		clippedInstruction.binding.Append("Size",0,DXGI_FORMAT_R32G32_FLOAT);
-		clippedInstruction.binding.Append("Color",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+		clippedInstruction.binding.Append("Color",0,DXGI_FORMAT_R32G32B32_FLOAT);
+		clippedInstruction.binding.Append("Pulse",0,DXGI_FORMAT_R32G32B32_FLOAT);
+		ASSERT_EQUAL1__(clippedInstruction.binding.GetStride(),sizeof(Instance),"Struct-alignment out of whack");
 
 		clippedInstruction.quickSlots.SetSize(1);
 		clippedInstruction.SetPoints();
