@@ -66,7 +66,14 @@ namespace Grid
 		static float			probability[],density[];
 		static coverage_t		maximum[];
 
-		static Ctr::Buffer0<Resource>all;
+		static Buffer0<Resource>all;
+		static index_t			fuelAt,mineralsAt,uraniumAt;
+
+		static Resource&		GetFuel()		{return all[fuelAt];}
+		static Resource&		GetMinerals()	{return all[mineralsAt];}
+		static Resource&		GetUranium()	{return all[uraniumAt];}
+
+
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
