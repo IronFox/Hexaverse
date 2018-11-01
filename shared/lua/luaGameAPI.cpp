@@ -95,6 +95,17 @@ namespace Lua
 			throw Lua::Exception("GetNaturalResourceAt(): Resource '"+resourceName+"' does not exist.");
 		}
 
+		Lua::Table GetNaturalResourcesAt(Lua::Table cellTable)
+		{
+			const auto stackID = LuaCellToStack(cellTable,"GetNaturalResourcesAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
+			Objects::NaturalResourceVector vec;
+			if (!vec.SampleWorld(stackID) || vec.IsEmpty())
+				return Lua::nil;
+			Lua::Table rs = cellTable.GetProgram()->CreateTable();
+			UpdateResourceTable(rs,vec);
+			return rs;
+		}
+
 
 
 
@@ -1732,6 +1743,7 @@ namespace Lua
 
 		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource,bool checkLinkPath, bool checkMobiles){return LuaFindHighestAvailableResourceLocation(resource,checkLinkPath,checkMobiles);});
 		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
+		gridTable.SetFunction("GetNaturalResourcesAt",Detail::GetNaturalResourcesAt);
 		gridTable.SetFunction("NoNaturalResourcesHere",Detail::NoNaturalResourcesHere);
 
 

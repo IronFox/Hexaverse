@@ -282,6 +282,13 @@ Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
 	]]
 	int		Game.Grid.GetNaturalResourceAt(string resourceName, Cell cell)
 	--[[
+	GetNaturalResourcesAt:
+	Fetches all natural resources found at the given location.
+	@param cell Location to query
+	@return Vector containing the found resources (synthetic resource types are always 0). nil if unknown or none found
+	]]
+	ResVec	Game.Grid.GetNaturalResourcesAt(Cell cell)
+	--[[
 	FindHighestAvailableResourceLocation():
 	Searches among all known resource spots for the highest value where a mine could be constructed. Returns nil if none are found.
 	The function incidentally also excludes locations already containing a mine.
