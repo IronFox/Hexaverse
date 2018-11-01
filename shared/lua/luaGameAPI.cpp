@@ -64,6 +64,15 @@ namespace Lua
 			}
 		}
 
+		bool NaturalResourcesSurveyedAt(Lua::Table cellTable)
+		{
+			const auto stackID = LuaCellToStack(cellTable,"NaturalResourcesSurveyedAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
+			#ifdef CLIENT
+				return Grid::ResourceDiscovery::client.resourcesDiscovered[stackID];
+			#else
+				return true;
+			#endif
+		}
 		bool NoNaturalResourcesHere(Lua::Table cellTable)
 		{
 			const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
@@ -1750,6 +1759,7 @@ namespace Lua
 		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
 		gridTable.SetFunction("GetNaturalResourcesAt",Detail::GetNaturalResourcesAt);
 		gridTable.SetFunction("NoNaturalResourcesHere",Detail::NoNaturalResourcesHere);
+		gridTable.SetFunction("NaturalResourcesSurveyedAt",Detail::NaturalResourcesSurveyedAt);
 
 
 		gridTable.SetFunction("ToLocation",[this](const Lua::Table&cell, int height)
