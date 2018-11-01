@@ -3298,7 +3298,6 @@ namespace Component
 				mod.GetHAxis().lower.Set(Super::GetReferences().Last(),0.01f);
 			mod.GetVAxis().AnchorUpper(Distance::Unknown);	//trigger exception when not updated later
 		}
-		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
 		switch (cornerStyle)
 		{
@@ -3319,7 +3318,7 @@ namespace Component
 			break;
 		}
 		tab->SetEdges(false);
-		tab->SetPadding({1.5f,0.25f,1.5f,0.25f});
+		tab->SetPadding({1.5f,0.25f,3.5f,0.25f});
 		tab->SetAlign(VerticalTextAlign::Top);
 
 		ConfigureInactive(tab);
