@@ -182,7 +182,8 @@ namespace Lua
 
 		Lua::Table	LuaFindShortestPathFrom(const Objects::PMobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute);
 		Lua::Table	LuaTraceTrajectoryFrom(const Objects::TrajectoryEndPoint&origin, const Objects::TrajectoryEndPoint&target, Objects::TrajectoryType trajectory, float flatAttackRange, const Objects::WFaction&owner);
-		Lua::Table	LuaFindHighestAvailableResourceLocation(const String&resourceType,bool checkLinkPath=false, bool checkMobiles=false);
+		Lua::Table	LuaFindHighestAvailableResourceLocation(const String&resourceType);
+		Lua::Table	LuaFindHighestAvailableResourceLocationExt(const String&resourceType,bool checkLinkPath, bool checkMobiles);
 		Objects::PWorldEntity LuaUnitToEntity(const Lua::Table&luaUnit, const String&funcParameterName)	const;
 
 		void	Setup();

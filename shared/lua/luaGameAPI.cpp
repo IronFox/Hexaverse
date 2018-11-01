@@ -82,7 +82,7 @@ namespace Lua
 
 		int GetNaturalResourceAt(const String&resourceName, Lua::Table cellTable)
 		{
-			const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
+			const auto stackID = LuaCellToStack(cellTable,"GetNaturalResourceAt(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
 			foreach (Grid::Resource::all,r)
 				if (r->GetName().EqualsIgnoreCase(resourceName))
 				{
@@ -293,7 +293,11 @@ namespace Lua
 	}
 
 
-	Lua::Table API::LuaFindHighestAvailableResourceLocation(const String&resourceName, bool checkLinkPath, bool checkMobiles)
+	Lua::Table API::LuaFindHighestAvailableResourceLocation(const String&resourceName)
+	{
+		return LuaFindHighestAvailableResourceLocationExt(resourceName,false,false);
+	}
+	Lua::Table API::LuaFindHighestAvailableResourceLocationExt(const String&resourceName, bool checkLinkPath, bool checkMobiles)
 	{
 		foreach (Grid::Resource::all,r)
 			if (r->GetName().EqualsIgnoreCase(resourceName))
@@ -1741,7 +1745,8 @@ namespace Lua
 
 		MapCells(program,cellTable,Grid::low,lowCellGrid);
 
-		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource,bool checkLinkPath, bool checkMobiles){return LuaFindHighestAvailableResourceLocation(resource,checkLinkPath,checkMobiles);});
+		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource){return LuaFindHighestAvailableResourceLocation(resource);});
+		gridTable.SetFunction("FindHighestAvailableResourceLocationExt",[this](const String&resource,bool checkLinkPath, bool checkMobiles){return LuaFindHighestAvailableResourceLocationExt(resource,checkLinkPath,checkMobiles);});
 		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
 		gridTable.SetFunction("GetNaturalResourcesAt",Detail::GetNaturalResourcesAt);
 		gridTable.SetFunction("NoNaturalResourcesHere",Detail::NoNaturalResourcesHere);

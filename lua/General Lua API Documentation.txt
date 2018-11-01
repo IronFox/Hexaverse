@@ -293,11 +293,18 @@ Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
 	Searches among all known resource spots for the highest value where a mine could be constructed. Returns nil if none are found.
 	The function incidentally also excludes locations already containing a mine.
 	@param resourceName Case-insensitive resource name: 'Minerals', 'Fuel', or 'Uranium'
-	@param checkLinkPath Also exclude locations not suitable for mine construction, and those located atop known blocking structures.
+	@return Location of highest resource occurrence. nil if none was found
+	]]
+	Cell	Game.Grid.FindHighestAvailableResourceLocation(string resourceName)
+	--[[
+	FindHighestAvailableResourceLocationExt():
+	Adds some new options to LuaFindHighestAvailableResourceLocation().
+	@param resourceName Case-insensitive resource name: 'Minerals', 'Fuel', or 'Uranium'
+	@param checkLinkPath Also exclude locations atop known blocking structures.
 	@param checkMobiles Also exclude locations contained or link-blocked by mobile units.
 	@return Location of highest resource occurrence. nil if none was found
 	]]
-	Cell	Game.Grid.FindHighestAvailableResourceLocation(string resourceName, bool checkLinkPath, bool checkMobiles)
+	Cell	Game.Grid.FindHighestAvailableResourceLocationExt(string resourceName, bool checkLinkPath, bool checkMobiles)
 	bool	Game.Grid.NoNaturalResourcesHere(Cell cell)	-- Returns true if the location has been surveyed but there is nothing here
 
 Cell[]		Game.Grid.unitCells						-- Ordered table of all planar unit cells in the world. These are larger than terrain cells
