@@ -90,7 +90,7 @@ namespace Lua
 						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 							return -1;
 					#endif
-					return r->coverage[stackID];
+					return r->coverage[stackID] * Objects::NaturalResourceVector::TranslationFactor;
 				}
 			throw Lua::Exception("GetNaturalResourceAt(): Resource '"+resourceName+"' does not exist.");
 		}
