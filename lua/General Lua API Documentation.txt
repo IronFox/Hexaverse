@@ -278,6 +278,7 @@ Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
 	Fetches the level of the specified resource at the specified location as available to a mine constructed above it.
 	Returns -1 if the specified location has not been surveyed yet.
 	@param resourceName Case-insensitive resource name: 'Minerals', 'Fuel', or 'Uranium'
+	@param cell Location to query
 	@return Resource level. -1=unknown, 0=nothing (known), >0=resource exists
 	]]
 	int		Game.Grid.GetNaturalResourceAt(string resourceName, Cell cell)

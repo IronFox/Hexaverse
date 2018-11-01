@@ -3,6 +3,7 @@ v0.9.6
 	> Tutorial servers now use random ports in the dynamic port range to avoid port collisions.
 	> Improved visual difference between enabled and disabled mines.
 	> Removed thick frames from visual buttons.
+	> Enhanced/cleaned up Lua API resource retrieval functions.
 	* Fixed vertical text alignment of buttons when using ultra-wide resolutions.
 
 v0.9.5	[Aug 26 2018]

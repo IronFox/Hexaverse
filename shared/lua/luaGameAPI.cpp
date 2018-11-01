@@ -73,9 +73,10 @@ namespace Lua
 				return true;
 			#endif
 		}
+
 		bool NoNaturalResourcesHere(Lua::Table cellTable)
 		{
-			const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
+			const auto stackID = LuaCellToStack(cellTable,"NoNaturalResourcesHere(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
 			#ifdef CLIENT
 				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 					return false;
