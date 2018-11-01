@@ -282,7 +282,7 @@ namespace Lua
 	}
 
 
-	Lua::Table API::LuaFindHighestAvailableResourceLocation(const String&resourceName)
+	Lua::Table API::LuaFindHighestAvailableResourceLocation(const String&resourceName, bool checkLinkPath, bool checkMobiles)
 	{
 		foreach (Grid::Resource::all,r)
 			if (r->GetName().EqualsIgnoreCase(resourceName))
@@ -296,10 +296,33 @@ namespace Lua
 					{
 						if (r->coverage[i] > highest)
 						{
-							if (Objects::FindApplicableGround(Grid::LCellIdI(i,0),true,true) != Objects::badHeight)
+							auto h = Objects::FindApplicableGround(Grid::LCellIdI(i,0),true,true);
+							if (h != Objects::badHeight)
 							{
-								highest = r->coverage[i];
-								highestAt = (int)i;
+								if (checkLinkPath)
+								{
+									for (int h2 = Grid::CellStack::BottomHeight; h2 < h; h2++)
+									{
+										const auto loc = Grid::LCellIdI(i,h2);
+										if (Objects::GetStructure(loc))
+										{
+											h2 = h = Objects::badHeight;
+											break;
+										}
+										if (checkMobiles && Objects::GetMobileEntity(loc))
+										{
+											h2 = h = Objects::badHeight;
+											break;
+										}
+									}
+								}
+								if (checkMobiles && Objects::GetMobileEntity(Grid::LCellIdI(i,h)))
+									continue;
+								if (h != Objects::badHeight)
+								{
+									highest = r->coverage[i];
+									highestAt = (int)i;
+								}
 							}
 						}
 					}
@@ -1707,7 +1730,7 @@ namespace Lua
 
 		MapCells(program,cellTable,Grid::low,lowCellGrid);
 
-		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource){return LuaFindHighestAvailableResourceLocation(resource);});
+		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource,bool checkLinkPath, bool checkMobiles){return LuaFindHighestAvailableResourceLocation(resource,checkLinkPath,checkMobiles);});
 		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
 		gridTable.SetFunction("NoNaturalResourcesHere",Detail::NoNaturalResourcesHere);
 
