@@ -7,8 +7,8 @@ can be expected.
 
 
 void		Game.Log(msg)					-- Prints any message to Hexaverse log (client or server-private)
-int			Game.GetMainRoundNumber()		-- Fetches the primary round indicator. Non-negative, and non-decreasing
-string		Game.GetRound()					-- Fetches the full current round descriptor. Typically this is a string cast of GetMainRoundNumber(), but some source branches use sub rounds
+int			Game.GetMainRoundNumber()		-- Fetches the primary round indicator. Non-negative and non-decreasing
+string		Game.GetRound()					-- Fetches the full current round descriptor. Typically this is a string-cast of GetMainRoundNumber(), but some unpublished game branches use sub rounds
 string		Game.GetPhase()					-- Fetches the current phase. Typically the result will be 'CommandPhase'
 bool		Game.CanIssueUnitCommands()		-- Checks whether the current phase is valid for command execution. Typically the result will be true, so there is usually no need to check this
 
@@ -16,28 +16,28 @@ bool		Game.CanIssueUnitCommands()		-- Checks whether the current phase is valid 
 	{id->Unit}	Game.myUnits				-- Table of all player-owned units currently known to the client, mapped by id (string) to unit
 	{id->Unit}	Game.alliedUnits			-- Table of all allied units currently known to the client, mapped by id (string) to unit
 	{id->Unit}	Game.hostileUnits			-- Table of all hostile units currently known to the client, mapped by id (string) to unit
-	Unit		Game.selectedUnit			-- Table of the currently selected unit. May be nil. Contained by Game.myUnits, if owned by the client faction
-	Faction		Game.myFaction
+	Unit		Game.selectedUnit			-- Table of the currently selected unit. May be nil. Otherwise contained by Game.myUnits, .alliedUnits, or .hostileUnits, depending on owner
+	Faction		Game.myFaction				-- Table of local player faction. Also contained by Game.factions
 
 {id->Unit}		Game.units					-- Table of all (player-known on client) units, mapped by id (string) to unit
 {id->Faction}	Game.factions				-- List of all (player-known on client) factions, mapped by id (string) to faction
 {id->Alliance}	Game.alliances				-- List of all (player-known on client) alliances, mapped by id (string) to alliance
 	
-Unit			Game.GetMobileAt(Loc);		-- Gets the mobile unit at the given location. nil if none. Can be used to quickly check if there is anything there
-Unit			Game.GetStructureAt(Loc);	-- Gets the structure unit at the given location. nil if none. Can be used to quickly check if there is anything there
-	
+Unit			Game.GetMobileAt(Loc);		-- Gets the mobile unit at the given location. nil if none. Operates in O(1): fast
+Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the given location. nil if none. Operates in O(1): fast
+
 Table-Type: Alliance
 {
-	string	id;
-	Faction[]	members;
+	string		id;
+	Faction[]	members;			-- Ordered table of all member factions. Never nil. Usually not empty either
 }
 	
 Table-Type: Faction
 {
-	string		name;
-	string		id;
-	Alliance	alliance;
-	Unit[]		units;
+	string		name;				-- Player chosen name
+	string		id;					-- Unique ID
+	Alliance	alliance;			-- Alliance this faction is a member of. Never nil, although the referenced alliance may have only this member
+	Unit[]		units;				-- 
 	ResBalance	currentResources,	-- Resources of enabled working structures, current storage. balance >= 0
 				maxResources;		-- Resources of all working structures, max storage. Balance may be negative
 }
@@ -108,7 +108,6 @@ Table-Type: Unit
 
 		--[[
 		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) and the current mobile location
-		@param unit Unit to determine reach of
 		@param isBlocked Optional function that excludes certain cells. Type: bool BlockTest(Loc): true if blocked. 
 			If nil, all possible locations are considered. Otherwise invoked only once per candidate (result is cached)
 		@param maxReach Maximum distance (in terms of mobile movementSpeed) to consider. Larger values increase time necessary to complete
@@ -274,9 +273,16 @@ without falling or taking damage.
 ]]
 Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
 [client only]
-	int		Game.Grid.GetNaturalResourceAt(string resourceName, Cell cell)		-- Fetches the resource level at the specified location. Returns -1 if the specified location has not been surveyed yet.
-	bool	Game.Grid.NoNaturalResourcesHere(Cell cell)	-- Returns true if the location has been surveyed but there is nothing here
+	--[[
+	GetNaturalResourceAt:
+	Fetches the level of the specified resource at the specified location as available to a mine constructed above it.
+	Returns -1 if the specified location has not been surveyed yet.
+	@param resourceName Case-insensitive resource name: 'Minerals', 'Fuel', or 'Uranium'
+	@return Resource level. -1=unknown, 0=nothing (known), >0=resource exists
+	]]
+	int		Game.Grid.GetNaturalResourceAt(string resourceName, Cell cell)
 	Cell	Game.Grid.FindHighestAvailableResourceLocation(string resourceName)	-- Searches among all known resource spots for the highest value where a mine could be constructed. Returns nil if none are found
+	bool	Game.Grid.NoNaturalResourcesHere(Cell cell)	-- Returns true if the location has been surveyed but there is nothing here
 
 Cell[]		Game.Grid.unitCells						-- Ordered table of all planar unit cells in the world. These are larger than terrain cells
 float		Game.Grid.GetDistance(Loc a, Loc b)		-- Retrieves the geometric distance between the two specified locations
