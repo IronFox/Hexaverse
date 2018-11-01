@@ -247,6 +247,7 @@ Table-Type: Topic
 	string	name;				-- Name of this entry. Not unique
 	bool	isEndless;			-- True if the research can run indefinitely
 	int		max;				-- Max research needed to complete research. -1 if endless
+	Topic	dependency;			-- Topic that must be completed first before the local topic can be started. nil if none
 	[client only]
 		int		progress;		-- Current research progress. >= 0
 		bool	isCompleted;	-- True if research is completed. Always false if endless

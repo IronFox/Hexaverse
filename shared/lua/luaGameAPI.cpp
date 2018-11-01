@@ -498,6 +498,17 @@ namespace Lua
 
 		}
 
+		for (index_t i = 0; i < Objects::Research::globalState.allTopics.Count(); i++)
+		{
+			auto t = Objects::Research::GetTopic(i);
+			auto dep = t->dependency.lock();
+			if (dep)
+			{
+				ASSERT_EQUAL__(i,t->serialIndex);
+				res[i].SetField("dependency",res[dep->serialIndex]);
+			}
+		}
+
 
 		#ifdef CLIENT
 			foreach (q,queued)
