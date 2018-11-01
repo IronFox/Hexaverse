@@ -436,7 +436,6 @@ namespace HUD{namespace HostList{
 
 	void	ConfigureButton( const HUD::Component::PButton&b )
 	{
-		b->SetEdges(true);
 		b->LockToIdealWidth();
 		b->SetEdgeVisibility(b->GetCutCorners());
 	}

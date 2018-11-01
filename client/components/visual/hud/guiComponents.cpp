@@ -4004,9 +4004,9 @@ namespace Component
 		Super::SetBackgroundTone((float3)0.7f);
 		Super::SetBackgroundOpacity(0.8f);
 		//Super::SetEdgeOpacity(1.f);
-		Super::SetEdges(true);
+		Super::SetEdges(false);
 		//Super::SetEnabledTextAlwaysLit(true);
-		Super::SetVerticalPadding(0.25f);
+		Super::SetVerticalPadding(0.5f);
 		Super::SetAlign(TextField::VAlign::Center);
 	}
 

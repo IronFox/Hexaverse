@@ -59,13 +59,13 @@ namespace Menu
 			To<HUD::Component::Button>::Cast(mainPanel->GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,false));
 			button->SetCutCorners(M::Quad<bool>(true,true,true,false));
 		}
-		mainPanel->AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
+		mainPanel->AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.01f ));
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
 		button->SetBackgroundTone((float3)0.7f);
 		button->SetBackgroundOpacity(0.8f);
-		button->SetEdges(true);
-		button->SetVerticalPadding(0.25f);
+		button->SetEdges(false);
+		button->SetVerticalPadding(0.5f);
 		button->SetEnabledTextAlwaysLit(true);
 		return button;
 	}
