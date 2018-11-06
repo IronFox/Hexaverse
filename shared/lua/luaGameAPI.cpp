@@ -550,6 +550,8 @@ namespace Lua
 			loadedEntityTableMap.Clear();
 			loadedFactionTableMap.Clear();
 			sharedHangars.Clear();
+			typeTableMap.Clear();
+			typeTableMap2.Clear();
 		}
 
 		for (index_t i = 0; i < sharedHangars.Count(); i++)
@@ -583,6 +585,7 @@ namespace Lua
 		gridTable.ClearReference();
 		terrainTable.ClearReference();
 		terrainContentTable.ClearReference();
+		typeTable.ClearReference();
 		researchTable.ClearReference();
 		researchTopicList.ClearReference();
 		#ifdef CLIENT
@@ -701,6 +704,8 @@ namespace Lua
 			gridTable = gameTable.SetSubTable("Grid");
 			terrainTable = gameTable.SetSubTable("Terrain");
 				terrainContentTable = terrainTable.SetSubTable("Content");
+
+			typeTable = gameTable.SetSubTable("Type");
 
 			researchTable = gameTable.SetSubTable("Research");
 				researchTopicList = researchTable.SetSubTable("topics");
@@ -1009,12 +1014,6 @@ namespace Lua
 		t.SetField("name",e->GetName());
 		t.SetField("niceName",e->GetNiceName());
 		t.SetField("id",e->id.ToFullString());
-		t.SetField("typeName",e->GetTypeName());
-		t.SetField("height",e->GetHeight());
-		t.SetField("isMobile", e->IsMobile());
-		t.SetField("isHangar",e->IsHangar());
-		t.SetField("constructionCost",e->GetConstructionCost());
-		t.SetField("isStructure",e->IsStructure());
 		#ifdef CLIENT
 			t.SetField("isOwnedByMe",e->isOwnedByMe);
 		#endif
@@ -1821,6 +1820,57 @@ namespace Lua
 
 	}
 
+	Lua::Table	API::LuaMapType(const String&typeName)
+	{
+		{
+			Lua::Table*pt = typeTableMap.QueryPointer(typeName);
+			if (pt)
+				return *pt;
+		}
+		Objects::EntityType type = Objects::DecodeType(typeName);
+		if (type.IsEmpty())
+			return Lua::nil;
+
+		return AddType(type);
+	}
+
+
+	Lua::Table	API::AddType(Objects::EntityType type)
+	{
+		Lua::Table t = program->CreateTable();
+		typeTableMap.Set(Objects::ToString(type),t);
+		typeTableMap2.Set(type,t);
+		auto e = Objects::Prototypes::Find(type);
+		if (e)
+		{
+			t.SetField("isInstantiable",true);
+			t.SetField("typeClass","Unit");
+			t.SetField("typeName",e->GetTypeName());
+			t.SetField("height",e->GetHeight());
+			t.SetField("isMobile", e->IsMobile());
+			t.SetField("isHangar",e->IsHangar());
+			t.SetField("constructionCost",e->GetConstructionCost());
+			t.SetField("isStructure",e->IsStructure());
+
+
+
+
+		}
+
+
+
+
+
+		return t;
+	}
+
+
+	void	API::AddTypes()
+	{
+		typeTable.SetFunction("ByName",[this](const String&name){return LuaMapType(name);});
+
+
+	}
 
 
 }

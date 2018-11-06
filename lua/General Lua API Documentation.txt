@@ -58,44 +58,98 @@ Table-Type: ResVec
 	int 		energy;
 }
 	
-Table-Type: Unit
+	
+Table-Type: Type
 {
-	string		name;					-- Full entity name (for logging purposes). Includes type and unique ID
-	string 		niceName;				-- Full entity name (as presented to the player). Includes type and nice representation of unique ID
-	string		id;						-- Entity unique ID
+	bool		isInstantiable;			-- True if the associated type can be instantiated in the world
+	string		typeClass;				-- 'Unit', 'Turret', or 'Base'
+}
+
+
+Table-Type: TurretType extends Type
+{
+	string	typeName;					-- Turret type name
+	int		weight;						-- Weight affecting mobile entity speed
+	bool	canAttack;					-- True if offensive, false otherwise
+	bool	detectsResources;			-- True if this turret can detect resources and look vertically into the ground
+	[canAttack]
+		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
+		string	ammoType;				-- String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
+		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot
+		int		attacksPerRound;		-- Theoretical maximum number of attacks per round
+		float	flatAttackRange;		-- Horizontal attack range. Increased by explosionRadius. Vertical range depends on trajectoryType
+		float	explosionRadius;		-- Spherical explosion radius
+		int		damageLevel;			-- Damage inflicted by the local turret
+		bool	dealsEMPDamage;					-- True if the local turret deals EMP damage as opposed to permanent health damage
+		bool	IsInRangeFrom(Loc,Vector);			-- True if the given coordinates could be hit from the specified origin location. Ignores potentially blocking terrain. Fast
+}
+
+Table-Type: VBaseType extends Type
+{
+	string		typeName;				-- Vehicle base name
+	float		carryingCapacity;		-- Maximum turret carrying capacity before speed penelty incurs
+	bool		motionIgnoresAttack;	-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
+	int			maxClimbUp;				-- Maximum climbing height difference. Typically 1
+	int			minClimbDown;			-- Minimum down-climbing heigh difference. Negative. Typically -1 or less
+	int			movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
+}
+
+	
+Table-Type: UnitType extends Type
+{
 	string		typeName;				-- String representation of the type. May be a compound type if isMovile is true
-	Faction		owner;					-- Entity owner
 	int			constructionCost;		-- Amount of resources necessary to build this type
 	int			height;					-- Unit height in layers. Typically 1. Some structures are larger.
 	float		scanningRange;			-- Regular grid scanning range
 	bool		isMobile;				-- True if this is a mobile entity
 	bool		isStructure;			-- True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
+	bool		isIndestructible;		-- True if the local unit is indestructible, false otherwise
+	bool		isWorkingStructure;		-- True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
+	bool		isMobileEntityProducer;	-- True if this entity can produce mobile entities. Does not necessarily imply that this is a building
+	bool		isHangar;				-- True if this unit can store mobile units. Hangar structures can store mobile units of all types, but hangar mobiles cannot hold other hangar mobiles.
+
+	TurretType	turretType;				-- Table containing turret information if any. May be nil. Comparable via == and ~=
+	VBaseType	vehicleBaseType;		-- Vehicle base type. May be nil. Comparable via == and ~=
+	
+	[isMobile]
+		int		movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain
+	[isWorkingStructure]
+		ResVec	maxResourceStorage;		-- Resource vector describing the maximum storage capacity. All values are >= 0
+		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
+}
+
+{string->Type}	Game.Type.allTypes		-- All types, mapped via unique name
+{string->UnitType}	Game.Type.units			-- All non-compound unit types. Vehicles are not listed as they must be constructed on demand
+{string->TurretType}	Game.Type.turrets		-- All turret types, mapped via unique name
+{string->VBaseType}		Game.Type.vehicleBases	-- All vehicle bayse types, mapped via unique name
+Type			Game.Type.ByName(string name)	-- Gets or constructs the requested type by name. Use '[turret]:[base]' for compound (vehicle) types.
+Type			Game.Type.Vehicle(TurretType, VBaseType)	-- Gets or constructs the requested type from type tables
+
+	
+Table-Type: Unit
+{
+	UnitType	type;					-- Type of this unit. Never nil. May be compared using == and ~=
+	string		name;					-- Full entity name (for logging purposes). Includes type and unique ID
+	string 		niceName;				-- Full entity name (as presented to the player). Includes type and nice representation of unique ID
+	string		id;						-- Entity unique ID
+	Faction		owner;					-- Entity owner
 	Loc			location;				-- Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
 	bool		isSleeping;				-- True if the local entity is currently sleeping
 	int			health;					-- Current entity health. <= 0 for ghosts
 	int			maxHealth;				-- Maximum possible health of the local entity. May change over time
-	bool		isIndestructible;		-- True if the local unit is indestructible, false otherwise
 	int			empDamageLevel;			-- Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
-	bool		isWorkingStructure;		-- True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
-	bool		isMobileEntityProducer;	-- True if this entity can produce mobile entities. Does not necessarily imply that this is a building
-	bool		isHangar;				-- True if this unit can store mobile units. Hangar structures can store mobile units of all types, but hangar mobiles cannot hold other hangar mobiles.
 	
 	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
 	void		Destroy();				-- Attempts to destroy the local entity
 	void		Sleep(bool);			-- Updates the sleep state
 	
 	[has turret (tower,mobile) and can attack]
-		Turret	turret;					-- Table containing turret information. May be set for structures or mobile entities
-		
+		Turret	turret;					-- Table containing turret information and access. May be set for structures or mobile entities
 		void	Attack(Loc[]);			-- Schedules one or more attacks at the end of the task queue
 	[isMobile]
-		int		maxClimbUp;				-- Maximum climbing height difference. Typically 1
-		int		minClimbDown;			-- Minimum down-climbing heigh difference. Negative. Typically -1 or less
 		bool	isAutomated;			-- True if the local entity has some behavior logic attached. Currently used by surveyor only
 		Unit	storedIn;				-- Set if this unit is stored in some other unit. May be nil
 		Task[]	tasks;					-- Task queue, in order of execution (first will be executed next, or is already being executed if taking more than one round)
-		int		movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
-		bool	motionIgnoresAttack;	-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	
 		bool	CanStandAt(Loc);		-- Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
 		bool	IsAffectedByGravity(Loc)	-- Checks whether or not the local unit would be affected by gravity at the given location. If the parameter is nil, will use the current mobile location
@@ -137,8 +191,6 @@ Table-Type: Unit
 	[isWorkingStructure]
 		bool	isEnabled;				-- True if the local structure is active
 		ResVec	resourceStorage;		-- Resource vector containing all locally stored resources. All values are >= 0
-		ResVec	maxResourceStorage;		-- Resource vector describing the maximum storage capacity. All values are >= 0
-		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
 		
 		void 	Enable(bool);			-- Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
 	[isMobileEntityProducer]
@@ -164,8 +216,6 @@ Table-Type: Unit
 		bool	SharesStorageWith(Unit);-- Checks whether the local unit shares its storage with the specified unit
 	[Client only]
 		bool	isOwnedByMe;			-- true if the local player owns this entity
-
-				
 }
 
 Table-Type: Prod (Production)
@@ -182,29 +232,15 @@ Table-Type: Loc (Location)
 	Vector	world;						-- World location
 }
 
-
-Table-Type: Turret
+Table-Type:
 {
-	string	typeName;					-- Turret type name
-	int		weight;						-- Weight affecting mobile entity speed
-	bool	canAttack;					-- True if offensive, false otherwise
-	bool	detectsResources;			-- True if this turret can detect resources and look vertically into the ground
+	TurretType	type;					-- Reference to the type of this turret. Never nil. May be compared using == and ~=
 	[canAttack]
-		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
-		string	ammoType;				-- String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
-		bool	independentAttackAndMotion;	-- Indicates that a vehicle using this turret can fire and move at 100% each in the same round, with neither action slowing the other
-		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot
 		int		ammoAvailability;		-- Resources available to the local entity of the demanded ammo type (may be shared)
 		int		possibleAttacks;		-- Counts the number of attacks possible in the local unit's next attack phase
 		float	attackActionLeft;		-- Percentage (0.0-1.0) of attack action left in the next attack phase
 		float	attackInitiative;		-- Effective attack initiative applied during the next attack phase (if attacking). Automatically reduced by attackActionLeft. The higher, the better
-		int		attacksPerRound;		-- Theoretical maximum number of attacks per round
-		float	flatAttackRange;		-- Horizontal attack range. Increased by explosionRadius. Vertical range depends on trajectoryType
-		float	explosionRadius;		-- Spherical explosion radius
-		int		damageLevel;			-- Damage inflicted by the local turret
-		bool	dealsEMPDamage;					-- True if the local turret deals EMP damage as opposed to permanent health damage
 		bool	IsInRange(Vector);				-- True if the given coordinates could be hit. Ignores potentially blocking terrain. Fast
-		bool	IsInRangeFrom(Loc,Vector);			-- True if the given coordinates could be hit from the specified origin location. Ignores potentially blocking terrain. Fast
 		Loc		SearchAttackTarget(Loc);				-- Finds the closest attack target in range, that hits the given location, but does not hit friendly units
 		Loc		SearchAttackTarget(Loc src,Loc dst);	-- Finds the closest attack target in range from the specified src location, that hits the given location, but does not hit friendly units
 		Hit		TraceTrajectory(Loc);				-- Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
@@ -248,6 +284,7 @@ Table-Type: Topic
 	bool	isEndless;			-- True if the research can run indefinitely
 	int		max;				-- Max research needed to complete research. -1 if endless
 	Topic	dependency;			-- Topic that must be completed first before the local topic can be started. nil if none
+	Type	unlocks;			-- Type this topic unlocks. nil if none
 	[client only]
 		int		progress;		-- Current research progress. >= 0
 		bool	isCompleted;	-- True if research is completed. Always false if endless

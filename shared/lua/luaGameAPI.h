@@ -43,6 +43,7 @@ namespace Lua
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
 							researchTable,	//Game.Research.X
+							typeTable,		//Game.Type.X
 							terrainTable, //Game.Terrain.X
 							terrainContentTable,	//Game.Terrain.Content.X
 							gridTable;	//Game.Grid.X
@@ -107,7 +108,11 @@ namespace Lua
 		HashTable<TUniqueID,TFaction>			loadedFactionTableMap;
 		HashTable<TUniqueID,std::pair<Lua::Table,bool> >	loadedEntityTableMap;
 		HashTable<TUniqueID,Objects::WWorldEntity>	entityMap;
-		HashSet<TUniqueID>	entityMappedToTable, factionMappedToTable, allianceMappedToTable;
+		HashTable<String,Lua::Table>				typeTableMap;
+		HashTable<Objects::EntityType,Lua::Table>	typeTableMap2;
+		HashSet<TUniqueID>						entityMappedToTable, 
+												factionMappedToTable, 
+												allianceMappedToTable;
 		Objects::Pathfinding::ShortestPath	shortestPath;
 		bool									myFactionIsSet = false;
 
@@ -139,6 +144,11 @@ namespace Lua
 		bool		IsCreated() const {return program != nullptr;}
 
 		/**
+		Adds members to Game.Type.X table, including construction functions
+		*/
+		void		AddTypes();
+
+		/**
 		Adds the regular unit (low) grid cells, and functions
 		*/
 		void		AddGrid();
@@ -166,6 +176,7 @@ namespace Lua
 			void	SetSelectedUnit(const Objects::PWorldEntity&e, bool updateIfFound);
 		#endif
 		void		UpdateResearch();
+		Lua::Table	AddType(Objects::EntityType t);
 
 		Lua::Table ToTable(const Grid::LCellIdI&cell);
 		Lua::Table TurretToTable(const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState);
@@ -185,6 +196,8 @@ namespace Lua
 		Lua::Table	LuaFindHighestAvailableResourceLocation(const String&resourceType);
 		Lua::Table	LuaFindHighestAvailableResourceLocationExt(const String&resourceType,bool checkLinkPath, bool checkMobiles);
 		Objects::PWorldEntity LuaUnitToEntity(const Lua::Table&luaUnit, const String&funcParameterName)	const;
+
+		Lua::Table	LuaMapType(const String&typeName);
 
 		void	Setup();
 	};
