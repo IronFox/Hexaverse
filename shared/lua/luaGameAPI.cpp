@@ -6,6 +6,7 @@
 #include "objects.h"
 #include "../objects/faction.h"
 #include "../runtimeConfig.h"
+#include "../objects/gridAndChoices.h"
 
 namespace Lua
 {
@@ -196,10 +197,8 @@ namespace Lua
 
 		Lua::Table t = program->CreateTable();
 		//b.
-		t.SetField("typeName",b.turret->typeName);
+		t.SetField("type",AddOrGetType(b.turret->constName));
 		t.SetField("weight",b.turret->weight.GetValue(researchState));
-		t.SetField("detectsResources",b.turret->detectsResources);
-		t.SetField("canAttack",b.turret->CanAttack());
 		if (b.turret->CanAttack())
 		{
 			t.SetField("trajectoryType",b.turret->trajectoryType.ToString());
@@ -293,7 +292,7 @@ namespace Lua
 		{
 			const auto o = (Objects::Component::operation_t)op;
 			const String os = String(Objects::Component::OperationToString(o));
-			t.SetField("can"+os,b.turret->CanDo(o));
+			//t.SetField("can"+os,b.turret->CanDo(o));
 					
 			t.SetField("speedOf"+os,b.GetOperationSpeed(o));
 			t.SetField("perRound"+os, 1 << b.GetOperationAccelerationExponent(o));
@@ -1026,14 +1025,14 @@ namespace Lua
 		}
 		else
 			t.UnsetField("owner");
+		t.SetField("type",AddOrGetType(e->GetType()));
 		t.SetField("location",ToTable(e->location));
 		t.SetField("isSleeping",e->IsSleeping());
 		t.SetField("health",e->health);
 		t.SetField("maxHealth",e->GetMaxHealth());
-		t.SetField("isIndestructible", e->IsIndestructible());
 		t.SetField("empDamageLevel",e->empDamageLevel);
 		t.SetField("scanningRange",e->GetScanningRange());
-
+		
 		const TUniqueID id = e->id;
 
 		if (actual)
@@ -1255,11 +1254,8 @@ namespace Lua
 			Objects::ResourceVector balance,storage,storageMax;
 			ws->GetResourceVector(balance,storage,storageMax);
 
-			Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);
 			Detail::UpdateResourceTable(t.SetSubTable("resourceStorage"),storage);
-			Detail::UpdateResourceTable(t.SetSubTable("maxResourceStorage"),storageMax);
 
-			t.SetField("isWorkingStructure",true);
 			t.SetField("isEnabled",ws->IsEnabled());
 			if (actual)
 				t.SetFunction("Enable", [id,this](bool doEnable)
@@ -1282,7 +1278,6 @@ namespace Lua
 			t.SetField("isWorkingStructure",false);
 
 		auto prod = e->CastToProducer();
-		t.SetField("isMobileEntityProducer",prod != nullptr);
 		if (prod)
 		{
 			if (prod->queue.IsNotEmpty())
@@ -1463,7 +1458,6 @@ namespace Lua
 
 			t.SetField("movementSpeed",m->GetMovementStepsPerRound());
 
-			t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
 
 			t.SetFunction("CanStandAt",[w](const Lua::Table&loc)
 			{
@@ -1482,8 +1476,6 @@ namespace Lua
 					(!v->IsAffectedByGravity(location) || v->CanStandOn(visibleWorld,location-1));
 			});
 
-			t.SetField("maxClimbUp", m->GetMaxClimbingHeight());
-			t.SetField("minClimbDown", -m->GetMaxFallingHeight());
 
 
 			t.SetFunction("IsAffectedByGravity",[this,w,location](const Lua::Table&luaLocation)
@@ -1835,26 +1827,118 @@ namespace Lua
 	}
 
 
+	Lua::Table	API::AddOrGetType(Objects::EntityType type)
+	{
+		auto t = typeTableMap2.QueryPointer(type);
+		if (t)
+			return *t;
+		return AddType(type);
+	}
+
 	Lua::Table	API::AddType(Objects::EntityType type)
 	{
 		Lua::Table t = program->CreateTable();
 		typeTableMap.Set(Objects::ToString(type),t);
 		typeTableMap2.Set(type,t);
+		t.SetField("typeName",Objects::ToString(type));
+
 		auto e = Objects::Prototypes::Find(type);
+		if (e)
+			t.SetField("typeClass","Unit");
+		else if (type.IsVehicle())
+		{
+			auto turret = Objects::Component::vehicleTurretComponents.Find(type.turretType);
+			auto base = Objects::Component::baseComponents.Find(type.baseType);
+			if (turret && base)
+				e.reset(new Objects::Vehicle(nullptr,Grid::LCellIdI::Invalid,base,turret));
+			else
+				FATAL__("Unable to resolve compound type "+Objects::ToString(type));
+			t.SetField("typeClass","Compound");
+		}
+		
+		const auto&z = Objects::Research::globalState.zeroTable;
+
 		if (e)
 		{
 			t.SetField("isInstantiable",true);
-			t.SetField("typeClass","Unit");
-			t.SetField("typeName",e->GetTypeName());
 			t.SetField("height",e->GetHeight());
 			t.SetField("isMobile", e->IsMobile());
 			t.SetField("isHangar",e->IsHangar());
 			t.SetField("constructionCost",e->GetConstructionCost());
 			t.SetField("isStructure",e->IsStructure());
+			t.SetField("isIndestructible", e->IsIndestructible());
+			t.SetField("scanningRange",e->GetScanningRange());
+			t.SetField("maxHealth",e->GetMaxHealth());
+			t.SetField("isWorkingStructure",e->IsWorkingStructure());
+			t.SetField("isMobileEntityProducer",e->CastToProducer() != nullptr);
 
+			if (e->IsMobile())
+			{
+				auto m = To<Objects::MobileEntity>::Cast(e);
+				t.SetField("movementSpeed",m->GetMovementStepsPerRound());
+				t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
+			}
 
+			{
+				auto b = e->GetTurretBase();
+				if (b)
+					t.SetField("turretType",AddOrGetType(b->turret->constName));
+			}
 
+			if (e->IsVehicle())
+			{
+				auto b = To<Objects::Vehicle>::Cast(e)->base;
+				t.SetField("vehicleBaseType",AddOrGetType(b->constName));
+			}
 
+			if (e->IsWorkingStructure())
+			{
+				const auto ws = To<Objects::WorkingStructure>::Cast(e);
+				Objects::ResourceVector balance,storage,storageMax;
+				ws->GetResourceVector(balance,storage,storageMax);
+
+				Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);
+				Detail::UpdateResourceTable(t.SetSubTable("maxResourceStorage"),storageMax);
+			}
+		}
+		else if (type.IsVehicleBase())
+		{
+			auto b = Objects::Component::baseComponents.Find(type.baseType);
+			t.SetField("typeClass","VehicleBase");
+			t.SetField("motionIgnoresAttack",b->ignoresVehicleAttacks);
+			t.SetField("carryingCapacity",b->carryingCapacity.GetValue(z));
+			t.SetField("maxClimbUp", b->maxClimbUp);
+			t.SetField("minClimbDown", b->minClimbDown);
+			t.SetField("movementSpeed",b->movementSpeed.GetValue(z));
+		}
+		else
+		{
+			auto turret = Objects::Component::allTurretComponents.Find(type.baseType);
+			ASSERT_NOT_NULL__(turret);
+			t.SetField("typeClass","Turret");
+			t.SetField("weight",turret->weight.GetValue(Objects::Research::globalState.zeroTable));
+			t.SetField("detectsResources",turret->detectsResources);
+			t.SetField("canAttack",turret->CanAttack());
+
+			if (turret->CanAttack())
+			{
+				t.SetField("trajectoryType",turret->trajectoryType.ToString());
+				t.SetField("independentAttackAndMotion",turret->independentAttackAndMotion);
+				t.SetField("attacksPerRound",turret->GetAttacksPerRound(z));
+				t.SetField("ammoType",turret->ammoType.ToString());
+				t.SetField("flatAttackRange",turret->GetHorizontalAttackRange(z));
+				t.SetField("explosionRadius",turret->GetExplosionRadius(z));
+				t.SetField("damageLevel",turret->GetDamageLevel(z));
+				t.SetField("dealsEMPDamage",turret->dealsEMPDamage);
+			
+
+				for (index_t op = 0; op < Objects::Component::OperationCount; op++)
+				{
+					const auto o = (Objects::Component::operation_t)op;
+					const String os = String(Objects::Component::OperationToString(o));
+					t.SetField("can"+os,turret->CanDo(o));
+				}
+			}
 		}
 
 

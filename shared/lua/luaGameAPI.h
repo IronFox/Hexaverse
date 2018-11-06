@@ -10,6 +10,7 @@
 #include "../objects/mobileEntity.h"
 #include "../objects/pathfinding.h"
 #include <functional>
+#include "../objects/entityType.h"
 
 namespace Lua
 {
@@ -176,7 +177,6 @@ namespace Lua
 			void	SetSelectedUnit(const Objects::PWorldEntity&e, bool updateIfFound);
 		#endif
 		void		UpdateResearch();
-		Lua::Table	AddType(Objects::EntityType t);
 
 		Lua::Table ToTable(const Grid::LCellIdI&cell);
 		Lua::Table TurretToTable(const Objects::TurretBase&b, float zOffset, const Objects::Research::Attributes::Table&researchState);
@@ -198,6 +198,10 @@ namespace Lua
 		Objects::PWorldEntity LuaUnitToEntity(const Lua::Table&luaUnit, const String&funcParameterName)	const;
 
 		Lua::Table	LuaMapType(const String&typeName);
+
+		Lua::Table	AddOrGetType(Objects::EntityType type);
+		Lua::Table	AddType(Objects::EntityType t);
+
 
 		void	Setup();
 	};

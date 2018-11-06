@@ -62,45 +62,44 @@ Table-Type: ResVec
 Table-Type: Type
 {
 	bool		isInstantiable;			-- True if the associated type can be instantiated in the world
-	string		typeClass;				-- 'Unit', 'Turret', or 'Base'
+	string		typeClass;				-- 'Unit', 'Compound', 'Turret', or 'VehicleBase'
+	string		typeName;				-- String representation of the local type. May be a compound 'X:Y'
 }
 
 
 Table-Type: TurretType extends Type
 {
-	string	typeName;					-- Turret type name
-	int		weight;						-- Weight affecting mobile entity speed
+	int		weight;						-- Weight affecting mobile entity speed (unresearched)
 	bool	canAttack;					-- True if offensive, false otherwise
 	bool	detectsResources;			-- True if this turret can detect resources and look vertically into the ground
+	bool	can[Operation];							-- True if the respective operation can be performed by this turret, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. canConstruct)
 	[canAttack]
 		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
 		string	ammoType;				-- String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
 		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot
-		int		attacksPerRound;		-- Theoretical maximum number of attacks per round
-		float	flatAttackRange;		-- Horizontal attack range. Increased by explosionRadius. Vertical range depends on trajectoryType
-		float	explosionRadius;		-- Spherical explosion radius
-		int		damageLevel;			-- Damage inflicted by the local turret
-		bool	dealsEMPDamage;					-- True if the local turret deals EMP damage as opposed to permanent health damage
-		bool	IsInRangeFrom(Loc,Vector);			-- True if the given coordinates could be hit from the specified origin location. Ignores potentially blocking terrain. Fast
+		int		attacksPerRound;		-- Theoretical maximum number of attacks per round (unresearched)
+		float	flatAttackRange;		-- Horizontal attack range. Vertical range depends on trajectoryType (unresearched). Does not include tower bonus (or malus) (unresearched)
+		float	explosionRadius;		-- Spherical explosion radius (unresearched)
+		int		damageLevel;			-- Damage inflicted by the local turret (unresearched)
+		bool	dealsEMPDamage;				-- True if the local turret deals EMP damage as opposed to permanent health damage
 }
 
 Table-Type: VBaseType extends Type
 {
-	string		typeName;				-- Vehicle base name
-	float		carryingCapacity;		-- Maximum turret carrying capacity before speed penelty incurs
-	bool		motionIgnoresAttack;	-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
+	float		carryingCapacity;		-- Maximum turret carrying capacity before speed penalty incurs (Unresearched)
+	bool		motionIgnoresAttack;	-- True if the local base can move regardless of whether an active turret has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	int			maxClimbUp;				-- Maximum climbing height difference. Typically 1
-	int			minClimbDown;			-- Minimum down-climbing heigh difference. Negative. Typically -1 or less
-	int			movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed depends on the encountered terrain
+	int			minClimbDown;			-- Minimum down-climbing height difference. Negative. Typically -1 or less
+	int			movementSpeed;			-- Theoretical upper movement steps per round, EXcluding possible turret overweight and EMP damage. The effective speed depends on the encountered terrain. (Unresearched)
 }
 
 	
 Table-Type: UnitType extends Type
 {
-	string		typeName;				-- String representation of the type. May be a compound type if isMovile is true
 	int			constructionCost;		-- Amount of resources necessary to build this type
 	int			height;					-- Unit height in layers. Typically 1. Some structures are larger.
-	float		scanningRange;			-- Regular grid scanning range
+	float		scanningRange;			-- Regular grid base (unresearched) scanning range
+	int			maxHealth;				-- Maximum possible health of the local entity (unresearched)
 	bool		isMobile;				-- True if this is a mobile entity
 	bool		isStructure;			-- True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
 	bool		isIndestructible;		-- True if the local unit is indestructible, false otherwise
@@ -112,7 +111,8 @@ Table-Type: UnitType extends Type
 	VBaseType	vehicleBaseType;		-- Vehicle base type. May be nil. Comparable via == and ~=
 	
 	[isMobile]
-		int		movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain
+		int		movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain. (Unresearched)
+		bool	motionIgnoresAttack;	-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	[isWorkingStructure]
 		ResVec	maxResourceStorage;		-- Resource vector describing the maximum storage capacity. All values are >= 0
 		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
@@ -136,8 +136,9 @@ Table-Type: Unit
 	Loc			location;				-- Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
 	bool		isSleeping;				-- True if the local entity is currently sleeping
 	int			health;					-- Current entity health. <= 0 for ghosts
-	int			maxHealth;				-- Maximum possible health of the local entity. May change over time
+	int			maxHealth;				-- Maximum possible health of the local entity. May vary with research
 	int			empDamageLevel;			-- Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
+	float		scanningRange;			-- Regular grid scanning range. May vary with research
 	
 	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
 	void		Destroy();				-- Attempts to destroy the local entity
@@ -146,9 +147,11 @@ Table-Type: Unit
 	[has turret (tower,mobile) and can attack]
 		Turret	turret;					-- Table containing turret information and access. May be set for structures or mobile entities
 		void	Attack(Loc[]);			-- Schedules one or more attacks at the end of the task queue
-	[isMobile]
+	[type.isMobile]
 		bool	isAutomated;			-- True if the local entity has some behavior logic attached. Currently used by surveyor only
 		Unit	storedIn;				-- Set if this unit is stored in some other unit. May be nil
+		int		movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain. May vary with research
+
 		Task[]	tasks;					-- Task queue, in order of execution (first will be executed next, or is already being executed if taking more than one round)
 	
 		bool	CanStandAt(Loc);		-- Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
@@ -188,12 +191,12 @@ Table-Type: Unit
 		Reachable[]	FindShortestPath(Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
 		Reachable[]	FindShortestPathFrom(Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
 		
-	[isWorkingStructure]
+	[type.isWorkingStructure]
 		bool	isEnabled;				-- True if the local structure is active
 		ResVec	resourceStorage;		-- Resource vector containing all locally stored resources. All values are >= 0
 		
 		void 	Enable(bool);			-- Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
-	[isMobileEntityProducer]
+	[type.isMobileEntityProducer]
 		Prod[]	productionQueue;		-- Table of all production jobs currently enqueued to the local unit. nil if none
 		Loc[]	deploymentOptions;		-- List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production is completed
 		string	productionCompleted;	-- Set to the name of the produced type if production is completed. nil otherwise. Can be used to check if production is completed
@@ -202,7 +205,7 @@ Table-Type: Unit
 		void	BuildMobile(string type);	-- Schedules the construction of the specified type at the end of the local queue
 		int		PredictRoundsToCompletion(string type);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
 		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified, it will be called on success once a response from the server has been received
-	[isHangar]
+	[type.isHangar]
 		Unit[]	storedUnits;					--Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
 		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. nil if deployableUnits is nil
 		--[[
@@ -232,20 +235,25 @@ Table-Type: Loc (Location)
 	Vector	world;						-- World location
 }
 
-Table-Type:
+Table-Type: Turret
 {
+	int			weight;						-- Weight affecting mobile entity speed. May change by research
 	TurretType	type;					-- Reference to the type of this turret. Never nil. May be compared using == and ~=
 	[canAttack]
+		int		damageLevel;			-- Damage inflicted by the local turret. May vary over time
+		int		attacksPerRound;		-- Theoretical maximum number of attacks per round. May vary over time
+		float	flatAttackRange;		-- Horizontal attack range. Effectively increased by explosionRadius. May include tower bonus (or malus). Vertical range depends on trajectoryType. May vary over time
+		float	explosionRadius;		-- Spherical explosion radius. May vary over time
 		int		ammoAvailability;		-- Resources available to the local entity of the demanded ammo type (may be shared)
 		int		possibleAttacks;		-- Counts the number of attacks possible in the local unit's next attack phase
 		float	attackActionLeft;		-- Percentage (0.0-1.0) of attack action left in the next attack phase
 		float	attackInitiative;		-- Effective attack initiative applied during the next attack phase (if attacking). Automatically reduced by attackActionLeft. The higher, the better
 		bool	IsInRange(Vector);				-- True if the given coordinates could be hit. Ignores potentially blocking terrain. Fast
+		bool	IsInRangeFrom(Loc,Vector);	-- True if the given coordinates could be hit from the specified origin location. Ignores potentially blocking terrain. Fast
 		Loc		SearchAttackTarget(Loc);				-- Finds the closest attack target in range, that hits the given location, but does not hit friendly units
 		Loc		SearchAttackTarget(Loc src,Loc dst);	-- Finds the closest attack target in range from the specified src location, that hits the given location, but does not hit friendly units
 		Hit		TraceTrajectory(Loc);				-- Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
 		Hit		TraceTrajectoryFrom(Loc src, Loc);	-- Traces a trajectory from a given location to the specified location and determines the outcome. Returns nil if no trajectory could be found
-	bool	can[Operation];							-- True if the respective operation can be performed by this turret, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. canConstruct)
 	int		speedOf[Operation];					-- Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, Nuclear (boom), Repair, TerrainAdd, TerrainRemove (e.g. speedOfConstruct)
 	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minim 1, maximum 256. Typical numbers are 1,2, or 4
 }
