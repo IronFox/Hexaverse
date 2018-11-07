@@ -409,6 +409,14 @@ namespace Objects
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		float3						GetScanningCenter() const {return GetScanningCenter(location);}
 		/**
+		Retrieves the maximum possible uncontrolled explosion radius of the local entity (type)
+		*/		
+		virtual float				GetMaxUncontrolledExplosionRadius() const {return 0;}
+		/**
+		Retrieves the current uncontrolled explosion radius, assuming the local entity suffered uncontrolled destruction now
+		*/
+		virtual float				GetUncontrolledExplosionRadius() const {return 0;}
+		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
 		virtual String				DescribeScanningRange(const OwnerParameter&) const;

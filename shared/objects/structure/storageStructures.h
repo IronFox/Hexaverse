@@ -8,6 +8,7 @@ namespace Objects
 		static const int						MaxStorage=500;
 
 		void	HandleStorageDestruction(const Grid::LCellIdI&location,const ResourceVector&storage,float&atTime);
+		float	GetUncontrolledExplosionRadius(const ResourceVector&storage, float*damageOut, bool*doomsdayOut);
 	}
 
 
@@ -99,6 +100,9 @@ namespace Objects
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
 
+		//WorldEntity overrides:
+		virtual float				GetMaxUncontrolledExplosionRadius() const override {return StorageCommon::GetUncontrolledExplosionRadius(maxStorage,nullptr,nullptr);}
+		virtual float				GetUncontrolledExplosionRadius() const override {return StorageCommon::GetUncontrolledExplosionRadius(storage,nullptr,nullptr);}
 	};
 
 
