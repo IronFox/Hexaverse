@@ -954,7 +954,7 @@ namespace ScriptedAI
 
 			<< "--[[" << nl
 			<< "@brief Optional selection change reaction function" << nl << nl
-			<< "If defined, executed when the local client provides user interaction and the user has selected"
+			<< "If defined, executed when the local client provides user interaction and the user has selected" << nl
 			<< "some other entity, or deselected the previously selected entity." << nl
 			<< "]]" << nl
 			<< "function OnSelectionChanged()" << nl
