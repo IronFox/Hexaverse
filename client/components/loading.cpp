@@ -83,7 +83,7 @@ namespace Loading
 
 				//const UINT width = screen.width/2;
 				//const UINT height = UINT(float(width) / imageAspect);
-				const UINT height = std::min(image.GetHeight()*2,screen.height/2);
+				const UINT height = std::min(image.GetHeight() * 3 / 2,screen.height/2);
 				const UINT width = UINT(float(height) * imageAspect);
 
 				windowPos.left = screen.width/2 - width/2;

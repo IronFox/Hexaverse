@@ -6,6 +6,7 @@ v0.9.6
 	> Enhanced/cleaned up Lua API resource retrieval functions.
 	> Uncontrolled bomb explosions are no longer affected by research.
 	> Lua API now provides tables to identify and compare unit types.
+	> Adjusted splash screen size when using exotic screen resolutions.
 	* Fixed vertical text alignment of buttons when using ultra-wide resolutions.
 
 v0.9.5	[Aug 26 2018]
