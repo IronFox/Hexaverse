@@ -363,6 +363,10 @@ namespace Lua
 								ParameterT<R>::Push(state,rs);
 								return 1;
 							}
+							catch (const Except::Exception&ex)
+							{
+								Raise(state,ex.GetRawMessage());
+							}
 							catch (const std::exception&e)
 							{
 								Raise(state,e.what());
@@ -393,6 +397,10 @@ namespace Lua
 							try
 							{
 								f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+							}
+							catch (const Except::Exception&ex)
+							{
+								Raise(state,ex.GetRawMessage());
 							}
 							catch (const std::exception&e)
 							{
