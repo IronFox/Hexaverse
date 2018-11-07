@@ -234,7 +234,8 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				const auto&state = GetResearchState();
+				const auto&state = Objects::Research::globalState.zeroTable;
+					//GetResearchState();
 
 				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,state),Component::Bomb::GetDamageLevel(false,state),false,atTime);
 			}
