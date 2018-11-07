@@ -63,7 +63,7 @@ Table-Type: Type
 {
 	bool		isInstantiable;			-- True if the associated type can be instantiated in the world
 	string		typeClass;				-- 'Unit', 'Compound', 'Turret', or 'VehicleBase'
-	string		typeName;				-- String representation of the local type. May be a compound 'X:Y'
+	string		name;					-- String representation of the local type. May be a compound 'X:Y'
 }
 
 
@@ -162,7 +162,7 @@ Table-Type: Unit
 		void	ClearTasks();			-- Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
-		void	BuildStructure(string type);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
+		void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
 		void	SetAutomation(bool);	-- Updates automation
 
 		--[[
@@ -204,8 +204,8 @@ Table-Type: Unit
 		string	productionCompleted;	-- Set to the name of the produced type if production is completed. nil otherwise. Can be used to check if production is completed
 		int		roundsToCompletion;		-- Number of rounds until the next production finishes if the local factory is enabled and has enough resources to continue. nil if none are queued
 		
-		void	BuildMobile(string type);	-- Schedules the construction of the specified type at the end of the local queue
-		int		PredictRoundsToCompletion(string type);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
+		void	BuildMobile(UnitType);	-- Schedules the construction of the specified type at the end of the local queue
+		int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
 		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified, it will be called on success once a response from the server has been received
 	[type.isHangar]
 		Unit[]	storedUnits;					--Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)

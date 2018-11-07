@@ -142,6 +142,25 @@ namespace Lua
 		}
 
 	
+
+		Objects::EntityType DecodeType(const Lua::Reference&ref, const String&context)
+		{
+			String name;
+			if (ref.IsTable())
+			{
+				Lua::Table type = ref;
+				if (!type.GetField("name",name))
+					throw Lua::Exception(CLOCATION,context+": Type parameter has no name field");
+			}
+			else
+				name = ref.GetAs<String>();
+
+			Objects::EntityType t = Objects::DecodeType(name);
+			if (t.IsEmpty())
+				throw Lua::Exception(CLOCATION,context+": Invalid type given");
+			return t;
+
+		}
 	}
 
 
@@ -1359,32 +1378,31 @@ namespace Lua
 			{
 				Objects::WFaction owner = e->owner;
 				Objects::WWorldEntity w = e;
-				t.SetFunction("BuildMobile",[this,w,owner](const String&type)
+				t.SetFunction("BuildMobile",[this,w,owner](const Lua::Reference&type)
 				{
 					Objects::PWorldEntity e= w.lock();
 					if (!e)
 						throw Lua::Exception(CLOCATION,"BuildMobile(): Entity has expired");
 					auto prod = e->CastToProducer();
 					ASSERT_NOT_NULL1__(prod,e->GetName());
-					Objects::EntityType t = Objects::DecodeType(type);
-					if (t.IsEmpty())
-						throw Lua::Exception(CLOCATION,"BuildMobile(): Given type is empty");
+
+					Objects::EntityType t = Detail::DecodeType(type,"BuildMobile()");
+
 					if (onBeginProduction)
 						onBeginProduction(e->id,t);
 					else
 						throw Lua::Exception(CLOCATION,"BuildMobile(): onBeginProduction not set");
 				});
 
-				t.SetFunction("PredictRoundsToCompletion",[this,w,owner](const String&type)
+				t.SetFunction("PredictRoundsToCompletion",[this,w,owner](const Lua::Reference&type)
 				{
 					Objects::PWorldEntity e= w.lock();
 					if (!e)
 						throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Entity has expired");
 					auto prod = e->CastToProducer();
 					ASSERT_NOT_NULL1__(prod,e->GetName());
-					Objects::EntityType t = Objects::DecodeType(type);
-					if (t.IsEmpty())
-						throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Given type is empty");
+
+					Objects::EntityType t = Detail::DecodeType(type,"PredictRoundsToCompletion()");
 
 					int cost = prod->GetProductionCost(t,e->owner);
 					return prod->ProductionRounds(cost,false);
@@ -1613,11 +1631,13 @@ namespace Lua
 
 
 				if (m->turret->CanDo(Objects::Component::Construct))
-					t.SetFunction("BuildStructure",[this,id](const String&type)
+					t.SetFunction("BuildStructure",[this,id](const Lua::Reference&type)
 					{
-						Objects::EntityType t = Objects::DecodeType(type);
-						if (t.IsEmpty())
-							throw Lua::Exception(CLOCATION,"BuildStructure(): Given type is empty: "+type);
+						if (type == Lua::nil)
+							throw Lua::Exception(CLOCATION,"BuildStructure(): Given type is nil");
+
+						Objects::EntityType t = Detail::DecodeType(type,"BuildStructure()");
+
 						auto proto = Objects::Prototypes::Find(t);
 						if (!proto)
 							throw Lua::Exception(CLOCATION,"BuildStructure(): Unable to find prototype for "+ToString(t));
@@ -1838,12 +1858,12 @@ namespace Lua
 
 	Lua::Table	API::AddType(Objects::EntityType type)
 	{
+		auto e = Objects::Prototypes::Find(type);
 		Lua::Table t = program->CreateTable();
 		typeTableMap.Set(Objects::ToString(type),t);
 		typeTableMap2.Set(type,t);
-		t.SetField("typeName",Objects::ToString(type));
+		t.SetField("name",Objects::ToString(type));
 
-		auto e = Objects::Prototypes::Find(type);
 		if (e)
 			t.SetField("typeClass","Unit");
 		else if (type.IsVehicle())
