@@ -9,6 +9,7 @@ v0.9.6
 	> Added various new unit and type attributes and functions.
 	> Adjusted splash screen size when using exotic screen resolutions.
 	> Added detection for loops in exported AI state.
+	> In matches without AI the only player is no longer automatically declared winner unless other alliances at some point did exist.
 	* Fixed vertical text alignment of buttons when using ultra-wide resolutions.
 
 v0.9.5	[Aug 26 2018]
