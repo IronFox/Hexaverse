@@ -716,6 +716,12 @@ namespace Lua
 		*/
 		void			SetGlobal(const String&name);
 
+
+		friend hash_t Hash( const Reference&ref )
+		{
+			return ref.GetRefID();
+		}
+
 	};
 
 	class NamedReference : public Reference
