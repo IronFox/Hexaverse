@@ -535,10 +535,16 @@ namespace ScriptedAI
 						{
 							String err = thread.checkStateIsLoopFree(ref);
 							if (err.IsNotEmpty())
-								throw Lua::Exception(CLOCATION,err);
-							ByteStreamBuffer stream;
-							ref.Serialize(stream);
-							thread.nonCompressedExportedState = stream.GetWrittenData();
+							{
+								LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),"Error exporting AI state: "+err.SubString(0,32)+". Rejecting export");
+								thread.nonCompressedExportedState.Clear();
+							}
+							else
+							{
+								ByteStreamBuffer stream;
+								ref.Serialize(stream);
+								thread.nonCompressedExportedState = stream.GetWrittenData();
+							}
 						}
 
 						if (Network::client.IsConnected() && Network::haveFaction)
