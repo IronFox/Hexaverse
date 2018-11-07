@@ -58,6 +58,7 @@ namespace ScriptedAI
 			Lua::API		api;
 			Lua::Function<Lua::Reference()> exportState;
 			Lua::Function<void(Lua::Reference)> init;
+			Lua::Function<String(Lua::Reference)> checkStateIsLoopFree;
 			Lua::Function<void()> execute,selectionChanged;
 
 			bool			disallowEnqueue = false;
@@ -531,6 +532,9 @@ namespace ScriptedAI
 							thread.nonCompressedExportedState.Clear();
 						else
 						{
+							String err = thread.checkStateIsLoopFree(ref);
+							if (err.IsNotEmpty())
+								throw Lua::Exception(CLOCATION,err);
 							ByteStreamBuffer stream;
 							ref.Serialize(stream);
 							thread.nonCompressedExportedState = stream.GetWrittenData();
@@ -818,6 +822,31 @@ namespace ScriptedAI
 					thread.init = api.program->RequireGlobal("Init");
 					thread.execute = api.program->RequireGlobal("Execute");
 					thread.selectionChanged = api.program->FindGlobal("OnSelectionChanged");
+
+					#define LOOP_CHECK_FUNCTION_NAME "_hexaverse_export_loop_check__"
+
+					api.program->Execute(
+						"function " LOOP_CHECK_FUNCTION_NAME "_inner(state,exclude,history)\n"
+							"for k,v in pairs(state) do\n"
+								"if type(v) == 'table' then\n"
+									"if exclude[v] ~= nil then\n"
+										"return 'Table loop detected in exported state: '..history..'->'..tostring(k);\n"
+									"end;\n"
+									"exclude[v] = true;\n"
+										"local rs = " LOOP_CHECK_FUNCTION_NAME "_inner(v,exclude,history..'->'..tostring(k));\n"
+										"if rs ~= nil then return rs; end;\n"
+									"exclude[v] = nil;\n"
+								"end;\n"
+							"end;\n"
+							"return nil;\n"
+						"end;\n"
+						"function " LOOP_CHECK_FUNCTION_NAME "(state)\n"
+							"local rs = " LOOP_CHECK_FUNCTION_NAME "_inner(state,{},'');\n"
+							"if rs == nil then rs = ''; end;\n"
+							"return rs;\n"
+						"end;\n"
+					);
+					thread.checkStateIsLoopFree = api.program->RequireGlobal(LOOP_CHECK_FUNCTION_NAME);
 				});
 
 				Details::ThreadEnqueue("Script Init",[](Details::Thread&thread)

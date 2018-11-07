@@ -8,6 +8,7 @@ v0.9.6
 	> Lua API now provides tables to identify and compare unit types.
 	> Added various new unit and type attributes and functions.
 	> Adjusted splash screen size when using exotic screen resolutions.
+	> Added detection for loops in exported AI state.
 	* Fixed vertical text alignment of buttons when using ultra-wide resolutions.
 
 v0.9.5	[Aug 26 2018]
