@@ -399,9 +399,10 @@ namespace ScriptedAI
 		void			FlushAndRebuildEntities()
 		{
 			const auto t0 = timer.Now();
-			LogEvent(EventClass::Preset::debug,"ScriptedAI: Rebuilding entities...");
+			LogEvent(EventClass::Preset::debug,"ScriptedAI: Rebuilding entities and local research...");
 			ASSERT__(!thread.IsBusy());
 			thread.api.FlushAllObjects();
+			thread.api.UpdateResearch();
 			thread.api.AddAllFactionsAndAlliances();
 			thread.api.AddAllEntities();
 			thread.api.AddMyMarkers();

@@ -11,6 +11,7 @@ v0.9.6
 	> Added detection for loops in exported AI state.
 	> In matches without AI the only player is no longer automatically declared winner unless other alliances at some point did exist.
 	* Fixed vertical text alignment of buttons when using ultra-wide resolutions.
+	* Fixed missing research state Lua game API.
 
 v0.9.5	[Aug 26 2018]
 	> Removed resource panel while configuration mode is active.
