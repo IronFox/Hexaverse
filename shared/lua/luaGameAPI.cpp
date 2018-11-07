@@ -1893,6 +1893,25 @@ namespace Lua
 			t.SetField("isWorkingStructure",e->IsWorkingStructure());
 			t.SetField("isMobileEntityProducer",e->CastToProducer() != nullptr);
 			t.SetField("maxUncontrolledExplosionRadius",e->GetMaxUncontrolledExplosionRadius());
+			t.SetField("canBeUnlocked",e->CanBeUnlocked());
+
+			{
+				t.SetFunction("IsUnlockedForFaction",[e,this](const Lua::Table&luaFaction)	//keep a copy of e here. is either a prototype or ad-hoc creation. either should be fine to keep in the std::function object
+				{
+
+					TUniqueID id;
+					String sid;
+					if (!luaFaction.GetField("id",sid))
+						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
+					if (!id.Decode(sid))
+						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
+
+					Objects::PFaction f = Objects::Faction::FindByID(id);
+					if (!f)
+						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter does not point to an existing faction");
+					return e->IsUnlockedAtState(f->researchState.attributeTable);
+				});
+			}
 
 			if (e->IsMobile())
 			{

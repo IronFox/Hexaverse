@@ -64,6 +64,8 @@ Table-Type: Type
 	bool		isInstantiable;			-- True if the associated type can be instantiated in the world
 	string		typeClass;				-- 'Unit', 'Compound', 'Turret', or 'VehicleBase'
 	string		name;					-- String representation of the local type. May be a compound 'X:Y'
+	bool		canBeUnlocked;			-- Indicates whether this type can be unlocked at all
+	bool		IsUnlockedForFaction(faction)	-- Query unlocked-state for a specific function
 }
 
 
@@ -294,7 +296,6 @@ Table-Type: Topic
 	bool	isEndless;			-- True if the research can run indefinitely
 	int		max;				-- Max research needed to complete research. -1 if endless
 	Topic	dependency;			-- Topic that must be completed first before the local topic can be started. nil if none
-	Type	unlocks;			-- Type this topic unlocks. nil if none
 	[client only]
 		int		progress;		-- Current research progress. >= 0
 		bool	isCompleted;	-- True if research is completed. Always false if endless
