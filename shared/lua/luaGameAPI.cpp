@@ -1972,14 +1972,12 @@ namespace Lua
 				t.SetField("explosionRadius",turret->GetExplosionRadius(z));
 				t.SetField("damageLevel",turret->GetDamageLevel(z));
 				t.SetField("dealsEMPDamage",turret->dealsEMPDamage);
-			
-
-				for (index_t op = 0; op < Objects::Component::OperationCount; op++)
-				{
-					const auto o = (Objects::Component::operation_t)op;
-					const String os = String(Objects::Component::OperationToString(o));
-					t.SetField("can"+os,turret->CanDo(o));
-				}
+			}
+			for (index_t op = 0; op < Objects::Component::OperationCount; op++)
+			{
+				const auto o = (Objects::Component::operation_t)op;
+				const String os = String(Objects::Component::OperationToString(o));
+				t.SetField("can"+os,turret->CanDo(o));
 			}
 		}
 
