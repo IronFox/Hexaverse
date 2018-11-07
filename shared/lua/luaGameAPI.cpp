@@ -143,23 +143,27 @@ namespace Lua
 
 	
 
-		Objects::EntityType DecodeType(const Lua::Reference&ref, const String&context)
+		Objects::EntityType DecodeTypeExt(const Lua::Reference&ref, const String&pname, const std::function<bool(Objects::EntityType)>&checkFunction)
 		{
 			String name;
 			if (ref.IsTable())
 			{
 				Lua::Table type = ref;
 				if (!type.GetField("name",name))
-					throw Lua::Exception(CLOCATION,context+": Type parameter has no name field");
+					throw Lua::Exception(CLOCATION,pname+" has no name field");
 			}
 			else
 				name = ref.GetAs<String>();
 
 			Objects::EntityType t = Objects::DecodeType(name);
-			if (t.IsEmpty())
-				throw Lua::Exception(CLOCATION,context+": Invalid type given");
+			if (t.IsEmpty() || (checkFunction && !checkFunction(t)))
+				throw Lua::Exception(CLOCATION,pname+": '"+name+"' is not valid");
 			return t;
+		}
 
+		Objects::EntityType DecodeType(const Lua::Reference&ref, const String&pname)
+		{
+			return DecodeTypeExt(ref,pname,nullptr);
 		}
 	}
 
@@ -1387,7 +1391,7 @@ namespace Lua
 					auto prod = e->CastToProducer();
 					ASSERT_NOT_NULL1__(prod,e->GetName());
 
-					Objects::EntityType t = Detail::DecodeType(type,"BuildMobile()");
+					Objects::EntityType t = Detail::DecodeType(type,"BuildMobile(): Type parameter");
 
 					if (onBeginProduction)
 						onBeginProduction(e->id,t);
@@ -1403,7 +1407,7 @@ namespace Lua
 					auto prod = e->CastToProducer();
 					ASSERT_NOT_NULL1__(prod,e->GetName());
 
-					Objects::EntityType t = Detail::DecodeType(type,"PredictRoundsToCompletion()");
+					Objects::EntityType t = Detail::DecodeType(type,"PredictRoundsToCompletion(): Type parameter");
 
 					int cost = prod->GetProductionCost(t,e->owner);
 					return prod->ProductionRounds(cost,false);
@@ -1637,7 +1641,7 @@ namespace Lua
 						if (type == Lua::nil)
 							throw Lua::Exception(CLOCATION,"BuildStructure(): Given type is nil");
 
-						Objects::EntityType t = Detail::DecodeType(type,"BuildStructure()");
+						Objects::EntityType t = Detail::DecodeType(type,"BuildStructure(): Type parameter");
 
 						auto proto = Objects::Prototypes::Find(t);
 						if (!proto)
@@ -1870,11 +1874,12 @@ namespace Lua
 		else if (type.IsVehicle())
 		{
 			auto turret = Objects::Component::vehicleTurretComponents.Find(type.turretType);
+			if (!turret)
+				throw Lua::Exception(CLOCATION,"Compound turret type is invalid");
 			auto base = Objects::Component::baseComponents.Find(type.baseType);
-			if (turret && base)
-				e.reset(new Objects::Vehicle(nullptr,Grid::LCellIdI::Invalid,base,turret));
-			else
-				FATAL__("Unable to resolve compound type "+Objects::ToString(type));
+			if (!base)
+				throw Lua::Exception(CLOCATION,"Compound vehicle base type is invalid");
+			e.reset(new Objects::Vehicle(nullptr,Grid::LCellIdI::Invalid,base,turret));
 			t.SetField("typeClass","Compound");
 		}
 		
@@ -1992,6 +1997,13 @@ namespace Lua
 	void	API::AddTypes()
 	{
 		typeTable.SetFunction("ByName",[this](const String&name){return LuaMapType(name);});
+		typeTable.SetFunction("Vehicle",[this](const Lua::Reference&turret, const Lua::Reference&vehicleBase)
+		{
+			auto tt = Detail::DecodeTypeExt(turret,"Vehicle(): Turret parameter #1",[](auto t){return Objects::Component::vehicleTurretComponents.Find(t.baseType)!= nullptr;});
+			auto bt = Detail::DecodeTypeExt(vehicleBase,"Vehicle(): Vehicle base parameter #2",[](auto t){return t.IsVehicleBase();});
+
+			return AddOrGetType(Objects::EntityType(bt.baseType,tt.baseType));
+		});
 
 		/*
 		{string->Type}	Game.Type.allTypes		-- All types, mapped via unique name
