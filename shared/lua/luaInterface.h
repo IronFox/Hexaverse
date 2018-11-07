@@ -716,11 +716,11 @@ namespace Lua
 		*/
 		void			SetGlobal(const String&name);
 
-
-		friend hash_t Hash( const Reference&ref )
-		{
-			return ref.GetRefID();
-		}
+		//should not put this type into a hash table because when retrieved from a Lua-registered C++-function, the same table will be registered under a different ref ID
+		//friend hash_t Hash( const Reference&ref )
+		//{
+		//	return ref.GetRefID();
+		//}
 
 	};
 
