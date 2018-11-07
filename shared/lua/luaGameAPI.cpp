@@ -1032,6 +1032,7 @@ namespace Lua
 		t.SetField("maxHealth",e->GetMaxHealth());
 		t.SetField("empDamageLevel",e->empDamageLevel);
 		t.SetField("scanningRange",e->GetScanningRange());
+		t.SetField("uncontrolledExplosionRadius",e->GetUncontrolledExplosionRadius());
 		
 		const TUniqueID id = e->id;
 
@@ -1871,6 +1872,7 @@ namespace Lua
 			t.SetField("maxHealth",e->GetMaxHealth());
 			t.SetField("isWorkingStructure",e->IsWorkingStructure());
 			t.SetField("isMobileEntityProducer",e->CastToProducer() != nullptr);
+			t.SetField("maxUncontrolledExplosionRadius",e->GetMaxUncontrolledExplosionRadius());
 
 			if (e->IsMobile())
 			{

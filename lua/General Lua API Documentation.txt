@@ -100,6 +100,7 @@ Table-Type: UnitType extends Type
 	int			height;					-- Unit height in layers. Typically 1. Some structures are larger.
 	float		scanningRange;			-- Regular grid base (unresearched) scanning range
 	int			maxHealth;				-- Maximum possible health of the local entity (unresearched)
+	float		maxUncontrolledExplosionRadius;		-- Maximum possible explosion radius of the local type if suffering uncontrolled destruction
 	bool		isMobile;				-- True if this is a mobile entity
 	bool		isStructure;			-- True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
 	bool		isIndestructible;		-- True if the local unit is indestructible, false otherwise
@@ -139,6 +140,7 @@ Table-Type: Unit
 	int			maxHealth;				-- Maximum possible health of the local entity. May vary with research
 	int			empDamageLevel;			-- Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
 	float		scanningRange;			-- Regular grid scanning range. May vary with research
+	float		uncontrolledExplosionRadius; -- Retrieves the explosion radius of the local unit if suffering uncontrolled destruction
 	
 	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
 	void		Destroy();				-- Attempts to destroy the local entity
