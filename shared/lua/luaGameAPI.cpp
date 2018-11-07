@@ -929,7 +929,8 @@ namespace Lua
 		t.SetField("name",f->name);
 		t.SetField("id",f->id.ToFullString());
 		const auto*const alliance = AddAlliance(f->alliance,false,true);
-		t.SetField("alliance",alliance->table);
+		if (alliance != nullptr)
+			t.SetField("alliance",alliance->table);
 
 		auto vec = f->compound.GetVector();
 		Detail::UpdateResourceTable(found->current.balanceTable,vec.balance);
