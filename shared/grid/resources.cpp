@@ -3,7 +3,9 @@
 
 #include "../objects/resource.h"
 #include "../globalEvents.h"
-#include "../luaGameAPI.h"
+#ifndef CLIENT
+	#include <lua/luaGameAPI.h>
+#endif
 
 namespace Grid
 {
@@ -19,29 +21,33 @@ namespace Grid
 
 
 	/*static*/ Buffer0<Resource>	Resource::all;
+	/*static*/ index_t				Resource::fuelAt = InvalidIndex,
+									Resource::mineralsAt=InvalidIndex,
+									Resource::uraniumAt = InvalidIndex;
+
 
 	String							currentCustomResourceDistribution="clustered";
 
 
 	
-	/*static*/ void Resource::FillAll(Random&random, const String&distribution)
+	/*static*/ void Resource::FillAll(TwisterRandom&random, const String&distribution)
 	{
 		#ifndef CLIENT
 		if (distribution.IsNotEmpty())
 		{
 			try
 			{
-				Lua::PProgram prog = Lua::Program::Create("Resources");
-				Lua::Table api = Lua::CreateGeneralAPI(prog);
-				Lua::DefineLowGridCells(api);
+				Lua::API api;
+				api.Create("Resources:"+distribution);
+				api.AddGrid();
 				
-				SimplexNoise n(random.NextSeed());
-				api.SetFunction("Simplex",[&n](double x, double y, double z)->double
+				SimplexNoise n(random.MaxNext());
+				api.gameTable.SetFunction("Simplex",[&n](double x, double y, double z)->double
 				{
 					return n.Get(x,y,z);
 				});
 
-				api.SetFunction("RandomInt",[&random](int min, int max)->int
+				api.gameTable.SetFunction("RandomInt",[&random](int min, int max)->int
 				{
 					return random.Next(min,max);
 				});
@@ -49,9 +55,9 @@ namespace Grid
 
 				LogEvent(EventClass::Preset::configurationPrint,"Executing resource distribution program '"+distribution+"'");
 				Timer::Time t0 = timer.Now();
-				prog->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
+				api.program->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
 
-				Lua::Function<Lua::Table()> compute = prog->RequireGlobal("Compute");
+				Lua::Function<Lua::Table()> compute = api.program->RequireGlobal("Compute");
 				Lua::Table result = compute();
 				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+String(timer.GetSecondsSince(t0))+" seconds");
 
@@ -105,7 +111,7 @@ namespace Grid
 	{
 		ASSERT_LESS__(stackID, ARRAYSIZE(((Resource*)nullptr)->coverage));
 		foreach (all,res)
-			if (res->name.equalsIgnoreCase(resourceName))
+			if (res->name.EqualsIgnoreCase(resourceName))
 				return res->coverage[stackID];
 		FATAL__("Unable to locate resource '"+resourceName+'"');	//may be disabled later when resources are fully dynamic
 		return 0;
@@ -123,7 +129,7 @@ namespace Grid
 	/*static*/ Resource&		Resource::Require(const String&name)
 	{
 		foreach (all,res)
-			if (res->name.equalsIgnoreCase(name))
+			if (res->name.EqualsIgnoreCase(name))
 				return *res;
 
 		FATAL__("Unable to locate resource '"+name+'"');
@@ -141,7 +147,7 @@ namespace Grid
 	}
 
 
-	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield)
+	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const M::TVec3<>&seed,float rarity, float maxYield)
 	//{
 	//	// low.cells[i].centerVertex.xyz,
 	//	Resource&rc = Resource::all.Append();
@@ -163,7 +169,7 @@ namespace Grid
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
 			float q = 1.f - p;
-			coverage_t rs (Round(sqr(sqr(sqr(std::max(0.f,(random.NextFloat()-q)/p)))) * (max-1)));
+			coverage_t rs (M::Round(M::Sqr(M::Sqr(M::Sqr(std::max(0.f,(random.NextFloat()-q)/p)))) * (max-1)));
 			if (rs)
 				rs++;
 			return rs;
@@ -190,7 +196,7 @@ namespace Grid
 //
 //			float t = std::max(t0,t1);
 //
-//			t *= smoothstep(0.2f,0.3f,t2);
+//			t *= M::SmoothStep(0.2f,0.3f,t2);
 //
 //
 //			//float t = t0 * (0.3f + 0.7f * t1);
@@ -201,7 +207,7 @@ namespace Grid
 //			float h = 0.15f + (1.f - t0)*0.85f;
 //			//p = 0.75f;
 //			//float q = 1.f - p;
-//			coverage_t rs (Round(/*sqr*/(/*sqr*/(/*sqr*/(clamp((t-q)/p *h,0,1)))) * (max-1)));
+//			coverage_t rs (M::Round(/*M::Sqr*/(/*M::Sqr*/(/*M::Sqr*/(M::Clamp((t-q)/p *h,0,1)))) * (max-1)));
 //			if (rs)
 //				rs++;
 //			return rs;
@@ -216,14 +222,14 @@ namespace Grid
 	//	rc.Name(name,cname,color);
 	//}
 
-	void Resource::FillInternal(Random&random)
+	void Resource::FillInternal(TwisterRandom&random)
 	{
 		FillInternal(random,probability[resourceIndex],maximum[resourceIndex], density[resourceIndex]);
 	}
 
-	void Resource::FillInternal(Random&random,float p0, coverage_t max, float avgPerCell)
+	void Resource::FillInternal(TwisterRandom&random,float p0, coverage_t max, float avgPerCell)
 	{
-		SimplexNoise n(random.NextSeed());
+		SimplexNoise n(random.MaxNext());
 		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
@@ -267,9 +273,9 @@ namespace Grid
 					{
 						float factor = want / float(std::max((count_t)1,familyTotal[k]));
 						float magnitude = log(factor);
-						factor = pow(4.f,float(sign(factor-1.f))/(retries*2 + 1));
+						factor = pow(4.f,float(M::Sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
-						p = clamp(p,0.0001f,10000.f);
+						p = M::Clamp(p,0.0001f,10000.f);
 						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
 					}
@@ -281,8 +287,8 @@ namespace Grid
 					//	p *= 1.1f;
 					//else
 					//	p *= 1.f / 1.1f;
-//					factor = 1.f + clamp(magnitude,-0.5f,2.f);
-					//clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
+//					factor = 1.f + M::Clamp(magnitude,-0.5f,2.f);
+					//M::Clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
 	//				p *= factor;
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
@@ -309,14 +315,27 @@ namespace Grid
 	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, index_t resIndex)
 	{
 		ASSERT_LESS__(resIndex, Objects::Resource::NumberOfPossibilities);
+		const auto idx = Resource::all.Count();
 		Resource&rc = Resource::all.Append();
 		rc.Name(name,cname,color);
 		rc.resourceIndex = resIndex;
+		switch (cname)
+		{
+			case ConstName::Resource_Minerals:
+				mineralsAt = idx;
+				break;
+			case ConstName::Resource_Fuel:
+				fuelAt = idx;
+				break;
+			case ConstName::Resource_Uranium:
+				uraniumAt = idx;
+				break;
+		}
 	}
 
 
 	#ifdef CLIENT
-		void		UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
+		void		UpdateResourceMap(ConstName resourceName,const Ctr::ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
 		{
 			foreach (Resource::all, res)
 				if (res->GetCName() == resourceName)
@@ -354,11 +373,11 @@ namespace Grid
 	}
 
 
-	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries)
+	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, Ctr::BasicBuffer<UINT32>&outNewDiscoveries)
 	{
-		static IndexSet covered;
-		static Buffer0<UINT32>	coverage;
-		static Queue<UINT32>	stacks;
+		static Ctr::IndexSet covered;
+		static Ctr::Buffer0<UINT32>	coverage;
+		static Ctr::Queue<UINT32>	stacks;
 		covered.Clear();
 		coverage.Clear();
 		stacks.Clear();
@@ -366,13 +385,13 @@ namespace Grid
 
 		stacks << center.stackID;
 
-		const TVec3<> worldCenter = Grid::ToWorld(center);
+		const M::TVec3<> worldCenter = Grid::ToWorld(center);
 
 		UINT32 stackID;
 		while (stacks >> stackID)
 		{
-			const TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
-			if (Vec::quadraticDistance(world,worldCenter) > sqr(range))
+			const M::TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
+			if (Vec::quadraticDistance(world,worldCenter) > M::Sqr(range))
 				continue;
 			if (!covered.IsSet(stackID))
 			{

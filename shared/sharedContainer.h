@@ -11,11 +11,10 @@ The container is currently not thread-safe but allows insert and removal operati
 When appending while iteration is in progress, the iteration will also iterate over the new elements
 */
 template <typename T>
-	class SharedContainer : private Buffer0<std::shared_ptr<T> >
+	class SharedContainer : private Ctr::Buffer0<std::shared_ptr<T> >
 	{
-		typedef Buffer0<std::shared_ptr<T> >	Super;
+		typedef Ctr::Buffer0<std::shared_ptr<T> >	Super;
 		typedef std::shared_ptr<T>				PT;
-		typedef SSIZE_T							sindex_t;
 
 		static_assert(sizeof(sindex_t) == sizeof(index_t),"Type size error");
 
@@ -64,19 +63,25 @@ template <typename T>
 		}
 
 		template <typename T2>	//allow base types here
-		bool		FindAndErase(const std::shared_ptr<T2>&e)
-		{
-			index_t at = Super::GetIndexOf(e);
-			if (at == InvalidIndex)
-				return false;
-			Erase(at);
-			return true;
-		}
+			bool	FindAndErase(const std::shared_ptr<T2>&e)
+			{
+				index_t at = Super::GetIndexOf(e);
+				if (at == InvalidIndex)
+					return false;
+				Erase(at);
+				return true;
+			}
 
 		template <typename T2>	//allow base types here
-		bool		Contains(const std::shared_ptr<T2>&element) const
-		{
-			return Super::Contains(element);
-		}
+			bool	Contains(const std::shared_ptr<T2>&element) const
+			{
+				return Super::Contains(element);
+			}
+
+		template <typename T2>
+			void	CastAppendAllTo(BasicBuffer<std::shared_ptr<T2> >&outTarget) const
+			{
+				outTarget.AppendAll((const Super&)*this);
+			}
 		
 	};

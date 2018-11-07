@@ -3,6 +3,8 @@
 #include <global_string.h>
 #include <container/buffer.h>
 
+using namespace DeltaWorks;
+
 namespace Objects
 {
 	class WrappedDescription;
@@ -15,7 +17,7 @@ namespace Objects
 	{
 	public:
 		typedef std::pair<String, bool>		Line;
-		typedef Buffer0<Line>	Storage;
+		typedef Ctr::Buffer0<Line>	Storage;
 	private:
 		Storage			rawLines;
 		friend class WrappedDescription;
@@ -48,6 +50,7 @@ namespace Objects
 		void				MarkBriefEnd(bool permanently = false);
 		String&				GetLastLine();
 		Description&		operator<<(const String&line);
+		const Storage&		GetStorage() const {return rawLines;}
 	};
 
 
@@ -61,7 +64,7 @@ namespace Objects
 		Finished (wrapped) lines, ready for visualization.
 		The boolean is true for brief lines, false for extended lines
 		*/
-		Buffer0<std::pair<String, bool> >		wrappedLines;
+		Ctr::Buffer0<std::pair<String, bool> >		wrappedLines;
 
 		/**/				WrappedDescription()	{}
 		/**/				WrappedDescription(const Description&desc);

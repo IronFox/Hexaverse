@@ -1,36 +1,34 @@
-#include <global_root.h>
+#include <grid/resources.h>
+#include <io/string_file.h>
+
 #include "network.h"
 #include "../version.h"
 #include "animation.h"
 #include "clientRuntimeConfig.h"
-#include "visual/world.h"
+#include "visual/scene/world.h"
 #include "cameraControl.h"
-#include "visual/ui.h"
+#include "visual/hud/hexGrid.h"
 #include "visual/tutorial.h"
-#include "visual/dialog.h"
+#include "visual/hud/dialog.h"
+#include "visual/hud/menu.h"
+#include "visual/hud/guiStatistics.h"
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
-#include <scriptCache.h>
 #include "gridControl.h"
 #include "visual/objectChoices.h"
-#include "visual/terrain.h"
-#include <grid/resources.h>
+#include "visual/scene/terrain.h"
+#include "visual/hud/guiFactionTable.h"
 #include "clientEvents.h"
-#include <io/string_file.h>
-
-
-//#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
-namespace LocalApplicationInterface
-{
-	void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-	void			OnPlayerControlBegin();
-
-	#ifdef HAS_WINDOW
-		bool		QueryNicknameIfEmpty();
-	#endif
-}
+#include "visual/hud/guiHostList.h"
+#include "visual/hud/eventLog.h"
+#include "voting.h"
+#include "objectNetworkHelper.h"
+#include "playerControlBegin.h"
+#include "scriptedAI.h"
+#include <expectedBehavior.h>
+#include <passwordMatch.h>
 
 
 namespace Network
@@ -46,108 +44,203 @@ namespace Network
 
 	TUniqueID		myID,serverID,worldID;
 	UINT32				gameFlags = 0;
-	SHA256::HashContainer	requestedResearchScript;
+	UINT16			connectionBasePort = DEFAULT_SERVER_BASE_PORT;
 
-	CryptographicID	activeToken;
+	CryptographicID	activeToken,passwordChallenge;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
 	INT32			uplinkBandwidth = -1;
 	
-	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
+	HashTable<TUniqueID,CryptographicID>	accessMap;
+	bool			serverRequiresPassword = false;
 
 
 	Protocol::GameProgress	gameProgress;
+	TUniqueID				winningAllianceID = TUniqueID::Empty();
+
 
 	float			animationTimeFactor = 1,
 					roundTimer = 0;
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
+	ServerAddress	lastServerAddress;
 
 
+	HashSet<TUniqueID>	visitedWorldMap;
 
+
+	bool	IsValidNickname(const String&candidate)
+	{
+		if (candidate.GetLength() < 4)
+			return false;
+		bool rs = Package::IsValid(candidate,32);
+		return rs;
+	}
+
+
+	void RegisterVisited(const TUniqueID&worldID)
+	{
+		if (visitedWorldMap.SetNew(worldID))
+			SaveHosts();
+	}
+
+	bool DidVisit(const TUniqueID&worldID)
+	{
+		return visitedWorldMap.IsSet(worldID);
+	}
 	
 	void LoadHosts()
 	{
-		StringFile hosts;
-		if (hosts.Open(RuntimeConfig::ConfigFile("hosts.txt")))
+		try
 		{
+			StringFile visitedWorlds;
+			visitedWorlds.Open(RuntimeConfig::myConfig.Lookup("visitedWorlds.txt"));
+			String visited;
+			while (visitedWorlds >> visited)
+			{
+				TUniqueID id;
+				if (id.Decode(visited))
+					visitedWorldMap.Set(id);
+			}
+		}
+		catch (...)
+		{}
+
+		try
+		{
+			StringFile hosts;
+			hosts.Open(RuntimeConfig::myConfig.Lookup("hosts.txt"));
 			String host;
 			while (hosts >> host)
 				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
 		}
+		catch (...)
+		{}
 	}
 
 	void	SaveHosts()
 	{
-		StringFile hosts;
-		if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
+		try
 		{
+			StringFile visited;
+			visited.Create(RuntimeConfig::myConfig.Lookup("visitedWorlds.txt"));
+			static Array<TUniqueID>	 worlds;
+			visitedWorldMap.ExportKeys(worlds);
+			foreach (worlds,world)
+				visited << world->ToFullString() << nl;
+			visited.Close();
+		}
+		catch (const std::exception&ex)
+		{
+			LogException(nullptr,ex);
+		}
+		try
+		{
+			StringFile hosts;
+			hosts.Create(RuntimeConfig::myConfig.Lookup("hosts.txt"));
+		
 			static Buffer0<Network::ServerAddress>	 urls;
 			ServerDiscovery::ListNonAutoAttempts(urls);
 			foreach (urls,url)
 				hosts << url->host << ':' << url->basePort << nl;
 			hosts.Close();
 		}
+		catch (const std::exception&ex)
+		{
+			LogException(nullptr,ex);
+		}
 	}
 
-	void			LoadScript(const SHA256::HashContainer&id)
+	void		SendChatMessage(const String&msg, const Objects::PFaction&receiver)
 	{
-		ScriptCache::PScript script = ScriptCache::Lookup(id);
-		if (script)
+		if (!receiver)
+			return;
+		if (msg.TrimRef().GetLength() > 0)
 		{
-			LogEvent(EventClass::Preset::common,"Research script '"+Bin2Str::ConvertPOD(id)+"' is already locally available. activating...");
-			Objects::ResearchState::ActivateProgram(script);
+			if (client.IsConnected())
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,receiver->id));
 		}
-		else
-		{
-			LogEvent(EventClass::Preset::network,"Research script '"+Bin2Str::ConvertPOD(id)+"' is not locally available. Asking server...");
-			Network::Channels::requestResource.SendTo(client,id);
-		}
-
 	}
+
+	void		SendChatMessage(const String&msg, const Objects::PAlliance&receiver)
+	{
+		if (!receiver)
+			return;
+		if (msg.TrimRef().GetLength() > 0)
+		{
+			if (client.IsConnected())
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,receiver->id));
+		}
+	}
+
+	void		BroadcastChatMessage(const String&msg)
+	{
+		if (msg.TrimRef().GetLength() > 0)
+		{
+			if (client.IsConnected())
+				Channels::ChatMessage.SendTo(client,Protocol::ChatMessage(msg,TUniqueID::Empty()));
+		}
+	}
+
 
 
 	void			LoadGameConfig(const Protocol::GameConfig&cfg)
 	{
 		gameFlags = cfg.gameFlags;
 		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cfg.gameGoal);
-		requestedResearchScript = cfg.researchScript;
-
-		if (client.IsConnected())
-		{
-			LoadScript(Network::requestedResearchScript);
-		}
 	}
 
 	void			ConnectTo(const Host&host)
 	{
 		client.Disconnect();
 
+		if (ScriptedAI::IsRunning())
+		{
+			LogEvent(EventClass::Preset::scriptError,"Cannot connect right now. Scripted AI still busy");
+			#ifdef HAS_WINDOW
+				HUD::Dialog::ShowMessage("Unable to connect to the requested server right now. Your scripted AI is still busy. Please wait until it completes.");
+			#endif
+			return;
+		}
+
 		#ifdef HAS_WINDOW
-			if (LocalApplicationInterface::QueryNicknameIfEmpty())
+			if (HUD::Dialog::QueryNicknameIfEmpty())
 				return;
 		#endif
 
 		RuntimeConfig::tutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
+		GlobalEvents::phaseChange();
 		gameHasBegun = false;
 
 		LoadGameConfig(host.serverInfo.gameInfo.gameConfig);
 
 		client.ConnectAsync(host.address.host + ":"+String(host.address.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
-			GUI::SignalSituationChange();
+			HUD::WindowStack::SignalSituationChange();
 		#endif
 
-		serverID = host.serverInfo.hostInfo.value.hostID;
+		serverID = host.serverInfo.hostInfo.hostID;
 		serverIDString = Network::serverID.ToNiceString();
+		lastServerAddress = host.address;
 
 		worldID = host.serverInfo.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
+
+		connectionBasePort = host.address.basePort;
 	}
 
 
 
+
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, const TUniqueID&allianceID)
+	{
+		bool allianceChanged = false;
+		auto rs = Objects::Faction::GetOrCreate(id,allianceID, allianceChanged);
+		if (allianceChanged)
+			GlobalEvents::onAllianceChange(rs);
+		return rs;
+	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
 	{
@@ -157,7 +250,7 @@ namespace Network
 
 	static PathString AccessFilename()
 	{
-		return RuntimeConfig::ConfigFile("worldAccess.m32");
+		return RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "worldAccess.m32");
 	}
 
 	void SaveWorldAccessTokens()
@@ -198,7 +291,7 @@ namespace Network
 			}
 		}
 
-		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.count())+" entry/ies loaded.");
+		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.Count())+" entry/ies loaded.");
 		fclose(f);
 	}
 
@@ -213,7 +306,7 @@ namespace Network
 		TCP::Channel<Protocol::ServerInfo,0,Protocol::InfoChannel::ServerInfo>	serverInfoChannel(OnServerInfo);
 		TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel(OnPing);
 
-		class HostContactAttempt : public ThreadObject, public TCP::Peer::Attachment, public std::enable_shared_from_this<HostContactAttempt>
+		class HostContactAttempt : public Sys::ThreadObject, public TCP::Peer::Attachment, public std::enable_shared_from_this<HostContactAttempt>
 		{
 		public:
 			TCP::Client		client;
@@ -233,7 +326,7 @@ namespace Network
 
 			static void		OnEvent(TCP::event_t ev, TCP::Peer&peer);
 
-			static void		OnDeserializationFailed(UINT32, TCP::Peer&peer);
+			static void		OnDeserializationFailed(UINT32, TCP::Peer&peer, const String&exception);
 
 			void			ThreadMain() override
 			{
@@ -315,7 +408,7 @@ namespace Network
 					waste << *a;
 					attempts.erase(a);
 					#ifdef HAS_WINDOW
-						GUI::SignalSituationChange();
+						HUD::WindowStack::SignalSituationChange();
 					#endif
 					return true;
 				}
@@ -344,13 +437,13 @@ namespace Network
 		{
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			me->lastInfo = info;
-			info.hostInfo.value.version[ARRAYSIZE(info.hostInfo.value.version)-1] = 0;
+			info.hostInfo.version[ARRAYSIZE(info.hostInfo.version)-1] = 0;
 			me->hasInfo = true;
-			me->rightVersion = !strcmp(info.hostInfo.value.version, SERVER_NAME);
+			me->rightVersion = !strcmp(info.hostInfo.version, SERVER_NAME);
 		}
 
 
-		/*static*/ void		HostContactAttempt::OnDeserializationFailed(UINT32, TCP::Peer&peer)
+		/*static*/ void		HostContactAttempt::OnDeserializationFailed(UINT32, TCP::Peer&peer, const String&exception)
 		{
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			if (me)
@@ -370,9 +463,10 @@ namespace Network
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
 			switch (ev)
 			{
-				case TCP::Event::ConnectionClosed:
 				case TCP::Event::ConnectionLost:
 					//me->Release();
+					if (me)
+						me->protocolIncompatible = false;	//can't know for next connection
 				break;
 			}
 
@@ -417,6 +511,7 @@ namespace Network
 		roundTimer = -1;
 
 		GlobalEvents::FlushObjects();
+		Network::winningAllianceID = TUniqueID::Empty();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
 		Network::gameProgress.status = "";
@@ -428,7 +523,6 @@ namespace Network
 
 		Animation::primitives.Clear();
 		Animation::actives.Clear();
-		Animation::activeTrajectory.Clear();
 		Animation::atTime = 0;
 
 		if (alsoFlushWorld)
@@ -439,13 +533,45 @@ namespace Network
 		}
 
 		#ifdef HAS_WINDOW
-			UI::EventLog::Clear();
+			HUD::HexGrid::EventLog::Clear();
+			HUD::HexGrid::RefreshContacts();
 
 			amLocated = false;
 			if (alsoFlushWorld)
 				Camera::Reset();
 		#endif
 	}
+
+	#ifdef HAS_WINDOW
+		void QueryPasswordAndLogin(bool forceNewFaction, UINT32 factionTypes)
+		{
+			HUD::Dialog::CheckedQuery("Please provide the configured server password","",HUD::Component::Input::GetStandardAlphabet(),[]()->HUD::Dialog::CheckResult
+			{
+				if (!client.IsConnected())
+					return HUD::Dialog::CheckResult::Abort;
+				if (!RuntimeConfig::IsInAnyCommandPhase())
+					return HUD::Dialog::CheckResult::OkayNotRightNow;
+				return HUD::Dialog::CheckResult::OkayContinue;
+			},
+			[factionTypes,forceNewFaction](const StringRef&input)
+			{
+				RuntimeConfig::serverPassword = input;
+				AttemptFactionLogin(forceNewFaction,factionTypes,input);
+			});
+		}
+
+
+		void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes)
+		{
+			if (serverRequiresPassword && RuntimeConfig::serverPassword.IsEmpty())
+				QueryPasswordAndLogin(forceNewFaction,factionTypes);
+			else
+				AttemptFactionLogin(forceNewFaction,factionTypes,RuntimeConfig::serverPassword);
+		}
+
+
+
+	#endif
 
 
 	namespace Receiver
@@ -459,40 +585,43 @@ namespace Network
 		}
 
 
-		void	PlanetNames(NETA(Package::NetString<256>)&list)
-		{
-			#ifdef HAS_WINDOW
-				Array<String> copy(list.length());
-				for (index_t i = 0; i < list.length(); i++)
-					copy[i].adoptData(list[i]);
-				ConfigurationMode::UpdatePlanetList(copy);
-			#endif
-		}
-
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
 			ASSERT__(response.success);
 			if (response.success)
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
-				#ifdef HAS_WINDOW
-					ConfigurationMode::SetActive(response.configurationMode);
-				#endif
-				if (response.configurationMode)
-					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
-				elif (RuntimeConfig::tutorialMode)
-					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
+				passwordChallenge = response.passwordChallenge;
+				if (passwordChallenge.IsEmpty())
+				{
+					LogEvent(EventClass::Preset::networkError,"Server password challenge is empty. Disconnecting.");
+					client.Disconnect();
+					return;
+				}
+				const bool gameEndSpectatorMode = (response.gameFlags & Protocol::GameFlag::GameHasEnded) != 0;
+				serverRequiresPassword = (response.gameFlags & Protocol::GameFlag::RequireServerPassword) != 0;
+				if (gameEndSpectatorMode)
+				{
+					#ifdef HAS_WINDOW
+						if (serverRequiresPassword)
+						{
+							QueryPasswordAndLogin(false,Protocol::FactionType::SpectatorFaction);
+						}
+						else
+					#endif
+							AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction,RuntimeConfig::serverPassword);
+				}
+				elif (RuntimeConfig::tutorialMode || RuntimeConfig::aiMode)
+					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly,RuntimeConfig::serverPassword);
 				else
 				{
 					#ifdef HAS_WINDOW
-						GUI::Show(Dialog::loginMenu);
+						HUD::WindowStack::Show(HUD::Menu::login);
 					#endif
 				}
 				#ifdef HAS_WINDOW
-					Dialog::CheckServersAreShown(false);
+					HUD::HostList::CheckVisibility(false);
 				#endif
-
-				LoadScript(Network::requestedResearchScript);
 			}
 			else
 			{
@@ -518,23 +647,19 @@ namespace Network
 					}
 
 				Animation::primitives.Append().Init(delta);
-				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime));
 			}
 			else
 			{
 				#ifdef HAS_WINDOW
-					if (ConfigurationMode::RestoreServerWorld())
-					{
+					DBG_ASSERT__(!ConfigurationMode::IsActive());
 				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
-						World::allowRecompilation = last && gameHasBegun;
-						if (last)
-							ConfigurationMode::SignalServerWorldUpdateCompleted();
-					}
+					World::allowRecompilation = last && gameHasBegun;
 				#endif
 			}
 
@@ -547,16 +672,19 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
+
+			EXPECT2(vs.entityState.health>0,vs.entityState.health,vs.entityState.id);
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT__(e);
+				ASSERT1__(e, vs.entityState.id);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-				ASSERT__(v);
+				ASSERT1__(v,e->GetName());
 				Animation::ApplyState(v,vs,false,false);
+				ASSERT_EQUAL1__(v->health,vs.entityState.health,v->id);
 			}
 			else
 			{
@@ -564,64 +692,93 @@ namespace Network
 					Animation::whenDone.Append().Init(vs);
 				else
 				{
-					foreach (Animation::primitives,p)
-					{
-						if (p->type == Animation::Primitive::MobileState
-							&&
-							p->targetEntityID == vs.entityState.id
-							&&
-							p->time.min == vs.entityState.timestamp.atTime)
+					#ifdef _DEBUG
+						foreach (Animation::primitives,p)
 						{
-							p->Init(vs);
-							p->overwritten++;
-							if (p->overwritten==1 || !(p->overwritten %100000))
-								LogEvent(EventSignificance::Debug, "Rewrote 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value)+" n="+String(p->overwritten));
-							return;
+							if (p->type == Animation::Primitive::MobileState
+								&&
+								p->targetEntityID == vs.entityState.id
+								&&
+								p->time.min == vs.entityState.timestamp.atTime)
+							{
+								auto entity = Objects::GetEntity(p->targetEntityID);
+								if (entity)
+									LogEvent(EventSignificance::ClientFatal, entity.get(), "Got multiple mobile entity updates on this entity at time " + ToString(vs.entityState.timestamp));
+								else
+									LogEvent(EventSignificance::ClientFatal,"Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+								FATAL__("Stop");
+							}
 						}
-					}
+					#endif
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
 				}
 			}
 		}
+
 
 		void	OnNewMobileEntity(Protocol::NewMobileEntity&vc)
 		{
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
-			Objects::PMobileEntity v;
-			auto m = vc.state.myMobileEntity.Get0();
-			bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
-			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,place,Network::haveID && Network::myID == vc.owner);
-			if (vc.state.entityState.timestamp.rightNow)
-				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
-			bool isOwnedByMe = v->isOwnedByMe;
+			try
+			{
 
-			//v->id = vc.state.entityState.id;
-			Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
-			#ifdef HAS_WINDOW
-				if (v->isOwnedByMe && !amLocated)
+				Objects::PMobileEntity v;
+				
+				EXPECT2(vc.state.entityState.health>0,vc.state.entityState.health,vc.state.entityState.id);
+
+				auto m = vc.state.myMobileEntity.Get0();
+				const bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
+				if (place)
 				{
-					amLocated = true;
-					Camera::TranslateTo(v->system.w.xyz);
+					Objects::PWorldEntity existing = Objects::GetEntity(vc.state.entityState.id);
+					if (existing)
+					{
+						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(vc.type)+" (mobile)");
+						return;
+					}
 				}
-			#endif
-			if (vc.state.entityState.timestamp.rightNow)
-			{
-				#ifdef HAS_WINDOW
-					if (!isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
-				#endif
-			}
-			else
-			{
-				Animation::primitives.Append().Init(vc,v);
-				LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+vc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
+				v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.type,place,Network::haveID && Network::myID == vc.owner);
+				if (vc.state.entityState.timestamp.rightNow)
+					LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
+				bool isOwnedByMe = v->isOwnedByMe;
 
+				//v->id = vc.state.entityState.id;
+				Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
+				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
+				#ifdef HAS_WINDOW
+					if (v->isOwnedByMe && !amLocated)
+					{
+						amLocated = true;
+						Camera::TranslateTo(v->system.w.xyz);
+					}
+				#endif
+				if (vc.state.entityState.timestamp.rightNow)
+				{
+					#ifdef HAS_WINDOW
+						if (!isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+					#endif
+				}
+				else
+				{
+					Animation::primitives.Append().Init(vc,v);
+					LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
+
+				}
+				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
+
+			}
+			catch (const std::exception & ex)
+			{
+				LogEvent(EventClass::Preset::protocolError,ex.what());
+				DBG_FATAL__(ex.what());
 			}
 		}
 
@@ -631,31 +788,49 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			//#ifdef HAS_WINDOW
 			//	if (World::actual.lightingOutdated && World::allowRecompilation)
 			//		World::actual.UpdateLighting();
 			//#endif
-
-			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
-			ASSERT__(s);
-			if (sc.state.entityState.timestamp.rightNow)
-				LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
-
-			Animation::UpdateState(s,sc.state);
-			if (!sc.state.entityState.timestamp.rightNow)
+			try
 			{
-				Animation::primitives.Append().Init(sc,s);
-				LogEvent(EventSignificance::Debug, "Appended 'new structure("+sc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
+				const bool place = sc.state.entityState.timestamp.rightNow;
+				if (place)
+				{
+					Objects::PWorldEntity existing = Objects::GetEntity(sc.state.entityState.id);
+					if (existing)
+					{
+						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
+						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(sc.type)+" (structure)");
+						return;
+					}
+				}
+				Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, place, Network::haveID && Network::myID == sc.owner);
+				ASSERT__(s);
+				if (sc.state.entityState.timestamp.rightNow)
+					LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
+
+				Animation::UpdateState(s,sc.state);
+				if (!sc.state.entityState.timestamp.rightNow)
+				{
+					Animation::primitives.Append().Init(sc,s);
+					LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
+				}
+				else
+				{
+					#ifdef HAS_WINDOW
+						if (!s->isOwnedByMe)
+							HUD::HexGrid::RefreshContacts();
+					#endif
+				}
 			}
-			else
+			catch (const std::exception & ex)
 			{
-				#ifdef HAS_WINDOW
-					if (!s->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
-				#endif
+				LogEvent(EventClass::Preset::protocolError,ex.what());
+				DBG_FATAL__(ex.what());
 			}
 		}
 
@@ -663,17 +838,28 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT1__(e,vs.entityState.id.value.ToString());
-				Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-				ASSERT1__(s,vs.entityState.id.value.ToString());
-				Animation::UpdateState(s,vs);
-
+				if (!e)
+				{
+					LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+ToString(vs.entityState.id)+", which is currently not registered");
+					DBG_FATAL__("Invalid state detected");
+				}
+				else
+				{
+					Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
+					if (s)
+						Animation::UpdateState(s,vs);
+					else
+					{
+						LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+e->GetName()+", which is not a structure");
+						DBG_FATAL__("Invalid state detected");
+					}
+				}
 			}
 			else
 			{
@@ -682,7 +868,7 @@ namespace Network
 				else
 				{
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'structure state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'structure state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
 				}
 			}
 
@@ -692,7 +878,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			#ifdef HAS_WINDOW
-				ConfigurationMode::RestoreServerObjects();
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
 
 			if (de.timestamp.rightNow && Animation::AllDone())
@@ -711,42 +897,66 @@ namespace Network
 					{
 						float t = 0;
 						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, t,Network::ControlEnabled());
+							Objects::Remove(e,type, t);
 						#ifdef HAS_WINDOW
-							GUI::SignalSituationChange();
+							HUD::WindowStack::SignalSituationChange();
 						#endif
 					});
 				}
 				else
 				{
 					float t = 0;
-					Objects::Remove(e,type, t,Network::ControlEnabled());
+					Objects::Remove(e,type, t);
 					#ifdef HAS_WINDOW
-						GUI::SignalSituationChange();
+						HUD::WindowStack::SignalSituationChange();
 					#endif
 				}
 
 				#ifdef HAS_WINDOW
 					if (!e->isOwnedByMe)
-						UI::HexGrid::RefreshContacts();
+						HUD::HexGrid::RefreshContacts();
 				#endif
 			}
 			else
 			{
-				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+de.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(de.type.value).ToString()+")");
+				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type).ToString()+")");
 				if (de.timestamp.rightNow)
 					Animation::whenDone.Append().Init(de);
 				else
 				{
 					Animation::primitives.Append().Init(de);
-					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime));
 				}
 			}
 		}
 
 		void ControlMessage(Protocol::ControlMessage&msg)
 		{
-			LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,nullptr,">"+msg.message);
+
+			Objects::OwnerParameter f;
+			Objects::PWorldEntity	e;
+			if (msg.focus.IsNotEmpty())
+			{
+				f = Objects::Faction::FindByID(msg.focus);
+				if (!f)
+				{
+					e = Objects::GetEntity(msg.focus);
+				}
+			}
+
+			Logging::Origin origin = msg.isPrivate ? Logging::Origin::ServerPrivate : Logging::Origin::ServerPublic;
+
+			auto cls = EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor));
+			if (f)
+				LogEvent(cls ,f,msg.message,origin);
+			else
+				LogEvent(cls ,e.get(),msg.message,origin);
+
+			#ifdef HAS_WINDOW
+				if (cls.flavor == EventFlavor::ChatMessage)
+					HUD::FactionTable::SignalChatMessage(f,msg.message);
+			#endif
+
 		}
 
 
@@ -760,10 +970,12 @@ namespace Network
 
 			myID = TUniqueID::Empty();
 			Objects::Faction::mine.reset();
-			myIDString = myID.ToString();
+			myIDString = ToString(myID);
 
 			Network::gameFlags = cr.info.gameConfig.gameFlags;
 
+			RuntimeConfig::nexusBases = (Network::gameFlags & Protocol::GameFlag::NexusHasBases) != 0;
+			RuntimeConfig::nexusPortsOnAllPoles = (Network::gameFlags & Protocol::GameFlag::NexusPortsOnAllPoles) != 0;
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
@@ -771,34 +983,35 @@ namespace Network
 			#ifdef HAS_WINDOW
 				ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 				World::allowRecompilation = false;
-				ConfigurationMode::SetActive((Network::gameFlags & Protocol::GameFlag::ConfigurationMode)!= 0);
+				ConfigurationMode::SetActive(false);
 			#endif
 			gameHasBegun = false;
 
 			haveFaction = cr.startFactionTypes != 0;
 			if (haveFaction)
 			{
+				RegisterVisited(worldID);
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
 				#ifdef HAS_WINDOW
 					Objects::resourceView = !amSpectator;
-					UI::RefreshButtonState();
+					HUD::HexGrid::RefreshButtonState();
 				#endif
 
-				activeToken = cr.factionToken;
+				activeToken = cr.newFactionAccessToken;
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
 				{
-					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+worldID.ToString()+" to "+activeToken.ToString());
+					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+ToString(worldID)+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
+					Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 				}
-				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
-					GUI::Hide(Dialog::loginMenu);
+					HUD::WindowStack::Hide(HUD::Menu::login);
 					//if (ConfigurationMode::IsActive())
-					//	UI::HexGrid::Configure
-					//	GUI::Show(Dialog::configMenu);
+					//	HUD::HexGrid::Configure
+					//	HUD::WindowStack::Show(HUD::Dialog::configMenu);
 				#endif
 			}
 			else
@@ -807,9 +1020,12 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					GUI::Show(Dialog::loginMenu);
+					HUD::WindowStack::Show(HUD::Menu::login);
 				#endif
 			}
+
+			if (!amSpectator)
+				Network::Channels::changeMyName.SendTo(Network::client,chosenNickname);
 
 			#ifdef HAS_WINDOW
 				if (amSpectator)
@@ -820,17 +1036,6 @@ namespace Network
 			#endif
 		}
 
-		void	SetFactionID(NET(TUniqueID)&id)
-		{
-			ASSERT__(!eventsLocked);
-
-			haveID = true;
-			amSpectator = false;
-			myID = id;
-			Objects::Faction::mine = ResolveFaction(myID);
-			myIDString = myID.ToString();
-			Objects::Faction::mine->isOwnedByMe = true;
-		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
 		void	MobileEntityMotion(Protocol::MobileEntityMotion&m)
@@ -853,7 +1058,7 @@ namespace Network
 			{
 				bool found = false;
 				foreach (Animation::primitives,p)
-					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.last().first == m.fromLocation)
+					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.Last().first == m.fromLocation)
 					{
 						p->Append(m);
 						found = true;
@@ -862,7 +1067,7 @@ namespace Network
 				if (!found)
 				{
 					Animation::primitives.Append().Init(m);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime));
 				}
 
 			}
@@ -879,7 +1084,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(a);
-				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
 			}
 			
 		}
@@ -895,7 +1100,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(a);
-				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
 			}
 			
 		}
@@ -911,7 +1116,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(ex);
-				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime));
 			}
 			
 		}
@@ -929,12 +1134,12 @@ namespace Network
 				float3 innerDir;
 				Mat::rotate(v->inverse,dir,innerDir);
 				v->turretAngleX = Vec::angle2PI(innerDir.xy) + M_PIF/2.f;
-				v->turretAngleY = -(90.f - Vec::angle(rot.toWorld.value,Grid::low.cells[v->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
+				v->turretAngleY = -(90.f - Vec::angle(rot.toWorld,Grid::low.cells[v->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
 			}
 			else
 			{
 				Animation::primitives.Append().Init(rot);
-				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime));
 			}
 		}
 
@@ -952,17 +1157,9 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(u);
-				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime));
 			}
 
-		}
-
-		void	ChangeEntityOwner(Protocol::ChangeEntityOwner&c)
-		{
-			Objects::PWorldEntity e = Objects::GetEntity(c.entityID);
-			ASSERT__(e);
-			ASSERT__(e->owner->id != c.ownerID);
-			Objects::ChangeOwnership(e,Network::ResolveFaction(c.ownerID),Network::myID == c.ownerID);
 		}
 
 		void	GameProgress(Protocol::GameProgress&progress)
@@ -973,7 +1170,7 @@ namespace Network
 		void	CreateMarker(Protocol::Marker&marker)
 		{
 			TUniqueID	entityID = TUniqueID::Empty(), ownerID = TUniqueID::Empty();
-			ConstName	entityType[2];
+			Objects::EntityType	entityType;
 			Objects::Marker::Type type;
 
 			const Protocol::MarkerReferenceEntity*entity = marker.data.Get0();
@@ -982,8 +1179,7 @@ namespace Network
 				type = Objects::Marker::Type::Reinterpret(0);
 				entityID = entity->id;
 				ownerID = entity->owner;
-				entityType[0] = entity->type0;
-				entityType[1] = entity->type1;
+				entityType = entity->type;
 			}
 			else
 			{
@@ -993,8 +1189,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(1);
 					entityID = entity->id;
 					ownerID = entity->owner;
-					entityType[0] = entity->type0;
-					entityType[1] = entity->type1;
+					entityType = entity->type;
 				}
 				else
 				{
@@ -1053,46 +1248,417 @@ namespace Network
 			bool brk = true;
 		}
 
-		void	ResearchState(Protocol::ResearchState&state)
+		enum class ScriptChangeFlags
+		{
+			Empty = 0x0,
+			HaveNewTopics = 0x1,
+			HaveMyAttributes = 0x2,
+			HaveZeroAttributes = 0x4,
+			HaveMyResearchFactionState = 0x8,
+
+			ShouldLoad = HaveNewTopics | HaveMyAttributes | HaveZeroAttributes | HaveMyResearchFactionState
+
+		};
+
+		inline ScriptChangeFlags	operator|(ScriptChangeFlags a,ScriptChangeFlags b)
+		{
+			typedef std::underlying_type<ScriptChangeFlags>::type	T;
+			return static_cast<ScriptChangeFlags>( static_cast<T>(a) | static_cast<T>(b) );
+		}
+
+		inline void	operator|=(ScriptChangeFlags&a,ScriptChangeFlags b)
+		{
+			a = a | b;
+		}
+
+		inline bool	operator&(ScriptChangeFlags a,ScriptChangeFlags b)
+		{
+			typedef std::underlying_type<ScriptChangeFlags>::type	T;
+			return (static_cast<T>(a) & static_cast<T>(b) ) != 0;
+		}
+		
+		static ScriptChangeFlags scriptChangeFlags = ScriptChangeFlags::Empty;
+
+
+		void	CheckScriptChangeFlags()
+		{
+			if (scriptChangeFlags == ScriptChangeFlags::ShouldLoad)
+			{
+				scriptChangeFlags = ScriptChangeFlags::Empty;
+				#ifdef HAS_WINDOW
+					Objects::Command::CommandGroup::CollapseAll();	//some groups are reconfigured as a result of onScriptChange()
+				#endif
+				Objects::Research::globalState.onScriptChange();
+			}
+		}
+
+
+		void	ResearchFactionState(Protocol::ResearchFactionState&state)
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
-			f->researchState.Import(state.serializedData);
+			EXPECT_EQUAL(Objects::Research::globalState.allTopics.Count(),state.progressVector.Length());
+			f->researchState.topicProgressVector.adoptData(state.progressVector);
+			f->researchState.topicProgressChanged = true;
 			#ifdef HAS_WINDOW
 				if (RuntimeConfig::tutorialMode && f == Objects::Faction::mine)
 					Tutorial::SignalResearchChange();
 			#endif
-			//Update( state, f);
+
+			if (f->isOwnedByMe && f->researchState.topicProgressVector.Count() == Objects::Research::globalState.allTopics.Count())
+			{
+				scriptChangeFlags |= ScriptChangeFlags::HaveMyResearchFactionState;
+
+				CheckScriptChangeFlags();
+			}
+
 		}
+
+		static index_t ImportIndex(const Protocol::SerialUnsigned&v)
+		{
+			if (v.value == 0)
+				return InvalidIndex;
+			return v.value - 1;
+		}
+
+		//research program updates must always preceed research states
+		void	ResearchProgram(Protocol::ResearchProgram&program)
+		{
+			Objects::Research::FactionState::BeginServerTopicUpdate();
+			foreach (program,prog)
+				Objects::Research::FactionState::DeclareServerTopic(ImportIndex(prog->parentTopic), prog->name,prog->iconName, prog->maxProgress,ImportIndex(prog->dependentTopic));
+
+
+			scriptChangeFlags = ScriptChangeFlags::HaveNewTopics; //must wait for state. Flush all other updates
+		}
+
 
 		void	ResearchQueue(Protocol::ResearchQueue&research)
 		{
 			if (Objects::Faction::mine)
 			{
 				Objects::Faction::mine->researchState.RestoreResearchQueue(research);
-				//Dialog::SignalSituationChange();
+				//HUD::Dialog::SignalSituationChange();
 				#ifdef HAS_WINDOW
 					if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && To<Objects::WorkingStructure>::Cast(Objects::selectedEntity)->IsLaboratory())
-						UI::HexGrid::Configure(Objects::selectedEntity);
-					UI::RefreshButtonState();
+						HUD::HexGrid::Configure(Objects::selectedEntity);
+					HUD::HexGrid::RefreshButtonState();
 					if (RuntimeConfig::tutorialMode)
 						Tutorial::SignalResearchChange();
 				#endif
 			}
 		}
 
-		void	ResourceData(Protocol::ResourceData&dat)
-		{
-			LogEvent(EventClass::Preset::uncommon,"Received resource "+Bin2Str::ConvertPOD(dat.id.value));
-			if (dat.id == requestedResearchScript)
+
+		template <typename T>
+			static void Import(Protocol::ResearchAttributeArray<T>&source, Objects::Research::Attributes::TypeMap<T>&dest)
 			{
-				LogEvent(EventClass::Preset::uncommon,"Resource "+Bin2Str::ConvertPOD(dat.id.value)+" is research script");
-				ScriptCache::PScript script = ScriptCache::DefineFromFleetingCompressedData(dat.id, dat.data);
-				if (script)
+				dest.attributes.SetSize(source.Count());	//don't assert, just resize. might change
+				for (index_t i = 0; i < dest.attributes.Count(); i++)
 				{
-					Objects::ResearchState::ActivateProgram(script);
+					auto&src = source[i];
+					auto&dst = dest.attributes[i];
+					dst.value = src.value;
+					dst.description.adoptData(src.description);
+					dst.flags = src.flags;
 				}
 			}
-			
+
+		template <typename T>
+			static void Import(Protocol::ResearchAttributeDeltaArray<T>&source, Objects::Research::Attributes::TypeMap<T>&dest)
+			{
+				foreach (source,src)
+				{
+					auto&dst = Expect::SafeGet(dest.attributes,src->index,CLOCATION);
+					dst.value = src->value;
+					dst.description.adoptData(src->description);
+					dst.flags = src->flags;
+				}
+			}
+
+		void	ResearchAttributeVector( Protocol::ResearchAttributeVector&attributes )
+		{
+			Objects::Research::Attributes::Table*table0 = nullptr;
+			bool isMine = false;
+			const bool zeroTable = attributes.faction.IsEmpty();
+			if (zeroTable)
+				table0 = &Objects::Research::globalState.zeroTable;
+			else
+			{
+				auto f = ResolveFaction(attributes.faction);
+				if (f->isOwnedByMe)
+					isMine = true;
+				table0 = &f->researchState.attributeTable;
+			}
+			auto&table = *table0;
+
+			Import(attributes.boolAttributes,table.bools);
+			Import(attributes.intAttributes,table.ints);
+			Import(attributes.floatAttributes,table.floats);
+
+
+			if (isMine)
+			{
+				scriptChangeFlags |= ScriptChangeFlags::HaveMyAttributes;
+
+				World::actual.InvalidateSensory();
+			}
+			elif (zeroTable)
+				scriptChangeFlags |= ScriptChangeFlags::HaveZeroAttributes;
+
+			CheckScriptChangeFlags();
+
+		}
+
+		void	ResearchAttributeDeltaVector(Protocol::ResearchAttributeDeltaVector&attributes)
+		{
+			Objects::Research::Attributes::Table*table0 = nullptr;
+			bool isMine = false;
+			if (attributes.faction.IsEmpty())
+				table0 = &Objects::Research::globalState.zeroTable;
+			else
+			{
+				auto f = ResolveFaction(attributes.faction);
+				isMine = f->isOwnedByMe;
+				table0 = &f->researchState.attributeTable;
+			}
+			auto&table = *table0;
+
+			Import(attributes.boolAttributes,table.bools);
+			Import(attributes.intAttributes,table.ints);
+			Import(attributes.floatAttributes,table.floats);
+
+			if (isMine)
+				World::actual.InvalidateSensory();
+		}
+
+
+
+		void	WinningAlliance(TUniqueID&id)
+		{
+			winningAllianceID = id;
+			#ifdef HAS_WINDOW
+				HUD::Statistics::Update();
+
+				const auto winningAlliance = Objects::Alliance::FindByID(winningAllianceID);
+				if (winningAlliance)
+				{
+					if (Objects::Faction::mine && Objects::Faction::mine->alliance == winningAlliance)
+					{
+						if (winningAlliance->CountLivingMembers() > 1)
+							HUD::Dialog::ShowMessage("Congratulations!\nYour alliance has won this game!");
+						else
+							HUD::Dialog::ShowMessage("Congratulations!\nYou have won this game!");
+					}
+					else
+					{
+						Buffer0<String> names;
+						winningAlliance->VisitMembers([&names](const Objects::PFaction&f)
+						{
+							names << f->GetName();
+						});
+						if (names.Count() != 1)
+							HUD::Dialog::ShowMessage(implode(", ",names.ToRef())+" have won this game!");
+						else
+							HUD::Dialog::ShowMessage(names.First()+" has won this game!");
+					}
+				}
+
+			#endif
+		}
+
+
+
+		namespace Statistics
+		{
+			static Objects::WFaction target;
+
+			void	BeginSequence(Protocol::BeginStatisticsSequence&begin)
+			{
+				if (!target.expired())
+				{
+					LogEvent(EventClass::Preset::networkError,"Sequence violation. Statistics sequence on "+target.lock()->GetLogName()+" should have been ended");
+					DBG_FATAL__("Sequence violation");
+					EndSequence();
+				}
+
+				Objects::PFaction f = ResolveFaction(begin.factionID,begin.allianceID);
+				f->name = begin.factionName;
+				f->isDead = begin.factionIsDead;
+				f->color = begin.color;
+
+				LogEvent(EventClass::Preset::common,"Starting statistics sequence on "+f->GetLogName());
+				target = f;
+				
+				f->statistics.BeginLoading();
+			}
+
+			void	EndSequence()
+			{
+				auto f = target.lock();
+				target.reset();
+				if (f)
+				{
+					f->statistics.EndLoading(false);
+					#ifdef HAS_WINDOW
+						HUD::Statistics::Update();
+					#endif
+				}
+			}
+
+			void	Round(Objects::Statistics::Round&r)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load round statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(r));
+			}
+			void	FactionInteraction(Objects::Statistics::FactionInteraction&i)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load faction interaction statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(i));
+			}
+			void	EntityType(Objects::Statistics::EntityType&t)
+			{
+				auto f = target.lock();
+				if (!f)
+					throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load entity type statistics: Not in sequence or sequence faction has meanwhile expired");
+				f->statistics.Load(std::move(t));
+			}
+		}
+
+		void	BeginStatisticsSequence(Protocol::BeginStatisticsSequence&begin)
+		{
+			Statistics::BeginSequence(begin);
+		}
+
+		void MyFaction(Protocol::MyFaction&faction)
+		{
+			ASSERT__(!eventsLocked);
+
+			haveID = true;
+			amSpectator = false;
+			myID = faction.factionID;
+			Objects::Faction::mine = ResolveFaction(myID,faction.alliance.allianceID);
+			Objects::Faction::mine->alliance->UpdateConfiguration(faction.alliance.flags);
+			myIDString = ToString(myID);
+			Objects::Faction::mine->isOwnedByMe = true;
+			#ifdef HAS_WINDOW
+				HUD::FactionTable::Update();
+			#endif
+		}
+
+		void AllianceConfigChange(Protocol::AllianceConfigChange&ch)
+		{
+			ASSERT__(!eventsLocked);
+			Objects::PAlliance alliance = Objects::Alliance::FindByID(ch.allianceID);
+			if (alliance)
+			{
+				alliance->config = ch.flags;
+				#ifdef HAS_WINDOW
+					HUD::FactionTable::Update();
+				#endif
+			}
+			else
+				LogEvent(EventClass::Preset::internalError,"Can't find alliance "+ToString(ch.allianceID)+" for config update");
+
+		}
+
+		void	VoteCreation(Protocol::VoteCreation&vote)
+		{
+			Vote::Create(vote.voteID,vote.remainingSeconds,vote.phrase);
+		}
+
+		void	AllianceInvite(Protocol::AllianceInvite&invite)
+		{
+			auto alliance = Objects::Alliance::FindByID(invite.allianceID);
+			auto faction = Objects::Faction::FindByID(invite.factionID);
+			if (!alliance)
+			{
+				LogEvent(EventClass::Preset::internalError,"Can't find alliance "+ToString(invite.allianceID)+" for invite");
+				return;
+			}
+			if (!faction)
+			{
+				LogEvent(EventClass::Preset::internalError,"Can't find faction "+ToString(invite.factionID)+" for alliance invite");
+				return;
+			}
+			switch (invite.type)
+			{
+				case Protocol::AllianceInviteType::Invite:
+					alliance->Invite(faction);
+				break;
+				case Protocol::AllianceInviteType::Cancel:
+				case Protocol::AllianceInviteType::Accept:
+				case Protocol::AllianceInviteType::Reject:
+					alliance->CancelInvite(faction);
+				break;
+				default:
+					LogEvent(EventClass::Preset::internalError,"Unexpected invite type for alliance "+ToString(alliance->id)+" and faction "+faction->GetLogName());
+			}
+			#ifdef HAS_WINDOW
+				HUD::FactionTable::Update();
+			#endif
+		}
+
+		void	VoteResult(Protocol::VoteResult&result)
+		{
+			auto v = Vote::FindByID(result.voteID);
+			if (!v)
+			{
+				LogEvent(EventSignificance::NonFatalError,"Unable to find vote "+ToString(result.voteID));
+				return;
+			}
+			Vote::TOutcome outcome;
+			outcome.eligibleToVote = result.eligibleToVote;
+			outcome.quorum = result.quorum;
+			outcome.result = (Protocol::VoteResultType::T)result.resultType;
+			outcome.votedAgainst = result.votedAgainst;
+			outcome.votedInFavor = result.votedInFavor;
+
+			v->Close(outcome);
+		}
+
+		void	KillFaction(Protocol::KillFaction&kill)
+		{
+			Objects::PFaction f = Objects::Faction::FindByID(kill);
+			if (f)
+			{
+				const bool isMine = f == Objects::Faction::mine;
+				bool shouldBeGone = f->alliance->CountLivingMembers() == 1;
+				const TUniqueID aid = f->alliance->id;
+				const Objects::WAlliance wa = f->alliance;
+				Objects::Faction::Kill(f);
+				ASSERT__(!f->alliance);
+				if (shouldBeGone)
+				{
+					ASSERT1__(wa.expired(),wa.lock()->CountLivingMembers());
+					ASSERT__(!Objects::Alliance::FindByID(aid));
+				}
+				#ifdef HAS_WINDOW
+					HUD::FactionTable::Update();
+				#endif
+				if (isMine)
+				{
+					haveFaction = false;
+					haveID = false;
+					accessMap.Unset(worldID);
+					SaveWorldAccessTokens();
+					LogEvent(EventClass(EventSignificance::ClientFatal,EventFlavor::Loss),"Your faction has been annihilated");
+				}
+			}
+		}
+
+		void	ChoiceResponse(Protocol::ChoiceResponse&resp)
+		{
+			ScriptedAI::SignalChoiceResponse(resp.requestID,resp.deployedID);
+		}
+
+		void	ScriptedAIState(Protocol::ScriptedAIState&state)
+		{
+			LogEvent(EventSignificance::Common,"Received script state for '"+state.scriptName+"' of "+String(state.dataVector.GetLength())+" byte(s)");
+			ScriptedAI::Resume(state.scriptName,state.dataVector);
 		}
 
 	}
@@ -1100,6 +1666,11 @@ namespace Network
 
 	namespace Channels
 	{
+		#undef DECLARE_CHANNEL
+		#define	DECLARE_CHANNEL(NAME)	TCP::Channel<Protocol::NAME,0,Protocol::ChannelID::NAME>	NAME(Receiver::NAME);
+		#undef DECLARE_OBJECT_SENDER
+		#define	DECLARE_OBJECT_SENDER(NAME)	TCP::ObjectSender<Protocol::NAME,Protocol::ChannelID::NAME>	NAME;
+
 		TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage(Receiver::ControlMessage);
 
 		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
@@ -1111,7 +1682,6 @@ namespace Network
 		TCP::Channel<Protocol::StructureConstruction,0,Protocol::ChannelID::InstantiateStructure>	newStructure(Receiver::OnNewStructure);
 		TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>				structureStateUpdate(Receiver::OnStructureState);
 		TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>					destroyEntity(Receiver::DestroyEntity);
-		TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID(Receiver::SetFactionID);
 
 		TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>						phaseChange(Receiver::PhaseChange);
 		TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion(Receiver::MobileEntityMotion);
@@ -1120,7 +1690,6 @@ namespace Network
 		TCP::Channel<Protocol::Explosion,0,Protocol::ChannelID::Explosion>							explosion(Receiver::Explosion);
 		TCP::Channel<Protocol::EntityTurretRotation,0,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation(Receiver::EntityTurretRotation);
 		TCP::Channel<Protocol::ResourceUpdate,0,Protocol::ChannelID::ResourceUpdate>				resourceUpdate(Receiver::ResourceUpdate);
-		TCP::Channel<Protocol::ChangeEntityOwner,0,Protocol::ChannelID::ChangeEntityOwner>			changeEntityOwner(Receiver::ChangeEntityOwner);
 		TCP::Channel<Protocol::GameProgress,0,Protocol::ChannelID::GameProgress>					gameProgress(Receiver::GameProgress);
 
 		TCP::Channel<Protocol::Marker, 0, Protocol::ChannelID::CreateMarker>						createMarker(Receiver::CreateMarker);
@@ -1135,15 +1704,21 @@ namespace Network
 		TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>								lockEmpZones(Receiver::LockEmpZones);
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
-		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
-		TCP::Channel<Protocol::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
-		TCP::Channel<Protocol::ResearchQueue, 0, Protocol::ChannelID::ResearchQueue>				researchQueue(Receiver::ResearchQueue);
-		TCP::Channel<Protocol::ResourceData,0,Protocol::ChannelID::ResourceData>					resourceData(Receiver::ResourceData);
 		TCP::Channel<Protocol::GameConfig,0,Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
-		TCP::Channel<NETA(Package::NetString<256>),0,Protocol::ChannelID::PlanetNames>				planetNames(Receiver::PlanetNames);
 
 		TCP::Channel<NET(INT32),0,Protocol::ChannelID::TutorialAt>									tutorialAt(Receiver::TutorialAt);
+		TCP::Channel<TUniqueID,0,Protocol::ChannelID::WinningAlliance>								winningAlliance(Receiver::WinningAlliance);
+
+		namespace Statistics
+		{
+			TCP::Channel<Objects::Statistics::Round, 0, Protocol::ChannelID::RoundStatistics>		round(Receiver::Statistics::Round);
+			TCP::Channel<Objects::Statistics::EntityType, 0, Protocol::ChannelID::EntityTypeStatistics>	entityType(Receiver::Statistics::EntityType);
+			TCP::Channel<Objects::Statistics::FactionInteraction, 0, Protocol::ChannelID::FactionInteractionStatistics>	factionInteraction(Receiver::Statistics::FactionInteraction);
+
+			DECLARE_CHANNEL(BeginStatisticsSequence);
+		}
+
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -1161,15 +1736,27 @@ namespace Network
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
-		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
-		TCP::ObjectSender<Protocol::ResourceID, Protocol::ChannelID::RequestResource>				requestResource;
-		TCP::ObjectSender<Package::NetString<256>, Protocol::ChannelID::LoadPlanetByName>			loadPlanetByName;
-		TCP::ObjectSender<Protocol::QueueResearch, Protocol::ChannelID::QueueResearch>				queueResearch;
 
-			//	,			//c2s: NET(bool) -> NET(bool)
-			//SetFactionId,		//s2c: NET(TUniqueID)
+		DECLARE_CHANNEL(MyFaction);
+		DECLARE_CHANNEL(AllianceConfigChange);
+		DECLARE_CHANNEL(VoteCreation);
+		DECLARE_CHANNEL(VoteResult);
+		DECLARE_OBJECT_SENDER(ClientVote);
+		DECLARE_CHANNEL(AllianceInvite);
+		DECLARE_OBJECT_SENDER(ChatMessage);
+		DECLARE_OBJECT_SENDER(SaveAs);
+		DECLARE_CHANNEL(KillFaction);
 
-		
+		DECLARE_CHANNEL(ResearchProgram);
+		DECLARE_CHANNEL(ResearchFactionState);
+		DECLARE_CHANNEL(ResearchQueue);
+		DECLARE_OBJECT_SENDER(QueueResearch);
+		DECLARE_CHANNEL(ResearchAttributeVector);
+		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
+
+		DECLARE_CHANNEL(ChoiceResponse);
+
+		DECLARE_CHANNEL(ScriptedAIState);
 	}
 
 
@@ -1189,12 +1776,12 @@ namespace Network
 
 			Protocol::ClientFactionRequest ready;
 			ready.startFactionTypes = 0;
-			ready.factionToken.value = CryptographicID();
+			ready.hashedFactionToken = Password::Hashed::Empty;
 			LogEvent(EventClass::Preset::uncommon, nullptr, "Abandoning current faction");
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				GUI::Show(Dialog::loginMenu);
+				HUD::WindowStack::Show(HUD::Menu::login);
 			#endif
 		}
 	}
@@ -1204,28 +1791,40 @@ namespace Network
 		return client.IsConnected() && accessMap.IsSet(worldID);
 	}
 
-	void		AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes)
+	void		AttemptFactionLogin( bool forceNewFaction, UINT32 factionTypes, const String&serverPassword )
 	{
 		Protocol::ClientFactionRequest ready;
 		ready.startFactionTypes = factionTypes;
+		ready.hashedFactionToken = Password::Hashed::Empty;
+		CryptographicID accessToken;
+		if (serverPassword.IsNotEmpty())
+		{
+			Password::Hash(passwordChallenge,serverPassword,ready.hashedServerPassword);
+			LogEvent(EventClass::Preset::common,"Using server password '"+serverPassword+"' with challenge '"+passwordChallenge.ToFullString()+"': '"+Bin2Str::ConvertPOD(ready.hashedServerPassword));
+		}
+		else
+		{
+			ready.hashedServerPassword = Password::Hashed::Empty;
+		}
+
 		if (RuntimeConfig::aiMode)
 		{
-			ready.factionToken = RuntimeConfig::aiAccessToken;
-			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + worldID.ToString() + " as AI using token: " + ready.factionToken.value.ToString());
+			Password::Hash(passwordChallenge,RuntimeConfig::aiAccessToken,ready.hashedFactionToken);
+			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI using token: " + RuntimeConfig::aiAccessToken.ToFullString());
+
 		}
-		elif (!forceNewFaction && accessMap.Query(worldID, ready.factionToken.value))
+		elif (!forceNewFaction && accessMap.Query(worldID, accessToken))
 		{
-			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+worldID.ToString()+": "+ready.factionToken.value.ToString());
+			Password::Hash(passwordChallenge,accessToken,ready.hashedFactionToken);
+			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+RuntimeConfig::aiAccessToken.ToString());
 		}
 		else
 		{
 						
 			if (forceNewFaction)
-				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + worldID.ToString());
+				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + ToString(worldID));
 			else
-				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + worldID.ToString());
-
-			ready.factionToken.value = CryptographicID();
+				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + ToString(worldID));
 		}
 
 
@@ -1247,6 +1846,8 @@ namespace Network
 					World::allowRecompilation = false;	//until game begins
 					Tutorial::HideMessage("Servers");
 					Tutorial::lastDelayingEvent = timer.Now();
+					if (RuntimeConfig::tutorialMode)
+						Tutorial::SignalConnectedToTutorialServer();
 				#endif
 
 				amOnline = true;
@@ -1254,19 +1855,16 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection established to "+client.ToString());
 				
 				Protocol::Hello hello;
-				hello = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
+				hello = RuntimeConfig::aiMode ? Objects::Faction::nexusName : chosenNickname;
 				if (RuntimeConfig::aiMode)
 					chosenNickname = hello;
 				//state.state = 0U;
 				Channels::hello.SendTo(client,hello);	//elevate client state
 
-				if (RuntimeConfig::aiMode)
-					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
 				//lastPong = timer.Now();
 
 
-
-
+				GlobalEvents::serverConnectionEstablished();
 			}
 			break;
 			case TCP::Event::ConnectionFailed:
@@ -1274,25 +1872,29 @@ namespace Network
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					GUI::SignalSituationChange();
+					HUD::WindowStack::SignalSituationChange();
 				#endif
+				GlobalEvents::serverConnectionFailed();
 			}
 			break;
 			case TCP::Event::ConnectionLost:
-			case TCP::Event::ConnectionClosed:
 			{
+				Receiver::scriptChangeFlags = Receiver::ScriptChangeFlags::Empty;
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
 					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
 				String err = client.GetError(true);
 
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : (ev == TCP::Event::ConnectionLost ? "Connection lost" : "Connection closed"));
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : "Connection closed or lost");
 				amOnline = false;
+
+				serverRequiresPassword = false;
+				RuntimeConfig::serverPassword = "";
 
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					GUI::CloseAllModal();
+					HUD::WindowStack::CloseAll();
 				#endif
 
 
@@ -1300,7 +1902,7 @@ namespace Network
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverAddress.host.IsNotEmpty())
 					application_shutting_down = true;
 				#ifdef HAS_WINDOW
-					LocalApplicationInterface::QueryNicknameIfEmpty();
+					HUD::Dialog::QueryNicknameIfEmpty();
 				#endif
 
 				Receiver::eventsLocked = true;
@@ -1308,11 +1910,11 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
-					GUI::Hide(Dialog::loginMenu);
-					Dialog::CheckServersAreShown(true);
-					GUI::SignalSituationChange();
-					Tutorial::SignalEnd();
+					HUD::WindowStack::Hide(HUD::Menu::login);
+					HUD::HostList::CheckVisibility(true);
+					HUD::WindowStack::SignalSituationChange();
 				#endif
+				GlobalEvents::serverConnectionLost();
 
 			}
 			break;
@@ -1323,6 +1925,9 @@ namespace Network
 	{
 		switch (signal)
 		{
+			case Protocol::ChannelID::EndStatisticsSequence:
+				Receiver::Statistics::EndSequence();
+			break;
 			case Protocol::ChannelID::BeginGame:
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
@@ -1333,19 +1938,16 @@ namespace Network
 					if (Animation::AllDone())
 					{
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation done. OnPlayerControlBegin");
-						LocalApplicationInterface::OnPlayerControlBegin();
+						PlayerControlBegin::OnPlayerControlBegin();
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
-				#ifdef HAS_WINDOW
-					if (RuntimeConfig::tutorialMode)
-						Tutorial::SignalStart();
-				#endif
+				GlobalEvents::beginGame();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
-					GUI::SignalSituationChange();
+					HUD::WindowStack::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
 					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
@@ -1357,9 +1959,15 @@ namespace Network
 	void OnIgnorePackage(UINT32 channel,UINT32 size,TCP::Peer&origin)
 	{
 		LogEvent(EventClass::Preset::networkError,origin.ToString()+": Ignored package on channel #"+String(channel)+" of size "+String(size));
-		DBG_FATAL__("Ignored Package");
+		//DBG_FATAL__("Ignored Package");
 
 	}
+	void OnIgnoredException(const TCodeLocation&loc, const std::exception&ex)
+	{
+		LogEvent(EventClass::Preset::networkError,String(loc)+": Ignored(TCP): "+ex.what());
+		DBG_FATAL__("Ignored Exception: "+String(ex.what()));
+	}
+
 	void		Update();
 
 	void		Setup()
@@ -1376,7 +1984,12 @@ namespace Network
 		client.InstallChannel(Channels::destroyEntity);
 		client.InstallChannel(Channels::controlMessage);
 		client.InstallChannel(Channels::clientFactionResponse);
-		client.InstallChannel(Channels::setFactionID);
+		client.InstallChannel(Channels::MyFaction);
+		client.InstallChannel(Channels::KillFaction);
+		client.InstallChannel(Channels::AllianceConfigChange);
+		client.InstallChannel(Channels::AllianceInvite);
+		client.InstallChannel(Channels::VoteCreation);
+		client.InstallChannel(Channels::VoteResult);
 
 		client.InstallChannel(Channels::phaseChange);
 		client.InstallChannel(Channels::mobileEntityMotion);
@@ -1385,15 +1998,12 @@ namespace Network
 		client.InstallChannel(Channels::explosion);
 		client.InstallChannel(Channels::entityTurretRotation);
 		client.InstallChannel(Channels::resourceUpdate);
-		client.InstallChannel(Channels::changeEntityOwner);
 		client.InstallChannel(Channels::gameProgress);
 
 		client.InstallChannel(Channels::createMarker);
 		client.InstallChannel(Channels::markerCreationFailedLimitReached);
 		client.InstallChannel(Channels::destroyMarker);
 		client.InstallChannel(Channels::identifyFaction);
-		client.InstallChannel(Channels::researchState);
-		client.InstallChannel(Channels::researchQueue);
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);
@@ -1402,24 +2012,44 @@ namespace Network
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
-		client.InstallChannel(Channels::planetConfig);
 		client.InstallChannel(Channels::operationLacksResources);
-		client.InstallChannel(Channels::resourceData);
 		client.InstallChannel(Channels::gameConfig);
-		client.InstallChannel(Channels::planetNames);
 
 		client.InstallChannel(Channels::tutorialAt);
+		client.InstallChannel(Channels::winningAlliance);
+
+		client.InstallChannel(Channels::Statistics::BeginStatisticsSequence);
+		client.InstallChannel(Channels::Statistics::entityType);
+		client.InstallChannel(Channels::Statistics::round);
+		client.InstallChannel(Channels::Statistics::factionInteraction);
+
+		client.InstallChannel(Channels::ResearchProgram);
+		client.InstallChannel(Channels::ResearchFactionState);
+		client.InstallChannel(Channels::ResearchQueue);
+		client.InstallChannel(Channels::ResearchAttributeVector);
+		client.InstallChannel(Channels::ResearchAttributeDeltaVector);
+
+		client.InstallChannel(Channels::ChoiceResponse);
+
+		client.InstallChannel(Channels::ScriptedAIState);
+		
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginEverything,0);
 		client.OpenSignalChannel(Protocol::ChannelID::EndEverything,0);
+		client.OpenSignalChannel(Protocol::ChannelID::EndStatisticsSequence,0);
 
 
 		client.SetAsync(false);
 		client.onEvent = OnEvent;
 		client.onSignal = OnSignal;
 		client.onIgnorePackage = OnIgnorePackage;
+		TCP::onIgnoredException = OnIgnoredException;
+		client.onDeserializationFailed = [](UINT32 channel, TCP::Peer&origin, const String&exceptionMessage)
+		{
+			LogEvent(EventSignificance::NonFatalError,"Failed to deserialize package on network channel "+String(channel)+": "+exceptionMessage);
+		};
 
 		ASSERT__(Net::initNet());
 		if (RuntimeConfig::udpListen)
@@ -1427,7 +2057,7 @@ namespace Network
 			broadcastListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 			if (broadcastListenSocket == INVALID_SOCKET)
 			{
-				String error = String(Net::err2str(WSAGetLastError()));
+				String error = String(Net::GetLastError());
 				LogEvent(EventClass::Preset::operationAborted, nullptr, "Unable to initiate UDP listening for servers on the local area network: " + error + " (unable to create socket). Listening will be disabled.");
 			}
 			else
@@ -1442,15 +2072,17 @@ namespace Network
 				int rc = ::bind(broadcastListenSocket, (const sockaddr*)&me, (int)sizeof(me));
 				if (rc != 0)
 				{
-					String error = String(Net::err2str(WSAGetLastError()));
+					String error = String(Net::GetLastError());
 					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network: "+error+" (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
 					RuntimeConfig::udpListen = false;
 					closesocket(broadcastListenSocket);
-					return;
 				}
-				u_long dontBlock = 1;
-				rc = ioctlsocket(broadcastListenSocket, FIONBIO, &dontBlock);	//set socket to non-blocking
-				ASSERT_EQUAL__(rc, 0);
+				else
+				{
+					u_long dontBlock = 1;
+					rc = ioctlsocket(broadcastListenSocket, FIONBIO, &dontBlock);	//set socket to non-blocking
+					ASSERT_EQUAL__(rc, 0);
+				}
 			}
 		}
 
@@ -1475,12 +2107,12 @@ namespace Network
 
 	/*explicit*/			ServerAddress::ServerAddress(const String&url)
 	{
-		index_t portAt = url.find(':');
-		if (portAt)
+		index_t portAt = url.Find(':');
+		if (portAt != InvalidIndex)
 		{
-			host = url.subStringRef(0,portAt-1);
-			StringRef conv = url.subStringRef((int)portAt);
-			if (!convert(conv.pointer(),conv.length(),basePort))
+			host = url.subStringRef(0,portAt);
+			StringRef conv = url.SubStringRef(portAt+1);
+			if (!convert(conv.pointer(),conv.GetLength(),basePort))
 			{
 				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse port component '" + String(conv) + "' of '"+url+"'");
 			}
@@ -1494,7 +2126,7 @@ namespace Network
 
 
 	Buffer0<ServerInfo,Swap>	servers;
-	GenericHashTable<TUniqueID,index_t,TUniqueID>	serverMap;
+	HashTable<TUniqueID,index_t>	serverMap;
 
 	Timer::Time		lastPing = timer.Now(),lastServerTableUpdate=timer.Now();
 
@@ -1594,12 +2226,12 @@ namespace Network
 						s.info.gameInfo.gameConfig.gameFlags = Protocol::GameFlag::AllFactionSupport;
 						s.info.gameInfo.gameConfig.gameGoal = (BYTE)rng.get(RuntimeConfig::GameGoal::N -1);
 						s.info.gameInfo.gameConfig.worldDiscovery = (BYTE)rng.get(Grid::WorldDiscovery::N -1);
-						s.info.gameInfo.numFactionsCreated = sqr(rng.get(0,16));
+						s.info.gameInfo.numFactionsCreated = M::Sqr(rng.get(0,16));
 						s.info.gameInfo.numFactionsOnline = rng.get(s.info.gameInfo.numFactionsCreated);
-						s.info.gameInfo.roundNumber = sqr(sqr(rng.get(8)));
-						s.info.gameInfo.worldID.value.Generate();
-						s.info.hostInfo.value.hostID = s.id;
-						s.info.hostInfo.value.serverBasePort = DEFAULT_SERVER_BASE_PORT;
+						s.info.gameInfo.roundNumber = M::Sqr(M::Sqr(rng.get(8)));
+						s.info.gameInfo.worldID.Generate();
+						s.info.hostInfo.hostID = s.id;
+						s.info.hostInfo.serverBasePort = DEFAULT_SERVER_BASE_PORT;
 						s.rightVersion = true;
 						s.selected = false;
 					}
@@ -1615,25 +2247,25 @@ namespace Network
 					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
 					{
 						index_t at;
-						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+						if (!serverMap.Query(a.lastInfo.hostInfo.hostID,at))
 						{
 							at = servers.Count();
 							servers.Append();
-							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
-							servers.last().protocolIncompatible = a.protocolIncompatible;
-							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.value.hostID;
-							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
+							servers.Last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
+							servers.Last().protocolIncompatible = a.protocolIncompatible;
+							servers.Last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.hostID;
+							servers.Last().rightVersion = a.rightVersion && !a.protocolIncompatible;
 							//if (!a.protocolIncompatible)
-							serverMap.Set(servers.last().id,at);
+							serverMap.Set(servers.Last().id,at);
 						
 						}
 						ServerInfo&info = servers[at];
 
 						if (info.addresses.IsNotEmpty())
 						{
-							if (info.addresses.Last().serverInfo.gameInfo.worldID.value != a.lastInfo.gameInfo.worldID)
+							if (info.addresses.Last().serverInfo.gameInfo.worldID != a.lastInfo.gameInfo.worldID)
 							{
-								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+a.address.ToString());
+								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+ToString(a.address));
 								continue;
 							}
 						}
@@ -1673,22 +2305,23 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 {
 	ASSERT__(!eventsLocked);
 
-	switch (c.newPhase.value)
+	switch (c.newPhase)
 	{
 		case RuntimeConfig::Phase::AnimationPhase:
 			#ifdef HAS_WINDOW
 				Objects::Renderer::ClearSmokeTrails();
-				UI::EventLog::Clear();
+				HUD::HexGrid::EventLog::Clear();
 				if (TimeLapse::enabled)
-					saveScreenshot = true;
+					InputControl::saveScreenshot = true;
 			#endif
+			PlayerControlBegin::pauseAutomaticRoundProgression = false;	//events that undo this happen during the animation phase
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 			{
-				m->preAnimationLocation = m->location;
-			},false);
+				m->isInMovementStream = false;	//just in case
+			},Objects::IncludeGhosts::None);
 			if (c.timeFactor > 0)
 				animationTimeFactor = c.timeFactor;
 		break;
@@ -1703,8 +2336,8 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
-					LocalApplicationInterface::SignalMarkerDeletion(m->id);
-			},false);
+					ObjectHelper::SignalMarkerDeletion(m->id);
+			},Objects::IncludeGhosts::None);
 
 			#ifdef HAS_WINDOW
 				Objects::structures.Foreach([](const Objects::PStructure&s)
@@ -1718,7 +2351,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				});
 
 				if (TimeLapse::enabled)
-					saveScreenshot = true;
+					InputControl::saveScreenshot = true;
 			#endif
 		break;
 	}
@@ -1726,31 +2359,21 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		Tutorial::lastDelayingEvent = timer.Now();
 	#endif
 	RuntimeConfig::phase.Load(c.newPhase);
+	GlobalEvents::phaseChange();
 	if (RuntimeConfig::IsInAnyCommandPhase())
 		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());
-		UI::HexGrid::RefreshContacts();
+		HUD::HexGrid::RefreshContacts();
 	#endif
 
 	//while (Objects::Network::records.IsNotEmpty() && timer.GetSecondsSince(Objects::Network::records.Peek().recorded) > 10)
 	//	Objects::Network::records.EraseFront();
-	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
+	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
-		static Buffer0<Objects::Marker> outdated;
-		ClientGrid::CheckSensory();
-		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
-		foreach(outdated, o)
-		{
-			
-			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
-			LocalApplicationInterface::SignalMarkerDeletion(o->id);
-			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
-		}
-
 		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + RuntimeConfig::roundNumber.ToString());
 
 
@@ -1762,12 +2385,13 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			f->roundChangeNotifications = 0;
 		};
 	if (RuntimeConfig::IsInAnyCommandPhase())
+	{
 		if (gameHasBegun)
 		{
 			if (Animation::AllDone())
 			{
 				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation done. OnPlayerControlBegin");
-				LocalApplicationInterface::OnPlayerControlBegin();
+				PlayerControlBegin::OnPlayerControlBegin();
 			}
 			else
 			{
@@ -1776,9 +2400,18 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		}
 		else
 			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
+	}
+	else
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+		{
+			#ifdef HAS_WINDOW
+				HUD::Statistics::Update();
+				HUD::Statistics::Show();
+			#endif
+		}
 
 	#ifdef HAS_WINDOW
-		GUI::SignalSituationChange();
+		HUD::WindowStack::SignalSituationChange();
 	#endif
 }
 
@@ -1802,15 +2435,16 @@ void	Network::Receiver::FactionOnline(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->online = true;
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
+		HUD::FactionTable::Update();
 	#endif
 }
 void	Network::Receiver::FactionOffline(NET(TUniqueID)&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id);
-	faction->online = false;
+	Objects::OwnerParameter faction = Objects::Faction::FindByID(id);
+	if (faction)
+		faction->online = false;
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
+		HUD::FactionTable::Update();
 	#endif
 }
 void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
@@ -1818,10 +2452,11 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = true;
 	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
+	if (!faction->isOwnedByMe)
+		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-		UI::RefreshButtonState();
+		HUD::FactionTable::Update();
+		HUD::HexGrid::RefreshButtonState();
 	#endif
 }
 
@@ -1830,10 +2465,11 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = false;
 	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
+	if (!faction->isOwnedByMe)
+		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-		UI::RefreshButtonState();
+		HUD::FactionTable::Update();
+		HUD::HexGrid::RefreshButtonState();
 	#endif
 }
 
@@ -1841,11 +2477,11 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 
 void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id.id);
+	Objects::OwnerParameter faction = Network::ResolveFaction(id.id, id.allianceID);
 	faction->name = id.name;
-	faction->color = id.color.value;
+	faction->color = id.color;
 	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
+		HUD::FactionTable::Update();
 	#endif
 }
 
@@ -1902,13 +2538,15 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 }
 
 
+const String Network::allowedChatCharacters = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
+
 void	Network::SignalProtocolDisruption(const String&message)
 {
 	LogEvent(EventClass::Preset::error,message);
 	if (client.IsConnected())
 	{
 		#ifdef HAS_WINDOW
-			Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
+			HUD::Dialog::ShowMessage("Protocol disruption detected. Disconnecting from server.");
 		#endif
 		client.Disconnect();
 	}

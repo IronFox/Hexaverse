@@ -6,7 +6,9 @@
 #include "jobs.h"
 #include "hibernating.h"
 #include "../sharedContainer.h"
-#include "../observer.h"
+#include <structure/observable.h>
+#include "../roundNumber.h"
+
 
 namespace Objects
 {
@@ -85,7 +87,9 @@ namespace Objects
 
 		};
 
-
+		#ifndef CLIENT
+			RoundNumber				lastDeployment;
+		#endif
 
 
 		struct Task : public TaskData
@@ -115,9 +119,9 @@ namespace Objects
 			};
 
 
-			Queue<Focus>			foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
+			Ctr::Queue<Focus>		foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
 			
-			Buffer0<PathNode>		path;
+			Ctr::Buffer0<PathNode>	path;
 			PClientAttachment		visualization;
 
 			String					name;
@@ -128,10 +132,10 @@ namespace Objects
 
 
 			/**/					Task()	{}
-			/**/					Task(const String&name, const ArrayRef<Grid::LCellIdI>&destination, bool isDetailed, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
+			/**/					Task(const String&name, const Ctr::ArrayRef<Grid::LCellIdI>&destination, bool isDetailed, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
 			{
 				ASSERT__(destination.IsNotEmpty());
-				for (index_t i = 0; i+1 < destination.length(); i++)
+				for (index_t i = 0; i+1 < destination.GetLength(); i++)
 				{
 					Focus&f = this->foci.Push();
 					#ifndef CLIENT
@@ -172,7 +176,7 @@ namespace Objects
 
 			bool					IsJob() const
 			{
-				return type == Job && job && job->roundsToJobCompletion >= 0;
+				return type == Job && job && job->continuationsToJobCompletion >= 0;
 			
 			}
 			bool					IsMode(mode_t mode) const
@@ -196,9 +200,13 @@ namespace Objects
 
 
 		#ifdef CLIENT
-			Grid::LCellIdI		preAnimationLocation;
+			/**
+			Set true by client if vehicle has entered a movement sequence. Reset to false when complete.
+			Must be false during any non-motion animation changes to the local entity
+			*/
+			bool				isInMovementStream = false;
 		#endif
-		Queue<Task,Swap>		myTasks;
+		Ctr::Queue<Task,Swap>	myTasks;
 
 		WHangar					storedIn;
 
@@ -248,7 +256,15 @@ namespace Objects
 			BYTE				numTriedPlottingOnMoveAutoMotion=0;
 			bool				jobStarted=false; //!< Tracks whether the currently front-most job has been started
 			bool				hasMoved=false;
-			BYTE				constructionActionLeft=MaxConstructionActionLeft;
+			BYTE				constructionActionLeft=MaxConstructionActionLeft;	
+
+
+			/**
+			Denotes the currently active mobile entity that is executing a job.
+			NULL if outside job execution
+			*/
+			static const MobileEntity* executingJob /*= nullptr*/;
+
 		#else
 		#endif
 
@@ -259,21 +275,19 @@ namespace Objects
 														//Whether this boolean has any effect depends on the type of the local entity
 
 
-		UINT32					constructionRoundCounter=0;	//!< Number of rounds that the entity has been busy building at its current location
+		UINT32					constructionActionCounter=0;	//!< Number of round actions that the entity has been busy building at its current location
 
 		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : Super(owner,location), TurretBase(turret)
-								#ifdef CLIENT
-									,preAnimationLocation(location)
-								#endif
 		{}
 
 		bool					IsBusy() const {return myTasks.IsNotEmpty();}
-		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->roundsToJobCompletion >= 0;}
-		bool					IsFinishedBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->roundsToJobCompletion == 0;}
+		bool					IsBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().IsJob();}
+		bool					IsFinishedBuilding() const {return myTasks.IsNotEmpty() && myTasks.Peek().job && myTasks.Peek().job->continuationsToJobCompletion == 0;}
+		bool					IsMoving() const {return myTasks.IsNotEmpty() && myTasks.Peek().ContainsMovement();}
 		std::pair<int,int>		GetBuildingProgress() const;
 
 		#ifndef CLIENT
-			bool				NextTaskIsMotion() const {return health > 0 && ((!HasTasks() && completeOnMove) || (HasTasks() && myTasks.Peek().type == Task::MoveTo));}
+			bool				NextTaskIsMotion() const {return IsAlive() && ((!HasTasks() && completeOnMove) || (HasTasks() && myTasks.Peek().type == Task::MoveTo));}
 		#endif
 
 		#ifndef NO_HIBERNATION
@@ -302,6 +316,13 @@ namespace Objects
 
 		Grid::LCellIdI			GetLastPointOfOrigin() const;
 		Grid::LCellIdI			GetPrevPointOfOrigin() const;
+
+		/**
+		Calculates the number of rounds needed to complete the given number of job continuations
+		*/
+		float					ContinuationsToRounds(int continuationsToJobCompletion, Component::operation_t op) const;
+
+
 		/**
 		Checks whether or not the local entity has any constructing jobs queued for the specified location
 		*/
@@ -318,8 +339,8 @@ namespace Objects
 			bool				HasTasks() const {return myTasks.IsNotEmpty();}
 		#else
 
-			bool				PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
-			bool				PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath);
+			bool				PlotCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
+			bool				PlotFrontCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath);
 			virtual	void		SetupSystem() override {UpdateSystem();}
 			void				RegisterNewJob(
 										const String&localizableShapeIdentifier,
@@ -331,38 +352,12 @@ namespace Objects
 
 			bool				DropLastTask();
 
-			void				BeginMotionPhase(float timeOffset)
-			{
-				entityTime = std::max(entityTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
-				if (attackActionLeft < 1.f)
-					RegisterChange(ActionChanged,entityTime);
-				attackActionLeft = 1.f;
+			void				BeginMotionPhase(float timeOffset);
+			void				BeginAttackPhase();
 
-				hasMoved = false;
-				numTriedPlottingOnMoveAutoMotion = 0;
-				if (MotionIgnoresAttack())
-				{
-					if (movementActionLeft < 1.f)
-						RegisterChange(ActionChanged,entityTime);
-					movementActionLeft = 1.f;
-				}
-			}
-			void				BeginAttackPhase()	//executed before BeginMotionPhase this round
-			{
-				constructionActionLeft=MaxConstructionActionLeft;
-				if (movementActionLeft < 1.f)
-					RegisterChange(ActionChanged,entityTime);
-				movementActionLeft = 1.f;
 
-				if (AttackIgnoresMotion())
-				{
-					if (attackActionLeft < 1.f)
-						RegisterChange(ActionChanged,entityTime);
-					attackActionLeft = 1.f;
-
-				}
-			}
-
+			bool				FrontEnqueueAttack(Grid::LCellIdI destination);
+			bool				EnqueueAttack(Grid::LCellIdI destination);
 
 			/**
 			Clears all entity tasks
@@ -371,33 +366,7 @@ namespace Objects
 					
 
 			*/
-			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
-			{
-				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller.ToString())+")");
-				if (TasksAreLocked())
-				{
-					if (flushTasksOnUnlock)
-						return false;
-					entityTime += timeEpsilon;
-					flushTasksOnUnlock = true;
-					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
-					return true;
-				}
-				
-				if (myTasks.IsNotEmpty() || completeOnMove)
-				{
-					entityTime += timeEpsilon;
-					jobStarted = false;
-					if (!isReaction)
-						completeOnMove.reset();
-					RegisterChange(TasksChanged,entityTime);
-					//tasksChanged = true;
-					myTasks.Clear();
-					LogEvent(EventSignificance::Debug,this," ...cleared");
-					return true;
-				}
-				return false;
-			}
+			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller);
 
 			bool				HasTasks() const
 			{
@@ -413,7 +382,7 @@ namespace Objects
 				attackActionLeft = 0.f;
 				hasMoved = true;
 				constructionActionLeft=MaxConstructionActionLeft;
-				RegisterChange(ActionChanged,0);
+				RegisterChange(ActionChanged);
 			}
 
 			/**
@@ -421,6 +390,16 @@ namespace Objects
 			*/
 			virtual MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) = 0;
 		
+			/**
+			Attempts to place the entity exactly whered it already is.
+			If its ground beneath has erroded, the entity will fall.
+			If the new ground is unsuitable, or the fall is too far, the entity will be destroyed (Remove() is called automatically).
+			Check IsAlive() or IsDeadOrGhost() to see if the operation has resulted in entity destruction.
+
+			Currently if effectively invokes 
+					HandleNow(PlaceExactlyAt(location,0, atTime));
+			*/
+			void				CheckGround(float atTime);
 
 			/**
 			Handles destructive results of PlaceExactlyAt(), since PlaceExactlyAt() is not allowed to immediately destroy the local entity
@@ -429,6 +408,7 @@ namespace Objects
 
 
 			bool				CompleteOnMove(const Grid::LCellIdI&referenceLocation);
+
 
 
 			enum class TaskResult
@@ -451,29 +431,45 @@ namespace Objects
 
 		#endif
 
-		UINT32					GetOperationRounds(int jobCosts, Component::operation_t op) const
-		{
-			if (!jobCosts)
-				return 0;
-			jobCosts = abs(jobCosts);
-			int speed = GetOperationSpeed(op);
-			if (!speed)
-				return 0xFFFFFFFF;
-			int rs = jobCosts / speed;
-			if (jobCosts % speed)
-				rs ++;
-			return rs;
-		}
+		/**
+		Calculates the number of continuations necessary to complete a job of the given costs and operation affinity.
+		@param jobCosts Material cost of the respective job (may be theoretical)
+		@param op Operation affinity to calculate speed from
+		@return Number of continuations necessary to complete the job (rounded up)
+		*/
+		UINT32					GetOperationContinuations(int jobCosts, Component::operation_t op) const;
+		/**
+		Estimates the number of actual rounds necessary to complete a job of the given costs and operation affinity.
+		*/
+		UINT32					GetOperationCompletionRounds(int jobCosts, Component::operation_t op) const;
+
 		Grid::LCellIdI			GetConstructionLocation() const {return GetConstructionLocation(location);}
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
-		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}
+		bool					AttackAndMotionAreIndependent() const {return turret->independentAttackAndMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
-		float					GetAttackExplosionRadius() const {return turret->GetExplosionRadius(owner);}
+		float					GetAttackExplosionRadius(const OwnerParameter&) const override;
+		using					TurretBase::GetAttackExplosionRadius;
 		bool					CanRepair() const {return turret->CanRepair();}
-		bool					CanAttack() const {return turret->CanAttack();}
 		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const {return 0;}
 
 		int						GetCurrentMineralConsumption() const;
+
+		/**
+		Triggers an attack right now, using the current entity time.
+		Does not change local tasks, but the local entity time will be updated if needed.
+		Meant for certain jobs that trigger attack-like effects.
+		Trajectories are calculated using the local turret configuration.
+		Values not explicitly required by parameters are taken from the local turret and entity state/location.
+		@param target Attack target
+		@param explosionSize Radius of the resulting explosion
+		@param damageLevel Damage inflicted by the resulting explosion
+		@param dealsEMPDamage Set true if the local attack is supposed to cause EMP damage (non-permanent)
+		@param isDoomsday Classifies the issued attack as a doomsday attack. If set and the current server configuration disallows the attack, then execution may fail (will be logged)
+			Depending on the active server configuration, doomsday non-EMP explosions may be sent to all clients regardless of whether they could otherwise see it
+		@param[inout] Time at which the attack happens. May be updated by the local method
+		*/
+		void					OverrideExecuteAttackNow(const Grid::LCellIdI target, float explosionSize, int damageLevel, bool dealsEMPDamage, bool isDoomsday, float &t);
+
 
 		/**
 		Updates @a system and @a invert based on @a location
@@ -482,14 +478,21 @@ namespace Objects
 		void					UpdateSystem();
 
 		/**
-		Retrieves the amount of minerals that can be converted into structure by the local entity
-		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
+		Constructs a mobile entity system.
+		The old location stored in the specified system is used to define the direction of the final system,
+		so don't pass an uninitialized system.
+		@param[in,out] inOutSys System to use for direction calculation, and to put the new vehicle system matrix into. Must be initialized
+		@param[out] outInverse Resulting system inverse (optional)
+		@param location New vehicle location
 		*/
-		virtual int				GetOperationSpeed(Component::operation_t op) const {return turret->GetOperationSpeed(op,owner);}
+		static void				UpdateSystem(M::TMatrix4<>&inOutSys, M::TMatrix4<>*outInverse,const Grid::LCellIdI&location);
+
+
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
-		virtual int				GetMovementStepsPerRound() const =0;
-		virtual String			DescribeMovementStepsPerRound() const =0;
+		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const =0;
+		int						GetMovementStepsPerRound() const {return GetMovementStepsPerRound(owner);}
+		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner) const =0;
 		virtual float			GetBaseMovementInitiative() const {return 100;}
 		/**
 		Retrieves the visual breath of compiled paths. Purely cosmetic.
@@ -508,19 +511,52 @@ namespace Objects
 		So far only satellites do this in case residence height changes
 		*/
 		virtual void			TranslateLocationFromExport(){};
+		virtual int				GetMaxClimbingHeight() const {return Grid::CellStack::Range;}
+		virtual int				GetMaxFallingHeight() const {return Grid::CellStack::Range;}
+		virtual bool			IsAffectedByGravity() const {return false;}
+		virtual bool			IsAffectedByGravity(const Grid::LCellIdI&) const {return false;}
+		/**
+		Checks whether or not the local mobile entity can stand atop the specified cell (not in the cell).
+		Needs only be overridden if the local entity type adheres to gravity (i.e. AffectedByGravity() returns true).
+		Otherwise it does not technically need to 'stand on' anything, and can therefor safely ignore the terrain beneath
+		@param world World to check against
+		@param cell The cell the local mobile entity is attempting to stand atop of. If relocation is performed the cell one higher than this will be used for the final location
+		@param ignoreWater Upon encountering pure water, the method succeeds if either the local vehicle can stand on water, or this value is set true
+		@param doFloat Allows the vehicle to stand on any substance. Useful for certain construction jobs
+		*/
+		virtual bool			CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, Component::GroundFlags flags = Component::GroundFlags::None) const {return true;}
+		/**
+		Queries the hindrance this mobile entity experiences from the ground underneath.
+		Should be unaffected by the entity's current location
+		*/
+		virtual THindranceVector	GetGroundHindrance() const {return THindranceVector();}
 
+
+
+		/**
+		Checks whether or not the local mobile entity can climb/fall the specified inclination level.
+		@param inclination Inclination level. Values above zero indicate ascent, below value indicate a descent
+		*/
+		bool					CanClimb(int inclination) const {return inclination <= GetMaxClimbingHeight() && inclination >= -GetMaxFallingHeight();}
 
 		//TurretBase overrides:
-		virtual OwnerParameter	GetOwner() const override {return owner;};
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};
-		virtual bool			NextTaskIsAttack() const override {return health > 0 && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
+		virtual bool			NextTaskIsAttack() const override {return IsAlive() && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
+		virtual WorldEntity&	ToEntity() override {return *this;}
+		virtual const WorldEntity&	ToEntity() const override {return *this;}
+		virtual float			GetZOffset() const override {return 0;}
 		#ifndef CLIENT
+			virtual bool		QueueAutoAttack(TurretBase::TargetChoice&lastChoice) override;
+			virtual void		FlushAutoAttacks() override;
+			virtual bool		AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;
 			virtual void		Attack(float&currentTime)	override;
 		#endif
 		virtual	bool			HasAmmoForShot() override;
 
 
 		//WorldEntity overrides:
+		virtual bool			IsAutomated() const override {return isAutomated;}
+		virtual bool			SupportsTaskQueue() const override {return true;}
 		//virtual bool			IsActive() const override {return !IsHibernating() && Super::IsActive();}
 		#ifndef CLIENT
 			virtual void		ClearSafeTasks() override;
@@ -536,10 +572,12 @@ namespace Objects
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
 		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
-		virtual float			GetScanningRange() const override;
-		virtual String			DescribeScanningRange() const override;
+		virtual float			GetScanningRange(const OwnerParameter&) const override;
+		using					WorldEntity::GetScanningRange;
+		virtual String			DescribeScanningRange(const OwnerParameter&) const override;
 		#ifndef CLIENT
 			virtual void		OnDestroy(RemovalType, float&atTime) override;	
+			virtual void		SignalTerrainChange(float atTime) override;
 		#endif
 
 	protected:

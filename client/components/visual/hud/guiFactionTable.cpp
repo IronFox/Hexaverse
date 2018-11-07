@@ -1,0 +1,527 @@
+#include "guiFactionTable.h"
+#include <runtimeConfig.h>
+#include <objects/faction.h>
+#include "../../network.h"
+#include "windowStack.h"
+#include "dialog.h"
+
+namespace HUD
+{
+	namespace FactionTable
+	{
+		namespace Details
+		{
+			using namespace Component;
+
+			PWindow	window;
+			PPanel	chatHistory,
+					chatInput,
+					factionTable,
+					buttons;
+			PInput	chatMessage;
+			bool	visible=false;
+			Objects::WAlliance	triedJoining;
+			WButton triedJoiningButton;
+
+
+			String	WordForThinking(const RuntimeConfig::RoundNumber&roundNumber, const void*factionPointer)
+			{
+				//return "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto";
+				return "Thinking, Sleeping, or AFK";
+
+				static String words[] = {
+					"Thinking",
+					"Pretending to think",
+					"Looking really closely at ... not the 'End Round' button",
+					"Trying hard and long to be smarter than you. Mostly long",
+					"Despairing",
+					"Twiddling thumbs. Not pressing buttons you want them to",
+					"Totally not hitting the 'End Round' button right now",
+					"Trolling you",
+					"One with the game. Not one with the 'End Round' button",
+					"Gazing at the beautiful textures. Wait, what?",
+					"Beyond the flow of time",
+					"Please hold the line...",
+				};
+				CRC32::Sequence s;
+				s.AppendPOD(roundNumber);
+				s.AppendPOD(factionPointer);
+		
+				UINT32 random = s.Finish();
+
+				return words[random % ARRAYSIZE(words)];
+			}
+
+
+
+			PPanel	AddPanel(const String&labelText)
+			{
+				PPanel rs{new Panel{}};
+				rs->SetAutomaticHeight(true);
+				rs->SetMaxAutoHeight(0.4f);
+				rs->SetEdges(true);
+				rs->SetBackgroundOpacity(0.7f);
+				rs->SetBackgroundTone((float3)0.6f);
+
+				if (labelText.IsNotEmpty())
+				{
+					PLabel label{new Label{labelText,0.75f}};
+					rs->AddComponent(label,CLOCATION);
+					{
+						auto mod = label->Anchor();
+						mod.GetHAxis().AnchorLowerUnknown();
+						mod.GetVAxis().AnchorUpperUnknown();
+					}
+					label->LockToIdealWidth();
+					label->LockToIdealHeight();
+				}
+				else
+					rs->SetBackground(false);
+
+				window->AnchorBelowPrevious(CLOCATION,rs,0,0.01f);
+				rs->Anchor().FillHorizontally(0.01f,0.01f);
+
+				return rs;
+			}
+
+
+			void	Hide()
+			{
+				WindowStack::Hide(window);
+			}
+
+			void	Show()
+			{
+				WindowStack::Show(window);
+			}
+
+
+			void	AddFaction(const PPanel&toPanel, const Objects::OwnerParameter&faction)
+			{
+				using namespace Details;
+				PPanel panel{new Panel{}};
+				PLabel nameLabel{new Label{faction->name}},statusLabel{new Label{faction->online ? (faction->requestedNewRound ? "" : WordForThinking(RuntimeConfig::roundNumber,faction.get())) : "<offline>" ,0.8f}};
+
+				nameLabel->SetWidth(0.15f);
+				nameLabel->Anchor().GetHAxis().AnchorLowerUnknown();
+				nameLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
+				nameLabel->SetPadding(0.2f);
+				nameLabel->SetHorizontalPadding(1,1);
+				if (!faction->online)
+				{
+					statusLabel->SetColor(float3(1),0.4); 
+					nameLabel->SetColor(faction->color,0.4f);
+				}
+				else
+				{
+					statusLabel->SetColor(faction->color); 
+					nameLabel->SetColor(faction->color);
+				}
+
+
+				PButton inviteButton;
+
+				if (Objects::Faction::mine)
+				{
+					if (faction->alliance != Objects::Faction::mine->alliance)
+					{
+						if (faction->alliance->HaveInvited(Objects::Faction::mine))
+						{
+							inviteButton.reset(new Button{"Accept Invitation","Accepts the invitation and instantly joins this alliance. Note: other alliance members will see all your units"});
+							Objects::WFaction wf = faction;
+							inviteButton->SetTriggerFunction(
+							[wf]()
+							{
+								Objects::PFaction now = wf.lock();
+								if (Objects::Faction::mine == nullptr || now == nullptr || now->alliance == Objects::Faction::mine->alliance)
+									return;
+								Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(now->alliance->id,Objects::Faction::mine->id,Protocol::AllianceInviteType::Accept));
+							});
+
+							inviteButton->SetBackground(false);
+							inviteButton->SetEdges(false);
+							inviteButton->SetColor(faction->color);
+							inviteButton->LockToIdealWidth(true);
+							//joinButton->LockToIdealHeight(true);
+							inviteButton->SetPadding(M::Quad<float>(0.2f));
+							inviteButton->SetLocalFontScale(0.85f);
+
+							inviteButton->Anchor().Right(0.01f);
+							panel->AddComponent(inviteButton,CLOCATION);
+						}
+						else
+						{
+							inviteButton.reset(new Button{"Invite","Invite this faction to join your alliance (or create one if you are currently not part of any)"});
+							Objects::WFaction wf = faction;
+							if (!Objects::Faction::mine->alliance->HaveInvited(faction))
+							{
+								inviteButton->SetTriggerFunction(
+								[wf]()
+								{
+									Objects::PFaction now = wf.lock();
+									if (Objects::Faction::mine == nullptr || now == nullptr || now->alliance == Objects::Faction::mine->alliance)
+										return;
+									Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(Objects::Faction::mine->alliance->id,now->id,Protocol::AllianceInviteType::Invite));
+								});
+							}
+							else
+							{
+								inviteButton->SetText("Cancel Invitation","An invite has been sent to this faction. Press to cancel the invitation.");
+								inviteButton->SetTriggerFunction(
+								[wf]()
+								{
+									Objects::PFaction now = wf.lock();
+									if (Objects::Faction::mine == nullptr || now == nullptr || now->alliance == Objects::Faction::mine->alliance)
+										return;
+									Network::Channels::AllianceInvite.SendTo(Network::client,Protocol::AllianceInvite(Objects::Faction::mine->alliance->id,now->id,Protocol::AllianceInviteType::Cancel));
+								});
+							}
+
+							inviteButton->SetBackground(false);
+							inviteButton->SetEdges(false);
+							inviteButton->SetColor(faction->color);
+							inviteButton->LockToIdealWidth(true);
+							//joinButton->LockToIdealHeight(true);
+							inviteButton->SetPadding(M::Quad<float>(0.2f));
+							inviteButton->SetLocalFontScale(0.85f);
+
+							inviteButton->Anchor().Right(0.01f);
+							panel->AddComponent(inviteButton,CLOCATION);
+						}
+					}
+
+
+				}
+
+
+
+
+
+
+
+				statusLabel->Anchor().FillHBetween(nameLabel,inviteButton).Bottom();
+			
+				statusLabel->SetPadding(0.2f);
+				//textLabel->Anchor().Top().Set(0);
+				statusLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
+
+				//timeLabel->fillBackground = true;
+				//senderLabel->fillBackground = true;
+
+				panel->SetAutomaticHeight(true);
+				panel->AddComponent(nameLabel,CLOCATION);
+				//statusLabel->dbgMarked = true;
+				panel->AddComponent(statusLabel,CLOCATION);
+				panel->SetBackground(false);
+
+				toPanel->AnchorBelowPrevious(CLOCATION,panel,0,0);
+			}
+
+
+
+
+
+			void	Update()
+			{
+
+				WindowStack::VerifyIntegrity(CLOCATION);
+
+				if (!window)
+				{
+
+					GlobalEvents::objectFlush << [](){triedJoining.reset();triedJoiningButton.reset();};
+					GlobalEvents::onAllianceChange << [](const Objects::PFaction&){ Update();};
+
+					window = Window::Create();
+					window->SetWidth(0.75f);
+					
+					PPanel factionBack = AddPanel("Factions/Alliances");
+					factionBack->SetCutCorners(M::Quad<bool>(true,false,true,true));
+					PPanel chatBack = AddPanel("Chat History");
+					chatBack->SetCutCorners(false);
+					chatInput = AddPanel("");
+					chatInput->SetCutCorners(false);
+					chatInput->SetEdges(false);
+					chatInput->SetBackground(false);
+					chatInput->SetAutomaticHeight(true);
+					buttons = AddPanel("");
+					buttons->SetEdges(false);
+					buttons->SetBackground(false);
+					window->SetAutoHeightSpacing(0.01f);
+					
+					{
+						chatHistory.reset(new Panel{});
+						chatBack->AnchorBelowPrevious(CLOCATION,chatHistory,0,0);
+						chatHistory->SetMaxAutoHeight(0.3f);
+						chatHistory->SetAutomaticHeight(true);
+						chatHistory->SetBackground(false);
+					}
+					{
+						factionTable.reset(new Panel{});
+						factionBack->AnchorBelowPrevious(CLOCATION,factionTable,0,0);
+						factionTable->SetMaxAutoHeight(0.3f);
+						factionTable->SetAutomaticHeight(true);
+						factionTable->SetBackground(false);
+					}
+					{
+						PButton close{new Button{"Close","Closes this dialog",Hide}};
+						close->SetVerticalPadding(0.5f);
+						close->FillHorizontally(0);
+						close->SetCutCorners(M::Quad<bool>(true,true,true,false));
+						buttons->AddComponent(close,CLOCATION);
+						close->Anchor().GetVAxis().AnchorUpperUnknown();
+					}
+
+					{
+						PButton filter = std::make_shared<Button>("All");
+						filter->LockToIdealHeight(false);
+						filter->LockToIdealWidth();
+						filter->Anchor().FillVertically();
+						filter->SetCutCorners(false);
+						WButton wFilter = filter;
+						static bool sendToAlliance = false;
+
+						filter->SetTriggerFunction([wFilter](){
+							PButton b = wFilter.lock();
+							if (!b)
+								return;
+							sendToAlliance = !sendToAlliance;
+							if (sendToAlliance)
+								b->SetText("Alliance","Only online alliance members will receive your messages");
+							else
+								b->SetText("All","Everyone online will receive your messages including hostile factions");
+
+						});
+
+						chatMessage = std::make_shared<Input>();
+						chatMessage->SetAllowedAlphabet(Network::allowedChatCharacters);
+						PButton send{new Button{"Send",
+							Tooltip::FInfo{[](float t,float)->Tooltip::Info{if (t < TooltipDeclaration::delay) return nullptr; return sendToAlliance?"Send your message only to members of your alliance":"Send your message to all online factions";}},
+							[](){
+							if (sendToAlliance)
+								Network::SendChatMessage(chatMessage->GetText(),Objects::Faction::mine);
+							else
+								Network::BroadcastChatMessage(chatMessage->GetText());
+							chatMessage->SetText("");
+						}}};
+						chatMessage->onSpecialKey = [](Key::Name k)
+						{
+							if (k == Key::Tab)
+								Hide();
+						};
+						send->SetVerticalPadding(0.5f);
+						//send->Anchor().CenterVertically().Right(0.01f);
+						send->LockToIdealWidth();
+						send->LockToIdealHeight(false);
+						send->Anchor().FillVertically().Right();
+						send->SetCutCorners(false);
+						chatMessage->Anchor().Top().FillHBetween(filter,send);
+						chatInput->AddComponent(filter,CLOCATION);
+						chatInput->AddComponent(send,CLOCATION);
+						chatInput->AddComponent(chatMessage,CLOCATION);
+						chatMessage->onEnter = [send](){send->Trigger();};
+					}
+				}
+				factionTable->ClearComponents();
+				Objects::Alliance::Foreach([](const Objects::PAlliance&a)
+				{
+					PPanel wrapper{new Panel{}};
+					wrapper->Anchor().BeneathLastOf(factionTable);
+					if (a->CountLivingMembers() > 1)
+					{
+						wrapper->SetBackgroundOpacity(0.7f);
+						wrapper->SetBackgroundTone((float3)0.7f);
+						wrapper->SetEdges(true);
+						//wrapper->SetBackground(false);
+						wrapper->SetEdgeVisibility(M::Quad<bool>(true,false,true,false));
+						wrapper->SetCutCorners(false);
+					}
+					else
+						wrapper->SetBackground(false);
+					factionTable->AddComponent(wrapper,CLOCATION);
+
+					PPanel alliancePanel{new Panel{}};
+					alliancePanel->SetBackground(false);
+					alliancePanel->SetEdges(false);
+					alliancePanel->Anchor().FillHorizontally(0.01f,0.001f).Top();
+
+
+					if (a->CountLivingMembers() > 1)
+					{
+						PLabel allianceLabel{new Label{a->id.ToNiceString(),1.f}};
+						allianceLabel->Anchor().Left().Top();
+						allianceLabel->SetVerticalPadding(0.3f,0.1f);
+						wrapper->AddComponent(allianceLabel,CLOCATION);
+						alliancePanel->Anchor().Beneath(allianceLabel);
+					}
+
+					wrapper->AddComponent(alliancePanel,CLOCATION);
+
+
+					Objects::WAlliance wa = a;
+
+					const bool isMine = Objects::Faction::mine && a == Objects::Faction::mine->alliance;
+	
+					if (isMine && a->CountLivingMembers() > 1)
+					{
+						PButton leaveButton{new Button{"Leave alliance "+a->id.ToNiceString(),"Instantly leave this alliance. Note that non-allied, hostile units will fire at you automatically"}};
+						leaveButton->SetTriggerFunction(
+						[]()
+						{
+							Dialog::Confirm("Really leave your current alliance?",[]()
+							{
+								Network::client.SendSignal(Protocol::ChannelID::LeaveAlliance);
+							},[](){
+								if (!Objects::Faction::mine || !Objects::Faction::mine->alliance || Objects::Faction::mine->alliance->CountLivingMembers() <= 1 || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
+									return Dialog::CheckResult::Abort;
+								if (!RuntimeConfig::IsInAnyCommandPhase())
+									return Dialog::CheckResult::OkayNotRightNow;
+								return Dialog::CheckResult::OkayContinue;
+							}
+							);
+						});
+
+						leaveButton->LockToIdealWidth(true);
+						//joinButton->LockToIdealHeight(true);
+						leaveButton->SetPadding(M::Quad<float>(0.2f));
+						leaveButton->SetBackground(false);
+						leaveButton->SetEdges(false);
+						leaveButton->SetLocalFontScale(0.85f);
+
+						leaveButton->Anchor().Right(0.01f).Top(0.01f);
+						wrapper->AddComponent(leaveButton,CLOCATION);
+					}
+
+					
+
+
+					a->ForeachMember([alliancePanel](const Objects::PFaction&f)
+					{
+						AddFaction(alliancePanel,f);
+					});
+				});
+				//PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Close", false);
+
+				//Detail::factionDialog = d;
+
+				//Array<String> list(factions.Count()+1);
+				//list.First() = "Known factions:";
+				//for (index_t i = 0; i < factions.Count(); i++)
+				//	list[i+1] = "* "+factions[i].name+(factions[i].online?
+				//	(factions[i].requestedNewRound ? "" : " ("+WordForThinking(RuntimeConfig::roundNumber,factions[i].factionReference )+")")
+				//	:"   -    offline");
+
+				//d->textField->SetText( list );
+				//d->textField->SetAlign(HUD::Component::HorizontalTextAlign::Left);
+				//d->textField->SetLocalFontScale(0.9f);
+				//d->ReLayout();
+
+				WindowStack::VerifyIntegrity(CLOCATION);
+
+			}
+
+		}
+
+		void	Show()
+		{
+			Details::Update();
+			Details::Show();
+		}
+
+		bool	IsVisible()
+		{
+			return WindowStack::IsVisible(Details::window);
+		}
+
+		void	Hide()
+		{
+			Details::Hide();
+		}
+
+		void	Update()
+		{
+			Details::Update();
+		}
+
+
+		void	ClearChatHistory()
+		{
+			Update();
+			Details::chatHistory->ClearComponents();
+		}
+
+		void	SignalChatMessage(const Objects::OwnerParameter&owner, const String&msg)
+		{
+			Update();
+
+
+			String timeStr;
+			{
+				time_t rawtime;
+				struct tm * timeinfo;
+				char buffer[80];
+
+				time (&rawtime);
+				timeinfo = localtime(&rawtime);
+
+				strftime(buffer,sizeof(buffer),"%H:%M:%S",timeinfo);
+				timeStr = buffer;
+			}
+
+			using namespace Details;
+			PPanel chatEntry{new Panel{}};
+			PLabel timeLabel{new Label{timeStr,0.75f}},senderLabel,textLabel{new Label{msg}};
+			timeLabel->SetPadding(M::Quad<float>{0.5f,0,0.5f,0});
+			timeLabel->LockToIdealWidth();
+			//timeLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
+			timeLabel->Anchor().GetVAxis().AnchorLowerUnknown();
+			timeLabel->Anchor().GetHAxis().AnchorUpperUnknown();
+			if (owner)
+			{
+				senderLabel.reset(new Label{owner->name+": "});
+				senderLabel->SetColor(owner->color);
+				senderLabel->LockToIdealWidth();
+				senderLabel->Anchor().GetHAxis().AnchorLowerUnknown();
+				//senderLabel->Anchor().Top().Set(0);
+				senderLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
+				senderLabel->LockToIdealHeight();
+				senderLabel->SetPadding(0);
+				senderLabel->SetVerticalPadding(0.25f);
+				senderLabel->SetHorizontalPadding(1,0);
+				textLabel->SetColor(owner->color * 0.5f + 0.5f); 
+				{
+					auto cfg = textLabel->Anchor();
+					cfg.GetHAxis().lower.Set(senderLabel,0);
+					cfg.GetHAxis().upper.Disable();
+				}
+			}
+			else
+			{
+				textLabel->SetColor(float4(1));
+				textLabel->Anchor().GetHAxis().AnchorLowerUnknown();
+			}
+			textLabel->SetPadding(0);
+			textLabel->SetVerticalPadding(0.25f);
+			textLabel->Anchor().FillHBetween(senderLabel,timeLabel);
+			//textLabel->Anchor().Top().Set(0);
+			textLabel->SetAlign(HUD::Component::HorizontalTextAlign::Left);
+			textLabel->LockToIdealHeight();
+
+			//timeLabel->fillBackground = true;
+			//senderLabel->fillBackground = true;
+
+			chatEntry->SetAutomaticHeight(true);
+			chatEntry->AddComponent(timeLabel,CLOCATION);
+			chatEntry->AddComponent(senderLabel,CLOCATION);
+			chatEntry->AddComponent(textLabel,CLOCATION);
+			chatEntry->SetBackground(false);
+
+			chatHistory->AnchorBelowPrevious(CLOCATION,chatEntry,0,0);
+
+			window->FullAutoLayout(CLOCATION);
+
+			chatHistory->ScrollToBottom();
+		}
+
+	}
+}

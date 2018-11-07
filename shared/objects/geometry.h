@@ -4,8 +4,10 @@
 #include <math/vclasses.h>
 #include <math/matrix.h>
 
+
 namespace Objects
 {
+	using namespace DeltaWorks;
 
 
 
@@ -31,8 +33,8 @@ namespace Objects
 		class LOD
 		{
 		public:
-			Buffer0<Vertex>	vertices;
-			Buffer0<UINT32>	indices;
+			Ctr::Buffer0<Vertex>	vertices;
+			Ctr::Buffer0<UINT32>	indices;
 
 			void	swap(LOD&other)
 			{
@@ -61,9 +63,9 @@ namespace Objects
 		};
 	private:
 		LOD*		currentLOD;
-		Buffer<LOD, 4, Swap>	lods;
+		Ctr::Buffer<LOD, 4, Swap>	lods;
 		UINT32		vertexOffset,indexOffset;
-		Box<>		boundingBox;
+		M::Box<>		boundingBox;
 
 		void		_Reset()
 		{
@@ -120,7 +122,7 @@ namespace Objects
 		}
 		void				ComputeNormals();
 		void				GenerateNormals()				{ ComputeNormals(); }
-		bool				TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance)	const;
+		bool				TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance)	const;
 		void				UpdateBoundingBox();
 
 		void	SetVertexOffsetToCurrent()
@@ -210,9 +212,9 @@ namespace Objects
 			ASSERT__(out == currentLOD->indices.end());
 		}
 
-		void	AppendTriangleIndices(const BasicBuffer<UINT32>&indices)
+		void	AppendTriangleIndices(const Ctr::BasicBuffer<UINT32>&indices)
 		{
-			AppendTriangleIndices(indices.pointer(), indices.count());
+			AppendTriangleIndices(indices.pointer(), indices.Count());
 		}
 
 		void	AppendQuadIndices(const UINT32*indices, count_t numIndices)
@@ -238,7 +240,7 @@ namespace Objects
 		
 		void LoadFromObj(const PathString&filename);
 
-		const Box<>&	GetBoundingBox()	const;
+		const M::Box<>&	GetBoundingBox()	const;
 	};
 
 

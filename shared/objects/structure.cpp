@@ -40,12 +40,12 @@ namespace Objects
 	#endif
 
 
-	/*static*/ int				NexusPort::ResistenceRounds = 10;
+	/*static*/ int				NexusPort::ResistanceRounds = 10;
 
 
 	#ifdef HAS_WINDOW
 		/*static*/ Grid::LCellIdI	GatheringPoint::selected;			//!< Gathering point of selected entity (if any, or invalid)
-		/*static*/ TMatrix4<>		GatheringPoint::selectedVisual;	//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
+		/*static*/ M::TMatrix4<>		GatheringPoint::selectedVisual;	//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
 
 		/*static*/ Geometry			Structure::standardConnector;
 
@@ -68,12 +68,12 @@ namespace Objects
 
 
 
-	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,ConstName type)
+	/*static*/ count_t			Structure::CountOccurrences(const OwnerParameter&o,EntityType type)
 	{
 		count_t rs = 0;
 		structures.Foreach([&rs,o,type](const Objects::PStructure&s)
 		{
-			if (s->owner == o && s->GetCTypeName() == type)
+			if (s->owner == o && s->GetType() == type)
 				rs++;
 			else
 			{
@@ -100,10 +100,11 @@ namespace Objects
 			//case LacksFullFoundation:
 			//	return "LacksFullFoundation";
 			case GroundLevelObstruction:
-				return "GroundLevelObstruction";
+				return "Ground level obstruction";
 			case UpperLevelObstruction:
-				return "UpperLevelObstruction";
-
+				return "Upper level obstruction";
+			case MaxLevelExceeded:
+				return "Maximum level exceeded";
 		}
 		return "Unknown";
 	}
@@ -127,7 +128,7 @@ namespace Objects
 		{
 			isEnabled = b;
 			if (registerChange)
-				RegisterChange(EnableChanged,0);
+				RegisterChange(EnableChanged);
 		
 		}
 
@@ -232,9 +233,9 @@ namespace Objects
 	}
 
 
-	void Structure::OnConstructionFinished(float&atTime)
+	void Structure::OnInsert( float&atTime, bool freshConstruction )
 	{
-		Super::OnConstructionFinished(atTime);
+		Super::OnInsert(atTime, freshConstruction);
 
 
 		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
@@ -350,7 +351,8 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
-		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
+		using StringConversion::ToString;
+		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+ToString(location)+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 
 		{
@@ -395,6 +397,9 @@ namespace Objects
 	{
 		if (location.height == badHeight)
 			return BadHeight;
+		if (location.height + totalHeight-1 > Grid::CellStack::TopHeight)
+			return MaxLevelExceeded;
+
 		#ifdef HYBRID_GRID
 			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 			{
@@ -471,40 +476,12 @@ namespace Objects
 
 	
 
-	#ifndef CLIENT
 
-	
-		/*static*/	void Structure::CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime)
-		{
-			#ifdef HYBRID_GRID
-				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
-			#else
-				const UINT32 higher = location.stackID;
-			#endif
-			auto seq = World::actual.BeginChangeSequence(atTime);
-			#ifdef HYBRID_GRID
-				for (int j = 0; j < n.numNeighbors; j++)
-				{
-					seq.SelectStack(n.neighborID[j]);
-					for (int a = 0; a < broadHeight; a++)
-						if (seq.Change(location.height+a,Grid::Content::Clear))
-							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
-				}
-			#endif
-			seq.SelectStack(higher);
-			for (int a = 0; a < totalHeight; a++)
-				if (seq.Change(location.height+a,Grid::Content::Clear))
-					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
-		}
-
-
-	#endif
 
 	
 	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float&atTime)
 	{
-		atTime += timeEpsilon;
+		SyncTime(atTime);
 		if (RemoveConnectionTo(other))
 		{
 			LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
@@ -532,9 +509,6 @@ namespace Objects
 
 	/*virtual*/ bool				Structure::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime)
 	{
-		#ifndef CLIENT
-			CorrectTerrain(false,atTime);
-		#endif
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 			const auto&n = Grid::high.grid.GetCell(high).neighborhood;
@@ -644,7 +618,7 @@ namespace Objects
 		#endif
 
 		#ifndef NO_SATELLITES
-			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 			{
 				if (waypoints.Count() != 1)
 					return false;
@@ -744,6 +718,17 @@ namespace Objects
 	}
 
 	#ifdef HAS_WINDOW
+
+		/*virtual override*/ const Geometry*	ReactorCore::GetSourceForConnection(const PStructure&connected)	
+		{
+			PGenerator gen = To<Generator>::DynamicCast(connected); 
+			return gen && gen->connectedToReactor.lock().get() == this 
+				? &Generator::reactorConnector 
+				: Super::GetSourceForConnection(connected);
+		}
+
+
+
 		#ifndef NO_SATELLITES
 			/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
 			{
@@ -772,7 +757,7 @@ namespace Objects
 		/*virtual override*/ void				SkyPort::PrototypeSetup()
 		{
 			Super::PrototypeSetup();
-			ResearchState::RegisterUnlockCost(this,20);
+			Research::FactionState::RegisterUnlockCost(this,20);
 
 			#ifdef HAS_WINDOW
 	
@@ -834,7 +819,7 @@ namespace Objects
 			Super::OnNewConnection(other,acrossHighCell,atTime);
 			if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			{
-				resistence = ResistenceRounds;
+				resistance = ResistanceRounds;
 				SetEnabled(false,atTime,false);
 				ChangeOwnership(shared_from_this(), other->owner,atTime);
 			}
@@ -856,10 +841,13 @@ namespace Objects
 	#ifndef CLIENT
 		void					NexusPort::OnLoad()
 		{
-			if (resistence > 0)
-				owner->acquiringNexusControl++;
-			else
-				owner->nexusControl++;
+			if (owner != Faction::nexus)
+			{
+				if (resistance > 0)
+					owner->acquiringNexusControl++;
+				else
+					owner->nexusControl++;
+			}
 		}
 
 		/*virtual override*/ bool			NexusPort::ConnectsToDifferentOwnership() const
@@ -870,17 +858,17 @@ namespace Objects
 
 		/*virtual override*/ void			NexusPort::Tick(ResourceVector&v)
 		{
-			if (owner != Faction::nexus && resistence > 0)
+			if (owner != Faction::nexus && resistance > 0)
 			{
-				RegisterChange(NexusControlChanged,0);
-				resistence --;
-				if (!resistence)
+				RegisterChange(NexusControlChanged);
+				resistance --;
+				if (!resistance)
 				{
 					owner->acquiringNexusControl --;
 					DBG_ASSERT__(owner->acquiringNexusControl >= 0);
 					owner->nexusControl ++;
 					LogEvent( EventClass( EventSignificance::Important,EventFlavor::Gain ),this,"Control Acquired");
-					ApplicationInterface::SignalNexusControlChange(owner);
+					ApplicationInterface::SignalNexusControlChange(owner->alliance);
 				}
 			}
 
@@ -898,7 +886,7 @@ namespace Objects
 				{
 					if (!IsEnabled())
 					{
-						if (resistence > 0)
+						if (resistance > 0)
 						{
 							DBG_ASSERT__(owner->acquiringNexusControl > 0);
 							owner->acquiringNexusControl--;
@@ -917,9 +905,9 @@ namespace Objects
 						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
 
 					}
-					resistence = ResistenceRounds;
-					RegisterChange(NexusControlChanged,0);
-					ApplicationInterface::SignalNexusControlChange(owner);
+					resistance = ResistanceRounds;
+					RegisterChange(NexusControlChanged);
+					ApplicationInterface::SignalNexusControlChange(owner->alliance);
 				}
 			}
 		}
@@ -1001,14 +989,9 @@ namespace Objects
 				});
 			#else
 //				compounds.SetSize(Faction::all...)
-				for (const auto&f0 : Faction::all)
+				for (const auto&f : Faction::all)
 				{
-					PFaction faction = f0.lock();
-					DBG_ASSERT__(faction);
-					if (faction)
-					{
-						faction->UpdateCompoundCoverage();
-					}
+					f->UpdateCompoundCoverage();
 				}
 
 				Faction::nexus->UpdateCompoundCoverage();
@@ -1028,10 +1011,10 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Nexus Ports are indestructible structures of unknown origin."
 			" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
@@ -1045,10 +1028,10 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Enabled generators provide energy for the local compound."
 			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
@@ -1056,10 +1039,10 @@ namespace Objects
 			;
 		}
 
-		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags,owner);
 			label.MarkBriefEnd();
 			label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
 			" but multiple generators may be connected to the same reactor core."
@@ -1068,10 +1051,10 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 
 			ResourceVector balance,discard,maxStorage;
 
@@ -1118,7 +1101,7 @@ namespace Objects
 	
 	bool						WorkingStructure::CouldEnable(bool ignoreCanEnable/*=false*/)
 	{
-		if (health <= 0)
+		if (IsDeadOrGhost())
 			return false;
 		if (IsEnabled())
 			return true;
@@ -1144,14 +1127,14 @@ namespace Objects
 		{
 			if (isEnabled == b)
 			{
-				LogEvent(EventSignificance::Common,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
-				RegisterChange(EnableChanged,atTime);	//some state error, must be corrected
+				LogEvent(EventSignificance::Debug,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
+				SignalChangeByExternalCause(EnableChanged,atTime);	//some state error, must be corrected
 				return true;
 			}
 			if (b && (force==EnableIfPossible && !CanEnable()))
 			{
 				LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable at this time");
-				RegisterChange(CanEnableChanged,atTime);	//might be off...
+				SignalChangeByExternalCause(CanEnableChanged,atTime);	//might be off...
 				return false;
 			}
 			if (b && refreshNetwork)
@@ -1162,10 +1145,10 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					Array<Resource> missingResources;
+					Ctr::Array<Resource> missingResources;
 					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
-						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
+						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable "+GetTypeName()+": Insufficient resource supply in compound ("+outWhy+")");
 						if (missingResources.IsNotEmpty())
 						{
 							atTime += timeEpsilon;
@@ -1180,18 +1163,16 @@ namespace Objects
 				//	return false;
 				//}
 			}
-			atTime += timeEpsilon;
 			if (!b)
 				Compound::lastDisabled = this;
 			else
 			{
 				Compound::lastDisabled = nullptr;
-				SetSleep(false,atTime,false);
+				UpdateSleepState(false,atTime);
 			}
-			atTime = entityTime = std::max(entityTime,atTime)+timeEpsilon;
+			SyncTime(atTime);
 			LogEvent(EventClass::Preset::common,this,"Enabled-state changed "+String(isEnabled)+"->"+String(b)+" at t="+String(atTime)+", given signalStructure="+String(signalStructure)+", refreshNetwork="+String(refreshNetwork));
 			isEnabled = b;
-			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)
 				OnEnabledChange();
 			if (refreshNetwork)
@@ -1205,6 +1186,7 @@ namespace Objects
 				//	LogEvent(EventClass::Preset::error,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
 				//}
 			}
+			SignalChangeByExternalCause(EnableChanged,atTime);
 			return true;
 		}
 	#else

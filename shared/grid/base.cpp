@@ -1,6 +1,5 @@
 #include <global_root.h>
 #include "base.h"
-#include <math/complex.h>
 
 /*static*/ UINT32			BaseGrid::IsolatedCornerIndex[IsolatedCornerCount];
 /*static*/ bool				BaseGrid::CornerIsIsolated[12] = {false};
@@ -35,12 +34,12 @@
 
 /*static*/ void	BaseGrid::RadialInterpolation(const float3&v0, const float3&v1, float at, float3&out)
 {
-	TVec3<> axis;
+	M::TVec3<> axis;
 	Vec::cross(v0, v1, axis);
 	float a0 = Vec::angle(v0, v1);
 	//float angle = a0 * M_PIF/180.f;
 	Vec::normalize(axis);
-	TMatrix3<> rot;
+	M::TMatrix3<> rot;
 	Mat::BuildRotationMatrix(-a0*at, axis, rot);
 	Mat::Mult(rot, v0, out);
 }
@@ -53,8 +52,8 @@
 
 	//float4	q0,q1,q;
 	//float3	axis0,axis1;
-	//Obj::triangleNormal(base,Vector<>::zero,vx,axis0);
-	//Obj::triangleNormal(base,Vector<>::zero,vy,axis1);
+	//M::Obj::triangleNormal(base,Vector<>::zero,vx,axis0);
+	//M::Obj::triangleNormal(base,Vector<>::zero,vy,axis1);
 	//Vec::normalize(axis0);
 	//Vec::normalize(axis1);
 	//float angle0 = Vec::angle(base,vx);
@@ -63,8 +62,8 @@
 	//float3 v0 = axis0 * angle0 * xat;
 	//float3 v1 = axis1 * angle1 * yat;
 	//float3 v = v0 + v1;
-	//TMatrix3<> rot;
-	//Mat::BuildRotationMatrix(v.length(),v.Normalized0(),rot);
+	//M::TMatrix3<> rot;
+	//Mat::BuildRotationMatrix(v.GetLength(),v.Normalized0(),rot);
 	//Mat::Mult(rot,base,out);
 
 	//ComplexMath::_q2Quaternion(angle0,axis0,q0);
@@ -108,7 +107,7 @@
 		*/
 
 }
-/*static*/ void BaseGrid::UpdateRadii(Array<TNetCell>&cells)
+/*static*/ void BaseGrid::UpdateRadii(Ctr::Array<TNetCell>&cells)
 {
 	foreach(cells, cell)
 	{
@@ -150,7 +149,7 @@ static void Relax(BaseGrid::TCell*cells, count_t numCells)	//dont work well
 	radius /= numCells;
 	//ShowMessage(radius);
 
-	Array<float3>	next(numCells);
+	Ctr::Array<float3>	next(numCells);
 
 	for (index_t generation = 0; generation < 100; generation++)
 	{

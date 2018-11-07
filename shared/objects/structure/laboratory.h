@@ -9,7 +9,7 @@ namespace Objects
 		typedef WorkingStructureT<Laboratory>	Super;
 		friend class Super;
 
-		Buffer0<WLaboratory>		labNeighbors;
+		Ctr::Buffer0<WLaboratory>	labNeighbors;
 
 
         /**/						Laboratory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};
@@ -21,13 +21,18 @@ namespace Objects
 		static const int			EnergyConsumption = 10;
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 		#endif
 
 		count_t						GetTotalResearchOutput() const;
 
 
 		//Structure overrides:
+		#ifdef HAS_WINDOW
+		#ifdef ONE_COMPOUND_PER_FACTION
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<Laboratory>::DynamicCast(connected) ? &standardConnector : Super::GetSourceForConnection(connected);}
+		#endif
+		#endif
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override;
 		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
@@ -35,7 +40,6 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;
-		//virtual int					GetConstructionCost() const override {return 80;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 20;}
 		#endif
@@ -48,7 +52,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Laboratory"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Laboratory;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Laboratory;}
 
 
 		//WorkingStructure overrides:

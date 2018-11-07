@@ -1,23 +1,129 @@
-﻿Loading screen
+Lua API documentation:
+Test:
+	Tutorial
+	Game.Grid.NaturalResourcesSurveyedAt
+	Game.Grid.GetNaturalResourcesAt
+Implement:
+	Retrieve research dependencies of type
+	List type names (IsType()?)
+	Test function to determine if exported state is too large
+	Random number generator function
+FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
+Game.CreateMarker: note max marker count
+Cell.index: wrong range
+isMovile, heigh
+has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
 
 
-aerial radar and turret
-bomber
 
-end-game score recording and reporting
+asynchronous configuration editor start
+
+Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
+Icon for idling structures and vehicles
+
+
+
+web site: blend gallery image loading
+privacy notice: remove ip hashing (makes little sense)
+
+check if this still happens: if automatic round completion is on, has triggered, and round is manually resumed, any action that causes it to check completion will end the round again
+
+air and sub-surface defense for nexus base
+
+optimize camera terrain intersection test
+
+hard to reproduce/fix:
+	construction finish->move directly into storage seems to drop constructed lab
+	bug: generate... ends new game in round 0 if executed after previous match has ended
+		does not happen if forced on uncompleted matches (gameHasEnded=true, generate, ...)
+		configuration was (supposedly)
+			conquer nexus
+			start bases
+			ai on
+			emp zones
+			not closed
+		winner was declared based on mid-clear entity/faction state. exact call-sequence unknown. added checks to make sure winner cannot be declared while session is closed
+	Observed hostile entity with no health bar. Log says: Placing mobile entity (health 1) during animation at time 0.31702/[0.3145,0.3145](0). Added more logs
+	Encountered hostile entity in global list of mobile entities with health=0. No entities had actually died. Creation seemed correct, but health should not have been zero.
+		Server data is okay. Client assert on received data did not trigger. Added more checks further down the pipeline
+	AI radar drives into range of rocket tower. this should never happen. player radar stops (verified)
+		apparently AI intentionally drives into known range
+	clicking on ghosts crashes client (hostile or friendly). Added more log entries to track issue. Removed remote possible cause
+	bug: clipped terrain sometimes does not rasterize correctly, 
+		with clip inconsistency between neighboring stacks.
+		disappears after terrain rebuild is enforced (without moving clip area)
+
+conceptual issues:	
+	hotkeys in commands instead of clientMain.cpp
+
+steam release:
+	store: Short Description, Why Early Access?
+
+should have (eventually):
+	icon floater for insufficient resources to continue job
+	base fog on average terrain height
+	setting for fog density
+	scriptable AI and regression testing (they are related)
+	build high wall or build wall up destroys catformer. there are probably other operations that do the same
+	
+nice to have:
+	vehicle stores repair contained vehicles
+	better visualization of attack/scanning ranges. use special terrain meshes with hard lines to visualize edges
+	at bottom terrain level, emp-damaged, minimum allowed attack and scanning range is still high enough to see and attack neighboring cell
+	routing through vehicle stores
+	different tutorial types: fighting
+	BUG REPORT FORM
+	controller support
+	tremor generator building
+
+	better clipping:
+		visually remove all solid terrain beneath clipping height,
+		in clipping range, that has no air/liquid above it, or next to it
+	AI:
+		if dead ghost outside hostile sensory but in attack range of living hostile structure ghost, apply matching 'virtual' scanning range of given distance to that structure
+		if dead ghost outside hostile attack range but in scanning range of living hostile structure ghost, apply matching 'virtual' attack range of given distance to that structure
+		cache threat estimation
+		add health to markers. have non-mobile markers disappear only after they have take enough damage
+		
+steam: connect via tcp if steam lobby system fails. does not relate to lobbies. cannot reproduce. some explanations:
+	client manages to connect.
+	possible causes:
+		client never sends hello as a response to server hello
+			client tries to generate cryptographic key but never completes (unlikely)
+		server never sends hello response as a result to server hello
+			GetSharedPointerOfClient() returns nullptr. Check for "Peer disconnected on its own before client state handling could commence. Ignoring event"
+			SteamInterface::Authenticate() never does anything
+				BeginAuthSession() returns success
+					OnTicketResponse never gets called
+
+steam: find alternate server location service
+
+
+
+
+
+deactivate build buttons if unit limit is reached
+	
+
+	
+	
+	
+https://wiki.winehq.org/Winelib_User%27s_Guide
+feature: animated round number when round is started
+
+
+
+
+
+
+
+
+
+
+benchmark digging operation with many entities
 
 laboratory nexus risk, hacking vehicle turret
 laboratories have better yield if grouped but pose risk of virus changing lab group ownership to nexus
-
-
-
-bug: hoverformer sometimes tries building roads through buildings
-
-
-
-
-save planet configuration upon commit in interactive configuration mode. present list of last saves to recover from
-
 
 
 resources 2.0:
@@ -30,24 +136,7 @@ three flexible planet sizes (current is probably middle)?
 alloy? resource type that is required for some constructions, and requires a special factory to make
 
 
-
-
-client-side started local server should survive client closure?
-
-
-terrain benchmark
-compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
-
-
-
 alt+click should work on terraforming operations, too
-
-
-
-
-			
-		
-
 
 new mine system:
 	have mines multiply resource availability with number of solid natural blocks beneath mine. if >5/10, mine works at 100%
@@ -59,66 +148,36 @@ new mine system:
 		
 
 
-hostile ghosts die after one round
+bug: hostile ghosts sometimes die after one round
 
-auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
+bug: auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
 potentially undo last (movement) task if build job is rejected
 
 
-still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm
 
-water has no bottom cap, and the bounding box/sphere/w/e is sometimes off by a little
+bug: water has no bottom cap
 
 
 working structure enable-replacement (replace one enable working structure with another that is better suited to stabilize the compound)
+make generators switch off if not needed
 
 
 repair vehicle idle if something damaged?
-compound inefficieny
-wireless power? ... dedicated compounds?
 		
-
-
-make generators switch off if not needed
-
-split terraformers and constructors. elegance hints that this should not happen
-
 lava ship
 
-send entity id with server messages so user can click on the message to focus on them
+make visual events clickable
 better mine output (refinery)
+resource conversion (fusion). convert one resource type into another at 3:1. convert two resource types into another at 2:1.
+	uranium+energy -> minerals (rapid depletion)
+	minerals+energy -> uranium (fusion)
+	...
+	
 
-
-
-
-transfer build-state of terraformer to hostile factions
-	/see what hostile former is building currently
-
-
-
-
-
-Better handling of crashes in release (should not cause windows popup). Should probably self-terminate as a result.
-
-
-Satellite beam animation seed.
-
-
-
-
-better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
-
-better scoring
-general resource transporter vehicles
-
+	
+	
 let foundation blocks (and granite) explode into stone first // maybe later
 
-
-
-
-
-
-hover beam	//elevator
 
 
 granite-digging turret
@@ -141,11 +200,11 @@ round delay visualization on attack vectors
 
 vertical turret rotation
 
-water simulation
+liquid simulation
+	water as a resource?
 vehicle upgrade facilities
 multi-planet
 
-vertical sensors (vertical sensor corridor structures, postponed)
 
 
 
@@ -159,6 +218,206 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+done: Complete tooltips for regular UI
+fixed: check client starting server manager
+done: further delay tooltip appearance on components
+fixed: Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
+done: Documentation: controls (hint-overlay -> tooltip, end round: no yet -> not yet)
+done: Read configuration tooltips from factory default .ini file instead of user directory copy
+partially done: Revise UI and menu (cluster hex icons, flatter, stronger outlined regular menu with hex shapes). Some of that done, no grouping (yet)
+Interactive configuration mode:
+	button to toggle EMP zones on screen
+	fix selection of nexus units
+		disable status panel
+		disable resource panel
+add option to not mute sounds when window is deactivated
+attribution check (full author name, product name, license)
+done: wrap progress line (not actually wrapped, just 'Progress:\n...')
+skipped: sharp shadow edge on pillars map (fixed maybe?)
+skipped: remove bug report email address. added privacy note and email encryption
+done: obfuscate nicknames in log files, or remove them
+done: do not log chat messages
+done: replace ...\My Games\... with [My Games]\...
+done: replace * with [Install Dir]\... (using [Client]/[Server] instead)
+added: menu button in configuration mode
+done: since plane scale now matches vehicle scale: rescale plane geometries to something larger
+added: escape text or close button in statistics
+probably fixed (check 15cc1a1f4554405cad52829e3be8b58c3c192814 for details): lingering client attack tasks that cannot be undone or cleared as the server no longer knows them.
+fixed: sensory rarely flickers (recompiled despite being repainted)
+presumed fixed: steam: invites not working when already in game (maybe fixed)
+presumed fixed: hostile ghost has no owner. Added more log message on server and client to track ther issue. Fixed for nexus units. Possibly fixed
+done: showPlanetTypes lists (user) instead of *
+unreproducible: server enters main thread infinite loop at round 100. last report (server and client before connection loss): <Nexus> is done thinking
+probably fixed: ai client: did not finish round. did not crash, finished next round with no problems (after timeout new round)
+fixed: plane sensor range is not shown on sky grid
+done and improved: check tutorial after introduction of new events
+fixed: if research based sensor range expansion is the only 'terrain change' during round, fog of war is not updated
+improved: nexus bases off but ai on
+fixed: player bases off
+implemented: load ended game
+fixed: artillery auto attacks, but hits neighboring radar
+fixed: plane position markers are drawn atop planes instead below
+done: repairer should hold if repair has completed
+fixed: build bride to generates micro tasks incorrectly named 'build road to'
+done: home key: toggle sky grid
+done: copy default research script into program
+done: explode uranium storages
+done: research: transfer attribute vector rather than lua script and state (less data to transfer, more security)
+probably fixed: minor bug: allied structure state updates arrive before appearance on new offensive building
+fixed: client: attacks left of towers does not reset (missing server state change)
+done: at end of game: dead factions should be 'revived' and sent to remaining factions without having to disconnect
+fixed: spectator at end of game: dead factions do show up, but with no name or color
+done: end game statistics: put game state in top label 'The Game Has Ended' or the likes
+cannot reproduce: canceling attack-only tasks via backspace on tank does not update client visualization
+fixed: tower attack tasks not shown in state panel
+fixed: tower action not refreshed
+done: review planets. Add pillars planet
+done: documentation: update view icon image and documentation (+home-key on cft_aerial)
+done: steam: no handler set
+done: steam: no matching callback function set
+skipped: client: offensive missile trajectories are sometimes not rendered if origin is invisible. could not reproduce but noticed that random origin sometimes resides within terrain, making the trail hard to spot. might need improvement eventually but is not a bug
+fixed: alliances: friendly conquered nexus ports count as 'conquering'
+fixed: alliances: ghosts of allied units appear in red
+fixed: alliances: allied mobile unit sensor range not properly updated on terrain after motion
+done: alliances: make invite message bigger in log
+done: highlight possible movement targets (distance heatmap); ranged areas: build coarse geometry and highlight edges to cells that cannot be reached, that demand a drop, that take more rounds to reach
+done: check opacity of accessibility mesh
+done: build road to pathfinding: 1. make sure detailed road pathfinding cannot create too many jobs 2. detailed pathfinding should return substeps rather than a single detailed path
+done: update documentation, and upload
+rejected: exit fullscreen mode on focus loss?
+rejected: improve dig symbol
+rejected: road should not build bridges across liquids? switch mode automatically? reroute?
+added: aerial radar and turret
+added: bomber
+done: scale height of lower terrain levels to match loss of horizontal space?
+added: attack hotkey
+done: pathfinding: make sure surveyor or ai cannot enter vehicle store on accident because new reachabilitymapper allows such (add parameter)
+fixed: when ownership of nexus port changes while only visible from plane, nexus port will disappear until plane moves
+done: AA should not fire when emp damage is present
+fixed: plane can land on lava
+fixed: bomber auto-attacks targets that cannot be reached by a beam attack
+done: AA attack planes during their motion
+done: bomber obliteration job
+fixed: beam attack button lacks icon
+skipped: emergency transfer of resources to other storage when storage is destroyed. makes attacking storages less rewarding as victim will move resources away as possible. also counter-productive when introducing exploding resource tanks
+skipped: introduce two independent build versions: client and server, and don't match them via network. updated build process in projector should improve upon this
+skipped: dieing factions should not be disconnected, review current statistics?	known to cause all sorts of shit. better not
+fixed: missile turret sometimes (always?) schedules more attacks automatically than it can fire per round. not actually reproduced but new logic makes survival of such tasks impossible
+fixed: build road to pathfinding is broken when under ground (perhaps only when close to the core?)
+done: change x32 back to x86
+done: projector clean build
+fixed: statistics about number of terraformers seems to not count stored terraformers
+fixed: undo (abandoned) when resuming faction
+tested: spawn produced mobile unit into nearby hangar: vehicle plant->cargo plane, plane factory->vehicle store, plane factory->cargo plane. no issues
+tested: spawn mobile unit from one hangar to another: cargo plane->vehicle store, vehicle store->cargo plane. was disallowed before. now working
+tested: construct building with terraformer, finish by directly moving into neighboring transport plane. caused client crash. fixed
+tested: plane factories and vehicle stores. planes sometimes spawn into neighboring vehicle store. no issues
+tested: spawn produced mobile unit into nearby hangar: vehicle plant->vehicle store, alliance level. no issues
+done: smarter placement of new mobile units out of vehicle plants (more in the intended direction)
+fixed: ground level obstruction when building tower one level behind one wall build up where terraformer is
+tested: spawn mobile unit from one hangar to another: vehicle store->vehicle store. not allowed
+fixed: move horizontally to submerged vehicle store
+done: move camera out of terrain
+fixed: bug reporter: does not upload any files
+fixed: bug reporter: scans in ai/logs even if doesn't exist, message box, continues, empty log uploaded
+fixed: bug reporter: does not find fatals not in last line (servers do this)
+done: Update manual images of common unit commands.
+done(untested): http://www.hexacorn.com/blog/2016/03/27/detecting-wine-via-internal-and-legacy-apis/
+done: show changelog beneath server selection
+probably too much hassle: terrain benchmark, compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
+skipped: compound inefficieny (compounds do not exist right now)
+skipped: wireless power? ... dedicated compounds? (same as above)
+skipped: Satellite beam animation seed. (satellites are deprecated)
+skipped: general resource transporter vehicles. (resources teleport)
+skipped: hover beam	//elevator; with teleporting vehicle stores this is redundant
+done: hide selected sensor range sphere?
+done: mark emp zones in initial tutorial image (areas)
+fixed: increasing window width while long contact list is present does not reposition scroll-right-button
+done: newly owned nexus ports are off if could be on
+done: show text in configuration mode when emp fields are on
+done: depict shortcuts in build commands
+fixed: Invite -> 'Cancel Invite'; button doesn't change caption if in alliance
+fixed: build bridge to never ends when final field is partially blocked by building
+feature: vehicle stores should teleport units
+add new view button to toggle sensor bubbles in general, and include bubbles (if ticked) in (hostile/friendly) range display
+cannot fix: bug: build road never finished when center block beneath former can't be built. can't reproduce
+fixed: loaded nexus ports are switched off
+fixed: clarify reltionship between alliances and hangars:
+fixed: cannot abort configuration mode
+done: bug reporter: timer-based, async, or threaded parsing of log files (it can be slow)
+done: parallelize sensor repainting (multiple sensors in parallel)
+done: hunting offensive vehicles should not be stopped by newly halted offensive hostile units
+fixed: steam: check if updated research scripts are sent to the client
+done: steam: server: Remove udpBroadcast from /Server/Online on steam branch
+improved: better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
+rejected: client-side started local server should survive client closure? no
+cannot fix: bug: hoverformer sometimes tries building roads through buildings. can't reproduce
+done: save planet configuration upon commit in interactive configuration mode. present list of last saves to recover from
+fixed: bug: in configuration mode nexus bases sometimes do not update, despite server version visible
+fixed: can a radar vehicle drive into the range of a newly discovered rocket tower?
+done: generally check kill faction: are factions correctly removed from alliances and lists on client?
+fixed: bug: killing nexus faction via control console should either be rejected, or not crash the server
+client: save as... (if localhost server)
+remote control console: have server report current server status to console
+fixed: bug: server: No heartbeat received in 10 seconds. Shutting down (should be 3)
+bug: control console: selecting a text in the console freezes it (which is bad in server mode). Semi-fixed. QuickEdit is disabled, but marking text in the console the old way may still freeze it.
+dedicated server should start from control console, which is invisible and closed upon closing control console
+fatals should raise error window to the top. bug reporter showing up at all when server was hidden? it does.
+disallow definition of new variables in reflection
+client menu: start server, interactive, with save game dialog
+fixed: game goal counts two nexus ports necessary for two players, even through three are accessible!
+when loading while in interactive configuration mode, force-reenable session afterwards
+fixed: sleeping terraformers count towards per-round mineral demand
+make disabled nexus ports idle
+can't reproduce: check why nickname was exported in steam build
+check capsule in big picture mode (missing but uploaded, possibly due to non-published shop)
+artillery does not fire in parallel (due to terrain change time synchronization, inevitable if shooting at same location)
+make windows fade in and out
+remove construction option if structure is not unlocked and cannot be researched
+replace cannon towers with rocket towers of similar range
+check sensor appearance of sensor drone
+larger clip range
+put change log link in main menu
+make alliances invite-based
+client should be able to handle double registering server entities (should cut connection though)
+put online manual link in main menu
+exit fullscreen mode before launching remote control console
+raptors must fire during motion phase, otherwise other planes can use ground hopping to avoid ever being in the air during attack phase
+increase raptor firing range
+fixed: allied drone vanishes on move, causing client crashes
+increase health research rate
+remove regular connectors
+fixed: structure construction round calculation is off by a factor of 2 (shows x rounds, needs 2*x) on light terraformers
+fixed: placing/canceling construction job in vehicle plant does not update commands
+fixed: produced planes can spawn through terrain to sub orbit
+prevent mushroom terrains (reduce height range?, increase average planet height?) - made construction more expensive
+fixed: can't navigate planes via ground click
+fixed: client crashes, steam refuses to start client when server still running in the background, cannot end without ui
+hostile attack events from friendlies
+fixed: can dig into emp zone, get 100 emp damage
+middle panel statistics are wrongly wrapped
+votes should disappear after voting
+rename enabled nexus ports to conquering or something
+fixed: manually added server display wrong until contacted?
+hotkeys
+alliances
+colored faction list + chat history + chat message input
+send entity id with server messages so user can click on the message to focus on them (ids are sent, user can't click yet)
+faction-colored user messages
+build high/low wall (currently only high exists, which is misleading)
+button for main menu in server selection
+option to not fade out music in game
+remote console load command should behave as save command
+Better handling of crashes in release (should not cause windows popup). Should probably self-terminate as a result.
+better scoring
+vertical sensors (vertical sensor corridor structures) (surveyors do this)
+bug: still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm (doesn't appear to happen anymore)
+transfer build-state of terraformer to hostile factions (yes)
+	/see what hostile former is building currently (no)
+explosion optimization or options
+music
+end-game score recording and reporting
+Loading screen
 save/restore faction colors
 make shift-key functionality optional
 parallel attacks

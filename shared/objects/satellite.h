@@ -182,7 +182,7 @@ namespace Objects
 		//new overridables:
 		#ifndef CLIENT
 			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
-			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
+			virtual bool		WouldAutoAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
 			virtual bool		IsSentry() const	{return false;}
 			/**
 			Performs all per-round operations the local satellite can. The base version handles fueling of the local satellite.
@@ -196,7 +196,7 @@ namespace Objects
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override;
 		#ifndef CLIENT
-			virtual bool		FrontQueuePossibleAttacks()override;
+			virtual bool		FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)override;
 		#endif
 
 		//WorldEntity overrides:
@@ -247,7 +247,7 @@ namespace Objects
 		virtual bool			MotionIgnoresAttack() const override {return false;}
 		virtual float			GetPathSize() const override {return 1.f;}
 		#ifndef CLIENT
-			bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			bool				DirectTo(mode_t mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 			MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
 		#endif
 
@@ -282,7 +282,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				static CommandContainer	commands;
 				/**
-				Render-ready, object-space instruction to be used for all instances of this structure type
+				Build-ready, object-space instruction to be used for all instances of this structure type
 				*/
 				static DX11::InstructionBlock32	shape;
 				/**
@@ -300,7 +300,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				virtual void		PrototypeLoadGeometry() override;
 
-				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+				virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
 				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); commands.VisitMembers(visitor,force);};
 			#endif
 
@@ -318,11 +318,11 @@ namespace Objects
 			/*static*/ Geometry		SatelliteTemplate<Derivative>::geometry;
 
 		template <typename Derivative>
-		/*virtual overrider*/ bool			SatelliteTemplate<Derivative>::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+		/*virtual overrider*/ bool			SatelliteTemplate<Derivative>::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 		{
 		// {return Super::TestIntersection(geometry,b,d,distance);}
-			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			M::TVec3<> b,d;//,test;
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			
 			return geometry.TestIntersection(b,d,distance) | 	//binary or - must evaluate both
@@ -350,8 +350,8 @@ namespace Objects
 			{
 				geometry.Clear();
 				String name = GetTypeName();
-				name.set(0, Template::tolower(name.firstChar()));
-				name.replace(' ',"");
+				name.Set(0, Template::tolower(name.FirstChar()));
+				name.FindAndReplace(' ',"");
 				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 				if (shape.shader.IsEmpty())
 					(DX11::BaseInstructionBlock&)shape = stdVehicleShader;
@@ -447,7 +447,7 @@ namespace Objects
 			virtual int			GetUplinkTraffic() const override {return 10;}
 		#endif
 		virtual void			OnDestroy(RemovalType t, float&atTime) override {SyncTime(atTime); Super::OnDestroy(t,atTime); LoseGroundConnection();}
-		virtual void			OnConstructionFinished(float&atTime) override;
+		virtual void			OnInsert(float&atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW
 			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override;
@@ -475,7 +475,7 @@ namespace Objects
 
 		#ifndef CLIENT
 			//Satellite overrides:
-			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
+			virtual bool		WouldAutoAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
 			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
 			virtual bool		IsSentry() const override {return true;}
 		#endif

@@ -1,8 +1,379 @@
-v0.6.5
+v0.9.6
+	> Added tooltips to several buttons and checkboxes that explain in detail what those do.
+	> Tutorial servers now use random ports in the dynamic port range to avoid port collisions.
+	> Improved visual difference between enabled and disabled mines.
+	> Removed thick frames from visual buttons.
+	> Enhanced/cleaned up Lua API resource retrieval functions.
+	* Fixed vertical text alignment of buttons when using ultra-wide resolutions.
+
+v0.9.5	[Aug 26 2018]
+	> Removed resource panel while configuration mode is active.
+	> Replaced 'EMP Zones On/Off' on-screen message with pressable button.
+	> Updated configuration mode on-screen title.
+	> Options are now tabbed.
+	> Revised component based GUI.
+	* Fixed rendering of Nexus structures in configuration mode.
+	* Fixed save game loading via client GUI.
+	* Fixed loading of ended save games.
+	* Shielded tutorial matches from global server config.
+
+v0.9.4	[Aug 20 2018]
+	> Vehicle Plants can now be configured server-side to automatically spawn their production.
+	> Automatic mobile production deployment now takes hostile and ghost presences into account.
+	> Mobile moving units located at a routing destination no longer cause routing to fail.
+	* Fixed vertical position of server list changelog display.
+
+v0.9.3	[Aug 17 2018]
+	+ Added checkbox to configure whether sound should be muted when tabbed out.
+	+ Added control commands /IO/listAutoWorlds and /IO/deleteAutoWorld to control automatic save games via control console.
+	+ Added optional round-begin sound playback.
+	+ Added menu option to view list of used third party content.
+	> Tanks with partially filled attack queues will now automatically pick targets to fill the remaining slots.
+	> Owned Nexus Ports now count as mineral and fuel mines when base survival is checked.
+	> Tutorial message button now pulses when messages are available.
+	> Automatically fixed missing configuration entries are no longer visually displayed.
+	> Decreased vertical padding of buttons.
+	> Removed goal/Nexus markers in EMP zones.
+	> Removed goal/Nexus markers in visual configurator.
+	> Removed deprecated Rules variables uplinkBandwidth and newVehiclesHaveFullAmmo.
+	> Unified description of attack and sensor ranges.
+	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
+	* Fixed access violation when repairing/generating configuration files.
+	* Fixed error message when trying to set vehicle plant gathering point.
+	* Fixed display and functionality of unit limits.
+	* Fixed missing "[More Research Required]" note in tool-tips.
+	
+v0.9.2	[Aug 5 2018]
+	+ Added control variable /IO/logFile.
+	+ Added Server Manager.
+	+ Added server password protection.
+	> Improved help text of variables (now including default value).
+	> Now writing automatic savegames to (...)/saves/auto/[world id]/snapshot(...).
+	> AI clients now shut down if unable to connect for 15 seconds (server assumed dead).
+	* Fixed control console help text output.
+	* Fixed lobby discovery when hosting multiple servers using the same user account.
+	* Fixed loading of configuration files with empty aiScript.
+	* Fixed server always starting AI client with default game port.
+	* Fixed interactive tutorial.
+	* Fixed text wrapping.
+	* Fixed typo Research.Topics -> Research.topics as declared in documentation.
+
+v0.9.1	[Jul 14 2018]
+	> Improved some automated type descriptions.
+	> Removed error message when trying to right-click direct some structures.
+	> Moved terraformer turret to the front of the turret build options of vehicle plants.
+	> Improved coloring of movement arrows of non-selected mobiles.
+	* Fixed routing of 'Build Bridge to' command.
+	
+v0.9.0	[Jul 10 2018]
+	+ Bomb detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
+	+ Added checkbox to disable terrain camera clipping.
+	+ Added Privacy Notice link to bug reporter.
+	+ Added menu option to start new client instance using different profile.
+	+ Added support for scriptable AI.
+	> Removed internal emergency program in favor of install-directory factory default.
+	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
+	> Added close-button to game-end statistics (still closeable via Escape).
+	> Reduced default launcher attack range.
+	> Moved AI configuration folder from client/ai to aiClient.
+	> Full paths, nicknames and chat messages are no longer recorded in log files.
+	> Client profile names are now recognized by the server as an additional identifier so that multiple local clients can control each one faction.
+	> Added buttons to view log files in bug reporter.
+	> Doubled mechanic default repair speed.
+	* Fixed marking of user planet types by control console command /World/showPlanetTypes.
+	* Fixed random auto-ending of newly generated games.
+	* Fixed random lost unit task updates.
+	* Fixed DPI awareness manifest.
+	* Fixed bad fog of war at round beginning.
+	* Fixed missing menu button in configuration mode.
+	* Fixed main menu button while server list is visible.
+	* Fixed bug reporter crash when handling files still written to by game executable.
+	* Fixed empty bug reporter messages when encountering pre-logging faults.
+	* Fixed surveyor automation constantly rejecting previous path.
+
+v0.8.4	[Apr 22 2018]
+	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
+	> Status panel now wraps long lines.
+	> Now disallowing alliance changes once game has ended.
+	> Mechanic now keeps trying to repair the designated unit if insufficient minerals are available for full repair.
+	> If auto-spawned player bases are off, new factions receive a single full mineral container so they can build.
+	> Renamed 'Disconnect' to 'Return to Server List' to clarify what happens when in interactive configuration mode.
+	> Improved handling of errors when processing accepted join requests.
+	> Parallelized client sensor repainting in background threads, avoiding sub-second update freezes on large deployments.
+	> Switched off fuel-only mines are no longer considered idle.
+	> Added 'Start Interactive Tutorial' to 'Start Server' menu.
+	> Improved threat-reaction of automated surveyors already in hostile territory.
+	* Fixed crash when clicking on unit while HUD is hidden.
+	* Fixed missing tower attack action update.
+	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
+	* Fixed handling and display of winning alliance when game ends.
+	* Building bridges now correctly lists 'Build bridge here' micro task.
+	* Fixed various ghost ownership issues.
+	* Fixed artillery/cannons sometimes choosing the wrong trajectory server-side and hitting friendly units.
+	* Savegames now correctly record when a game has ended, and the respective winner.
+	* Fixed Nexus spawning frequency when AI is on but Nexus bases are off.
+	* Fixed low wall building when already atop a wall.
+	* Fixed zero unit health loaded from file when health was heavily researched.
+	* Fixed max repair speed enforcement of mechanics.
+	* Fixed state panel and resource list not being hidden when it's supposed to.
+	* Fixed state panel display of unit repair/build speed.
+	* Fixed shadow glitches when camera is considerably below planet mean radius.
+	* Fixed terraformer job 'Build wall up' while on bottom most height level.
+	* Fixed scale of job visualizations, attack rings, and progress bars on lower planet height levels.
+	* Fixed resource visualization atop mines on bottom most height level.
+	* Fixed EMP zone visualization when re-entering visual server configurator.
+	* Fixed health of repaired unit not always updating correctly.
+
+v0.8.3	[Apr 8 2018]
+	+ Added hotkey (P for Path) to quickly build roads using terraformers.
+	+ Added new planet type IvoryPillars.
+	> Alliance invite messages are now much larger in the visual client log.
+	> Clients can now see the resistance of nexus ports being conquered by allies.
+	> Bug reporter now compresses uploads and allows entering an optional sender email address.
+	> Revised default planet types FloatingIslands and HollowCore. Removed FloatingLands.
+	* Fixed fog of war for allied mobile units.
+	* Fixed coloring of allied ghosts.
+	* Fixed crash when selecting ghost while mobile reach visualization is on.
+	* Fixed configuration mode not updating hex buttons when loading different planet.
+
+v0.8.2	[Mar 31 2018]
+	+ If configured, fuel and uranium storage structures now detonate when suffering uncontrolled destruction.
+	> Lower terrain levels are now scaled to maintain the mean planet horizontal-to-vertical ratio.
+	> Improved performance and correctness of construction pathfinding.
+	> Client helper for long construction paths now splits route into segments rather than a bazillion micro jobs.
+	> Client helper now also segments other chain construction modes if too far away for server.
+	> Now showing more versions from changelog on server selection screen.
+	> Adjusted loudness of explosions.
+	* Fixed server crash when processing chain reaction explosions.
+	* Fixed doomsday explosions sometimes not being exposed to other factions even though configured such.
+
+v0.8.1	[Mar 30 2018]
+	> Ctrl can now be used to quickly enqueue unit attacks. Terrain clipping is now toggled using the End key.
+	* Removed 'Leave alliance' button when not member of the respective alliance.
+	* Fixed occasional allied client crash when deploying new units.
+	* Fixed client crash when simultaneously auto-spawning two new vehicles into the same vehicle store.
+	* Fixed automated surveyors waiting indefinitely in front of other mobile units.
+	
+v0.8.0	[Mar 25 2018]
+	+ Added experimental visualization of selected vehicle reach.
+	> Client now extends server pathfinding limitation when building very long roads by processing explicit path for server.
+	> Mobile units now scale down as they enter lower areas. Structures scale horizontally.
+	* Fixed stored vehicles not counting towards terraformer statistics.
+	* Fixed path finding when building walls and roads in constrained environments.
+	* Fixed auto-scheduled tower attacks sometimes remaining active.
+	* Fixed rendering of concurrent attack trajectories.
+	* Fixed attack trajectory occlusion.
+	* Fixed general sensor problems.
+
+v0.7.7	[Mar 11 2018]
+	> Bug reporter now presents all found log files, and derives game version from selected log file.
+	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.
+	> Camera can no longer enter non-clipped terrain.
+	> Vehicle plants can now deploy directly into vehicle stores.
+	> Vehicle plants with a gathering point try to be smarter about where they deploy new vehicles.
+	> Unit redeployment is now restricted to once per round.
+	* Fixed rare crash when leaving alliance.
+	* Fixed rare crash when trying to save game during fatal handling, but faction is not member of any alliance.
+	* Fixed crash when finishing terraformer construction by moving the vehicle into neighboring storage.
+	* Fixed rare crash when connection is lost before statistics can be sent to dead faction.
+	* Fixed bug reporter not detecting server fatal messages.
+	* Fixed bug reporter log file upload.
+	* Fixed main menu not automatically closing when pressing buttons.
+	* Fixed entering partially submerged vehicle stores.
+	* Fixed client crash when finishing construction and entering vehicle store with a terraformer during the same round.
+	* Fixed '(abandoned)' nickname postfix sometimes remaining when continuing abandoned faction.
+	* Fixed warnings when spectating games with dead factions.
+	* Disabled faction survival checks on dead factions.
+	* Fixed server wrongly invalidating faction access upon death when a new faction was created in the meantime.
+	* Sentry units no longer try to fire at hostile units within EMP zones.
+	* Fixed height range of nexus ports and bases.
+
+v0.7.6	[Mar 4 2018]
+	+ Added new view button to hide sensor ranges.
+	+ Now showing change log beneath server list (experimental).
+	> Showing all sensor ranges (hostile or friendly) now also renders sensor ranges unless switched off entirely.
+	> Menu->Disconnect now also aborts the interactive configuration mode (if active).
+	> Bug reporter now reads logs as needed, no longer in bulk before showing window.
+	> Lava planet has larger land masses now.
+	> Vehicle stores now share units regardless of their world distance.
+	> Now showing shortcuts as part of terraformer construction button captions.
+	> Now showing HUD text that EMP zones are on (or off) in interactive configuration mode.
+	> Newly conquered Nexus Ports are now automatically enabled if possible.
+	> Removed Nexus Ports from tutorial map to remove markers and avoid confusion.
+	* Fixed various issues with finding and displaying log files in bug reporter.
+	* Fixed nexus goal counting when EMP zones are off, but Nexus Ports are located on each pole.
+	* Fixed client crash when joining alliances with vehicles stored in hangars.
+	* Fixed client crash when storing vehicles while in alliance.
+	* Fixed UI components sometimes not properly re-layouting.
+	* Fixed conquered Nexus Ports switching off after loading a save game, resetting their resistance.
+	* Fixed storage counting in vehicle stores.
+	* Fixed sensor loss as a result of Nexus Port ownership change.
+	* Fixed terraformers building bridges endlessly when getting too close to other units on height level lower.
+	* Fixed invite button not changing caption to 'Cancel Invitation' when inviting other faction from existing alliance.
+	* Fixed arrow buttons sometimes not dis/appearing in contacts row when resizing window.
+	* Fixed entity sounds sometimes not disappearing from the terrain after a scene flush.
+	* Fixed interactive tutorial sometimes stacking messages and skipping ahead.
+	* Fixed tutorial start confirmation dialog when local server is already running.
+	* Fixed tutorial not detecting construction of reactor core.
+	* Removed invalid visual connection between reactor core and non-generator buildings.
+
+v0.7.5	[Feb 25 2018]
+	+ Localhost client can now trigger a game save without requiring a connected control console.
+	+ Added console faction attribute to see if a faction is dead (dead factions remain listed).
+	+ Added console faction attribute to see alliance of a faction.
+	> Added file dates to load game menu.
+	> Control console now queries full server status upon connection via new server command /Server/describeStatus.
+	> Control console now shows status and connected server identity in window title.
+	> Nexus faction can no longer be terminated using the console (ended in crash).
+	> Non-hunter mobiles will now always abort movements entering the regular attack range of any newly detected hostile entity.
+	> Improved performance of sensor updates. Heavy load updates should spread across all available CPU cores.
+	* Fixed console output freezes of server, control console, and console client due to marking of text in the console window.
+	* Fixed heartbeat failure message.
+	* Fixed dead factions lingering on.
+	* Fixed Steam thinking that the game was still running when the online manual or changelog were opened from the client.
+	* Fixed missing game config update to client.
+	* Removed dysfunctional remote variable Server/Online/udpBroadcast.
+	* Fixed radar vehicles driving into the firing range of mid-motion detected towers.
+	* Bug Reporter now retrieves timestamps from the observed log files.
+	* Fixed GUI bug resulting in keyboard handling errors and crashes when closing input dialogs.
+	
+v0.7.4	[Feb 20 2018]
+	+ Added runtime parameter to control console to start and monitor a server instance.
+	+ Added menu to start server with interactive or current configuration, or load a previously saved file.
+	+ Server now supports generating and loading configuration files at custom locations.
+	> Disabled Nexus Ports are now considered idle.
+	> Hardened sandboxing of Lua scripts.
+	> Custom planets now require a leading * when addressed via configuration or control console.
+	> Bug reporter now remains on top of other windows.
+	> Improved appearance of rocket launcher.
+	* Fixed rare crash when handling unusual chain of visibility changes.
+	* Fixed sleeping terraformers reducing resource balance prediction.
+	* Fixed structures being forcefully enabled after loading a savegame.
+	* When loading savegames while server is in interactive configuration mode, the session will now be started afterwards.
+	* Fixed counting of required nexus ports when game goal is conquer nexus.
+	* Fixed interactive configuration mode going out of sync (is completely offline now).
+
+v0.7.3	[Feb 4 2018]
+	+ Added menu entry 'Game->Launch Control Console' to directly open up a control console on the local server (if localhost).
+	+ Added menu entry 'Game->Help->View Online Manual' to open browser to online manual.
+	+ Added menu entry 'Game->Help->View Changelog' to open local editor to changelog file.
+	+ Introduced rocket launcher tower type to replace cannon towers.
+	> Enabled but non-conquered nexus ports are now shown as 'conquering' instead of 'enabled'
+	> Votes are now removed from display when the player clicked yes or no.
+	> Enable-buttons now change caption to 'Disable' if the local structure is currently enabled.
+	> Digging vehicles can no longer accidentally enter EMP zones.
+	> Improved handling of ghosts and critical events when part of an alliance.
+	> Non-dedicated servers now require constant heartbeats from the client. If the client crashes, the server quits after 3 seconds.
+	> Constructing geometry high above the ground now costs more.
+	> Reduced road and bridge thickness to one height level (removed road foundations).
+	> Can now build blocks in water.
+	> The enter/return key now commits any pending terrain building/removal operations.
+	> Clipped water is now rendered flat atop underlying solid, non-clipped terrain blocks
+	> Backspace/escape now also clear out any movement option markers.
+	> Removed visual connections between neighboring buildings unless they have meaning.
+	> Increased the amount of health gained from research.
+	> Added link to online manual to help menu.
+	> Replaced alliance join requests with an invite-based system.
+	> Added graceful client-side handling of entity double-spawning (was fatal error before).
+	> Increased range of terrain clipping feature.
+	> Components or structure types can now be hidden from visible client options by setting the respective member IsUnlocked to false.
+	> GUI components now fade in and out.
+	* Fixed crashes in bug reporter when trying to upload very long log files.
+	* Fixed handling of crashes in bug reporter.
+	* Fixed confirmation dialogs sometimes not allowing to actually press the confirm button (game wrongly assumed to be between rounds).
+	* Fixed material dialog in interactive configuration mode.
+	* Fixed rare crash when refreshing server list.
+	* Fixed crash when join-vote outlives the targeted alliance.
+	* Fixed server crash when trying to build multi-story building on top terrain level.
+	* Fixed friendly/hostile range visualization to work with alliances.
+	* Fixed server panel when manually adding server addresses that cannot be contacted right now.
+	* Fixed center panel of game end statistics.
+	* Fixed round estimation of terraforming operations.
+	* Fixed client crash when handling exceptionally many sensor changes in one round.
+	* Fixed vehicles ignoring max task count.
+	* Fixed sensors sometimes ending up removed twice resulting in invalid contact losses.
+
+v0.7.2	[Jan 25 2018]
+	> Added various hot-keys to directly build certain structure types with a selected terraformer.
+	> Progress bars are rendered atop units only when the current operation will require more than one round to complete.
+	> Moved menu button to the far right of the command bar.
+	> Server no longer sends game-save log messages to clients (including full save game path).
+	* Fixed confirmation dialog layout.
+	
+v0.7.1	[Jan 22 2018]
+	> Moved remote control folder /Online to /Server/Online.
+	* Fixed remote control variable /Server/Online/session.
+	* Loading a save game will now correctly disable interactive configuration mode.
+	* Fixed crash when displaying unknown construction tasks on foreign units.
+	* Fixed Steam lobbies sometimes not being created when session is started.
+
+v0.7.0	[Jan 20 2018]
+	+ Introduced sensor-sharing alliances of multiple factions.
+	+ Implemented rudimentary voting system that controls alliance operations.
+	> Reduced verbosity of faction idle messages.
+	* Fixed messages not being relayed to control console.
+	* Fixed faction renaming.
+	
+v0.6.9	[Nov 15 2017]
+	* Fixed crash when displaying statistics.
+
+v0.6.8	[Nov 5 2017]
+	+ Added .NET bug reporter.
+	* Fixed screen going black when changing FSAA settings with shadows disabled.
+	* Fixed display of events.
+	
+v0.6.7	[Oct 10 2017]
+	+ Added terraforming command "Build Low Wall to"
+	> Renamed terraforming command "Build Wall to" to "Build High Wall to"
+	> Chat messages now carry the respective origin faction ID and are colored accordingly.
+	> Cleaned up faction list and included non-fading chat log with timestamps.
+	* Fixed rare crash when trying to render tasks without visualization.
+	* Hexagonal command icons of left and right screen sides can no longer overlap.
+ 
+v0.6.6	[Oct 3 2017]
+	+ Added Game menu button to show active factions.
+	+ Added button to open main menu.
+	+ Added option to keep music playing during regular game. Not recommended since there currently is only one track.
+	> Loading a save game via control console will now lookup the desired path relative to the server configuration save directory.
+	* Fixed routing when encountering floating structure foundations.
+	* Fixed server crash when reporting invalid strings.
+	* Fixed steam-based communication.
+	
+v0.6.5	[Oct 1 2017]
+	+ Added background music to server selection screen.
+	+ Added remote control commands to end game at any time.
+	+ Added remote control command to immediately end round.
+	+ Added statistics recording and end-game display.
+	+ Added options dialog.
+	+ Implemented loading splash screen.
+	+ Added help sub-menu with some new options.
+	+ Added filter tabs to server list.
+	+ Added surveyor tower that can detect tunnel-based attacks in a wider range than mobile surveyors can.
+	> Automatic target choice (e.g. by a tower) now traces candidate trajectories to improve precision.
 	> Idle vehicles will no longer constantly attack indestructible units.
 	> Removed the 'Construct Selected' button on vehicle plants. Simply selecting a desired turret will enqueue the chosen vehicle composition.
 	> Surveyor turret is now much heavier, limiting the speed of the standard surveyor vehicle.
 	> Laboratories now maintain a short queue of research tasks to execute.
+	> Selected material buttons in interactive configuration mode now render as permanently down.
+	> EMP and doomsday weapon vehicles will no longer auto-fire at possible targets.
+	> Auto-targeting now chooses target by random if several are possible.
+	> Construction cordon is now placed only on discrete locations instead of smoothly following mobile entity motions.
+	> Build state of vehicles is now sent to hostile factions, so a cordon appears if a visible hostile unit is building something.
+	> When queueing up multiple endless research topics, the currently first topic will advance and then move to the end of the queue.
+	> Since vehicles shoot automatically at hostile units in range, they will no longer be considered idle if sleeping with targets in range.
+	> Saving the game via control console will now lookup the desired path relative to the server configuration save directory.
+	* Auto-targeting of towers and vehicles no longer causes friendly fire, assuming terrain is fully known.
+	* Nexus bases can no longer end up submerged in oceanic lava.
+	* Fixed interactive configuration mode sometimes getting out of sync with the server.
+	* Fixed server sometimes auto-saving while in interactive configuration mode.
+	* Fixed EMP zones not being initially visualized when entering interactive configuration mode.
+	* Fixed endless research not triggering client updates.
+	* Fixed Nexus units not received/keeping EMP damage.
+	* Fixed terrain modifications sometimes reaching into space occupied by units.
+	* Fixed EMP zones sometimes disappearing.
+	* Client no longer refuses to contact manually specified hosts when UDP listening fails.
+	* Fixed health display not updating if a hostile unit enters vision and is immediately fired upon.
+	* Fixed an insane number of tiny bugs.
 
 v0.6.4	[May 5 2017]
 	+ Base planet types are no longer copied to the configuration directory (except Template.ini), but may be overridden manually.
@@ -33,6 +404,7 @@ v0.6.3	[Feb 26 2017]
 	> Added number icons next to changeable values in interactive configuration mode.
 	> Decreased water transparency. Improved contrast to oceanic fog-of-war.
 	> Faction colors are now generated and distributed by the server. Clients render them even in non-spectator mode.
+	> Servers are now configured as public by default.
 	> Nexus faction research can now be configured to progress over time. Removed the initial research bonus of that faction.
 	> Improved initial faction placement.
 	* Fixed rare fatal client exception when failing to layout menu components.
@@ -40,6 +412,7 @@ v0.6.3	[Feb 26 2017]
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.
 	* Fixed some hex-commands not showing their price (e.g. 'Obliterate').
 	* Nexus bases located in residual EMP fields now instantaneously suffer EMP damage.
+	* Fixed Steam game invites.
 	* Added missing research state updates to spectators.
 	
 v0.6.2	[Jan 31 2017]
@@ -58,6 +431,8 @@ v0.6.1	[Jan 28 2017]
 	> Nexus units are now affected by residual EMP fields to prevent them from firing out of EMP zones.
 	> Automatic round progression now halts if hostile units appeared, or visible hostile activity has occurred during the previous round.
 	> Mechanic can now repair across one level of height difference.
+	> Disabled automatic lobby polling when connected to a server.
+	> Relocated steam notifications to not cover bottom right buttons.
 	> OpenAL sound output will now mute if the game window loses focus.
 	> New hostile contacts are now logged in the console.
 	* Fixed 'factionsPerEMPZone' implementation.
@@ -68,6 +443,7 @@ v0.6.1	[Jan 28 2017]
 
 v0.6.0	[Jan 10 2017]
 	+ Added option to configure the number of factions per unlocked EMP zone.
+	+ Added checkbox to disable polling and hide steam servers.
 	> Lua research script now first falls back to factory default (the research script in the install directory) before loading emergency program.
 	> Enabling or disabling EMP zones now takes immediate effect and is rejected if not possible.
 	> Removed less important lua reporting messages.
@@ -81,6 +457,7 @@ v0.6.0	[Jan 10 2017]
 v0.3.26	[Jan 1 2017]
 	+ Added Lua script support.
 	+ Introduced laboratory structure and Lua research programs.
+	> Added more logging when ignoring found steam lobbies.
 	> Decreased sensor range in reduced world resolution state.
 	> Added an on-screen message to show when client is in interactive configuration mode.
 	> Moved player client directory to Hexaverse/client (was Hexaverse/client/player).
@@ -100,6 +477,7 @@ v0.3.25 [Nov 4 2016]
 	* Fixed resource distribution.
 
 v0.3.24 [Oct 16 2016]
+	+ Added support for Steam lobbies, authentication, and communication protocol to bypass NAT.
 	+ Added new button and functionality to automatically progress round if all units have been instructed.
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
 	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.

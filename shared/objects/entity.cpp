@@ -22,9 +22,8 @@ namespace Objects
 {
 
 
-	GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
+	HashTable<TUniqueID,PWorldEntity>	idMap;
 
-	/*static*/ index_t			BaseAttributeCache::versionCounter = 0;
 
 
 
@@ -60,16 +59,34 @@ namespace Objects
 			return;
 		float t=0.f;
 
-		if (isOwnedByMe && isCreated)
+		if (isCreated && isInsertedIntoGrid)
 			UnregisterSensory(t);
 
 		empDamageLevel = damageLevel;
 
-		if (isOwnedByMe && isCreated)
+		if (isCreated && isInsertedIntoGrid)
 			RegisterSensory(t);
 
 	}
 	#endif
+
+
+	String	ToString(const BasicBuffer<World::Sensor>&sensors)
+	{
+		static StringBuffer buffer;
+		buffer.Clear();
+		buffer << "["<<sensors.Count()<<"]{";
+		bool first = true;
+		foreach (sensors,sensor)
+		{
+			if (!first)
+				buffer << ',';
+			first = false;
+			buffer << ToString(sensor->gridCenter)<<"_r="<<sensor->radius;
+		}
+		buffer << '}';
+		return buffer.ToStringRef();
+	}
 
 	WorldEntity::~WorldEntity()
 	{
@@ -89,10 +106,10 @@ namespace Objects
 
 
 	#ifdef HAS_WINDOW
-		bool				WorldEntity::TestIntersection(const Geometry&geo, const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+		bool				WorldEntity::TestIntersection(const Geometry&geo, const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 		{
-			TVec3<> b,d;//,test;
-			Mat::transform(inverse,_b,b);
+			M::TVec3<> b,d;//,test;
+			Mat::Transform(inverse,_b,b);
 			Mat::rotate(inverse,_d,d);
 			//Vec::normalize0(d);
 			return geo.TestIntersection(b,d,distance);
@@ -108,8 +125,15 @@ namespace Objects
 		//#ifdef _DEBUG
 		//	return GetTypeName() + " " + id.ToString()+" @"+String((void*)this);
 		//#else
-			return GetTypeName() + " " + id.ToString();
+			return GetTypeName() + " " + ToString(id);
 //		#endif
+	}
+
+	String						WorldEntity::GetNameAndOwner() const
+	{
+		if (!this)
+			return "<NULL>";
+		return GetName()+"["+(owner ? owner->GetName() : "<NULL>")+"]";
 	}
 
 
@@ -148,14 +172,14 @@ namespace Objects
 		#endif
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
+	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
 		if (!b)
 		{
 			outSteps.Clear();
-			return TurretTrajectory::InvalidTrajectory;
+			return ImpactDetails{};
 		}
 
 		const World::Data&visibleWorld =
@@ -166,16 +190,16 @@ namespace Objects
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,traceInActualWorld, TrajectoryEndPoint( location,zOffset ),dest,outSteps);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
+	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
 		if (!b)
 		{
-			return TurretTrajectory::InvalidTrajectory;
+			return ImpactDetails{};
 		}
 		const World::Data&visibleWorld =
 		#ifndef CLIENT
@@ -185,20 +209,20 @@ namespace Objects
 		#endif
 		;
 
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(location,zOffset),dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,traceInActualWorld, TrajectoryEndPoint(location,zOffset),dest);
 	}
 
 
 	
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
+	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
 		if (!b)
 		{
 			outSteps.Clear();
-			return TurretTrajectory::InvalidTrajectory;
+			return ImpactDetails{};
 		}
 		const World::Data&visibleWorld =
 		#ifndef CLIENT
@@ -207,16 +231,16 @@ namespace Objects
 			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual, traceInActualWorld,TrajectoryEndPoint(source,zOffset),dest,outSteps);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
+	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
 		if (!b)
 		{
-			return TurretTrajectory::InvalidTrajectory;
+			return ImpactDetails{};
 		}
 		const World::Data&visibleWorld =
 		#ifndef CLIENT
@@ -225,7 +249,7 @@ namespace Objects
 			World::actual
 		#endif
 		;
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,TrajectoryEndPoint(source,zOffset),dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, World::actual,traceInActualWorld, TrajectoryEndPoint(source,zOffset),dest);
 	}
 
 	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const
@@ -275,61 +299,69 @@ namespace Objects
 		return StaticEMPModify(raw,min,empDamageLevel);
 	}
 
-	/*virtual*/ float		WorldEntity::GetScanningRange() const
+	/*virtual*/ float		WorldEntity::GetScanningRange(const OwnerParameter&owner) const
 	{
-		return cache.maxScanningRange.GetEMPModified(*this,GetTable()->maxScanningRange);
+		return EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState(owner)),2);
 	}
 
 	/*virtual*/ float3		WorldEntity::GetScanningCenter(const Grid::LCellIdI&loc) const
 	{
-		return Grid::low.cells[loc.stackID].centerVertex.xyz * Grid::ToRadiusf(0.5f + loc.height);
+		return Grid::low.cells[loc.stackID].cornerCenter * Grid::ToRadiusf(0.5f + loc.height);
 	}
 
-	/*virtual*/ int			WorldEntity::GetConstructionCost() const
+	int			WorldEntity::GetConstructionCost() const
 	{
-		return cache.constructionCost.Get(GetResearchState(), GetTable()->constructionCost,Component::IFunc(),1);
+		return GetConstructionCost(owner);
 	}
 
-	/*virtual*/ int			WorldEntity::GetMaxHealth() const
+	/*virtual*/ int			WorldEntity::GetConstructionCost(const Objects::PFaction&owner) const
 	{
-		return cache.maxHealth.Get(GetResearchState(),GetTable()->maxHealth,Component::IFunc(),1);
-		//return GetTable()->maxHealth.GetValue(GetResearchState());
+		const auto&state = owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
+		return GetTable()->constructionCost.GetValue(state);
 	}
 
-	/*virtual*/ String		WorldEntity::DescribeMaxHealth() const
+	/*virtual*/ int			WorldEntity::GetMaxHealth(const OwnerParameter&owner) const
 	{
-		return GetTable()->maxHealth.Describe(GetResearchState());
+		return std::max(1,GetTable()->maxHealth.GetValue(GetResearchState(owner)));
 	}
 
-
-
-
-	Lua::Reference WorldEntity::GetResearchState() const
+	/*virtual*/ String		WorldEntity::DescribeMaxHealth(const OwnerParameter&owner) const
 	{
-		return owner ? owner->researchState.researchState : Lua::Reference();
+		return GetTable()->maxHealth.Describe(GetResearchState(owner));
 	}
 
 
-	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
+	/*static*/ const Research::Attributes::Table& WorldEntity::GetResearchState(const OwnerParameter&owner)
 	{
-		return GetTable()->maxScanningRange.Describe(GetResearchState());
+		return owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
+	}
+
+	const Research::Attributes::Table& WorldEntity::GetResearchState() const
+	{
+		return GetResearchState( this ? owner : nullptr);
+	}
+
+
+	/*virtual*/ String		WorldEntity::DescribeScanningRange(const OwnerParameter&owner) const
+	{
+		return GetTable()->maxScanningRange.Describe(GetResearchState(owner));
 	}
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
 	//{
-	//	return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= sqr(GetScanningRange());
+	//	return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= M::Sqr(GetScanningRange());
 	//}
 
-	//bool		WorldEntity::CanSee(const TVec3<>&center, float radius)	const
+	//bool		WorldEntity::CanSee(const M::TVec3<>&center, float radius)	const
 	//{
-	//	return Vec::quadraticDistance(system.w.xyz,center) <= sqr(GetScanningRange()+radius);
+	//	return Vec::quadraticDistance(system.w.xyz,center) <= M::Sqr(GetScanningRange()+radius);
 	//}
 
 
 
-	/*virtual*/ void	WorldEntity::OnConstructionFinished(float&atTime)
+	/*virtual*/ void	WorldEntity::OnInsert( float&atTime, bool freshConstruction )
 	{
-		atTime += timeEpsilon;
+		SyncTime(atTime);
 	}
 
 	#ifdef HAS_WINDOW
@@ -343,10 +375,10 @@ namespace Objects
 				{
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
 					if (IsVehicle())
-						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
+						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t,true);
 					#ifndef NO_SATELLITES
 						elif (IsSatellite())
-							cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+							cnt = Satellite::CountTurretOccurrences(overrideOwner,t,true);
 					#endif
 					else
 						FATAL__("Unexpected mobile entity type: "+GetTypeName());
@@ -354,7 +386,7 @@ namespace Objects
 				}
 				elif (IsStructure())
 				{
-					ConstName cname = GetCTypeName();
+					const EntityType cname = GetType();
 					cnt = Structure::CountOccurrences(overrideOwner,cname);
 					limit = RuntimeConfig::UnitLimits::Get(cname);
 				}
@@ -363,7 +395,7 @@ namespace Objects
 				if (limit == 0xffff)
 					return "";
 
-				return " Deployed: "+String(cnt)+"/"+String(limit);
+				return "Deployed: "+String(cnt)+"/"+String(limit);
 
 			}
 			return "";
@@ -379,7 +411,7 @@ namespace Objects
 			}
 		}
 
-		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags)
+		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			if (descFlags & DescIncludeName)
 				outResult << GetTypeName();
@@ -390,27 +422,37 @@ namespace Objects
 				if (descFlags & DescIncludeMaxHealth)
 				{
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth();
+						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth(owner);
 					else
-						outResult << "Health: " + this->DescribeMaxHealth();
+						outResult << "Health: " + this->DescribeMaxHealth(owner);
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
 						outResult << "Health: " +String(this->health);
 			}
+			
+			if (!this->owner && owner)	//prototype. Could ignore null-owner, but that would probably add notes in documentation
+			{
+				if (!this->IsUnlockedAtState(GetResearchState(owner)))
+				{
+					outResult << "[More Research Required]";
+				}
+			}
+			
+
 			if (descFlags & DescIncludePrice)
-				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost());
+				outResult << "Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost(owner));
 			if ((descFlags & DescIncludeUnitCount))
 			{
 				AppendDeploymentCount(outResult,owner);
 			}
-			outResult << "Scanning range: "+DescribeScanningRange();
+			outResult << "Scanning range: "+DescribeScanningRange(owner);
 			#ifndef NO_HIBERNATION
 					outResult << " "+String(TrafficResourceTag()) +String(GetUplinkTraffic());
 
 				const Hibernating*h = ToHibernating();
 				if (h && h->GetUplinkPriority())
-					outResult.lines.last() += ", Priority: "+String(h->GetUplinkPriority());
+					outResult.lines.Last() += ", Priority: "+String(h->GetUplinkPriority());
 			#endif
 
 			PTurretBase b = this->GetTurretBase();
@@ -418,21 +460,82 @@ namespace Objects
 			{
 				if (b->turret->CanAttack())
 				{
-					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange()+" ("+b->turret->trajectoryType.ToString()+")";
+					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange(owner)+" ("+b->turret->trajectoryType.ToString()+")";
 				}
 				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}
 		}
 	#endif
 
+	bool			WorldEntity::ClearOccupiedTerrain(World::Data&world, float atTime) const
+	{
+		#ifdef HYBRID_GRID
+			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
+		#else
+			const UINT32 higher = location.stackID;
+		#endif
+		auto seq = world.BeginChangeSequence(atTime);
+		using StringConversion::ToString;
+		const int height = GetHeight();
+		const bool forceRemoveAll = this->IsIndestructible();
+		#ifdef HYBRID_GRID
+			for (int j = 0; j < n.numNeighbors; j++)
+			{
+				seq.SelectStack(n.neighborID[j]);
+				for (int a = 0; a < height; a++)
+				{
+					if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)
+					{
+						LogEvent(EventSignificance::Common,this,"Lava encountered in cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
+						return false;
+					}
+					if (seq.Clear(location.height+a))
+						LogEvent(EventSignificance::Common,this,"Clearing cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
+				}
+			}
+		#endif
+		seq.SelectStack(higher);
+		for (int a = 0; a < height; a++)
+		{
+			if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)
+			{
+				LogEvent(EventSignificance::Common,this,"Lava encountered in cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
+				return false;
+			}
+			if (seq.Clear(location.height+a))
+				LogEvent(EventSignificance::Common,this,"Clearing cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
+		}
+		return true;
+	}
+
+
+	bool			WorldEntity::ClearOccupiedTerrain(float atTime) const
+	{
+		return ClearOccupiedTerrain(World::actual,atTime);
+	}
+
+
+
 	#ifndef CLIENT
 
+	
+		/*virtual*/ void			WorldEntity::SignalTerrainChange(float atTime)
+		{
+			if (!ClearOccupiedTerrain(atTime))
+			{
+				Remove(shared_from_this(),Objects::RemovalType::UncontrolledExplosion,atTime);
+			}
+		}
+
+
+	
 
 		///*static*/ void WorldEntity::MapVisibilityBetween(const PWorldEntity&e, const PWorldEntity&other, float&atTime)
 		//{
 		//	if (e == other || e->owner == other->owner)
 		//		return;
-		//	if (e->health <= 0)
+		//	if (e->IsDeadOrGhost())
 		//	{
 		//		LogEvent(EventClass::Preset::error,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
 		//		//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,
@@ -479,21 +582,46 @@ namespace Objects
 		//	}
 		//}
 
-
 	#endif
+
+	void		WorldEntity::OverrideSetRegisteredSensorToCurrentLocation()
+	{
+		registeredSensors.Clear();
+		VisitSensors(location, [this](const World::Sensor&sensor)
+		{
+			registeredSensors << sensor;
+		});
+	}
 	
 
 	void		WorldEntity::MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 	{
-		if (registeredSensor.location == location && registeredSensor.empDamageLevel == empDamageLevel)
-			return;
 		#ifdef CLIENT
-			this->UnregisterSensory(registeredSensor,atTime);
-			registeredSensor = this->RegisterSensory(location,atTime,newContacts);
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+		#endif
+		index_t at = 0;
+		bool anyChanged = registeredSensors.IsEmpty();
+		if (!anyChanged)
+			VisitSensors(location,[this,&at,&anyChanged](const World::Sensor&s)
+			{
+				if (anyChanged)
+					return;
+
+				anyChanged = at >= registeredSensors.Count() || s != registeredSensors[at];
+				at++;
+			});
+		if (!anyChanged)
+			return;
+		
+		#ifdef CLIENT
+			this->UnregisterSensory(registeredSensors,atTime);
+			this->RegisterSensory(registeredSensors,location,atTime,newContacts);
 		#else
-			TRegisteredSensor sensor = this->RegisterSensory(location,atTime,newContacts);
-			this->UnregisterSensory(registeredSensor,atTime);
-			registeredSensor = sensor;
+			RegisteredSensorStorage newSensors;
+			this->RegisterSensory(newSensors,location,atTime,newContacts);
+			this->UnregisterSensory(registeredSensors,atTime);
+			registeredSensors.swap(newSensors);
 		#endif
 	}
 
@@ -501,7 +629,7 @@ namespace Objects
 	/*virtual*/ void			WorldEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
 	{
 		float range = GetScanningRange();
-		static const float MinSolid = 2.f * Grid::UnitScale;
+		static const float MinSolid = 2.f;
 		const auto center = GetScanningCenter(loc);
 		if (range > MinSolid && !appearance)
 		{
@@ -513,124 +641,115 @@ namespace Objects
 	}
 
 
-	void					WorldEntity::ReapplySensory(float&atTime)
+	void					WorldEntity::InsertSensoryInto(World::Data&target, float&atTime)
 	{
-		if (!registeredSensor.IsSet())
-		{
-			LogEvent(EventClass::Preset::debug,this,"Cannot reapply entity sensory: None known. Registering new");
-			//DBG_FATAL__("Cannot reapply entity sensory: None known");	//this happens during loading
-			RegisterSensory(atTime);
-			return;
-		}
-
-		if (registeredSensor.empDamageLevel != empDamageLevel)
-		{
-			LogEvent(EventClass::Preset::debug,this,"Bad sensor reapplication detected (registeredSensor.empDamageLevel="+String(registeredSensor.empDamageLevel)+", empDamageLevel="+String(empDamageLevel)+")");
-			registeredSensor.empDamageLevel = empDamageLevel;
-		}
-
 		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Reapplying sensory ("+registeredSensor.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
-		VisitSensors(registeredSensor.location, [&atTime, this](const World::Sensor&sensor)
+		#ifdef CLIENT
+			if (isOwnedByMe || owner->SharingSensorWith(Faction::mine))
+		#endif
+		VisitSensors(location, [&target, &atTime,this](const World::Sensor&sensor)
 		{
-			#ifdef CLIENT
-				if (isOwnedByMe)
-				{
-					sensor.InsertInto(World::actual, atTime);
-				}
-			#else
-				owner->RegisterSensorCreation(sensor, location.height, atTime, nullptr);
-			#endif
+			sensor.InsertInto(target, atTime);
 		});
-
 	}
 
-
-	WorldEntity::TRegisteredSensor WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	void WorldEntity::RegisterSensory(RegisteredSensorStorage&sensors, const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		#ifdef CLIENT	//special constraint applied by client: strict register->unregister->register... order
-			if (registeredSensor.location != Grid::LCellIdI::Invalid)
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+			if (registeredSensors.IsNotEmpty())
 			{
-				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected (old="+registeredSensor.ToString()+", new="+loc.ToString()+"/emp "+String(empDamageLevel)+")");
-				DBG_FATAL__("Double sensor registration detected (old="+registeredSensor.ToString()+", new="+loc.ToString()+"/emp "+String(empDamageLevel)+")");
-				if (loc == registeredSensor.location && empDamageLevel == registeredSensor.empDamageLevel)
-					return registeredSensor;	//graceful exit
-				UnregisterSensory(registeredSensor,atTime);
+				LogEvent(EventClass::Preset::debug,this,"Double sensor registration detected");
+				DBG_FATAL__("Double sensor registration detected");
+				UnregisterSensory(registeredSensors,atTime);
 			}
 		#endif
-		TRegisteredSensor rs;
-		rs.location = loc;
-		rs.empDamageLevel = empDamageLevel;
+		sensors.Clear();
 
+		#ifdef CLIENT
+			if (World::actual.SensoryIsInvalid())
+			{
+				ASSERT_IS_NULL__(newContacts);
+				World::actual.AbortConcurrentSensorPainting();	//this will leave the sensor in an invalid state (if active), but it will end painting faster so the client can restart it with new sensors
+			}
+		#endif
+		
 		this->SyncTime(atTime);
-		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
-		VisitSensors(loc, [&atTime, newContacts,this](const World::Sensor&sensor)
+		LogEvent(EventSignificance::Debug,this,"Registering sensory ("+ToString(loc)+", "+String(GetScanningRange())+") at time "+String(atTime));
+		VisitSensors(loc, [&atTime, newContacts,&sensors,this](const World::Sensor&sensor)
 		{
 			#ifdef CLIENT
-				if (isOwnedByMe)
-				{
-					sensor.InsertInto(World::actual, atTime);
-				}
+				sensor.InsertInto(World::actual, atTime);
 			#else
-				owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
+				if (owner->alliance->config.shareSensors)
+				{
+					owner->alliance->ForeachMember([&atTime,newContacts,this,sensor](const PFaction&f)
+					{
+						f->RegisterSensorCreation(sensor, location.height, atTime, f == owner ? newContacts : nullptr);
+					},true);
+				}
+				else
+					owner->RegisterSensorCreation(sensor, location.height, atTime, newContacts);
 			#endif
+			sensors << sensor;
 		});
-		return rs;
+		LogEvent(EventSignificance::Debug,this,"Registered sensory ("+ToString(sensors)+") at time "+String(atTime));
+
 	}
 
-	void					WorldEntity::UnregisterSensory(TRegisteredSensor&sensor, float&atTime)
+	void					WorldEntity::UnregisterSensory(RegisteredSensorStorage&sensors, float&atTime)
 	{
-		if (sensor.location == Grid::LCellIdI::Invalid)
+		#ifdef CLIENT
+			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
+				return;
+		#endif
+		if (sensors.IsEmpty())
 		{
-			DBG_FATAL__("Double sensor unregistration detected (now="+sensor.ToString()+")");
+			DBG_FATAL__("Double sensor unregistration detected (now="+String(atTime)+"): "+ToString(id));
 			return;	//graceful exit
 		}
 		#ifdef CLIENT
-			if (registeredSensor != sensor)
+			if (&sensors != &registeredSensors)
 			{
-				DBG_FATAL__("Bad sensor unregistration detected (local="+registeredSensor.ToString()+", given="+sensor.ToString()+")");
-				UnregisterSensory(registeredSensor,atTime);
+				DBG_FATAL__("Bad sensor unregistration detected");
+				UnregisterSensory(registeredSensors,atTime);
 				return;
 			}
 		#endif
-
-		if (sensor.empDamageLevel != empDamageLevel)
-		{
-			DBG_FATAL__("Bad sensor unregistration detected (shouldBeEMP="+String(sensor.empDamageLevel)+", is="+String(empDamageLevel)+")");
-			int copy = empDamageLevel;
-			empDamageLevel = sensor.empDamageLevel;
-			UnregisterSensory(sensor,atTime);
-			empDamageLevel = copy;
-			return;
-		}
-
 		
 		this->SyncTime(atTime);	
-		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+sensor.location.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
-		VisitSensors(sensor.location, [&atTime, this](const World::Sensor&sensor)
+
+		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+ToString(sensors)+") at time "+String(atTime));
+		foreach (sensors,sensor)
 		{
-		#ifdef CLIENT
-			if (isOwnedByMe)
-			{
-				sensor.RemoveFrom(World::actual, atTime);
-			}
-		#else
-			owner->RegisterSensorRemoval(sensor, location.height, atTime);
-		#endif
-		});
-		sensor.empDamageLevel = 0;
-		sensor.location = Grid::LCellIdI::Invalid;
+			#ifdef CLIENT
+				sensor->RemoveFrom(World::actual, atTime);
+			#else
+				if (owner->alliance->config.shareSensors)
+				{
+					owner->alliance->ForeachMember([&atTime,this,sensor](const PFaction&f)
+					{
+						f->RegisterSensorRemoval(*sensor, location.height, atTime);
+					},true);
+				}
+				else
+					owner->RegisterSensorRemoval(*sensor, location.height, atTime);
+	
+			#endif
+		};
+		sensors.Clear();
 	}
 
 	#ifndef CLIENT
 		void					WorldEntity::ReSeedRandom()
 		{
-			CRC32::beginSequence();
-			CRC32::calcNext(&location,sizeof(location));
-			CRC32::calcNext(&RuntimeConfig::roundNumber,sizeof(RuntimeConfig::roundNumber));
-			ConstName cName = GetCTypeName();
-			CRC32::calcNext(&cName,sizeof(ConstName));
-			UINT32 seed = CRC32::endSequence();
+			CRC32::Sequence s;
+			s.AppendPOD(location);
+			s.AppendPOD(RuntimeConfig::roundNumber);
+			EntityType cName = GetType();
+			s.AppendPOD(cName);
+			UINT32 seed = s.Finish();
 			//std::cout << "Reseeding "<<GetName()<<" to "<<seed<< std::endl;
 			entityRandom.seed(seed);
 		}

@@ -2,6 +2,7 @@
 #define objectStructureH
 
 #include "entity.h"
+#include "entityType.h"
 #ifdef HAS_WINDOW
 	#include "geometry.h"
 #endif
@@ -76,7 +77,8 @@ namespace Objects
 			//LacksFullFoundation,
 			BadHeight,
 			GroundLevelObstruction,	//!< One or more terrain volume cells block structure placement the base level
-			UpperLevelObstruction	//!< One or more volume cells block structure placement on levels height+1 and above. This applies only to buildings of height 2+ 
+			UpperLevelObstruction,	//!< One or more volume cells block structure placement on levels height+1 and above. This applies only to buildings of height 2+ 
+			MaxLevelExceeded,	//!< Structure exceeds top grid level
 		};
 
 		/**
@@ -86,20 +88,11 @@ namespace Objects
 		*/
 		static placement_t			CommonCheckStructurePlacement(const Grid::LCellIdI&location, int broadHeight, int totalHeight);
 
-		static count_t				CountOccurrences(const OwnerParameter&o,ConstName type);
+		static count_t				CountOccurrences(const OwnerParameter&o,EntityType type);
 
 
 		#ifndef CLIENT
-
-
-			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime);
-			virtual void			CorrectTerrain(bool signalChange, float atTime)
-			{
-				CommonFixTerrain(this,location,GetBroadHeight(),GetHeight(),signalChange,atTime);
-			}
-
-			virtual bool			DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
-
+			virtual bool			DirectTo(CursorMode mode, MutableArrayRef<Grid::LCellIdI>  waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
 		#endif
 
 
@@ -123,13 +116,13 @@ namespace Objects
 		/**
 		Currently not used. Supposed to hold the index section after the local mesh has been embedded into a larger vertex/index-buffer
 		*/
-		//TIntRange<UINT32>			compiledSection;
+		//M::TIntRange<UINT32>			compiledSection;
 	
 
 		/**
 		List of all structures, the local structure is connected to. Symmetric. The connected structures must have a link back to the local structure.
 		*/
-		Buffer0<WStructure>				connectedTo;
+		Ctr::Buffer0<WStructure>				connectedTo;
 		#ifdef HAS_WINDOW
 			/**
 			Indicates whether or not the local structure has changed since the last shape recompilation. Cleared by StructureShape::RecompileConnectors()
@@ -193,13 +186,13 @@ namespace Objects
 		*/
 		virtual void				SignalLostNeighbor(const PStructure&, float&atTime);
 		/**
-		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
+		Signaling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
 		Invoked whenever a new direct or wireless connection has been established. Called before the new connection is inserted into @a connectedTo
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state. 0 if the new connection is wireless
 		*/
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) {};
 		/**
-		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalLostNeighbor()
+		Signaling method invoked by default implementations of SignalEnvironmentChange() and SignalLostNeighbor()
 		Invoked whenever an existing connection has been lost.
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state.
 		*/
@@ -256,7 +249,7 @@ namespace Objects
 		should be called by overriding implementations at some point.
 		*/
 		virtual void				OnDestroy(RemovalType, float&atTime) override;
-		virtual void				OnConstructionFinished(float&atTime) override;
+		virtual void				OnInsert(float&atTime, bool freshConstruction) override;
 		virtual void				PrototypeSetup() override;
 		virtual BaseAttributeTable*	GetTable() const override
 		{
@@ -286,17 +279,17 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 
-		//	#ifndef ONE_COMPOUND_PER_FACTION
+			#ifndef ONE_COMPOUND_PER_FACTION
 
 			/**
 			Retrieves the geometry to use for a specific connection during standard recompilation
 			*/
 			virtual const Geometry*		GetSourceForConnection(const PStructure&connected)	{return &standardConnector;}
 
-		//	#else
-		//	virtual const Geometry*		GetSourceForConnection(const PStructure&connected)	{return nullptr;}
+			#else
+			virtual const Geometry*		GetSourceForConnection(const PStructure&connected)	{return To<NexusPort>::DynamicCast(connected) ? &standardConnector : nullptr;}
 
-		//	#endif
+			#endif
 		#endif
 
 	};
@@ -336,7 +329,7 @@ namespace Objects
 				static CommandContainer	commands;
 
 				/**
-				Render-ready, object-space instruction to be used for all instances of this structure type
+				Build-ready, object-space instruction to be used for all instances of this structure type
 				*/
 				static PClientAttachment	staticShape;
 				/**
@@ -351,9 +344,8 @@ namespace Objects
 
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(table,owner, location,atTime)); }
 			#ifdef HAS_WINDOW
-				virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
-
+				virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+				virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &commands;}
 			#endif
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
 
@@ -384,19 +376,18 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Connector"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Connector;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Connector;}
 
 
-		//virtual int					GetConstructionCost() const override {return 5;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags,owner);
 				label.MarkBriefEnd();
 				label << "Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
 				;
@@ -508,7 +499,7 @@ namespace Objects
 			@param v Resources to store. If any are stored this vector must be updated accordingly
 			@param iteration Update iteration (0 to @a FinalLeftoverIteration ), indicates the storage iteration. High significance demand should be filled at iteration=0 or 1, other at 2 or 3. iteration=4 should always be consumed
 			*/
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)	{}
+			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)	{}
 			/**
 			Signals that a new round has started and production should commence. Tick() is not executed if the local structure is disabled or unstable
 			@param v Current resource balance vector. Supply should be added, demand subraced. No checks to the current values should be performed
@@ -518,7 +509,7 @@ namespace Objects
 			virtual void			OnSleepChange(float&t) override;
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 			#endif
 
 		#endif
@@ -578,7 +569,7 @@ namespace Objects
 				static CommandContainer	commands;
 
 				/**
-				Render-ready, object-space instruction to be used for all instances of this structure type
+				Build-ready, object-space instruction to be used for all instances of this structure type
 				*/
 				static PClientAttachment	staticShape;
 				/**
@@ -595,11 +586,9 @@ namespace Objects
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
-			#ifdef CLIENT
-				#ifdef HAS_WINDOW
-					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
-				#endif
+			#ifdef HAS_WINDOW
+				virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+				virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &commands;}
 			#endif
 		};
 
@@ -641,7 +630,6 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int					GetHeight() const override {return 2;}
 			virtual void				PrototypeSetup() override;
-			//virtual int					GetConstructionCost() const override {return 40;}
 			#ifndef NO_HIBERNATION
 				virtual int				GetUplinkTraffic() const override {return 10;}
 				virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
@@ -652,7 +640,7 @@ namespace Objects
 				virtual void			OnSleepChange(float&t) override;
 				virtual void			OnEnabledChange() override;
 
-				//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
+				//virtual void			OnInsert(float atTime) override;	//has to register with owner	//some day
 				//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
 				virtual void			Tick(ResourceVector&) override;
 
@@ -678,7 +666,7 @@ namespace Objects
 			//MobileEntityProducer overrides
 			#ifndef CLIENT
 				virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
-				virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+				virtual bool			DirectTo(CursorMode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 			#endif
 			virtual bool				CanProduce(const PWorldEntity&e) const override;
 
@@ -704,7 +692,7 @@ namespace Objects
 	Resource supplier, and winning condition, NexusPorts are located on the 12 pentagons around the planet.
 	In order to capture a NexusPort, one must build any one structure next to it. If the last structure is lost, the NexusPort
 	will change ownership back to the Nexus faction. Only then can it be captured by another player.
-	When switched on, NexusPorts count down a resistence value until they count as a winning condition.
+	When switched on, NexusPorts count down a resistance value until they count as a winning condition.
 	Whenever ownership changes, or energy supply is cut, this value resets
 	*/
 	class NexusPort : public WorkingStructureT<NexusPort>, public SkyLinkStructure
@@ -714,7 +702,7 @@ namespace Objects
 		typedef NexusPort		Self;
 		friend class Super;
 		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
-									: Super(table,owner,location,atTime),resistence(-1)	{}
+									: Super(table,owner,location,atTime),resistance(-1)	{}
 		/**/						Self()	{ }	//global prototype
 
 		#ifndef CLIENT
@@ -724,13 +712,13 @@ namespace Objects
 		//NaturalResourceVector		naturalResources;
 	public:
 		static const int			EnergyConsumption = 10;
-		int							resistence;
+		int							resistance;
 		#ifndef CLIENT
 			RoundNumber				lastSpawnRound=RoundNumber(
 											0xFFFFFFF0
 											);	//last time this nexus spawned nexus units
 		#endif
-		static int					ResistenceRounds;
+		static int					ResistanceRounds;
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
@@ -742,10 +730,10 @@ namespace Objects
 			void					OnLoad();
 
 			virtual void			Tick(ResourceVector&) override;
-			virtual void			OnConstructionFinished(float&atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
+			virtual void			OnInsert( float&atTime, bool freshConstruction )	{Super::OnInsert(atTime,freshConstruction); if (freshConstruction) SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 			#endif
 		#endif
 
@@ -754,7 +742,6 @@ namespace Objects
 
 
 
-		//virtual int					GetConstructionCost() const override {return 0;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
@@ -763,7 +750,7 @@ namespace Objects
 		//virtual int					GetMaxHealth() const override {return 1;}
 
 		virtual String				GetTypeName() const override { return "Nexus Port"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_NexusPort;}
+		virtual EntityType			GetType() const override {return ConstName::Type_NexusPort;}
 
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
@@ -788,6 +775,11 @@ namespace Objects
 		//Structure overrides:
 		virtual bool				IsSkyLinkStructure() const override {return true;}
 		virtual Category			GetCategory() const override {return Category::Resources;}	//not needed
+		#ifdef HAS_WINDOW
+		#ifdef ONE_COMPOUND_PER_FACTION
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return &standardConnector;}
+		#endif
+		#endif
 
 		//SkyLinkStructure overrides:
 		virtual WorkingStructure*	CastToStructure() override {return this;}
@@ -811,10 +803,9 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			static Geometry			reactorConnector;
 				
-			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector : &standardConnector;}
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector :  Super::GetSourceForConnection(connected);}
 		#endif
 
-		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -824,7 +815,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Generator"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Generator;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Generator;}
 
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
 
@@ -834,7 +825,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 		#endif
 
 	};
@@ -850,7 +841,6 @@ namespace Objects
 		static const int	UraniumCost = 5;
 		static const int	EnergyOutput = 40;
 
-		//virtual int					GetConstructionCost() const override {return 120;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 15;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -861,13 +851,12 @@ namespace Objects
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_ReactorCore;}
+		virtual EntityType			GetType() const override {return ConstName::Type_ReactorCore;}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		#ifdef HAS_WINDOW
-			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {PGenerator gen = To<Generator>::DynamicCast(connected); return gen && gen->connectedToReactor.lock().get() == this ? &Generator::reactorConnector : &standardConnector;}
-
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override;
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 		#endif
 
 		//WorldEntity overrides:
@@ -879,7 +868,7 @@ namespace Objects
 
 	
 
-	void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);	//defined in faction.h/.cpp
+	void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change);	//defined in faction.h/.cpp
 
 	
 
@@ -958,9 +947,9 @@ namespace Objects
 		/*virtual override*/	void			OtherStructure<Derivative>::PrototypeSetup()
 		{
 			Super::PrototypeSetup();
-			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(3,0);
-			#endif
+			//#ifdef HAS_WINDOW
+			//	commands.baseCoords = int2(3,0);
+			//#endif
 
 		}
 	

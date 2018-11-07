@@ -2,9 +2,16 @@
 
 Each connected player client allows control of one faction. All units and their [[concepts/scanning range|sensory]] are shared among each other and the player client.
 Structures of the same faction implicitly connect into [[concepts/compound|compounds]] to share [[concepts/resources]].
-Auto-firing towers will use the sensory of any other unit of the same faction to extend their own vision.
+Auto-firing towers will use the sensory of any other unit of the same faction or alliance to extend their own vision.
 
 Players are given control of a new faction during their first connection.
 A secret key is transferred that allows the client to resume control of this faction later on.
 Upon reconnection, players may choose to resume their faction or create a new one.
 However, only one key per planet ID is locally preserved.
+
+
+= Alliances =
+
+Since v0.7.0, factions may form alliances via the factions window (Main menu->Game->Show factions).
+Alliances are currently invite-based, and share sensor data amongst all members.
+Offensive units will never automatically target units of allied factions.

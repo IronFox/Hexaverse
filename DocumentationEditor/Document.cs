@@ -46,8 +46,9 @@ namespace DocumentationEditor
 		/// <returns>true if the filestamp is as expected, false if the local content has been updated from file</returns>
 		public bool CheckContent()
 		{
-			var delta = contentStamp - file.LastWrite;
-			if (Math.Abs(delta.TotalSeconds) < 5)
+			var lastWrite = file.LastWrite;
+			var delta = contentStamp - lastWrite;
+			if (delta.TotalSeconds > -5)
 				return true;
 			contentStamp = file.LastWrite;
 			havePreciseStamp = true;

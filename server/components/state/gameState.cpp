@@ -4,13 +4,13 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
-#include "../configurationMode.h"
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
-	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
+	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Game::CountLivingPlayerFactions());
+	Game::mostAlliancesAlive = std::max(Game::mostAlliancesAlive, (UINT32)Game::CountLivingPlayerAlliances());
 	Reflection::SignalFactionsChanged();
 }
 
@@ -18,21 +18,415 @@ void			ApplicationInterface::SignalFactionsChanged()
 
 namespace Game
 {
-	UINT32				mostFactionsAlive=0;
+	UINT32				mostFactionsAlive=0, mostAlliancesAlive=0;
 	Evolver::Abstract	*evolver = nullptr;
-	Objects::PFaction	winner;	//if set indicates game is over
+	Objects::WAlliance	winner;	//if set indicates game is over
+	Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 	Timer::Time			lastPhaseChange = timer.Now();
-	bool				roundTimerPaused = true;
+	bool				roundTimerPaused = true,endRoundNow=false, evolverActive = false;
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
 	INT32				tutorialAt=1;
 
 
+
+	void StartAI()
+	{
+		AIProcess::Begin(Objects::Faction::nexus->accessToken, ::Network::Config::sessionBasePort, ::Network::Config::GetServerPassword);
+	}
+
+	void StartAIIfEnabled()
+	{
+		if (Config::Nexus::enableAI)
+		{
+			StartAI();
+		}
+	}
+
+	#pragma region vote
+
+	/*static*/ HashTable<TUniqueID,PVote>	Vote::all;
+	/*static*/ HashTable<Array<TUniqueID>,PVote>	Vote::map;
+
+	/*static*/ void		Vote::Flush()
+	{
+		all.Clear();
+		map.Clear();
+	}
+
+
+	/*static*/ PVote	Vote::CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose)
+	{
+		PVote rs = FindConcerning(concerning);
+		if (!rs)
+		{
+			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
+			rs->scope = scope;
+			rs->onClose = onClose;
+			all.Set(rs->id,rs);
+			map.Set(concerning,rs);
+		}
+		return rs;
+	}
+
+
+
+	/*static*/ PVote	Vote::CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose)
+	{
+		PVote rs = FindConcerning(concerning);
+		if (rs)
+			return nullptr;
+		{
+			rs.reset(new Vote(concerning,phrase,closingAfterSeconds));
+			rs->scope = scope;
+			rs->onClose = onClose;
+			all.Set(rs->id,rs);
+			map.Set(concerning,rs);
+			rs->Advertise();
+		}
+		return rs;
+	}
+
+
+	/*static*/ void		Vote::CheckAllTimeouts()
+	{
+		all.FilterEntries([](const TUniqueID&, const PVote&v) -> bool
+		{
+			if (!v->CheckTimeouts())
+			{
+				map.Unset(v->concerning);
+				return false;
+			}
+			return true;
+		});
+	}
+
+	/*static*/ void		Vote::CheckAllVotes()
+	{
+		all.VisitAllValues([](const PVote&v) 
+		{
+			v->CheckVotes();
+		});
+	}
+
+	/*static*/ void		Vote::CastVote(const TUniqueID&voteID, const Objects::PFaction&f, bool inFavor)
+	{
+		auto vote = all.QueryPointer(voteID);
+		if (!vote)
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Vote "+ToString(voteID)+" does no longer exist");
+			return;
+		}
+		(*vote)->CastVote(f,inFavor);
+	}
+
+	void			Vote::CastVote(const Objects::PFaction&f, bool inFavor)
+	{
+		if (!MayVote(f))
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Faction not allowed to vote on this issue");
+			return;
+		}
+
+		if (closed)
+		{
+			LogEvent(EventClass::Preset::commandRejected,f,"Vote is closed");
+			return;
+		}
+		
+		bool*vote = this->votes.QueryPointer(f->id);
+		if (vote)
+		{
+			if (*vote != inFavor)
+			{
+				*vote = inFavor;
+				LogEvent(EventSignificance::Common,f,"Vote: Changed oppinion on "+ToString(id)+": "+String(inFavor));
+			}
+			else
+			{
+				LogEvent(EventSignificance::Debug,f,"Vote: Voted but did not change oppinion on "+ToString(id)+": "+String(inFavor));
+				return;
+			}
+		}
+		else
+		{
+			votes.Set(f->id,inFavor);
+			LogEvent(EventSignificance::Common,f,"Vote: Voted on "+ToString(id)+": "+String(inFavor));
+		}
+		if (RuntimeConfig::IsInAnyCommandPhase())
+			CheckVotes();
+	}
+
+	/*static*/ void		Vote::AdvertiseAllToNewlyConnectedPeer(const Objects::PFaction&f, TCP::Peer&peer)
+	{
+		all.VisitAllValues([&peer,f](const PVote&vote)
+		{
+			if (!vote->closed && vote->MayVote(f))
+			{
+				Protocol::VoteCreation out;
+				out.phrase = vote->phrase;
+				out.remainingSeconds = vote->closingAfterSeconds;
+				out.voteID = vote->id;
+				Channels::VoteCreation.SendTo(peer,out);
+			}
+		});
+	}
+
+
+	void			Vote::Advertise() const
+	{
+		Protocol::VoteCreation vote;
+		vote.phrase = phrase;
+		vote.remainingSeconds = closingAfterSeconds;
+		vote.voteID = id;
+
+		if (!scope)
+			Channels::VoteCreation.SendTo(::Network::server,vote,Channels::Level::Faction);
+		else
+			::Network::playerMap.VisitAllEntries([vote,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			{
+				if (scope(f))
+					Channels::VoteCreation.SendTo(client->peer.lock(),vote);
+			});
+	}
+
+	bool			Vote::CheckTimeouts()
+	{
+		float seconds = GetAge();
+		if (seconds < closingAfterSeconds && !closed)
+			return true;
+		Close();
+		
+		if (seconds > clearedAfterSeconds)
+		{
+			LogEvent(EventSignificance::Common,"Clearing out vote "+ToString(id)+" after "+String(seconds)+" sec.");
+			return false;
+		}
+		return true;
+	}
+
+	count_t			Vote::CountEligibleVoters() const
+	{
+		count_t rs = 0;
+		Objects::ForeachFaction([&rs,this](const Objects::PFaction&f){if (!scope || scope(f)) rs++;},false);
+		return rs;
+	}
+
+	/*static*/ count_t	Vote::GetQuorum(Quorum q, count_t eligibleVoters)
+	{
+		switch (q)
+		{
+			case Quorum::All:
+				return eligibleVoters;
+			case Quorum::TwoThirds:
+				return Math::CeilDiv<count_t>(eligibleVoters*2,3);
+			case Quorum::Majority:
+				return eligibleVoters /2 + 1;
+			case Quorum::OneThird:
+				return Math::CeilDiv<count_t>(eligibleVoters,3);
+		}
+		FATAL__("Unexpected type for quorum: #"+String(index_t(q)));
+		return 1;
+	}
+
+	/*static*/ count_t	Vote::GetVotesToPass(VotesToPass v, count_t voters)
+	{
+		switch (v)
+		{
+			case VotesToPass::SimpleMajority:
+				return (voters / 2) +1;
+			case VotesToPass::TwoThirds:
+				return Math::CeilDiv<count_t>(voters*2,3);
+			case VotesToPass::Unanimous:
+				return voters;
+		}
+		FATAL__("Unexpected votes to pass type: #"+String(index_t(v)));
+		return 1;
+	}
+
+
+	void Vote::CheckResults(Protocol::VoteResult&rs, bool timedOut)	const
+	{
+
+		bool test = Array<int>() == Array<char>();
+
+		rs.eligibleToVote = (UINT32)CountEligibleVoters();
+		rs.quorum = (UINT32)GetQuorum(this->quorum, rs.eligibleToVote);
+		rs.votedAgainst = 0;
+		rs.votedInFavor = 0;
+		rs.voteID = id;
+
+		ASSERT_LESS_OR_EQUAL__(votes.Count(),rs.eligibleToVote);
+
+		votes.VisitAllValues([&rs](bool inFavor)
+		{
+			if (inFavor)
+				rs.votedInFavor ++;
+			else
+				rs.votedAgainst ++;
+		});
+
+		const bool quorumReached = votes.Count() >= rs.quorum && timedOut;
+		const count_t votesToPassTotal = GetVotesToPass(votesToPass,rs.eligibleToVote);
+		const count_t votesToPassQuorum = GetVotesToPass(votesToPass,votes.Count());
+		const bool passed = rs.votedInFavor >= votesToPassTotal || (quorumReached && rs.votedInFavor >= votesToPassQuorum);
+		const count_t abstainedVotes = rs.eligibleToVote - votes.Count();
+
+
+		if (passed)
+			rs.resultType = Protocol::VoteResultType::Passed;
+		else
+			if (quorumReached || rs.votedInFavor + abstainedVotes < votesToPassTotal)
+				rs.resultType = Protocol::VoteResultType::Rejected;
+			else
+				rs.resultType = Protocol::VoteResultType::TimedOut;
+	}
+
+
+
+	void			Vote::Close()
+	{
+		if (closed)
+			return;
+
+		Protocol::VoteResult rs;
+		CheckResults(rs,true);
+		Close(rs);
+	}
+
+
+	void			Vote::Cancel()
+	{
+		Protocol::VoteResult rs;
+		CheckResults(rs,true);
+		rs.resultType = Protocol::VoteResultType::Canceled;
+		this->clearedAfterSeconds = std::min(this->clearedAfterSeconds, this->GetAge() + 2.f);	//reduce to 2 seconds on cancel
+		Close(rs);
+	}
+
+
+	void			Vote::Close(const Protocol::VoteResult&rs)
+	{
+		if (closed)
+			return;
+		closed = true;
+
+		LogEvent(EventClass::Preset::common,"Closing vote "+ToString(id));
+		const count_t votesToPassTotal = GetVotesToPass(votesToPass,rs.eligibleToVote);
+		const count_t votesToPassQuorum = GetVotesToPass(votesToPass,votes.Count());
+
+		String state = "  voted: "+String(votes.Count())+"/"+String(rs.eligibleToVote)+", quorum="+String(rs.quorum)+", toPassTotal="+String(votesToPassTotal)+", toPassQ="+String(votesToPassQuorum);
+
+		switch (rs.resultType)
+		{
+			case Protocol::VoteResultType::Passed:
+				state += "  passed";
+			break;
+			case Protocol::VoteResultType::Rejected:
+				state += "  rejected";
+			break;
+			case Protocol::VoteResultType::TimedOut:
+				state += "  timed out";
+			break;
+			case Protocol::VoteResultType::Canceled:
+				state += "  canceled";
+			break;
+			default:
+				state += "  unknown(#"+String(rs.resultType)+")";
+			break;
+		}
+		LogEvent(EventClass::Preset::common,state);
+
+
+		if (!scope)
+			Channels::VoteResult.SendTo(::Network::server,rs,Channels::Level::Faction);
+		else
+			::Network::playerMap.VisitAllEntries([rs,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			{
+				if (scope(f))
+					Channels::VoteResult.SendTo(client->peer.lock(),rs);
+			});
+
+		onClose(shared_from_this(), rs);
+	}
+
+	void			Vote::CheckVotes()
+	{
+		if (closed)
+			return;
+
+		Protocol::VoteResult rs;
+		CheckResults(rs, false);
+		if (rs.resultType != Protocol::VoteResultType::TimedOut)
+			Close(rs);
+	}
+
+	#pragma endregion
+
+
+
+	count_t				Config::CountActuallyAccessibleZones(count_t temporaryFactionCountBonus/*=0*/)
+	{
+		count_t numZones = CountTheoreticallyAccessibleZones(temporaryFactionCountBonus);
+		if (numZones == 0)
+			return 1;
+
+		count_t unlocked = 0;
+		for (index_t i = 0; i < numZones; i++)
+		{
+			if (Nexus::bases.havePlaced && BaseGrid::IsIsolatedCorner(unlocked))
+			{
+				unlocked++;
+			}
+			unlocked++;
+		}
+		return unlocked;
+	}
+
+
+	void				SetDefaultEvolver()
+	{
+		evolver = Evolver::GetDefault();
+	}
+
+	Evolver::Abstract*	GetEvolver()
+	{
+		return evolver;
+	}
+
+	void			BeginRoundProcessing()
+	{
+		ASSERT__(!evolverActive);
+		evolverActive = true;
+		evolver->BeginRoundProcessing();
+	}
+
+	void			FinishRoundProcessing()
+	{
+		ASSERT__(evolverActive);
+		evolverActive = false;
+		evolver->FinishRoundProcessing();
+	}
+
+	bool			ContinueRoundProcessing()
+	{
+		ASSERT__(evolverActive);
+		return evolver->ContinueRoundProcessing();
+	}
+
+	bool			IsProcessingRound()
+	{
+		return evolverActive;
+	}
+
+
 	namespace Config
 	{
 		int			roundTimer = -1;
-		UINT32		uplinkBandwidth = 500;
+		#ifndef NO_HIBERNATION
+			UINT32		uplinkBandwidth = 500;
+		#endif
 
 		bool		closedGame = false,
 					startBases = false,
@@ -50,31 +444,54 @@ namespace Game
 
 		namespace Nexus
 		{
-			bool		haveBases = false
-						IF_SATELLITES_P( ,haveSatellitesAtopBases = true )
+			Placement	bases,
+						allPorts,
+						satellitesAtopBases
 						;
 
 			bool		enableAI = false;
 			UINT32		roundsPerResearchPoint=10;
 			float		threatEstimationFactor = 1.f;
-			Array<Objects::Component::Turret*>	vehicleTurrets;
+			Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
+
+		count_t	GetTargetNexusCount()
+		{
+			if (RuntimeConfig::empZones)
+				return CountActuallyAccessibleZones();
+			if (Game::Config::Nexus::allPorts.havePlaced)
+			{
+				return 10;
+			}
+			else
+				return 2; //should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
+		}
+
+
 	}
 	
 
 
 	namespace Network
 	{
-		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+		UINT32		NotifyForeignerFlags()
 		{
-			static Buffer0<UINT32>	changed;
+			auto rs = BaseNotifyForeigners;
+			if (Config::exposeActionLeftToHostileFactions)
+				rs |= Objects::WorldEntity::ActionChanged;
+			return rs;
+		}
+
+		static void		_UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+		{
+			static Ctr::Buffer0<UINT32>	changed;
 			if (!f)
 				return;
 			f->knownResources.Update(center,range,changed);
 			if (changed.IsEmpty())
 				return;
 			::Network::PClient client;
-			if (!::Network::playerMap.query(f,client))
+			if (!::Network::playerMap.Query(f,client))
 				return;
 			TCP::PPeer peer = client->peer.lock();
 			if (!peer)
@@ -98,6 +515,47 @@ namespace Game
 			}
 		}
 
+		void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+		{
+			if (!f)
+				return;
+			if (!f->alliance->config.shareSensors)
+				_UpdateResourceCoverage(f,center,range,timestamp);
+			else
+				f->alliance->ForeachMember([center,range,timestamp](const Objects::PFaction&f2)
+				{
+					_UpdateResourceCoverage(f2,center,range,timestamp);
+				});
+		}
+
+
+
+		void SendStatisticsTo( TCP::Peer & peer, const Objects::PFaction & faction)
+		{
+			Objects::Statistics::EnterNetworkMode();
+			Protocol::BeginStatisticsSequence begin;
+			begin.factionID = faction->id;
+			begin.allianceID = faction->alliance ? faction->alliance->id : TUniqueID::Empty();
+			begin.factionIsDead = faction->isDead;
+			begin.factionName = faction->name;
+			begin.color = faction->color;
+			Channels::Statistics::BeginStatisticsSequence.SendTo(peer,begin);
+
+			faction->statistics.VisitRounds([&peer](const Objects::Statistics::Round&r)
+			{
+				Channels::Statistics::round.SendTo(peer,r);
+			},true);
+			faction->statistics.VisitEntityTypes([&peer](const Objects::Statistics::EntityType&t)
+			{
+				Channels::Statistics::entityType.SendTo(peer,t);
+			});
+			faction->statistics.VisitFactionInteractions([&peer](const Objects::Statistics::FactionInteraction&i)
+			{
+				Channels::Statistics::factionInteraction.SendTo(peer,i);
+			});
+			peer.SendSignal(Protocol::ChannelID::EndStatisticsSequence);
+		}
+
 
 		void		HandleSessionSuspension()
 		{
@@ -109,45 +567,64 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
+			mostAlliancesAlive = 0;
 			tutorialAt=1;
+			endRoundNow = false;
 			winner.reset();
+			postEvolutionWinner.reset();
 			HandleSessionSuspension();
+			Vote::Flush();
 		}
 
 		void		HandleSessionRestart()
 		{
-			if (Config::Nexus::enableAI)
-				AIProcess::Begin(Objects::Faction::nexus->accessToken);
+			Game::StartAIIfEnabled();
 			ApplicationInterface::SignalFactionsChanged();
+		}
+
+
+		UINT32		AssembleGameFlags(bool allowSpectatorFactions)
+		{
+			UINT32 rs = 0;
+			if (Config::closedGame)
+				rs |= Protocol::GameFlag::ClosedGame;
+			if (RuntimeConfig::empZones)
+				rs |= Protocol::GameFlag::EMPZones;
+			if (Config::basesRequired)
+				rs |= Protocol::GameFlag::BasesRequired;
+			if (Config::startBases)
+				rs |= Protocol::GameFlag::StartBases;
+			if (Config::Nexus::enableAI)
+				rs |= Protocol::GameFlag::NexusAI;
+			if (RuntimeConfig::tutorialMode)
+				rs |= Protocol::GameFlag::TutorialMode;
+			if (World::Config::simulateLiquids)
+				rs |= Protocol::GameFlag::SimulateLiquids;
+			if (Config::Nexus::allPorts.havePlaced)
+				rs |= Protocol::GameFlag::NexusPortsOnAllPoles;
+			if (::Network::Config::HasServerPassword())
+				rs |= Protocol::GameFlag::RequireServerPassword;
+			if (Config::Nexus::bases.havePlaced)
+				rs |= Protocol::GameFlag::NexusHasBases;
+
+			rs |= Config::factionSupportFlags;
+			if (!allowSpectatorFactions)
+				rs &= ~Protocol::GameFlag::SupportSpectatorFactions;
+
+			if (RuntimeConfig::GameHasEnded())
+			{
+				rs |= Protocol::GameFlag::GameHasEnded | Protocol::GameFlag::SupportSpectatorFactions;	//always support spectator in this case
+			}
+			return rs;
 		}
 
 
 		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
 		{
-			gameConfig.researchScript = Objects::ResearchState::GetScriptIdentifier();
 			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
-			gameConfig.gameFlags = 0;
+			gameConfig.gameFlags = AssembleGameFlags(allowSpectatorFactions);
 			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
-			if (Config::closedGame)
-				gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
-			if (RuntimeConfig::empZones)
-				gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
-			if (Config::basesRequired)
-				gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
-			if (Config::startBases)
-				gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
-			if (Config::Nexus::enableAI)
-				gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
-			if (ConfigurationMode::IsActive())
-				gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
-			if (RuntimeConfig::tutorialMode)
-				gameConfig.gameFlags |= Protocol::GameFlag::TutorialMode;
-			if (World::Config::simulateLiquids)
-				gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
-			gameConfig.gameFlags |= Config::factionSupportFlags;
-			if (!allowSpectatorFactions)
-				gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
 		}
 
 		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)
@@ -160,24 +637,71 @@ namespace Game
 			info.worldID = World::worldID;
 		}
 
+		template <typename T>
+			void	AssembleDeltaVector(Protocol::ResearchAttributeDeltaArray<T>&outArray, const Objects::Research::Attributes::TypeMap<T>&source)
+			{
+				outArray.SetSize(source.changedSinceLastRound.Count());
+				for (index_t i = 0; i < outArray.Count(); i++)
+				{
+					auto&dst = outArray[i];
+					dst.index = source.changedSinceLastRound[i];
+					const auto&src = source.attributes[dst.index];
+					dst.value = src.value;
+					dst.description = src.description;
+					dst.flags = src.flags;
+				}
+			}
 
-		void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
+
+		void	ChangePhase( RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
+			if (RuntimeConfig::GameHasEnded())
+			{
+				DBG_FATAL__("Trying to change from end-of-game to "+String(to.ToString()));
+				return;
+			}
+
+			LogEvent(EventSignificance::Common,"Changing phase to "+String(to.ToString())+" with time window "+String(timeWindow)+" after "+String(timer.GetSecondsSince(lastPhaseChange))+" seconds");
+
+
 			if (RuntimeConfig::IsACommandPhase(to))
 			{
+
+
+				if (Objects::Research::globalState.zeroTable.AnyChanged())
+				{
+					Protocol::ResearchAttributeDeltaVector vec;
+					vec.faction = TUniqueID::Empty();
+					const auto&t = Objects::Research::globalState.zeroTable;
+					AssembleDeltaVector(vec.boolAttributes,t.bools);
+					AssembleDeltaVector(vec.intAttributes,t.ints);
+					AssembleDeltaVector(vec.floatAttributes,t.floats);
+					Channels::ResearchAttributeDeltaVector.SendTo(::Network::server,vec,(UINT32)::Network::UserLevel::CommonFaction);
+				}
+
 				Objects::ForeachFaction([](const Objects::PFaction&f)
 				{
 					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
 
-					if (f->researchState.changed)
+					if (f->researchState.topicProgressChanged)
 					{
-						f->researchState.changed = false;
-						Protocol::ResearchState state;
+						f->researchState.topicProgressChanged = false;
+						Protocol::ResearchFactionState state;
 						state.ownerID = f->id;
-						f->researchState.Export(state.serializedData);
-						ASSERT_LESS__(state.serializedData.Count(),state.serializedData.MaxElementCount);
-						Channels::researchState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
+						state.progressVector = f->researchState.topicProgressVector;
+						Channels::ResearchFactionState.SendTo(::Network::server,state,(UINT32)::Network::UserLevel::CommonFaction);
 					}
+
+					if (f->researchState.attributeTable.AnyChanged())
+					{
+						Protocol::ResearchAttributeDeltaVector vec;
+						vec.faction = f->id;
+						AssembleDeltaVector(vec.boolAttributes,f->researchState.attributeTable.bools);
+						AssembleDeltaVector(vec.intAttributes,f->researchState.attributeTable.ints);
+						AssembleDeltaVector(vec.floatAttributes,f->researchState.attributeTable.floats);
+						Channels::ResearchAttributeDeltaVector.SendTo(::Network::server,vec,(UINT32)::Network::UserLevel::CommonFaction);
+					}
+
 					if (f->researchState.queueChanged)
 					{
 						f->researchState.queueChanged = false;
@@ -186,13 +710,13 @@ namespace Game
 						{
 							Protocol::ResearchQueue queue;
 							f->researchState.ExportResearchQueue(queue);
-							::Channels::researchQueue.SendTo(client->peer.lock(),queue);
+							::Channels::ResearchQueue.SendTo(client->peer.lock(),queue);
 						}
 					}
 				});
+				Vote::CheckAllVotes();
 			}
 
-			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
 			ph.roundNumber = RuntimeConfig::roundNumber;
@@ -212,40 +736,53 @@ namespace Game
 			#endif
 
 
-			if (to == RuntimeConfig::Phase::AnimationPhase)
+
+			if (RuntimeConfig::GameHasEnded())
 			{
-				FileIO::CheckAutoSave(true);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
+				if (winner.expired())
+				{
+					UINT64 biggestScore = 0;
+					Objects::PAlliance newWinner;
+
+					Objects::Alliance::Foreach([&](const Objects::PAlliance&a)
+					{
+						if (a == Objects::Faction::nexus->alliance)
+							return;
+						const UINT64 score = a->GetWinningScore();
+						if (score > biggestScore)
+						{
+							biggestScore = score;
+							newWinner = a;
+						}
+					});
+					if (newWinner)
+						DeclareWinner(newWinner,"Phase change to EndOfGame");
+				}
+
+				foreach (::Network::activePlayersAndSpectators,p)
+				{
+					auto alliance = (*p)->faction ? (*p)->faction->alliance : nullptr;
+					Objects::Alliance::TNexusStats stats = alliance ? alliance->GetNexusStats() : Objects::Alliance::TNexusStats();
+					(*p)->SendProgressUpdate("",stats);
+				}
 			}
-
-
-
 
 			//if (to == RuntimeConfig::Phase::CommandPhase)
 				//DebugCheckWorld();	//this assumes the world does not change. if it does, this will fail
-
+			if (RuntimeConfig::IsACommandPhase(to))
+				LogEvent(EventClass(EventSignificance::Uncommon, EventFlavor::ServerPrivate),"Begin round "+RuntimeConfig::roundNumber.ToString());
 		}
 
 
 
 
-		void	Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
+		void	Describe( Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
 		{
-			if (element.producing->IsVehicle())
-			{
-				Objects::PVehicle v = To<Objects::Vehicle>::Cast(element.producing);
-				task.parameters.SetSize(2);
-				task.parameters.first() = v->base->constName;
-				task.parameters.last() = v->turret->constName;
-			}
-			else
-			{
-				task.parameters.SetSize(1);
-				task.parameters.first() = element.producing->GetCTypeName();
-			}
+			task.type = element.producing->GetType();
 			task.id = element.id;
 		}
 
-		void	Describe(Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex)
+		void	Describe( Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex)
 		{
 			task.foci.SetSize(t.foci.Count());
 			for (index_t i = 0; i < task.foci.Count(); i++)
@@ -256,16 +793,17 @@ namespace Game
 			task.taskFlags = 0;
 			if (t.job)
 			{
+				task.jobAffinity = t.job->GetOperationAffinity();
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
 				if (!seq)
 				{
 					task.resourceCostLeft = t.job->resourceCostLeft > 0 ? t.job->resourceCostLeft : 0;
-					task.roundsToJobCompletion = t.job->roundsToJobCompletion;
+					task.continuationsToJobCompletion = t.job->continuationsToJobCompletion;
 				}
 				else
 				{
 				
-					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
+					seq->Guess(v, origin, taskIndex, task.continuationsToJobCompletion,task.resourceCostLeft);
 				}
 				if (t.job->movesToFocusWhenDone)
 					task.taskFlags |= Protocol::TaskFlags::VisualizePathToFocus;
@@ -285,7 +823,7 @@ namespace Game
 				std::shared_ptr<Objects::VehicleJob::Construct> constJob = To<Objects::VehicleJob::Construct>::DynamicCast(t.job);
 				if (constJob)
 				{
-					task.visualizationName = constJob->constructWhat->GetCTypeName();
+					task.visualizationName = constJob->constructWhat->GetType();
 				}
 				else
 				{
@@ -300,36 +838,50 @@ namespace Game
 			}
 			else
 			{
-				task.roundsToJobCompletion = -1;
+				task.continuationsToJobCompletion = -1;
 			}
 		}
 
-		void	Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
 			state.health = e.health;
 			state.id = e.id;
 			state.empDamageLevel = e.empDamageLevel;
 			state.location = (changeFlags & Objects::WorldEntity::PositionChanged) ? e.location : Grid::LCellIdI::Invalid;
 			state.entityStateFlags = 0;
-			if (owned)
-			{
+			state.timestamp = timestamp;
+			if (expose & Expose::Stability)
 				if (e.unstable)
 					state.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
+			if (expose & Expose::SleepState)
 				if (e.IsSleeping())
 					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
-			}
-			state.timestamp = timestamp;
+			ASSERT2__(state.health > 0, e.id, e.health);	//we don't describe ghosts
 		}
 
-		void	Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
-			if (v.IsAboveGrid())
+			if (v.IsAboveTerrain())
 			{
 				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
 			}
 	
 			state.flags = 0;
-			if (owned)
+			state.attackActionLeft = 0;
+			state.movementActionLeft = 0;
+
+
+			if (expose & Expose::Automation) 
+				if (v.isAutomated)
+					state.flags |= Protocol::VehicleFlags::Automated;
+
+			if ((expose & Expose::MyMobileEntity) && 
+				(
+					(changeFlags & Objects::WorldEntity::TasksChanged)
+					|| (changeFlags & Objects::WorldEntity::StoredInChanged) 
+					|| (changeFlags & Objects::WorldEntity::GatheringPointChanged)
+				)
+			)
 			{
 				auto&info = state.myMobileEntity.Set0();
 				Objects::PHangar h = v.storedIn.lock();
@@ -348,11 +900,7 @@ namespace Game
 				#ifndef ONE_COMPOUND_PER_FACTION
 					info.resourceVector = v.currentStorage;
 				#endif
-				if (v.isAutomated)
-					state.flags.value |= Protocol::VehicleFlags::Automated;
-				info.constructionRoundCounter = v.constructionRoundCounter;
-				state.attackActionLeft = v.attackActionLeft;
-				state.movementActionLeft = v.movementActionLeft;
+				info.constructionActionCounter = v.constructionActionCounter;
 
 
 				const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&v);
@@ -369,24 +917,20 @@ namespace Game
 				}
 
 			}
-			else
+			
+			if (expose & Expose::Action || Config::exposeActionLeftToHostileFactions)
 			{
-				if (Config::exposeActionLeftToHostileFactions)
-				{
-					state.attackActionLeft = v.attackActionLeft;
-					state.movementActionLeft = v.movementActionLeft;
-				}
-				else
-				{
-					state.attackActionLeft = 0;
-					state.movementActionLeft = 0;
-				}
+				state.attackActionLeft = v.attackActionLeft;
+				state.movementActionLeft = v.movementActionLeft;
 			}
-			if (v.IsHibernating())
-				state.flags.value |= Protocol::VehicleFlags::Hibernating;
 
-			Describe(state.entityState,v,owned,timestamp,changeFlags);
-			if (owned)
+			if (v.IsHibernating())
+				state.flags |= Protocol::VehicleFlags::Hibernating;
+			if (v.IsBuilding())
+				state.flags |= Protocol::VehicleFlags::Building;
+
+			Describe(state.entityState,v,timestamp,expose, changeFlags);
+			if (expose & Expose::Stability)
 			{
 				if ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction())
 					state.entityState.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
@@ -394,104 +938,153 @@ namespace Game
 
 		}
 
-		void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose)
 		{
-			if (v.IsVehicle())
-			{
-				const Objects::Vehicle&veh = (const Objects::Vehicle&)v;
-				cnst.baseName = veh.base->constName;
-				cnst.turretName = veh.turret->constName;
-			}
-			else
-			{
-				cnst.baseName = v.GetCTypeName();
-				cnst.turretName = ConstName::Empty;
-			}
+			cnst.type = v.GetType();
 			cnst.owner = v.owner->id;
-			Describe(cnst.state,v,owned,timestamp,changeFlags);
+			Describe(cnst.state,v,timestamp,expose,0xFFFFFFFF);
 		}
 
 
 
-		void	Describe(Protocol::AttackTask&task, const Objects::Tower::AttackTask&element)
+		void	Describe( Protocol::AttackTask&task, const Objects::Tower::AttackTask&element)
 		{
 			//task.id = element.id;
 			//task.target = element.target;
 			task = element.target;
 		}
 
-		void	Describe(Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
+		void	Describe( Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
 			const Objects::WorkingStructure*w = dynamic_cast<const Objects::WorkingStructure*>(&s);
 			//state.productionDone = 0;
 			state.flags = 0;
 			if (!w || w->IsEnabled())
-				state.flags.value |= Protocol::StructureFlags::Enabled;
+				state.flags |= Protocol::StructureFlags::Enabled;
 			if (w && w->IsHibernating())
-				state.flags.value |= Protocol::StructureFlags::Hibernating;
+				state.flags |= Protocol::StructureFlags::Hibernating;
 
-			if (w && owned)
+			if (w)
 			{
 				Objects::ResourceVector dontCare;
-				w->GetResourceVector(dontCare, state.resourceVector, dontCare);
+				if (expose & Expose::StructureStorage) 
+					w->GetResourceVector(dontCare, state.resourceStorage, dontCare);
 
-				//const Objects::WorkingStructure*p = dynamic_cast<const Objects::WorkingStructure*>(&s);
-				const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&s);
-				if (p)
+				if ((expose & Expose::StructureTasks) && ((changeFlags & Objects::WorldEntity::TasksChanged) || (changeFlags & Objects::WorldEntity::GatheringPointChanged)))
 				{
-					Protocol::ProducerState&subState = state.selective.Set1();
-					subState.productionTasks.SetSize(p->queue.Count());
-					subState.productionDone = p->productionDone;
-					subState.gatheringPoint = p->gatheringPoint.current;
-					for (index_t i = 0; i < subState.productionTasks.Count(); i++)
+					//const Objects::WorkingStructure*p = dynamic_cast<const Objects::WorkingStructure*>(&s);
+					const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&s);
+					if (p)
 					{
-						Describe(subState.productionTasks[i],p->queue[i]);
+						Protocol::ProducerState&subState = state.selective.Set1();
+						subState.productionTasks.SetSize(p->queue.Count());
+						subState.productionDone = p->productionDone;
+						subState.gatheringPoint = p->gatheringPoint.current;
+						for (index_t i = 0; i < subState.productionTasks.Count(); i++)
+						{
+							Describe(subState.productionTasks[i],p->queue[i]);
+						}
 					}
-				}
-				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
-				if (t)
-				{
-					Protocol::TowerState&subState = state.selective.Set3();
-					subState.attackActionLeft = t->attackActionLeft;
-					subState.attackTasks.SetSize(t->attackQueue.Count());
-					for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+					const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
+					if (t)
 					{
-						Describe(subState.attackTasks[i],t->attackQueue[i]);
-					}
+						Protocol::TowerState&subState = state.selective.Set3();
+						if (expose & Expose::Action)
+							subState.attackActionLeft = t->attackActionLeft;
+						subState.attackTasks.SetSize(t->attackQueue.Count());
+						for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+						{
+							Describe(subState.attackTasks[i],t->attackQueue[i]);
+						}
 				
+					}
 				}
-				const Objects::NexusPort*n = dynamic_cast<const Objects::NexusPort*>(&s);
-				if (n)
+				elif ((expose & Expose::Action || Config::exposeActionLeftToHostileFactions) && (changeFlags & Objects::WorldEntity::ActionChanged))
 				{
-					Protocol::NexusPortState&subState = state.selective.Set2();
-					subState = n->resistence;
+					if (s.IsTower())
+					{
+						const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
+						if (t)
+						{
+							Protocol::TowerState&subState = state.selective.Set3();
+							subState.attackActionLeft = t->attackActionLeft;
+							if (expose & Expose::StructureTasks)
+							{
+								subState.attackTasks.SetSize(t->attackQueue.Count());
+								for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+								{
+									Describe(subState.attackTasks[i],t->attackQueue[i]);
+								}
+							}
+						}
+					}
 				}
 
-				const Objects::Mine*m = dynamic_cast<const Objects::Mine*>(&s);
-				if (m)
+
+				if (expose & Expose::MineState)
 				{
-					Protocol::MineState&subState = state.selective.Set0();
-					subState.linkedToCore = m->IsLinkedToCore();
-					subState.naturalResources = m->naturalResources;
+					const Objects::Mine*m = dynamic_cast<const Objects::Mine*>(&s);
+					if (m)
+					{
+						Protocol::MineState&subState = state.selective.Set0();
+						subState.linkedToCore = m->IsLinkedToCore();
+						subState.naturalResources = m->naturalResources;
+					}
+				}
+				if ((expose & Expose::NexusControl) && (changeFlags & Objects::WorldEntity::NexusControlChanged))
+				{
+					const Objects::NexusPort*n = dynamic_cast<const Objects::NexusPort*>(&s);
+					if (n)
+					{
+						Protocol::NexusPortState&subState = state.selective.Set2();
+						subState = n->resistance;
+					}
 				}
 			}
 		
-			Describe(state.entityState,s,owned,timestamp,changeFlags);
+			Describe(state.entityState,s,timestamp,expose, changeFlags);
 		}
 
-		void	Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp)
+		void	Describe( Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose)
 		{
-			cnst.typeName = s.GetCTypeName();
+			cnst.type = s.GetType();
 			cnst.owner = s.owner->id;
-			Describe(cnst.state,s,owned,timestamp,0xFFFFFFFF);
+			Describe(cnst.state,s,timestamp,expose,0xFFFFFFFF);
 
 		}
 
 	}
 
 
+	void RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass cl, const String&debugName)
+	{
+		if (Config::basesRequired && !(e->owner->hasUnitClasses & cl))
+		{
+			const auto&f = e->owner;
+			LogEvent(EventSignificance::Debug,e.get(),"Recognized as "+debugName+". Reevaluating survivial conditions");
+			f->hasUnitClasses |= cl;
+			String whyNot;
+			bool canLive = f->CanLive(whyNot);
+		
+			if (canLive)	//conditions changed
+			{
+				if (f->deathInRounds > 0)
+				{
+					f->deathInRounds = 0;
+					::Network::PClient client;
+					if (::Network::playerMap.Query(f,client))
+						client->SendProgressUpdate(whyNot, f->alliance->GetNexusStats());
+				}
+			}
+			else
+				LogEvent(EventSignificance::Debug,e.get(),"Nope: "+whyNot);
+		}
+	}
+
 	void	ResetFactionStartMineralValue()
 	{
+		const auto&state = Objects::Research::globalState.zeroTable;;
+
 		if (Config::startBases)
 		{
 			factionStartMineralValue = Objects::Mine::globalPrototype->GetConstructionCost()
@@ -500,20 +1093,22 @@ namespace Game
 			+ 
 			Objects::MineralContainer::globalPrototype->GetConstructionCost()
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,state)
 			+
-			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter());
+			Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,state);
 		}
 		else
 		{
 			factionStartMineralValue = 
-				3 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,Objects::OwnerParameter())
+				2 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,state)
+				+ 
+				Objects::MineralContainer::globalPrototype->GetConstructionCost()
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar,Objects::OwnerParameter())
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar,state)
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,Objects::OwnerParameter())
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::resourceScanner,state)
 				+
-				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery,Objects::OwnerParameter());
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery,state);
 		}
 		//if (State::Config::Nexus::haveBases)
 		//{
@@ -546,32 +1141,38 @@ namespace Game
 			if (v.changeFlags)
 			{
 				//anythingChanged = true;
-				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
-				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0;
+				const bool foreignersNeedToKnow = (v.changeFlags & Network::NotifyForeignerFlags()) != 0 && v.storedIn.expired();
+				const bool alliesNeedToKnow = (v.changeFlags & Network::NotifyAllies) != 0 && v.storedIn.expired();
 
-				TCP::Serial<Protocol::MobileState>	w0,w1;
-				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
-				Network::Describe(w0.Ref(),v,false,timestamp,v.changeFlags);
-				Network::Describe(w1.Ref(),v,true,timestamp,v.changeFlags);
-				w0.Seal();
-				w1.Seal();
-				if (!othersNeedToKnow)
+				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
+				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+",#tasks="+String(v.myTasks.Count())+",foreigners="+String(foreignersNeedToKnow)+",allies="+String(alliesNeedToKnow)+",t="+ToString(timestamp)+")");
+
+
+				TCP::Serial<Protocol::MobileState>	foreign,allied,owned;
+				Network::Describe(foreign.Ref(),v,timestamp,Network::ExposeToForeigners,v.changeFlags);
+				Network::Describe(allied.Ref(),v,timestamp,Network::ExposeToAllies,v.changeFlags);
+				Network::Describe(owned.Ref(),v,timestamp,Network::ExposeAll,v.changeFlags);
+				foreign.Seal();
+				allied.Seal();
+				owned.Seal();
+
+				if (!foreignersNeedToKnow && !alliesNeedToKnow)
 				{
-					::Network::SendToOwner(Channels::setMobileState,v,w1);
+					::Network::SendToOwner(Channels::setMobileState,v,owned);
 				}
 				else
 					foreach(::Network::activePlayersAndSpectators,cl)
 					{
 						if (::Network::CanSeeAsOwner(*cl,v))
-							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
+							Channels::setMobileState.SendTo((*cl)->peer.lock(),owned);
 						else
-							if (::Network::CanSee(*cl,_v,0))
-								Channels::setMobileState.SendTo((*cl)->peer.lock(),w0);
+							if (::Network::CanSee(*cl,_v,v.entityTime))
+								Channels::setMobileState.SendTo((*cl)->peer.lock(),(*cl)->faction->IsAlliedWith(v.owner) ? allied : foreign);
 					}			
 				v.ResetAllChange();
 			}
-		},false);
+		});
 
 		Objects::structures.Foreach([](const Objects::PStructure&_s)
 		{
@@ -581,27 +1182,33 @@ namespace Game
 				//anythingChanged = true;
 				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
-				bool othersNeedToKnow = (s.changeFlags & Network::NotifyOthers) != 0;
+				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeignerFlags()) != 0;
+				const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
+				const bool alliesNeedToKnow = (s.changeFlags & Network::NotifyAllies) != 0;
 
-				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
+				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
-				TCP::Serial<Protocol::StructureState>	w0,w1;
-				Network::Describe(w0.Ref(),s,false,timestamp,s.changeFlags);
-				Network::Describe(w1.Ref(),s,true,timestamp,s.changeFlags);
-				w0.Seal();
-				w1.Seal();
-				if (!othersNeedToKnow)
+				TCP::Serial<Protocol::StructureState>	foreign,allied,owned;
+				Network::Describe(foreign.Ref(),s,timestamp,Network::ExposeToForeigners,s.changeFlags);
+				Network::Describe(allied.Ref(),s,timestamp,Network::ExposeToAllies,s.changeFlags);
+				Network::Describe(owned.Ref(),s,timestamp,Network::ExposeAll,s.changeFlags);
+				foreign.Seal();
+				allied.Seal();
+				owned.Seal();
+				if (!alliesNeedToKnow && !foreignersNeedToKnow)
 				{
-					::Network::SendToOwner(Channels::setStructureState,s,w1);
+					::Network::SendToOwner(Channels::setStructureState,s,owned);	//also sends to alliance members if details are exposed
 				}
 				else
 					foreach(::Network::activePlayersAndSpectators,cl)
 					{
-						if (::Network::CanSeeAsOwner(*cl,s))
-							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
+						if (::Network::CanSeeAsOwner(*cl,s))	//also coveres alliance members if details are exposed
+							Channels::setStructureState.SendTo((*cl)->peer.lock(),owned);
 						else
 							if (::Network::CanSee(*cl,_s,0))
-								Channels::setStructureState.SendTo((*cl)->peer.lock(),w0);
+							{
+								Channels::setStructureState.SendTo((*cl)->peer.lock(),(*cl)->faction->IsAlliedWith(s.owner) ? allied : foreign);
+							}
 						//Channels::setStructureState.SendTo((*cl)->peer.lock(),Receiver::HasAccess(*cl,s) ? w1 : w0);
 					}
 				s.ResetAllChange();
@@ -679,12 +1286,12 @@ namespace Game
 							{
 								Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 								entityList.Append().target = ws;
-								entityList.last().priority = ws->GetUplinkPriority();
-								entityList.last().wasHibernating = ws->IsHibernating();
+								entityList.Last().priority = ws->GetUplinkPriority();
+								entityList.Last().wasHibernating = ws->IsHibernating();
 							}
 						}
 					}
-					for (const auto&_v : faction->allMobiles)
+					for (const auto&_v : faction->activeMobiles)
 					{
 						Objects::PMobileEntity v = _v.lock();
 						DBG_ASSERT__(v);
@@ -692,8 +1299,8 @@ namespace Game
 						{
 							traffic += v->GetUplinkTraffic();
 							entityList.Append().target = v;
-							entityList.last().priority = v->GetUplinkPriority();
-							entityList.last().wasHibernating = v->IsHibernating();
+							entityList.Last().priority = v->GetUplinkPriority();
+							entityList.Last().wasHibernating = v->IsHibernating();
 						}
 					}
 					if (traffic > Config::uplinkBandwidth)
@@ -729,27 +1336,84 @@ namespace Game
 		}
 	#endif
 
-	void PerformNewRoundLogic(float&atTime)
+
+	count_t CountLivingPlayerFactions()
 	{
 
-		
+		count_t livingPlayerFactions = 0;
+
+		for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
+		{
+			const Objects::PFaction&faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
+			if (!faction->isDead)
+				livingPlayerFactions ++;
+		}
+
+		return livingPlayerFactions;
+	}
+
+	count_t CountLivingPlayerAlliances()
+	{
+
+		count_t rs = 0;
+
+		Objects::Alliance::Foreach([&rs](const Objects::PAlliance&a)
+		{
+			if (a == Objects::Faction::nexus->alliance)
+				return;
+			if (a->CountLivingMembers() > 0)
+				rs++;
+		});
+		return rs;
+	}
 
 
+	void	DeclareWinner( const Objects::PAlliance&w, const String&reason, bool ignoreSessionState )
+	{
+		DBG_ASSERT__(w);
+		DBG_ASSERT__(winner.expired());
+		if (!::Network::SessionIsStarted() && !ignoreSessionState)
+		{
+			LogEvent(EventSignificance::NonFatalError,"Trying to declare winner while session is closed ("+reason+").");
+			DBG_FATAL__("Bad state");
+			return;
+		}
+		if (evolverActive)
+		{
+			postEvolutionWinner = w;
+			return;
+		}
+		postEvolutionWinner.reset();
+		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winning alliance: "+w->id.ConvertToString()+" ("+reason+")");
 
+		Buffer0<String> winners;
+		w->ForeachMember([&winners](const Objects::PFaction&f)
+		{
+			winners << f->GetName();
+		});
+		if (winners.Count() == 1)
+			LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+winners.First()+" wins this game!");
+		else
+		{
+			String str = implode(", ",winners.ToRef().SubRef(0,winners.Count()-1)) + " and "+winners.Last();
+			LogEvent(EventClass::Preset::winningFaction,"Congratulations. "+str+" win this game!");
+		}
+
+		winner = w;
+		Channels::winningAlliance.SendTo(::Network::server,w->id,Channels::Level::Faction);
+		if (!RuntimeConfig::GameHasEnded())
+			Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+	}
+
+
+	void PerformNewRoundLogic( float&atTime )
+	{
 		if (Config::basesRequired)
 		{
 			foreach (Objects::Faction::all,_f)
 			{
-				Objects::PFaction faction = _f->lock();
-				if (faction)
-				{
-					faction->hasFuelMine = false;
-					faction->hasMineralMine = false;
-					faction->hasMineralContainer = false;
-					faction->hasGenerator = false;
-					faction->hasVehiclePlant = false;
-					faction->hasTerraformer = false;
-				}
+				const Objects::PFaction&faction = *_f;
+				faction->hasUnitClasses = Objects::Faction::UnitClass::None;
 			}
 
 			Objects::RefreshCompoundCoverageIfNeeded(atTime);
@@ -758,15 +1422,16 @@ namespace Game
 			{
 				if (c.workingStructures.IsEmpty())
 					return;	//pure technite factions don't have units. Also, depending on server settings, some factions might not either
-				bool hasFuelMine = false,
-					hasMineralMine = false,
-					hasMineralContainer = Objects::Mine::MineralStorage > 0,
-					hasGenerator = false,
-					hasVehiclePlant = false;
+				typedef Objects::Faction::UnitClass	UC;
+
+				UC	uc = UC::None;
+				if (Objects::Mine::MineralStorage > 0)
+					uc |= UC::MineralContainer;
+					 
 
 
 				#ifdef ONE_COMPOUND_PER_FACTION
-					hasMineralContainer = true;	//don't need
+					uc |= UC::MineralContainer;	//don't need
 				#endif
 				Objects::ResourceVector dummy,storage;
 				Objects::OwnerParameter o;
@@ -783,12 +1448,14 @@ namespace Game
 					if (mine && mine->IsLinkedToCore())
 					{
 						if (mine->naturalResources.fuel >= 10)
-							hasFuelMine = true;
+							uc |= Objects::Faction::UnitClass::FuelMine;
 						if (mine->naturalResources.minerals >= 5)
-							hasMineralMine = true;
+							uc |= Objects::Faction::UnitClass::MineralMine;
 					}
+					if (s->IsNexusPort())
+						uc |= Objects::Faction::UnitClass::NexusPort;
 					if (To<Objects::Generator>::DynamicCast(s))
-						hasGenerator = true;
+						uc |= Objects::Faction::UnitClass::Generator;
 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						s->GetResourceVector(dummy,dummy,storage);
@@ -796,31 +1463,25 @@ namespace Game
 							hasMineralContainer = true;
 					#endif
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
-						hasVehiclePlant = true;
+						uc |= Objects::Faction::UnitClass::VehiclePlant;
 				}
-				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
+				Objects::PFaction f = o;//c.workingStructures.First().lock()->owner;
 				if (f)
-				{
-					f->hasFuelMine |= hasFuelMine;
-					f->hasMineralMine |= hasMineralMine;
-					f->hasMineralContainer |= hasMineralContainer;
-					f->hasGenerator |= hasGenerator;
-					f->hasVehiclePlant |= hasVehiclePlant;
-				}
+					f->hasUnitClasses |= uc;
 			});
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
 			{
 				if (v->GetOperationSpeed(Objects::Component::Construct))
-				{
-					v->owner->hasTerraformer = true;
-				}
-			},false);
+					v->owner->hasUnitClasses |= Objects::Faction::UnitClass::Terraformer;
+			});
 
+
+			//const count_t livingPlayerFactions = CountLivingPlayerFactions();
 			for (index_t i = 0; i < Objects::Faction::all.Count(); i++)
 			{
-				Objects::PFaction faction = Objects::Faction::all[i].lock();
-				if (faction)
+				Objects::PFaction faction = Objects::Faction::all[i];	//only player factions here: nexus is not included in ::all
+				if (faction && !faction->isDead)
 				{
 					String whyNot;
 					bool canLive = faction->CanLive(whyNot);
@@ -837,12 +1498,11 @@ namespace Game
 						{
 							faction->deathInRounds = 0;
 							if (client)
-								client->SendProgressUpdate(false,whyNot);
+								client->SendProgressUpdate(whyNot,faction->alliance->GetNexusStats());
 						}
 					}
 					else
 					{
-						bool dead = false;
 						if (!faction->deathInRounds)
 						{
 							faction->deathInRounds = 5;
@@ -857,8 +1517,7 @@ namespace Game
 							}
 							else
 							{
-								dead = true;
-								String name = client ? client->ToString() : "Faction "+faction->id.ToString();
+								String name = client ? client->ConvertToString() : "Faction "+ToString(faction->id);
 											
 								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 
@@ -878,48 +1537,49 @@ namespace Game
 								*/
 
 								Objects::Faction::Kill(faction);
+								//ASSERT__(livingPlayerFactions > 0)
+								//livingPlayerFactions--;
+								#if 0
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
-								::Network::tokenMap.Unset(faction->accessToken);
 								::Network::playerMap.Unset(faction);
 								faction->online = false;
 								if (client)
 									client->faction.reset();
 								i--;
-
-								if (Config::closedGame)
-								{
-									if (Objects::Faction::all.IsEmpty())
-									{
-										LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
-										//application_shutting_down = true;
-									}
-									else
-									if (Objects::Faction::all.Count() == 1)
-									{
-										if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
-										{
-											LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
-											Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
-											winner = Objects::Faction::all.first().lock();
-											::Network::PClient client;
-											//debugCheckProgress = true;
-											if (::Network::playerMap.Query(winner,client))
-											{
-												client->SendProgressUpdate(true,whyNot);
-											}
-										}
-									}
-								}
+								#endif /*0*/
 							}
 						}
 						if (client)
-							client->SendProgressUpdate(dead,whyNot);
+							client->SendProgressUpdate(whyNot,faction->alliance->GetNexusStats());
 					}
 				}
 			}
 
+			if (Config::closedGame && !RuntimeConfig::GameHasEnded())
+			{
+				const count_t livingPlayerAlliances = CountLivingPlayerAlliances();
+				if (livingPlayerAlliances == 0)
+				{
+					LogEvent(EventClass::Preset::factionDeath,"All alliances destroyed. Server should be reset.");
+					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+				}
+				else
+				if (livingPlayerAlliances == 1)
+				{
+					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
 
+					winner.reset();
+					Objects::PAlliance newWinner;
+					Objects::Alliance::Foreach([&newWinner](const Objects::PAlliance&a)
+					{
+						
+						if (a != Objects::Faction::nexus->alliance && a->CountLivingMembers() > 0)
+							newWinner = a;
+					});
+					DeclareWinner(newWinner, "Bases required + Closed game + Only one player faction left alive");
+				}
+			}
 
 
 		}
@@ -928,399 +1588,27 @@ namespace Game
 	}
 
 
+	void			ApplyEMPZoneDamage(const Objects::PWorldEntity&e,float&atTime)
+	{
+		if (e->HandleEMPDamage(100,atTime))
+			LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
+	}
+
 	void			UpdateResidualEMPDamage(float&atTime)
 	{
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
-			if (e->owner == Objects::Faction::nexus && e->IsAboveGrid())
+			if (e->owner == Objects::Faction::nexus && e->IsAboveTerrain())
 				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (Grid::AffectedByEMP(e->location))
 			{
-				if (e->empDamageLevel < 10)
-					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
-				e->HandleEMPDamage(10,atTime);
+				ApplyEMPZoneDamage(e,atTime);
 			}
-			elif (e->owner == Objects::Faction::nexus)
-				e->HealAllEMPDamage(atTime);	//immediately heal when a new area gets unlocked
-		},false);
+		});
 	}
 
 
 	
-
-
-	//void			SpawnNexusBaseAtPoleWithPort(int pole);
-	void			SpawnNexusPortAtPole(int pole)
-	{
-		LogEvent(EventSignificance::Common,"Spawning Nexus Port at pole "+String(pole));
-
-		Grid::LCellIdI location((UINT32)pole,0);	//first 12 are corner cells
-		int h = Objects::FindApplicableGround(location,true);
-		if (h == Objects::badHeight)
-			h = 0;	//just spawn it near median
-		static const int R = 5;
-		h = clamp(h,-Grid::CellStack::HalfRange + R + 1,Grid::CellStack::HalfRange - R - 2);
-
-		location.height = h;
-		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
-		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		port->CorrectTerrain(false,0);
-		float t = 0;
-		Objects::InsertConstructed(port,t);
-//		if (enableNexus)
-		{
-			port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
-			Objects::RefreshCompoundCoverageIfNeeded(t);
-			//ASSERT__(port->IsEnabled());
-		}
-//			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-		Grid::Resource::Require(ConstName::Resource_Fuel).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Minerals).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Uranium).coverage[pole] = 0;
-	}
-
-
-
-
-
-	void SpawnNexusBaseAtPoleWithPort(int pole)
-	{
-		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
-
-		auto sensorLock = Objects::Faction::nexus->LockSensorUpdates();
-
-		ASSERT__(Config::Nexus::haveBases);
-
-		Objects::PNexusPort port;
-		int h;
-		for (h = - Grid::CellStack::HalfRange; h < Grid::CellStack::HalfRange; h++)
-		{
-			port = To<Objects::NexusPort>::DynamicCast(Objects::GetStructure(Grid::LCellIdI((UINT32)pole,h)));
-			if (port)
-				break;
-		}
-		if (!port)
-		{
-			FATAL__("Unable to find port at supposed nexus pole "+String(pole));
-			return;
-		}
-
-		Grid::LCellIdI location = port->location;
-
-		bool enableNexus = false;
-		{
-			//if (random.getFloat() < 0.8f)
-			{
-
-				//bool deadly = random.getFloat() > 0.4f;
-
-
-			//	bool rebuild[BaseGrid::NumFamilies] = { false };
-
-				Grid::LowSetup::TDistanceField field;
-				#ifdef LOWER_RESOLUTION_PLANET
-					static const int R = 4;
-					static const int MissileDistance = 4;
-					static const int RadarDistance = 3;
-					static const int OuterFactoryDistance = 2;
-					static const int MaxFactories = 3;
-				#else
-					static const int R = 5;
-					static const int MissileDistance = 5;
-					static const int RadarDistance = 4;
-					static const int OuterFactoryDistance = 3;
-					static const int MaxFactories = 4;
-				#endif
-
-				Grid::low.UpdatePlanarDistanceField(pole,R+1,field);
-
-				Buffer0<index_t>	distances;
-
-
-				for (index_t i = 0; i < field.NumEntries; i++)
-				{
-					if (field.distance[i] == 0xFFFFFFFF)
-						continue;
-					if (field.distance[i] <= R)
-						distances << i;
-					else
-					{
-						World::actual.Clear(Grid::LCellIdI(i,h),0);
-						World::actual.Clear(Grid::LCellIdI(i,h+1),0);
-					}
-				}
-
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					UINT32 d1 = (R - field.distance[i])+1;
-
-					int h2 = h + d1;
-					for (int z = h; z <= h2 + 2 ; z++)
-					{
-						World::actual.Clear(Grid::LCellIdI(i,z),0);
-					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
-					}
-				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
-				}
-				Buffer0<Objects::PWorkingStructure>	alwaysOn;
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-
-					UINT32 d1 = (R - field.distance[i])+1;
-
-					bool notDirectEdge = Grid::low.grid.GetCell(i).family != 0;
-					bool noEdge = notDirectEdge;
-					if (noEdge)
-					{
-						const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							if (Grid::low.grid.GetCell(n.neighborID[j]).family == 0)
-								noEdge = false;
-
-					}
-
-					bool notCore = field.distance[i] >= 3;
-
-					int h2 = h + d1;
-
-					for (int z = h-2; z < h2; z++)
-					{
-						if (z < h || (z >=h2-1 && notCore/* && !deadly*/) || noEdge)
-						{
-							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
-						}
-						else
-							if (!notDirectEdge)
-								break;
-
-					}
-				}
-				for (index_t i : distances)
-				{
-					bool notDirectEdge = Grid::low.grid.GetCell(i).family != 0;
-					if (notDirectEdge || field.distance[i] == 1)
-						for (int z = h-1; z < h; z++)
-						{
-							World::actual.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
-						}
-				}
-
-
-				int factoryCount = 0;
-				int generatorCount = 0,
-					connectorCount = 0;
-				float t = 0;
-				for (index_t i : distances)
-				{
-					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					//UINT32 d1 = (R - field.distance[i])+1;
-
-					#if 1
-					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
-					{
-						if (field.distance[i] == MissileDistance)
-						{
-							#ifndef _DEBUG
-								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-									Objects::GetPrototypeByName(ConstName::Type_LauncherTower)->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								tower->CorrectTerrain(false,0);
-								Objects::InsertConstructed(tower,t);
-							#endif
-						}
-						if (field.distance[i] == RadarDistance)
-						{
-							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
-								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
-								Grid::LCellIdI(i,h),
-								0));
-							tower->CorrectTerrain(false,0);
-							Objects::InsertConstructed(tower,t);
-						}
-
-						if (field.distance[i] == OuterFactoryDistance)
-						{
-							if (factoryCount == MaxFactories)
-							{
-								#ifdef LOWER_RESOLUTION_PLANET
-									Objects::PGenerator generator = To<Objects::Generator>::Cast(
-										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-										Grid::LCellIdI(i,h),
-										0));
-									generator->CorrectTerrain(false,0);
-									Objects::InsertConstructed(generator,t);
-									generatorCount++;
-									alwaysOn << generator;	//only need three generators switched on
-								#else
-									Objects::PMunitionFactory factory = To<Objects::MunitionFactory>::Cast(
-										Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-										Grid::LCellIdI(i,h),
-										0));
-									factory->CorrectTerrain(false,0);
-									Objects::InsertConstructed(factory,t);
-									alwaysOn << factory;
-								#endif
-							}
-							else
-							{
-								Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::Cast(
-									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								plant->CorrectTerrain(false,0);
-								Objects::InsertConstructed(plant,t);
-								factoryCount++;
-							}
-						}
-
-						#ifndef LOWER_RESOLUTION_PLANET
-							if (field.distance[i] == (2))
-							{
-								if (generatorCount == 4)
-								{
-									Objects::PMunitionStorage storage = To<Objects::MunitionStorage>::Cast(
-										Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-										Grid::LCellIdI(i,h),
-										0));
-									storage->CorrectTerrain(false,0);
-									storage->storage = storage->maxStorage;
-									Objects::InsertConstructed(storage,t);
-									alwaysOn << storage;
-								}
-								else
-								{
-									Objects::PGenerator generator = To<Objects::Generator>::Cast(
-										Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-										Grid::LCellIdI(i,h),
-										0));
-									generator->CorrectTerrain(false,0);
-									Objects::InsertConstructed(generator,t);
-									generatorCount++;
-									if (generatorCount < 4)
-										alwaysOn << generator;	//only need three generators switched on
-								}
-							}
-						#endif
-
-						if (field.distance[i] == 1 /*|| field.distance[i] == 4*/)
-						{
-							{
-								Objects::PConnector connector = To<Objects::Connector>::Cast(
-									Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-									Grid::LCellIdI(i,h),
-									0));
-								connector->CorrectTerrain(false,0);
-								Objects::InsertConstructed(connector,t);
-								connectorCount++;
-							}
-						}
-					}
-					else
-					{
-						//if (/*field.distance[i] == 3 || */field.distance[i] == 5)
-						//{
-						//	Objects::PConnector connector = To<Objects::Connector>::Cast(
-						//		Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
-						//		Grid::LCellIdI(i,Objects::FindApplicableGround(Grid::LCellIdI(i,h),true)),
-						//		0));
-						//	connector->CorrectTerrain(false,0,true);
-						//	Objects::InsertConstructed(connector,0);
-						//}
-
-
-					}
-					#endif /*0*/
-				}
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					UINT32 d1 = (R - field.distance[i]);
-
-					bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-					if (noEdge)
-					{
-						const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							if (Grid::low.grid.GetCell(n.neighborID[j]).family == 0)
-								noEdge = false;
-
-					}
-
-					int h2 = h + d1;
-					//for (int z = h; z <= h2 + 2 ; z++)
-					{
-						if (!noEdge)
-							World::actual.Clear(Grid::LCellIdI(i,h),0);
-					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
-					}
-				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
-				}
-
-				for (auto ws : alwaysOn)
-				{
-					ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
-				}
-				enableNexus = alwaysOn.IsNotEmpty();
-
-
-				if (enableNexus)
-				{
-					port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
-
-				}
-
-
-				#ifndef NO_SATELLITES
-					if (Config::Nexus::haveSatellitesAtopBases)
-					{
-						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-						Objects::InsertConstructed(hub,t);
-						ASSERT__(hub->connectedTo.lock() == port);
-
-						for (index_t i : distances)
-						{
-							ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-							UINT32 d1 = (R - field.distance[i]);
-
-							bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-							if (!noEdge && field.distance[i] == 2)
-							{
-								Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-								Objects::InsertConstructed(guard,t);
-							}
-						}
-					}
-				#endif
-			}
-
-
-		}
-
-		location.height = h;
-		//std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
-		//Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		//port->CorrectTerrain(false,0,true);
-		//Objects::InsertConstructed(port,0);
-		//if (enableNexus)
-		//{
-		//	port->SetEnabled(true,0,false,true);
-		//	Objects::RefreshCompoundCoverageIfNeeded(0);
-		//	ASSERT__(port->IsEnabled());
-		//}
-//			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-		Grid::Resource::Require(ConstName::Resource_Fuel).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Minerals).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Uranium).coverage[pole] = 0;
-
-
-
-
-
-	}
-
 
 
 
@@ -1331,7 +1619,7 @@ namespace Game
 		if (Config::startBases)
 		{
 			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
-			int h = Objects::FindApplicableGround(location,true);
+			int h = Objects::FindApplicableGround(location,true,true);
 			location.height = h;
 			static const int want = 10;
 			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
@@ -1351,27 +1639,27 @@ namespace Game
 			float t = 0;
 			Objects::PMine mine = To<Objects::Mine>::Cast(
 				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
-			mine->CorrectTerrain(false,0);
+			mine->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(mine,t);
 			mine->SetEnabledOverride(true);
 				
 			Objects::PGenerator generator = To<Objects::Generator>::Cast(
 				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
-			generator->CorrectTerrain(false,0);
+			generator->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(generator,t);
 			generator->SetEnabledOverride(true);
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
 			container->storage = container->maxStorage;
-			container->CorrectTerrain(false,0);
+			container->ClearOccupiedTerrain(0);
 			Objects::InsertConstructed(container,t);
 			Objects::RefreshCompoundCoverage(t);
 
 
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::InsertNewVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
 
 		}
 		else
@@ -1383,12 +1671,26 @@ namespace Game
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
 
 			float t = 0;
-			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
-			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
+			int h = Objects::FindApplicableGround(Grid::LCellIdI(startLocation,0),true,true);
+			const auto start = Grid::LCellIdI((UINT32)startLocation,h);
+
+			#ifdef ONE_COMPOUND_PER_FACTION
+				std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
+					Objects::MineralContainer::globalPrototype->CreateNewInstance(f,start,0));
+				container->storage = container->maxStorage;
+				container->ClearOccupiedTerrain(0);
+				Objects::InsertConstructed(container,t);
+				Objects::RefreshCompoundCoverage(t);
+			#else
+				Objects::InsertNewVehicle(f,start,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			#endif
+
+
+			Objects::InsertNewVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
+			Objects::InsertNewVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::InsertNewVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::InsertNewVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
 		}
 	}
 

@@ -3,10 +3,12 @@
 
 #ifdef HAS_WINDOW
 #include <math/vector.h>
-#include <observer.h>
+#include <structure/observable.h>
 
 namespace Objects
 {
+	using namespace DeltaWorks;
+
 	extern PWorldEntity		selectedEntity;
 	extern PMobileEntity	selectedMobileEntity;
 	extern PVehicle			selectedVehicle;
@@ -16,15 +18,18 @@ namespace Objects
 
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled);
-	bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled);
+	bool					Select(const M::TVec3<>&b, const M::TVec3<>&d, float&distance,bool controlEnabled);
 	void					Deselect(bool controlEnabled);
-	PWorldEntity			GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance);
+	PWorldEntity			GetRayIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance);
 	inline bool				IsSelected(const PWorldEntity&e) {return selectedEntity == e;}
 
 
 
 
 	void					SetShiftMeansQueue(bool);
+	bool					ShiftMeansQueue();
+	inline bool				AutoQueue() {return !ShiftMeansQueue();}
+	inline void				SetAutoQueue(bool b) {SetShiftMeansQueue(!b);}
 	void					SignalShiftPressed();
 	void					SignalShiftReleased();
 	bool					ShouldQueueCommands();
@@ -35,5 +40,6 @@ namespace Objects
 namespace Objects
 {
 	inline constexpr bool	IsSelected(const PWorldEntity&) {return false;}
+	inline bool				ShouldQueueCommands()	{return true;}
 }
 #endif

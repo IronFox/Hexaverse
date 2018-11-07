@@ -1,0 +1,5 @@
+----
+Short range artillery turret type.
+Designed for high frequency attacks while remaining mobile.
+Great for hunting down other vehicles.
+Not so great for attacking bases.

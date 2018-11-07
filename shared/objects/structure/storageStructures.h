@@ -3,6 +3,13 @@
 
 namespace Objects
 {
+	namespace StorageCommon
+	{
+		static const int						MaxStorage=500;
+
+		void	HandleStorageDestruction(const Grid::LCellIdI&location,const ResourceVector&storage,float&atTime);
+	}
+
 
 	template <class Derivative, index_t LeftoverUpdateIteration=2>
 	class StorageStructure : public WorkingStructureT<Derivative>
@@ -15,6 +22,7 @@ namespace Objects
 
 	public:
 		ResourceVector				storage,maxStorage;
+		static const int			MaxStorage = StorageCommon::MaxStorage;
 
 		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = maxStorage;}
 		virtual void				SetResourceStorage(const ResourceVector&store)	override
@@ -27,7 +35,7 @@ namespace Objects
 
 		#ifndef CLIENT
 
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override
+			virtual void			ProcessLeftovers( ResourceVector&v, index_t iteration, float&atTime ) override
 			{
 				if (iteration != LeftoverUpdateIteration && iteration != FinalLeftoverIteration)
 					return;
@@ -59,11 +67,19 @@ namespace Objects
 					}
 				}
 			}
+			//WorldEntity overrides:
+			virtual void		OnDestroy(RemovalType t, float&atTime) override
+			{
+				Super::OnDestroy(t,atTime);
+				if (t == RemovalType::UncontrolledExplosion)
+					StorageCommon::HandleStorageDestruction(location,storage,atTime);
+			}
+
 		#else
 			#ifdef HAS_WINDOW
-				virtual void			DescribeType(Description&label, UINT32 descFlags) override
+				virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 				{
-					Super::DescribeType(label,descFlags);
+					Super::DescribeType(label,descFlags,owner);
 					if (maxStorage.IsNotEmpty())
 					{
 						label.MarkBriefEnd();
@@ -76,7 +92,6 @@ namespace Objects
 				}
 			#endif
 		#endif
-		//virtual int					GetConstructionCost() const override {return 10;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 			virtual int				GetUplinkPriority() const override {return 1000;};
@@ -95,12 +110,12 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<FuelContainer>;
 		/**/						FuelContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
-		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Fuel] = MaxStorage;}
+		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = MaxStorage; }	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_FuelContainer;}
-
+		virtual EntityType			GetType() const override {return ConstName::Type_FuelContainer;}
 	};
 
 
@@ -110,12 +125,12 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<MineralContainer>;
 		/**/						MineralContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
-		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 400; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MaxStorage;}
+		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = MaxStorage; }	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_MineralContainer;}
-
+		virtual EntityType			GetType() const override {return ConstName::Type_MineralContainer;}
 	};
 
 
@@ -125,12 +140,12 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<UraniumStorage>;
 		/**/						UraniumStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
-		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 400; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Uranium] = MaxStorage;}
+		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = MaxStorage; }	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_UraniumStorage;}
-
+		virtual EntityType			GetType() const override {return ConstName::Type_UraniumStorage;}
 	};
 
 	
@@ -145,19 +160,19 @@ namespace Objects
 									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = 400;
+				maxStorage.level[Resource::Munitions] = MaxStorage;
 			#endif
 		}
 		/**/						Self()
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = 400; 
+				maxStorage.level[Resource::Munitions] = MaxStorage; 
 			#endif
 		}	//global prototype
 	public:
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Munition Storage"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_MunitionStorage;}
-
+		virtual EntityType			GetType() const override {return ConstName::Type_MunitionStorage;}
 	};
 
 	
@@ -207,7 +222,6 @@ namespace Objects
 		}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
-		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 400;};
@@ -215,14 +229,14 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Munition Factory"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_MunitionFactory;}
+		virtual EntityType			GetType() const override {return ConstName::Type_MunitionFactory;}
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags,owner);
 				label.MarkBriefEnd();
 				#ifdef NO_MUNITION
 					label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."

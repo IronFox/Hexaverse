@@ -4,41 +4,77 @@
 #include <string/cli.h>
 #include <grid/resources.h>
 #include "configurationMode.h"
-#include "visual/world.h"
-#include "visual/terrain.h"
-#include "visual/ui.h"
-#include "visual/objectCommands.h"
+#include "visual/scene/world.h"
+#include "visual/scene/terrain.h"
+#include "visual/hud/windowStack.h"
+#include "visual/hud/hexGrid.h"
+#include "visual/hud/objectCommands.h"
+#include "visual/hud/guiHostList.h"
+#include <objects/nexusPresence.h>
 
+#include "serverProcess.h"
 #include "network.h"
 #include "objectStorage.h"
 #include "gridControl.h"
 #include "../version.h"
 #include "clientEvents.h"
+#include "visual/hud/uiScale.h"
 
 namespace ConfigurationMode
 {
 	namespace Detail
 	{
-		Objects::Storage serverObjects;
-		bool isActive = false;
-		Grid::ExtendedPlanetConfig	config, serverConfig;
-		UINT32 seed = 0,serverSeed=0;
-		Protocol::GameConfig	gameConfig;
-		Random rng;
-		StringTable<String>		declarations;
-		Array<String>			planetList;
-		Timer::Time				lastLocalChange=timer.Now();
+		struct TPlanetFile
+		{
+			FileSystem::File	file;
+			String				displayName,upperCaseName;
+			bool				isFactoryDefault;
+		};
 
-		index_t					sentVersion = 0,
-								receivedVersion = 0,
-								localVersion = 0;
+		static const String		previousPlanetFileName = "Previous";
+		const PathString		sharedPlanetsSub = "config/myPlanets";
+
+		HUD::Component::PWindow	empZoneButtonWindow;
+		HUD::Component::PButton	empZoneButton;
+
+
+		bool isActive = false;
+		Grid::ExtendedPlanetConfig	config,initialConfig;
+		UINT32					seed = 0;
+		Random					rng;
+		StringTable<String>		declarations;
+		Buffer0<TPlanetFile>	planetList;
+		Timer::Time				lastLocalChange=timer.Now();
+		Grid::WorldDiscovery	showingDiscovery;	//currently selected discovery (interpreted as FullWorld if showDiscovery is false)
+		bool					showDiscovery= false;
+		Objects::PFaction		myNexus;
+		FileSystem::TempFile	outConfigPath;
+
 		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
-		GUI::PWindow			planetListWindow;
+		using namespace HUD::Component;
+		PWindow			planetListWindow;
+
+		namespace Rules
+		{
+			bool				enableAI = true;
+			bool				closedGame = false;
+			bool				startBases = true,
+								basesRequired = true,
+								simulateLiquids = true,
+								nexusBases = true,
+								allNexusPorts = false;
+			String				password;	//not technically a rule
+		}
+
+		void					LoadPlanetFrom(const Configuration&cfg);
+		void					ReScanPlanets();
+
+
 
 		const String& FindDeclaration(const String& path)
 		{
-			if (!path.beginsWith('/'))
+			if (!path.BeginsWith('/'))
 				return FindDeclaration('/'+path);
 			static String empty = "";
 			const String*ptr = declarations.QueryPointer(path);
@@ -60,7 +96,7 @@ namespace ConfigurationMode
 					String base = ch->inner_content;
 					explode('\n',base,lines);
 					foreach(lines,ln)
-						ln->trimThis();
+						ln->TrimThis();
 					
 					declarations.Set(path+'/'+str,implode('\n',lines));
 				}
@@ -90,7 +126,8 @@ namespace ConfigurationMode
 				ASSERT__(!isLoaded);
 				ASSERT__(!current || current == this);
 				isLoaded = true;
-				copy.swap(World::actual);
+				copy.CopyGridContent(World::actual);
+				//copy.swap(World::actual);
 				current = nullptr;
 				VisualTerrain::Invalidate(); //force rebuild
 			};
@@ -101,7 +138,7 @@ namespace ConfigurationMode
 				ASSERT_IS_NULL__(current);
 				//ASSERT__(copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				isLoaded = false;
-				copy.swap(World::actual);
+				World::actual.CopyGridContent(copy);
 				current = this;
 				VisualTerrain::Invalidate(); //force rebuild
 			}
@@ -109,22 +146,22 @@ namespace ConfigurationMode
 		};
 		/*static*/ GridState	*GridState::current = nullptr;
 
-		GridState serverWorld[Grid::WorldDiscovery::N], clientWorld[Grid::WorldDiscovery::N];
-		bool created = false,
+		GridState clientWorld[Grid::WorldDiscovery::N];
+		bool	created = false,
 				flashUploadButton = false;
-		bool clientWorldLoaded = false, clientWorldBuilt = false, anyWorldLoaded = false;
+		bool	anyWorldLoaded = false;
 		Objects::Command::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup,copyPasteGroup;
 		Buffer0<std::pair<int2,Objects::Command::PBase> > buttons; 
 
 		class MaterialDialog
 		{
 		public:
-			GUI::PWindow	window;
+			PWindow	window;
 			std::function<void(BYTE)>	onSelect;
-			Buffer0<std::pair<index_t, GUI::PButton> >	materialButtons;
+			Buffer0<std::pair<index_t, PButton> >	materialButtons;
 			
 			void				Create(bool allowUnknown, bool allowLiquids);
-			void				SetCurrent(BYTE type);
+			void				SetText(BYTE type);
 		};
 
 		MaterialDialog		fullScope, noUnknown, noLiquids;
@@ -136,7 +173,6 @@ namespace ConfigurationMode
 				b->second->Refresh(true);
 		}
 
-		bool	showDiscovery = false;
 
 
 		void ActivateDiscovery(bool forceRebuild, GridState*range)
@@ -144,62 +180,55 @@ namespace ConfigurationMode
 			if (GridState::current)
 				GridState::current->Import();
 			GridState&st = range[Grid::WorldDiscovery::FullTerrain];
-			if (gameConfig.worldDiscovery == (BYTE)Grid::WorldDiscovery::FullTerrain || !showDiscovery)
+			if (showingDiscovery == Grid::WorldDiscovery::FullTerrain || !showDiscovery)
 				st.Export();
 			else
 			{
 				//ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
-				GridState&st2 = range[Grid::WorldDiscovery::Reinterpret(gameConfig.worldDiscovery)];
+				GridState&st2 = range[showingDiscovery];
 				if (forceRebuild || !st2.IsLoadedOrActive())
 				{
-					//ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
-					st.copy.ExportDiscovered(st2.copy,Grid::WorldDiscovery::Reinterpret(gameConfig.worldDiscovery));
-					//ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
-					//ASSERT__(st2.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
+					st.copy.ExportDiscovered(st2.copy,showingDiscovery);
 					st2.isLoaded = true;
 				}
 				st2.Export();
 			}
 			VisualTerrain::Invalidate(); //force rebuild
+			World::actual.FlushAndValidateSensory(1);
 			World::allowRecompilation = true;
 
-			if (clientWorldLoaded)
-			{
-				config.GenerateAtmosphereColor();
-				ClientGrid::Apply(config);
-			}
-			else
-				ClientGrid::Apply(serverConfig);
+			config.GenerateAtmosphereColor();
+			ClientGrid::Apply(config);
 
 			RefreshButtonStates();
 		}
 
 		void Update(bool forceRebuild = true)
 		{
+
 			lastLocalChange = timer.Now();
-			if (localVersion == sentVersion)
-				localVersion++;
 			config.SetSeed(seed);
 
 			if (isActive)
 			{
 				//World::actual.FlushAllData();
-				if (serverObjects.IsEmpty())
-				{
-					serverObjects.Import(true);
-					UI::HexGrid::RefreshContacts();
-				}
-				forceRebuild |= !clientWorldBuilt;
-				clientWorldBuilt = true;
+				forceRebuild |= !anyWorldLoaded;
 				if (GridState::current)
 					GridState::current->Import();
-				clientWorldLoaded = true;
 				anyWorldLoaded = true;
 				GridState&st = clientWorld[Grid::WorldDiscovery::FullTerrain];
 				if (forceRebuild)
 				{
 					st.isLoaded = true;
 					config.BuildWorld(st.copy);
+
+					GlobalEvents::objectFlush();
+					bool bases = Rules::nexusBases && Detail::Rules::enableAI;
+					bool allNodes = Rules::allNexusPorts;
+					bool sat = true;
+					GlobalEvents::objectFlush();
+					NexusPresence::Create(st.copy, myNexus, bases,allNodes,sat);
+
 					st.copy.FlushAndValidateSensory(1);
 //					ASSERT__(st.copy.cellStack.First().volumeCell[0].content != Grid::Content::Clear);
 				}
@@ -207,11 +236,44 @@ namespace ConfigurationMode
 			}
 		}
 
+		void	SetZoneButtonText()
+		{
+			if (empZoneButton)
+			{
+				if (RuntimeConfig::empZones)
+					empZoneButton->SetColor(float4(0.6f,0.7f,1.8f,1.f));
+				else
+					empZoneButton->SetColor(float4(1.f));
+				empZoneButton->SetText("EMP Zones "+String(RuntimeConfig::empZones?"On":"Off"),
+					"EMP zones hinder client/AI expansion based on the number of created factions. New factions unlock additional zones. EMP zones are currently "+String(RuntimeConfig::empZones?"On":"Off"));
+			}
+
+		}
+
+		void	SetEMPZones(bool set)
+		{
+			if (set == RuntimeConfig::empZones)
+				return;
+			if (set)
+			{
+				Grid::empZonesUnlocked = 0x1;
+				Grid::empZonesLocked = ~0x1;
+			}
+			else
+			{
+				Grid::empZonesUnlocked = 0xffff;
+				Grid::empZonesLocked = 0x0;
+			}
+			RuntimeConfig::empZones = set;
+			Detail::Update();
+			SetZoneButtonText();
+		}
 
 		void				MaterialDialog::Create(bool allowUnknown, bool allowLiquids)
 		{
 			materialButtons.Clear();
-			window.reset(new GUI::Window());
+			window = Window::Create();
+			window->SetWidth(0.35f);
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
 			{
@@ -225,76 +287,76 @@ namespace ConfigurationMode
 				String name = Grid::Content::Reinterpret(i).ToString();
 				if (i == Grid::Content::Unknown)
 					name = "Natural";
-				GUI::PButton button(new GUI::Button(name));
-				button->backgroundTone = Grid::CellStack::Cell::typeColor[i];
-				Vec::abs(button->backgroundTone);
-				float max = Vec::max(button->backgroundTone);
+				PButton button(new Button(name,"Select material '"+name+"'"));
+				auto col = Grid::CellStack::Cell::typeColor[i];
+				Vec::abs(col);
+				float max = Vec::max(col);
 				if (max > 0.5f)
-					button->backgroundTone /= max;
-				button->SetColor(float4(button->backgroundTone,1.f));
-				button->fillBackground = true;
-				float b = 0.2f * (window->CountComponents()/4);
-				float x = 0.25f * (window->CountComponents()%4);
-				float x2 = 0.25f * (3-(window->CountComponents()%4));
-				button->SetLocation(Math::TFloatRect(float2(),float2(0.15f,0.15f)));
-				button->anchorConfig.Left().Set(x);
-				button->anchorConfig.Right().Set(x2);
-				if (window->CountComponents()>=4)
-					button->anchorConfig.Top().Set(window->GetComponents()[4*(window->CountComponents()/4-1)], 0.01f);
-				else
-					button->anchorConfig.Top().Set(0.f);
+					col /= max;
+				button->SetColor(float4(col,1.f));
+				button->SetBackgroundTone(col);
+				button->SetEdges(true);
+				const auto iy = window->CountComponents()/4;
+				const auto ix = window->CountComponents()%4;
+				button->SetCutCorners(M::Quad<bool>(ix == 0, false, ix == 3,iy == 0));
+				float b = 0.2f * iy;
+				float x = 0.25f * ix;
+				float x2 = 0.25f * (3-ix);
+				{
+					auto m = button->Anchor();
+					m.FillHorizontally(Distance( x,Distance::Type::RelativeToParentComponent),Distance(x2,Distance::Type::RelativeToParentComponent));
+
+					if (window->CountComponents()>=4)
+						m.Beneath(window->GetReferences()[4*(window->CountComponents()/4-1)], Distance::GameWindow( 0.01f ));
+					else
+						m.Top();
+				}
+				button->SetHorizontalPadding(0);
 				//if ((i%4)!=0)
 				//{
 				//	button->anchorConfig.Left().SetLastOf(window,0.01f);
 				//}
-				button->SetOnPress([this,i]()
+				button->SetTriggerFunction([this,i]()
 				{
-					GUI::Hide(window);
+					HUD::WindowStack::Hide(window);
 					this->onSelect((BYTE)i);
 				});
-				window->AddComponent(button);
+				window->AddComponent(button,CLOCATION);
 				materialButtons << std::make_pair(i,button);
 			}
 
 			{
-				GUI::PButton button(new GUI::Button("Abort"));
+				PButton button(new Button("Abort","Abort material selection and keep the currently selected one"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
-				button->SetLocation(Math::TFloatRect(float2(),float2(1.f,0.2f)));
-//				button->anchorConfig.Top().Set(b);
-				button->anchorConfig.Left().Set(0);
-				button->anchorConfig.Right().Set(0);
-				button->anchorConfig.Top().SetLastOf(window, 0.01f);
-			
-				button->SetOnPress([this]()
+				button->Anchor().FillHorizontally().BeneathLastOf(window,Distance::GameWindow(0.01f),Distance::GameWindow(0.2f));
+				button->SetCutCorners(M::Quad<bool>(true,true,true,false));
+				button->SetTriggerFunction([this]()
 				{
-					GUI::Hide(window);
+					HUD::WindowStack::Hide(window);
 				});
-				window->AddComponent( button );
+				window->AddComponent( button,CLOCATION );
 			}
 		}
 
 
-		void				MaterialDialog::SetCurrent(BYTE type)
+		void				MaterialDialog::SetText(BYTE type)
 		{
 			foreach (materialButtons,b)
 			{
-				String name = Grid::Content::Reinterpret(b->first).ToString();
-				if (b->first == Grid::Content::Unknown)
-					name = "Natural";
+				//String name = Grid::Content::Reinterpret(b->first).ToString();
+				//if (b->first == Grid::Content::Unknown)
+					//name = "Natural";
 				if (b->first == type)
-					b->second->SetText("["+name+"]");
+				{
+					b->second->SetAlwaysDown(true);
+					//b->second->SetText("["+name+"]");
+				}
 				else
-					b->second->SetText(name);
+					b->second->SetAlwaysDown(false);
+					//b->second->SetText(name);
 			}
 		}
 
-		void UploadToServer()
-		{
-			serverConfig = config;
-			serverSeed = seed;
-			RefreshButtonStates();
-			Network::Channels::planetConfig.SendTo(Network::client,config);
-		}
 
 		/*
 		struct TLayerConfig
@@ -315,130 +377,94 @@ namespace ConfigurationMode
 				return;
 			grp.customLabel << grp.name;
 			grp.customLabel.MarkBriefEnd();
-			grp.customLabel << hint.trimRef();
+			grp.customLabel << hint.TrimRef();
 		}
 
 
-		/**
-		Activates client world view
-		*/
-		void	LoadClientWorld(bool forceRebuild=false)
-		{
-			if (clientWorldLoaded)
-			{
-				if (forceRebuild)
-					Update(true);
-				return;
-			}
-			Update(forceRebuild);
-			clientWorldLoaded = true;
-			LogEvent(EventClass(EventSignificance::Important ,EventFlavor::Gain),"Now viewing local planet version. Objects and nexus bases are hidden!");
-		}
 
-		void	LoadServerWorld(bool forceFullDiscovery)
-		{
-			if (!clientWorldLoaded && anyWorldLoaded)
-				return;
-			clientWorldLoaded = false; 
-			flashUploadButton = false;
-			anyWorldLoaded = true;
-			if (GridState::current)
-				GridState::current->Import();
-			if (forceFullDiscovery)
-			{
-				auto&st = serverWorld[Grid::WorldDiscovery::FullTerrain];
-				if (st.isLoaded)
-					st.Export();
-				else
-					GridState::current = &st;	//link, whatever is loaded
-			}
-			else
-				ActivateDiscovery(false,serverWorld);
-		}
-
+		
 		void		RebuildPlanetList()
 		{
 			planetListWindow->ClearComponents();
-			planetListWindow->SetCenteredWidth(0.7f,GUI::TAnchor::RelativeToScreen);
-			planetListWindow->autoHeight = true;
-			planetListWindow->maxHeight = 0.7f;
-			planetListWindow->fillBackground = false;
-			GUI::PComponent label = planetListWindow->AddNewComponent(new GUI::Label("Planets",1.2f));
-			label->anchorConfig.Top().Set(0);
-			label->anchorConfig.Left().Set(0);
+			planetListWindow->SetWidth(0.7f);
+			planetListWindow->SetAutomaticHeight(true);
+			planetListWindow->SetMaxAutoHeight(0.7f);
+			planetListWindow->SetBackground(false);
+			PComponent label = planetListWindow->AddNewComponent(new Label("Planets",1.2f),CLOCATION);
+			{
+				auto cfg = label->GetAnchorConfig();
+				cfg.GetHAxis().AnchorLower(HUD::Component::Distance::Unknown);
+				cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown);
+				label->SetAnchorConfig(cfg);
+			}
 			foreach (planetList,p)
 			{
 				index_t myIndex = p - planetList.pointer();
-				GUI::PButton button(new GUI::Button(*p,[myIndex]()
+				PButton button(new Button(p->displayName,"Load configuration of planet type "+p->displayName+". Your current planet configuration will be replaced",[myIndex]()
 				{
-					Network::Channels::loadPlanetByName.SendTo(Network::client, planetList[myIndex]);
-					GUI::Hide(planetListWindow);
-					LoadServerWorld(false);
+					//load planetList[myIndex]
+
+					const auto&planet = planetList[myIndex];
+
+					Configuration cfg;
+					if (cfg.LoadFromFile(planet.file.GetLocation()))
+					{
+						LoadPlanetFrom(cfg);
+					}
+					else
+						LogEvent(EventClass::Preset::configurationError,cfg.Report());
+					HUD::WindowStack::Hide(planetListWindow);
 				}));
-				button->anchorConfig.Top().SetLastOf(planetListWindow,0.02f);
-				button->anchorConfig.axis[0].min.Set(0);
-				button->anchorConfig.axis[0].max.Set(0);
-				planetListWindow->AddComponent(button);
+				button->Anchor().FillHorizontally().BeneathLastOf(planetListWindow, 0.02f);
+				planetListWindow->AddComponent(button,CLOCATION);
 			}
-			planetListWindow->FullAutoLayout();
+
+			planetListWindow->FullAutoLayout(CLOCATION);
 		}
 
 
-		void AppendRuleButton(const Objects::Command::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
+		void AppendRuleButton( const Objects::Command::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, bool&setting, const std::function<void(bool)>&onChange)
 		{
-			Objects::Command::PIconCommand cmd(new Objects::Command::CustomIconCommand(niceName,iconName,[flag,onChange]()
+			Objects::Command::PIconCommand cmd(new Objects::Command::CustomIconCommand(niceName,iconName,[&setting,onChange]()
 			{
-				if (gameConfig.gameFlags & flag)
-				{
-					gameConfig.gameFlags &= ~flag;
-					onChange(false);
-				}
-				else
-				{
-					gameConfig.gameFlags |= flag;
-					onChange(true);
-				}
-				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
-				//LoadClientWorld();
+				setting = !setting;
+				onChange(setting);
+				//HUD::HexGrid::RefreshButtonState();
 			},
-			[flag](bool)->Objects::CommandFlags
+			[&setting](bool)->Objects::CommandFlags
 			{
 				typedef Objects::CommandFlags F;
 
 				F result = F::IsEnabled;
 				
-				if (gameConfig.gameFlags & flag)
+				if (setting)
 					result |= F::IsPermaActive;
 				return result;
 			}));
 			grp->Add(cmd);
-			onChange(!!(gameConfig.gameFlags&flag));
+			onChange(setting);
 			String help = FindDeclaration(configName);
 			SetHint(*cmd, help);
 		}
 
-		void AppendRuleButton(const Objects::Command::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
+		void AppendRuleButton( const Objects::Command::PCommandGroup&grp,const String&niceName, const String&configName, bool&setting)
 		{
-			AppendRuleButton(grp,niceName,niceName,configName,flag,[](bool){});
+			AppendRuleButton(grp,niceName,niceName,configName,setting,[](bool){});
 		}
 
 		void	RefreshDiscovery()
 		{
-			if (clientWorldLoaded)
-				Update(false);
-			else
-				ActivateDiscovery(false,serverWorld);
+			Update(false);
 		}
 
 		void AppendDiscoveryButton(const Objects::Command::PCommandGroup&grp,Grid::WorldDiscovery disc)
 		{
 			Objects::Command::PBase cmd(new Objects::Command::CustomIconCommand(disc.ToString(),String("Discovery ")+disc.ToString(),[disc]()
 			{
-				if (gameConfig.worldDiscovery == (BYTE)disc && showDiscovery)
+				if (showingDiscovery == disc)
 					return;
 				showDiscovery = true;
-				gameConfig.worldDiscovery = (BYTE)disc;
-				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
+				showingDiscovery = disc;
 				RefreshDiscovery();
 			},
 			[disc](bool)->Objects::CommandFlags
@@ -447,7 +473,7 @@ namespace ConfigurationMode
 
 				F result = F::IsEnabled;
 				
-				if (gameConfig.worldDiscovery == (BYTE)disc)
+				if (showingDiscovery == disc)
 					result |= F::IsPermaActive;
 				return result;
 			}));
@@ -460,12 +486,10 @@ namespace ConfigurationMode
 		{
 			Objects::Command::PBase cmd(new Objects::Command::CustomIconCommand(goal.ToString(),String("Goal ")+goal.ToString(),[goal]()
 			{
-				if (gameConfig.gameGoal == (BYTE)goal)
+				if (RuntimeConfig::gameGoal == goal)
 					return;
 				RuntimeConfig::gameGoal = goal;
-				gameConfig.gameGoal = (BYTE)goal;
-				UploadToServer();	//make sure server planet is up-to-date
-				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
+				Update();	//in case nexus structures have changed
 			},
 			[goal](bool)->Objects::CommandFlags
 			{
@@ -473,7 +497,7 @@ namespace ConfigurationMode
 
 				F result = F::IsEnabled;
 				
-				if (gameConfig.gameGoal == (BYTE)goal)
+				if (RuntimeConfig::gameGoal == goal)
 					result |= F::IsPermaActive;
 				return result;
 			}));
@@ -483,7 +507,7 @@ namespace ConfigurationMode
 
 		Objects::Command::PCommandGroup MakeIntButtons(const Objects::Command::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::Command::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
+			Objects::Command::PVisualCommand number(new HUD::HexGrid::Custom::ValueReferenceCommand<int>(group->name+" ["+String(min)+".."+String(max)+"]",value));
 			numberCommands << number;
 			Objects::Command::PIconCommand decrease(new Objects::Command::IconCommand("Decrease",[&value,min,number]()
 			{
@@ -566,7 +590,7 @@ namespace ConfigurationMode
 		{
 			float min = value / 10.f;
 			float max = value * 10.f;
-			Objects::Command::PVisualCommand number(new UI::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
+			Objects::Command::PVisualCommand number(new HUD::HexGrid::Custom::ValueReferenceCommand<float>(group->name+" ["+String(min)+" - "+String(max)+"]",value));
 			numberCommands << number;
 			//Objects::Command::PIconCommand reset(new Objects::Command::CustomIconCommand("Reset","Undo",[&value,&defValue]()
 			//{
@@ -607,7 +631,7 @@ namespace ConfigurationMode
 		{
 			namespace Command = Objects::Command;
 			Objects::Command::PCommandGroup group(new Command::CommandGroup(name));
-			group->baseCoords = int2(1);
+			//group->baseCoords = int2(1);
 			SetHint(*MakeIntButtons(Command::AddChild(*group,"Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1),
 			"Defines the central height of this attribute. The effective altitude stretches symmetrically up and down from this value.")
 			;
@@ -636,13 +660,13 @@ namespace ConfigurationMode
 			*/
 			Objects::Command::PBase choose(new Objects::Command::IconCommand("Choose Material",[&value,&dialog]()
 			{
-				dialog.SetCurrent(value);
+				dialog.SetText(value);
 				dialog.onSelect = [&value](BYTE v)
 				{
 					value = v;
 					Update();
 				};
-				GUI::Show(dialog.window); 
+				HUD::WindowStack::Show(dialog.window); 
 			},
 			[](bool){return Objects::CommandFlags::IsEnabled;}
 			));
@@ -651,18 +675,212 @@ namespace ConfigurationMode
 			group->Add(choose);
 		}
 
+		template <typename T>
+		void	Query(const Config::Context&ctx, const char*name, T&var)
+		{
+			String rs;
+			if (!ctx.QueryString(name,rs))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to query '"+ctx.name+"/"+name+"'");
+				return;
+			}
+			if (!convert(rs.c_str(),rs.GetLength(),var))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+TypeInfo<T>::name);
+				return;
+			}
+		}
+
+		template <typename T, typename T2>
+		void	QueryMappedEnum(const Config::Context&ctx, const char*name, T2&var)
+		{
+			String rs;
+			if (!ctx.QueryString(name,rs))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to query '"+ctx.name+"/"+name+"'");
+				return;
+			}
+			T e;
+
+			if (!e.Decode(rs.c_str()))
+			{
+				LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+T::GetName());
+				return;
+			}
+			var = (T2)e;
+		}
+
+		void	ImportConfig(const Config::Context&sub, Grid::ExtendedPlanetConfig::TLayerConfig&layer)
+		{
+			Query(sub,"baseHeight",layer.baseHeight);
+			Query(sub,"noiseHeightScale",layer.heightScale);
+			Query(sub,"frequency",layer.frequency);
+			Query(sub,"dampening",layer.dampening);
+		}
+
+		void	LoadPlanetFrom( const Configuration&cfg )
+		{
+			Query(cfg,"atmosphereDensity",config.atmosphereColor.a);
+			QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",config.innerCoreType);
+
+			if (const Config::Context*sub = cfg.GetContext("ExtendedCore"))
+			{
+				QueryMappedEnum<Grid::Content>(*sub,"type",config.extendedCoreType);
+				ImportConfig(*sub,config.extendedCore);
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'ExtendedCore'");
+					
+			if (const Config::Context*sub = cfg.GetContext("Mountains"))
+			{
+				QueryMappedEnum<Grid::Content>(*sub,"type",config.type);
+				Query(*sub,"snowHeight",config.snowHeight);
+				ImportConfig(*sub,config.mountains);
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Mountains'");
+
+			if (const Config::Context*sub = cfg.GetContext("Liquid"))
+			{
+				QueryMappedEnum<Grid::Content>(*sub,"type",config.liquidCoverage);
+				Query(*sub,"level",config.liquidHeight);
+				QueryMappedEnum<Grid::Content>(*sub,"outline",config.liquidOutline);
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Liquid'");
+				
+
+			if (const Config::Context*sub = cfg.GetContext("Resources"))
+			{
+				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				{
+					Objects::Resource res = Objects::Resource::Reinterpret(i);
+					if (const Config::Context*sub2 = sub->GetContext(res.ToString()))
+					{
+						Query(*sub2,"density",Grid::Resource::density[i]);
+						Query(*sub2,"max",Grid::Resource::maximum[i]);
+					}
+					else
+						LogEvent(EventClass::Preset::configurationError,"Unable to fetch '"+sub->name+"/"+res.ToString()+"'");
+				}
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Resources'");
+
+			//if (warnings.IsNotEmpty())
+			//{
+			//	HUD::Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
+			//}
+			Update();
+			foreach (numberCommands,n)
+				(*n)->RasterizeImage();
+			HUD::HexGrid::RefreshButtonState();
+		}
+		void	ExportConfig(Config::Context&sub, const Grid::ExtendedPlanetConfig::TLayerConfig&layer)
+		{
+			sub.Define("baseHeight",layer.baseHeight);
+			sub.Define("noiseHeightScale",layer.heightScale);
+			sub.Define("frequency",layer.frequency);
+			sub.Define("dampening",layer.dampening);
+		}
+
+		void	SavePlanetTo(Configuration&cfg)
+		{
+			cfg.Define("atmosphereDensity",config.atmosphereColor.a);
+			cfg.Define("innerCoreType",Grid::Content::Reinterpret(config.innerCoreType).ToString());
+			{
+				Config::Context&sub = cfg.DefineContext("ExtendedCore");
+				sub.Define("type",Grid::Content::Reinterpret(config.extendedCoreType).ToString());
+				ExportConfig(sub,config.extendedCore);
+			}
+					
+			{
+				Config::Context&sub = cfg.DefineContext("Mountains");
+				sub.Define("type",Grid::Content::Reinterpret(config.type).ToString());
+				sub.Define("snowHeight",config.snowHeight);
+				ExportConfig(sub,config.mountains);
+			}
+
+			{
+				Config::Context&sub = cfg.DefineContext("Liquid");
+				sub.Define("type",Grid::Content::Reinterpret(config.liquidCoverage).ToString());
+				sub.Define("level",config.liquidHeight);
+				sub.Define("outline",Grid::Content::Reinterpret(config.liquidOutline).ToString());
+			}
+				
+
+			{
+				Config::Context&sub = cfg.DefineContext("Resources");
+				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				{
+					Objects::Resource res = Objects::Resource::Reinterpret(i);
+					Config::Context&sub2 = sub.DefineContext(res.ToString());
+						sub2.Define("density",Grid::Resource::density[i]);
+						sub2.Define("max",Grid::Resource::maximum[i]);
+				}
+			}
+		}
+
+		void SaveUserPlanet(const String&name)
+		{
+			if (!isActive)
+				return;
+			PathString file = RuntimeConfig::sharedConfig.Lookup(sharedPlanetsSub+FOLDER_SLASH+name+".ini");
+			Configuration cfg;
+			SavePlanetTo(cfg);
+			if (cfg.SaveToFile(file,PRODUCT_NAME))
+			{
+				LogEvent(EventClass::Preset::configurationPrint,"Generated new planet type '"+name+"'");
+				ReScanPlanets();
+				RebuildPlanetList();
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::fileError,"New planet '"+name+"': "+cfg.GetError());
+			}
+
+		}
+
+		void AddPlanet()
+		{
+			static const String planetAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
+
+			HUD::Dialog::Query("Enter a name for the new planet type","My Planet",planetAlpha,
+				[](const String&candidate)->bool
+			{
+				auto trimmed = candidate.CopyToUpperCase().Trim();
+				if (trimmed == previousPlanetFileName)
+					return false;
+				if (trimmed.Length() < 2)
+					return false;
+
+				return true;
+			},
+				[](const String&candidate)
+			{
+				auto name = candidate.Trim();
+				auto upper = name.CopyToUpperCase();
+				foreach (planetList,p)
+				{
+					if (!p->isFactoryDefault && p->upperCaseName == upper)
+					{
+						HUD::Dialog::Confirm("Custom planet '"+name+"' already exists. Replace?",[name]()
+						{
+							SaveUserPlanet(name);
+							
+						},[]()->HUD::Dialog::CheckResult {return isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
+						return;
+					}
+				}
+				SaveUserPlanet(name);
+			});
+
+		}
 
 		namespace Clipboard
 		{
-			Buffer0<String>	warnings;
 
-			void	ExportConfig(Config::Context&sub, const Grid::ExtendedPlanetConfig::TLayerConfig&layer)
-			{
-				sub.Define("baseHeight",layer.baseHeight);
-				sub.Define("noiseHeightScale",layer.heightScale);
-				sub.Define("frequency",layer.frequency);
-				sub.Define("dampening",layer.dampening);
-			}
+
 
 			void	ExportPlanet()
 			{
@@ -671,39 +889,8 @@ namespace ConfigurationMode
 				Keep this in sync with server/components/reflection.cpp
 				*/
 				Configuration cfg;
-				cfg.Define("atmosphereDensity",config.atmosphereColor.a);
-				cfg.Define("innerCoreType",Grid::Content::Reinterpret(config.innerCoreType).ToString());
-				{
-					Config::Context&sub = cfg.DefineContext("ExtendedCore");
-					sub.Define("type",Grid::Content::Reinterpret(config.extendedCoreType).ToString());
-					ExportConfig(sub,config.extendedCore);
-				}
-					
-				{
-					Config::Context&sub = cfg.DefineContext("Mountains");
-					sub.Define("type",Grid::Content::Reinterpret(config.type).ToString());
-					sub.Define("snowHeight",config.snowHeight);
-					ExportConfig(sub,config.mountains);
-				}
+				SavePlanetTo(cfg);
 
-				{
-					Config::Context&sub = cfg.DefineContext("Liquid");
-					sub.Define("type",Grid::Content::Reinterpret(config.liquidCoverage).ToString());
-					sub.Define("level",config.liquidHeight);
-					sub.Define("outline",Grid::Content::Reinterpret(config.liquidOutline).ToString());
-				}
-				
-
-				{
-					Config::Context&sub = cfg.DefineContext("Resources");
-					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-					{
-						Objects::Resource res = Objects::Resource::Reinterpret(i);
-						Config::Context&sub2 = sub.DefineContext(res.ToString());
-							sub2.Define("density",Grid::Resource::density[i]);
-							sub2.Define("max",Grid::Resource::maximum[i]);
-					}
-				}
 
 				StringBuffer buffer;
 				cfg.SaveToStringBuffer(buffer,PRODUCT_NAME);
@@ -711,49 +898,10 @@ namespace ConfigurationMode
 				System::copyToClipboard(Engine::context.getWindow(),buffer.pointer());
 			}
 
-			template <typename T>
-			void	Query(const Config::Context&ctx, const char*name, T&var)
-			{
-				String rs;
-				if (!ctx.QueryString(name,rs))
-				{
-					warnings << "Unable to query '"+ctx.name+"/"+name+"'";
-					return;
-				}
-				if (!convert(rs.c_str(),rs.length(),var))
-				{
-					warnings << "Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+TypeInfo<T>::name;
-					return;
-				}
-			}
-
-			template <typename T, typename T2>
-			void	QueryMappedEnum(const Config::Context&ctx, const char*name, T2&var)
-			{
-				String rs;
-				if (!ctx.QueryString(name,rs))
-				{
-					warnings << "Unable to query '"+ctx.name+"/"+name+"'";
-					return;
-				}
-				T e;
-
-				if (!e.Decode(rs.c_str()))
-				{
-					warnings << "Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+T::GetName();
-					return;
-				}
-				var = (T2)e;
-			}
+		
 
 
-			void	ImportConfig(const Config::Context&sub, Grid::ExtendedPlanetConfig::TLayerConfig&layer)
-			{
-				Query(sub,"baseHeight",layer.baseHeight);
-				Query(sub,"noiseHeightScale",layer.heightScale);
-				Query(sub,"frequency",layer.frequency);
-				Query(sub,"dampening",layer.dampening);
-			}
+
 
 			void	ImportPlanet()
 			{
@@ -770,68 +918,18 @@ namespace ConfigurationMode
 					file.LinkSourceData(buffer,strlen(buffer));
 					if (cfg.LoadFromFile(file))
 					{
-						warnings.Clear();
-						Query(cfg,"atmosphereDensity",config.atmosphereColor.a);
-						QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",config.innerCoreType);
+						LoadPlanetFrom(cfg);
 
-						if (Config::Context*sub = cfg.GetContext("ExtendedCore"))
-						{
-							QueryMappedEnum<Grid::Content>(*sub,"type",config.extendedCoreType);
-							ImportConfig(*sub,config.extendedCore);
-						}
-						else
-							warnings << "Unable to fetch 'ExtendedCore'";
-					
-						if (Config::Context*sub = cfg.GetContext("Mountains"))
-						{
-							QueryMappedEnum<Grid::Content>(*sub,"type",config.type);
-							Query(*sub,"snowHeight",config.snowHeight);
-							ImportConfig(*sub,config.mountains);
-						}
-						else
-							warnings << "Unable to fetch 'Mountains'";
-
-						if (Config::Context*sub = cfg.GetContext("Liquid"))
-						{
-							QueryMappedEnum<Grid::Content>(*sub,"type",config.liquidCoverage);
-							Query(*sub,"level",config.liquidHeight);
-							QueryMappedEnum<Grid::Content>(*sub,"outline",config.liquidOutline);
-						}
-						else
-							warnings << "Unable to fetch 'Liquid'";
-				
-
-						if (Config::Context*sub = cfg.GetContext("Resources"))
-						{
-							for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-							{
-								Objects::Resource res = Objects::Resource::Reinterpret(i);
-								if (Config::Context*sub2 = sub->GetContext(res.ToString()))
-								{
-									Query(*sub2,"density",Grid::Resource::density[i]);
-									Query(*sub2,"max",Grid::Resource::maximum[i]);
-								}
-								else
-									warnings << "Unable to fetch '"+sub->name+"/"+res.ToString()+"'";
-							}
-						}
-						else
-							warnings << "Unable to fetch 'Resources'";
-
-						if (warnings.IsNotEmpty())
-						{
-							Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
-						}
-						LoadClientWorld(true);
 					}
 					else
-						Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
+						HUD::Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
 				}
 				else
-					Dialog::ShowMessage("Planet configuration could not be loaded from clipboard. Chances are, you did not copy it to clipboard first");
+					HUD::Dialog::ShowMessage("Planet configuration could not be loaded from clipboard. Chances are, you did not copy it to clipboard first");
 
 			}
 		}
+
 
 
 		void	Create()
@@ -841,7 +939,11 @@ namespace ConfigurationMode
 			created = true;
 
 
-			planetListWindow.reset(new GUI::Window());
+			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
+
+
+			planetListWindow = Window::Create();
+			ReScanPlanets();
 			RebuildPlanetList();
 
 			XML::Container declarations;
@@ -855,19 +957,20 @@ namespace ConfigurationMode
 
 			namespace Command = Objects::Command;
 			coreGroup.reset(new Objects::Command::CommandGroup("Core"));
-			coreGroup->baseCoords = int2(1);
+			//coreGroup->baseCoords = int2(1);
 			SetHint(*coreGroup,"The inner planetary core represents the center-most sphere content");
 			ruleGroup.reset(new Objects::Command::CommandGroup("Rules"));
-			ruleGroup->baseCoords = int2(1);
+			//ruleGroup->baseCoords = int2(1);
 			SetHint(*ruleGroup,"All common game rules");
 
 
 			copyPasteGroup.reset(new Objects::Command::CommandGroup("Copy/Paste"));
-			copyPasteGroup->baseCoords = int2(1);
+			//copyPasteGroup->baseCoords = int2(1);
 			SetHint(*copyPasteGroup,"Copy/paste current configuration to/from clipboard");
 
 			{
 				Objects::Command::PIconCommand cmd;
+
 
 				cmd.reset(new Objects::Command::CustomIconCommand("Copy planet to clipboard (CTRL+C)","Copy/Paste",Clipboard::ExportPlanet,
 				[](bool)->Objects::CommandFlags { return Objects::CommandFlags::IsEnabled;}));
@@ -889,25 +992,45 @@ namespace ConfigurationMode
 
 			*/
 
-			AppendRuleButton(ruleGroup,"Closed Game","Rules/closedGame",Protocol::GameFlag::ClosedGame);
-			AppendRuleButton(ruleGroup,"Start-Bases","Rules/startBases",Protocol::GameFlag::StartBases);
-			AppendRuleButton(ruleGroup,"Bases Required","Rules/basesRequired",Protocol::GameFlag::BasesRequired);
-			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Rules/Nexus/enableAI",Protocol::GameFlag::NexusAI);
-			AppendRuleButton(ruleGroup,"Simulate Liquids", "World/simulateLiquids",Protocol::GameFlag::SimulateLiquids);
-			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","Rules/empZones",Protocol::GameFlag::EMPZones,[](bool set)
+			AppendRuleButton(ruleGroup,"Closed Game","Rules/closedGame",Detail::Rules::closedGame);
 			{
-				if (set)
+				Objects::Command::PIconCommand cmd(new Objects::Command::IconCommand("Password",[]()
 				{
-					Grid::empZonesUnlocked = 0x1;
-					Grid::empZonesLocked = ~0x1;
-				}
-				else
+					HUD::Dialog::CheckedQuery("Please specify a server password. Leave empty (no spaces) to disable.",Rules::password,HUD::Component::Input::GetStandardAlphabet(),[]()
+					{
+						if (!IsActive())
+							return HUD::Dialog::CheckResult::Abort;
+						return HUD::Dialog::CheckResult::OkayContinue;
+					},
+					[](const StringRef pwd)
+					{
+						Rules::password = pwd;
+						HUD::HexGrid::RefreshButtonState();
+					});
+				},
+				[](bool)->Objects::CommandFlags
 				{
-					Grid::empZonesUnlocked = 0xffff;
-					Grid::empZonesLocked = 0x0;
-				}
-				RuntimeConfig::empZones = set;
-				VisualTerrain::Invalidate(); //force rebuild
+					typedef Objects::CommandFlags F;
+
+					F result = F::IsEnabled;
+				
+					if (Rules::password.IsNotEmpty())
+						result |= F::IsPermaActive;
+					return result;
+				}));
+				ruleGroup->Add(cmd);
+				String help = FindDeclaration("Server/password");
+				SetHint(*cmd, help);
+			}
+
+			AppendRuleButton(ruleGroup,"Start-Bases","Rules/startBases",Detail::Rules::startBases);
+			AppendRuleButton(ruleGroup,"Bases Required","Rules/basesRequired",Detail::Rules::basesRequired);
+			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Enable Nexus AI","Rules/Nexus/enableAI",Detail::Rules::enableAI, [](bool set){Detail::Update();});
+			AppendRuleButton(ruleGroup,"Simulate Liquids", "World/simulateLiquids",Detail::Rules::simulateLiquids);
+			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","Rules/empZones",RuntimeConfig::empZones,[](bool set)
+			{
+				RuntimeConfig::empZones= !set;	//force update
+				SetEMPZones(set);
 			});
 			Objects::Command::PCommandGroup goals = AddChild(*ruleGroup,"Game Goal");
 			SetHint(*goals,FindDeclaration("/Rules/gameGoal"));
@@ -928,90 +1051,83 @@ namespace ConfigurationMode
 				RefreshDiscovery();
 			};
 
-			MakeMaterialChoice(coreGroup,config.innerCoreType,serverConfig.innerCoreType,noUnknown);
-			mountainGroup = MakeLayer("Mountains",config.mountains,serverConfig.mountains);
+			MakeMaterialChoice(coreGroup,config.innerCoreType,initialConfig.innerCoreType,noUnknown);
+			mountainGroup = MakeLayer("Mountains",config.mountains,initialConfig.mountains);
 			SetHint(*mountainGroup,"Defines the extent and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.");
-			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,serverConfig.extendedCore);
+			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,initialConfig.extendedCore);
 			SetHint(*extendedCoreGroup, "Defines the extent and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.");
-			MakeMaterialChoice(AddChild(*extendedCoreGroup,"Type","Terrain Content"),config.extendedCoreType,serverConfig.extendedCoreType, noUnknown);
-			MakeMaterialChoice(AddChild(*mountainGroup,"Type","Terrain Content"),config.type,serverConfig.type, fullScope);
+			MakeMaterialChoice(AddChild(*extendedCoreGroup,"Type","Terrain Content"),config.extendedCoreType,initialConfig.extendedCoreType, noUnknown);
+			MakeMaterialChoice(AddChild(*mountainGroup,"Type","Terrain Content"),config.type,initialConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
-			MakeIntButtons(AddChild(*mountainGroup,"Snow Height"),config.snowHeight,serverConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+			MakeIntButtons(AddChild(*mountainGroup,"Snow Height"),config.snowHeight,initialConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
 
 			{
 				liquidGroup.reset(new Objects::Command::CommandGroup("Oceans"));
-				liquidGroup->baseCoords = int2(1);
-				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Content","Ocean Type"),config.liquidCoverage,serverConfig.liquidCoverage,noUnknown);
-				MakeIntButtons(AddChild(*liquidGroup,"Level","Base Height"),config.liquidHeight,serverConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
-				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Outline"),config.liquidOutline,serverConfig.liquidOutline,noLiquids);
+				//liquidGroup->baseCoords = int2(1);
+				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Content","Ocean Type"),config.liquidCoverage,initialConfig.liquidCoverage,noUnknown);
+				MakeIntButtons(AddChild(*liquidGroup,"Level","Base Height"),config.liquidHeight,initialConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+				MakeMaterialChoice(AddChild(*liquidGroup,"Ocean Outline"),config.liquidOutline,initialConfig.liquidOutline,noLiquids);
 			}
 
 
 			int at = 0;
 			buttons << std::make_pair(int2(at++,0),
-						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Accept current server planet and config, and finish","Commit",[]()
+						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Start server with current planet and config, and finish","Commit",[]()
 						{
 							
-							if (clientWorldLoaded)
+							HUD::Dialog::Confirm("Start server with your current configuration and begin game?\nYou will be returned to the server list where your server should show up momentarily.",[]()
 							{
-								Dialog::Confirm("Upload changes and begin game?",[]()
+								try
 								{
-									UploadToServer();
-									Network::client.SendSignal(Protocol::ChannelID::EndConfigurationMode);
-								},
-								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-							}
-							else
-								Dialog::Confirm("Accept current state and begin game?",[]()
+									SaveUserPlanet(previousPlanetFileName);
+
+								
+
+									if (!ServerProcess::RunNow(" -g \""+Detail::outConfigPath.GetLocation()+"\""))
+									{
+										LogEvent(EventClass::Preset::fileError,"Unable to generate server configuration file at "+String(Detail::outConfigPath.GetLocation()));
+										return;
+									}
+
+									Configuration cfg;
+									if (!cfg.LoadFromFile(Detail::outConfigPath.GetLocation()))
+									{
+										LogEvent(EventClass::Preset::fileError,"Unable to open generated server configuration file at "+String(Detail::outConfigPath.GetLocation()));
+										return;
+									}
+									cfg.Change("World/Planet/Type","*"+previousPlanetFileName);
+									cfg.Change("World/worldDiscovery",Detail::showingDiscovery.ToString());
+									cfg.Change("Rules/empZones",RuntimeConfig::empZones);
+									cfg.Change("World/simulateLiquids",Rules::simulateLiquids);
+									cfg.Change("Rules/closedGame",Rules::closedGame);
+									cfg.Change("Rules/startBases",Rules::startBases);
+									cfg.Change("Rules/basesRequired",Rules::basesRequired);
+									cfg.Change("Rules/gameGoal",RuntimeConfig::gameGoal.ToString());
+									cfg.Change("Rules/Nexus/enableAI",Rules::enableAI);
+									cfg.Change("Rules/Nexus/spawnBases",Rules::nexusBases && Rules::enableAI);
+									cfg.Change("Rules/Nexus/spawnAllPorts",Rules::allNexusPorts);
+									cfg.Change("Server/password",Rules::password);
+									if (!cfg.SaveToFile(Detail::outConfigPath.GetLocation(), PRODUCT_NAME))
+									{
+										LogEvent(EventClass::Preset::fileError,"Unable to save generated server configuration file at "+String(Detail::outConfigPath.GetLocation()));
+										return;
+									}
+
+									ServerProcess::Begin(true,false,"-c \""+Detail::outConfigPath.GetLocation()+"\"");
+									SetActive(false);
+								}
+								catch (const std::exception&ex)
 								{
-									Network::client.SendSignal(Protocol::ChannelID::EndConfigurationMode);
-								},
-								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-							//Update();
+									LogEvent(EventClass::Preset::error,ex.what());
+								}
+							},
+							[](){return Detail::isActive ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
+							
 						},
 						[](bool){return Objects::CommandFlags::IsEnabled;}
 						))
 					);
-			//buttons << std::make_pair(int2(at++,0),
-			//			Objects::Command::PBase(new Objects::Command::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
-			//			{
-			//				UploadToServer();
-			//				//Update();
-			//			},
-			//			[](bool){
-			//			return (flashUploadButton ? Objects::CommandFlags::SoftFlashing : Objects::CommandFlags::None) |  Objects::CommandFlags::IsEnabled;
-			//			}
-			//			))
-			//		);
-			//buttons	<< std::make_pair(int2(at++,0),
-			//			Objects::Command::PBase(new Objects::Command::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
-			//			{
-			//				config = serverConfig;
-			//				seed = serverSeed;
-			//				Update();
-			//			},
-			//			[](bool){return Objects::CommandFlags::IsEnabled;}
-			//			))
-			//		);
-			//buttons << std::make_pair(int2(at++,0),
-			//			Objects::Command::PBase(new Objects::Command::CustomIconCommand("View server version","View Server Version",[]()
-			//			{
-			//				if (clientWorldLoaded)
-			//				{
-			//					LoadServerWorld(false);
-			//					RestoreServerObjects();
-			//				}
-			//				else
-			//				{
-			//					LoadClientWorld();
-			//				}
-			//				//Update();
-			//			},
-			//			[](bool){
-			//			return (!clientWorldLoaded ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None) | Objects::CommandFlags::IsEnabled;
-			//			}
-			//			))
-			//		);
+	
 			buttons	<< std::make_pair(int2(at++,0),
 						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Randomize seeds and rebuild using current config","Randomize",[]()
 						{
@@ -1023,15 +1139,15 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),
 						Objects::Command::PBase(new Objects::Command::CustomIconCommand("Load Planet Preset","Planet Presets",[]()
 						{
-							if (!GUI::IsVisible(planetListWindow))
-								GUI::Show(planetListWindow);
+							if (!HUD::WindowStack::IsVisible(planetListWindow))
+								HUD::WindowStack::Show(planetListWindow);
 							else
-								GUI::Hide(planetListWindow);
+								HUD::WindowStack::Hide(planetListWindow);
 						},
 						[](bool)
 						{
 							Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
-							//if (GUI::IsVisible(planetListWindow))
+							//if (IsVisible(planetListWindow))
 							//	rs |= Objects::CommandFlags::IsPermaActive;
 							return rs;
 						}
@@ -1045,12 +1161,72 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),liquidGroup);
 			buttons	<< std::make_pair(int2(at++,0),ruleGroup);
 			buttons	<< std::make_pair(int2(at++,0),copyPasteGroup);
+
+			{
+				Objects::Command::PIconCommand cmd(new Objects::Command::CustomIconCommand("Save Planet as...","Add Planet",AddPlanet,
+				[](bool)->Objects::CommandFlags { return Objects::CommandFlags::IsEnabled;}));
+				buttons << std::make_pair(int2(at++,0),cmd);
+
+				SetHint(*cmd,"Save your current planet configuration as a new planet type (accessible by both client and local servers)");
+			}
+
+
 			;
 		}
 
 		void	Destroy()
 		{
 
+		}
+
+
+
+
+
+
+
+
+
+
+		void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::FolderScan folder)
+		{
+			if (!folder.IsValidLocation())
+			{
+				FileSystem::CreateDirectory(folder.GetLocation());
+
+				//LogEvent(EventClass::Preset::configurationError,"Internal error: Unable to locate planets-directory '"+String(folder.GetLocation())+"'");
+				return;
+			}
+			FileSystem::File file;
+			while (folder.NextFile("ini",file))
+			{
+				auto&p = planetList.Append();
+				p.displayName = String(file.GetInnerName());
+				if (!isFactoryDefault)
+					p.displayName = '*'+p.displayName;
+				p.upperCaseName = String(file.GetInnerName()).CopyToUpperCase();
+				p.file = file;
+				p.isFactoryDefault = isFactoryDefault;
+			}
+
+		}
+
+		bool			IsPlanetIniFile(const String&filename)
+		{
+			if (!filename.EndsWith(".ini"))
+				return IsPlanetIniFile(filename+".ini");
+			return FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup(sharedPlanetsSub)).FindFile(PathString(filename)) != nullptr
+					||
+				FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(filename)) != nullptr;
+		}
+
+
+		void		ReScanPlanets()
+		{
+			planetList.Clear();
+		
+			AppendAvailablePlanetInitFilesFrom(false, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")));
+			AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("../predefinedPlanets"));
 		}
 	}
 
@@ -1061,64 +1237,110 @@ namespace ConfigurationMode
 		Update();
 	}
 
+	UINT32	GetServerSeed()
+	{
+		return Detail::seed;
+	}
+
+
 	void	Update(const Grid::ExtendedPlanetConfig&cfg)
 	{
 		using namespace Detail;
 
-		receivedVersion++;
-		if (receivedVersion >= sentVersion)
-		{
-			receivedVersion = sentVersion;
 
-			if (RestoreServerWorld())
-			{
-				seed = cfg.lastSeed;
-				if (!clientWorldBuilt)
-				{
-					config = cfg;
-					foreach (numberCommands,n)
-						(*n)->RasterizeImage();
-				}
-				serverConfig = cfg;
-				//if (clientWorldLoaded)
-				//	Update();
-				//else
-				ClientGrid::Apply(cfg);
-				World::allowRecompilation = false;
-			}
-		}
+		bool mustLoad = false;
+
+		seed = cfg.lastSeed;
+		initialConfig = config = cfg;
+		foreach (numberCommands,n)
+			(*n)->RasterizeImage();
+		HUD::HexGrid::RefreshButtonState();
+
+		
+		ClientGrid::Apply(cfg);
 	}
 
-	void	SetGameConfig(UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc)
+	void	SetGameConfig( UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc )
 	{
-		Detail::gameConfig.gameFlags = gameFlags;
-		Detail::gameConfig.gameGoal = (BYTE)goal;
-		Detail::gameConfig.worldDiscovery = (BYTE)disc;
+		return;
+		Detail::Rules::basesRequired = (gameFlags & Protocol::GameFlag::BasesRequired) != 0;
+		Detail::Rules::closedGame = (gameFlags & Protocol::GameFlag::ClosedGame) != 0;
+		RuntimeConfig::empZones = (gameFlags & Protocol::GameFlag::EMPZones) != 0;
+		Detail::Rules::enableAI = (gameFlags & Protocol::GameFlag::NexusAI) != 0;
+		Detail::Rules::simulateLiquids = (gameFlags & Protocol::GameFlag::SimulateLiquids) != 0;
+		Detail::Rules::nexusBases = (gameFlags & Protocol::GameFlag::NexusHasBases) != 0;
+		Detail::Rules::allNexusPorts = (gameFlags & Protocol::GameFlag::NexusPortsOnAllPoles) != 0;
+
+		RuntimeConfig::gameGoal = goal;
+		Detail::showingDiscovery = disc;
+		Detail::Update();
 	}
 
 
-	void	SetActive(bool newActive)
+	void	SetActive( bool newActive )
 	{
 		using namespace Detail;
 		if (isActive == newActive)
 			return;
 		isActive = newActive;
+		HUD::HostList::CheckVisibility(!isActive);
 		if (!isActive)
 		{
-			clientWorldBuilt = false;
+			anyWorldLoaded = false;
 			showDiscovery = false;
-			serverObjects.Clear();
+			Objects::Renderer::SetRenderGoalMarkers(true);
+			Objects::Faction::Kill(myNexus);
+			GlobalEvents::FlushAll();
+			myNexus = nullptr;
+			if (empZoneButtonWindow)
+			{
+				HUD::WindowStack::Hide(empZoneButtonWindow);
+				empZoneButtonWindow = nullptr;
+			}
+			return;
 		}
-		localVersion = sentVersion = receivedVersion = 0;
+		if (RuntimeConfig::empZones)
+		{
+			Grid::empZonesUnlocked = 0x1;
+			Grid::empZonesLocked = ~0x1;
+		}
+		else
+		{
+			Grid::empZonesUnlocked = 0xffff;
+			Grid::empZonesLocked = 0x0;
+		}
+		VisualTerrain::Invalidate();
+		Objects::Renderer::SetRenderGoalMarkers(false);
+
+		myNexus = Objects::Faction::GetOrCreate(TUniqueID::New());
 		Detail::Create();
-		UI::HexGrid::Configure(Objects::selectedEntity);
+		HUD::HexGrid::Configure(Objects::selectedEntity);
+		Detail::Update();
 
-	}
-
-	bool	ViewingServerVersion()
-	{
-		using namespace Detail;
-		return !clientWorldLoaded;
+		if (!empZoneButtonWindow)
+		{
+			empZoneButtonWindow = HUD::Component::Window::Create();
+			empZoneButton = HUD::Component::PButton{new HUD::Component::Button{"EMP Zones",[]()
+			{
+				SetEMPZones(!RuntimeConfig::empZones);
+			}}};
+			//empZoneButton->edges = false;
+			empZoneButton->SetBackground(false);
+			empZoneButton->SetEdges(false);
+			SetZoneButtonText();
+			empZoneButton->LockToIdealHeight();
+			empZoneButtonWindow->AddComponent(empZoneButton,CLOCATION);
+			empZoneButton->Anchor().FillHorizontally();
+			empZoneButtonWindow->SetAutomaticHeight(true);
+			empZoneButtonWindow->canBeImplicitlyClosed = false;
+			empZoneButtonWindow->isModal = false;
+			empZoneButtonWindow->Anchor().Right(0.05f,HUD::Component::Distance::Pixels(200.f * UI::GetScale())).Top(0.1f);
+			//empZoneButtonWindow->edges = false;
+			empZoneButtonWindow->SetBackground(false);
+			empZoneButtonWindow->SetEdges(false);
+			empZoneButtonWindow->SetDarkenedOutline(false);
+			HUD::WindowStack::ShowBottom(empZoneButtonWindow);
+		}
 	}
 
 	bool	IsActive()
@@ -1127,54 +1349,16 @@ namespace ConfigurationMode
 		return isActive;
 	}
 
-	bool	ReconfigureVisualCommands()
+	bool	DefineHexCommands()
 	{
 		using namespace Detail;
 		if (!isActive)
 			return false;
-		UI::HexGrid::ClearCommands();
 		foreach (buttons,b)
-			b->second->VisitMembers(UI::HexGrid::VisitAddCommand,false,b->first);
+			HUD::HexGrid::AddCommand(b->first+int2(2,1),b->second);
 		return true;
 	}
 
-	void	SignalServerWorldUpdateCompleted()
-	{
-		using namespace Detail;
-		if (!isActive)
-			return;
-
-		ASSERT__(!clientWorldLoaded);
-
-		Detail::LoadServerWorld(true);
-		for (index_t i = 0; i< Grid::WorldDiscovery::N; i++)
-		{
-			clientWorld[i] = serverWorld[i];
-			clientWorld[i].isLoaded = false;
-		}
-	}
-
-	bool	RestoreServerWorld()
-	{
-		if (!Detail::isActive)
-			return true;
-		if (Detail::receivedVersion != Detail::localVersion)
-			return false;
-		Detail::LoadServerWorld(true);
-		//World::allowRecompilation = false;
-		return true;
-	}
-	void	RestoreServerObjects()
-	{
-		RestoreServerWorld();
-		using namespace Detail;
-		if (serverObjects.IsNotEmpty())
-		{
-			serverObjects.Export();
-			World::actual.FlushAndValidateSensory(1);
-		}
-		UI::HexGrid::RefreshContacts();
-	}
 
 
 	void	OnCopy()
@@ -1190,30 +1374,13 @@ namespace ConfigurationMode
 			Detail::Clipboard::ImportPlanet();
 	}
 
-	void	Tick()
-	{
-		if (Detail::isActive && Detail::localVersion > Detail::sentVersion && timer.GetSecondsSince(Detail::lastLocalChange) > 1)
-		{
-			Detail::sentVersion = Detail::localVersion;
-			Detail::UploadToServer();
-		}
-	}
 
 
-
-	void	UpdatePlanetList(Array<String>&fleetingData)
-	{
-		if (Detail::isActive)
-		{
-			Detail::planetList.adoptData(fleetingData);
-			Detail::RebuildPlanetList();
-		}
-	}
 
 
 	void	Create()
 	{
-		GlobalEvents::frameBegin << Tick;
+		//GlobalEvents::frameBegin << Tick;
 	}
 
 }

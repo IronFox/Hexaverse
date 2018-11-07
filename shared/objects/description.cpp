@@ -6,14 +6,14 @@ namespace Objects
 {
 	void				Description::BeginBrief()
 	{
-		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && !rawLines.Last().second)
+		if (rawLines.IsNotEmpty() && rawLines.Last().first.Trim().IsNotEmpty() && !rawLines.Last().second)
 			rawLines << std::make_pair("",false);
 		isBrief = !briefLocked;
 	}
 
 	void				Description::MarkBriefEnd(bool permanently /*= false*/)
 	{
-		if (rawLines.IsNotEmpty() && rawLines.Last().first.trim().IsNotEmpty() && rawLines.Last().second)
+		if (rawLines.IsNotEmpty() && rawLines.Last().first.Trim().IsNotEmpty() && rawLines.Last().second)
 			rawLines << std::make_pair("",false);
 		isBrief = false;
 		if (permanently)
@@ -27,7 +27,7 @@ namespace Objects
 
 	Description&		Description::operator<<(const String&line)
 	{
-		if (isBrief && (line.IsEmpty() || line.firstChar() != ' '))
+		if (isBrief && (line.IsEmpty() || line.FirstChar() != ' '))
 			rawLines << std::make_pair("  "+line,isBrief);
 		else
 			rawLines << std::make_pair(line,isBrief);
@@ -55,16 +55,16 @@ namespace Objects
 		wrappedLines.Clear();
 		foreach (desc.rawLines,l)
 		{
-			if (l->first.length() <= 60)
+			if (l->first.GetLength() <= 60)
 			{
 				wrappedLines << *l;
 				continue;
 			}
-			Array<String>	split;
-			wrap(l->first,60,split);
+			Array<StringRef>	split;
+			Wrap(l->first,60,split);
 			foreach (split,s)
 			{
-				wrappedLines.Append().first.adoptData(*s);
+				wrappedLines.Append().first = *s;
 				wrappedLines.Last().second = l->second;
 			}
 		}

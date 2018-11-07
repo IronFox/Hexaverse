@@ -8,7 +8,7 @@
 	#include "resource.h"
 #endif
 #include "entityCommand.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace Objects
 {
@@ -19,7 +19,7 @@ namespace Objects
 	public:
 		#ifdef HAS_WINDOW
 			static Grid::LCellIdI	selected;			//!< Gathering point of selected entity (if any, or invalid)
-			static TMatrix4<>		selectedVisual;		//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
+			static M::TMatrix4<>	selectedVisual;		//!< Point where the respective gathering point should be visualized at. (same cell; may be different height)
 
 			void					UpdateVisuals();
 		#endif
@@ -62,6 +62,7 @@ namespace Objects
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
 				Component::Turret*		turret=nullptr;	//set for vehicles only
 				PMobileEntity		prototype;	//set for non-vehicles only
+
 			#else
 				PMobileEntity		producing;
 
@@ -76,12 +77,21 @@ namespace Objects
 			#endif
 			bool					IsVehicle() const;
 			Component::VehicleBase*	GetVehicleBase() const;
-			bool					CanSpawnInGrid() const;
-			bool					CanSpawnAboveGrid(int&) const;
+			bool					CanSpawnInTerrain() const;
+			bool					CanSpawnAboveTerrain(int&) const;
 			const String&			GetName() const;
+
+			/**
+			Gets a prototype of the local production item.
+			On client this method may assemble a global vehicle instance, depending on the local configuration.
+			Do not use from a threaded environment.
+			Do not use the result persistently, as its configuration will change during the next AssembleVehiclePrototype() call.
+			@return Prototype of the local production
+			*/
+			PMobileEntity			GetPrototype() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
-		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
+		Ctr::Buffer0<WorkItem>		queue;	//must use buffer here, because elements can be erased and changes are rare
 
 		UINT32						productionPerRound,	//!< Amount of minerals converted per round. Effectively the production speed of the local instance
 									productionDone=0,	//!< Total amount of minerals invested into the current production. Reset to 0 upon completion
@@ -105,11 +115,15 @@ namespace Objects
 		}
 
 
-		void					AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
+		void						AppendTask(const TUniqueID&id, EntityType);
+		static int					GetProductionCost(EntityType, const Objects::OwnerParameter&);
 
 		#ifdef HAS_WINDOW
 			const int2&				GetCommandOffset() const {return commandOffset;}
-			void					VisitAllCommands(FCommandVisitor visitor,bool force);
+			/**
+			Puts all active visual commands into the specified list.
+			*/
+			void					GetCommands(CommandContainer&) const;
 			void					SetCommandOffset(const int2&);
 		#else
 			void					SetCommandOffset(const int2&)	{};
@@ -119,13 +133,13 @@ namespace Objects
 
 		#ifndef CLIENT
 			WorkItem*				EnqueueProductionOf(const PMobileEntity&e, index_t at = InvalidIndex);
-			WorkItem*				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
+			WorkItem*				EnqueueProductionOfVehicle(EntityType);
 			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
 			#ifndef NO_SATELLITES
 				WorkItem*			EnqueueProductionOfSatellite(ConstName typeName);
 			#endif
 
-			void					Tick(ResourceVector&v, float&t);
+			void					Tick(ResourceVector&v, float&t, bool forceAutoSpawn);
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.producing,isActive);}
 
 			PMobileEntity			SpawnFinishedProductionAnywhere(float&t);
@@ -145,7 +159,7 @@ namespace Objects
 		virtual void				SignalLastProductionDone(float&t) {}
 		virtual void				SignalNewProductionEnqueued() {}
 		virtual bool				CanProduce(const PWorldEntity&proto) const=0;
-
+		virtual bool				SupportsGatheringPoint() const {return false;}
 	};
 
 

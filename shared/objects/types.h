@@ -6,6 +6,8 @@
 #include "../typeDecl.h"
 #include "../config.h"
 
+using namespace DeltaWorks;
+
 namespace Objects
 {
 	namespace Command
@@ -20,7 +22,12 @@ namespace Objects
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
-	DECLARE_POINTER_CLASS(ResearchTopic)
+	namespace Research
+	{
+		DECLARE_POINTER_CLASS(Topic)
+	}
+
+	DECLARE_POINTER_CLASS(MobilePark)
 
 	DECLARE_POINTER_CLASS(BaseEntity)
 		DECLARE_POINTER_CLASS(WorldEntity)
@@ -58,6 +65,7 @@ namespace Objects
 	//typedef std::shared_ptr<Base>	PVehicleComponent;
 
 	DECLARE_POINTER_CLASS(Faction);
+	DECLARE_POINTER_CLASS(Alliance);
 
 	typedef PFaction		OwnerParameter;
 
@@ -75,6 +83,7 @@ namespace Objects
 
 	class Compound;
 	class Marker;
+	struct MarkerType;
 	struct TrajectoryEndPoint;
 	struct TChoiceVisualization;
 
@@ -100,8 +109,11 @@ namespace Objects
 		PlacementFailedPermanentlyObstructed,		//!< Something permanently is in the way. This includes mobile entities without motion tasks
 		PlacementFailedHarmfulOrBlocked,	//!< Either moving there would hurt or something permanently blocking is in the way
 		PlacementFailedMobileDestroyed,	//!< Movement failed, vehicle cannot be returned automatically to any save location, and should be destroyed by the caller
-		EnteredStructure
+		EnteredHangar
 	);
+
+
+	class EntityType;
 
 }
 

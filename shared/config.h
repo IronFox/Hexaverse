@@ -41,7 +41,12 @@ Disables the hibernation mechanic, and replaces it was a type-table that maps ty
 #define NO_HIBERNATION
 
 /** NO_SATELLITES
-Disables the satellite mechanic, sky grid, sky port, and all satellites
+Disables the satellite mechanic, sky grid, sky port, and all satellites.
+Satellite code has been removed from several locations.
+Enabling it again will require major re-implementation and debugging.
+Particularly, recent changes have moved all mobile entities into the mobile entity grid.
+A layer must be allocated for satellites in that grid, which must be synchronized with the
+aerial branch
 */
 #define NO_SATELLITES
 

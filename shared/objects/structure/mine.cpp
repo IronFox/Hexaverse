@@ -39,7 +39,7 @@ namespace Objects
 				for (UINT j = layer-1; j >= i && j < layer; j--)
 				{
 					const int h = Grid::CellStack::ToHeight(j);
-					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetVehicle(Grid::LCellIdI(location.stackID,h)))
+					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetMobileEntity(Grid::LCellIdI(location.stackID,h)))
 						stack.volumeCell[j].content = Grid::Content::Foundation;
 					else
 					{
@@ -55,7 +55,7 @@ namespace Objects
 				naturalResources *= GetEfficiency();
 			}
 			if (success)
-				RegisterChange(WorldEntity::CanEnableChanged,atTime);
+				SignalChangeByExternalCause(WorldEntity::CanEnableChanged,atTime);
 			return success;
 		#endif
 	}
@@ -107,10 +107,10 @@ namespace Objects
 
 
 	#ifdef HAS_WINDOW
-		/*virtual override*/ void			Mine::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+		/*virtual override*/ void			Mine::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags);
+			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
 			" Mines should be build only on known occurrences of natural resources."

@@ -36,7 +36,7 @@ namespace Objects
 		#ifdef CLIENT
 			void					SetLinkedToCore(bool, bool controlEnabled);
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 			#endif
 
 		#endif
@@ -60,7 +60,6 @@ namespace Objects
 										v.level[Resource::Energy] += -EnergyConsumption;
 									}
 
-		//virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return naturalResources.fuel*5 + naturalResources.minerals + naturalResources.uranium;};
@@ -68,7 +67,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Mine"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Mine;}
+		virtual EntityType			GetType() const override {return ConstName::Type_Mine;}
 
 
 		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
@@ -82,7 +81,7 @@ namespace Objects
 						this->SetEnabled(false,atTime,false);
 					}
 					else
-						RegisterChange(this->EnableChanged,atTime);
+						SignalChangeByExternalCause(EnableChanged,atTime);
 					isLinkedToCore = linked;
 				}
 			#endif

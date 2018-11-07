@@ -1,5 +1,4 @@
-#ifndef componentKernelH
-#define componentKernelH
+#pragma once
 
 #include <global_string.h>
 #include <grid/stack.h>
@@ -12,10 +11,14 @@ namespace Evolver
 		float				radius=1;
 		int					damageLevel=1;
 		float				atTime=0;
+		bool				isDoomsday=false;
+		Objects::PWorldEntity	causedBy;
 
 
 		/**/				TExplosion()	{}
-		/**/				TExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime):center(center),radius(radius),damageLevel(damageLevel),atTime(atTime)	{}
+		/**/				TExplosion(const Objects::PWorldEntity&causedBy, const Grid::LCellIdI&center, float radius, int damageLevel, bool isDoomsday, float atTime)
+							:causedBy(causedBy),isDoomsday(isDoomsday),
+							center(center),radius(radius),damageLevel(damageLevel),atTime(atTime)	{}
 	};
 
 	class Abstract
@@ -36,14 +39,9 @@ namespace Evolver
 		virtual void		HandleChainReactionExplosion(const TExplosion&)=0;
 
 		void				ProcessRound()	{BeginRoundProcessing(); while (ContinueRoundProcessing()); FinishRoundProcessing();}
-
-
-
 	};
 
 	void				Create();
 	Abstract*			Get(const String&name);
 	Abstract*			GetDefault();
 }
-
-#endif

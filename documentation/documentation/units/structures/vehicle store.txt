@@ -1,0 +1,4 @@
+----
+Vehicle stores have evolved from a side line curiousity to a significant strategic asset if placed adequately.
+Placing one store next to a [[units/structures/vehicle plant]], for instance, and a second near an active war zone allows quick deployment of new units.
+Furthermore, availability of units within vehicle stores is hidden from hostile sensory, even if all of your vehicle stores are currently exposed.

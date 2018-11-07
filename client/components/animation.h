@@ -3,8 +3,8 @@
 
 #include <container/buffer.h>
 #include <math/vclasses.h>
-#include "../../shared/objects.h"
-#include "../../shared/protocol.h"
+#include <objects.h>
+#include <protocol.h>
 #include "../ExtRenderer/DirectX11.h"
 
 /**
@@ -15,17 +15,20 @@ namespace Animation
 {
 
 
-	typedef Buffer0<TVec4<> >	Trajectory;
-	extern Trajectory				activeTrajectory;
-	extern float					projectileAt;	//[0,1], specifies where, along @a activeTrajectory, the projectile currently is
-	extern bool						projectileActive/*=false*/;
+	typedef Buffer0<M::TVec4<> >	Trajectory;
 
 	#ifdef HAS_WINDOW
 		namespace DX11 = Engine::DX11;
-		extern Objects::Geometry			trajectoryGeometry;
-		extern DX11::InstructionBlock32		trajectoryVisualization;
-		extern DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		extern float						maxProjectileProjection;
+		namespace OpenAL = Engine::OpenAL;
+		struct TTrajectoryAnimation
+		{
+			Trajectory					activeTrajectory;
+			Objects::Geometry			trajectoryGeometry;
+			DX11::InstructionBlock32	instruction;
+			float						maxProjectileProjection,projectileAt=0, beamHeight;
+			M::TVec3<>					beamBase;
+			OpenAL::Source				localizedSoundSource;
+		};
 	#endif
 
 	extern float						atTime /*= 0.f*/;
@@ -63,25 +66,26 @@ namespace Animation
 			DestroyEntity,
 			ResourceUpdate,
 		}						type;
-		count_t					overwritten=0;
-		//Grid::LCellIdI			location;
 		typedef Buffer0<Protocol::WorldDelta,Swap>	DeltaField;
 		std::shared_ptr<DeltaField >	worldDelta;
-		TFloatRange<>			time;
-		Objects::PWorldEntity	allocatedTarget;	//for construction and motion. not to be used for other purposes as the original reference by id may change during animation
-		TUniqueID				targetEntityID;
-		Objects::Component::Turret*		attackerTurret;	//reference targetEntityID to retrieve the identity of the attacker (precise attack only)
-		float					attackRange,attackAngle;
-		TVec3<>					attackerPosition;
+		M::TFloatRange<>			time;
+		Objects::PWorldEntity		allocatedTarget;	//for construction and motion. not to be used for other purposes as the original reference by id may change during animation
+		TUniqueID					targetEntityID;
+		Objects::Component::Turret*	attackerTurret;	//reference targetEntityID to retrieve the identity of the attacker (precise attack only)
+		float						attackRange,attackAngle;
+		M::TVec3<>					attackerPosition;
 
-		TVec3<>					explosionCenter;	//if Explosion
-		float					explosionRadius;	//if Explosion
-		bool					empExplosion;		//if Explosion
+		M::TVec3<>					explosionCenter;	//if Explosion
+		float						explosionRadius;	//if Explosion
+		bool						empExplosion;		//if Explosion
 		std::shared_ptr<Protocol::MobileState>		vehicleState;
 		std::shared_ptr<Protocol::StructureState>	structureState;
 		std::shared_ptr<Protocol::ResourceUpdate>	resourceUpdate;
-		TVec2<>					rotateTo,rotateFrom;
-		TVec3<>					rotateToWorld;
+		#ifdef HAS_WINDOW
+			std::shared_ptr<TTrajectoryAnimation>	trajectoryAnimation;
+		#endif
+		M::TVec2<>					rotateTo,rotateFrom;
+		M::TVec3<>					rotateToWorld;
 		union
 		{
 			bool				explode;
@@ -116,7 +120,7 @@ namespace Animation
 		std::shared_ptr<Path>	path;	//if MovementStream
 
 
-		/**/					Primitive():time(FloatRange<float>(-1,-1)),explosionCenter(float3(-1)),explosionRadius(-1)
+		/**/					Primitive():time(M::FloatRange<float>(-1,-1)),explosionCenter(float3(-1)),explosionRadius(-1)
 		{}
 
 
@@ -149,6 +153,9 @@ namespace Animation
 		void					End();
 
 		result_t				Update(float t);
+		#ifdef HAS_WINDOW
+			void				Render() const;
+		#endif
 	};
 
 

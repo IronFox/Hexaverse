@@ -11,26 +11,393 @@
 #include "../runtimeConfig.h"
 #include "prototypes.h"
 #include "structure/tower.h"
+#include "../protocol.h"
+#include "structure/vehicleStore.h"
 
 namespace Objects
 {
 
+	/*static*/ const String			Faction::nexusName = "<Nexus>";
+
+	/*static*/ HashTable<TUniqueID,WAlliance>	Alliance::all;
+
+
+	#ifndef CLIENT
+		UINT64							Alliance::GetWinningScore() const
+		{
+			UINT64 rs = 0;
+			ForeachMember([&rs](const PFaction&f)
+			{
+				rs += f->GetWinningScore();
+			});
+			return rs;
+		}
+
+
+		Alliance::TNexusStats			Alliance::GetNexusStats() const
+		{
+			TNexusStats rs;
+			ForeachMember([&rs](const PFaction&f)
+			{
+				rs.acquiringNexusControl += f->acquiringNexusControl;
+				rs.nexusControl += f->nexusControl;
+			},true);
+			return rs;
+		}
+	#endif
+
+
+	/**/		Alliance::Alliance(const TUniqueID&id) : id(id)
+	{
+		LogEvent(EventSignificance::Debug,"Constructed Alliance "+ToString(id));
+	}
+	/*virtual	*/	Alliance::~Alliance()
+	{
+		if (!application_shutting_down) 
+		{
+			all.Unset(id);
+			LogEvent(EventSignificance::Debug,"Destructed Alliance "+ToString(id)+". "+String(all.Count())+" remaining");
+
+		}
+	}
+
+	/*static*/ void	Alliance::Foreach(const std::function<void(const PAlliance&)>&visitor)
+	{
+		all.VisitAllValues([visitor](const WAlliance&a)
+		{
+			visitor(a.lock());
+		});
+	}
+
+	void		Alliance::Invite(const PFaction&f)
+	{
+		if (HaveInvited(f))
+			return;
+		invited.Append().rawPointer = f.get();
+		invited.Last().wFaction = f;
+		LogEvent(EventSignificance::Common,"Alliance "+ToString(id)+" invited faction "+f->GetLogName());
+		
+		#ifndef CLIENT
+			ApplicationInterface::SignalAllianceInvite(shared_from_this(), f, Protocol::AllianceInviteType::Invite);
+		#endif
+	}
+
+	void		Alliance::CancelInvite(const PFaction&f)
+	{
+		const index_t at = FindInviteOf(f);
+		if (at == InvalidIndex)
+			return;
+		invited.Erase(at);
+		LogEvent(EventSignificance::Common,"Alliance "+ToString(id)+" invite for faction "+f->GetLogName()+" canceled");
+		
+		#ifndef CLIENT
+			ApplicationInterface::SignalAllianceInvite(shared_from_this(), f, Protocol::AllianceInviteType::Cancel);
+		#endif
+	}
+
+	bool		Alliance::HaveInvited(const PFaction&f)
+	{
+		return FindInviteOf(f) != InvalidIndex;
+	}
+
+	index_t		Alliance::FindInviteOf(const Objects::PFaction&f) const
+	{
+		foreach (invited,inv)
+		{
+			if (inv->rawPointer == f.get())
+				return inv - invited.pointer();
+		}
+		return InvalidIndex;
+	}
+
+	void		Alliance::VisitAllInvitedFactions(const std::function<void(const PFaction&)>&visitor, bool livingOnly/*=true*/) const
+	{
+		foreach (invited,m)
+		{
+			PFaction f = m->wFaction.lock();
+			if (f->isDead && livingOnly)
+				continue;
+			visitor(f);
+		}
+	}
+
+
+
+	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&visitor, bool livingOnly)	const
+	{
+		foreach (members,m)
+		{
+			PFaction f = m->wFaction.lock();
+			if (f->isDead && livingOnly)
+				continue;
+			visitor(f);
+		}
+	}
+
+	count_t		Alliance::CountLivingMembers() const
+	{
+		if (!this)
+			return 0;
+		count_t cnt  = 0;
+		foreach (members,m)
+			if (!m->wFaction.lock()->isDead)
+				cnt++;
+		return cnt;
+	}
+
+
+	bool		Alliance::IsMember(const PFaction&f) const
+	{
+		foreach (members,m)
+			if (m->wFaction.lock() == f)
+				return true;
+		return false;
+	}
+
+	void		Alliance::UpdateConfiguration(const TConfig&newCfg)
+	{
+		if (config == newCfg)
+			return;
+		const auto oldCfg = config;
+		config = newCfg;
+
+		if (oldCfg.shareSensors != newCfg.shareSensors)
+		{
+			#ifndef CLIENT
+				this->ForeachMember([](const PFaction&f)
+				{
+					f->knownWorld.InvalidateSensory();
+					f->CheckSensory();
+				},true);
+			#elif HAS_WINDOW
+				World::actual.InvalidateSensory();
+			#endif
+		}
+
+		#ifndef CLIENT
+			if (oldCfg.exposeEntityDetails != newCfg.exposeEntityDetails)
+				this->ForeachMember([this](const PFaction&f)
+				{
+					f->VisitMyEntities([](const PWorldEntity&e)
+					{
+						e->RegisterChange(Objects::WorldEntity::CompleteChange);
+					},config.exposeEntityDetails);
+				},true);
+			ApplicationInterface::SignalAllianceConfigChange(shared_from_this());
+		#endif
+
+	}
+
+
+	Alliance::TConfig::TConfig(UINT32 flags):
+								exposeEntityDetails((Protocol::AllianceFlag::ExposeEntityDetails&flags) != 0),
+								shareSensors((Protocol::AllianceFlag::ShareSensors&flags) != 0)
+	{}
+
+
+	UINT32	Alliance::TConfig::ToFlags() const
+	{
+		UINT32	rs = 0;
+		if (exposeEntityDetails)
+			rs |= Protocol::AllianceFlag::ExposeEntityDetails;
+		if (shareSensors)
+			rs |= Protocol::AllianceFlag::ShareSensors;
+		return rs;
+	}
+
+
+	void		Alliance::RefreshSensors(bool force)
+	{
+		if (!config.shareSensors && !force)
+			return;
+		#ifndef CLIENT
+			foreach (members,m)
+			{
+				PFaction f = m->wFaction.lock();
+
+				f->knownWorld.InvalidateSensory();
+				f->CheckSensory();
+			}
+		#endif
+	}
+
+	void		Alliance::Join(const PFaction&f)
+	{
+		ASSERT__(f);
+		ASSERT__(!IsMember(f));
+		LogEvent(EventSignificance::Debug,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
+		members.Append().wFaction = f;
+		members.Last().rawPointer = f.get();
+		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+		if (members.Count() == 1)
+			all.Set(id,shared_from_this());
+		f->alliance = shared_from_this();
+
+		const index_t at = FindInviteOf(f);
+		if (at != InvalidIndex)
+		{
+			invited.Erase(at);
+			LogEvent(EventSignificance::Debug,"Erased existing invite");
+			
+			#ifndef CLIENT
+				ApplicationInterface::SignalAllianceInvite(shared_from_this(), f, Protocol::AllianceInviteType::Accept);
+			#endif
+
+		}
+
+
+
+		#ifndef CLIENT
+			ApplicationInterface::SignalAllianceMembershipChange(f);
+			ApplicationInterface::SignalNexusControlChange(shared_from_this());
+		#endif
+
+		RefreshSensors(false);
+
+	}
+
+	void		Alliance::Leave(const PFaction&f)
+	{
+		if (!this)
+			return;
+		LogEvent(EventSignificance::Common,f,"Leaving alliance "+ToString(id));
+		foreach (members,m)
+			if ( m->wFaction == f)
+			{
+				members.erase(m);
+				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+				f->alliance = nullptr;
+				if (members.IsEmpty())
+					all.Unset(id);
+				else
+				{
+					RefreshSensors(false);
+					#ifndef CLIENT
+						ApplicationInterface::SignalNexusControlChange(shared_from_this());
+					#endif
+				}
+				return;
+			} 
+		FATAL__("Faction not found");
+	}
+
+
+	void		Alliance::Leave(Faction*f)
+	{
+		LogEvent(EventSignificance::Common,f->GetLogName()+ "@"+String((const void*)f)+ ": Leaving alliance "+ToString(id));
+		const count_t cnt = members.Count();
+		foreach (members,m)
+			if ( m->rawPointer == f)
+			{
+				members.erase(m);
+				ASSERT_EQUAL__(members.Count()+1,cnt);
+				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
+				f->alliance = nullptr;
+				if (members.IsEmpty())
+					all.Unset(id);
+				else
+					RefreshSensors(false);
+				return;
+			} 
+		FATAL__("Faction not found");
+	}
+
+
+
+	Faction::~Faction()
+	{
+		LogEvent(EventSignificance::Debug,"Destruct faction "+ToString(id)+" "+name);
+
+		if (!application_shutting_down && alliance)
+			alliance->Leave(this);
+	}
+
+
+	const Research::Attributes::Table& Faction::GetAttributeTable() const
+	{
+		return this ? researchState.attributeTable : Research::globalState.zeroTable;
+	}
+
+	
 	#ifndef CLIENT
 
-		/*static*/ Buffer0<WFaction>	Faction::all;
+		/*static*/ Ctr::Buffer0<PFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
 
-		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const String&name/* = ""*/)
+
+		count_t	Faction::GetWinningScore() const
 		{
+			return 100000 * this->nexusControl + 10000ULL* this->acquiringNexusControl + GetOffensiveCapabilities()*100 + GetTotalEntityValue();
+		}
+
+		count_t Faction::GetOffensiveCapabilities() const
+		{
+			count_t rs = 0;
+			foreach (allTurretBases,b0)
+			{
+				PTurretBase b = b0->lock();
+				if (b)
+					rs += b->GetDamagePotentialPerRound();
+			}
+			return rs;
+		}
+
+		count_t		Faction::GetTotalEntityValue() const
+		{
+			count_t rs = 0;
+			foreach (activeMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetConstructionCost();
+			}
+			foreach (storedMobiles,m0)
+			{
+				PMobileEntity m = m0->lock();
+				if (m)
+					rs += m->GetConstructionCost();
+			}
+			foreach (structures,s0)
+			{
+				PStructure s = s0->lock();
+				if (s)
+					rs += s->GetConstructionCost();
+			}
+			return rs;
+		}
+
+
+
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const PAlliance&alliance, const String&name /*= ""*/)
+		{
+			ASSERT__(id.IsNotEmpty());
+			ASSERT__(alliance);
+			ASSERT__(id != alliance->id);
 			PFaction rs(new Faction(id, name));
 			all << rs;
+
+			alliance->Join(rs);
 			return rs;
+
+		}
+
+		/*static*/ PFaction				Faction::Create(const TUniqueID&id, const TUniqueID&allianceID, const String&name/* = ""*/)
+		{
+			ASSERT__(allianceID.IsNotEmpty());
+			auto alliance = Alliance::FindByID(allianceID);
+			if (!alliance)
+				alliance.reset(new Alliance(allianceID));
+			return Create(id,alliance,name);
 		}
 
 		void	Faction::RecreateNexus(const TUniqueID&id)
 		{
-			nexus.reset(new Faction(id, "<Nexus>",true));
+			LogEvent(EventSignificance::Common,"Recreating Nexus faction using ID "+ToString(id));
+			nexus.reset(new Faction(id, Faction::nexusName,true));
+			PAlliance alliance { new Alliance(TUniqueID::New()) };
+			alliance->Join(nexus);
+
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
@@ -53,17 +420,17 @@ namespace Objects
 		}
 
 
-		void ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change)
+		void ChangeStorage(WorldEntity&e, float&atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change)
 		{
 			if (change == 0)
 				return;
 			storage.level[res] += change;
 			LogEvent(EventSignificance::Common,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
-			e.RegisterChange(WorldEntity::StorageChanged,atTime);
+			e.SignalChangeByExternalCause(WorldEntity::StorageChanged,atTime);
 			ASSERT_IS_CONSTRAINED__(storage.level[res] , 0, max.level[res]);
 		}
 
-		void ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change)
+		void ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change)
 		{
 			if (change == 0)
 				return;
@@ -78,7 +445,7 @@ namespace Objects
 			#endif
 		}
 
-		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change)
+		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource res, int change)
 		{
 			ResourceVector demand;
 
@@ -96,7 +463,7 @@ namespace Objects
 		}
 
 
-		void ChangeStorage(MobileEntity&v, float atTime, Resource res, int change)
+		void ChangeStorage(MobileEntity&v, float&atTime, Resource res, int change)
 		{
 			if (change == 0)
 				return;
@@ -160,11 +527,11 @@ namespace Objects
 
 			OwnerParameter oldOwner = e->owner;
 
+			oldOwner->statistics.SignalLossOf(e,newOwner,true);
+			newOwner->statistics.SignalUnitAcquired(e,oldOwner);
 
 
-
-
-			Remove(e,RemovalType::ChangingOwnership,atTime,true,false,true);
+			ForceRemove(e,RemovalType::ChangingOwnership,atTime);
 			e->owner = newOwner;
 			atTime += 0.025f;
 			
@@ -176,6 +543,12 @@ namespace Objects
 				else
 					LogEvent(EventClass::Preset::error,e.get(), "Unexpected entity type. Cannot change ownership");
 			//VerifyVisibilityNetwork();
+			if (e->IsWorkingStructure())
+			{
+				PWorkingStructure w = To<WorkingStructure>::Cast(e);
+				if (w->WouldLikeToEnable())
+					w->SetEnabled(true,atTime);
+			}
 
 			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
 		}
@@ -199,106 +572,84 @@ namespace Objects
 
 
 
+		template <typename T, typename S, typename F>
+			static bool	FindAndEraseF(BasicBuffer<T,S>&container, const F&f)
+			{
+				foreach (container,item)
+					if (f(*item))
+					{
+						container.erase(item);
+						return true;
+					}
+				return false;
+			}
+		template <typename T>
+			static bool FindAndErase(BasicBuffer<std::weak_ptr<T> >&container, const std::shared_ptr<T>&match)
+			{
+				foreach (container,item)
+					if (item->lock() == match)
+					{
+						container.erase(item);
+						return true;
+					}
+				return false;
+			}
+
+
 		void		Faction::RegisterLoss(const PWorldEntity&e)
 		{
 			if (e->IsMobile())
 			{
-				if (To<MobileEntity>::Cast(e)->storedIn.expired())
-					RegisterActiveMobileLoss(e);
+				auto m = To<MobileEntity>::Cast(e);
+				if (m->storedIn.expired())
+					RegisterActiveMobileLoss(m);
 				else
-					RegisterStoredMobileLoss(e);
+					RegisterStoredMobileLoss(m);
 			}
 			else
 				if (e->IsStructure())
-					RegisterStructureLoss(e);
+					RegisterStructureLoss(To<Structure>::Cast(e));
 				else
 					FATAL__("WTF is this: "+e->GetName());
 		}
 
-		void		Faction::RegisterStructureLoss(const PWorldEntity&e)
+
+		void		Faction::RegisterStructureGain( const PStructure&s )
 		{
-			bool found0 = false;
-			foreach (structures,_s)
+			structures << s;
+			if (s->IsTower())
 			{
-				if (_s->lock() == e)
-				{
-					structures.erase(_s);
-					found0 = true;
-					break;
-				}
-			}
-			if (!found0)
-			{
-				ASSERT1__(e->IsStructure(),e->GetName());
-				FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
-				return;
-			}
-			if (To<Tower>::DynamicCast(e))
-			{
-				foreach (towers,_t)
-					if (_t->lock() == e)
-					{
-						towers.erase(_t);
-						break;
-					}
+				const PTower t = To<Tower>::Cast(s);
+				if (t->turret->CanAttack() && t->turret->attacksMovingHostilesDuringMotionPhase)
+					autoFiringTurrets << t;
+				allTurretBases << t;
 			}
 		}
-		void		Faction::RegisterActiveMobileLoss(const PWorldEntity&e)
+
+		void		Faction::RegisterStructureLoss( const PStructure&s )
 		{
-			foreach (allMobiles,_v)
+			DBG_VERIFY2__(FindAndErase(structures,s),s->GetName(),this->GetLogName());
+			if (s->IsTower())
 			{
-				if (_v->lock() == e)
-				{
-					allMobiles.erase(_v);
-
-					#ifndef NO_SATELLITES
-						if (e->IsSatellite())
-						{
-							foreach (this->satellites,sat)
-								if (sat->lock() == e)
-								{
-									this->satellites.erase(sat);
-									break;
-								}
-							if (To<Satellite>::Cast(e)->IsSkyHub())
-								foreach (this->skyHubs,sat)
-									if (sat->lock() == e)
-									{
-										this->skyHubs.erase(sat);
-										break;
-									}
-							}
-					#endif
-					return;
-				}
+				const PTower t = To<Tower>::Cast(s);
+				if (t->turret->CanAttack() && t->turret->attacksMovingHostilesDuringMotionPhase)
+					DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(t)),s->GetName(),GetLogName());
+				DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(t)),s->GetName(),this->GetLogName());
 			}
-			ASSERT1__(e->IsMobile(),e->GetName());
-			ASSERT1__(To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
-
-			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
-		void		Faction::RegisterStoredMobileLoss(const PWorldEntity&e)
-		{
-			foreach (storedMobiles,_v)
-			{
-				if (_v->lock() == e)
-				{
-					storedMobiles.erase(_v);
-					return;
-				}
-			}
-			ASSERT1__(e->IsMobile(),e->GetName());
-			ASSERT1__(!To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
-			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
-		}
 
-		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
+
+		void		Faction::RegisterActiveMobileGain( const PMobileEntity&v )
 		{
-			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-			ASSERT1__(v,e->GetName());
-			ASSERT1__(v->storedIn.expired(),e->GetName());
-			allMobiles << v;
+			ASSERT1__(v,v->GetName());
+			ASSERT1__(v->storedIn.expired(),v->GetName());
+			LogEvent(EventSignificance::Common,v.get(),"RegisterActiveMobileGain");
+
+			if (v->turret->attacksMovingHostilesDuringMotionPhase)
+				autoFiringTurrets << v;
+			allTurretBases << v;
+			activeMobiles << v;
 			#ifndef NO_SATELLITES
 				if (v->IsSatellite())
 				{
@@ -310,10 +661,110 @@ namespace Objects
 			#endif
 		}
 
+		void		Faction::RegisterActiveMobileLoss( const PMobileEntity&e )
+		{
+			ASSERT1__(e,e->GetName());
+			DBG_ASSERT1__(e->storedIn.expired(),e->GetName());
+			LogEvent(EventSignificance::Common,e.get(),"RegisterActiveMobileLoss");
+
+			if (e->turret->attacksMovingHostilesDuringMotionPhase)
+				DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
+			DBG_VERIFY2__(FindAndErase(activeMobiles,e),e->GetName(),this->GetLogName());
+			DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
+			#ifndef NO_SATELLITES
+				if (e->IsSatellite())
+				{
+					const auto sat = To<Satellite>::Cast(e);
+					DBG_VERIFY2__(FindAndErase(satellites,sat),sat->GetName(),GetLogName());
+					if (sat->IsSkyHub())
+						DBG_VERIFY2__(FindAndErase(skyHubs,sat),sat->GetName(),GetLogName());
+				}
+			#endif
+		}
+
+
+		void		Faction::RegisterStoredMobileGain( const PMobileEntity&m )
+		{
+			ASSERT1__(m,m->GetName());
+//			ASSERT1__(!m->storedIn.expired(),m->GetName());
+
+			LogEvent(EventSignificance::Common,m.get(),"RegisterStoredMobileGain");
+			storedMobiles << m;
+			allTurretBases << m;
+		}
+
+		void		Faction::RegisterStoredMobileLoss( const PMobileEntity&e )
+		{
+			LogEvent(EventSignificance::Common,e.get(),"RegisterStoredMobileLoss");
+			DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
+			DBG_VERIFY2__(FindAndErase(storedMobiles,e),e->GetName(),this->GetLogName());
+		}
+
+
+
+
+		void Faction::VisitMyAutoFiringTurrets(const std::function<void(const PTurretBase&)>&f) const
+		{
+			foreach (autoFiringTurrets,_t)
+				f(_t->lock());
+		}
+
+		void Faction::VisitMyActiveMobileEntities(const std::function<void(const PMobileEntity&)>&f) const
+		{
+			foreach (activeMobiles,m)
+				f(m->lock());
+		}
+
+		void Faction::VisitMyMobileEntities(const std::function<void(const PMobileEntity&)>&f) const
+		{
+			foreach (activeMobiles,m)
+				f(m->lock());
+			foreach (storedMobiles,m)
+				f(m->lock());
+		}
+
+
+		void Faction::VisitMyStructures(const std::function<void(const PStructure&)>&f) const
+		{
+			foreach (structures,s)
+				f(s->lock());
+		}
+
+
+		void Faction::VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const
+		{
+			seeing.VisitAllValues([&f](const Objects::Faction::SeeingReference&ref)
+			{
+				if (ref.CurrentlyVisible())
+				{
+					DBG_ASSERT__(ref.reverseVisibilityChange.empty());
+					auto e = ref.reference.lock();
+					if (e)
+						f(e);
+				}
+			});
+		};
+
+
+		void Faction::VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const
+		{
+			seeing.VisitAllValues([&f,t](const Objects::Faction::SeeingReference&ref)
+			{
+				if (ref.VisibleAt(t))
+				{
+					auto e = ref.reference.lock();
+					if (e)
+						f(e);
+				}
+			});
+		};
+
+
+
+
 		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
 		{
-
-			foreach (allMobiles,_v)
+			foreach (activeMobiles,_v)
 				if (_v->lock() == v)
 					return true;
 			return false;
@@ -326,6 +777,18 @@ namespace Objects
 			return false;
 
 		}
+
+		void		Faction::VisitMyEntities(const std::function<void(const PWorldEntity&)>&f, bool includeStored) const
+		{
+			foreach (structures,s)
+				f(s->lock());
+			foreach (activeMobiles,m)
+				f(m->lock());
+			if (includeStored)
+				foreach (storedMobiles,m)
+					f(m->lock());
+		}
+
 
 		//void		Faction::SignalLossOfTemporarySensory()
 		//{
@@ -355,49 +818,167 @@ namespace Objects
 
 		//}
 
+		void	Faction::AddEntitySensory(World::Data&worldData, float&t) const
+		{
+			foreach (this->structures,_s)
+			{
+				Objects::PStructure s = _s->lock();
+				if (s)
+					s->InsertSensoryInto(worldData,t);
+			}
+			foreach (this->activeMobiles,_m)
+			{
+				Objects::PWorldEntity e = _m->lock();
+				if (e)
+					e->InsertSensoryInto(worldData,t);
+			}
+		}
+
+		void	Faction::CollectSensors(Buffer0<World::Sensor>&outSensors, float&t) const
+		{
+			foreach (this->structures,_s)
+			{
+				Objects::PStructure s = _s->lock();
+				if (s)
+					s->VisitSensors(s->location,[&outSensors](const World::Sensor&s)
+					{
+						outSensors.Append(s);
+					});
+			}
+			foreach (this->activeMobiles,_m)
+			{
+				Objects::PWorldEntity e = _m->lock();
+				if (e)
+					e->VisitSensors(e->location,[&outSensors](const World::Sensor&s)
+					{
+						outSensors.Append(s);
+					});
+			}
+		}
+
+		void Faction::HandlePotentialAppearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
+		{
+			bool appear = shareSensors && IsAlliedWith(e->owner);
+
+			if (!appear)
+			{
+				if (e->IsAboveTerrain())
+				{
+					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+					if (cover > 0)
+						appear = true;
+				}
+				else
+					if (GridCanSee(e,t))
+						appear = true;
+			}
+			if (appear)
+				SignalAppearance(e,t,true);
+		}
+
+		void Faction::HandlePotentialDisappearance(const Objects::PWorldEntity&e, float&t, bool shareSensors)
+		{
+			bool stillVisible = false;
+			if (e->IsMobile() && !To<MobileEntity>::Cast(e)->storedIn.expired())//stored in something
+				stillVisible = IsAlliedWith(e->owner) && alliance->config.exposeEntityDetails;
+			else
+			{
+				stillVisible = shareSensors && IsAlliedWith(e->owner);
+
+				if (!stillVisible)
+				{
+
+
+					if (e->IsAboveTerrain())
+					{
+						count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
+						stillVisible = cover > 0;
+					}
+					else
+						stillVisible = GridCanSee(e,t);
+				}
+			}
+			if (!stillVisible)
+				SignalDisappearance(e,t);
+		}
+
 
 		void Faction::CheckSensory(float&t)
 		{
+			if (this->sensorLockLevel > 0)
+				return;
 			if (knownWorld.SensoryIsInvalid())
 			{
+				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
+				Timer::Time started = timer.Now();
+
+				static Buffer0<World::Sensor>	sensors;
+				sensors.Clear();
+
+				if (alliance->config.shareSensors)
+				{
+					alliance->ForeachMember([this,&t](const PFaction&f)	//includes this
+					{
+						f->CollectSensors(sensors, t);
+					},true);
+				}
+				else
+					this->CollectSensors(sensors,t);
+
+				this->VisitMyEntities([](const PWorldEntity&e)
+				{
+					e->OverrideSetRegisteredSensorToCurrentLocation();
+				},false);
+
+
 				knownWorld.FlushAndValidateSensory();
 
-				foreach (this->structures,_s)
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Collected sensors and flushed known world in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+
+
 				{
-					Objects::PStructure s = _s->lock();
-					if (s)
-						s->ReapplySensory(t);
+					auto lock = knownWorld.LockOnChange();
+					Sys::ParallelFor(sensors.Count(),4,[this,t](index_t index,index_t processorIndex)
+					{
+						sensors[index].InsertInto(knownWorld, t,processorIndex);
+					});
 				}
-				foreach (this->allMobiles,_m)
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+				const bool shareSensors = alliance->config.shareSensors;
+				ForeachWorldEntity([this,&t,shareSensors](const PWorldEntity&e)
 				{
-					Objects::PWorldEntity e = _m->lock();
-					if (e)
-						e->ReapplySensory(t);
-				}
+					if (e->owner.get() == this)
+						return;
+					HandlePotentialAppearance(e,t,shareSensors);
+				});
+
+				if (alliance->config.exposeEntityDetails)
+					storedMobileEntities.Foreach([this,&t,shareSensors](const PMobileEntity&m)
+					{
+						if (m->owner.get() == this)
+							return;
+						HandlePotentialAppearance(m,t,shareSensors);
+					});
+
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
+				started = timer.Now();
+
+
+				VisitVisibleForeignEntities(t,[this,&t,shareSensors](const PWorldEntity&e)
+				{
+					HandlePotentialDisappearance(e,t,shareSensors);
+				});
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
 			}
 		}
 		
 
 		void Faction::CheckSensory()
 		{
-			if (knownWorld.SensoryIsInvalid())
-			{
-				float t = knownWorld.GetMaxChangeTime();
-				knownWorld.FlushAndValidateSensory();
-
-				foreach (this->structures,_s)
-				{
-					Objects::PStructure s = _s->lock();
-					if (s)
-						s->ReapplySensory(t);
-				}
-				foreach (this->allMobiles,_m)
-				{
-					Objects::PWorldEntity e = _m->lock();
-					if (e)
-						e->ReapplySensory(t);
-				}
-			}
+			float t = 0;
+			CheckSensory(t);
 		}
 
 
@@ -451,121 +1032,108 @@ namespace Objects
 		{
 			if (!e)
 				return false;
-			if ( e->owner.get() == this )
+			if (e->owner.get() == this)
 				return true;
-			if (!seeing.IsSet(e))
-			{
-				float t1;
-				if (lostVisualAt.Query(e,t1))
-					return t <= t1;
-				return false;
-			}
-			float t0;
-			if (gainedVisualAt.Query(e,t0))
-				return t >= t0;
-			return true;
+			//if ( SharingSensorWith(e->owner) )	//theoretically, this should be identical, but practically it may not. therefor, for a non-owning ally, we should always check this->seeing (timing issues, etc)
+				//return true;
+			auto p = seeing.QueryPointer(e.get());
+			return p && p->VisibleAt(t);
 		}
 
 
-		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
+
+		bool					Faction::SeeingReference::VisibleAt(float t) const
 		{
-			SeeingReference&ref = seeing.Set(e);
+			auto it = reverseVisibilityChange.upper_bound(-t);
+			if (it == reverseVisibilityChange.end())
+				return wasVisibleAtBeginning;
+			return it->second;
+		}
 
-			if (ref.sightLevel == 0 || stack)
+		void					Faction::SeeingReference::Appear( const Faction*parent, const PWorldEntity&e, float&t)
+		{
+			ASSERT__(!CurrentlyVisible());
+			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				ref.sightLevel +=incStackBy;
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level increased to "+String(ref.sightLevel));
-
+				LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly visible now");
+				if (!reverseVisibilityChange.empty())
+				{
+					LogEvent(EventClass::Preset::internalError,"reverseVisibilityChange still contains "+String(reverseVisibilityChange.size())+" element(s)");
+					reverseVisibilityChange.clear();	//this should be the case implicitly, but for some reason it's not
+				}
+				reference = e;
+				wasVisibleAtBeginning = true;
+				ASSERT__(CurrentlyVisible());
+				return;
 			}
-			else
+
+			if (!reverseVisibilityChange.empty())
+				t = std::max(t,-reverseVisibilityChange.begin()->first);
+			LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly visible at "+String(t));
+
+			t += timeEpsilon;
+			reverseVisibilityChange[-t] = true;
+			ASSERT__(CurrentlyVisible());
+			e->SyncTime(t);
+			reference = e;
+		}
+
+		void					Faction::SeeingReference::Disappear(const Faction*parent, const PWorldEntity&e, float&t)
+		{
+			ASSERT__(CurrentlyVisible());
+			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
+				LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly INvisible now");
+				if (!reverseVisibilityChange.empty())
+				{
+					LogEvent(EventClass::Preset::internalError,"reverseVisibilityChange still contains "+String(reverseVisibilityChange.size())+" element(s)");
+					reverseVisibilityChange.clear();	//this should be the case implicitly, but for some reason it's not
+				}
+				wasVisibleAtBeginning = false;
+				ASSERT__(!CurrentlyVisible());
+				return;
+			}
+			if (!reverseVisibilityChange.empty())
+				t = std::max(t,-reverseVisibilityChange.begin()->first);
+			LogEvent(EventSignificance::Debug,e.get(),parent->GetLogName()+ ": ["+String(e.get())+"] Registering as newly INvisible at "+String(t));
+
+			t += timeEpsilon;
+			reverseVisibilityChange[-t] = false;
+			ASSERT__(!CurrentlyVisible());
+			e->SyncTime(t);
+		}
+
+		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/)
+		{
+			SeeingReference&ref = seeing.Set(e.get());
+			if (ref.CurrentlyVisible())
 				return false;
-			}
+			ref.reference = e;	//just in case
+			
+			ref.Appear(this,e,t);
 
+			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
 
-			if (ref.sightLevel == incStackBy)
-			{
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
+			if (cascade)
+				ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (e->IsStructure())
-				{
-					PStructure s = To<Structure>::Cast(e);
-					t += timeEpsilon;
-				}
+			e->SyncTime(t);
 
-				float t0;
-				if (lostVisualAt.QueryAndUnset(e,t0))
-				{
-					//ASSERT_LESS_OR_EQUAL__(t0,t)
-					//we probably have to accept this happens
-					t = std::max(t0,t) + timeEpsilon;
-				}
-
-				PMobileEntity v;
-				PTower tower;
-				e->SyncTime(t,timeEpsilon);
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
-
-				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
-
-				if (cascade)
-					ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
-
-				e->SyncTime(t,timeEpsilon);
-
-				return true;
-			}
-			return false;
-			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
+			return true;
 		}
 
 		void		Faction::SignalDisappearance(const PWorldEntity&e, float&t, bool force, bool signalConnectedClient/*=true*/)
 		{
-			SeeingReference*ref = seeing.QueryPointer(e);
+			SeeingReference*ref = seeing.QueryPointer(e.get());
+			if (!ref || !ref->CurrentlyVisible())
+				return;
+			ref->Disappear(this,e,t);
 
-			if (ref)
-			{
-				ref->sightLevel --;
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
-			}
-			else
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": ref not set");
+			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
+			if (signalConnectedClient)
+				ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
-
-			if (ref && (!ref->sightLevel || force))
-			{
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
-				if (ref->sightLevel)
-				{
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
-				}
-
-				if (e->IsStructure())
-				{
-					PStructure s = To<Structure>::Cast(e);
-					t += timeEpsilon;
-				}
-
-				float t0;
-				if (gainedVisualAt.QueryAndUnset(e,t0))
-				{
-					t = std::max(t0,t);	//permissive. whatever. seriously
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
-				}
-				PMobileEntity v;
-				PTower tower;
-				e->SyncTime(t,timeEpsilon);
-
-				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
-				seeing.Unset(e);
-				if (signalConnectedClient)
-					ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
-
-				e->SyncTime(t,timeEpsilon);
-			}
-			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
-
+			e->SyncTime(t);
 		}
 
 		//void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
@@ -584,33 +1152,33 @@ namespace Objects
 		//}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
 			{
 				auto sat = s->lock();
-				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
+				if (sat && M::Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
 					rs++;
 			}
 			return rs;
 		}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
 			{
 				auto sat = s->lock();
-				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
+				if (sat && M::Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			}
 			return rs;
 		}
 
 		
-		count_t		Faction::CountOffGridCoverage(int channelHeight, const TVec3<>&p)	const
+		count_t		Faction::CountOffGridCoverage(int channelHeight, const M::TVec3<>&p)	const
 		{
 			#ifndef NO_SATELLITES
 				if (Satellite::IsSatelliteHeight(channelHeight))
@@ -620,7 +1188,7 @@ namespace Objects
 			return 0;
 		}
 
-		count_t		Faction::CountOffGridCoverage(const Sphere<>&p)	const
+		count_t		Faction::CountOffGridCoverage(const M::Sphere<>&p)	const
 		{
 			count_t rs = 0;
 			#ifndef NO_SATELLITES
@@ -636,42 +1204,20 @@ namespace Objects
 		{
 			if (!e || e->owner.get() == this)
 				return;
-			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
-			if (seeing.IsSet(e))
+			const bool visible = CanSee(e,timeAt);
+			LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt)+", visible="+String(visible));
+			if (visible)
 			{
-				if (e->IsAboveGrid())
-				{
-					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-					if (cover == 0)
-						SignalDisappearance(e,timeAt,true);
-					else
-						seeing[e].sightLevel = cover;
-				}
-				else
-					if (!GridCanSee(e,timeAt))
-					{
-						SignalDisappearance(e,timeAt,true);
-					}
+				HandlePotentialDisappearance(e,timeAt,alliance->config.shareSensors);
 			}
 			else
 			{
-				if (e->IsAboveGrid())
-				{
-					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-					if (cover > 0)
-						SignalAppearance(e,timeAt,true,false,cover);
-				}
-				else
-					if (GridCanSee(e,timeAt))
-					{
-						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
-						SignalAppearance(e,timeAt,true,false);
-					}
+				HandlePotentialAppearance(e,timeAt,alliance->config.shareSensors);
 			}
 		}
 
 
-		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
@@ -697,7 +1243,7 @@ namespace Objects
 								continue;
 							if (GridCanSee(e,t))
 							{
-								if (SignalAppearance(e,t,true,false) && newContacts)
+								if (SignalAppearance(e,t,true) && newContacts)
 									newContacts->Append(e);
 							}
 						}
@@ -727,101 +1273,30 @@ namespace Objects
 		Faction::TSensorLock::~TSensorLock()
 		{
 			owner->sensorLockLevel--;
-			if (owner->sensorLockLevel == 0 && owner->knownWorld.SensoryIsInvalid())
-			{
-				LogEvent(EventSignificance::Common,owner->shared_from_this(),"Recomputing sensory");
-				Timer::Time started = timer.Now();
-				float t = 0;
+			if (owner->sensorLockLevel == 0)
 				owner->CheckSensory();
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
-				ForeachWorldEntity([this,&t](const PWorldEntity&e)
-				{
-					if (e->owner.get() == owner)
-						return;
-					if (e->IsAboveGrid())
-					{
-						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-						if (cover > 0)
-						{
-							owner->SignalAppearance(e, t, true, false);
-						}
-					}
-					else
-						if (owner->GridCanSee(e,t))
-						{
-							owner->SignalAppearance(e,t,true,false);
-						}
-
-				},false);
-
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
-
-				static Buffer<PWorldEntity>	disappear;
-
-				owner->seeing.VisitAllKeys([this,&t](const PWorldEntity&e)
-				{
-					if (e->IsAboveGrid())
-					{
-						count_t cover = owner->CountOffGridCoverage(e->location.height, e->GetWorldPosition());
-						if (cover == 0)
-						{
-							disappear << e;
-						}
-					}
-					else
-						if (!owner->GridCanSee(e,t))
-						{
-							disappear << e;
-						}
-				});
-				foreach (disappear,s)
-					owner->SignalDisappearance(*s,t);
-				disappear.Clear();
-				LogEvent(EventSignificance::PerformanceMeasurement,owner->shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
-			}
 		}
 
-		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
+
+
+		//void		Faction::RegisterSensorMotion(const M::Sphere<>&from, const M::Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const World::Sensor&sensor, int sensorHeight, float&t)
 		{
-			//if (sensorHeight <= Grid::CellStack::TopHeight)
-			if (!sensorLockLevel)
-				CheckSensory(t);
-			else
-				knownWorld.InvalidateSensory();
 			sensor.RemoveFrom(knownWorld,t);
-//			float escaped = sqr(sphere.radius+2);
+//			float escaped = M::Sqr(sphere.radius+2);
 			//if (isSatellite)
 			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
 
 			if (!knownWorld.SensoryIsInvalid())
 			{
-				static Buffer<PWorldEntity>	disappear;
-
 				bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
 
-				this->seeing.VisitAllKeys([this,offGrid, sensor,&t](const PWorldEntity&s)
+				this->VisitVisibleForeignEntities(t,[this,offGrid, sensor,&t](const PWorldEntity&s)
 				{
-					if (s->IsAboveGrid() != offGrid)
+					if (s->IsAboveTerrain() != offGrid)
 						return;
-					if (s->IsAboveGrid())
-					{
-						if (sensor.Contains(s->location))
-						{
-							disappear << s;
-						}
-					}
-					else
-						if (!GridCanSee(s,t))
-						{
-							disappear << s;
-						}
+					HandlePotentialDisappearance(s,t,SharingSensorWith(s->owner));
 				});
-				foreach (disappear,s)
-					SignalDisappearance(*s,t);
-				disappear.Clear();
 			}
 		}
 
@@ -879,7 +1354,21 @@ namespace Objects
 
 		bool		Faction::CanLive(String&whyNot) const
 		{
-			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+			if (isDead)
+			{
+				whyNot = "Died";
+				return false;
+			}
+
+			const bool hasFuelMine = (hasUnitClasses & UnitClass::FuelMine) || (hasUnitClasses & UnitClass::NexusPort);
+			const bool hasMineralMine = (hasUnitClasses & UnitClass::MineralMine) || (hasUnitClasses & UnitClass::NexusPort);
+			const bool hasGenerator = (hasUnitClasses & UnitClass::Generator);
+			const bool hasMineralContainer = (hasUnitClasses & UnitClass::MineralContainer);
+			const bool hasTerraformer = (hasUnitClasses & UnitClass::Terraformer);
+			const bool hasVehiclePlant = (hasUnitClasses & UnitClass::VehiclePlant);
+
+			const bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+
 			#ifndef ONE_COMPOUND_PER_FACTION
 				if (!hasMineralContainer)
 					hasMineralGeneratorCycle = false;
@@ -951,21 +1440,28 @@ namespace Objects
 				ConstName type = turret->constName;
 				return researchState.CheckUnlocked(*turret,errorOut) && CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			}
-			ConstName type = e->GetCTypeName();
+			EntityType type = e->GetType();
 			if (e->IsStructure())
-				return researchState.CheckUnlocked(type,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				return researchState.CheckUnlocked(type.baseType,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}
 		bool		Faction::CanSpawnFromStorage(const PWorldEntity&e, String&errorOut)	const
 		{
-			return CanSpawnType(e,errorOut);
+			return true;
+			//return CanSpawnType(e,errorOut);	we count all units. no exception for stored units, therefore deployment will always succeed from storage
 		}
 
 		count_t		Faction::CountMobileType(ConstName turretType) const
 		{
 			count_t rs = 0;
-			foreach (this->allMobiles, v0)
+			foreach (this->activeMobiles, v0)
+			{
+				PMobileEntity m = v0->lock();
+				if (m->turret->constName == turretType)
+					rs ++;
+			}
+			foreach (this->storedMobiles, v0)
 			{
 				PMobileEntity m = v0->lock();
 				if (m->turret->constName == turretType)
@@ -974,17 +1470,28 @@ namespace Objects
 			return rs;
 		}
 
-		count_t		Faction::CountStructureType(ConstName structureType) const
+		count_t		Faction::CountStructureType(EntityType structureType) const
 		{
 			count_t rs = 0;
 			foreach (this->structures, s0)
 			{
-				if (s0->lock()->GetCTypeName() == structureType)
+				if (s0->lock()->GetType() == structureType)
 					rs ++;
 			}
 			return rs;
 		}
 
+
+		count_t		Faction::CountTurretType(ConstName turretType) const
+		{
+			count_t rs = 0;
+			foreach (this->allTurretBases, t0)
+			{
+				if (t0->lock()->turret->constName == turretType)
+					rs ++;
+			}
+			return rs;
+		}
 
 
 
@@ -1014,16 +1521,16 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
-		/*static*/ GenericHashTable<TUniqueID,PFaction,TUniqueID>	Faction::idMap;
+		/*static*/ HashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
-		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
+		/*static*/ HashTable<TUniqueID, index_t>	Marker::idMap,
 								Marker::referenceIDMap,
 								Marker::visitedSystemIDMap;
 		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;
-		/*static*/ SharedContainer<Structure>		Marker::structureGhosts;
-		/*static*/ SharedContainer<MobileEntity>	Marker::mobileGhosts;
+		/*static*/ SharedContainer<Structure>		Marker::livingStructureGhosts, Marker::deadStructureGhosts;
+		/*static*/ SharedContainer<MobileEntity>	Marker::livingMobileGhosts, Marker::deadMobileGhosts;
 
 		/*static*/ PFaction				Faction::FindByID(const TUniqueID&id)
 		{
@@ -1034,6 +1541,39 @@ namespace Objects
 		}
 
 
+		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id, const TUniqueID&allianceID, bool&outAllianceChanged)
+		{
+			{
+				PFaction rs = FindByID(id);
+				if (rs)
+				{
+					if (rs->alliance && rs->alliance->id == allianceID)
+						outAllianceChanged = false;
+					else
+					{
+						outAllianceChanged = true;
+						PAlliance newAlliance = Alliance::FindByID(allianceID);
+						if (!newAlliance)
+							newAlliance.reset(new Alliance(allianceID));
+						rs->ChangeAlliance(newAlliance);
+					}
+					return rs;
+				}
+			}
+			outAllianceChanged = true;
+
+			PAlliance alliance = Alliance::FindByID(allianceID);
+			if (!alliance)
+				alliance.reset(new Alliance(allianceID.IsNotEmpty() ? allianceID : TUniqueID::New()));
+
+			PFaction rs(new Faction(id));
+			idMap.Set(id,rs);
+			allKnown << rs;
+			alliance->Join(rs);	//must init temporary unique alliance, since unknown at this point
+			return rs;
+		}
+
+
 		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id)
 		{
 			{
@@ -1041,80 +1581,62 @@ namespace Objects
 				if (rs)
 					return *rs;
 			}
+			PAlliance alliance (new Alliance(TUniqueID::New()));
 			PFaction rs(new Faction(id));
 			idMap.Set(id,rs);
 			allKnown << rs;
+			alliance->Join(rs);	//must init temporary unique alliance, since unknown at this point
 			return rs;
-		}
-
-
-
-		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
-		{
-			LogEvent(EventSignificance::Debug, e.get(),"Changing ownership to "+newOwner->GetName());
-			PStructure s = To<Structure>::DynamicCast(e);
-			#ifdef CLIENT
-				if (e->isOwnedByMe)
-				{
-					float t = 0.f;
-					e->UnregisterSensory(t);
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
-			LogEvent(EventSignificance::Important, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: common
-			if (s)
-			{
-				float t = 0;
-				s->DisconnectFromNeighborhood(t);
-			}
-			e->owner = newOwner;
-			e->isOwnedByMe = isNowMine;
-
-			#ifdef CLIENT
-				if (e->isOwnedByMe)
-				{
-					float t = 0.f;
-					if (!s && e->IsMobile())
-						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t);
-					else
-						e->RegisterSensory(t);
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
-			//if (s)
-			//	InjectIntoNeighborhood(s,0);
-
-			
-			if (s)	
-				RefreshCompoundCoverage(0);
 		}
 
 
 	#endif
 
+	void	Faction::ChangeAlliance(const PAlliance&a)
+	{
+		if (alliance == a)
+			return;
 
-	void			ForeachFaction(const std::function<void(const PFaction&)>&func)
+		#ifdef CLIENT
+		const bool rebuildSensory = mine && (this->isOwnedByMe || alliance == mine->alliance || a == mine->alliance);
+
+		if (rebuildSensory)
+			ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				float t = 0;
+				e->UnregisterSensory(t);
+			},IncludeGhosts::None);
+		#endif
+
+		alliance->Leave(shared_from_this());
+		a->Join(shared_from_this());
+
+		#ifdef CLIENT
+		if (rebuildSensory)
+			ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				float t = 0;
+				e->RegisterSensory(t);
+			},IncludeGhosts::None);
+		#endif
+	}
+
+
+
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func, bool includeDead/*=false*/)
 	{
 		#ifdef CLIENT
-			foreach (Faction::allKnown,a)
-				func(*a);
+			foreach (Faction::allKnown,f)
+				if (!(*f)->isDead || includeDead)
+					func(*f);
 		#else
 			
-			if (Faction::nexus)
+			if (Faction::nexus && (!Faction::nexus->isDead || includeDead))
 				func(Faction::nexus);
 			for (index_t i = 0; i < Faction::all.Count(); i++)
 			{
-				PFaction f = Faction::all[i].lock();
-				if (!f)
-				{
-					Faction::all.Erase(i);
-					i--;
-				}
-				else
+				PFaction f = Faction::all[i];
+				if (!f->isDead || includeDead)
 					func(f);
 			}
 		#endif
@@ -1122,38 +1644,50 @@ namespace Objects
 
 
 
-	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
+	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts include)
 	{
 		vehicles.Foreach(func);
 		#ifndef NO_SATELLITES
 			satellites.Foreach(func);
 		#endif
 		#ifdef CLIENT
-			if (includeGhosts)
-				Marker::mobileGhosts.Foreach(func);
+			switch (include)
+			{
+				case IncludeGhosts::All:
+					Marker::deadMobileGhosts.Foreach(func);
+				case IncludeGhosts::Living:
+					Marker::livingMobileGhosts.Foreach(func);
+				break;
+			}
 		#endif
 	}
 
-	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, bool includeGhosts)
+	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts include)
 	{
-		ForeachMobileWorldEntity(func,includeGhosts);
+		ForeachMobileWorldEntity(func,include);
 		storedMobileEntities.Foreach(func);
 	}
 
 
-	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func, IncludeGhosts include)
 	{
-		ForeachWorldEntity(func,includeGhosts);
+		ForeachWorldEntity(func,include);
 		storedMobileEntities.Foreach(func);
 	}
 
-	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, bool includeGhosts)
+	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func, IncludeGhosts include)
 	{
-		ForeachMobileWorldEntity(func,includeGhosts);
+		ForeachMobileWorldEntity(func,include);
 		structures.Foreach(func);
 		#ifdef CLIENT
-			if (includeGhosts)
-				Marker::structureGhosts.Foreach(func);
+			switch (include)
+			{
+				case IncludeGhosts::All:
+					Marker::deadStructureGhosts.Foreach(func);
+				case IncludeGhosts::Living:
+					Marker::livingStructureGhosts.Foreach(func);
+				break;
+			}
 		#endif
 	}
 
@@ -1175,9 +1709,9 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, const RuntimeConfig::RoundNumber& currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ bool				Marker::GetOutdated(BasicBuffer<Marker>&outOutdated, const RuntimeConfig::RoundNumber& currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
-			outOudated.Clear();
+			outOutdated.Clear();
 			foreach(all, m)
 			{
 				m->UpdateAge(currentRoundNumber);
@@ -1189,40 +1723,22 @@ namespace Objects
 						{
 							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
-							outOudated << *m;
+							outOutdated << *m;
 						}
 					break;
 					case Type::HostileContact:
 					{
-						//TVec3<> center = Grid::ToWorld(m->location);
-						//if ()
-						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
-									 m->visualization && World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
-						/*foreach(structures, s)
-							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
-							{
-								LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
-								seen = true;
-								break;
-							}
-						if (!seen)
-							foreach(vehicles, s)
-								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
-								{
-									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
-									seen = true;
-									break;
-								}
-						if (!seen)
-							foreach(satellites, s)
-								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
-								{
-									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
-									seen = true;
-									break;
-								}*/
-						if (seen)
-							outOudated << *m;
+						if (m->age < 2 || !m->visualization) //don't delete hostile markers in round < 2: grid sensory might be outdated
+							continue;
+						if (World::actual.SensoryIsInvalid())
+						{
+							//it's actually outdated and known to be outdated
+							outOutdated.Clear();
+							return false;
+						}
+
+						if (World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad()))	//I see you. Or should, anyway, but you're gone
+							outOutdated << *m;
 					}
 					break;
 
@@ -1230,10 +1746,11 @@ namespace Objects
 		
 
 			}
+			return true;
 		}
 
 
-		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound)
+		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, EntityType referenceType, const RoundNumber& currentRound)
 		{
 			const index_t newIndex = all.Count();
 			Marker&m = all.Append();
@@ -1249,37 +1766,50 @@ namespace Objects
 			{
 				m.referenceEntity = referenceID;
 				referenceIDMap.Set(referenceID,newIndex);
-				m.referencedType[0] = referenceType[0];
-				m.referencedType[1] = referenceType[1];
-				if (referenceType[1] != ConstName::Empty)
+				m.referencedType = referenceType;
+
+				const bool isDead = m.type == Type::EntityDeath;
+
+				PWorldEntity prototype = Objects::Prototypes::all.Find(referenceType);
+				if (prototype)
 				{
-					//vehicle
-					Component::VehicleBase* base = Component::GetVehicleBaseByName(referenceType[0]);
-					Component::Turret* turret = Component::GetTurretByName(referenceType[1]);
-					ASSERT1__(base, referenceType);
-					ASSERT1__(turret, referenceType);
-					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
+					ASSERT1__(prototype, referenceType);
+					m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
+					if (prototype->IsStructure())
+					{
+						if (isDead)
+							deadStructureGhosts << To<Structure>::Cast(m.visualization);
+						else
+							livingStructureGhosts << To<Structure>::Cast(m.visualization);
+					}
+					else
+						if (prototype->IsMobile())
+						{
+							if (isDead)
+								deadMobileGhosts << To<MobileEntity>::Cast(m.visualization);
+							else
+								livingMobileGhosts << To<MobileEntity>::Cast(m.visualization);
+						}
+						else
+							LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
 				}
 				else
 				{
-					//structure
-					PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType[0]);
-					if (prototype)
+					//vehicle
+					if (referenceType.HasTurret())
 					{
-						ASSERT1__(prototype, referenceType);
-						m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						if (prototype->IsStructure())
-							structureGhosts << To<Structure>::Cast(m.visualization);
+						Component::VehicleBase* base = Component::baseComponents.Find(referenceType.baseType);
+						Component::Turret* turret = Component::vehicleTurretComponents.Find(referenceType.turretType);
+						ASSERT1__(base, referenceType);
+						ASSERT1__(turret, referenceType);
+						m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
+						if (isDead)
+							deadMobileGhosts << To<MobileEntity>::Cast(m.visualization);
 						else
-							if (prototype->IsMobile())
-								mobileGhosts << To<MobileEntity>::Cast( m.visualization);
-							else
-								LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
+							livingMobileGhosts << To<MobileEntity>::Cast(m.visualization);
 					}
 					else
-						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType[0]));
-
+						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType.baseType));
 				}
 
 				if (m.visualization)
@@ -1287,7 +1817,10 @@ namespace Objects
 					if (m.visualization->IsMobile())
 						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					m.visualization->id = referenceID;
-					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
+					if (referenceOwnerID.IsNotEmpty())
+						m.visualization->owner = Faction::GetOrCreate(referenceOwnerID);
+					else
+						LogEvent(EventSignificance::NonFatalError,"Ghost entity has no owner: "+ToString(referenceID));
 					m.visualization->health = -(int)m.age;
 					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
 					m.visualization->UpdateNiceName();
@@ -1297,11 +1830,11 @@ namespace Objects
 			{
 				if (type == Type::Visited)//should be always true but regardless
 				{
-					TMatrix4<> system;
+					M::TMatrix4<> system;
 					Mat::makeAxisSystem(Grid::ToWorld(m.location),Grid::low.cells[m.location.stackID].centerVertex.xyz,2,system);
 					index_t systemID = visitedSystems.Count();
 					visitedSystems.Append().system = system;
-					visitedSystems.last().age = m.age;
+					visitedSystems.Last().age = m.age;
 					visitedSystemIDMap.Set(id,systemID);
 				}
 				else
@@ -1314,20 +1847,28 @@ namespace Objects
 		/*static*/ void				Marker::Destroy(const TUniqueID&id, bool controlEnabled)
 		{
 			index_t index;
-			ASSERT1__(idMap.QueryAndUnset(id, index),id.ToString());	//this mustn't happen anymore
+			ASSERT1__(idMap.QueryAndUnset(id, index),ToString(id));	//this mustn't happen anymore
 			Marker&m = all[index];
 			if (m.UtilizesReferenceEntity())
 			{
 				ASSERT__(referenceIDMap.Unset(m.referenceEntity));
 				if (m.visualization)
 				{
+					const bool isDead = m.type == Type::EntityDeath;
+
 					if (m.visualization->IsMobile())
 					{
-						mobileGhosts.FindAndErase(m.visualization);
+						if (isDead)
+							deadMobileGhosts.FindAndErase(m.visualization);
+						else
+							livingMobileGhosts.FindAndErase(m.visualization);
 					}
 					elif(m.visualization->IsStructure())
 					{
-						structureGhosts.FindAndErase(m.visualization);
+						if (isDead)
+							deadStructureGhosts.FindAndErase(m.visualization);
+						else
+							livingStructureGhosts.FindAndErase(m.visualization);
 					}
 					#ifdef HAS_WINDOW
 						ApplicationInterface::OnVanish(m.visualization,RemovalType::Vanished,true);
@@ -1406,7 +1947,7 @@ namespace Objects
 			for (index_t i = 0; /*i < MaxMarkersPerFaction / 10 && */i < all.Count(); i++)
 			{
 				candidates.Append().markerID = all[i].id;
-				candidates.last().priority = all[i].age;
+				candidates.Last().priority = all[i].age;
 			}
 			std::sort(candidates.begin(),candidates.end());
 			candidates.Truncate(MaxMarkersPerFaction / 10);
@@ -1417,122 +1958,61 @@ namespace Objects
 			all.Clear();
 			idMap.Clear();
 			referenceIDMap.Clear();
-			mobileGhosts.Clear();
-			structureGhosts.Clear();
+			livingMobileGhosts.Clear();
+			deadMobileGhosts.Clear();
+			livingStructureGhosts.Clear();
+			deadStructureGhosts.Clear();
 			visitedSystems.Clear();
 			visitedSystemIDMap.Clear();
 		}
 	#else
 
 
-		String Convert(ConstName name)
-		{
-			if (name == ConstName::Empty)
-				return "";
-			PWorldEntity e = GetPrototypeByName(name);
-			if (e)
-				return e->GetTypeName();
-			Component::Turret* t = Component::GetTurretByName(name);
-			if (t)
-				return t->typeName;
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(name);
-			if (b)
-				return b->typeName;
-			return "";
-		}
 
-		ConstName Convert(const String&name)
+
+		/*virtual override*/	void		Marker::Serialize(IWriteStream&s) const
 		{
-			if (name == "")
-				return ConstName::Empty;
-			PWorldEntity e = GetPrototypeByName(name);
-			if (e)
-				return e->GetCTypeName();
-			Component::Turret* t = Component::GetTurretByName(name);
-			if (t)
-				return t->constName;
-			Component::VehicleBase* b = Component::GetVehicleBaseByName(name);
-			if (b)
-				return b->constName;
-			return ConstName::Empty;
-		}
-		/*virtual override*/	serial_size_t		Marker::GetSerialSize(bool exportSize) const
-		{
-			serial_size_t size = sizeof(TUniqueID);	//marker id;
-			size += 1;	//type
-			size += sizeof(createdInRound);
-			size += sizeof(location);
+			s.WritePrimitive(id);
+			s.WritePrimitive((UINT8)type);
+			s.WritePrimitive(createdInRound);
+			s.WritePrimitive(location);
 			if (UtilizesReferenceEntity())
 			{
-				size += 2 * sizeof(TUniqueID);	//referenced entity id
-
-
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				size += t0.GetSerialSize(true);
-				size += t1.GetSerialSize(true);
-//				size += sizeof(this->referencedType);
-				//this->referencedType.GetSerialSize(exportSize);
+				s.WritePrimitive(this->referenceEntity);
+				s.WritePrimitive(this->referenceEntityOwner);
+				using Serialization::Serialize;
+				Serialize(s,ToString(referencedType));
 			}
-			return size;
 		}
-		/*virtual override*/	bool		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
-		{
-			if (!outStream.WritePrimitive(id) || !outStream.WritePrimitive((UINT8)type)
-				 || !outStream.WritePrimitive(createdInRound)
-				|| !outStream.WritePrimitive(location)
-				)
-				return false;
-			if (UtilizesReferenceEntity())
-			{
-				if (!outStream.WritePrimitive(this->referenceEntity) || !outStream.WritePrimitive(this->referenceEntityOwner))
-					return false;
-				String t0 = Convert(this->referencedType[0]);
-				String t1 = Convert(this->referencedType[1]);
-				return t0.Serialize(outStream,true) && t1.Serialize(outStream,true);
-			}
-			return true;
-		}
-		/*virtual override*/	bool		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
 		{
 			UINT8 typei;
-			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadPrimitive(createdInRound)
-				||  !inStream.ReadPrimitive(location)
-				)
-				return false;
+			inStream.ReadPrimitive(id);
+			inStream.ReadPrimitive(typei);
+			inStream.ReadPrimitive(createdInRound);
+			inStream.ReadPrimitive(location);
 			type = Type::Reinterpret(typei);
 			if (UtilizesReferenceEntity())
 			{
-				if (fixedSize != EmbeddedSize)
-				{
-					fixedSize -= sizeof(TUniqueID) + 1 + sizeof(createdInRound) + sizeof(TUniqueID) + sizeof(location);
-					{
-						fixedSize -= sizeof(TUniqueID);
-					}
-				}
-				String t0,t1;
-				if (!inStream.ReadPrimitive(this->referenceEntity))
-					return false;
+				String t0;
+				inStream.ReadPrimitive(this->referenceEntity);
 
 				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
 				{
-					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
-						return false;
+					inStream.ReadPrimitive(this->referenceEntityOwner);
 				}
 				else
 					this->referenceEntityOwner = TUniqueID::Empty();
-				if (!t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
-					return false;
-				this->referencedType[0] = Convert(t0);
-				this->referencedType[1] = Convert(t1);
+				using Serialization::Deserialize;
+				Deserialize(inStream,t0);
+				this->referencedType = DecodeType(t0);
 				//this->referenceEntityType.Deserialize(inStream, fixedSize);
 			}
 			else
 			{
 				referenceEntity = TUniqueID::Empty();
-				referencedType[0] = referencedType[1] = ConstName::Empty;
+				referencedType = EntityType();
 			}
-			return true;
 		}
 
 
@@ -1548,12 +2028,21 @@ namespace Objects
 			if (rs.UtilizesReferenceEntity())
 				ASSERT__(referenceMap.SetNew(referenceID,markers.Count()-1));
 
+
+			if (rs.UtilizesReferenceEntity())
+			{
+				if (referenceOwnerID.IsEmpty())
+					LogEvent(EventClass::Preset::uncommon,shared_from_this(), "Marker defined for entity "+ToString(referenceID)+", but owner ID is empty");
+				elif (!FindByID(referenceOwnerID))
+					LogEvent(EventClass::Preset::uncommon,shared_from_this(), "Marker defined for entity "+ToString(referenceID)+", but owner ID could not be matched: "+ToString(referenceOwnerID));
+			}
+
 			return rs; 
 		}
 
 
 
-		void		Faction::RestoreMarkers(const ArrayData<Marker>&source)
+		void		Faction::RestoreMarkers(const Ctr::ArrayData<Marker>&source)
 		{
 			ASSERT__(markers.IsEmpty());
 			ASSERT__(markerMap.IsEmpty());
@@ -1574,7 +2063,7 @@ namespace Objects
 			index_t at;
 			if (!markerMap.QueryAndUnset(markerID, at))
 			{
-				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
+				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + ToString(markerID));
 				return false;
 			}
 			ASSERT_LESS__(at, markers.Count());
@@ -1629,40 +2118,7 @@ namespace Objects
 
 		}
 
-		/*static*/ void	Faction::Kill(const PFaction&f)
-		{
-			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+f->id.ToString());
-			static Buffer0<PWorldEntity>	toDelete;
-			for (index_t i = 0; i < f->structures.Count(); i++)
-				if (!f->structures[i].lock()->IsIndestructible())
-				{
-					toDelete << f->structures[i].lock();
-				}
 
-			for (index_t i = 0; i < f->allMobiles.Count(); i++)
-				//if (vehicles[i]->owner == f)
-				{
-					toDelete << f->allMobiles[i].lock();
-				}
-			float t=0;
-			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
-			toDelete.Clear();
-
-			if (f != nexus)
-			{
-				for (index_t i = 0; i < all.Count(); i++)
-					if (all[i].lock() == f)
-					{
-						all.Erase(i);
-						break;
-					}
-				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
-				ApplicationInterface::SignalFactionsChanged();
-			}
-			else
-				LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
-		}
 
 		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)
 		{
@@ -1670,7 +2126,7 @@ namespace Objects
 				return nexus;
 			foreach (all,_f)
 			{
-				PFaction f = _f->lock();
+				const PFaction&f = *_f;
 				if (f && f->id == id)
 					return f;
 			}
@@ -1727,13 +2183,95 @@ namespace Objects
 
 	#endif
 
+
+	/*static*/ void	Faction::Kill(PFaction f)
+	{
+		if (!f)
+		{
+			DBG_FATAL__("Trying to kill null-faction");
+			LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill null-faction");
+			return;
+		}
+		#ifndef CLIENT
+		if (f == nexus)
+		{
+			LogEvent(EventClass::Preset::internalError,nullptr, "Cannot kill Nexus faction");
+			return;
+		}
+		if (f->isDead)
+		{
+			LogEvent(EventClass::Preset::internalError,nullptr, "Faction "+ToString(f->id)+" has already ended");
+			return;
+		}
+		#endif
+			
+		LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+ToString(f->id));
+
+		#ifdef CLIENT
+			if (!allKnown.FindAndErase(f))
+			{
+				LogEvent(EventClass::Preset::internalError,nullptr, "Trying to kill non-registered faction");
+				return;
+			}
+			idMap.Unset(f->id);
+
+			if (mine == f)
+				mine = nullptr;
+
+			ForeachMobileEntityIncludingStored([&f](const PWorldEntity&e)
+			{
+				float t = 0;
+				if (e->owner == f)
+					Remove(e,e->isInserted ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage,t);
+			},IncludeGhosts::None);
+
+			
+			f->alliance->Leave(f);
+			LogEvent(EventClass::Preset::debug, "Faction death: Destructible entities destroyed");
+
+			
+		#else
+
+			{
+				auto lock = f->LockSensorUpdates();
+				static Ctr::Buffer0<PWorldEntity>	toDelete;
+				for (index_t i = 0; i < f->structures.Count(); i++)
+					if (!f->structures[i].lock()->IsIndestructible())
+					{
+						toDelete << f->structures[i].lock();
+					}
+
+				for (index_t i = 0; i < f->activeMobiles.Count(); i++)
+					//if (vehicles[i]->owner == f)
+					{
+						toDelete << f->activeMobiles[i].lock();
+					}
+				float t=0;
+				foreach (toDelete,del)
+					if (*del)
+						Remove(*del,Objects::RemovalType::ControlledExplosion,t);
+				toDelete.Clear();
+				ASSERT__(f->activeMobiles.IsEmpty());	//should have cascaded
+				ASSERT__(f->structures.IsEmpty());	//even if nexus buildings were owned: should have reverted to nexus faction
+			}	//exiting lock: recomputing sensory of f, which is now empty, so should be fast
+
+			f->isDead = true;
+			f->hasUnitClasses = UnitClass::None;
+
+			LogEvent(EventClass::Preset::debug, "Faction death: Destructible entities destroyed");
+			ApplicationInterface::SignalFactionsChanged();
+			ApplicationInterface::SignalNexusControlChange(f->alliance);
+			ApplicationInterface::SignalFactionDied(f);
+		#endif
+	}
+
 	float Next(std::mt19937&random)
 	{
 		return float(random()) / float(random.max());
 	}
 
 #if 0
-	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
+	/*static*/ void Faction::IDToColor(M::TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
 	{
 		USHORT	v0 = *(const USHORT*)id.bytes,
 				v1 = *(((const USHORT*)id.bytes)+1),
@@ -1742,7 +2280,7 @@ namespace Objects
 		int secondary = (primary + (v1 % 2) + 1) % 3;
 		float secondaryLevel = (float(v2)/float(0xFFFF));
 		Vec::clear(rs);
-		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
+		rs.v[primary] = sqrt(1.f - M::Sqr(secondaryLevel));
 		rs.v[secondary] = secondaryLevel;
 	}
 #endif /*0*/
@@ -1754,7 +2292,7 @@ namespace Objects
 		float bestDist = -1;
 		for (index_t i = 0; i < 20; i++)
 		{
-			TVec3<> candidate;
+			M::TVec3<> candidate;
 			Vec::HSL2RGB(float3(random.NextFloat(),0.5f + random.NextFloat(0.5f),0.5f),candidate);
 			count_t competition = 0;
 			float closest = std::numeric_limits<float>::max();
@@ -1764,7 +2302,7 @@ namespace Objects
 				{
 					competition++;
 					float dist = Vec::quadraticDistance(candidate,f->color);
-					closest = vmin(dist,closest);
+					closest = M::Min(dist,closest);
 				}
 			});
 			if (closest > bestDist)
@@ -1782,12 +2320,10 @@ namespace Objects
 	}
 #endif
 
-	void		Faction::InitID(const TUniqueID&toID,bool nexusFaction)
+	void		Faction::Setup(const TUniqueID&toID,bool nexusFaction)
 	{
-		if (toID == TUniqueID::Empty())
-			id.Generate();
-		else
-			id = toID;
+		sharedPark.reset(new MobilePark());
+		id = toID;
 		#ifndef CLIENT
 			if (nexusFaction)
 				color = float3 (1.f, 0.25f, 0.25f);
@@ -1797,5 +2333,29 @@ namespace Objects
 			color = float3();
 		#endif
 	}
+
+	bool			Faction::IsAlliedWith(const PFaction&f)const
+	{
+		return f && alliance==f->alliance;
+	}
+
+	#ifdef CLIENT
+		bool		Faction::IsAlliedWithMe() const
+		{
+			return this && (this->isOwnedByMe || (mine && alliance == mine->alliance));
+		}
+
+		bool		Faction::SharesSensorsWithMe() const
+		{
+			if (!this || !mine)
+				return false;
+			if (isOwnedByMe)
+				return true;
+			if (!alliance || alliance != mine->alliance)
+				return false;
+			return alliance->config.shareSensors;
+		}
+
+	#endif
 
 }

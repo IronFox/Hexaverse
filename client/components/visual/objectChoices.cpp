@@ -7,13 +7,13 @@
 #include <math/object.h>
 #include "objectSelection.h"
 #include <objects/interface.h>
-#include "objectCommands.h"
-#include "terrain.h"
+#include "hud/objectCommands.h"
+#include "scene/terrain.h"
+#include "hud/hexGrid.h"
 
 namespace Objects
 {
 
-	bool						controlIsEnabled = false;
 	Buffer0<Choice>				movementChoices;
 	TChoiceVisualization		choiceVis;
 	Buffer0<Grid::HCellIdU>		buildCandidates, 
@@ -55,8 +55,10 @@ namespace Objects
 	void					UpdateChoices(bool controlEnabled) 
 	{
 		//activeCursorMode = 
+		HUD::HexGrid::Configure(Objects::selectedEntity);
 
-		Command::RefreshCommands(controlEnabled);
+//		HUD::HexGrid::RefreshButtonState();
+		//Command::RefreshCommands(controlEnabled);
 
 		if (controlEnabled)
 			GetChoices(selectedEntity,
@@ -79,7 +81,7 @@ namespace Objects
 
 
 
-	index_t					DetectChoiceIntersection(const TVec3<>&b, const TVec3<>&d, float&distance)
+	index_t					DetectChoiceIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)
 	{
 		index_t rs = InvalidIndex;
 		foreach(movementChoices, choice)
@@ -88,7 +90,7 @@ namespace Objects
 			const auto&c = Grid::low.cells[choice->location.stackID];
 			for (int i = 0; i < c.numCorners; i++)
 			{
-				if (Obj::detectOpticalIntersection(
+				if (M::Obj::detectOpticalIntersection(
 					c.centerVertex.xyz * h,
 					c.cornerVertex[i].xyz * h,
 					c.cornerVertex[(i + 1) % c.numCorners].xyz * h,
@@ -104,7 +106,7 @@ namespace Objects
 		return rs;
 	}
 
-	bool					HandleChoiceIntersection(const TVec3<>&b, const TVec3<>&d, float distance)
+	bool					HandleChoiceIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float distance)
 	{
 		index_t choice = DetectChoiceIntersection(b, d, distance);
 		if (choice == InvalidIndex)
@@ -130,8 +132,9 @@ namespace Objects
 
 	bool			DisableModes(bool controlEnabled)
 	{
-		if (activeCursorMode == CursorMode::Idle)
+		if (activeCursorMode == CursorMode::Idle && movementChoices.IsEmpty() && !deployingMobileEntity)
 			return false;
+		deployingMobileEntity = nullptr;
 		buildCandidates.Clear();
 		removeCandidates.Clear();
 		activeCursorMode = CursorMode::Idle;

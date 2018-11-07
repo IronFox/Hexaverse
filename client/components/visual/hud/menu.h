@@ -1,0 +1,58 @@
+#pragma once
+
+#ifdef HAS_WINDOW
+
+#include "dialog.h"
+#include <io/config.h>
+#include <global_string.h>
+
+namespace HUD
+{
+
+namespace Menu
+{
+	class Menu;
+	typedef std::shared_ptr<Menu>	PMenu;
+
+
+	class Menu : public Component::Window
+	{
+		typedef Window	Super;
+
+		String		myTitle;
+		HUD::Component::PLabel	hintLabel;
+		HUD::Component::PPanel	mainPanel;
+		friend class Super;
+	protected:
+		/**/		Menu(){Super::logFullAutoLayout = true;}
+	public:
+		void		Setup(float initialAbsoluteWidth, const String&title, bool escapeCloses);
+
+		static PMenu		Create()
+		{
+			return Super::CreateDerivative<Menu>();;
+		}
+
+
+		virtual void				OnScreenSizeOrUIScaleChange() override;
+
+		HUD::Component::PButton		AddCommand(const String&name, const HUD::Component::TooltipDeclaration&tooltip, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true);
+
+
+	};
+
+
+
+	extern PMenu	main,help,login,startServer;
+
+	namespace Configuration
+	{
+		void	Assign(const DeltaWorks::Configuration*baseCFG, DeltaWorks::Configuration*cfg, const PathString&userConfigPath);
+	}
+
+
+	void					Create();
+};
+}
+
+#endif

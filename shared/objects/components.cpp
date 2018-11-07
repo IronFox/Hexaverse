@@ -16,8 +16,11 @@
 
 namespace Objects
 {
+	Timer::Time				Component::Turret::timeSpentTracing = 0;
+	count_t					Component::Turret::traceCount=0;
 
-	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const TVec3<>&worldLocation)
+
+	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const M::TVec3<>&worldLocation)
 	{
 		radius = Vec::length(worldLocation);
 		cellLocation.stackID = Grid::low.Locate(worldLocation,0);
@@ -44,9 +47,10 @@ namespace Objects
 	}
 
 
-	String			TrajectoryEndPoint::ToString() const
+	String			ToString(const TrajectoryEndPoint&endPoint)
 	{
-		return worldLocation.ToString()+"/"+cellLocation.ToString()+" r="+String(radius);
+		using StringConversion::ToString;
+		return ToString(endPoint.worldLocation)+"/"+ToString(endPoint.cellLocation)+" r="+ToString(endPoint.radius);
 	}
 
 
@@ -54,7 +58,7 @@ namespace Objects
 	namespace Component
 	{
 		Turret			terraformer,mechanic,
-						artillery,launcher,emp,armored,
+						artillery,launcher,rockets,emp,armored,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -86,85 +90,84 @@ namespace Objects
 		}
 
 
-		Lua::Reference	ResearchStateOf(const OwnerParameter&owner)
+		const Research::Attributes::Table&	ResearchStateOf(const OwnerParameter&owner)
 		{
-			return owner ? owner->researchState.researchState : Lua::Reference();
+			return owner ? owner->researchState.attributeTable : Research::globalState.zeroTable;
 		}
 
 
-		float							VehicleBase::GetBaseMovementSpeed(const OwnerParameter&owner) const
+		float							VehicleBase::GetBaseMovementSpeed(const Research::Attributes::Table&state) const
 		{
-			return movementSpeed.GetValue(ResearchStateOf(owner));
+			return movementSpeed.GetValue(state);
 		}
-		float							VehicleBase::GetCarryingCapacity(const OwnerParameter&owner) const
+		float							VehicleBase::GetCarryingCapacity(const Research::Attributes::Table&state) const
 		{
-			return carryingCapacity.GetValue(ResearchStateOf(owner));
-			//return owner ? owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity : baseCarryingCapacity;
+			return carryingCapacity.GetValue(state);
 		}
-		float							VehicleBase::GetBaseHealth(const OwnerParameter&owner) const
+		float							VehicleBase::GetBaseHealth(const Research::Attributes::Table&state) const
 		{
-			return health.GetValue(ResearchStateOf(owner));
-		}
-
-
-
-		float							Turret::GetOperationSpeed(operation_t op, const OwnerParameter&owner) const
-		{
-			return operationSpeed[op](owner);
+			return health.GetValue(state);
 		}
 
-		int							Turret::GetDamageLevel(const OwnerParameter&owner) const
+
+
+		float							Turret::GetOperationSpeed(operation_t op, const Research::Attributes::Table&researchState) const
 		{
-			return damageLevel(owner);
+			return operationSpeed[op].GetValue(researchState);
 		}
 
-		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
+		int							Turret::GetDamageLevel(const Research::Attributes::Table&researchState) const
 		{
-			return  explosionRadius(owner);
+			return damageLevel.GetValue(researchState);
 		}
 
-		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
+		float							Turret::GetExplosionRadius(const Research::Attributes::Table&researchState) const
 		{
-			return  attacksPerRound(owner);
+			return  explosionRadius.GetValue(researchState);
+		}
+
+		int								Turret::GetAttacksPerRound(const Research::Attributes::Table&researchState) const
+		{
+			return  attacksPerRound.GetValue(researchState);
 		}		
 
-		int								Turret::GetAmmoNeedPerShot(const OwnerParameter&owner) const
+		int								Turret::GetAmmoNeedPerShot(const Research::Attributes::Table&researchState) const
 		{
-			return ammoNeedPerShot(owner);
+			return ammoNeedPerShot.GetValue(researchState);
 		}
 
-		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, const FFunc&bonus/*=FFunc()*/) const
+		float							Turret::GetHorizontalAttackRange(const Research::Attributes::Table&researchState, const FFunc&bonus/*=FFunc()*/) const
 		{
 			if (horizontalAttackRange.IsEmpty())
 				return 0;
-			return (horizontalAttackRange(owner) + bonus(owner));
+			return (horizontalAttackRange.GetValue(researchState) + bonus.GetValue(researchState));
 		}
 
-		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
+		float							Turret::GetScanningRange(const Research::Attributes::Table&researchState, int bonus/*=0*/) const
 		{
-			return (scanningRange(owner) + bonus);
+			return (scanningRange.GetValue(researchState) + bonus);
 		}
 
-		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
+		float							Turret::GetGroundScanningRange(const Research::Attributes::Table&researchState) const
 		{
-			return groundScanningRange(owner);
+			return groundScanningRange.GetValue(researchState);
 		}
 
 
 
-		void		Turret::BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const
-		{
-			BuildSystem(location,radius,radius,system);
-		}
-
-
-		void		Turret::BuildBlastSystem(const Grid::LCellIdI&location, float radius, TMatrix4<>&system)	const
+		void		Turret::BuildBlastSystem(const M::TVec3<>&location, float radius, M::TMatrix4<>&system) const
 		{
 			BuildSystem(location,radius,radius,system);
 		}
 
 
-		bool							Turret::ConsumesResources(ResourceFlagSet&res, const OwnerParameter&owner) const
+		void		Turret::BuildBlastSystem(const Grid::LCellIdI&location, float radius, M::TMatrix4<>&system)	const
+		{
+			BuildSystem(location,radius,radius,system);
+		}
+
+
+		bool							Turret::ConsumesResources(ResourceFlagSet&res, const Research::Attributes::Table&researchState) const
 		{
 			bool rs = false;
 			if (this->mountType == Component::Turret::MountType::Satellite)
@@ -174,7 +177,7 @@ namespace Objects
 			}
 			if (CanAttack())
 			{
-				int demand = GetAmmoNeedPerShot(owner);
+				int demand = GetAmmoNeedPerShot(researchState);
 				if ( demand > 0)
 				{
 					res |= ammoType;
@@ -196,15 +199,15 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
+			/*static*/ float			Turret::CompileTrajectory(const Buffer0<M::TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
 			{
 				bool schematic = type == Schematic;
 				bool smoke = type == SmokeTrail;
 				if (v.IsNotEmpty())
 				{
-					TVec3<> n;
+					M::TVec3<> n;
 					float3 front = v.First().xyz * v.First().w;
-					float3 back = v.last().xyz * v.last().w;
+					float3 back = v.Last().xyz * v.Last().w;
 					Vec::cross(front,back-front,n);
 					Vec::normalize(n);
 					n*= 0.5f * widthScale;
@@ -212,7 +215,7 @@ namespace Objects
 						n*= v.First().w / Grid::MeanPlanetRadius;;
 					float d = 0;
 					geo.SetVertexOffsetToCurrent();
-					TVec3<> lastB;
+					M::TVec3<> lastB;
 					float innerWhite = schematic ? 1.f : 1.1f;
 					float innerOpacity = schematic ? 1.5f : 1.1f;
 					float outerWhite = schematic ? 1.0f : 0.f;
@@ -229,8 +232,8 @@ namespace Objects
 					{
 						for (index_t i = 0; i < v.Count(); i++)
 						{
-							const TVec4<>&_b = v[i];
-							TVec3<>b = _b.xyz * _b.w;
+							const M::TVec4<>&_b = v[i];
+							M::TVec3<>b = _b.xyz * _b.w;
 
 
 							if (i)
@@ -245,9 +248,9 @@ namespace Objects
 
 					for (index_t i = 0; i < v.Count(); i++)
 					{
-						const TVec4<>&_b = v[i];
-						TVec3<>b = _b.xyz * _b.w;
-						TVec3<> upNormal;
+						const M::TVec4<>&_b = v[i];
+						M::TVec3<>b = _b.xyz * _b.w;
+						M::TVec3<> upNormal;
 						if (i > 0)
 						{
 							if (schematic)
@@ -278,8 +281,8 @@ namespace Objects
 						{
 							if (smoke && v.Count() > 1)
 							{
-								const TVec4<>&_b2 = v[1];
-								TVec3<>b2 = _b2.xyz * _b2.w;
+								const M::TVec4<>&_b2 = v[1];
+								M::TVec3<>b2 = _b2.xyz * _b2.w;
 
 								Vec::cross(n,b2-b,upNormal);
 								Vec::normalize(upNormal);
@@ -289,7 +292,7 @@ namespace Objects
 						float io = innerOpacity;
 						if (schematic)
 						{
-							float fc = 1.f - sqr((float(i) - (v.Count()/2)) / float(v.Count()/2));
+							float fc = 1.f - M::Sqr((float(i) - (v.Count()/2)) / float(v.Count()/2));
 							oo *= fc;
 							io *= fc;
 						}
@@ -323,7 +326,7 @@ namespace Objects
 		#endif
 
 
-		///*static*/ bool						Turret::CanHit(float flatRange, const TVec3<>&origin, const TVec3<>&dest)
+		///*static*/ bool						Turret::CanHit(float flatRange, const M::TVec3<>&origin, const M::TVec3<>&dest)
 		//{
 		//	float hDest = Vec::length(dest);
 		//	float hOrigin = Vec::length(origin);
@@ -333,45 +336,35 @@ namespace Objects
 
 
 
-		/*static*/ int				Turret::GetGroundHeight(const Grid::LCellIdI&location)
+		/*static*/ int				Turret::GetGroundHeight( const World::Data&world, const Grid::LCellIdI&location )
 		{
 			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			return World::actual.GetStack(fine).FindTopClearOverNonClear(false);
+			return world.GetStack(fine).FindTopClearOverNonClear(true,false);
 		}
 
 
 
 
-		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle)
+		/*static*/ bool						Turret::CanHit( TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle )
 		{
-			outAngle = 0;
-			if (t == TrajectoryType::VerticalBeam)
-			{
-				return GetGroundHeight(origin.cellLocation) != badHeight;
-			}
+			if (t == TrajectoryType::Artillery)
+				return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
 
-			switch (t)
-			{
-				case TrajectoryType::Artillery:
-					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
-				case TrajectoryType::Missile:
-					return Detail::MissileCanHit(flatRange,origin,dest);
-				default:
-					FATAL__("Incompatible trajectory type "+String(t.ToString()));
-			}
-			return false;
+			outAngle = 0;
+			return CanHit(t,flatRange,origin,dest);
 		}
 	
 
-		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest)
+		/*static*/ bool						Turret::CanHit( TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest )
 		{
-			if (t == TrajectoryType::VerticalBeam)
-			{
-				return GetGroundHeight(origin.cellLocation) != badHeight;
-			}
-
 			switch (t)
 			{
+				case TrajectoryType::VerticalBeam:
+				{
+					if (dest.cellLocation.stackID != origin.cellLocation.stackID)
+						return false;
+					return dest.cellLocation.height >= GetGroundHeight(World::actual, origin.cellLocation)-1;
+				}
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius);
 				case TrajectoryType::Missile:
@@ -403,7 +396,7 @@ namespace Objects
 
 		/*static*/ bool						Turret::Detail::MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination)
 		{
-			return sqr(flatRange) >= Vec::quadraticDistance(origin.worldLocation,destination.worldLocation);
+			return M::Sqr(flatRange) >= Vec::quadraticDistance(origin.worldLocation,destination.worldLocation);
 		}
 
 
@@ -416,7 +409,7 @@ namespace Objects
 
 
 		
-		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
 
@@ -431,7 +424,7 @@ namespace Objects
 				case TrajectoryType::VerticalBeam:
 				{
 					UINT32 stackIndex = from.cellLocation.stackID;
-					int h = GetGroundHeight(Grid::LCellIdI(stackIndex,0));
+					int h = GetGroundHeight(World::actual, Grid::LCellIdI(stackIndex,0));
 					if (h == badHeight)
 						return;
 					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
@@ -443,10 +436,10 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			float d2 = Vec::quadraticDistance(here.worldLocation,there.worldLocation);
-			if (d2 > sqr(range))
+			if (d2 > M::Sqr(range))
 			{
 				LogEvent(EventClass::Preset::error,"TraceMissileTrajectory(): Distance to target ("+String(sqrt(d2))+") exceeds maximum range ("+String(range)+") of missile turret. Ignoring for now.");
 				//DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
@@ -464,13 +457,13 @@ namespace Objects
 			const int resolution = std::max<int>(2,distance*2);
 
 			float lastH = here.radius;
-			TVec3<> lastB = here.worldLocation;
+			M::TVec3<> lastB = here.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 			
 				float fy = here.radius + (t01 * h);
-				TVec3<> b;
+				M::TVec3<> b;
 				Vec::interpolate(here.worldLocation,there.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
@@ -479,7 +472,7 @@ namespace Objects
 		}
 
 
-		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			const float sn = sin(angle),
 						cs = cos(angle);
@@ -491,19 +484,19 @@ namespace Objects
 
 			const float h = dest.radius - source.radius;
 
-			const float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * h)) / g;
+			const float tEnd = (velocity * sn + sqrt(M::Sqr(velocity*sn) - 2.f * g * h)) / g;
 
 
 			const int resolution = std::max<int>(2,distance*4);
 
 			float lastH = source.radius;
-			TVec3<> lastB = source.worldLocation;
+			M::TVec3<> lastB = source.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 				const float t = t01 * tEnd;
-				float fy = source.radius + (velocity * t*sn - 0.5f * g * sqr(t));
-				TVec3<> b;
+				float fy = source.radius + (velocity * t*sn - 0.5f * g * M::Sqr(t));
+				M::TVec3<> b;
 				Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
@@ -512,39 +505,43 @@ namespace Objects
 		}
 
 
-		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ ImpactDetails			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
-			outAngle = 0;
+			if (!Turret::CanHit(t,flatRange,source,dest))
+				return ImpactDetails{};
+
 			switch (t)
 			{
 				case TrajectoryType::Artillery:
-					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld,source, dest, outSteps,impactAt, impactCell,outAngle);
+					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld, !traceInActualWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::Missile:
-					return Detail::TraceMissileTrajectory(flatRange,actualWorld,source, dest, outSteps,impactAt, impactCell);
+					return Detail::TraceMissileTrajectory(flatRange,traceInActualWorld ? actualWorld : visibleWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
-					int h = GetGroundHeight(source.cellLocation);
+					ImpactDetails rs;
+					int h = GetGroundHeight(traceInActualWorld ? actualWorld : visibleWorld,source.cellLocation);
 					if (h == badHeight)
-						return TurretTrajectory::InvalidTrajectory;
+						return rs;
 					outSteps.Clear();
 					float4 p(Grid::low.cells[source.cellLocation.stackID].cornerCenter,Grid::ToRadius(h));
 					outSteps.Append(p);
-					impactAt = p.xyz * p.w;
-					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
-					return TurretTrajectory::ReachesTarget;
+					rs.result = TraceResult::ReachesTarget;
+					rs.impactAt = p.xyz * p.w;
+					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
+					return rs;
 				}
 				break;
 				default:
 					FATAL__("Incompatible trajectory type "+String(t.ToString()));
 			}
-			return TurretTrajectory::InvalidTrajectory;
+			return ImpactDetails{};
 
 		}
 
-		static float	PreTraceArtillery(float velocity, float angle, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, float distance, const World::Data&world)
+		static float	PreTraceArtillery(float velocity, float angle, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, float distance, const std::function<bool(const Grid::HCellIdI&)>&isOccupied)
 		{
 			float sn = sin(angle),
 					cs = cos(angle);
@@ -553,7 +550,7 @@ namespace Objects
 			const int resolution = std::max<int>(2,std::max(distance*2.f,distance * sn * 5.f));
 
 			float delta = there.radius - here.radius;
-			float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * delta)) / g;
+			float tEnd = (velocity * sn + sqrt(M::Sqr(velocity*sn) - 2.f * g * delta)) / g;
 
 
 
@@ -568,20 +565,20 @@ namespace Objects
 
 			
 			float lastH = here.radius;
-			TVec3<> lastB = here.worldLocation;
+			M::TVec3<> lastB = here.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 				const float t = t01 * tEnd;
-				float fy = here.radius + (velocity * t*sn - 0.5f * g * sqr(t));
-				TVec3<> b;
+				float fy = here.radius + (velocity * t*sn - 0.5f * g * M::Sqr(t));
+				M::TVec3<> b;
 				Vec::interpolate(here.worldLocation,there.worldLocation,t01,b);
 				Vec::normalize(b);
 //				outSteps << float4(b,fy);
 
 				cellAt = Grid::high.Locate(b,cellAt);
 				int h = (Grid::HeightFloorFromRadius(fy));
-				if (world.GetStack(cellAt).GetCellI(h).IsOccupied())
+				if (isOccupied(Grid::HCellIdI(cellAt,h)))
 				{
 					float3 impactAt = b * (fy);
 					return Vec::quadraticDistance(impactAt, there.worldLocation);
@@ -590,21 +587,23 @@ namespace Objects
 			return 0;
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		/*static*/ ImpactDetails			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
 			{
 				if (velocity < 50.f)
 				{
-					LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString()+". Increasing velocity and retrying.");
+					//LogEvent(EventClass::Preset::internalError,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+ToString(source)+", dest="+ToString(dest)+". Increasing velocity and retrying.");
 					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
-					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,source, dest,outSteps,impactAt,impactCell,outAngle);
+					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,traceInDecisionWorld,source, dest,outSteps);
 				}
 
-				return TurretTrajectory::InvalidTrajectory;
+				return ImpactDetails{};
 			}
 
+			Turret::traceCount++;
+			const Timer::Time t0 = timer.Now();
 		/*	const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
 			const float h1 = Grid::ToRadiusf(0.05f + dest.height);
 			const float3 there = Grid::low.cells[dest.stackID].centerVertex.xyz * h1;
@@ -620,8 +619,24 @@ namespace Objects
 			float leastDistance = std::numeric_limits<float>::max();
 			for (int j = 0; j < angles.numAngles; j++)
 			{
-				float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,decisionWorld);
-				LogEvent(EventSignificance::Debug,source.ToString()+"->"+dest.ToString()+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
+				#ifndef CLIENT
+					float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,[&decisionWorld,&actualWorld](const Grid::HCellIdI&loc)
+					{
+						const auto&cell = decisionWorld.GetCell(loc);
+						if (cell.content != Grid::Content::Clear)
+							return true;
+						if (!cell.IsCurrentlyVisible())
+							return false;
+						return actualWorld.GetCell(loc).structureCounter > 1;
+					});
+				#else
+					float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,[&decisionWorld](const Grid::HCellIdI&loc)
+					{
+						return decisionWorld.GetCell(loc).IsOccupied();	
+					});
+					
+				#endif
+				LogEvent(EventSignificance::Debug,ToString(source)+"->"+ToString(dest)+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
 				if (d2 < leastDistance)
 				{
 					leastDistance = d2;
@@ -633,8 +648,9 @@ namespace Objects
 
 
 			{
+				ImpactDetails rs;
 				outSteps.Clear();
-				float angle = outAngle = angles.idealAngle[k];
+				float angle = rs.artilleryAngle = angles.idealAngle[k];
 				LogEvent(EventSignificance::Debug,"Using angle "+String(k)+"/"+String(angles.numAngles)+" "+String(angle));
 				float sn = sin(angle),
 						cs = cos(angle);
@@ -642,15 +658,16 @@ namespace Objects
 
 				const int resolution = std::max<int>(2,std::max(distance*2.f,distance * sn * 5.f));
 
-				float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * h)) / g;
+				float tEnd = (velocity * sn + sqrt(M::Sqr(velocity*sn) - 2.f * g * h)) / g;
 
 
 
-				impactAt = dest.worldLocation;
+				rs.impactAt = dest.worldLocation;
+				const auto impactAtHCell = Grid::ToHigh(dest.cellLocation);
 				#ifdef HYBRID_GRID
-					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent,dest.cellLocation.height);
+					rs.impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent,dest.cellLocation.height);
 				#else
-					impactCell = dest.cellLocation;
+					rs.impactCell = dest.cellLocation;
 				#endif
 
 				//const float3 up = (here + there).Normalized0();
@@ -663,28 +680,50 @@ namespace Objects
 
 			
 				float lastH = source.radius;
-				TVec3<> lastB = source.worldLocation;
+				M::TVec3<> lastB = source.worldLocation;
 				for (int i = 0; i <= resolution; i++)
 				{
 					float t01 = float(i) / float(resolution);
 					const float t = t01 * tEnd;
-					float fy = source.radius + (velocity * t*sn - 0.5f * g * sqr(t));
-					TVec3<> b;
+					float fy = source.radius + (velocity * t*sn - 0.5f * g * M::Sqr(t));
+					M::TVec3<> b;
 					Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 					Vec::normalize(b);
 					outSteps << float4(b,fy);
 
 					cellAt = Grid::high.Locate(b,cellAt);
 					int h = (Grid::HeightFloorFromRadius(fy));
-					if (actualWorld.GetStack(cellAt).GetCellI(h).IsOccupied())
+
+					const auto&actualCell = actualWorld.GetStack(cellAt).GetCellI(h);
+					bool impact = false;
+					if (traceInDecisionWorld)
 					{
-						impactAt = b * (fy);
-						impactCell = Grid::HCellIdI(cellAt,h);
-						return Vec::distance(impactAt,dest.worldLocation) < 0.1f ? TurretTrajectory::ReachesTarget : TurretTrajectory::MidFlightImpact;
+						const auto&decisionCell = decisionWorld.GetStack(cellAt).GetCellI(h);
+						if (decisionCell.content != Grid::Content::Clear)
+							impact = true;
+						elif (decisionCell.TerrainIsVisible())
+						{
+							if (actualCell.structureCounter > 1)
+								impact = true;
+						}
+					}
+					else
+						impact = actualCell.IsOccupied();
+
+
+					if (impact)
+					{
+						rs.impactAt = b * (fy);
+						rs.impactCell = Grid::HCellIdI(cellAt,h);
+						rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+						rs.result = rs.distanceToTarget < 0.1f || impactAtHCell == Grid::HCellIdI(cellAt,h) ? TraceResult::ReachesTarget : TraceResult::MidFlightImpact;
+						
+						Turret::timeSpentTracing += timer.Now() - t0;
+						return rs;
 					}
 				}
 
-				impactCell = Grid::HCellIdI(
+				rs.impactCell = Grid::HCellIdI(
 					#ifdef HYBRID_GRID
 						Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent
 					#else
@@ -692,14 +731,16 @@ namespace Objects
 
 					#endif
 				,dest.cellLocation.height);
-				impactAt = Grid::ToWorld(impactCell);
-				float3 last = outSteps.last().xyz * outSteps.last().w;
-	//			ASSERT2__(Vec::similar(impactAt,last),Vec::toString(impactAt),last.ToString());
-				return TurretTrajectory::ReachesTarget;
+				float3 last = outSteps.Last().xyz * outSteps.Last().w;
+				rs.impactAt = dest.worldLocation;//last;//Grid::ToWorld(rs.impactCell);
+				//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+				rs.result = TraceResult::ReachesTarget;
+				Turret::timeSpentTracing += timer.Now() - t0;
+				return rs;
 			}
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ ImpactDetails			Turret::Detail::TraceMissileTrajectory( float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps )
 		{
 		/*
 
@@ -709,9 +750,11 @@ namespace Objects
 			const float3 here = Grid::low.cells[source.stackID].centerVertex.xyz * h0;
 		*/
 			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
-			if (d2 > sqr(range))
-				return TurretTrajectory::InvalidTrajectory;
+			if (d2 > M::Sqr(range))
+				return ImpactDetails{};
 
+			Turret::traceCount++;
+			const Timer::Time t0 = timer.Now();
 
 			const float3 up = (source.worldLocation + dest.worldLocation).Normalized0();
 			float distance = sqrt(d2);
@@ -720,15 +763,16 @@ namespace Objects
 
 			const int resolution = std::max<int>(2,distance*2);
 			UINT32 cellAt = Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent;
+			const auto impactAtHCell = Grid::ToHigh(dest.cellLocation);
 
 			float lastH = source.radius;
-			TVec3<> lastB = source.worldLocation;
+			M::TVec3<> lastB = source.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 			
 				float fy = source.radius + (t01 * h);
-				TVec3<> b;
+				M::TVec3<> b;
 				Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
@@ -737,22 +781,30 @@ namespace Objects
 				int h = (Grid::HeightFloorFromRadius(fy));
 				if (world.GetStack(cellAt).GetCellI(h).IsOccupied())
 				{
-					impactAt = b * (fy);
-					impactCell = Grid::HCellIdI(cellAt,h);
-					return TurretTrajectory::MidFlightImpact;
+					ImpactDetails rs;
+					rs.impactAt = b * (fy);
+					rs.impactCell = Grid::HCellIdI(cellAt,h);
+					rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+					rs.result = rs.distanceToTarget < 0.1f || impactAtHCell == Grid::HCellIdI(cellAt,h) ? TraceResult::ReachesTarget : TraceResult::MidFlightImpact;
+					Turret::timeSpentTracing += timer.Now() - t0;
+					return rs;
 				}
 			}
-			impactCell = Grid::HCellIdI(
+			ImpactDetails rs;
+			rs.impactCell = Grid::HCellIdI(
 				#ifdef HYBRID_GRID
 					Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent
 				#else
 					dest.cellLocation.stackID
 				#endif
 			,dest.cellLocation.height);
-			impactAt = Grid::ToWorld(impactCell);
-			float3 last = outSteps.last().xyz * outSteps.last().w;
-	//			ASSERT2__(Vec::similar(impactAt,last),Vec::toString(impactAt),last.ToString());
-			return TurretTrajectory::ReachesTarget;
+
+			float3 last = outSteps.Last().xyz * outSteps.Last().w;
+			rs.impactAt = dest.worldLocation;//Grid::ToWorld(rs.impactCell);
+			//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
+			rs.result = TraceResult::ReachesTarget;
+			Turret::timeSpentTracing += timer.Now() - t0;
+			return rs;
 		}
 
 
@@ -776,21 +828,27 @@ namespace Objects
 
 
 
+		bool Unlockable(const PStructure&proto)
+		{
+			return proto->IsUnlocked() || proto->CanBeUnlocked();
+		}
 
-		Buffer<PStructure> Terraformer::canBuild;
+		bool			Terraformer::CanBuild(const PStructure&proto)
+		{
+			return !proto->IsIndestructible()
+					#ifdef ONE_COMPOUND_PER_FACTION
+						&& !To<Connector>::DynamicCast(proto)
+					#endif
+					#ifdef NO_MUNITION
+						&& !To<MunitionFactory>::DynamicCast(proto) && !To<MunitionStorage>::DynamicCast(proto)
+					#endif
+				&& Unlockable(proto)
+			;
+		}
+
 
 		void			Terraformer::Configure(Turret&component)
 		{
-			foreach (structurePrototypes,p)
-				if (!(*p)->IsIndestructible())
-					#ifdef ONE_COMPOUND_PER_FACTION
-						if (!To<Connector>::DynamicCast(*p))
-					#endif
-					#ifdef NO_MUNITION
-						if (!To<MunitionFactory>::DynamicCast(*p) && !To<MunitionStorage>::DynamicCast(*p))
-					#endif
-					canBuild << *p;
-
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
@@ -809,16 +867,38 @@ namespace Objects
 
 
 
-		float		Bomb::GetRadius(bool doomsday, const OwnerParameter& owner)
+		namespace Bomb
 		{
-			//return doomsday ? 7*Grid::UnitScale : artillery.explosionRadius*2;
-			return bomb.GetExplosionRadius(owner) * (doomsday ? 2 : 1);
+			FFunc		doomsdayExplosionRadius;
+			IFunc		doomsdayDamageLevel;
+
+			AttributeWithDefault<int,200>		doomsdayUraniumCost;
+			AttributeWithDefault<int,-100>		regularUraniumCost;
+
 		}
 
-		int			Bomb::GetDamageLevel(bool doomsday, const OwnerParameter& owner)
+
+		int			Bomb::GetUraniumCost(bool doomsday, const Research::Attributes::Table&researchState)
 		{
-			//return doomsday ? 50 : artillery.damageLevel*2;
-			return bomb.GetDamageLevel(owner) * (doomsday ? 5 : 1);
+			//used to be: 200 : -100 (virtual)
+			return doomsday ? doomsdayUraniumCost.GetValue(researchState) : regularUraniumCost.GetValue(researchState);
+		}
+
+
+		float		Bomb::GetRadius(bool doomsday, const Research::Attributes::Table&researchState)
+		{
+			//	return bomb.GetExplosionRadius(owner) * (doomsday ? 2 : 1);
+			return doomsday ? 
+				(doomsdayExplosionRadius.IsSet() ? doomsdayExplosionRadius.GetValue(researchState) : bomb.GetExplosionRadius(researchState) * 2)
+				: bomb.GetExplosionRadius(researchState);
+		}
+
+		int			Bomb::GetDamageLevel(bool doomsday, const Research::Attributes::Table&researchState)
+		{
+			//return bomb.GetDamageLevel(owner) * (doomsday ? 5 : 1);
+			return doomsday ? 
+				(doomsdayDamageLevel.IsSet() ? doomsdayDamageLevel.GetValue(researchState) : bomb.GetDamageLevel(researchState) * 5)
+				: bomb.GetDamageLevel(researchState);
 		}
 
 	
@@ -836,6 +916,7 @@ namespace Objects
 			component.typeName = "Bomb";
 			component.shortName = "bomb";
 			component.constName = ConstName::Turret_Bomb;
+			component.hasDoomsdayFunctionality = true;
 
 			//component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
@@ -861,7 +942,6 @@ namespace Objects
 			component.typeName = "Artillery";
 			component.shortName = " Artillery";
 			component.constName = ConstName::Turret_Artillery;
-			component.constTowerName = ConstName::Type_ArtilleryTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
@@ -882,7 +962,7 @@ namespace Objects
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
 			component.constName = ConstName::Turret_Launcher;
-			component.constTowerName = ConstName::Type_LauncherTower;
+			component.attacksMovingHostilesDuringMotionPhase = true;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
@@ -891,6 +971,26 @@ namespace Objects
 			component.trajectoryType = TrajectoryType::Missile;
 
 			component.initiative = 70;
+		}
+
+		void			Rockets::Configure(Turret&component)
+		{
+			#ifdef HAS_WINDOW		
+				component.parts.SetSize(1);
+				component.parts.First().LoadFromObj("objects/rockets.obj");
+			#endif
+
+			component.mountType = Turret::MountType::TowerOnly;
+			component.typeName = "Rocket Launcher";
+			component.shortName = " Rockets";
+			component.constName = ConstName::Turret_Rockets;
+			component.attacksMovingHostilesDuringMotionPhase = true;
+
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
+				component.baseStorageCapacity.level[Resource::Munitions] = 20;
+			#endif
+
+			component.trajectoryType = TrajectoryType::Missile;
 		}
 
 
@@ -905,13 +1005,12 @@ namespace Objects
 			component.typeName = "Cannon";
 			component.shortName = "tank";
 			component.constName = ConstName::Turret_Cannon;
-			component.constTowerName = ConstName::Type_CannonTower;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
 
-			component.ignoresVehicleMotion = true;
+			component.independentAttackAndMotion = true;
 		}
 
 
@@ -927,7 +1026,6 @@ namespace Objects
 			component.typeName = "EMP";
 			component.shortName = " EMP";
 			component.constName = ConstName::Turret_EMP;
-			component.constTowerName = ConstName::Type_EMPTower;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = 150;
@@ -976,7 +1074,7 @@ namespace Objects
 				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Satellite;
-				component.isDoomsday = true;
+				component.mainAttackIsDoomsday = true;
 
 				component.continuousRotation = true;
 				component.continuousRotationSpeed = -0.25f;
@@ -1008,14 +1106,14 @@ namespace Objects
 				component.trajectoryType = TrajectoryType::VerticalBeam;
 
 
-				ResearchState::RegisterDependency(component,emp);
-				ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
-				ResearchState::RegisterUnlockCost(component,100);
-				ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-				ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterDependency(component,emp);
+				Research::FactionState::RegisterDependency(component,SkyPort::globalPrototype);
+				Research::FactionState::RegisterUnlockCost(component,100);
+				Research::FactionState::RegisterResearch(component,Attribute::DamageLevel);
+				Research::FactionState::RegisterResearch(component,Attribute::ExplosionRadius);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1061,16 +1159,16 @@ namespace Objects
 				component.trajectoryType = TrajectoryType::Missile;
 
 
-				ResearchState::RegisterDependency(component,emp);
-				ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
-				ResearchState::RegisterUnlockCost(component,10);
-				ResearchState::RegisterResearch(component,Attribute::AttackRange);
-				ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
-				ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-				ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterDependency(component,emp);
+				Research::FactionState::RegisterDependency(component,SkyPort::globalPrototype);
+				Research::FactionState::RegisterUnlockCost(component,10);
+				Research::FactionState::RegisterResearch(component,Attribute::AttackRange);
+				Research::FactionState::RegisterResearch(component,Attribute::AttacksPerRound);
+				Research::FactionState::RegisterResearch(component,Attribute::DamageLevel);
+				Research::FactionState::RegisterResearch(component,Attribute::ExplosionRadius);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1112,10 +1210,10 @@ namespace Objects
 				component.initiative = 60;
 				component.uplinkTraffic = 20;
 
-				ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterResearch(component,Attribute::ConstructionSpeed);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1155,9 +1253,9 @@ namespace Objects
 				component.initiative = 30;
 				component.uplinkTraffic = 1;	//irrelevant
 
-				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				Research::FactionState::RegisterResearch(component,Attribute::ScanningRange);
 				if (component.baseAmmoNeedPerShot > 0)
-					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+					Research::FactionState::RegisterResearch(component,Attribute::AmmoNeed);
 
 				component.FinishCreation(false);
 			}
@@ -1193,7 +1291,6 @@ namespace Objects
 			component.typeName = "Mechanic";
 			component.shortName = "mechanic";
 			component.constName = ConstName::Turret_Mechanic;
-			component.constTowerName = ConstName::Type_MechanicTower;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
@@ -1212,8 +1309,8 @@ namespace Objects
 			component.typeName = "Radar";
 			component.shortName = "radar";
 			component.constName = ConstName::Turret_Radar;
-			component.constTowerName = ConstName::Type_RadarTower;
 
+			component.isScanner = true;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;
 		}
@@ -1232,6 +1329,7 @@ namespace Objects
 			component.shortName = "surveyor";
 			component.constName = ConstName::Turret_Surveyor;
 
+			component.isScanner = true;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -1.f;
 
@@ -1251,15 +1349,15 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/hoverbase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverbase.wav");
+				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/hoverbase.wav");
 
 			#else
 				component.height = staticHeight;
 			#endif
 
-			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Hoverbase";
 			component.shortName = "Hover";
 			component.constName = ConstName::VehicleBase_HoverBase;
@@ -1292,15 +1390,15 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/heavyBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/heavybase.wav");
+				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/heavybase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
 
 
-			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Heavy Base";
 			component.shortName = "Heavy";
 			component.constName = ConstName::VehicleBase_HeavyBase;
@@ -1333,15 +1431,15 @@ namespace Objects
 
 				component.parts.First().LoadFromObj("objects/catBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
-				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/catbase.wav");
+				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/catbase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
 
 
-			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Catamaran Base";
 			component.shortName = "Cat";
 			component.constName = ConstName::VehicleBase_CatBase;
@@ -1390,7 +1488,7 @@ namespace Objects
 			void VehicleBase::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner)
 			{
 				outResult.BeginBrief();
-				Lua::Reference researchState = ResearchStateOf(owner);
+				const auto& researchState = ResearchStateOf(owner);
 				if (includeName && typeName.IsNotEmpty())
 					outResult << typeName + " (Base)";
 				Base::DescribeType(outResult,compound,owner);
@@ -1417,7 +1515,6 @@ namespace Objects
 						if (moveOnWater)
 							outResult.GetLastLine() += " (moves over water)";
 					outResult<<"Base health: "+health.Describe(researchState);
-					outResult<<"Turret carrying capacity: "+carryingCapacity.Describe(researchState);
 					float rangeMod = turretRangeModifier.GetValue(researchState);
 					if (rangeMod != 0)
 						outResult<<"Turret range modifier: "+turretRangeModifier.Describe(researchState);
@@ -1433,20 +1530,16 @@ namespace Objects
 			{
 				outResult.BeginBrief();
 				const String upperName = parentType.IsNotEmpty() ? parentType+"-Turret" : "Turret";
-				const String lowerName = upperName.copyToLowerCase();
+				const String lowerName = upperName.CopyToLowerCase();
 				if (includeName)
 				{
-					const String nameAppend = isDoomsday ? ", DOOMSDAY" : "";
-					outResult << typeName+" ("+upperName+nameAppend+")";
+					outResult << typeName+" ("+upperName+")";
 				}
-				else
-					if (isDoomsday)
-						outResult << "DOOMSDAY";
 
 				if (!compound && RuntimeConfig::UnitLimits::AnySet())
 				{
 					count_t cnt = 0, limit = 0;
-					cnt = Vehicle::CountTurretOccurrences(owner,this)
+					cnt = Vehicle::CountTurretOccurrences(owner,this,true)
 						#ifndef NO_SATELLITES
 						+
 						Satellite::CountTurretOccurrences(owner,this)
@@ -1457,7 +1550,7 @@ namespace Objects
 						outResult <<"Deployed: "+String(cnt)+"/"+String(limit);
 				}
 
-				Lua::Reference researchState = ResearchStateOf(owner);
+				const auto& researchState = ResearchStateOf(owner);
 
 				Base::DescribeType(outResult,compound,owner);
 				outResult.BeginBrief();
@@ -1479,7 +1572,7 @@ namespace Objects
 						outResult <<"Offensive "+lowerName;
 					if (parentType != "Tower")
 					{
-						if (ignoresVehicleMotion)
+						if (independentAttackAndMotion)
 							outResult <<"Can attack independently of movement action";
 						elif (requiresStationaryVehicle)
 							outResult <<"Vehicle must remain stationary to fire";
@@ -1495,14 +1588,14 @@ namespace Objects
 					int count = attacksPerRound.GetValue(researchState);
 					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
 				}
-				if (explosionRadius.IsSet())
+				if (explosionRadius.IsFunctionOrConstNonZero())
 				{
 					outResult <<"Explosion radius: "+explosionRadius.Describe(researchState);
 					if (this == &bomb)
 						outResult.GetLastLine() +=" ("+String(ResourceTag(Resource::Uranium))+": *2)";
 						//bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
 				}
-				if (damageLevel.IsSet())
+				if (damageLevel.IsFunctionOrConstNonZero())
 				{
 					if (dealsEMPDamage)
 						outResult <<"EMP damage: "+damageLevel.Describe(researchState);
@@ -1519,7 +1612,7 @@ namespace Objects
 				if (CanRepair())
 					outResult <<"Can repair other vehicles/structures";
 				if (detectsResources)
-					outResult <<"Detects natural resources";
+					outResult <<"Scans into the ground, and detects natural resources";
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!compound && baseStorageCapacity.IsNotEmpty())
 					{
@@ -1539,24 +1632,48 @@ namespace Objects
 				if (CanRepair())
 					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
 				if (detectsResources)
-					outResult << ("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
+					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())
 				{
-					outResult << ("This "+lowerName+" type can attack objects in range.");
+					switch (trajectoryType)
+					{
+						case TrajectoryType::VerticalBeam:
+						{
+							outResult << ("Ground targets can be attacked if directly beneath the unit.");
+						}
+						break;
+						default:
+							outResult << ("Units or ground locations can be attacked if in range.");
+					}
 					if (dealsEMPDamage)
 						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces attack and scanning range, movement speed, and disallows construction operations. Does not cause any permanent damage.");
 				}
 				else
-					if (scanningRange.GetValue(researchState) >= 7)
+					if (isScanner)
 						outResult << ("The "+this->typeName + " "+lowerName+" is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
+
+				if (attacksMovingHostilesDuringMotionPhase)
+				{
+					if (mountType != MountType::TowerOnly)
+						outResult << ("The "+this->typeName + " "+lowerName+" intercepts hostile mobile units during their movement phase even if itself mounted on a mobile unit. It is thus particularly well suited to establish an ad hoc defense perimeter, or to permanently defend strategically important regions if mounted on a tower.");
+					else
+						outResult << ("The "+this->typeName + " "+lowerName+" intercepts hostile mobile units during their movement phase. It is thus particularly well suited to defend strategically important regions.");
+				}
 
 				if (this == &bomb)
 					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
 					"Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+String(ResourceTag(Resource::Uranium))+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
-				//if (isDoomsday)
-				//{
-				//	outResult.WrapAppendText("This "+lowerName+" type is classified as Doomsday weaponry. Careful with this one.");
-				//}
+				if (mainAttackIsDoomsday)
+				{
+					outResult << ("This "+lowerName+" type is classified as DOOMSDAY WEAPONRY. Careful with this one.");
+				}
+				elif (hasDoomsdayFunctionality)
+				{
+					if (this->CanDo(Objects::Component::Nuclear))
+						outResult << ("This "+lowerName+" type has special attacks classified as DOOMSDAY WEAPONRY. These typically require Uranium, and may be disallowed by the server.");
+					else
+						outResult << ("This "+lowerName+" type has special attacks classified as DOOMSDAY WEAPONRY. These may be disallowed by the server.");
+				}
 			}
 
 	
@@ -1579,24 +1696,20 @@ namespace Objects
 		#endif
 
 
-		/*static*/ bool					VehicleBase::canStandOnUnknown=true;
 
-		bool							VehicleBase::CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat)
+		bool							VehicleBase::CanStandOn( const World::Data&world, const Grid::LCellIdI&cell, GroundFlags flags/*=GroundFlags::None*/ )
 		{
 			if (requirements == Requirement::None)
 				return true;
 
 			Grid::Content weakest,strongest;
-			bool anyUnknown = world.GetStrengthRange(cell,weakest,strongest,canStandOnUnknown);
+			const bool canStandOnUnknown = !(flags & GroundFlags::DisallowUnknownGround);
+			world.GetStrengthRange(cell,weakest,strongest,canStandOnUnknown);
 			if (strongest == Grid::Content::Unknown && !canStandOnUnknown)
 				return false;
-			//if (!canStandOnUnknown && anyUnknown)
-			//	return false;
+			if (flags & GroundFlags::ForceFloatOnEverything)
+				return true;
 
-	//								moveOnWater
-
-			//if (t == Grid::Content::Clear)
-				//return false;
 			const int waterStrength = Grid::CellStack::Cell::typeStrength[Grid::Content::Water];
 			const int strongestStr = Grid::CellStack::Cell::typeStrength[strongest];
 
@@ -1607,52 +1720,31 @@ namespace Objects
 					if (strongestStr > waterStrength)
 						return true;
 					if (strongestStr == waterStrength)
-						return moveOnWater || ignoreWater;
-					//if (strongest == Grid::Content::Clear)
-					//	return doFloat;
-					return doFloat;	//air or lava
+						return moveOnWater || (flags & GroundFlags::ForceFloatOnWater);
+					return false;	//air or lava
 				}
 				case Requirement::Water:
-					if (anyUnknown && !canStandOnUnknown)
-						return false;
-					//if (strongestStr > waterStrength)
-					//	return false;
-					//if (strongest == Grid::Content::Lava)
-					//	return false;
-					//if (strongest == Grid::Content::Clear)
-					//	return doFloat;
-					return strongest == Grid::Content::Water || doFloat;
+					return strongest == Grid::Content::Water;
 				break;
-				//case Requirement::CentralBlock:
-				//{
-				//	BYTE t = world.cellStack[Grid::low.grid.GetCell(cell.cellID).higherEquivalent].GetCellI(cell.height).content;
-				//	return t != Grid::Content::Clear && (moveOnWater || t != Grid::Content::Water);
-				//}
-				/*case Requirement::FullBase:
-				{
-					return weakest != Grid::Content::Clear && (moveOnWater || weakest != Grid::Content::Water);
-				}
-				case Requirement::RoadOrFoundation:
-					return weakest == Grid::Content::Foundation || weakest == Grid::Content::Road;*/
 			}
 			FATAL__("Unknown requirement "+String(requirements.ToString()));
 			return false;
 	
 		}
 
-		bool							Base::TestIntersection(float zOffset, float x, float y, const TVec3<>&_b, const TVec3<>&_d, float & distance)
+		bool							Base::TestIntersection(float zOffset, float x, float y, const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance)
 		{
 			#ifdef HAS_WINDOW
 				bool rs = false;
-				TMatrix4<> system1,system2,inverse;
-				TVec3<> b,d;
+				M::TMatrix4<> system1,system2,inverse;
+				M::TVec3<> b,d;
 				if (parts.Count() > 0)
 				{
 					GetSubSystem(0,x,system1);
 					//system1.w.xyz += system1.z.xyz * zOffset;
 					system1.w.z = zOffset;
 					Mat::invertSystem(system1,inverse);
-					Mat::transform(inverse,_b,b);
+					Mat::Transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
 					rs |= parts.First().TestIntersection(b,d,distance);
 				}
@@ -1661,7 +1753,7 @@ namespace Objects
 					GetSubSystem(1,y,system2);
 					Mat::transformSystem(system1,system2);
 					Mat::invertSystem(system2,inverse);
-					Mat::transform(inverse,_b,b);
+					Mat::Transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
 					rs |= parts[1].TestIntersection(b,d,distance);
 				}
@@ -1673,7 +1765,7 @@ namespace Objects
 		}
 
 
-		void							Base::GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const
+		void							Base::GetSubSystem(index_t geometryIndex, float angle, M::TMatrix4<>&outSystem)	const
 		{
 			Mat::Eye(outSystem);
 			if (angle == 0)
@@ -1698,10 +1790,6 @@ namespace Objects
 		}
 
 
-		void							Base::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{	
-			commands.VisitMembers(visitor,force);
-		}
 
 
 	}

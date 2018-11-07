@@ -43,3 +43,11 @@ baked/
 Bake/Bake.vshost.exe.manifest
 ThirdParty/lua/.projector/
 documentation/last.html
+ArtWork/resources.lnk
+DocumentationEditor/.vs/
+BugReporter/.vs/
+BugReporter/BugReporter.exe.config
+/client/Visual Client.exe - Shortcut.lnk
+.vs
+/server.7z
+/ServerManager/ServerManager.exe.config

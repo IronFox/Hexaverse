@@ -2,6 +2,7 @@
 #include "turretBase.h"
 
 #include "gridAndChoices.h"
+#include "faction.h"
 
 
 #ifdef HAS_WINDOW
@@ -12,42 +13,77 @@
 namespace Objects
 {
 
-	
 
 
 	
+	#ifndef CLIENT
+		bool TurretBase::WouldAutoAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
+		{
+			auto&e = ToEntity();
+			if (!CanAttack() || e.empDamageLevel != 0 || e.IsHibernating() || e.owner->IsAlliedWith(target->owner))
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
 
 
-	/*static*/ bool				TurretBase::CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&origin, float explosionRadius)
+
+			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
+			TrajectoryEndPoint endPoint(target->location); 
+			 
+
+			return		//owner->canSee.IsSet(target)
+					/*&&	*/turret->CanAttack() 
+					&& entityTime <= entityTime 
+					&& CountPossibleAttacks() > 0 
+					&& ExtCanHit(e.owner,TrajectoryEndPoint( e.location,GetZOffset() ), endPoint,outTarget);
+		}
+	#endif
+
+	/*static*/ bool				TurretBase::CheckArea(const PFaction&myFaction, const Grid::LCellIdI&origin,const M::TVec3<>&source3, float explosionRadius, TargetChoice&outExtResult)
 	{
 		AreaHelper	helper;
-
+		using M::Sqr;
 		
-		{
-			const auto&n = Grid::low.grid.GetCell(origin.stackID).neighborhood;
-			for (int i = 0; i < n.numNeighbors; i++)
-				helper << Grid::LCellIdI(n.neighborID[i],origin.height);
-			if (origin.height+1 < Grid::CellStack::HalfRange)
-				helper << origin + 1;
-			if (origin.height-1 >= -Grid::CellStack::HalfRange)
-				helper << origin - 1;
-		}
+		helper << origin;
 		Grid::LCellIdI current;
-		const TVec3<> source3 = Grid::ToWorld(origin);
-		float range2 = sqr(explosionRadius);
+		//const M::TVec3<> source3 = Grid::ToWorld(origin);
+		const float range2 = M::Sqr(explosionRadius);
+
+		#ifdef _DEBUG
+			outExtResult.fieldsChecked.Clear();
+			outExtResult.explosionRadius = explosionRadius;
+			outExtResult.explosionCenter = source3;
+		#endif
 
 		while (helper >> current)
 		{
+			#ifdef _DEBUG
+				auto&f = outExtResult.fieldsChecked.Append();
+				f.cell = current;
+			#endif
 
-			TVec3<> world = Grid::ToWorld(current);
+			M::TVec3<> world;
+			Vec::mult(Grid::low.cells[current.stackID].cornerCenter,Grid::ToRadius(current.height),world);
+				//Grid::ToWorld(current);
 			float fromSource2 = Vec::quadraticDistance(source3,world);
 			if (fromSource2 > range2)
+			{
+				#ifdef _DEBUG
+					f.outOfRange = true;
+				#endif
 				continue;
+			}
 
 
 			PWorldEntity e = GetEntity(current);
-			if (e && e->owner == myFaction && !e->IsIndestructible())
+			if (e && myFaction->IsFriendly(e->owner) && !e->IsIndestructible())
+			{
+				#ifdef _DEBUG
+					f.friendlyFound = true;
+				#endif
 				return false;
+			}
 
 
 			{
@@ -65,72 +101,148 @@ namespace Objects
 	
 	}
 
-
-
-	bool					TurretBase::ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const
+	int						TurretBase::GetOperationSpeed(Component::operation_t op) const
 	{
-		//const float velocity = Turret::MaxRangeToVelocity(GetFlatAttackRange());
-		const float range = GetFlatAttackRange();
-		//const float extRange = range + (turret->explosionRadius);
-		//const float range2 = sqr(range);
-		//const float extRange2 = sqr(extRange);
-		//const TVec3<> source3 = Grid::ToWorld(source);
-		//TVec3<> dest3 = Grid::ToWorld(destIn);
-		//float distance2 = Vec::quadraticDistance(source3,dest3);
-		//if (Turret::GetAngleForDistance(velocity,source,destIn))
-		//if (distance2 > extRange2)
-		//	return false;
-		const float explosionRadius = turret->GetExplosionRadius(myFaction);
-		const float explosionRadius2 = sqr(explosionRadius);
-		if (Component::Turret::CanHit(turret->trajectoryType, range,source,destIn)
-			&& CheckArea(myFaction,destIn.cellLocation,explosionRadius))
+		return GetOperationSpeed(op,ToEntity().owner);
+	}
+
+
+	int						TurretBase::GetAttacksPerRound() const
+	{
+		return turret->GetAttacksPerRound(ToEntity().GetResearchState());
+	}
+	int						TurretBase::GetAttacksPerRound(const OwnerParameter&owner) const
+	{
+		return turret->GetAttacksPerRound(WorldEntity::GetResearchState(owner));
+	}
+
+
+	int						TurretBase::GetDamagePotentialPerRound() const
+	{
+		const auto&state = ToEntity().GetResearchState(); 
+		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
+	}
+
+	int						TurretBase::GetDamagePotentialPerRound(const OwnerParameter&owner) const
+	{
+		const auto&state = WorldEntity::GetResearchState(owner); 
+		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
+	}
+
+	float					TurretBase::GetFlatAttackRange() const {return GetFlatAttackRange(ToEntity().owner);}
+	float					TurretBase::GetAttackExplosionRadius() const {return GetAttackExplosionRadius(ToEntity().owner);}
+	String					TurretBase::DescribeFlatAttackRange() const {return DescribeFlatAttackRange(ToEntity().owner);}
+
+
+
+
+	/*static*/ bool TurretBase::IsSafeHit( const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult )
+	{
+		outExtResult.impact = Component::Turret::TraceTrajectory(t,range,visibleWorld, actualWorld,true,source,dest,outExtResult.trajectory);
+
+		if (outExtResult.impact == TraceResult::InvalidTrajectory)
+			return false;
+		if (outExtResult.impact == TraceResult::MidFlightImpact)
 		{
-			destOut = destIn.cellLocation;
-			return true;
+			float3 last = outExtResult.trajectory.Last().xyz * outExtResult.trajectory.Last().w;
+			float dist = Vec::quadraticDistance(last,dest.worldLocation);
+			if (dist > M::Sqr(explosionRadius))
+				return false;
 		}
 
-		if (!Component::Turret::CanHit(turret->trajectoryType, range+explosionRadius*2,source,destIn))
+		//Component::Turret::CanHit(turret->trajectoryType, range,source,destIn)
+
+		if (outExtResult.impact.distanceToTarget == 0)
+		{
+			if (!CheckArea(myFaction,dest.cellLocation,dest.worldLocation,  explosionRadius, outExtResult))
+				return false;
+		}
+		else
+		{
+			const Grid::LCellIdI impact = {Grid::low.Locate(outExtResult.impact.impactAt,dest.cellLocation.stackID),outExtResult.impact.impactCell.height };
+			if (!CheckArea(myFaction,impact,outExtResult.impact.impactAt, explosionRadius, outExtResult))
+				return false;
+		}
+		outExtResult.cellTarget = dest.cellLocation;
+		return true;
+	}
+
+	bool					TurretBase::CanAttack()
+	{
+		return CanAttackIgnoreAmmo()
+			&& HasAmmoForShot();
+	}
+
+	bool					TurretBase::CanAttackIgnoreAmmo() const
+	{
+		return turret->CanAttack() 
+			;
+	}
+
+
+	/*static*/ bool					TurretBase::FindTarget(const PFaction&myFaction, TrajectoryType trajectoryType, float flatAttackRange, float explosionRadius, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)
+	{
+		using M::Sqr;
+		const float range = flatAttackRange;
+		const float explosionRadius2 = M::Sqr(explosionRadius);
+
+		if (!Component::Turret::CanHit(trajectoryType, range + explosionRadius * 2, source, destIn))
 			return false;
+
+		const auto&visibleWorld =
+			#ifdef CLIENT
+						World::actual;
+			#else
+						myFaction->knownWorld;
+			#endif
+		if (IsSafeHit(myFaction, trajectoryType, range, visibleWorld, World::actual, source, destIn, explosionRadius, outExtResult))
+			return true;
+
 
 		AreaHelper	helper;
 		//queue << destIn;
 		{
 			const auto&n = Grid::low.grid.GetCell(destIn.cellLocation.stackID).neighborhood;
 			for (int i = 0; i < n.numNeighbors; i++)
-				helper << Grid::LCellIdI(n.neighborID[i],destIn.cellLocation.height);
-			helper << destIn.cellLocation + 1;
-			helper << destIn.cellLocation - 1;
+				helper << Grid::LCellIdI(n.neighborID[i], destIn.cellLocation.height);
+			if (destIn.cellLocation.height < Grid::CellStack::TopHeight)
+				helper << destIn.cellLocation + 1;
+			if (destIn.cellLocation.height <= Grid::CellStack::TopHeight)
+				helper << destIn.cellLocation - 1;
 		}
 		Grid::LCellIdI current;
 		while (helper >> current)
 		{
-			TVec3<> world = Grid::ToWorld(current);
-			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation,world);
+			M::TVec3<> w3 = Grid::ToWorld(current);
+			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation, w3);
 			if (fromDest2 > explosionRadius2)
 				continue;
-			if (!World::actual.LowCellIsClear(current) || 
-				!Component::Turret::CanHit(turret->trajectoryType, range,source,TrajectoryEndPoint( current,0)))
+			const auto target2 = TrajectoryEndPoint(current, 0);
+			if (!World::actual.LowCellIsClear(current) ||
+				!Component::Turret::CanHit(trajectoryType, range, source, target2)
+				)
 				continue;
-			//float fromSource2 = Vec::quadraticDistance(source3,world);
-			//if (fromSource2 > extRange2)
-				//continue;
 
-
-
-			if (CheckArea(myFaction,current,explosionRadius))
-			{
-				destOut = current;
+			if (IsSafeHit(myFaction, trajectoryType, range, visibleWorld, World::actual, source, target2, explosionRadius, outExtResult))
 				return true;
-			}
+
 			{
 				const auto&n = Grid::low.grid.GetCell(current.stackID).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
-					helper << Grid::LCellIdI(n.neighborID[i],current.height);
-				helper << current + 1;
-				helper << current - 1;
+					helper << Grid::LCellIdI(n.neighborID[i], current.height);
+				if (current.height < Grid::CellStack::TopHeight)
+					helper << current + 1;
+				if (current.height <= Grid::CellStack::TopHeight)
+					helper << current - 1;
 			}
 		}
 		return false;
+
+	}
+
+	bool					TurretBase::ExtCanHit(const PFaction&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, TargetChoice&outExtResult)	const
+	{
+		return FindTarget(myFaction, turret->trajectoryType, GetFlatAttackRange(), GetAttackExplosionRadius(), source, destIn, outExtResult);
 	}
 
 

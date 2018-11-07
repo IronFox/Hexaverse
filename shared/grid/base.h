@@ -2,7 +2,9 @@
 
 #include <math/vclasses.h>
 #include <fractal/segment_map.h>
-#include <fractal/interface.h>
+#include <fractal/geometry.h>
+
+using namespace DeltaWorks;
 
 #include "config.h"
 
@@ -48,8 +50,12 @@ public:
 
 	struct TNetCell
 	{
-		float4		centerVertex,
-					cornerVertex[6];
+		float4		centerVertex;
+		/**
+		Corner vertices in the same order as neighbor cells.
+		Note that cornerVertex[i] is located between neighbor[i] and neighbor[i+1]
+		*/
+		float4		cornerVertex[6];
 		UINT32		centerVertexId,
 					cornerVertexId[6];	//valid through numCorners-1
 		BYTE		numCorners;	//0 for invalid cells, 5 for corner cells, 6 for all other cells
@@ -111,13 +117,21 @@ public:
 		const_iterator		begin() const {return anyChanged? const_iterator(this) : end();}
 		constexpr const_iterator	end() const {return const_iterator(nullptr,NumFamilies);}
 
+		void		Set(const FamiliesChanged&other)
+		{
+			if (!other.anyChanged)
+				return;
+			for (family_t f = 0; f < NumFamilies; f++)
+				changed[f] |= other.changed[f];
+			anyChanged = true;
+		}
 		/**
 		Sets the specified family as changed. Thread-safe.
 		*/
 		void		Set(family_t f)	{DBG_ASSERT_LESS__(f,NumFamilies);  changed[f] = true; anyChanged = true;}
 		bool		IsSet(family_t f) const {DBG_ASSERT_LESS__(f,NumFamilies); return changed[f];}
 		bool		AnyChanged() const {return anyChanged;}
-
+		void		SetAll() {for (family_t f = 0; f < NumFamilies; f++) changed[f] = true; anyChanged = true;}
 	private:
 		bool		changed[NumFamilies] = {false};
 		bool		anyChanged = false;
@@ -156,7 +170,7 @@ public:
 	static bool IsIsolatedCorner(index_t stackID)	{DBG_ASSERT_LESS__(stackID,12); return CornerIsIsolated[stackID];}
 
 protected:
-	static void UpdateRadii(Array<TNetCell>&cells);
+	static void UpdateRadii(Ctr::Array<TNetCell>&cells);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, float at, float3&out);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, const float3&v2, float xat, float yat, float3&out);
 
@@ -245,7 +259,7 @@ public:
 		int		height;
 
 		/**/	CellIdI()	{}
-		/**/	CellIdI(index_t cellID, int height) :stackID((UINT32)cellID), height(height){}
+		/**/	CellIdI(index_t stackID, int height) :stackID((UINT32)stackID), height(height){}
 		bool	operator==(const CellIdI&other)const { return stackID == other.stackID && height == other.height; }
 		bool	operator!=(const CellIdI&other)const { return stackID != other.stackID || height != other.height; }
 		CellIdI	operator+(int heightDelta) const { return CellIdI(stackID, height + heightDelta); }
@@ -253,13 +267,41 @@ public:
 		void	operator++(int)	{height ++ ;}
 		void	operator--(int) {height --;}
 
-		String	ToString() const {return String(stackID)+ "[h="+String(height)+"]";}
+		friend String	ToString(const CellIdI&id) {return String(id.stackID)+ "[h="+String(id.height)+"]";}
 
 		static const CellIdI	Invalid;
 
-		static hash_t	hash(const CellIdI&cell)
+		friend hash_t	Hash(const CellIdI&cell)
 		{
-			return (hash_t)(cell.stackID*31+cell.height);
+			return (hash_t)(cell.stackID*32+cell.height);
+		}
+
+		friend void		Serialize(IWriteStream&s, const CellIdI&v)
+		{
+			if (v == Invalid)
+			{
+				BYTE bLayer = 0xFF;
+				s.Write(&bLayer,1);
+				return;
+			}
+			UINT32 layer = Grid::CellStack::ToLayer(v.height);
+			static_assert(Grid::CellStack::Range <= 255, "Protocol not designed for more than 255 layers");
+			BYTE bLayer = (BYTE)layer;
+			s.Write(&bLayer,1);
+			s.WriteSize(v.stackID);
+		}
+
+		friend	void	Deserialize(IReadStream&s, CellIdI&v)
+		{
+			BYTE bLayer;
+			s.Read(&bLayer,1);
+			if (bLayer == 0xFF)
+			{
+				v = Invalid;
+				return;
+			}
+			s.ReadSize(v.stackID);
+			v.height = Grid::CellStack::ToHeight((UINT)bLayer);
 		}
 	private:
 		/**/	CellIdI(index_t stackID, UINT layer) {}
@@ -281,11 +323,11 @@ public:
 
 		static UINT32 LayerSum(UINT32 base, int delta)	{if (delta >= 0) return base + delta; ASSERT_GREATER_OR_EQUAL__(base,(UINT32)-delta); return base + delta;}
 
-		String	ToString() const {return String(stackID)+ "["+String(layer)+"]";}
+		friend String	ToString(const CellIdU&id) {return String(id.stackID)+ "["+String(id.layer)+"]";}
 
-		static hash_t	hash(const CellIdU&cell)
+		friend hash_t	Hash(const CellIdU&cell)
 		{
-			return (hash_t)(cell.stackID*31+cell.layer);
+			return (hash_t)(cell.stackID*32+cell.layer);
 		}
 
 		static const CellIdU	Invalid;
@@ -320,7 +362,7 @@ public:
 	UINT32		CountFamilyMembers(family_t family) const;
 	UINT32		GetFamilyOffset(family_t family) const;
 
-	void		Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
+	void		Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
 
 };
 template<unsigned Exponent>
@@ -341,7 +383,7 @@ template <unsigned Exponent>
 
 		std::cout<<"Creating "<<fullMap.vertex_count<<"/"<<CellCount<<" cells ..."<<std::endl;
 
-		Fractal::makeSphereGeometry(geometry);
+		Fractal::MakeSphereGeometry(geometry);
 
 		index_t at[12] = { 0, 0, 0, 0, 0 };
 
@@ -398,7 +440,7 @@ template <unsigned Exponent>
 			ASSERT_EQUAL1__(at[i], 5, i);
 
 			float3 axis = geometry.vertexField[i];
-			TMatrix3<> matrix, transpose;
+			M::TMatrix3<> matrix, transpose;
 			Mat::makeAxisSystem(axis, 2, matrix);
 			Mat::transpose(matrix, transpose);
 
@@ -869,9 +911,9 @@ struct TriangleKey
 	}
 	bool			operator!=(const TriangleKey&k) const { return !operator==(k); }
 
-	static hash_t		hash(const TriangleKey&k)
+	friend hash_t		Hash(const TriangleKey&k)
 	{
-		return HashValue(k.stackID[0]).add(k.stackID[1]).add(k.stackID[2]);
+		return HashValue() << k.stackID[0] << k.stackID[1] << k.stackID[2];
 	}
 
 };
@@ -879,11 +921,11 @@ struct TriangleKey
 
 
 template <unsigned Exponent>
-	void		GridSetup<Exponent>::Construct(Array<TCellVertex>&vertices, Array<TNetCell>&cells)
+	void		GridSetup<Exponent>::Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells)
 	{
 		cells.SetSize(CellCount);
-		Buffer<TCellVertex>	vtx;
-		GenericHashTable<TriangleKey, UINT32, TriangleKey>	vtxMap;
+		Ctr::Buffer<TCellVertex>	vtx;
+		Ctr::HashTable<TriangleKey, UINT32>	vtxMap;
 		for (index_t i = 0; i < CellCount; i++)
 		{
 			TCellVertex&v = vtx.Append();
@@ -905,7 +947,7 @@ template <unsigned Exponent>
 			for (BYTE j = 0; j < n.numNeighbors; j++)
 			{
 				TriangleKey key(i, n.neighborID[j], n.neighborID[(j + 1) % n.numNeighbors]);
-				if (vtxMap.query(key, id))
+				if (vtxMap.Query(key, id))
 				{
 					TCellVertex&v = vtx[id];
 					DBG_ASSERT_LESS__(v.ownerCount,3);
@@ -913,10 +955,10 @@ template <unsigned Exponent>
 				}
 				else
 				{
-					TVec3<> center;
+					M::TVec3<> center;
 					Vec::center(cellField[key.stackID[0]].center, cellField[key.stackID[1]].center, cellField[key.stackID[2]].center, center);
 					id = (UINT32)vtx.Count();
-					vtxMap.set(key, id);
+					vtxMap.Set(key, id);
 					TCellVertex&v = vtx.Append();
 					v.centerDirection = center;
 					v.ownerCount = 1;

@@ -11,11 +11,12 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
-		Queue<TExplosion>	pendingExplosions;
+		Ctr::Queue<TExplosion>	pendingExplosions;
 
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
 		movement phase. Therefore, once per round, this function must be called to reset their attack action.
+		Currently also drops any auto-attack targets, if found.
 		*/
 		void			ResetTowerAttackAction(float atTime);
 		/**
@@ -60,7 +61,7 @@ namespace Evolver
 			bool		operator<(const TAttackReference&other) const {return GetInitiative() < other.GetInitiative();}
 		};
 
-		Buffer<TAttackReference>	attackingEntities;
+		Ctr::Buffer<TAttackReference>	attackingEntities;
 		//float						attackTime = 0.f;
 
 
@@ -81,20 +82,27 @@ namespace Evolver
 		{
 			Objects::ForeachFaction([&atTime](const Objects::PFaction&f)
 			{
-				foreach (f->towers,_t)
+				f->VisitMyAutoFiringTurrets([&atTime](const Objects::PTurretBase&base)
 				{
-					Objects::PTower t = _t->lock();
-					if (t->attackActionLeft != 1.f)
+					Objects::WorldEntity&e = base->ToEntity();
+
+					base->FlushAutoAttacks();
+
+					if (!e.IsTower())
+						return;
+					Objects::Tower&t = (Objects::Tower&)e;
+					if (t.attackActionLeft != 1.f)
 					{
-						t->attackActionLeft = 1.f;
-						t->SignalChange(Objects::WorldEntity::ActionChanged,atTime);
+						t.attackActionLeft = 1.f;
+						float tc = atTime;
+						t.SignalChangeByExternalCause(Objects::WorldEntity::ActionChanged,tc);
 					}
-				}
+				});
 			});
 		}
 
 
-		Buffer<TMovementReference>	movingVehicles,movingVehicles2;
+		Ctr::Buffer<TMovementReference>	movingVehicles,movingVehicles2;
 
 		void		SignalMotionPhase()
 		{
@@ -103,14 +111,14 @@ namespace Evolver
 			{
 				attackTime = std::max(attackTime,e->entityTime);
 
-			},false);
+			});
 
 			Objects::ForeachMobileWorldEntity([attackTime](const Objects::PMobileEntity&v)
 			{
 				v->BeginMotionPhase(attackTime);
 				if (v->IsBuilding() || v->NextTaskIsMotion())
 					movingVehicles.Append(TMovementReference(v));
-			},false);
+			});
 		}
 
 		bool		ProcessNextVehicleAttack()
@@ -122,22 +130,22 @@ namespace Evolver
 			}
 			std::sort(attackingEntities.begin(),attackingEntities.end());
 
-			while (attackingEntities.IsNotEmpty() &&!attackingEntities.last().IsAlive())
+			while (attackingEntities.IsNotEmpty() &&!attackingEntities.Last().IsAlive())
 				attackingEntities.EraseLast();
 			if (attackingEntities.IsEmpty())
 			{
 				SignalMotionPhase();
 				return false;
 			}
-			Objects::PWorldEntity e = attackingEntities.last().eref.lock();
-			Objects::PTurretBase b = attackingEntities.last().tref.lock();
+			Objects::PWorldEntity e = attackingEntities.Last().eref.lock();
+			Objects::PTurretBase b = attackingEntities.Last().tref.lock();
 			b->Attack(e->entityTime);
-			//PWorldEntity e = attackingEntities.last().eref.lock();
+			//PWorldEntity e = attackingEntities.Last().eref.lock();
 
 			while (attackingEntities.IsNotEmpty())
 			{
-				b = attackingEntities.last().tref.lock();
-				if (!b || !b->NextTaskIsAttack() || b->CountPossibleAttacks() <= 0 || !b->HasAmmoForShot() || !e || e->empDamageLevel)
+				b = attackingEntities.Last().tref.lock();
+				if (!b || !b->NextTaskIsAttack() || b->CountPossibleAttacks() <= 0 || !b->CanAttack() || !e || e->empDamageLevel)
 					attackingEntities.EraseLast();	//happened
 				else
 					break;
@@ -162,13 +170,13 @@ namespace Evolver
 			}
 			std::sort(movingVehicles.begin(),movingVehicles.end());
 
-			while (movingVehicles.IsNotEmpty() && !movingVehicles.last().IsAlive())
+			while (movingVehicles.IsNotEmpty() && !movingVehicles.Last().IsAlive())
 				movingVehicles.EraseLast();
 			if (movingVehicles.IsEmpty())
 			{
 				return false;
 			}
-			Objects::PMobileEntity v = movingVehicles.last().ref.lock();
+			Objects::PMobileEntity v = movingVehicles.Last().ref.lock();
 			//bool hadMoved = v->hasMoved;
 			auto rs = v->PerformNonAttack();
 			switch (rs)
@@ -197,17 +205,13 @@ namespace Evolver
 			{
 				if (doHeal(e))
 					e->HealEMPDamage(atTime);
-			},false);
+			});
 		}
 
 
 		void	BeginRoundProcessing()
 		{
 			Objects::Compound::lastDisabled = nullptr;
-			Objects::ForeachFaction([](const Objects::PFaction&f)
-			{
-				f->DropPerRoundData();
-			});
 
 
 
@@ -220,8 +224,11 @@ namespace Evolver
 				c.TickBegin();
 				c.RefreshState(0);
 			});
+			Objects::Research::globalState.zeroTable.ClearChanges();
+
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
+				f->statistics.SignalCompoundProcessingEnd();
 				f->researchState.FinalizeRound(f);
 			});
 
@@ -238,7 +245,10 @@ namespace Evolver
 			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 			{
 				e->ResetEntityTime();
-			},false);
+			});
+
+
+
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
@@ -252,13 +262,16 @@ namespace Evolver
 
 				//if (v->IsSentry())
 				{
-					if (v->myTasks.IsEmpty() || (b->turret->ignoresVehicleMotion && !v->NextTaskIsAttack()))
-						v->FrontQueuePossibleAttacks();
+					if (v->myTasks.IsEmpty() || (b->turret->independentAttackAndMotion))
+					{
+						Objects::TurretBase::TargetChoice choice;
+						while (v->QueueAutoAttack(choice));
+					}
 				}
 
 				if (v->NextTaskIsAttack())
 				{
-					if (b->HasAmmoForShot())
+					if (b->CanAttack())
 					{
 						TAttackReference&ref = attackingEntities.Append(TAttackReference(v));
 	//					ref.eref = v;
@@ -266,42 +279,49 @@ namespace Evolver
 					}
 					else
 					{
-						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
+						LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to attack right now. Attacks canceled");
 						v->EraseFirstTask();
-						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->entityTime);
+						v->RegisterChange(Objects::WorldEntity::TasksChanged);
 					}
 					//ref.initiative = v->GetAttackInitiative();
 					//ref.attacksLeft = v->CountPossibleAttacks();
 				}
 
-			},false
+			}
 			);
-			Objects::ForeachFaction([](const Objects::PFaction&f)
+			Objects::structures.Foreach([](const Objects::PStructure&s)
 			{
-				foreach (f->towers,_t)
+				if (!s->IsTower())
+					return;
+				Objects::PTower t = To<Objects::Tower>::Cast(s);
+				if (t->IsHibernating())
+					return;
+				t->BeginAttackPhase();
+
+				if (t->turret->CanAttack())
 				{
-					Objects::PTower t = _t->lock();
-					if (!t || t->IsHibernating())
-						continue;
-					t->BeginAttackPhase();
-
-					if (t->turret->CanAttack())
+					if (t->attackQueue.IsEmpty())
 					{
-						if (t->attackQueue.IsEmpty() && !t->FrontQueuePossibleAttacks())
-							continue;
-						if (!t->HasAmmoForShot())
-						{
-							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
-							t->attackQueue.Clear();
-							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->entityTime);
-							continue;
-						}
+						bool any = false;
 
+						Objects::TurretBase::TargetChoice choice;
+						while (t->QueueAutoAttack(choice))
+							any = true;
 
-						TAttackReference&ref = attackingEntities.Append(TAttackReference(t));
-						//ref.eref = t;
-						ref.tref = t;
+						if (!any)
+							return;
 					}
+					if (!t->CanAttack())
+					{
+						LogEvent(EventClass::Preset::commandRejected,t.get(),"Unable to attack right now. Attacks canceled");
+						t->attackQueue.Clear();
+						t->RegisterChange(Objects::WorldEntity::TasksChanged);
+						return;
+					}
+
+					TAttackReference&ref = attackingEntities.Append(TAttackReference(t));
+					//ref.eref = t;
+					ref.tref = t;
 				}
 			});
 
@@ -315,11 +335,11 @@ namespace Evolver
 			Game::Network::ChangePhase(RuntimeConfig::Phase::AttackPhase);
 		}
 
-		void ProcessStructures1(float atTime)
+		void ProcessStructures1( float&atTime )
 		{
 			//#ifdef ONE_COMPOUND_PER_FACTION
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
-				Objects::ForeachCompound([atTime](Objects::Compound&c)
+				Objects::ForeachCompound([&atTime](Objects::Compound&c)
 				{
 					c.TickEnd(atTime);
 				});
@@ -389,7 +409,12 @@ namespace Evolver
 		{
 			static TExplosion exp;
 			while (pendingExplosions >> exp)
-				Objects::Explode(ApplicationInterface::TAttack(),Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+			{
+				ApplicationInterface::TAttack at;
+				at.attackFrom = exp.causedBy;
+				at.isDirectAttack = false;
+				Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,exp.isDoomsday,exp.atTime);
+			}
 
 			switch (RuntimeConfig::phase)
 			{
@@ -410,7 +435,7 @@ namespace Evolver
 						Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 						{
 							animationLength = std::max(m->entityTime,animationLength);
-						},false);
+						});
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
 						CheckOrbitalSupplyAndSensory(animationLength,World::terrainChanged);
@@ -428,7 +453,6 @@ namespace Evolver
 	/*virtual override*/ void	Core::BeginRoundProcessing()
 	{
 		CoreDetails::BeginRoundProcessing();
-
 	}
 
 	/*virtual override*/ bool	Core::ContinueRoundProcessing()
@@ -439,14 +463,29 @@ namespace Evolver
 
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
+		Objects::ForeachFaction([](const Objects::PFaction&f)
+		{
+			f->DropPerRoundData();
+		});
+
 		RuntimeConfig::roundNumber.main++;
+		
+		Objects::Statistics::SignalNewRoundBegin(true);
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 	}
 
-	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&explosion)
+	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&exp)
 	{
-		CoreDetails::pendingExplosions << explosion;
+		if (RuntimeConfig::IsInAnyCommandPhase())
+		{
+			ApplicationInterface::TAttack at;
+			at.attackFrom = exp.causedBy;
+			float t = 0;
+			Objects::Explode(at,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,exp.isDoomsday,t);
+			return;
+		}
+		CoreDetails::pendingExplosions << exp;
 
 	}
 

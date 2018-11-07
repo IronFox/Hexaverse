@@ -17,7 +17,7 @@ namespace Evolver
 		}
 
 
-		StringTable<Abstract*>	evMap;
+		Ctr::StringTable<Abstract*>	evMap;
 
 
 		void		Register(Abstract*abs)

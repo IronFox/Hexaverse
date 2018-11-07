@@ -1,7 +1,8 @@
 #pragma once
 
 #include "stack.h"
-#include "../observer.h"
+#include <structure/observable.h>
+#include <container/array2d.h>
 
 namespace World
 {
@@ -11,8 +12,12 @@ namespace World
 		static bool			IsSolid(const Grid::CellStack::Cell&c)	{return c.IsSolid();}
 		static bool			IsClearOrWater(const Grid::CellStack::Cell&c)	{return c.IsClearOrWater();}
 		static bool			IsNotLava(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Lava;}
+		static bool			IsNotClear(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Clear;}
+		static bool			IsNotRoad(const Grid::CellStack::Cell&c)	{return c.content != Grid::Content::Road && c.content != Grid::Content::Foundation;}
 	};
 
+
+	class Sensor;
 
 	/**
 	Planetary data container.
@@ -45,7 +50,7 @@ namespace World
 
 		static const constexpr float MaxOutdated = std::numeric_limits<float>::max();
 
-		Observable<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
+		DeltaWorks::Observable<const Data&,const BaseGrid::FamiliesChanged&,float>		onTerrainChange;
 
 		class ChangeSequence;
 		class StackAccess
@@ -138,12 +143,12 @@ namespace World
 			void				SelectStack(UINT32);
 			StackAccess			AccessStack(UINT32);
 
-			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
-			void				ApplyFamilyDelta(BaseGrid::family_t family, const Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
+			void				ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<Grid::CellStack::TTypeDelta>&data0, bool initialization);
+			void				ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<Grid::CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
 
 
 			/**
-			Similar to Clear() but does not remove lava
+			M::Similar to Clear() but does not remove lava
 			@return true if no lava was hit, false otherwise. Non-lava terrain is always removed
 			*/
 			bool				ClearNonLava(const Grid::LCellIdI&c);
@@ -192,16 +197,25 @@ namespace World
 
 		void					swap(Data&other)
 		{
+			ASSERT__(!PaintingSensorsConcurrently());
 			cellStack.swap(other.cellStack);
 			families.swap(other.families);
 			swp(sensoryValid,other.sensoryValid);
-			swp(lockLevel,other.lockLevel);
+			swp(onChangeLock,other.onChangeLock);
 			swp(observerKey,other.observerKey);
 			onTerrainChange.swap(other.onTerrainChange);
 			#ifdef HAS_WINDOW
 				swp(lightingOutdated,other.lightingOutdated);
 			#endif
 		}
+
+		void					CopyGridContent(const Data&);
+
+		/**
+		Executes DbgCheckWaterRange() on all stacks.
+		Does nothing if not in debug mode or on server
+		*/
+		void					DbgCheckWaterRanges() const;
 
 		bool					FamilyIsOutdated(index_t i) const {return families[i].structureOrSensory.didChange;}
 		//void					UnsetFamilyOutdated(index_t i) {families[i].Reset();}
@@ -243,7 +257,7 @@ namespace World
 		const Grid::CellStack::Cell&	GetCell(const Grid::HCellIdU&id) const { return cellStack[id.stackID].volumeCell[id.layer];}
 		const Grid::CellStack::Cell&	GetCell(const Grid::HCellIdI&id) const { return cellStack[id.stackID].GetCellI(id.height);}
 		const Grid::CellStack&			GetStack(UINT32 stackID) const {return cellStack[stackID];}
-		const Array<Grid::CellStack>&	GetStacks() const {return cellStack;}
+		const Ctr::Array<Grid::CellStack>&	GetStacks() const {return cellStack;}
 
 
 		/**
@@ -256,7 +270,7 @@ namespace World
 
 
 		/**
-		Similar to Clear() but fails if lava is attempted to remove
+		M::Similar to Clear() but fails if lava is attempted to remove
 		@return true if no lava was hit, false otherwise. Non-lava terrain is always removed
 		*/
 		bool					ClearNonLava(const Grid::LCellIdI&ch, float atTime);
@@ -302,7 +316,7 @@ namespace World
 		bool					GridCanSee(const Grid::LCellIdI&, int height, bool broad) const;
 		bool					GridCanSeeAny(const Grid::HCellIdU&, UINT height) const;
 
-		float					GetMaxChangeTime() const {float t = 0; foreach (families,fam) t = vmax(t,fam->structureOrSensory.lastChange); return t;}
+		float					GetMaxChangeTime() const {float t = 0; foreach (families,fam) t = M::Max(t,fam->structureOrSensory.lastChange); return t;}
 
 		/**
 		@brief	Checks for changes in the specified family and possibly generates a delta by comparison with World::actual.
@@ -320,14 +334,14 @@ namespace World
 		@param noDelta If set true, @a delta is not altered and the method always returns false, but internal grid is updated and flagged unchanged as needed
 		@return true if noDelta is false and changes were detected, false otherwise. @a t remains unchanged if no changes were detected or noDelta is true
 		*/
-		bool					ProgressiveUpdate(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta=false);
+		bool					ProgressiveUpdate(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta=false);
 
 		/**
 		@brief Compresses the specified family of the local world state as is.
 
 		Change flags or timestamps are ignored.
 		*/
-		void					CompressFamilyState(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
+		void					CompressFamilyState(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
 
 		/**
 		Affects the cell and its immediate neighbors only
@@ -340,7 +354,7 @@ namespace World
 		*/
 		bool					IsGlobalInstance()	const;
 
-		void					InvalidateSensory() {sensoryValid = false;}
+		void					InvalidateSensory();
 		
 		/**
 		Validates the local sensory, and sets all sensory data to @a initialValue.
@@ -349,11 +363,67 @@ namespace World
 		*/
 		void					FlushAndValidateSensory(short initialValue=0);
 
+		count_t					CountVisibleCells() const;
+
+
+		class ChangeLock
+		{
+		public:
+			/**/				ChangeLock(const ChangeLock&other);
+			/**/				~ChangeLock();
+		private:
+			/**/				ChangeLock(Data*);
+
+			Data*				parent;
+			friend class Data;
+		};
+
+		/**
+		Delays any calls to onTerrainChanged and general change handling.
+		Changes are recorded.
+		If any changes were recorded between LockOnChange() and the destruction of the returned object, then they are triggered upon destruction.
+		The returned lock maintains a pointer to the parent Data, and must not live longer than its parent Data object.
+		*/
+		ChangeLock				LockOnChange() {return this;}
 
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
 
-	private:
 
+		/**
+		Checks whether concurrent background sensor painting is currently in progress
+		*/
+		bool					PaintingSensorsConcurrently() const	{return concurrentPainting.IsActive();}
+		/**
+		Initiates concurrent background sensor painting using the specified sensor storage.
+		The content will be swapped out before painting begins.
+		*/
+		void					PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors);
+
+		/**
+		Stops any ongoing sensor painting, and returns the concurrent thread(s) at the earliest possibility.
+		The grid may be left with a partially painted sensor presence.
+		Sensory will not be validated at the end.
+		*/
+		void					AbortConcurrentSensorPainting();
+
+
+	private:
+		friend class ChangeLock;
+
+		class ConcurrentPainting : public Sys::ThreadObject, public Sys::ParallelLoop::Operator
+		{
+		public:
+			Buffer0<Sensor>	sensors;
+			Data			*owner = nullptr;
+			Sys::ParallelLoop	workers;
+			volatile bool	done = false, abort=false;
+
+			virtual void	ThreadMain() override;
+			virtual void	ExecuteRange(index_t begin, index_t end, index_t worker_index) override;
+
+			/**/			ConcurrentPainting()	{}
+		}					concurrentPainting;
+		friend class ConcurrentPainting;
 
 		struct TChange
 		{
@@ -367,7 +437,7 @@ namespace World
 
 			void			Set(float t)
 			{
-				lastChange = vmax(lastChange,t);
+				lastChange = M::Max(lastChange,t);
 				didChange = true;
 			}
 
@@ -376,7 +446,7 @@ namespace World
 				if (!didChange)
 					return false;
 				didChange = false;
-				compareTo = vmax(compareTo,lastChange);
+				compareTo = M::Max(compareTo,lastChange);
 				lastChange = 0;
 				return true;
 			}
@@ -398,15 +468,31 @@ namespace World
 		};
 
 
-		int						lockLevel=0;
+		bool					terrainChangeCascade = false;
+		
+		
+		struct TOnChangeLock
+		{
+			Sys::SpinLock				lock;
+			count_t						isActive = 0;
+			BaseGrid::FamiliesChanged	changed;
+			float						lastChangeTime = 0;
+			bool						terrainChanged = false;
+		};
+		
+		TOnChangeLock			onChangeLock;
+		
 		bool					sensoryValid=true;
-		FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
-		Array<Grid::CellStack>	cellStack;
+		Ctr::FixedArray<FamilyState,BaseGrid::NumFamilies>		families;
+		Ctr::Array<Grid::CellStack>	cellStack;
 		#ifdef HAS_WINDOW
 			bool				lightingOutdated = true;
 		#endif
 
 		index_t					observerKey = InvalidIndex;
+
+		void					BeginChangeLock();
+		void					EndChangeLock();
 
 		void					SignalChange(const BaseGrid::FamiliesChanged&ch, float atTime, bool terrainChanged);
 
@@ -420,7 +506,7 @@ namespace World
 		@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
 		@param deltaType Type of delta to compute (see delta_type_t for details)
 		*/
-		void					GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
+		void					GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta);
 
 	};
 
@@ -438,18 +524,25 @@ namespace World
 	class Sensor
 	{
 	private:
-		static Grid::HighSetup::TVolumeDescriptor::Operator op;
-		static Grid::LowSetup::TVolumeDescriptor::Operator lowOp;
-		static Grid::HighSetup::TVolumeDescriptor	volume;
 
-		static void		ApplyVolume(World::Data&v, short changeBy, Data::ChangeSequence&);
+		struct TPerProcessor
+		{
+			Grid::HighSetup::TVolumeDescriptor::Operator op;
+			Grid::LowSetup::TVolumeDescriptor::Operator lowOp;
+			Grid::HighSetup::TVolumeDescriptor	volume;
+			Array2D<BYTE>				shadedSphereHelper;
+			Buffer0<Grid::HCellIdU>		shadedSphereMarked;
+		};
+		static Array<TPerProcessor>	perProcessor;
 
-		void			ApplySolidSphereTo(World::Data&v, short change, Data::ChangeSequence&)	const;
-		void			ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const;
-		void			ApplyShadedSphereTo(World::Data&v, short change, Data::ChangeSequence&)	const;
-		void			MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
-		void			MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const;
-		void			ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction, Data::ChangeSequence&)	const;
+		static void		ApplyVolume(World::Data&v, short changeBy, Data::ChangeSequence&, index_t processorIndex);
+
+		void			ApplySolidSphereTo(World::Data&v, short change, Data::ChangeSequence&, index_t processorIndex)	const;
+		void			ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq, index_t processorIndex)	const;
+		void			ApplyShadedSphereTo(World::Data&v, short change, Data::ChangeSequence&, index_t processorIndex)	const;
+		void			MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const;
+		void			MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const;
+		void			ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction, Data::ChangeSequence&, index_t processorIndex)	const;
 	public:
 		/**
 		3d location of the local sensor
@@ -483,7 +576,7 @@ namespace World
 		/**/			Sensor()	{}
 		/**/			Sensor(const float3&center, float radius, type_t t, int terrainPenetration=0)
 							:worldCenter(center),
-							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.length()))),
+							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.GetLength()))),
 							radius(radius),type(t), terrainPenetration(terrainPenetration){}
 
 		/**/			Sensor(const Grid::LCellIdI&center, float fLayerOffset, float radius, type_t t)
@@ -496,9 +589,20 @@ namespace World
 							gridCenter(Grid::ToLayered(center)),
 							radius(radius),type(t)	{}
 
-		void			ApplyTo(World::Data&clientWorld, short change, float t)	const;
-		void			InsertInto(World::Data&clientWorld, float t) const {ApplyTo(clientWorld,+1,t);}
-		void			RemoveFrom(World::Data&clientWorld, float t) const {ApplyTo(clientWorld,-1,t);}
+		void			ApplyTo(World::Data&clientWorld, short change, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false)	const;
+		void			InsertInto(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const {ApplyTo(clientWorld,+1,t,processorIndex,ignoreTargetSensorValidity);}
+		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const {ApplyTo(clientWorld,-1,t,processorIndex,ignoreTargetSensorValidity);}
+
+
+		bool			operator==(const Sensor&other) const
+		{
+			return gridCenter == other.gridCenter && radius == other.radius;
+		}
+
+		bool			operator!=(const Sensor&other) const
+		{
+			return gridCenter != other.gridCenter || radius != other.radius;
+		}
 
 
 		/**
@@ -514,13 +618,23 @@ namespace World
 		Computes the maximum sensor volume in low-resolution.
 		The actual volume may diverge considerably, but never exceed the result
 		@param[out] desc Resulting volume
+		@param processorIndex Index of the processor to use static structures of. Relevant only when using multithreading. Must be less than Sys::QueryLogicalProcessorsCount()
 		*/
-		void			GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc) const;
+		void			GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc, index_t processorIndex=0) const;
 
+		/**
+		Initializes static structures using the current number of logical processors registered to the system.
+		Called by World::Create()
+		*/
+		static void		StaticCreate();
 		
 	};
 
 
+	/**
+	Creates the world data setup.
+	Called by Boot()
+	*/
 	void	Create();
 
 	

@@ -3,7 +3,7 @@
 
 namespace Objects
 {
-class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntityProducer
+	class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntityProducer
 	{
 		friend class WorkingStructureT<VehiclePlant>;
 
@@ -15,7 +15,12 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 		typedef WorkingStructureT<VehiclePlant>	Super;
 
 
-
+		/*
+		This file is younger than the change to EnergyConsumption, so blame does not work.
+		I suspect this was intentional based on balancing considerations.
+		The tutorial message reflects the fact that the vehicle plant does not need energy.
+		So until there is reason to change this, it will not need energy.
+		*/
 		static const int			EnergyConsumption = 0;
 		static const int			DefaultProductionPerRound = 10;
 
@@ -24,14 +29,14 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 		All base components known to VehiclePlant.
 		Vehicle may use these as bases
 		*/
-		static Buffer0<Component::VehicleBase*>
+		static Ctr::Buffer0<Component::VehicleBase*>
 									baseComponents;
 		/**
 		All turret components known to VehiclePlant.
 		Effectively a subset of all turret types available.
 		Vehicle may use these as turrets.
 		*/
-		static Buffer0<Component::Turret*>
+		static Ctr::Buffer0<Component::Turret*>
 									turretComponents;
 
 
@@ -44,14 +49,32 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 			Component::VehicleBase*	GetProductionBase() const;
 
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&) override;
 			#endif
+
+			/**
+			Reconfigures a global production prototype vehicle to match the next queued production item, and returns it.
+			If none is queued, nullptr is returned.
+			Do not use from a threaded environment.
+			Do not use persistently, as its configuration will change during the next GetProductionPrototype() call.
+			See MobileEntityProducer::WorkItem::AssembleVehiclePrototypeFor() for details.
+			@return Prototype of the next queued production, or nullptr if no such exists
+			*/
+			PVehicle				GetProductionPrototype() const;
+			/**
+			Reconfigures a global production prototype vehicle to match the currently selected configuration, and returns it.
+			If the current selection is incomplete, nullptr is returned.
+			Do not use from a threaded environment.
+			Do not use persistently, as its configuration will change during the next GetProductionPrototype() call.
+			@return Prototype of the selected configuration
+			*/
+			PVehicle				GetSelectionPrototype() const;
 
 		#else
 			bool					AbortConstruction(const TUniqueID&);
 			PVehicle				SpawnFinishedProductionAnywhere();
 			PVehicle				Enqueue(Component::VehicleBase*, Component::Turret*);
-			PVehicle				Enqueue(ConstName baseName, ConstName turretName);
+			PVehicle				Enqueue(EntityType t);
 			PVehicle				GetProduction() const;
 			//PVehicle				CompleteProduction();
 			virtual void			Tick(ResourceVector&) override;
@@ -67,7 +90,6 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;
-		//virtual int					GetConstructionCost() const override {return 80;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 20;}
 		#endif
@@ -82,9 +104,10 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 			virtual void			OnSleepChange(float&t) override;
 			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 		virtual bool				CanProduce(const PWorldEntity&e) const override;
+		virtual bool				SupportsGatheringPoint() const override {return true;}
 
 		#ifndef NO_HIBERNATION
 			//Hibernating overrides:
@@ -93,11 +116,11 @@ class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntity
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Vehicle Plant"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehiclePlant;}
+		virtual EntityType			GetType() const override {return ConstName::Type_VehiclePlant;}
 
 
 		#ifdef HAS_WINDOW
-			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual const CC*		GetCommands(CC&dynamicStorage) const override;
 			virtual void			OnSelect()	override;
 			virtual void			OnDeselect() override;
 		#endif

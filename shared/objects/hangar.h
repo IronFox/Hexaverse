@@ -4,7 +4,7 @@
 
 #include "types.h"
 #include "../grid/stack.h"
-#include "../observer.h"
+#include <structure/observable.h>
 
 namespace Objects
 {
@@ -12,17 +12,14 @@ namespace Objects
 	{
 	protected:
 		bool				RemoveStored(const PMobileEntity&v);
+
+		/**
+		Signals that the number of stored entities has changed
+		*/
+		virtual void		OnStorageChanged()	{};
+
 	public:
-		#ifdef HAS_WINDOW
-			static index_t			storeOffset;				//!< Button offset (kinda like a scrollbar position)
-			static const count_t	MaxVisibleStoreItems = 8;	//!< Maximum number of vehicle buttons that can be shown before arrow buttons are added to scroll
-
-			static int2				cmdLeftCoords,
-									cmdRightCoords;
-			static Command::PBase	cmdLeft,		//!< Arrow button to scroll left
-									cmdRight;		//!< Arrow button to scroll right
-		#endif
-
+		
 		struct TStored
 		{
 			WMobileEntity	entity;
@@ -62,6 +59,7 @@ namespace Objects
 		Queries the number of currently loaded mobile entities
 		*/
 		virtual count_t	GetLoad() const =0;
+		virtual count_t GetMaximumLoad() const=0;
 
 		/**
 		Must be called from the WorldEntity::OnDestroy() override.
@@ -78,14 +76,33 @@ namespace Objects
 		virtual WorldEntity&		ToEntity() = 0;
 		virtual count_t				GetMaxStorage() const = 0;
 
+		/**
+		Checks whether there currently is any storage sharing
+		*/
+		virtual bool	SharesStorage() const {return false;}
 		virtual bool	SharesStorageWith(const PHangar&other) const {return other && other.get() == this;}
+		/**
+		Visits all stored mobiles, including those in shared hangars
+		*/
+		virtual void	VisitStored(const std::function<void(const PMobileEntity&)>&visitor) const;
+
 		virtual bool	CanStoreType(const MobileEntity&e) const = 0;
 		virtual void	StoreLocallyFromImport(const PMobileEntity&e) = 0;
+
+		/**
+		Force definition for hangar structures/mobiles:
+		*/
+		virtual PHangar	CastToDestinationForType(const MobileEntity&e)=0;
+		virtual PHangar	CastToHangar()=0;
+		virtual bool	IsHangar() const=0;
+
+
 		#ifndef CLIENT
 		virtual bool	Store(const PMobileEntity&e, float&atTime) = 0;
 		#else
 		virtual void	Lose(const PMobileEntity&v);
 		#endif
+
 	};
 
 }

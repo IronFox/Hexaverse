@@ -1,0 +1,3 @@
+----
+Long range artillery turret type, designed to attack hostile units at greater distances.
+Greatly benefits from elevated locations, but must remain stationary to attack.

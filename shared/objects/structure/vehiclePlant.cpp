@@ -2,13 +2,14 @@
 #include "vehiclePlant.h"
 #include "../prototypes.h"
 #include "../vehicle.h"
+#include <runtimeConfig.h>
 
 namespace Objects
 {
 	
 
-	/*static*/ Buffer0<Component::VehicleBase*>		VehiclePlant::baseComponents;
-	/*static*/ Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
+	/*static*/ Ctr::Buffer0<Component::VehicleBase*>		VehiclePlant::baseComponents;
+	/*static*/ Ctr::Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
 	
 	#ifndef CLIENT
 		/*virtual override*/ void				VehiclePlant::Tick(ResourceVector&v)
@@ -16,7 +17,7 @@ namespace Objects
 			v.level[Resource::Energy] -= EnergyConsumption;
 
 			float t = 0.f;	//buildings always come at the beginning
-			MobileEntityProducer::Tick(v,t);
+			MobileEntityProducer::Tick(v,t, RuntimeConfig::autoSpawnFromVehiclePlants);
 		}
 
 
@@ -31,7 +32,7 @@ namespace Objects
 			}
 		}
 
-		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;
@@ -49,9 +50,9 @@ namespace Objects
 			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(b,t);
 			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
-		PVehicle				VehiclePlant::Enqueue(ConstName baseName, ConstName turretName)
+		PVehicle				VehiclePlant::Enqueue(EntityType t)
 		{
-			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(baseName,turretName);
+			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(t);
 			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
 
@@ -64,6 +65,25 @@ namespace Objects
 	#else
 	
 	
+		PVehicle				VehiclePlant::GetProductionPrototype() const
+		{
+			if (queue.IsEmpty())
+				return nullptr;
+			return To<Vehicle>::Cast( queue.First().GetPrototype() );
+		}
+
+		PVehicle				VehiclePlant::GetSelectionPrototype() const
+		{
+			if (!selectedBase || !selectedTurret)
+				return nullptr;
+			static PVehicle instance(new Vehicle(nullptr,Grid::LCellIdI::Invalid,&Component::catbase,&Component::armored));
+			instance->base = selectedBase;
+			instance->turret = selectedTurret;
+			instance->owner = owner;
+			return instance;
+		}
+
+
 		Component::VehicleBase*					VehiclePlant::GetProductionBase() const
 		{
 			return queue.IsNotEmpty() ? queue.First().base : nullptr;
@@ -83,16 +103,19 @@ namespace Objects
 				gatheringPoint.selected = Grid::LCellIdI::Invalid;
 			}
 
-			/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
+
+			/*virtual override*/ const CC*		VehiclePlant::GetCommands(CC&dynamicStorage) const
 			{
-				MobileEntityProducer::VisitAllCommands(visitor,force);
-				Super::VisitAllCommands(visitor,force);
+				dynamicStorage.Append(Super::GetCommands(dynamicStorage));
+				dynamicStorage.AppendRow();
+				MobileEntityProducer::GetCommands(dynamicStorage);
+				return &dynamicStorage;
 			}
 
-			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags)
+			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,  descFlags);
+				Super::DescribeType(label,  descFlags, owner);
 				label.MarkBriefEnd();
 				label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
 				+String(ResourceTag(Resource::Minerals))+", and "+String(TimeResourceTag())+"."
@@ -111,15 +134,15 @@ namespace Objects
 		#ifdef CLIENT
 			// make some base selected by default
 			ASSERT__(baseComponents.IsNotEmpty())
-
+			const auto&state = GetResearchState();
 			foreach (baseComponents,c)
-				if (!owner || (*c)->isUnlocked(owner))
+				if (!owner || (*c)->isUnlocked.GetValue(state))
 				{
 					selectedBase = *c;
 					break;
 				}
 			foreach (turretComponents,c)
-				if (!owner || (*c)->isUnlocked(owner))
+				if (!owner || (*c)->isUnlocked.GetValue(state))
 				{
 					selectedTurret = *c;
 					break;
@@ -131,7 +154,7 @@ namespace Objects
 	/*virtual override*/ void				VehiclePlant::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		baseComponents = Objects::Component::baseComponents;
+		baseComponents = Objects::Component::baseComponents.GetStore().list;
 		for (const auto& turret:Objects::Component::vehicleTurretComponents)
 			if (turret->mountType == Component::Turret::MountType::Vehicle)
 				turretComponents << turret;

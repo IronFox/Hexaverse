@@ -1,0 +1,1 @@
+Storage facility for regular munition. Deprecated

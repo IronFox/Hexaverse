@@ -5,28 +5,39 @@
 #include <string/cli.h>
 #include <string/cli_defaults.h>
 
+using namespace DeltaWorks;
+
 /**
 The reflection module handles all configurable variables, including loadable planets.
 All variables are mapped to CLI (Command Line Interpretor) entries, that may execute arbitrary code on change.
+
+The primary purpose is to allow remote control of the server.
+Although local modules can theoretically execute these commands via the Reflection::state, this is currently not done.
 */
 namespace Reflection
 {
-
-	extern CLI::Interpreter	state;
+	/**
+	State container.
+	The interpretor maintains all folders, variables, and commands currently registered.
+	It may be accessed to query or modify the folder state, as well as execute commands.
+	It is currently utilized only by remote control access
+	*/
+	extern CLI::PState	state;
 
 	namespace Variable
 	{
-		CONSTRUCT_ENUMERATION5(Persistence,
+		CONSTRUCT_ENUMERATION6(Persistence,
 			Temporary,
 			ConfigOnly,			//only read from configuration. not written to or extracted from savegames
 		//	ConfigOverridesSavegame,	//written to savegames but overridden by configuration after load (useful for debugging or statistical purposes, mostly)
 			RestoreFromSavegame,		//written to and restored from savegames. Configuration does not override these values, but they may be changed via the console
 			GameInvariant,		//written to savegames, but unchangeable until a new game is created. Common type: planet type
+			GameInvariantNonConfigurable,	//written to savegames, but unchangeable until a new game is created. Not changeable via console or config file. Common type: Nexus bases
 			PlanetConfig		//written to savegames, but changeable via console in order to reconfigure a new planet
 		)
 
 		/**
-		Basic variable abstruction, providing callbacks for change detection
+		Basic variable abstraction, providing callbacks for change detection
 		*/
 		class Base : public CLI::Variable
 		{
@@ -38,8 +49,7 @@ namespace Reflection
 			const CLI::WFolder	parent;
 
 			
-			/**/				Base(const String&name, const String&type, Persistence persistence, count_t numElements,UINT32 protection):
-									Super(name,type,numElements,protection | (persistence == Persistence::GameInvariant ? CLI::ReadOnly : 0)),persistence(persistence),parent(state.GetFocus())	{}
+			/**/				Base(const String&name, const String&type, Persistence persistence, count_t numElements,UINT32 protection);
 
 
 			void				OnChanged();
@@ -47,7 +57,7 @@ namespace Reflection
 
 			void				CheckChanges()
 			{
-				if (lastValue != ToString())
+				if (lastValue != ConvertToString())
 				{
 					OnChanged();
 				}
@@ -98,13 +108,14 @@ namespace Reflection
 	Loads configuration files to fill the appropriate variables.
 	Also restores any missing prototype planet declarations in the user configuration folder (my documents...), before attempting to load them.
 	If a planet type is targeted that is not a prototype planet, then a new planet type file will be generated and filled with default values.
+	@param customConfigPath If not empty, then non-original configuration will be loaded from the specified path, rather than the my documents server configuration
 	*/
-	void	Load(bool inTestMode);
+	void	Load(const PathString&customConfigPath);
 
 	/**
-	Reloads configuration files and updates all variables that are tagged as ConfigOverridesSavegame
+	Writes the root configuration to the specified path (excluding referenced external configuration files)
 	*/
-	void	LoadOverrides();
+	void	SaveRootConfigTo(const PathString&);
 
 	/**
 	Reloads all config settings from the respective ini file(s)

@@ -154,9 +154,9 @@ namespace Engine
 				HRESULT __stdcall Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes);
 				HRESULT __stdcall Close(LPCVOID pData);
 
-				IncludeHandler(const ::PathString&relativeTo);
+				IncludeHandler(const PathString&relativeTo);
 			private:
-				::PathString path;
+				PathString path;
 			};
 
 			struct Binding
@@ -413,7 +413,7 @@ namespace Engine
 
 
 			void				Create(const void*data, size_t numBytes, count_t numEntries, BufferAccess, UINT bindFlags);
-			void				Update(const void*data, size_t numBytes);
+			//void				Update(const void*data, size_t numBytes);
 		public:
 			/**/				ArrayBuffer():numEntries(0)	{}
 			count_t				GetEntryCount() const {return numEntries;}
@@ -429,9 +429,9 @@ namespace Engine
 				typedef ArrayBuffer	Super;
 
 			public:
-				void			Update(const T*data, count_t numEntries)	{Buffer::Update(data,sizeof(T)*numEntries);}
-				void			Update(const ArrayData<T>&data)	{Update(data.pointer(),data.length());}
-				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.length());}
+				void			Update(const T*data, count_t numEntries)	{Super::Update(data,sizeof(T)*numEntries);}
+				void			Update(const ArrayRef<T>&data)	{Update(data.pointer(),data.GetLength());}
+				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.GetLength());}
 				String			ToString() const { return Super::ToString()+", esize=" + String(sizeof(T)); }
 			};
 
@@ -450,15 +450,18 @@ namespace Engine
 			template <typename T>
 				void			CreateFromStructs(const T*data, count_t numStructs, BufferAccess access = BufferAccess::Immutable) {Create((const void*)data,numStructs,sizeof(T),access);}
 			template <typename T>
-				void			CreateFromStructs(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
+				void			CreateFromStructs(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
 			template <typename T>
-				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.length(),access);}
+				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
+			template <typename T>
+				void			CreateFromStructs(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{CreateFromStructs(&*data.begin(),data.size(),access);}
 			template <typename T0>
 				void			UpdateStructs(const T0*data, count_t numStructs) {Super::Update((const void*)data,numStructs * sizeof(T0));}
 			template <typename T0>
-				void			UpdateStructs(const ArrayData<T0>&data) {UpdateStructs(data.pointer(),data.length());}
+				void			UpdateStructs(const ArrayRef<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
 			template <typename T0>
-				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.length());}
+				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
+
 
 			void				swap(VBO&other)	{Super::swap(other); std::swap(vertexCount,other.vertexCount);}
 
@@ -479,9 +482,10 @@ namespace Engine
 			{
 				typedef TypedBuffer<T>	Super;
 			public:
-				void				Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
-				void				Create(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
-				void				Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.length(),access);}
+				void			Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
+				void			Create(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
+				void			Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
+				void			Create(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(&*data.begin(),data.size(),access);}
 			};
 
 		typedef IBO<UINT16>	IBO16;
@@ -624,6 +628,7 @@ namespace Engine
 
 
 			/**/					ShaderInstructionBlock():topology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST),stride(0)	{}
+			virtual					~ShaderInstructionBlock(){};
 
 			void					SetPoints()	{topology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;}
 			void					SetLines()	{topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;}
@@ -738,6 +743,7 @@ namespace Engine
 			Handle<ID3D11ShaderResourceView>	view;
 		public:
 			void					Create(const Resolution&);
+			void					CreateMSAA(const Resolution&,const DXGI_SAMPLE_DESC&);
 			void					Clear()
 			{
 				handle2D.Clear();
@@ -792,6 +798,7 @@ namespace Engine
 
 
 			void					Load(const Image&image, bool generateMipMaps=true);
+			void					Load(const Image16&image, bool generateMipMaps=true);
 			void					Load(const UnclampedFloatImage&image, bool generateMipMaps=false);
 			void					LoadCube(const Image image[6], bool generateMipMaps=true);
 
@@ -837,6 +844,8 @@ namespace Engine
 			void				Create(Resolution3D res, DXGI_FORMAT, mips_t mips = NoMips);	//!< Creates one target, clears rest
 			void				Create(Resolution res, const DXGI_FORMAT*, count_t numTargets, bool depthStencil=false, mips_t mips = NoMips);
 			void				Create(Resolution3D res, const DXGI_FORMAT*, count_t numTargets, mips_t mips = NoMips);
+			void				CreateMSAA(const Resolution&,DXGI_FORMAT, bool depthStencil, const DXGI_SAMPLE_DESC&);
+			void				CreateMSAA(const Resolution&,const DXGI_FORMAT*, count_t numTargets, bool depthStencil, const DXGI_SAMPLE_DESC&);
 
 			Resolution			GetResolution() const {return numTargets ? Resolution(colorTarget[0].GetResolution()) : Resolution(depthStencilTarget.GetResolution());}
 			const Resolution3D&	GetResolution3D() const {return numTargets ? colorTarget[0].GetResolution() : depthStencilTarget.GetResolution();}
@@ -869,7 +878,7 @@ namespace Engine
 		class Mesh
 		{
 		private:
-			::Buffer<float>	vfield;
+			Container::Vector<float>	vfield;
 
 		public:
 			VertexBinding	binding;
@@ -881,11 +890,11 @@ namespace Engine
 			{
 				vfield.clear();
 				this->hasUV = hasUV;
-				binding.normal.unset();
+				binding.normal.Unset();
 				if (hasUV)
 				{
 					binding.texcoords.SetSize(1);
-					binding.texcoords.First().set(3,2);
+					binding.texcoords.First().Set(3,2);
 					binding.floats_per_vertex = 5;
 				}
 				else
@@ -895,13 +904,13 @@ namespace Engine
 				}
 			}
 
-			void		MakeVertex(const TVec3<>&p, const TVec2<>&uv)	{vfield << p.x << p.y << p.z; if (hasUV) vfield << uv.x << uv.y; }
-			void		MakeVertex(const TVec3<>&p){vfield << p.x << p.y << p.z; if (hasUV) vfield << 0 << 0; }
+			void		MakeVertex(const M::TVec3<>&p, const M::TVec2<>&uv)	{vfield << p.x << p.y << p.z; if (hasUV) vfield << uv.x << uv.y; }
+			void		MakeVertex(const M::TVec3<>&p){vfield << p.x << p.y << p.z; if (hasUV) vfield << 0 << 0; }
 			void		MakeVertex(float x, float y, float z){vfield << x << y << z; if (hasUV) vfield << 0 << 0; }
 			VBO			Upload()
 			{
 				VBO rs;
-				rs.Create(vfield.pointer(),vfield.length() / binding.floats_per_vertex,binding.floats_per_vertex*sizeof(float), BufferAccess::Default); 
+				rs.Create(vfield.pointer(),vfield.GetLength() / binding.floats_per_vertex,binding.floats_per_vertex*sizeof(float), BufferAccess::Default); 
 				return rs;
 			}
 		};
@@ -911,7 +920,6 @@ namespace Engine
 
 	//namespace V2 = GL::V2;
 
-	CONSTRUCT_ENUMERATION4(BlendMode,None,AlphaBlend,FlareBlend,Add);
 
 
 
@@ -919,10 +927,11 @@ namespace Engine
 	{
 	public:
 	private:
+		typedef VisualInterface	Super;
 
 		struct CameraData
 		{
-			TMatrix4<>		projectionMatrix,
+			M::TMatrix4<>	projectionMatrix,
 							viewMatrix,
 							viewProjectionMatrix,
 							worldCamera;
@@ -935,59 +944,55 @@ namespace Engine
 		IDXGISwapChain		*swapchain;             // the pointer to the swap chain interface
 		ID3D11Device		*dev;                     // the pointer to our Direct3D device interface
 		ID3D11DeviceContext *devcon;           // the pointer to our Direct3D device context
-		DX11::Handle<ID3D11Texture2D>			backbufferTexture;
-		DX11::Handle<ID3D11RenderTargetView>	backbufferView;
-		DX11::Handle<ID3D11DepthStencilView>	backbufferDepthView;
+		//DX11::Handle<ID3D11Texture2D>			backbufferTexture;
+		//DX11::Handle<ID3D11RenderTargetView>	backbufferView;
+		//DX11::Handle<ID3D11DepthStencilView>	backbufferDepthView;
+
+		DX11::Handle<ID3D11Texture2D>			backbufferOut;
+
+
 		DX11::Handle<ID3D11DepthStencilState>	depthStencilState[2][2];
 		DX11::Handle<ID3D11RasterizerState>		rasterizerState[2][2];
 		DX11::Handle<ID3D11BlendState>			blendState[BlendMode::NumberOfPossibilities];
 		DX11::ObjectBuffer<CameraData>			cameraBuffer;
-		DX11::ObjectBuffer<TMatrix4<> >			objectBuffer;
-		DX11::ObjectBuffer<TVec4<> >			objectPositionBuffer;	//quicker version
+		DX11::ObjectBuffer<M::TMatrix4<> >		objectBuffer;
+		DX11::ObjectBuffer<M::TVec4<> >			objectPositionBuffer;	//quicker version
 		DX11::ObjectBuffer<float>				timeBuffer;
 		Buffer<DX11::Shader::Binding,0,Swap>	baseBindings;
 		float4				clearColor;
 
-		DXGI_SAMPLE_DESC	fsaa;
+		//DXGI_SAMPLE_DESC	fsaa;
 
 		int					errorCode;
 		String				errorString;
 		D3D_FEATURE_LEVEL	featureLevel;
 
-		UINT				vsync, 
-							knownQualityLevels;
+		UINT				vsync;
+
+
+
+
+
 
 		ID3D11PixelShader	*lazyPixelShaderHandle = nullptr;
 		int					shaderLockLevel = 0;
 
 
-		struct TRendererState
-		{
-			BlendMode		blendMode;
-			bool			fill,cull,depthTest,depthWrite;
-		};
 
-		TRendererState		current;
-		Buffer0<TRendererState>	stack;
 
 		void				SetDepthTest0(bool depthTest, bool depthWrite);
 		void				SetRasterizer0(bool fill, bool cull);
 		void				SetBlendMode0(BlendMode);
 		void				UnbindShaderResources();
 
-	protected:
-		//static			bool				bindFrameBufferObject(const GL::FBO&);
-			//			void				unbindFrameBufferObject(const Resolution&new_resolution);
-		inline			void				onModelviewChange();
-
-		virtual	void				enableLight(Light*)	override	{};
-		virtual	void				disableLight(Light*)	override	{};
-		virtual	void				updateLight(Light*)	override	{};
-		virtual	void				updateLightPosition(Light*)	override	{};
-
-
 	public:
-		void			ReportError(HRESULT, const TCodeLocation&);
+		struct MSAAConfig
+		{
+			UINT			sampleCount=1,
+							numQualityLevels=1;
+		};
+
+		void			ReportError(HRESULT, const TCodeLocation&, const String&extInfo="");
 		//static void					BuildMipMaps(const GL::FBO&, unsigned target, const GLShader::Instance&mipMapShader);
 		//static void					BuildMipMaps(const GL::Texture::Reference&, const GLShader::Instance&mipMapShader, GLenum format=GL_RGBA8);
 
@@ -1007,9 +1012,6 @@ namespace Engine
 
 		static DirectX11			*globalInstance;
 
-
-		virtual bool				pickLightScene(index_t  scenario) override	{return false;};		//!< Picks a light scenario as active scenario (this may be slow at times). \param scenario Index of an existing scenario that should be used from now on (0 = default scenario). \return true on success
-
 		void						NextFrameNoClr();																				//!< Swaps buffers
 		void						NextFrame();																					//!< Swaps buffers and clears the back buffer
 
@@ -1018,7 +1020,7 @@ namespace Engine
 		//static void						capture(Image&target);																			//!< Copies the current visible image to the specified image
 		//static			void						capture(FloatImage&target);																			//!< Copies the current visible image to the specified image
 		//static			void						capture(Texture&target, unsigned width, unsigned height);										//!< Captures the current back buffer content to the specified texture
-		//static			void						captureDepth(Texture&target, unsigned width, unsigned height);									//!< Captures the current back buffer depth content to the specified texture
+		//static			void						CaptureDepth(Texture&target, unsigned width, unsigned height);									//!< Captures the current back buffer depth content to the specified texture
 
 		/**/						DirectX11();
 
@@ -1067,51 +1069,62 @@ namespace Engine
 
 
 		void						SetBackbufferClearColor(float r, float g, float b, float a)	{clearColor.Set(r,g,b,a);}
-		void						SetBackbufferClearColor(const TVec4<>&c)					{clearColor = c;}
-		void						SetBackbufferClearColor(const TVec3<>&c)					{clearColor.rgb = c;}
+		void						SetBackbufferClearColor(const M::TVec4<>&c)					{clearColor = c;}
+		void						SetBackbufferClearColor(const M::TVec3<>&c)					{clearColor.rgb = c;}
 
 		/**
-		@brief Pushes the current render state (depth-test,rasterizer,blend-mode) to the stack
-		*/
-		void						StoreRendererState()	{ASSERT_LESS__(stack.Count(), 16); stack << current;}
-		/**
-		@brief Pops and restores the last pushed render state from the stack
+		@brief Pops and restores the last pushed render state from the stack.
 		*/
 		void						RestoreRendererState();
+		//void						StoreRendererState();	//implemented by VisualInterface
 		void						SetDepthTest(bool depthTest, bool depthWrite);
 		void						SetRasterizer(bool fill, bool cull);
 		void						SetBlendMode(BlendMode);
 		inline void					setDepthTest(Engine::VisualEnum::eDepthTest test)	{ SetDepthTest(test != Engine::VisualEnum::NoDepthTest,true);}
 
 
-		void						SetCameraMatrices(const TMatrix4<>&view, const TMatrix4<>&projection, const TMatrix4<>&viewInvert);
-		void						SetObjectMatrix(const TMatrix4<>&matrix);
-		void						SetObjectPosition(const TVec4<>&pos);
+		void						SetCameraMatrices(const M::TMatrix4<>&view, const M::TMatrix4<>&projection, const M::TMatrix4<>&viewInvert);
+		void						SetObjectMatrix(const M::TMatrix4<>&matrix);
+		void						SetObjectPosition(const M::TVec4<>&pos);
 
 		DX11::Handle<ID3D11DepthStencilState>	CreateDepthStencilState(bool depthTest, bool depthWrite);
 
 		bool						TargetFBO(const FBO&fbo);
 		void						TargetBackbuffer();
-		void						ClearTarget(const FBO&fbo, const TVec4<>&color = Vector4<>::zero);
-		void						ClearTargetColor(const FBO&fbo, const TVec4<>&color = Vector4<>::zero);
+		void						ClearTarget(const FBO&fbo, const M::TVec4<>&color = M::Vector4<>::zero);
+		void						ClearTargetColor(const FBO&fbo, const M::TVec4<>&color = M::Vector4<>::zero);
 		void						ClearTargetDepth(const FBO&fbo);
 		void						ClearDepth();
 
 		void						Copy(const DX11::Handle<ID3D11Texture2D>&source, Image&destination);
 
 		void						Capture(Image&target);
-
+		void						Capture(FBO&);
 
 		void						ScanShaderHeader(const PathString&path);
 
 		const Resolution&			GetResolution()	const	{return _currentResolution;}
+		ArrayRef<const MSAAConfig>	GetMSAAModes() const {return _msaaConfigs.ToRef();}
+		index_t						GetCurrentMSAAMode() const {return _currentMSAAConfig;}
+		BYTE						GetCurrentMSAARate() const {return _msaaConfigs[_currentMSAAConfig].sampleCount;}
+		BYTE						GetMSAARate(index_t mode) const;
+		void						SetMSAAMode(index_t mode);
+		void						SelectMSAARate(BYTE numSamples) {SetMSAAMode(_FindMSAAConfig(numSamples));}
 
+		bool						IsVSyncActive() const {return vsync != 0;}
+		void						SetVSyncActive(bool a) {vsync = a ? 1 : 0;}
+
+		D3D_FEATURE_LEVEL			GetFeatureLevel() const {return featureLevel;}
 	private:
-		bool						_CreateDepthStencilTarget(const Resolution&res);
+//		bool						_CreateDepthStencilTarget(const Resolution&res);
 		void						_CreateBlendState(BlendMode mode,bool enable,D3D11_BLEND srcColor, D3D11_BLEND dstColor, D3D11_BLEND_OP colorOp,  D3D11_BLEND srcAlpha, D3D11_BLEND dstAlpha, D3D11_BLEND_OP alphaOp);
+		DXGI_SAMPLE_DESC			_CompileSampleDesc(const MSAAConfig&)	const;
+		index_t						_FindMSAAConfig(BYTE numSamples) const;
 
 		Resolution					_currentResolution;
-		
+		index_t						_currentMSAAConfig;
+		Buffer0<MSAAConfig>			_msaaConfigs;
+		DX11::FBO					_backbuffer,_nextBackbuffer;	//deferred output
 
 
 	};

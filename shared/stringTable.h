@@ -2,6 +2,9 @@
 #define stringTableH
 
 #include <stdint.h>
+#include <interface/serializable.h>
+#include <interface/hashable.h>
+#include <global_string.h>
 
 typedef uint8_t ConstNameRootType;
 
@@ -21,6 +24,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Turret_SkyHub,
 	Turret_StarPort,
 	Turret_Launcher,
+	Turret_Rockets,
 	Turret_NukeLauncher,
 	Turret_MunitionTransporter,
 	Turret_Ragnarok,
@@ -47,7 +51,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	DetonationSize_Doomsday,	//Used in conjunction with Job_SelfDetonate
 
 	Type_Marker,
-	Type_Vehicle,
+	//Type_Vehicle,
 	Type_Connector,
 	Type_NexusPort,
 	Type_Generator,
@@ -60,12 +64,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_MineralContainer,
 	Type_UraniumStorage,
 	Type_MunitionStorage,
-	Type_CannonTower,
-	Type_ArtilleryTower,
-	Type_LauncherTower,
-	Type_MechanicTower,
-	Type_EMPTower,
-	Type_RadarTower,
+	Type_Tower,
 	Type_VehicleStore,
 	Type_SkyPort,
 	Type_SkyHub,
@@ -81,6 +80,28 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 
 	NumTypes,
 };
+
+
+
+inline DeltaWorks::String ToString(ConstName v)
+{
+	return '#'+DeltaWorks::String(int(v));
+}
+
+
+inline void Deserialize(DeltaWorks::IReadStream&s, ConstName&v)
+{
+	s.ReadPrimitive((ConstNameRootType&)v);
+}
+inline void Serialize(DeltaWorks::IWriteStream&s, ConstName v)
+{
+	s.WritePrimitive((ConstNameRootType)v);
+}
+
+inline DeltaWorks::hash_t Hash(ConstName v)
+{
+	return (DeltaWorks::hash_t)(ConstNameRootType)v;
+}
 
 
 static_assert(sizeof(ConstName) == sizeof(ConstNameRootType), "compiler broken");

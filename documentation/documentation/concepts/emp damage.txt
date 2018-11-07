@@ -1,0 +1,10 @@
+= EMP Damage =
+
+EMP damage is caused by [[units/turrets/emp|EMP turrets]] or [[terrain|residual EMP zones]].
+
+Units affected by EMP damage are considerably slowed down (if mobile), have extremely reduced attack and scanning ranges, and cannot perform operations (e.g. [[units/turrets/terraformer|terraforming]]).
+
+The effect is worse the higher the level of existing EMP damage, but shows the biggest difference between 0 (no damage), 1, and 2.
+
+EMP damage does not stack, and heals by one each [[concepts/round]].
+

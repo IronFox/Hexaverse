@@ -2,11 +2,11 @@
 #include "tower.h"
 #include "../structureCompound.h"
 #include "../gridAndChoices.h"
+#include "../faction.h"
 
 namespace Objects
 {
 	#ifdef HAS_WINDOW
-		/*static*/ CommandContainer		Tower::commands;
 		/*static*/ PClientAttachment	Tower::staticShape;
 		/*static*/ Geometry				Tower::geometry;
 	#endif
@@ -15,10 +15,10 @@ namespace Objects
 	List of all known tower types (one for each tower turret type).
 	Tower types that are not contained in this list can not be constructed cleanly
 	*/
-	Buffer0<PTower>				Tower::globalPrototypes;
+	Ctr::Buffer0<Tower::PProto>			Tower::globalPrototypes;
 
 	#ifndef CLIENT
-		Buffer0<PTower>			towers;	//only used by server ... so far
+		Ctr::Buffer0<PTower>			towers;	//only used by server ... so far
 	#endif
 
 
@@ -26,41 +26,22 @@ namespace Objects
 	#ifndef CLIENT
 		
 
-		/*virtual override*/ void			Tower::OnConstructionFinished(float&atTime)
+		/*virtual override*/ void			Tower::OnInsert( float&atTime, bool freshConstruction )
 		{
-			Super::OnConstructionFinished(atTime);
-			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
-			//storage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-			//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
-
+			Super::OnInsert(atTime,freshConstruction);
+			if (freshConstruction)
+				ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
 		}
 
 		
 
-		bool Tower::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
+
+		/*virtual override*/ void		Tower::FlushAutoAttacks()
 		{
-			if (!HasAmmoForShot() || empDamageLevel != 0 || IsHibernating())
-			{
-				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
-				return false;
-			}
-
-			static Buffer0<TVec4<> > trajectory;
-
-			TVec3<> iat;
-			Grid::HCellIdI ic;
-			float angle;
-
-			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
-			TrajectoryEndPoint endPoint(target->location); 
-			return		//owner->canSee.IsSet(target)
-					/*&&	*/turret->CanAttack() 
-					&& entityTime <= entityTime 
-					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
-					//&& d2 > sqr(turret->explosionRadius)
-					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
+			while (attackQueue.IsNotEmpty() && attackQueue.Peek().autoTarget)
+				attackQueue.EraseFront();
 		}
+
 
 
 
@@ -76,24 +57,21 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			TVec3<> t0;
-			Grid::HCellIdI t1;
-			static Buffer0<TVec4<> > trajectory;
+			static Ctr::Buffer0<M::TVec4<> > trajectory;
 
 			bool abort = false;
-			float angle;
-			TurretTrajectory t = TraceTrajectory(TrajectoryEndPoint( target.target ),trajectory,t0,t1,angle);
-			if (t != TurretTrajectory::ReachesTarget && target.autoTarget)
+			auto rs = TraceTrajectory(TrajectoryEndPoint( target.target ),true,trajectory);
+			if (rs != TraceResult::ReachesTarget && target.autoTarget)
 			{
-				t = TurretTrajectory::InvalidTrajectory;
+				rs = ImpactDetails{};
 			}
 
-			if (t != TurretTrajectory::InvalidTrajectory)
+			if (rs != TraceResult::InvalidTrajectory)
 			{
 
 
 				float len = 0;
-				for (index_t i = 1; i < trajectory.length(); i++)
+				for (index_t i = 1; i < trajectory.GetLength(); i++)
 					len += Vec::distance(ToWorld(trajectory[i-1]),ToWorld(trajectory[i]));
 
 				const float flightTime =  Times::Attack * len;
@@ -107,8 +85,9 @@ namespace Objects
 				
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
-				RegisterChange(ActionChanged,entityTime);
+				RegisterChange(ActionChanged);
 
+				if (!IsBeam(turret->trajectoryType))
 				{
 					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 					ApplicationInterface::SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
@@ -116,14 +95,15 @@ namespace Objects
 				}
 
 				ApplicationInterface::TAttack at;
-				at.attackAngle = angle;
+				at.attackAngle = rs.artilleryAngle;
 				at.attackFrom = shared_from_this();
 				at.flightTime = flightTime;
 				at.isAutoAttack = target.autoTarget;
-				at.traceTo = t0;
+				at.traceTo = rs.impactAt;
 				ApplicationInterface::SignalAttack(at);
 
-				const int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+				const auto&state = GetResearchState();
+				const int ammoNeed = turret->GetAmmoNeedPerShot(state);
 				if (storage.level[turret->ammoType] >= ammoNeed)
 					ChangeStorage(*this,attackTime, turret->ammoType,-ammoNeed);
 				else
@@ -138,17 +118,16 @@ namespace Objects
 
 				
 				entityTime += flightTime;
-				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
-				const float explosionRadius = turret->GetExplosionRadius(owner);
+				const int damageLevel = (int)floor(turret->GetDamageLevel(state));
+				const float explosionRadius = GetAttackExplosionRadius();
 
 				if (turret->dealsEMPDamage)
-					ExplodeEMP(at,
-								t1, t0, explosionRadius, damageLevel,entityTime);
+					ExplodeEMP(at,rs.impactCell,rs.impactAt, explosionRadius, damageLevel,entityTime);
 				else
 					Explode(at,
-							t1, t0, explosionRadius, damageLevel,turret->isDoomsday, entityTime);
+							rs.impactCell,rs.impactAt, explosionRadius, damageLevel,turret->mainAttackIsDoomsday, entityTime);
 
-				RegisterChange((changeType_t)(TasksChanged),entityTime);
+				RegisterChange(TasksChanged);
 				//stateChangedAt = attackTime;	//problematic
 				attackTime = entityTime;
 			}
@@ -161,23 +140,20 @@ namespace Objects
 
 		}
 
-		/*virtual override*/ bool Tower::FrontQueuePossibleAttacks()
+		/*virtual override*/ bool Tower::QueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
-			if (!HasAmmoForShot())
+			if (!CanAttack())
 				return false;
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
-			bool rs = false;
-			while ((int)attackQueue.Count() < CountPossibleAttacks())
+			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
-				Grid::LCellIdI target;
-				if (!GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) || !AttackNext(target,true))
-					return rs;
-				rs = true;
+				return  GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,lastChoice) 
+						&& AttackNext(lastChoice.cellTarget,true);
 			}
-			return rs;
-
+			return false;
 		}
-/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
+
+		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)
 		{
 			ResourceVector maxStorage = GetMaxStorageCapacity();
 			index_t targetIteration = 1;
@@ -216,11 +192,12 @@ namespace Objects
 			}
 		}
 
-		bool					Tower::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
+		/*virtual override*/ bool					Tower::AttackNext( const Grid::LCellIdI&target, bool autoTarget )
 		{
-			if (attackQueue.Count() >= MaxStructureTasks)
+			const count_t cnt = attackQueue.Count();
+			if (cnt >= MaxFocusPoints)
 			{
-				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxFocusPoints)+") reached");
 				return false;
 			}
 			if (!turret->CanAttack())
@@ -243,17 +220,16 @@ namespace Objects
 				}
 			}
 
-			entityTime += timeEpsilon;
 			AttackTask&cmd = attackQueue.Push();
 //			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,entityTime);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 
 
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 		
 			if (mode != Objects::CursorMode::AttackMode || !leftClick)
@@ -262,7 +238,8 @@ namespace Objects
 			{
 				if (!AttackNext(destination,false))
 					return false;
-				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+destination.ToString());
+				using StringConversion::ToString;
+				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+ToString(destination));
 			}
 			return true;
 		}
@@ -272,7 +249,7 @@ namespace Objects
 			if (attackQueue.IsEmpty())
 				return false;
 			attackQueue.Clear();
-			SignalChange(TasksChanged,0);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 
@@ -281,7 +258,7 @@ namespace Objects
 			if (attackQueue.IsEmpty())
 				return false;
 			attackQueue.EraseBack();
-			SignalChange(TasksChanged,0);
+			RegisterChange(TasksChanged);
 			return true;
 		}
 	#else
@@ -295,34 +272,19 @@ namespace Objects
 		}
 
 		#ifdef HAS_WINDOW
-			/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
+			/*virtual override*/ bool			Tower::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
 			{
-				commands.VisitMembers([visitor,this](const int2&coords, const Command::PBase&cmd)
-				{
-					if (turret->CanAttack() || cmd->name!="Attack")
-						visitor(coords,cmd);
-				},force);
-			}
-
-			/*virtual override*/ bool			Tower::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
-			{
-				TVec3<> b,d;//,test;
-				Mat::transform(inverse,_b,b);
+				M::TVec3<> b,d;//,test;
+				Mat::Transform(inverse,_b,b);
 				Mat::rotate(inverse,_d,d);
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
 
-			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags) 
+			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner) 
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags);
+				Super::DescribeType(label,descFlags, owner);
 				label.MarkBriefEnd();
-				if (turret->CanAttack())
-					label << "The unit automatically attacks hostile units in range (possibly extended by its impact explosion radius)."
-							" Towers are the only units that can intercept hostile units during their movement phase."
-							" A hostile mobile unit that enters their attack range is immediately attacked as long as sufficient attack action is left."
-							" This tower will never automatically fire at locations that endanger friendly units."
-							;
 			}
 
 		#endif
@@ -330,6 +292,19 @@ namespace Objects
 	#endif
 
 
+	/*virtual override*/ void				Tower::VisitSensors( const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/ ) const
+	{
+		if (turret->detectsResources)
+		{
+			const auto center = GetScanningCenter(loc);
+			float range = GetScanningRange();
+
+			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
+			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
+		}
+		else
+			Super::VisitSensors(loc, visitor, appearance);
+	}
 
 
 	/*virtual override*/ float3				Tower::GetScanningCenter(const Grid::LCellIdI&loc) const
@@ -355,27 +330,45 @@ namespace Objects
 	}
 
 
-	
-	/*virtual override*/ float			Tower::GetFlatAttackRange() const
+	/*virtual override*/ float			Tower::GetAttackExplosionRadius(const OwnerParameter&owner) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.horizontalAttackRange.GetEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
-		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+		return turret->explosionRadius.GetValue(GetResearchState(owner));
 	}
 
-	/*virtual override*/ String			Tower::DescribeFlatAttackRange() const
+	/*virtual override*/ int			Tower::GetOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	{
+		return turret->operationSpeed[op].GetValue(GetResearchState(owner));
+	}
+
+	/*virtual override*/ String			Tower::DescribeOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	{
+		return turret->operationSpeed[op].Describe(GetResearchState(owner));
+	}
+	
+
+	/*virtual override*/ float			Tower::GetFlatAttackRange(const OwnerParameter&owner) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return cache.horizontalAttackRange.DescribeEMPModified(*this,turret->horizontalAttackRange,Objects::LuaAttribute<float,UnitScaleFilter>(2.f));
-		//EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
+		return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState(owner))+2.f,2.f);
+	}
+
+	/*virtual override*/ String			Tower::DescribeFlatAttackRange(const OwnerParameter&owner) const
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		const auto&state = GetResearchState(owner);
+		const String rs = turret->horizontalAttackRange.Describe(state);
+		const auto final = turret->horizontalAttackRange.GetValue(state)+2.f;
+		return String(M::Round(final*10.f)/10.f)+" [="+rs+"+2 (tower modifier)]";
 	}
 
 
 	bool	Tower::HasAmmoForShot()
 	{
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
+		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(GetResearchState());
 		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 	}
 

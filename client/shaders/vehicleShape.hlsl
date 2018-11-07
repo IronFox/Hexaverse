@@ -53,7 +53,7 @@ float4 psMain(V2P input) : SV_TARGET
 
 	//return float4((float3)Shade(input.world),1.0);
 	float3 reflected = normalize(reflect(input.world - WorldCamera[3].xyz, input.normal));
-	float diffuse = max(0.0, dot(input.normal, Sun.xyz))* (KeyColor.a * input.color.a * Shade(input.world) * 0.8 + 0.2);
+	float diffuse = max(0.0, dot(input.normal, Sun.xyz))* (KeyColor.a * input.color.a * Shade(input.world) * 0.8) + 0.2;
 	float ambient = KeyColor.a * input.color.a * 0.7 + 0.3;
 	//float specular = pow(max(0.0, dot(reflected, normalize((float3)1))),4);
 	//color = ;

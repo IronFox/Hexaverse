@@ -18,7 +18,10 @@ namespace Network
 
 	namespace Config
 	{
-		extern UINT16	sessionPort;
+		extern UINT16	sessionBasePort;
+		String			GetServerPassword();
+		bool			SetServerPassword(const String&);
+		bool			HasServerPassword();
 	}
 
 
@@ -27,8 +30,7 @@ namespace Network
 		PreHello,
 		PreFaction,
 		CommonFaction,
-		Spectator,
-		PlanetConfigurator
+		Spectator
 	};
 
 
@@ -41,34 +43,38 @@ namespace Network
 		Protocol::ClientName		name;
 		std::weak_ptr<TCP::Peer>	peer;
 		//Timer::Time					lastPing;
-		Objects::PFaction			faction;
-		bool						wantNewRound=false;
-
-
+		Objects::PFaction	faction;
+		bool				wantNewRound=false;
+		CryptographicID		passwordChallenge;
 		/**
 		Indicates that this client sees everything, but has no faction to control
 		*/
 		bool				isSpectator=false;
 
-		
+		/**/				Client()
+		{
+			passwordChallenge.Generate();
+		}
 
-		String				ToString() const;
+		String				ConvertToString() const;
 		bool				CanSee(const Objects::PWorldEntity&e, float t)	const;
 
 		/**
 		Refreshes personal game progress information
 		*/
-		void				SendProgressUpdate(bool dead, const String&warningReason);
-
+		void				SendProgressUpdate(const String&warningReason, const Objects::Alliance::TNexusStats&stats);
+		bool				HasLivingFaction() const
+		{
+			return !isSpectator && faction && !faction->isDead;
+		}
 	};
 	
 
-	extern Buffer<PClient>	activePlayersAndSpectators,spectators;
+	extern Buffer0<PClient>	activePlayersAndSpectators,spectators;
 	/**
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
-	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>		playerMap;
-	extern GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
+	extern HashTable<Objects::PFaction,PClient,Objects::OwnerHash>		playerMap;
 
 
 
@@ -79,6 +85,7 @@ namespace Network
 	void		HandleConnectionLoss(PClient);
 
 	bool		SessionIsStarted();
+	bool		SessionIsSuspended();
 	/**
 	Disconnects all clients, flushes the scene, and disables the TCP server systems.
 	Clients will not be able to connect unless RestartSession is called.
@@ -128,6 +135,19 @@ namespace Network
 	void		Start(UINT16 basePort);
 
 	/**
+	Creates a UDP socket that receives regular messages.
+	If messages are not received in 10 seconds, the server shuts down automatically.
+	Call only if the heartbeat system should be active. There is currently no method to again deactive it
+	*/
+	void		StartHeartbeat(UINT16 basePort);
+	bool		RequiresHeartbeats();
+
+	/**
+	Resolves network events
+	*/
+	void		Tick();
+
+	/**
 	Stops the local server and information provider
 	*/
 	void		Stop();
@@ -144,10 +164,14 @@ namespace Network
 	*/
 	void		BuildConfiguredWorld();
 
-	/**
-	Prints the current server configuration and state to the console/log file.
-	*/
 	void		LogServerState();
+
+	String		DescribeStatus();
+	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig);
+
+
+
+	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);
 
 
 	bool CanControl(const Client&c, const Objects::WorldEntity&e);
@@ -169,22 +193,42 @@ namespace Network
 	template <index_t Channel, class Item>
 		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,const Item&item)
 		{
-			PClient*cl = playerMap.QueryPointer(e.owner);
-			if (cl)
+			if (e.owner->alliance->config.exposeEntityDetails)
 			{
-				channel.SendTo((*cl)->peer.lock(),item);
+				e.owner->alliance->ForeachMember([&channel,&e,&item](const Objects::PFaction&f)
+				{
+					PClient*cl = playerMap.QueryPointer(f);
+					if (cl)
+						channel.SendTo((*cl)->peer.lock(),item);
+				});
+			}
+			else
+			{
+				PClient*cl = playerMap.QueryPointer(e.owner);
+				if (cl)
+					channel.SendTo((*cl)->peer.lock(),item);
 			}
 			foreach (spectators,s)
 				channel.SendTo((*s)->peer.lock(),item);
 		}
 
 	template <index_t Channel, class Item>
-		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,const TCP::Serial<Item>&item)
+		inline void	SendToOwner(TCP::ObjectSender<Item,Channel>&channel,const Objects::WorldEntity&e,TCP::Serial<Item>&item)
 		{
-			PClient*cl = playerMap.QueryPointer(e.owner);
-			if (cl)
+			if (e.owner->alliance->config.exposeEntityDetails)
 			{
-				channel.SendTo((*cl)->peer.lock(),item);
+				e.owner->alliance->ForeachMember([&channel,&e,&item](const Objects::PFaction&f)
+				{
+					PClient*cl = playerMap.QueryPointer(f);
+					if (cl)
+						channel.SendTo((*cl)->peer.lock(),item);
+				});
+			}
+			else
+			{
+				PClient*cl = playerMap.QueryPointer(e.owner);
+				if (cl)
+					channel.SendTo((*cl)->peer.lock(),item);
 			}
 			foreach (spectators,s)
 				channel.SendTo((*s)->peer.lock(),item);

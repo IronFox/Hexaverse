@@ -2,16 +2,21 @@
 
 
 #include <math/matrix.h>
-#include <engine\aspect.h>
+//#include <engine\aspect.h>
 #include "base.h"
 #include "../stringTable.h"
 #include "../logEvent.h"
 #include <general/random.h>
 #include <math/SimplexNoise.h>
 #include "types.h"
+#include "../fileVersion.h"
 
 
-static const constexpr float WorldScale = 40.f;
+#ifdef LOWER_RESOLUTION_PLANET
+	static const constexpr float WorldScale = 20.f;
+#else
+	static const constexpr float WorldScale = 40.f;
+#endif
 
 namespace Grid
 {
@@ -47,13 +52,7 @@ namespace Grid
 								empZonesUnlocked;
 
 
-	static const constexpr float RawLayerHeight = 0.025f;
-	#ifdef LOWER_RESOLUTION_PLANET
-		static const constexpr float UnitScale = 2.f;
-	#else
-		static const constexpr float UnitScale = 1.f;
-	#endif
-	static const constexpr float VerticalScale = 0.7f * UnitScale * WorldScale;
+	static const constexpr float RadiusDeltaRatio = 0.033f;	//mean layer height relative to planet mean radius
 
 	static const constexpr float MeanPlanetRadius = WorldScale;
 
@@ -61,19 +60,27 @@ namespace Grid
 	Buffer<Volume::Blob>	blobs;
 #endif
 
-	static const constexpr float SingleLayerHeight = RawLayerHeight * VerticalScale;
+	static const constexpr float SingleMeanLayerHeight = RadiusDeltaRatio * WorldScale;
 
-	constexpr inline float ToRadiusf(float height)
+	inline float ToRadiusf(float height)
 	{
 		//ASSERT__(layer < 1000.f);
-		return height * SingleLayerHeight + MeanPlanetRadius;
+		return height >= 0 ?
+			height * SingleMeanLayerHeight + MeanPlanetRadius
+			:
+			MeanPlanetRadius * pow(1.f + RadiusDeltaRatio,height);
+			;
 	}
 	inline float HeightFromRadiusf(float radius)
 	{
-		return (radius - MeanPlanetRadius) / SingleLayerHeight;
+		return radius >= MeanPlanetRadius ?
+			(radius - MeanPlanetRadius) / SingleMeanLayerHeight
+			:
+			-log(MeanPlanetRadius/radius)/log(1.f + RadiusDeltaRatio)
+			;
 	}
 
-	constexpr inline float ToRadius(int height)
+	inline float ToRadius(int height)
 	{
 		return ToRadiusf(height);
 	}
@@ -89,6 +96,11 @@ namespace Grid
 		return (int)floor(HeightFromRadiusf(radius));
 	}
 
+
+	inline float GetLayerHeight(int height)
+	{
+		return height < 0 ? RadiusDeltaRatio * ToRadius(height) : SingleMeanLayerHeight;
+	}
 
 
 
@@ -125,6 +137,8 @@ namespace Grid
 
 		struct TTypeDelta
 		{
+			typedef TTypeDelta Self;
+
 			BYTE		newType;	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
 
 			bool		operator!=(const TTypeDelta&other) const
@@ -136,22 +150,45 @@ namespace Grid
 				return newType == other.newType;
 			}
 			bool		IsSet() const {return newType != 0;}
+
+			friend void Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				Serialize(s,v.newType);
+			}
+			friend void Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				Deserialize(s,v.newType);
+			}
 		};
 
 		static_assert(sizeof(TTypeDelta) == 1, "Struct-alignment out of whack");
 
-		#pragma pack(push)
-		#pragma pack(1)
 		struct TTypeDeltaBlock
 		{
+			typedef TTypeDeltaBlock Self;
+
 			UINT32				repitition;
 			TTypeDelta			value;
 			bool		operator!=(const TTypeDeltaBlock&other) const
 			{
 				return repitition != other.repitition || value != other.value;
 			}
+
+			friend void Serialize(IWriteStream&s, const Self&v)
+			{
+				s.WriteSize(v.repitition);
+				using Serialization::Serialize;
+				Serialize(s,v.value);
+			}
+			friend void Deserialize(IReadStream&s, Self&v)
+			{
+				s.ReadSize(v.repitition);
+				using Serialization::Deserialize;
+				Deserialize(s,v.value);
+			}
 		};
-		#pragma pack(pop)
 
 		class CompactCell
 		{
@@ -246,6 +283,7 @@ namespace Grid
 			void	AlterVisibility(short change)
 			{
 				visibility += change;
+				DBG_ASSERT__(visibility >= 0);
 				if (change >= 0)	//==0 is a special case triggering temporary visibility but leaving actual visibility unchanged
 				{
 					temporarilyVisible = true;
@@ -360,7 +398,7 @@ namespace Grid
 			BYTE			lowestOpenCell=0,
 							highestOpaqueCell=0,
 							lightingChangedTo=0;
-			TIntRange<BYTE>	waterRange;
+			M::TIntRange<BYTE>	waterRange;
 		#endif
 
 
@@ -369,10 +407,19 @@ namespace Grid
 
 		/**
 		Finds the top-most clear block that is located above a non-clear cell.
-		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count
+		@param stopOnStructureCount If set search will stop on the first occurrence of a structure count >0
+		@param failOnBlockingStructureAtDestination If set, will cause the method to fail if the located clear cell has a >1 struct-count. Only checks any matching cell
 		@return Height level that is within the valid range, clear, and above a non-clear block. Returns BadHeight on failure
 		*/
-		int				FindTopClearOverNonClear(bool failOnStructureCount)	const;
+		int				FindTopClearOverNonClear(bool stopOnStructureCount, bool failOnBlockingStructureAtDestination)	const;
+		
+		/**
+		Finds the bottom-most clear block that is located beneath a non-clear cell, starting at the specified layer
+		@param stopOnStructureCount If set search will stop on the first occurrence of a structure count >0
+		@param failOnBlockingStructureAtDestination If set, will cause the method to fail if the located clear cell has a >1 struct-count. Only checks any matching cell
+		@return Height level that is within the valid range, clear, and beneath a non-clear block. Returns BadHeight on failure
+		*/
+		int				FindNextClearBeneathNonClear(bool stopOnStructureCount, bool failOnBlockingStructureAtDestination, UINT startLayer) const;
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
@@ -386,6 +433,24 @@ namespace Grid
 			//	ASSERT__(!volumeCell[i].IsSolid());
 		}
 
+		void			DbgCheckWaterRange() const
+		{
+			#ifdef _DEBUG
+				if (waterRange.IsNotEmpty())
+				{
+					ASSERT_LESS_OR_EQUAL__(waterRange.end, Range);
+				}
+				else
+				{
+					ASSERT2__(
+						(waterRange.start == 0xFF && waterRange.end==0x0)
+						||
+						(waterRange.start == 0x0 && waterRange.end==0x0)
+						,waterRange.start,waterRange.end
+					);
+				}
+			#endif
+		}
 
 		void			UpdateRange()
 		{
@@ -447,7 +512,7 @@ namespace Grid
 		A ground location is a cell that is not occupied but above an occupied cell.
 		If the specified cell is occupied, any applicable ground must be ab
 		*/
-		int				FindMostApplicableGround(int h, bool canStandOnWater) const;
+		int				FindMostApplicableGround(int h, bool canStandOnWater, bool canStandOnLava) const;
 	};
 
 	typedef CellStack::Cell::Content Content;
@@ -455,9 +520,9 @@ namespace Grid
 
 	class Resource;
 
-	struct TDistanceRange : public TFloatRange<>
+	struct TDistanceRange : public M::TFloatRange<>
 	{
-		typedef TFloatRange<>	Super;
+		typedef M::TFloatRange<>	Super;
 
 		float	sum=0;
 		count_t	numSamples=0;
@@ -480,8 +545,8 @@ namespace Grid
 	public:
 		typedef GridSetup<Exponent>	GridType;
 		GridType					grid;
-		static Array<BaseGrid::TNetCell>	cells;
-		Array<BaseGrid::TCellVertex>	cellVertices;
+		static Ctr::Array<BaseGrid::TNetCell>	cells;
+		Ctr::Array<BaseGrid::TCellVertex>	cellVertices;
 		TDistanceRange				neighborCellDistances;
 
 
@@ -506,10 +571,10 @@ namespace Grid
 			struct TStack
 			{
 				UINT32				stackID;	//high-resolution cell IDs
-				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
+				M::TIntRange<UINT32>range;		//range.end is one higher than actual limit
 			};
 
-			Buffer0<TStack>			coverage;
+			Ctr::Buffer0<TStack>		coverage;
 
 			void					Clear()
 			{
@@ -528,7 +593,7 @@ namespace Grid
 			struct Operator
 			{
 				bool	stackVisited[GridType::CellCount];
-				Queue<UINT32>	stacksLeft;
+				Ctr::Queue<UINT32>	stacksLeft;
 
 				/**/		Operator()
 				{
@@ -555,9 +620,9 @@ namespace Grid
 		Determines the extended neighborhood around the given center cell.
 		Should be used for small neighborhoods only since it uses linear search on all already found neighbors
 		*/
-		void						GetExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, BasicBuffer<UINT32>&outNeighbors) const
+		void						GetExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors) const
 		{
-			Queue<std::pair<index_t, UINT32> >	queue;
+			Ctr::Queue<std::pair<index_t, UINT32> >	queue;
 			queue << std::make_pair(centerCell, 0);
 			std::pair<index_t, UINT32> current;
 			outNeighbors.Clear();
@@ -579,7 +644,7 @@ namespace Grid
 			field.Reset();
 
 			field.distance[centerCell] = 0;
-			Queue<index_t>	queue;
+			Ctr::Queue<index_t>	queue;
 			queue << centerCell;
 			index_t stackID;
 			while (queue >> stackID)
@@ -620,7 +685,7 @@ namespace Grid
 		@param startID index of the stack to start from
 		@return Closest matching stack index
 		*/
-		UINT32			Locate(const TVec3<>&v, UINT32 startID = 0)	const
+		UINT32			Locate(const M::TVec3<>&v, UINT32 startID = 0)	const
 		{
 			UINT32 stackID = startID;
 			for (;;)
@@ -659,7 +724,7 @@ namespace Grid
 
 		}
 
-		static float FindStackMaxHeight(const TIntRange<>&range, const CellStack&stack)
+		static float FindStackMaxHeight(const M::TIntRange<>&range, const CellStack&stack)
 		{
 			foreach(stack.sections, section)
 				if (section->range.Intersects(range))
@@ -668,7 +733,7 @@ namespace Grid
 
 			return -1.f;
 		}
-		static float FindStackMaxHeightAbove(const TIntRange<>&range, const CellStack&stack)
+		static float FindStackMaxHeightAbove(const M::TIntRange<>&range, const CellStack&stack)
 		{
 			foreach(stack.sections, section)
 				if (range.Contains(section->range.start) && range.end < section->range.end)
@@ -677,9 +742,8 @@ namespace Grid
 			return -1.f;
 		}
 
-		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
+		void	GenerateVolume(const M::Sphere<>&sphere,typename TVolumeDescriptor::Operator&op,TVolumeDescriptor&volume) const
 		{
-			static TVolumeDescriptor::Operator op;
 			volume.Clear();
 			UINT32 centerStack = Locate(sphere.center);
 			op.stacksLeft << centerStack;
@@ -692,14 +756,14 @@ namespace Grid
 				if (op.stackVisited[next])
 					continue;
 				op.stackVisited[next] = true;
-				const TVec3<>&dir = cells[next].cornerCenter;
-				TVec2<> distances;
-				TVec3<> bottom,top;
+				const M::TVec3<>&dir = cells[next].cornerCenter;
+				M::TVec2<> distances;
+				M::TVec3<> bottom,top;
 				Vec::mult(dir,br,bottom);
 				Vec::mult(dir,tr,top);
 				TVolumeDescriptor::TStack&st = volume.coverage.Append();
 				st.stackID = next;
-				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
+				if (!M::Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
 					st.range.SetEmpty(0);
 					continue;
@@ -716,7 +780,7 @@ namespace Grid
 	};
 
 	template <UINT Exponent>
-		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
+		Ctr::Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
 
 	#ifdef LOWER_RESOLUTION_PLANET
 		static const constexpr UINT HighExponent=5;
@@ -750,15 +814,15 @@ namespace Grid
 
 
 	
-	static const UINT32			CutoffRadius = 14;
+	static const UINT32			CutoffRadius = 20;
 
 	
 	
-	inline float Get(const SimplexNoise&n, const TVec3<>&p)
+	inline float Get(const SimplexNoise&n, const M::TVec3<>&p)
 	{
 		return (float)n.Get(p.x,p.y,p.z);
 	}
-	inline float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
+	inline float GetContinuous(const SimplexNoise&n, const M::TVec3<>&p)
 	{
 		return (float)n.GetUniform(p.x,p.y,p.z);
 	}
@@ -774,7 +838,7 @@ namespace Grid
 	///**
 	//Calculates a fractal random height for the given center direction
 	//*/
-	//float	RandomHeight(const TVec3<>&center0);
+	//float	RandomHeight(const M::TVec3<>&center0);
 
 
 
@@ -789,8 +853,8 @@ namespace Grid
 
 
 
-	static const constexpr float BottomPlanetRadius = ToRadius(CellStack::BottomHeight);
-	static const constexpr float TopPlanetRadius = ToRadius(CellStack::TopHeight);
+	static const float BottomPlanetRadius = ToRadius(CellStack::BottomHeight);
+	static const float TopPlanetRadius = ToRadius(CellStack::TopHeight);
 
 
 
@@ -817,55 +881,105 @@ namespace Grid
 	float	GetQuadraticGeometricDistance(const LCellIdI&a, const LCellIdI&b);
 
 
+	/**
+	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
+	*/
+	bool	AffectedByEMP(const HCellIdI&, UINT16 empZonesUnlocked);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
+	*/
+	bool	AffectedByEMP(const LCellIdI&, UINT16 empZonesUnlocked);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
+	*/
 	bool	AffectedByEMP(const HCellIdI&);
+	/**
+	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
+	*/
 	bool	AffectedByEMP(const LCellIdI&);
 
 
-	void	ToWorld(const HCellIdU&,TVec3<>&rs);
-	void	ToWorld(const HCellIdI&,TVec3<>&rs);
-	void	ToWorld(const LCellIdU&,TVec3<>&rs);
-	void	ToWorld(const LCellIdI&,TVec3<>&rs);
-	TVec3<> ToWorld(const HCellIdU&);
-	TVec3<> ToWorld(const HCellIdI&);
-	TVec3<> ToWorld(const LCellIdU&);
-	TVec3<> ToWorld(const LCellIdI&);
-	TVec3<> ToWorld(const HCellIdU&, float fLayerOffset);
-	TVec3<> ToWorld(const HCellIdI&, float fLayerOffset);
-	TVec3<> ToWorld(const LCellIdU&, float fLayerOffset);
-	TVec3<> ToWorld(const LCellIdI&, float fLayerOffset);
-	TVec3<> ToWorldR(const HCellIdU&, float radiusOffset);
-	TVec3<> ToWorldR(const HCellIdI&, float radiusOffset);
-	TVec3<> ToWorldR(const LCellIdU&, float radiusOffset);
-	TVec3<> ToWorldR(const LCellIdI&, float radiusOffset);
+	void	ToWorld(const HCellIdU&,M::TVec3<>&rs);
+	void	ToWorld(const HCellIdI&,M::TVec3<>&rs);
+	void	ToWorld(const LCellIdU&,M::TVec3<>&rs);
+	void	ToWorld(const LCellIdI&,M::TVec3<>&rs);
+	M::TVec3<> ToWorld(const HCellIdU&);
+	M::TVec3<> ToWorld(const HCellIdI&);
+	M::TVec3<> ToWorld(const LCellIdU&);
+	M::TVec3<> ToWorld(const LCellIdI&);
+	M::TVec3<> ToWorld(const HCellIdU&, float fLayerOffset);
+	M::TVec3<> ToWorld(const HCellIdI&, float fLayerOffset);
+	M::TVec3<> ToWorld(const LCellIdU&, float fLayerOffset);
+	M::TVec3<> ToWorld(const LCellIdI&, float fLayerOffset);
+	M::TVec3<> ToWorldR(const HCellIdU&, float radiusOffset);
+	M::TVec3<> ToWorldR(const HCellIdI&, float radiusOffset);
+	M::TVec3<> ToWorldR(const LCellIdU&, float radiusOffset);
+	M::TVec3<> ToWorldR(const LCellIdI&, float radiusOffset);
 
 	inline HCellIdI	ToHigh(const LCellIdI&cellID)	{return HCellIdI(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.height); }
 	inline HCellIdU	ToHigh(const LCellIdU&cellID)	{return HCellIdU(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.layer); }
 	inline HCellIdU	ToLayered(const HCellIdI&cellID)	{return HCellIdU(cellID.stackID,CellStack::ToLayer(cellID.height));}
 	inline LCellIdU	ToLayered(const LCellIdI&cellID)	{return LCellIdU(cellID.stackID,CellStack::ToLayer(cellID.height));}
 
-	#pragma pack(push)
-	#pragma pack(1)
+	//#pragma pack(push)
+	//#pragma pack(1)
 	struct TCellResourceCoverage
 	{
+		typedef TCellResourceCoverage Self;
+
 		UINT32		cellIndex;
 		BYTE		coverage;
-	};
-	#pragma pack(pop)
 
-	void			FlushStackFamily(Array<CellStack>&cellStack,  BYTE family);
+		friend void		Deserialize(IReadStream&s, Self&v)
+		{
+			using Serialization::Deserialize;
+			s.ReadSize(v.cellIndex);
+			Deserialize(s,v.coverage);
+		}
+		friend void		Serialize(IWriteStream&s, const Self&v)
+		{
+			using Serialization::Serialize;
+			s.WriteSize(v.cellIndex);
+			Serialize(s,v.coverage);
+		}
+		bool operator!=(const Self&other) const {return !operator==(other);}
+		bool operator==(const Self&other) const
+		{
+			return cellIndex == other.cellIndex && coverage == other.coverage;
+		}
+	};
+	//#pragma pack(pop)
+
+	void			FlushStackFamily(Ctr::Array<CellStack>&cellStack,  BYTE family);
 	void			FlushAllStackData();
 
 	#ifdef VOXEL_SCANNER
 		void		RemapToLowStacks(BYTE family);
 	#endif
 
-
-	inline void	AssertIsValid(const Grid::LCellIdI&location)
-	{
-		ASSERT_LESS__(location.stackID,LowSetup::GridType::CellCount);
-		ASSERT_LESS__(location.height,CellStack::HalfRange);
-		ASSERT_GREATER_OR_EQUAL__(location.height,-CellStack::HalfRange);
-	}
+	/**
+	Asserts that the specified location falls within the horizontal cell range.
+	Throws Except::Program::UnsupportedRequest if not
+	@param location Location to check
+	@param loc Caller
+	*/
+	void			AssertIsHorizontallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc);
+	/**
+	Asserts that the specified location falls within the vertical stack range.
+	Throws Except::Program::UnsupportedRequest if not.
+	Extra height levels such as orbital or sub orbital are not respected and lead to failure.
+	@param location Location to check
+	@param loc Caller
+	*/
+	void			AssertIsVerticallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc);
+	/**
+	Asserts that the specified location falls both in the horizontal and vertical valid coordinate range.
+	Throws Except::Program::UnsupportedRequest if not.
+	Extra height levels such as orbital or sub orbital are not respected and lead to failure.
+	@param location Location to check
+	@param loc Caller
+	*/
+	void			AssertIsValid(const Grid::LCellIdI&location, const TCodeLocation&loc);
 
 
 

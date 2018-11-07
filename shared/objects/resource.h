@@ -88,6 +88,11 @@ namespace Objects
 				Clear();
 			}
 
+			/**/ ResourceVectorT(const NaturalResourceVector&v)
+			{
+				operator=(v);
+			}
+
 			template<typename Resource2>
 				void	LoadCompatible(const ResourceVectorT<Resource2>&other)
 				{
@@ -124,11 +129,11 @@ namespace Objects
 
 			bool	operator<(const Self&v) const
 			{
-				return VecUnroll<Resource::NumberOfPossibilities>::allLess(level,v.level);
+				return M::VecUnroll<Resource::NumberOfPossibilities>::allLess(level,v.level);
 			}
 			bool	operator<=(const Self&v) const
 			{
-				return !VecUnroll<Resource::NumberOfPossibilities>::oneGreater(level,v.level);
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::oneGreater(level,v.level);
 			}
 
 			void	operator+=(const NaturalResourceVector&v)
@@ -139,23 +144,23 @@ namespace Objects
 			}
 			void	operator+=(const Self&v)
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::add(level,v.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::add(level,v.level);
 			}
 			void	operator-=(const Self&v)
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::sub(level,v.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::sub(level,v.level);
 			}
 			void	operator*=(int multiplier)
 			{	
-				VecUnroll<Resource::NumberOfPossibilities>::mul(level,multiplier);
+				M::VecUnroll<Resource::NumberOfPossibilities>::mul(level,multiplier);
 			}
 			bool	operator==(const Self&v) const
 			{
-				return VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
+				return M::VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
 			}
 			bool	operator!=(const Self&v) const
 			{
-				return !VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
 			}
 			Self	operator-(const Self&v)	const
 			{
@@ -199,21 +204,21 @@ namespace Objects
 			void	SeparateBySign(Self&positive, Self&negative) const
 			{
 				static const Self zero;
-				VecUnroll<Resource::NumberOfPossibilities>::max(level,zero.level,positive.level);
-				VecUnroll<Resource::NumberOfPossibilities>::min(level,zero.level,negative.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::max(level,zero.level,positive.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::min(level,zero.level,negative.level);
 			}
 
 			void	Cap(const Self&cap)
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::min(level,cap.level,level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::min(level,cap.level,level);
 			}
 			void	Negate()
 			{
-				VecUnroll<Resource::NumberOfPossibilities>::mul(level,-1);
+				M::VecUnroll<Resource::NumberOfPossibilities>::mul(level,-1);
 			}
 			String	ToString() const
 			{
-				Buffer0<String> rs;
+				Ctr::Buffer0<String> rs;
 				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 					if (level[i] != 0)
 						rs << Resource::Reinterpret(i).ToString()+String(": ")+String(level[i]);
@@ -222,7 +227,7 @@ namespace Objects
 
 			bool	IsEmpty() const
 			{
-				return VecUnroll<Resource::NumberOfPossibilities>::zero(level);
+				return M::VecUnroll<Resource::NumberOfPossibilities>::zero(level);
 			}
 			bool	IsNotEmpty() const
 			{
@@ -231,7 +236,7 @@ namespace Objects
 			bool	IsStable() const
 			{
 				static const int compare0[Resource::NumberOfPossibilities] = {0};
-				return !VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
 			}
 
 			bool	AnyIsSet(const ResourceFlagSet&set) const
@@ -269,6 +274,56 @@ namespace Objects
 	
 	
 	};
+
+
+
+	class PositiveResourceVector : public Objects::ResourceVector
+	{
+	public:
+
+		/**/	PositiveResourceVector()	{}
+		/**/	PositiveResourceVector(const Objects::ResourceVector&v);
+
+		void	swap(Objects::ResourceVector&other)
+		{
+			std::swap((Objects::ResourceVector&)*this,other);
+		}
+
+
+		friend void	Deserialize(IReadStream&s, PositiveResourceVector&v)
+		{
+			Deserialize(s,v);
+		}
+		friend void	Serialize(IWriteStream&s, const PositiveResourceVector&v)
+		{
+			Serialize(s,v);
+		}
+
+		static	void					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec);
+		static	void					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec);
+
+
+		bool		operator==(const Objects::ResourceVector&vec) const
+		{
+			return vec == *this;
+		}
+		bool		operator!=(const Objects::ResourceVector&vec) const
+		{
+			return vec != *this;
+		}
+
+		void		operator=(const Objects::ResourceVector&vec)
+		{
+			((Objects::ResourceVector&)*this) = vec;
+		}
+		void		operator=(const Objects::NaturalResourceVector&vec)
+		{
+			((Objects::ResourceVector&)*this) = vec;
+		}	
+	};
+
+
+
 
 
 

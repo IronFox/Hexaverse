@@ -1,22 +1,24 @@
 
 #include <global_root.h>
 #include "tutorial.h"
-#include "dialog.h"
+#include "hud/dialog.h"
 #include <io/xml.h>
 #include <container/hashtable.h>
 #include "../../version.h"
 #include "../clientRuntimeConfig.h"
 #include <objects/resource.h>
-#include <luaGameAPI.h>
+#include <lua/luaGameAPI.h>
 #include "../clientEvents.h"
 #include "../clientRuntimeConfig.h"
 #include <engine/interface/mouse.h>
 #include "../network.h"
 #include "objectSelection.h"
 #include "../network.h"
-#include "ui.h"
-#include "../serverProcess.h"
+#include "hud/hexGrid.h"
+#include <serverProcess.h>
 #include <lua.hpp>
+#include "../configurationMode.h"
+#include "../cameraControl.h"
 
 namespace Tutorial
 {
@@ -27,6 +29,8 @@ namespace Tutorial
 
 	namespace Detail
 	{
+		using namespace HUD::Component;
+
 		class Message
 		{
 		public:
@@ -47,15 +51,33 @@ namespace Tutorial
 		StringFile			memory;
 
 		StringTable<Message,Strategy::Swap>	messages;
-		GUI::PWindow		taskWindow;
+		PWindow				taskWindow;
+		HUD::Dialog::PDialog	messageWindow;
 		bool				tutorialGameShown=false;
 
+		HUD::Dialog::WDialog	holdOn;
+		index_t				holdOnID = InvalidIndex;
+		Timer::Time			holdOnCreated;
+
+
+		bool				WaitingForUserOkay()
+		{
+			return !!messageWindow /*&& HUD::WindowStack::IsVisible(messageWindow)*/;
+		}
 
 		void				HideGUI()
 		{
-			GUI::CloseAllModal();
+			HUD::WindowStack::CloseAll();
+			if (messageWindow)
+			{
+				HUD::WindowStack::Hide(messageWindow);
+				messageWindow= nullptr;
+			}
 			if (taskWindow)
-				GUI::Hide(taskWindow);
+			{
+				HUD::WindowStack::Hide(taskWindow);
+				taskWindow= nullptr;
+			}
 		}
 
 		bool				RegisterMemory(bool&shown, const String&name)
@@ -63,10 +85,55 @@ namespace Tutorial
 			if (shown)
 				return false;
 			shown = true;
-			Detail::memory << name << nl;
-			Detail::memory.Flush();
+			memory << name << nl;
+			memory.Flush();
 			return true;
 		}
+
+		PathString	GetMemoryFilename()
+		{
+			return RuntimeConfig::myConfig.Lookup("tutorialMemory.txt");
+		}
+
+		void	InitMemoryFile()
+		{
+			const PathString filename = GetMemoryFilename();
+			try
+			{
+				memory.Open(filename);
+				String line;
+				while (memory >> line)
+				{
+					Message*msg = messages.QueryPointer(line);
+					if (msg)
+						msg->shown = true;
+					elif (line == "tutorialGame")
+						tutorialGameShown = true;
+				}
+		
+				memory.Close();
+				memory.Append(filename);
+			}
+			catch (...)
+			{
+				memory.Create(filename);
+			}
+
+		}
+
+		void	FlushMemoryFile()
+		{
+			messages.VisitAllValues([](Message&m)
+			{
+				m.shown = false;
+			});
+			memory.Close();
+			memory.Create(GetMemoryFilename());
+			if (tutorialGameShown)
+				memory << "tutorialGame" << nl;
+			memory.Flush();
+		}
+
 	}
 
 	namespace Interactive
@@ -93,9 +160,7 @@ namespace Tutorial
 			}
 		};
 
-		Lua::PProgram		tutorialProgram;
-		Lua::Table			api,myUnits, myResearch;
-		bool				started = false;
+		bool				started = false, expectStart = false;
 
 		CameraEvent			drag,rotate,zoom;
 
@@ -106,9 +171,16 @@ namespace Tutorial
 			Lua::Function<void(int)>	begin;
 		}
 
+		Lua::API scriptAPI;
+
+
+		void	CheckTaskConditions()
+		{
+			Trigger::checkTaskConditions();
+		}
+
 		namespace API
 		{
-
 
 			struct TTrigger
 			{
@@ -118,36 +190,49 @@ namespace Tutorial
 
 			Buffer0<TTrigger>	activeTriggers;
 
+			void	EnableWorkingStructure(const TUniqueID&entityID, bool doEnable)
+			{
+				Protocol::EnableStructure cmd;
+				cmd.enable = doEnable;
+				cmd.id = entityID;
+				Network::Channels::enableStructure.SendTo(Network::client, cmd);
+			}
+
 
 			//void	NextTask()
 			//{
 			//	if (taskWindow)
-			//		To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText("Well done!");
+			//		To<Label>::Cast(taskWindow->GetReferences().First())->SetText("Well done!");
 			//}
 
 			void ReplaceTags(String&msg)
 			{
 				for (index_t i = 0; i < Objects::Resource::N; i++)
-					msg.replace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
-				msg.replace("%Time%",Objects::TimeResourceTag());
+					msg.FindAndReplace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
+				msg.FindAndReplace("%Time%",Objects::TimeResourceTag());
 			}
 
 			void	DisplayMessage(String msg, const String&img)
 			{
+				DBG_ASSERT__(Interactive::API::activeTriggers.IsEmpty());
 				Detail::HideGUI();
-				
+				DBG_ASSERT_EQUAL__(HUD::WindowStack::CountVisibleWindows(),0);
 				ReplaceTags(msg);
 				using namespace Detail;
-				auto messageWindow = Dialog::CreateTutorialMessage("", msg,img);
-				messageWindow->check = []()->Dialog::CheckResult{ return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort; };
+				messageWindow = HUD::Dialog::CreateTutorialMessage("", msg,img);
+				messageWindow->check = []()->HUD::Dialog::CheckResult{ return Network::client.IsConnected() ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort; };
 				messageWindow->onConfirm = 
 				[]()
 				{
+					HUD::WindowStack::Hide(messageWindow);
+					messageWindow = nullptr;
 					Trigger::onMessageConfirm();
+					if (!Detail::WaitingForUserOkay())
+						Interactive::CheckTaskConditions();
 				};
 				messageWindow->canBeImplicitlyClosed = false;
 				messageWindow->isTutorial = false;	//prevent tutorial message from opening the next message automatically
-				GUI::Show(messageWindow);
+				HUD::WindowStack::Show(messageWindow);
 			}
 
 			void	SignalTaskStart(int taskAt)
@@ -160,35 +245,38 @@ namespace Tutorial
 
 			void	DescribeTask(String msg)
 			{
+				DBG_ASSERT__(!Detail::WaitingForUserOkay());
 				Detail::HideGUI();
 				using namespace Detail;
 
 				ReplaceTags(msg);
 				if (taskWindow)
 				{
-					To<GUI::Label>::Cast(taskWindow->GetComponents().First())->SetText(msg);
-					taskWindow->InvalidateSize();
+					To<Label>::Cast(taskWindow->GetReferences().First())->SetText(msg);
 				}
 				else
 				{
-					taskWindow.reset(new GUI::Window());
+					taskWindow = Window::Create();
 					taskWindow->canBeImplicitlyClosed = false;
 
-					taskWindow->AddNewComponent(new GUI::Label(msg))->AnchorTop(0).FillHorizontally(0);
-					taskWindow->autoHeight = true;
-					taskWindow->autoCenter = false;
-					taskWindow->anchorConfig.Left().Unset();
-					taskWindow->anchorConfig.Right().Set(0.1f);
-					taskWindow->anchorConfig.Bottom().Set(0.1f);
-					taskWindow->SetSize(float2(0.25));
+					taskWindow->AddNewComponent(new Label(msg),CLOCATION)->AnchorTop(0).FillHorizontally(0);
+					taskWindow->SetAutomaticHeight(true);
+					taskWindow->Anchor().Bottom(0.15f,0.25f).Right(0.05f,0.25f);
+
 					taskWindow->isModal = false;
 				}
-				GUI::Show(taskWindow);
-				Trigger::checkTaskConditions();
+				HUD::WindowStack::Show(taskWindow);
+				CheckTaskConditions();
+			}
+
+			void	ClearDelayed()
+			{
+				activeTriggers.Clear();
 			}
 
 			void	CallDelayed(float delay, Lua::Function<void()> f)
 			{
+				DBG_ASSERT__(!Detail::WaitingForUserOkay());
 				activeTriggers.Append().remainingSeconds = delay;
 				activeTriggers.Last().trigger = f;
 			}
@@ -203,94 +291,19 @@ namespace Tutorial
 		}
 
 
-		PointerTable<Lua::Reference,Swap>	objectTables;
-
-
-		Lua::Table RebuildEntity(const Objects::PWorldEntity&e)
-		{
-			ASSERT__(e);
-			Lua::Table t;
-			if (!objectTables.Query(e.get(),t))
-			{
-				t = tutorialProgram->CreateTable();
-				objectTables.Set(e.get(),t);
-			}
-
-			t.ClearTable();
-			Lua::EntityToTable(e,t);
-			return t;
-		}
-
-		void RebuildSelected()
-		{
-			const auto&e = Objects::selectedEntity;
-			if (!e)
-			{
-				api.SetField("selectedUnit",Lua::Reference());
-				return;
-			}
-			
-			api.SetField("selectedUnit",RebuildEntity(e));
-		}
-
 		void RebuildFactionUnits()
 		{
-			myUnits.ClearTable();
-			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
-			{
-				if (e->isOwnedByMe)
-				{
-					myUnits.AppendElement(RebuildEntity(e));
-				}
-			},false);
-
+			scriptAPI.FlushAllObjects();
+			scriptAPI.AddFactionEntities(Objects::Faction::mine);
+			scriptAPI.SetSelectedUnit(Objects::selectedEntity,false);
+			scriptAPI.UpdateResearch();
+			//ASSERT__(scriptAPI.myFactionIsSet);	can't verify this: if disconnecting, order cannot be asserted, might trigger this while flushing objects, before closing down tutorial mode
 		}
 
 
 		void RebuildResearchState()
 		{
-			if (myResearch.IsEmpty())
-			{
-				myResearch = tutorialProgram->CreateTable();
-				api.SetField("myResearch",myResearch);
-			}
-			else
-				myResearch.ClearTable();
-
-			Lua::Reference current;
-			const auto&st = Objects::Faction::mine->researchState.researchState;
-			//const index_t at = Objects::Faction::mine->researchState.GetActiveTopicIndex();
-			Array<UINT32> q;
-			Objects::Faction::mine->researchState.ExportResearchQueue(q);
-			for (index_t i = 0; i < Objects::ResearchState::globalState.allTopics.Count(); i++)
-			{
-				auto t = Objects::ResearchState::GetTopic(i);
-				if (t->IsGroup())
-					continue;
-				String key = t->GetFullName();
-
-				Lua::Table outT = tutorialProgram->CreateTable();
-				myResearch.SetField(key,outT);
-
-				outT.SetField("fullName",key);
-				outT.SetField("name",t->name);
-				outT.SetField("max",t->maxProgress);
-				outT.SetField("isEndless",t->maxProgress <= 0);
-				
-				const int prog = t->getProgress(st);
-				outT.SetField("progress",prog);
-				outT.SetField("isCompleted",t->ResearchCompleted(st));
-
-				bool isActive = q.IsNotEmpty() && q.First() == i;
-				outT.SetField("isActive",isActive);
-				outT.SetField("isQueued",q.Contains(i));
-
-				if (isActive)
-					current = outT;
-			}
-
-
-			api.SetField("myCurrentResearch",current);
+			scriptAPI.UpdateResearch();
 		}
 
 		void	ProcessTriggers()
@@ -304,15 +317,19 @@ namespace Tutorial
 				t.remainingSeconds -= timeDelta;
 				if (t.remainingSeconds < 0)
 				{
-					t.trigger();
-					Interactive::API::activeTriggers.Erase(i);
+					auto copy = t;
+					Interactive::API::activeTriggers.Erase(i);	//change order to assure we don't trigger verification issues in debug mode
 					i--;
+					copy.trigger();
 				}
 			}
 
-			Interactive::rotate.Process();
-			Interactive::drag.Process();
-			Interactive::zoom.Process();
+			if (!Detail::WaitingForUserOkay())
+			{
+				Interactive::rotate.Process();
+				Interactive::drag.Process();
+				Interactive::zoom.Process();
+			}
 
 		}
 
@@ -341,45 +358,94 @@ namespace Tutorial
 			try
 			{
 				Interactive::RebuildFactionUnits();
-				Interactive::RebuildSelected();
-
-				Interactive::Trigger::checkTaskConditions();
+				if (!Detail::WaitingForUserOkay())
+					Interactive::CheckTaskConditions();
 			}
-			catch (const Lua::Exception&ex)
+			catch (const std::exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
 			}
 		}
 
+		void	SignalStart()
+		{
+			if (!Interactive::expectStart)
+				return;
+			try
+			{
+				Interactive::started = true;
+				Interactive::RebuildFactionUnits();
+				Interactive::RebuildResearchState();
+				Interactive::Trigger::begin(Detail::progress);
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
+		}
 
+		void	SignalRoundStart()
+		{
+			if (!Interactive::started)
+				return;
+			try
+			{
+				Interactive::RebuildFactionUnits();
+				if (!Detail::WaitingForUserOkay())
+					Interactive::CheckTaskConditions();
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::configurationError,ex.what());
+			}
+		
+		}
+		
+
+
+	
+		void	SignalEnd()
+		{
+			using namespace Interactive;
+			using namespace Detail;
+
+			expectStart = false;
+			started = false;
+			scriptAPI.FlushAllObjects(true);
+
+			if (holdOnID != InvalidIndex)
+			{
+				GlobalEvents::frameBegin.Unregister(holdOnID);
+				holdOnID = InvalidIndex;
+			}
+
+			Detail::HideGUI();
+			Detail::progress = 1;
+		}
 
 
 		void Create()
 		{
 			try
 			{
-				objectTables.Clear();
-				tutorialProgram = Lua::Program::Create("Tutorial");
-				api = Lua::CreateGeneralAPI(tutorialProgram);
-				Lua::DefineLowGridCells(api);
-				myUnits = tutorialProgram->CreateTable();
-				api.SetField("myUnits",myUnits);
+				scriptAPI.onEnableWorkingStructure = API::EnableWorkingStructure;
 
-				api.SetFunction("DisplayMessage",API::DisplayMessage);
-				api.SetFunction("DescribeTask",API::DescribeTask);
-				api.SetFunction("CallDelayed",API::CallDelayed);
-				api.SetFunction("FocusCameraAt",API::FocusCameraAt);
-				api.SetFunction("SignalTaskStart",API::SignalTaskStart);
+				scriptAPI.Create("Tutorial");
+				scriptAPI.AddGrid();
+				scriptAPI.gameTable.SetFunction("DisplayMessage",API::DisplayMessage);
+				scriptAPI.gameTable.SetFunction("DescribeTask",API::DescribeTask);
+				scriptAPI.gameTable.SetFunction("CallDelayed",API::CallDelayed);
+				scriptAPI.gameTable.SetFunction("ClearAllDelayed",API::ClearDelayed);
+				scriptAPI.gameTable.SetFunction("FocusCameraAt",API::FocusCameraAt);
+				scriptAPI.gameTable.SetFunction("SignalTaskStart",API::SignalTaskStart);
+				scriptAPI.program->ExecuteFile("../lua/tutorial.lua");
 
-
-				tutorialProgram->ExecuteFile("../lua/tutorial.lua");
-
-				Trigger::begin = tutorialProgram->RequireGlobal("OnBegin");
-				Trigger::checkTaskConditions = tutorialProgram->RequireGlobal("CheckTaskConditions");
-				Trigger::onMessageConfirm = tutorialProgram->RequireGlobal("OnMessageConfirm");
-				drag.trigger = tutorialProgram->RequireGlobal("OnCameraDrag");
-				rotate.trigger = tutorialProgram->RequireGlobal("OnCameraRotate");
-				zoom.trigger = tutorialProgram->RequireGlobal("OnCameraZoom");
+				Trigger::begin = scriptAPI.program->RequireGlobal("OnBegin");
+				Trigger::checkTaskConditions = scriptAPI.program->RequireGlobal("CheckTaskConditions");
+				Trigger::onMessageConfirm = scriptAPI.program->RequireGlobal("OnMessageConfirm");
+				drag.trigger = scriptAPI.program->RequireGlobal("OnCameraDrag");
+				rotate.trigger = scriptAPI.program->RequireGlobal("OnCameraRotate");
+				zoom.trigger = scriptAPI.program->RequireGlobal("OnCameraZoom");
 
 
 				Camera::onZoom << SignalZoom;
@@ -389,6 +455,12 @@ namespace Tutorial
 
 				GlobalEvents::invalidateObjectCache << SignalEntitySelectionChange;	//something happend to the selected unit
 				Objects::onSelectionChanged << SignalEntitySelectionChange;
+
+
+				GlobalEvents::serverConnectionLost << SignalEnd;
+				GlobalEvents::serverConnectionFailed << SignalEnd;
+				GlobalEvents::clientControlBegin << SignalRoundStart;
+				GlobalEvents::beginGame << SignalStart;
 			}
 			catch (const std::exception&ex)
 			{
@@ -399,25 +471,47 @@ namespace Tutorial
 
 
 
-	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/)
+	void	SignalResearchChange()
 	{
-		if (RuntimeConfig::aiMode)
+		if (!Interactive::started || !Objects::Faction::mine)
+			return;
+		try
+		{
+			Interactive::RebuildResearchState();
+			if (!Detail::WaitingForUserOkay())
+				Interactive::CheckTaskConditions();
+		}
+		catch (const std::exception&ex)
+		{
+			LogEvent(EventClass::Preset::configurationError,ex.what());
+		}
+	}
+
+	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/, bool overrideMemory/*=false*/)
+	{
+		if (RuntimeConfig::aiMode || ConfigurationMode::IsActive())
 			return;
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
 			return;
-		if (!Detail::RegisterMemory(msg->shown,name))
+		if (!Detail::RegisterMemory(msg->shown,name) && !overrideMemory)
 			return;
-		Dialog::EnqueueTutorial(name,msg->lines,msg->image);
+		if (RuntimeConfig::tutorialMode)
+			return;	//don't enqueue anything. assume known
+		HUD::Dialog::EnqueueTutorial(name,msg->lines,msg->image,forceOpenNow);
 		if (forceOpenNow)
-			Dialog::ShowNextTutorial();
+			HUD::Dialog::ShowNextTutorial(!overrideMemory);
 	}
 
 	void	HideMessage(const String&name)
 	{
-		Dialog::RemoveTutorial(name);
+		HUD::Dialog::RemoveTutorial(name);
 	}
 
+	void	FlushMemory()
+	{
+		Detail::FlushMemoryFile();
+	}
 
 
 	void	Create()
@@ -435,12 +529,12 @@ namespace Tutorial
 				explode('\n',xmessage.inner_content,msg->lines);
 				for (auto&line : msg->lines)
 				{
-					line.trimThis();
-					line.replace("%PRODUCT_NAME%",PRODUCT_NAME);
-					line.replace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
-					line.replace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
-					line.replace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
-					line.replace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
+					line.TrimThis();
+					line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
+					line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
+					line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
+					line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
+					line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
 					
 				}
 			}
@@ -451,25 +545,7 @@ namespace Tutorial
 
 		FileSystem::CreateDirectory("config");
 
-//		#ifndef _DEBUG
-		if (Detail::memory.Open(RuntimeConfig::ConfigFile("tutorialMemory.txt")))
-		{
-			String line;
-			while (Detail::memory >> line)
-			{
-				Detail::Message*msg = Detail::messages.QueryPointer(line);
-				if (msg)
-					msg->shown = true;
-				elif (line == "tutorialGame")
-					Detail::tutorialGameShown = true;
-			}
-		
-			Detail::memory.Close();
-			Detail::memory.Append(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
-		}
-		else
-	//	#endif
-			Detail::memory.Create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
+		Detail::InitMemoryFile();
 	
 
 		GlobalEvents::frameBegin << []()
@@ -491,77 +567,23 @@ namespace Tutorial
 			}
 		};
 
-
-
-		Interactive::Create();
-		if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
+		if (!RuntimeConfig::aiMode)
 		{
-			Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+			Interactive::Create();
+			if (Detail::RegisterMemory(Detail::tutorialGameShown,"tutorialGame"))
 			{
-				ServerProcess::StartTutorialServer();
-			},
-			[](){return Dialog::CheckResult::OkayContinue;});
+				HUD::Dialog::Confirm("Welcome to Hexaverse. Would you like to start a tutorial game server to learn the game's basics?",[]()
+				{
+					Tutorial::StartTutorialServer();
+				},
+				[](){return HUD::Dialog::CheckResult::OkayContinue;});
+			}
 		}
-	}
 
-	void	SignalStart()
-	{
-		try
-		{
-			Interactive::started = true;
-			Interactive::RebuildFactionUnits();
-			Interactive::RebuildSelected();
-			Interactive::RebuildResearchState();
-			Interactive::Trigger::begin(Detail::progress);
-		}
-		catch (const Lua::Exception&ex)
-		{
-			LogEvent(EventClass::Preset::configurationError,ex.what());
-		}
-	}
-
-	void	SignalRoundStart()
-	{
-		if (!Interactive::started)
-			return;
-		try
-		{
-			Interactive::RebuildFactionUnits();
-			Interactive::Trigger::checkTaskConditions();
-		}
-		catch (const Lua::Exception&ex)
-		{
-			LogEvent(EventClass::Preset::configurationError,ex.what());
-		}
-		
 	}
 
 
 
-
-	void	SignalResearchChange()
-	{
-		if (!Interactive::started || !Objects::Faction::mine)
-			return;
-		try
-		{
-			Interactive::RebuildResearchState();
-			Interactive::Trigger::checkTaskConditions();
-		}
-		catch (const Lua::Exception&ex)
-		{
-			LogEvent(EventClass::Preset::configurationError,ex.what());
-		}
-	}
-
-	
-	void	SignalEnd()
-	{
-		Interactive::started = false;
-		Interactive::objectTables.Clear();
-		Detail::HideGUI();
-		Detail::progress = 1;
-	}
 
 
 	void	SetProgress(int at)
@@ -574,10 +596,88 @@ namespace Tutorial
 			if (Interactive::started)
 				Interactive::Trigger::begin(Detail::progress);
 		}
-		catch (const Lua::Exception&ex)
+		catch (const std::exception&ex)
 		{
 			LogEvent(EventClass::Preset::configurationError,ex.what());
 		}
+	}
+
+
+	void	SignalConnectedToTutorialServer()
+	{
+		Interactive::expectStart = true;
+	}
+
+
+	static Random random;
+
+	void	StartTutorialServer()
+	{
+		using namespace Detail;
+
+		if (ServerProcess::IsRunning())
+		{
+			HUD::Dialog::Confirm("In order to start a tutorial server, the local server must be shut down. Continue?",
+			[]()
+			{
+				ServerProcess::End();
+				StartTutorialServer();
+			},
+			[]()->HUD::Dialog::CheckResult
+			{
+				if (!ServerProcess::IsRunning())
+					return HUD::Dialog::CheckResult::Confirm;
+				return HUD::Dialog::CheckResult::OkayContinue;
+			});
+			return;
+		}
+
+		if (HUD::WindowStack::IsVisible(holdOn.lock()))
+			return;
+
+		Interactive::expectStart = true;
+
+		const UINT16 port = TUTORIAL_BASE_PORTS_FROM + random.Next((65535 - TUTORIAL_BASE_PORTS_FROM)/3) * 3;
+
+		LogEvent(EventClass::Preset::uncommon,"Starting tutorial server ...");
+		LogEvent(EventClass::Preset::debug,"Starting tutorial server on port "+String(port));
+		RuntimeConfig::serverAddress = Network::ServerAddress("localhost:"+String(port));
+		holdOn = HUD::Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->HUD::Dialog::CheckResult
+		{
+			if (Network::haveFaction)
+			{
+				//HUD::Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
+				return HUD::Dialog::CheckResult::Abort;
+			}
+			return HUD::Dialog::CheckResult::OkayContinue;
+		});
+		holdOnCreated = timer.Now();
+
+		if (holdOnID == InvalidIndex)
+			holdOnID = GlobalEvents::frameBegin.Register([]()
+			{
+				HUD::Dialog::PDialog d = holdOn.lock();
+				if (!d || !HUD::WindowStack::IsVisible(d))
+				{
+					GlobalEvents::frameBegin.Unregister(holdOnID);
+					holdOnID = InvalidIndex;
+					return;
+				}
+				if (timer.GetSecondsSince(holdOnCreated) > 30)
+				{
+					ServerProcess::End();
+					HUD::WindowStack::Hide(d);
+					GlobalEvents::frameBegin.Unregister(holdOnID);
+					holdOnID = InvalidIndex;
+					RuntimeConfig::serverAddress = Network::ServerAddress();
+					HUD::Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
+							+String(FileSystem::Folder( RuntimeConfig::myConfig.GetRoot()).ParentLocation()->GetLocation())
+						+"\nSorry about this :S");
+				}
+
+			});
+			
+		ServerProcess::Begin(true,true,"",port);
 	}
 
 }

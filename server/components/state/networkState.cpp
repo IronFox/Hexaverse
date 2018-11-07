@@ -8,7 +8,6 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../serverLogEvent.h"
-#include "../configurationMode.h"
 #include "../udpBroadcast.h"
 #include "worldState.h"
 #include <globalEvents.h>
@@ -17,15 +16,156 @@
 
 #undef StartService
 
-extern Random random;
+extern TwisterRandom random;
+
+
+void TerminateNow(bool isMain);
+
+
+namespace ApplicationInterface
+{
+	void	SignalAllianceInvite(const Objects::PAlliance&a, const Objects::PFaction&f,BYTE type)
+	{
+		Channels::AllianceInvite.SendTo(Network::server,Protocol::AllianceInvite(a->id,f->id,type),Channels::Level::Faction);
+	}
+
+	void	SignalAllianceMembershipChange(const Objects::PFaction&owner)
+	{
+		if (!owner->isDead)
+			Channels::identifyFaction.SendTo(::Network::server,Network::Identify(owner),Channels::Level::Faction);
+		SignalFactionsChanged();	//for statistical purposes
+	}
+
+	void	SignalAllianceConfigChange(const Objects::PAlliance&alliance)
+	{
+		Protocol::AllianceConfigChange ch;
+		ch.allianceID = alliance->id;
+		ch.flags = alliance->config.ToFlags();
+		alliance->ForeachMember([ch](const Objects::PFaction&f)
+		{
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::AllianceConfigChange.SendTo(client->peer.lock(),ch);
+			}
+		});
+	}
+
+
+}
 
 
 namespace Network
 {
-	Buffer<PClient>	activePlayersAndSpectators,spectators;
-	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
-	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
+	Buffer0<PClient>	activePlayersAndSpectators,spectators;
+	HashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
 
+
+	namespace Heartbeat
+	{
+		SOCKET s = INVALID_SOCKET;
+		Timer::Time lastBeat = timer.Now();
+
+		class Loop : public Sys::ThreadObject
+		{
+		public:
+			virtual void ThreadMain()
+			{
+				BYTE buffer[1024];
+				while (s != INVALID_SOCKET)
+				{
+					sockaddr_in addr;
+					int size = (int)sizeof (addr);
+					int bytes = recvfrom(s,(char*)buffer, sizeof(buffer), 0, (SOCKADDR *) & addr, &size);
+					//LogEvent(EventSignificance::Debug,"Received heartbeat from "+TCP::ToString((const sockaddr_storage&)addr,size));
+					if (bytes <= 0)
+					{
+						if (s != INVALID_SOCKET)
+							FATAL__("Heartbeat receive failure. Socket lost");
+					}
+					lastBeat = timer.Now();
+				}
+			}
+		};
+		Loop	loopThread;
+
+		void	Stop()
+		{
+			if (s != INVALID_SOCKET)
+			{
+				SOCKET s1 = s;
+				s = INVALID_SOCKET;
+				closesocket(s1);
+			}
+		}
+
+		void	Start(UINT16 basePort)
+		{
+			//LogEvent(EventSignificance::Uncommon,"Starting heartbeat receiver on port "+String(HEARTBEAT_PORT));
+			GlobalEvents::applicationTerminate << Stop;
+			ASSERT__(Net::initNet());
+
+			s = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+			ASSERT_NOT_EQUAL__(s,INVALID_SOCKET);
+			
+
+			SOCKADDR_IN me;
+			memset(&me,0,sizeof(me));
+			me.sin_family=AF_INET;
+			me.sin_port=htons(basePort + PortOffset::Heartbeat);;
+			me.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			LogEvent(EventSignificance::Uncommon,"Binding heartbeat receiver to "+TCP::ToString((const sockaddr_storage&)me,sizeof(me)));
+			int rc=::bind(s,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
+			if (rc != 0)
+			{
+				closesocket(s);
+				s = INVALID_SOCKET;
+				FATAL__("Unable to bind UDP heartbeat socket. Chances are, a server is already running.");
+				return;
+			}
+			loopThread.Start();
+			lastBeat = timer.Now();
+		}
+
+
+		bool	IsActive()
+		{
+			return s != INVALID_SOCKET;
+		}
+
+
+		void	Check()
+		{
+			if (s == INVALID_SOCKET)
+				return;
+
+			#ifdef _DEBUG
+				static const float timeOut = 30;
+			#else
+				static const float timeOut = 3;
+			#endif
+			if (timer.GetSecondsSince(lastBeat) > timeOut)
+			{
+				LogEvent(EventClass::Preset::fatal,"No heartbeat received in "+String(timeOut)+" seconds. Shutting down");
+
+				application_shutting_down = true;	//prevent certain operations in Close()
+				try
+				{
+					PathString out = RuntimeConfig::sharedConfig.Lookup("saves/no-heartbeat-shutdown.hsf");
+					Logging::WriteEvent(EventClass::Preset::uncommon,"Trying to save game to "+String(out),nullptr,nullptr,nullptr);
+					FileIO::Save(out,RuntimeConfig::Phase::CommandPhase);
+					Logging::WriteEvent(EventClass::Preset::uncommon,"Success",nullptr,nullptr,nullptr);
+				}
+				catch (...)
+				{
+					Logging::WriteEvent(EventClass::Preset::error,"Failed to save to file",nullptr,nullptr,nullptr);
+				}
+
+				TerminateNow(true);
+			}
+		}
+
+	}
 
 	
 
@@ -46,7 +186,7 @@ namespace Network
 
 
 
-		class Updater : public ThreadObject
+		class Updater : public Sys::ThreadObject
 		{
 		public:
 			volatile bool	doEnd = false;
@@ -109,7 +249,7 @@ namespace Network
 		void		Stop()
 		{
 			updater.doEnd = true;
-			updater.awaitCompletion();
+			updater.AwaitCompletion();
 		}
 
 		bool	IsOnline()
@@ -123,7 +263,33 @@ namespace Network
 
 	namespace Config
 	{
-		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
+		UINT16		sessionBasePort = DEFAULT_SERVER_BASE_PORT;
+
+		//owner: main thread. Assume SetServerPassword is called by main thread only. Read access by main thread to serverPassword should be safe. still better not allow header-wise direct access
+		String			serverPassword;
+		static Sys::SpinLock		passwordLock;
+
+		String			GetServerPassword()
+		{
+			passwordLock.lock();
+				String rs = serverPassword;
+			passwordLock.unlock();
+			return rs;
+		}
+
+		bool			HasServerPassword()
+		{
+			return serverPassword.IsNotEmpty();
+		}
+
+		bool			SetServerPassword(const String&newpwd)
+		{
+			passwordLock.lock();
+				bool rs = serverPassword != newpwd;
+				serverPassword = newpwd;
+			passwordLock.unlock();
+			return rs;
+		}
 	}
 
 	namespace Session
@@ -140,22 +306,30 @@ namespace Network
 	{
 		if (server.IsOnline())
 		{
-			if (server.GetPort() == Config::sessionPort)
+			if (server.GetPort() == Config::sessionBasePort + PortOffset::Session)
 				return;
 			server.EndService();
 		}
 		server.OnDoneResolving([logStateAfterRestart]()
 		{
-			if (server.StartService(Config::sessionPort))
+			const auto port = Config::sessionBasePort + PortOffset::Session;
+			if (server.StartService(port))
 			{
-				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
+				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionBasePort + PortOffset::Session));
 				if (logStateAfterRestart)
 					LogServerState();
 			}
 			else
-				FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
+				FATAL__("Unable to start service on port "+String(port)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
 		});
 	}
+
+	void		Tick()
+	{
+		server.Resolve();
+		Heartbeat::Check();
+	}
+
 
 
 
@@ -173,24 +347,29 @@ namespace Network
 		if (started)
 			World::worldID.Generate();
 
+		World::UpdateEMPZones(0);
+		World::BuildConfiguredWorld(random);
 
-		if (ConfigurationMode::IsActive())
-			World::BuildConfiguredWorld(ConfigurationMode::GetPlanetSeed());
-		else
-			World::BuildConfiguredWorld(random);
 		if (started)
 			Network::RestartSession(false);
 		else
-		{
-			Channels::planetConfig.SendTo(server,Grid::currentPlanetConfig,(UINT)UserLevel::PlanetConfigurator);
 			World::Network::CheckAllFactionCoverageAndSendAsNeeded();
-		}
+	}
+
+	Protocol::IdentifyFaction Identify(const Objects::PFaction & f)
+	{
+		Protocol::IdentifyFaction	id;
+		id.id = f->id;
+		id.allianceID = f->alliance->id;
+		id.name = f->name;
+		id.color = f->color;
+		return id;
 	}
 
 
-	String						Client::ToString() const
+	String						Client::ConvertToString() const
 	{
-		return (faction ? faction->id.ToString() : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
+		return (faction ? ToString(faction->id) : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
 	}
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
@@ -199,11 +378,11 @@ namespace Network
 	}
 
 
-	static String FactionStatus(const Objects::PFaction&f)
+	static String AllianceStatus(const Objects::PAlliance&a, const Objects::Alliance::TNexusStats&stats)
 	{
-		if (!f)
+		if (!a)
 			return "Game Over";
-		return "Nexus Ports enabled: "+String(f->acquiringNexusControl)+", conquered: "+String(f->nexusControl)+"/"
+		return "Conquering Nexus Ports: "+String(stats.acquiringNexusControl)+", conquered: "+String(stats.nexusControl)+"/"
 			+ String(Game::Config::GetTargetNexusCount());
 	}
 
@@ -217,16 +396,52 @@ namespace Network
 	}
 
 
-	void Client::SendProgressUpdate(bool dead, const String&warningReason)
+	void Client::SendProgressUpdate(const String&warningReason, const Objects::Alliance::TNexusStats&stats)
 	{
 		Protocol::GameProgress progress;
-		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
-		progress.gameWon = Game::winner == faction && !!Game::winner;
-		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : FactionStatus(faction);
+		const bool dead = !faction || faction->isDead;
+		progress.gameOver = dead || RuntimeConfig::GameHasEnded();
+		auto winner = Game::winner.lock();
+		progress.gameWon = faction && faction->alliance == winner;
+		progress.status = RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::None ? "" : AllianceStatus(faction ? faction->alliance : nullptr,stats);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
-		Channels::gameProgress.SendTo(peer.lock(),progress);
+
+
+		auto ppeer = peer.lock();
+		if (!ppeer)
+			return;
+		{
+			auto&peer = *ppeer;
+			if (progress.gameOver && faction && !RuntimeConfig::GameHasEnded())
+			{
+				//send only statistics of local faction
+				Game::Network::SendStatisticsTo(peer,faction);
+			}
+
+
+			if (RuntimeConfig::GameHasEnded())
+			{
+				//game over: send statistics of all factions
+				Objects::ForeachFaction([&peer](const Objects::PFaction&f)
+				{
+					Game::Network::SendStatisticsTo(peer,f);
+				},true);
+			}
+
+			Channels::gameProgress.SendTo(ppeer,progress);
+		}
 	}
 
+
+	void		StartHeartbeat(UINT16 basePort)
+	{
+		Heartbeat::Start(basePort);
+	}
+
+	bool		RequiresHeartbeats()
+	{
+		return Heartbeat::IsActive();
+	}
 
 
 
@@ -234,7 +449,7 @@ namespace Network
 	{
 		SetupServer();
 		StartServer(false);
-		Session::isStarted = !ConfigurationMode::IsActive();
+		Session::isStarted = true;
 
 		InformationProvider::Start(basePort);
 	}
@@ -272,19 +487,23 @@ namespace Network
 		server.InstallChannel(Channels::touchMarker);
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyFactionRecv);
-		server.InstallChannel(Channels::queueResearch);
-		server.InstallChannel(Channels::chatMessage);
-		server.InstallChannel(Channels::planetConfig);
-		server.InstallChannel(Channels::gameConfig);
-		server.InstallChannel(Channels::requestResource);
-		server.InstallChannel(Channels::loadPlanetByName);
+		server.InstallChannel(Channels::QueueResearch);
+		server.InstallChannel(Channels::ChatMessage);
 		server.InstallChannel(Channels::tutorialAt);
+
+		server.InstallChannel(Channels::AllianceInvite);
+		server.InstallChannel(Channels::ClientVote);
+		server.InstallChannel(Channels::AllianceConfigChange);
+
+		server.InstallChannel(Channels::SaveAs);
+
+		server.InstallChannel(Channels::ScriptedAIState);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,(UINT32)UserLevel::Spectator);
-		server.OpenSignalChannel(Protocol::ChannelID::EndConfigurationMode,(UINT32)UserLevel::PlanetConfigurator);
+		server.OpenSignalChannel(Protocol::ChannelID::LeaveAlliance,(UINT32)UserLevel::CommonFaction);
 		
 		server.onSignal = Receiver::OnSignal;
 		server.SetAsync(false);
@@ -326,7 +545,7 @@ namespace Network
 
 			playerMap.Unset(client->faction);
 			client->faction->online = false;
-			Channels::factionOffline.SendTo(server,client->faction->id,2);
+			Channels::factionOffline.SendTo(server,client->faction->id,Channels::Level::Faction);
 		}
 	}
 
@@ -385,6 +604,12 @@ namespace Network
 
 	}
 
+
+	bool		SessionIsSuspended()
+	{
+		return Session::isStarted && !server.IsOnline();
+	}
+
 	bool		SessionIsStarted()
 	{
 		return Session::isStarted;
@@ -394,7 +619,7 @@ namespace Network
 	bool		CloseSession(bool preserveSpectators, bool sendGridChangesToPreservedSpectators/*=true*/)
 	{
 		bool isOnline = Session::isStarted;
-		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Flushing session data.");
+		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Not online: Flushing session data.");
 
 		if (isOnline)
 		{
@@ -402,7 +627,7 @@ namespace Network
 			if (preserveSpectators)
 			{
 				Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
-				Buffer0<TCP::PPeer>	dump;
+				Ctr::Buffer0<TCP::PPeer>	dump;
 				server.VisitAllPeers([&dump](const TCP::PPeer&p)
 				{
 					if (p->userLevel < (UINT32)UserLevel::Spectator)
@@ -435,7 +660,6 @@ namespace Network
 
 
 		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
-		tokenMap.Clear();
 
 		World::Network::HandleSessionClosure();
 		Game::Network::HandleSessionClosure();
@@ -453,7 +677,7 @@ namespace Network
 				d.type = e->isInsertedIntoGrid ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage;
 				d.timestamp.rightNow = true;
 				Channels::destroyEntity.SendTo(server,d);
-			},false);
+			});
 
 		}
 
@@ -468,113 +692,128 @@ namespace Network
 
 	void LogConfig(const String&msg)
 	{
-		Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,nullptr);
+	}
+
+	void		LogServerState()
+	{
+		LogEvent(EventSignificance::Important,Network::DescribeStatus());
+		Network::DescribeConfiguration([](const String&line){LogEvent(EventClass::Preset::configurationPrint, line);});
+		FileIO::RefreshWindowTitle();
+	}
+
+	String		DescribeStatus()
+	{
+		if (server.IsOnline())
+			return "Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.";
+		return "Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.";
 	}
 
 
-
-	void LogServerState()
+	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig)
 	{
-		
-		if (server.IsOnline())
-			Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
-		else
-			Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is created but offline.",nullptr,nullptr,Objects::OwnerParameter());
+		//Logging::WriteEvent(EventSignificance::Important,
+		//FileIO::RefreshWindowTitle();
 
-		FileIO::RefreshWindowTitle();
-
-		if (ConfigurationMode::IsActive())
 		{
-			LogConfig("Server is running in interactive configuration mode.");
-			LogConfig("Log in from localhost to configure and activate.");
-		}
-		else
-		{
-			LogConfig("AI is configured as follows:");
+			logConfig("AI:");
 			if (Game::Config::Nexus::enableAI)
 			{
-				LogConfig(" -Nexus-AI enabled");
-				LogConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
-				//LogConfig(" -NexusTurrets=" + implode(',', State::Config::Nexus::vehicleTurretNames));
+				logConfig(" -Nexus-AI enabled");
+				if (Objects::Faction::nexus && Objects::Faction::nexus->aiScriptName.IsNotEmpty())
+					logConfig(" -Custom AI: " + Objects::Faction::nexus->aiScriptName.IsNotEmpty());
+				else
+					logConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
 			}
 			else
-				LogConfig(" -Disabled");
+				logConfig(" -Disabled");
 
-			LogConfig("This game is configured as follows:");
+			logConfig("Game:");
 			#ifndef NO_HIBERNATION
-				LogConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
+				logConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
 			#endif
 
-			LogConfig(" -Factions: "+Game::Config::FactionSupportFlagString());
+			logConfig(" -Factions: "+Game::Config::FactionSupportFlagString());
 
 			if (World::Config::simulateLiquids)
-				LogConfig(" -Liquids: Expanding.");
+				logConfig(" -Liquids: Expanding.");
 			else
-				LogConfig(" -Liquids: Static.");
+				logConfig(" -Liquids: Static.");
 			switch (RuntimeConfig::gameGoal)
 			{
 				case RuntimeConfig::GameGoal::None:
-					LogConfig(" -Goal: None.");
+					logConfig(" -Goal: None.");
 				break;
 				case RuntimeConfig::GameGoal::ConquerNexus:
 					static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
-					LogConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
+					logConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
 				break;
 			}
 			if (Game::Config::closedGame)
-				LogConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
+				logConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
 			else
-				LogConfig(" -Open: Players can join any time. Game is endless.");
-			if (Game::Config::Nexus::haveBases)
-				LogConfig(" -Nexus-Bases: Nexus bases will be randomly created during world creation");
+				logConfig(" -Open: Players can join any time. Game is endless.");
+			if (Game::Config::Nexus::bases.havePlaced)
+				logConfig(" -Nexus-Bases: Nexus bases have been randomly created during world creation");
 			else
-				LogConfig(" -No Nexus-Bases: Nexus bases will not be created");
+				logConfig(" -No Nexus-Bases: Nexus bases have not been created");
 
 			switch (RuntimeConfig::doomsdayWeapons)
 			{
 				case RuntimeConfig::DoomsdayWeapons::Conceal:
-					LogConfig(" -Doomsday weapons: Treated like normal weapons (must be in sensor range to see)");
+					logConfig(" -Doomsday weapons: Treated like normal weapons (must be in sensor range to see)");
 				break;
 				case RuntimeConfig::DoomsdayWeapons::Disallow:
-					LogConfig(" -Doomsday weapons: Forbidden to fire (can still be built, however)");
+					logConfig(" -Doomsday weapons: Forbidden to fire (can still be built, however)");
 				break;
 				case RuntimeConfig::DoomsdayWeapons::Expose:
-					LogConfig(" -Doomsday weapons: Doomsday explosions are made visible to all factions");
+					logConfig(" -Doomsday weapons: Doomsday explosions are made visible to all factions");
 				break;
 				default:
-					LogConfig(" -Doomsday weapons: "+String(RuntimeConfig::doomsdayWeapons.ToString()));
+					logConfig(" -Doomsday weapons: "+String(RuntimeConfig::doomsdayWeapons.ToString()));
 				break;
 			}
 
 			if (Game::Config::roundTimer > 0)
-				LogConfig(" -Round Timer: Rounds beyond the first may last at most "+String(Game::Config::roundTimer)+" seconds.");
+				logConfig(" -Round Timer: Rounds beyond the first may last at most "+String(Game::Config::roundTimer)+" seconds.");
 			else
-				LogConfig(" -No Round Timer: Rounds end when all players requested so.");
+				logConfig(" -No Round Timer: Rounds end when all players requested so.");
 			if (Game::Config::basesRequired)
-				LogConfig(" -Bases Required: Factions that do not meet the station requirements die after five rounds.");
+				logConfig(" -Bases Required: Factions that do not meet the station requirements die after five rounds.");
 			else
-				LogConfig(" -No Survival Conditions: Factions live forever (although their vehicles/structures might not).");
+				logConfig(" -No Survival Conditions: Factions live forever (although their vehicles/structures might not).");
 			if (Game::Config::startBases)
-				LogConfig(" -Bases: New factions are given minimal bases.");
+				logConfig(" -Bases: New factions are given minimal bases.");
 			else
-				LogConfig(" -Flexibility: New factions are given vehicles, but no structures.");
-			if (Objects::newVehiclesHaveFullAmmo)
-				LogConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
-			else
-				LogConfig(" -No Ammo: New vehicles have zero ammo.");
+				logConfig(" -Flexibility: New factions are given vehicles, but no structures.");
+			#ifndef NO_MUNITION	
+				if (Objects::newVehiclesHaveFullAmmo)
+					logConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
+				else
+					logConfig(" -No Ammo: New vehicles have zero ammo.");
+			#endif
 			if (Game::Config::exposeActionLeftToHostileFactions)
-				LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
+				logConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
 			else
-				LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
+				logConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
 			if (RuntimeConfig::empZones)
-				LogConfig(" -EMP Zones: Vehicles entering residual EMP fields will suffer extensive EMP damage.");
+				logConfig(" -EMP Zones: Vehicles entering residual EMP fields will suffer extensive EMP damage.");
 			else
-				LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
+				logConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
+
+			logConfig("Server:");
+			if (Network::Config::HasServerPassword())
+				logConfig(" -Server Password: Clients must specify the password '"+Network::Config::GetServerPassword()+"' to play.");
+			else
+				logConfig(" -No Password: Anyone can play (who can see/connect to the server).");
 			if (FileIO::Config::saveEveryNRounds > 0)
-				LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
+				logConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 			if (FileIO::Config::saveWhenAllQuit)
-				LogConfig(" -Auto-saves will be created when all quit.");
+				logConfig(" -Auto-save will be created when all quit.");
+
+			if (RuntimeConfig::GameHasEnded())
+				logConfig("This game has ENDED. Clients can connect to view statistics only.");
 		}
 
 
@@ -585,7 +824,7 @@ namespace Network
 	void InvalidOperation(TCP::Peer&peer)
 	{
 		PClient client = To<Client>::Cast(peer.attachment);
-		Logging::WriteEvent(EventClass::Preset::unexpectedBehavior, "Invalid operation performed",&peer,nullptr,client && client->faction ? client->faction : Objects::OwnerParameter());
+		Logging::WriteEvent(EventClass::Preset::unexpectedBehavior, "Invalid operation performed",&peer,nullptr,client && client->faction ? client->faction : nullptr);
 		if (client)
 		{
 			//clients.FindAndErase(client);
@@ -608,6 +847,11 @@ namespace Network
 
 	bool CanControl(const Client&c, const Objects::WorldEntity&e)
 	{
+		if (!c.faction || c.faction->isDead)
+		{
+			LogEvent(EventClass::Preset::commandRejected,c.peer.lock(),"Unable to comply: Your faction has ended");
+			return false;
+		}
 		if (c.faction != e.owner)
 			return false;
 		if (c.wantNewRound)
@@ -640,7 +884,7 @@ namespace Network
 
 	bool CanSeeAsOwner(const Client&c, const Objects::WorldEntity&e)
 	{
-		return c.faction == e.owner || c.isSpectator;
+		return c.faction == e.owner || c.isSpectator || (e.owner->IsAlliedWith(c.faction) && c.faction->alliance->config.exposeEntityDetails);
 	}
 	bool CanSeeAsOwner(const PClient&c, const Objects::PWorldEntity&e)
 	{

@@ -1,12 +1,12 @@
 #ifndef aiProcessH
 #define aiProcessH
 
-#include "../../shared/uniqueID.h"
+#include <uniqueID.h>
+#include <functional>
 
 namespace AIProcess
 {
-	void			Check();
-	void			Begin(const CryptographicID&accessToken);
+	void			Begin(const CryptographicID&accessToken, USHORT serverBasePort, const std::function<String()>&asyncGetServerPassword);
 	void			End();
 }
 

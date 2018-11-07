@@ -1,0 +1,19 @@
+info.txt
+changelog.txt
+client/game.ini
+client/Console Client*.exe
+client/resources/nice/*.txt
+
+BugReporter/BugReporter.exe
+
+server/Server*.exe
+server/config/tutorial.hsf
+predefinedPlanets/*.ini
+server/config/declaration.xml
+lua/*.lua
+lua/*.txt
+lua/distributions/*.lua
+
+ControlConsole/ControlConsole*.exe
+ServerManager/ServerManager.exe
+ServerManager/Protocol.dll

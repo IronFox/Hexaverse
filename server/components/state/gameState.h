@@ -10,6 +10,105 @@
 
 namespace Game
 {
+	
+	DECLARE_POINTER_CLASS(Vote);
+
+
+	/**
+	Non-persistant voting storage.
+	Not written to or restored from savegames.
+	Cleared out on session reset.
+
+
+	New votes are created usng Vote::CreateNew() or Vote::CreateOfGet().
+	The are unique concerning a certain topic given by a sequence of unique IDs.
+	One one vote may be live (or cooling down) per concerning ID sequence.
+
+	New votes must specify a duration (in seconds) for which the vote is live.
+	Once over (regardless of having passed or not), the vote enters a cooldown phase, during which it is maintained, but cannot be voted on.
+	This prevents instanly recreating the vote. It may be set to @a closingAfterSeconds or less, which means it will be closed as soon as it passed.
+
+
+	*/
+	class Vote : public std::enable_shared_from_this<Vote>
+	{
+	public:
+		typedef Objects::PAlliance	PAlliance;
+		typedef std::function<void(const PVote&, const Protocol::VoteResult&rs)> FCallback;
+
+		CONSTRUCT_ENUMERATION4(Quorum,All,TwoThirds, Majority, OneThird);
+		CONSTRUCT_ENUMERATION3(VotesToPass, SimpleMajority, TwoThirds, Unanimous);
+
+		//all const that is of relevance to clients, and may not be changed once sent
+		const TUniqueID		id;
+		const String		phrase;
+		const Timer::Time	created = timer.Now();
+		const float			closingAfterSeconds = 120;	//!< Seconds after creation, when the local vote should time out. It may complete earlier, if sufficient votes have been collected
+		float				clearedAfterSeconds = 720;	//!< Seconds after creation, when the local vote should be removed (including closingAfterSeconds). Cannot effectively be less than closingAfterSeconds
+
+		/**
+		Defines the set of eligible voters. Effectively a filter function that includes voters. May be empty, including all
+		*/
+		typedef std::function<bool(const Objects::PFaction&)>	FScope;
+		FScope			scope;	//defines eligible factions. If empty, concerns all
+		FCallback		onClose;
+		Quorum			quorum;
+		VotesToPass		votesToPass;
+		const Array<TUniqueID>	concerning;
+		
+
+		void			CastVote(const Objects::PFaction&f, bool inFavor);
+		bool			MayVote(const Objects::PFaction&f) const {return !scope || scope(f);}
+		count_t			GetQuorum() const	{return GetQuorum(quorum,CountEligibleVoters());}
+		count_t			CountEligibleVoters() const;
+		bool			IsClosed() const {return closed;}
+		void			Cancel();
+		float			GetAge() const {return timer.GetSecondsSince(created);}
+
+		static count_t	GetVotesToPass(VotesToPass, count_t voters);
+		static count_t	GetQuorum(Quorum q, count_t eligibleVoters);
+
+		/**
+		Checks vote counts, and potentially closes votes.
+		Only necessary to check once at the beginning of each command phase.
+		*/
+		static void		CheckAllVotes();
+		/**
+		Checks votes for any reached timeouts, and performs notifications and cleanup where necessary.
+		Should be called regularly during command phases only.
+		*/
+		static void		CheckAllTimeouts();
+		static void		CastVote(const TUniqueID&voteID, const Objects::PFaction&f, bool inFavor);
+		static PVote	CreateOrGet(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose);
+		static PVote	CreateNew(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds, const FScope&scope, const FCallback&onClose);
+		static void		Flush();
+
+		static PVote	FindConcerning(const ArrayRef<const TUniqueID>&concerning)	{PVote rs; map.Query(concerning,rs); return rs;}
+
+		/**
+		Sends all open votes (on which the specified faction may vote) to the specifed peer
+		*/
+		static void		AdvertiseAllToNewlyConnectedPeer(const Objects::PFaction&f, TCP::Peer&peer);
+
+	private:
+		HashTable<TUniqueID,bool>	votes;
+		static HashTable<TUniqueID,PVote>	all;
+		static HashTable<Array<TUniqueID>,PVote>	map;
+		bool			closed = false;
+
+		/**/			Vote(const ArrayRef<const TUniqueID>&concerning, const String&phrase, float closingAfterSeconds)
+						:id(TUniqueID::New()),phrase(phrase),closingAfterSeconds(closingAfterSeconds),concerning(concerning)	{}
+
+		bool			CheckTimeouts();
+		void			Advertise()	const;
+		void			CheckVotes();
+		void			Close();
+		void			Close(const Protocol::VoteResult&);
+		void			CheckResults(Protocol::VoteResult&rs, bool timedOut)	const;
+
+	};
+
+
 
 	extern float	factionStartMineralValue;	//determined during loading
 
@@ -18,20 +117,33 @@ namespace Game
 	Not decremented when factions die. Restored from savegame.
 	*/
 	extern UINT32			mostFactionsAlive	/*=0*/;
-	extern Objects::PFaction	winner;	//if set indicates game is over
+	extern UINT32			mostAlliancesAlive;
+
+	extern Objects::WAlliance	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
+	extern Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
+
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
-	extern Evolver::Abstract*evolver;
+	//extern Evolver::Abstract*evolver;
 	extern INT32			tutorialAt;
-
+	extern bool				endRoundNow;
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
 
 
 	namespace Config
 	{
+		struct Placement
+		{
+			bool		doPlace=false,
+						havePlaced=false;
+		};
+
+
 		extern int		roundTimer/* = -1*/;
-		extern UINT32	uplinkBandwidth/* = 500*/;
+		#ifndef NO_HIBERNATION
+			extern UINT32	uplinkBandwidth/* = 500*/;
+		#endif
 		extern bool		closedGame/* = false*/,
 						startBases /*= false*/,
 						basesRequired/* = false*/,
@@ -42,8 +154,9 @@ namespace Game
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
+		count_t			CountActuallyAccessibleZones(count_t temporaryFactionCountBonus=0);
 
-		inline count_t	CountAccessibleZones(count_t temporaryFactionCountBonus=0)
+		inline count_t	CountTheoreticallyAccessibleZones(count_t temporaryFactionCountBonus=0)
 		{
 			count_t numZones = mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction
 			numZones = (numZones/factionsPerZone) + !!(numZones % factionsPerZone);
@@ -76,12 +189,12 @@ namespace Game
 		inline void		SetFactionSupportFlagString(const String&supp)
 		{
 			factionSupportFlags = 0;
-			Array<String>	segs;
+			Ctr::Array<String>	segs;
 			explode(',',supp,segs);
 			//bool allGood = true;
 			foreach (segs,seg)
 			{
-				seg->trimThis();
+				seg->TrimThis();
 				if (*seg == "All")
 					factionSupportFlags |= Protocol::GameFlag::AllFactionSupport;
 				else
@@ -102,23 +215,31 @@ namespace Game
 
 
 
-		inline count_t	GetTargetNexusCount()
-		{
-			return RuntimeConfig::empZones
-						? std::min<count_t>(std::max<count_t>(2,CountAccessibleZones()),3) 
-						: 2;	//should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
-		}
+		count_t	GetTargetNexusCount();
+
 
 		namespace Nexus
 		{
-			extern bool		haveBases/* = false*/
-							IF_SATELLITES_P(,haveSatellitesAtopBases/* = true*/)
-							;
+			/**
+			Spawns Nexus bases and the nexus port in its center (regardless of other settings)
+			*/
+			extern Placement	bases;
+
+			/**
+			Spawns a nexus port on each pole. Ports placed due to spawnBases are not replaced
+			*/
+			extern Placement	allPorts;
+
+			/**
+			Spawns various satellites atop nexus bases
+			*/
+			extern Placement	satellitesAtopBases;
+
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;
 			extern UINT32	roundsPerResearchPoint;
-			extern Array<Objects::Component::Turret*>	vehicleTurrets;
+			extern Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
 	
@@ -130,13 +251,22 @@ namespace Game
 	namespace Network
 	{
 	
-		static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
+		static const UINT32 BaseNotifyForeigners = 
+											  Objects::WorldEntity::PositionChanged 
+											| Objects::WorldEntity::StartedBuilding 
+											| Objects::WorldEntity::StoppedBuilding 
 											| Objects::WorldEntity::HealthChanged 
 											| Objects::WorldEntity::EnableChanged 
 											| Objects::WorldEntity::EMPDamageChanged
 											| Objects::WorldEntity::HibernationChanged;
 
+		static const UINT32 NotifyAllies = BaseNotifyForeigners
+											| Objects::WorldEntity::ActionChanged
+											| Objects::WorldEntity::NexusControlChanged;
 
+		UINT32		NotifyForeignerFlags();
+
+		UINT32		AssembleGameFlags(bool allowSpectatorFactions);
 		void		AssembleGameConfig(Protocol::GameConfig&info, bool allowSpectatorFactions);
 		void		AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions);
 		/**
@@ -145,16 +275,63 @@ namespace Game
 		@param timeWindow Change parameter. Usage depends on phase
 		*/
 		void		ChangePhase(RuntimeConfig::Phase to, float timeWindow = -1);
+
+		enum class Expose
+		{
+			None				= 0x0,
+			Stability			= 0x1,		//Doubles as compound stability and whether a mobile entity must be moved manually to complete some job
+			SleepState			= 0x2,		//whether entity is sleeping or not 
+			Automation			= 0x4,		//whether entity is automated or not
+			MyMobileEntity		= 0x8,		//Includes motion and/or production tasks, storedIn, constructionActionCounter
+			Action				= 0x10,		//implicitly set if Config::exposeActionLeftToHostileFactions is true
+			StructureTasks		= 0x20,		//includes mobile entity producer and tower attack queue
+			MineState			= 0x40,		//includes natural resource vector and core-connection
+			NexusControl		= 0x80,		//resistance and control state of described nexus port
+			StructureStorage	= 0x100,	//resources stored in described structure
+		};
+
+		inline constexpr Expose operator|(Expose a, Expose b)
+		{
+			return (Expose)(((std::underlying_type<Expose>::type)a) | ((std::underlying_type<Expose>::type)b));
+		}
+		inline constexpr bool operator&(Expose a, Expose b)
+		{
+			return (((std::underlying_type<Expose>::type)a) & ((std::underlying_type<Expose>::type)b)) != 0;
+		}
+
+
+		static const constexpr Expose	ExposeAll = (Expose)std::numeric_limits<std::underlying_type<Expose>::type>::max();
+		static const constexpr Expose	ExposeToForeigners = Expose::None;
+		static const constexpr Expose	ExposeToAllies = Expose::SleepState | Expose::Automation | Expose::Action | Expose::MineState | Expose::NexusControl;
+
+
+		inline Expose		GetExposition(const Objects::PFaction&entityOwner,const Objects::PFaction&recipientFaction)
+		{
+			if (entityOwner == recipientFaction)
+				return ExposeAll;
+			if (!entityOwner->IsAlliedWith(recipientFaction))
+				return ExposeToForeigners;
+			return entityOwner->alliance->config.exposeEntityDetails ? ExposeAll : ExposeToAllies;
+		}
+
 		void		Describe(Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex);
-		void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
-		void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
-		void		Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
+		void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
+		void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
+		void		Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose);
+
 		void		Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element);
 		void		Describe(Protocol::AttackTask&task, const Objects::Tower::AttackTask&element);
-		void		Describe(Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
-		void		Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp);
-
-
+		/**
+		Bakes the specified structure to the given state
+		@param[out] state State container to write to
+		@param s Structure to read the state from
+		@param owned Set true if either the recipient is the actual owner or is in an alliance with the owner, and shared details is active
+		@param timestamp Timestamp to set in the resulting state
+		@param changeFlags Flag bits of information to include in the state description. Should include only changed attributes
+		@param include Flag bits of information that the recipient is allowed to see.
+		*/
+		void		Describe(Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
+		void		Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose);
 
 		/**
 		Detects resource coverage changes within the specified sphere, and notifies the local faction client, if any
@@ -180,13 +357,30 @@ namespace Game
 		*/
 		void		HandleSessionRestart();
 
+		void		SendStatisticsTo(TCP::Peer & peer, const Objects::PFaction & faction);
+
 
 	}
 
 
+	void			StartAIIfEnabled();
+	void			StartAI();
+
+
+
+	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);
+	count_t			CountLivingPlayerFactions();
+	count_t			CountLivingPlayerAlliances();
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()
 
+
+	/**
+	Sets the game winner to the specified faction.
+	Updates game phase to EndOfGame, and notifies all clients.
+	Winner must have been empty before.
+	*/
+	void			DeclareWinner(const Objects::PAlliance&winningAlliance, const String&reason, bool ignoreSessionState=false);
 
 	/**
 	Redetermines the mineral value offset used to calculate when to spawn AI units
@@ -200,6 +394,18 @@ namespace Game
 	#endif
 
 
+	Evolver::Abstract*	GetEvolver();
+	void			SetDefaultEvolver();
+
+	/**
+	Executes BeginRoundProcessing() of the active evolver
+	*/
+	void			BeginRoundProcessing();
+	void			FinishRoundProcessing();
+	bool			ContinueRoundProcessing();
+
+	bool			IsProcessingRound();
+
 	/**
 	Detects all changes in entities and world states and sends updates to the respective clients
 	@param thoroughly If set, also checks faction terrain changes that currently offline
@@ -210,10 +416,10 @@ namespace Game
 	Updates EMP damage caused by residual EMP fields. This is called automatically at the end of round processing
 	*/
 	void			UpdateResidualEMPDamage(float&atTime);
+	void			ApplyEMPZoneDamage(const Objects::PWorldEntity&e,float&atTime);
 
 
-	void			SpawnNexusBaseAtPoleWithPort(int pole);
-	void			SpawnNexusPortAtPole(int pole);
+
 
 	/**
 	Spawns all units required by a new faction.

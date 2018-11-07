@@ -1,0 +1,15 @@
+{{ img:units/Rocket Launcher.png|Rocket Launcher}}
+=Rocket Launcher=
+*  Cost: %Minerals%15
+*  [[concepts/initiative|Initiative]]: 100
+*  [[concepts/vehicle|Weight]]: 3
+*  Base [[concepts/scanning range]]: 5
+*  Health: x2
+*  Offensive turret
+*  [[concepts/attack range|Base horizontal attack range]]: 4 (Missile)
+*  Does not require ammunition
+*  2 attacks per round
+*  Explosion radius: 1
+*  Damage: 7
+Units or ground locations can be attacked if in range.
+The Rocket Launcher turret intercepts hostile mobile units during their movement [[concepts/phase]]. It is thus particularly well suited to defend strategically important regions.

@@ -7,7 +7,7 @@
 #include "turretBase.h"
 #include "types.h"
 #include "hibernating.h"
-#include "luaAttribute.h"
+#include "research/attributes.h"
 #include "description.h"
 #include "entityCommand.h"
 #include "geometry.h"
@@ -19,7 +19,7 @@
 struct SharedPtrHash
 {
 	template <typename T>
-	static hash_t	hash(const std::shared_ptr<T>&ptr)
+	static hash_t	ComputeHash(const std::shared_ptr<T>&ptr)
 	{
 		return (hash_t)ptr.get();
 	}
@@ -33,7 +33,7 @@ namespace Objects
 	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
-	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
+	extern HashTable<TUniqueID,PWorldEntity>	idMap;
 
 
 	#ifdef HAS_WINDOW
@@ -43,6 +43,7 @@ namespace Objects
 
 
 	#endif
+
 
 
 	/**
@@ -55,7 +56,7 @@ namespace Objects
 	{
 	protected:
 
-		/**/						BaseEntity(const Grid::LCellIdI&at) : location(at), system(Matrix<>::eye4), inverse(Matrix<>::eye4)
+		/**/						BaseEntity(const Grid::LCellIdI&at) : location(at), system(M::Matrix<>::eye4), inverse(M::Matrix<>::eye4)
 		{
 			#ifndef CLIENT
 			{
@@ -76,7 +77,7 @@ namespace Objects
 		#endif
 
 		struct TEmpty{};
-		/**/						BaseEntity(TEmpty) : location(Grid::LCellIdI::Invalid), system(Matrix<>::eye4), inverse(Matrix<>::eye4)
+		/**/						BaseEntity(TEmpty) : location(Grid::LCellIdI::Invalid), system(M::Matrix<>::eye4), inverse(M::Matrix<>::eye4)
 		{
 			id = TUniqueID::Empty();
 		}
@@ -94,12 +95,15 @@ namespace Objects
 		TUniqueID					id;
 
 
-		TMatrix4<>					system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
-		TMatrix4<>					inverse;	//!< inverse of system
+		M::TMatrix4<>				system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
+		M::TMatrix4<>				inverse;	//!< inverse of system
+
+		static float				GetScaleAtHeight(int h) {return h < 0 ? Grid::ToRadius(h) / Grid::MeanPlanetRadius : 1;}
+		static float				GetScaleAtRadius(float r) {return r < Grid::MeanPlanetRadius ? r / Grid::MeanPlanetRadius : 1;}
 
 
-		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
-		static TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
+		const M::TVec3<>&			GetWorldPosition() const {return system.w.xyz;}
+		static M::TVec3<>			GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -111,7 +115,7 @@ namespace Objects
 
 			void					UpdateNiceName();
 			/**
-			Similar to GetName() but tries to avoid hash numbers by using word combinations (duplicates may occur)
+			M::Similar to GetName() but tries to avoid hash numbers by using word combinations (duplicates may occur)
 			*/
 			const String&			GetNiceName() const;
 		#else
@@ -122,53 +126,11 @@ namespace Objects
 		*/
 		virtual String				GetTypeName() const = 0;
 		/**
-		Same as GetTypeName() except, that a ConstName enumeration value is returned
+		Retrieves the ConstName-based type of the local instance
 		Remember that these name indices may change during version updates and can therefore
 		NOT be used for disk IO.
 		*/
-		virtual ConstName			GetCTypeName() const = 0;
-
-	
-	
-	};
-
-
-	class BaseAttributeCache
-	{
-	public:
-		static index_t			versionCounter;
-
-	};
-
-	template <typename T>
-		class LuaAttributeCache : public BaseAttributeCache
-		{
-			typedef BaseAttributeCache	Super;
-		public:
-			index_t				versionCounter=InvalidIndex;
-			T					cached;
-			template <typename F1, typename F2>
-				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
-			template <typename F1>
-				T				GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return GetEMPModified(e,source,LuaAttribute<T,NoFilter>());}
-			template <typename F1, typename F2>
-				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus);
-			template <typename F1>
-				String			DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source)	{return DescribeEMPModified(e,source,LuaAttribute<T,NoFilter>()); }
-			template <typename T2, typename F1, typename F2>
-				T				Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum);
-			bool				IsCurrent() const {return versionCounter == Super::versionCounter;}
-			T					Update(T newValue) {cached = newValue; versionCounter = Super::versionCounter; return cached;}
-			void				Invalidate() { versionCounter = InvalidIndex; }
-		};
-
-	class CachedAttributes
-	{
-	public:
-		LuaAttributeCache<float>	groundScanningRange,
-									maxScanningRange,
-									horizontalAttackRange;
-		LuaAttributeCache<int>		maxHealth,constructionCost;
+		virtual EntityType			GetType() const = 0;
 	};
 
 
@@ -176,10 +138,10 @@ namespace Objects
 	{
 	public:
 		//all functions here take the research state of an owning faction into account
-		LuaAttribute<int,NoFilter>			maxHealth,
-											constructionCost;
-		LuaAttribute<float,UnitScaleFilter>	maxScanningRange;
-		LuaAttribute<bool,NoFilter>			isUnlocked;
+		Research::Attribute<int>	maxHealth,
+									constructionCost;
+		Research::Attribute<float>	maxScanningRange;
+		Research::Attribute<bool>	isUnlocked;
 	};
 
 	
@@ -203,7 +165,7 @@ namespace Objects
 		}
 
 		#ifdef HAS_WINDOW
-			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
+			bool					TestIntersection(const Geometry&geo, const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const;
 		#endif
 
 
@@ -212,16 +174,8 @@ namespace Objects
 
 
 	public:
-		struct TRegisteredSensor
-		{
-			Grid::LCellIdI			location = Grid::LCellIdI::Invalid;
-			int						empDamageLevel=0;
+		typedef Buffer0<World::Sensor>		RegisteredSensorStorage;
 
-			bool					IsSet() const {return location != Grid::LCellIdI::Invalid;}
-			bool					operator==(const TRegisteredSensor&other) const {return location == other.location && empDamageLevel == other.empDamageLevel;}
-			bool					operator!=(const TRegisteredSensor&other) const {return !operator==(other);}
-			String					ToString() const {return location.ToString()+"_e"+String(empDamageLevel);}
-		};
 		#ifndef CLIENT
 			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times
 			Random					entityRandom;
@@ -232,34 +186,23 @@ namespace Objects
 
 		#endif
 
-		mutable CachedAttributes	cache;	//less wrong to make this mutable in const methods, than changing all const methods that don't actually change their respective object
+		static const Research::Attributes::Table& GetResearchState(const OwnerParameter&owner);
+		const Research::Attributes::Table&GetResearchState() const;
 
-		Lua::Reference				GetResearchState() const;
 		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
 
-		inline void					SyncTime(float&remoteTime, float timeOffset)
+		
+		inline void				SyncTime(float&remoteTime)
 		{
 			#ifndef CLIENT
-				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeOffset;
-			#endif
-		}
-		inline void					SyncTime(float&remoteTime)
-		{
-			#ifndef CLIENT
-				remoteTime = entityTime = std::max(entityTime,remoteTime);
+				remoteTime = entityTime = std::max(entityTime,remoteTime) + timeEpsilon;
 			#endif
 		}
 
-		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
-		{
-			#ifndef CLIENT
-				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeOffset;
-			#endif
-		}
 		inline void					SyncTime(WorldEntity&other, float&remoteTime)
 		{
 			#ifndef CLIENT
-				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime));
+				other.entityTime = remoteTime = entityTime = std::max(entityTime,std::max(remoteTime,other.entityTime)) + timeEpsilon;
 			#endif
 		}
 
@@ -271,7 +214,7 @@ namespace Objects
 			//typedef Objects::Command::Base		Command;
 //			typedef Objects::FCommandVisitor	FCommandVisitor;
 
-			OpenAL::Source			ambientSound;
+			Engine::OpenAL::Source	ambientSound;
 		#endif
 
 		/**
@@ -295,6 +238,7 @@ namespace Objects
 		#ifndef CLIENT
 			enum changeType_t
 			{
+				CompleteChange = 0xFFFFFFFF,
 				Unchanged = 0x0,
 				HealthChanged = 0x1,
 				PositionChanged = 0x2,
@@ -309,6 +253,10 @@ namespace Objects
 				HibernationChanged = 0x400,
 				OrbitalConnectionChanged = 0x800,
 				SleepChange = 0x1000,
+				StartedBuilding = 0x2000,
+				StoppedBuilding = 0x4000,
+				StoredInChanged = 0x8000,
+				GatheringPointChanged = 0x10000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
@@ -321,28 +269,41 @@ namespace Objects
 				changeTimer = -std::numeric_limits<float>::max();
 			}
 
-			void					RegisterChange(changeType_t type, float timeAt)
+			void					SignalChangeByExternalCause(changeType_t type, float&timeAt)
 			{
 				changeFlags |= type;
-				changeTimer = std::max(changeTimer,timeAt);
+				SyncTime(timeAt);
+				changeTimer = entityTime;
 			}
-			void					SignalChange(changeType_t type, float timeAt)	{RegisterChange(type,timeAt);}
-
-
-			//Buffer0<PWorldEntity>	seenBy,
-				//					seeing;
-			void					SetSleep(bool doSleep, float&t, bool signalToStructure=true)
+			void					RegisterChange(changeType_t type)
 			{
-				if (sleeping == doSleep)
-					return;
-				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
+				changeFlags |= type;
+				entityTime += timeEpsilon;
+				changeTimer = entityTime;
+			}
 
-				sleeping = doSleep;
-				RegisterChange(SleepChange,t);
-				if (signalToStructure)
+
+			/**
+			Alters the sleep-state of the local entity, typically as a result to client action
+			@param doSleep Set true if the entity is supposed to sleep, false if it is supposed wake
+			@param[in,out] Processing time to signal changes at. Often but not always irrelevant (0'ish)
+			*/
+			void					SetSleep( bool doSleep, float&t )
+			{
+				if (UpdateSleepState(doSleep,t))
 					OnSleepChange(t);
 			}
 			
+			/**
+			Direct set method called by IO state deserialization.
+			No callbacks or other state changes are performed.
+			Entity and change time remain unchanged.
+			Do NOT call under non-IO runtime conditions
+			*/
+			void					OverrideSetSleeping( bool doSleep )
+			{
+				sleeping = doSleep;
+			}
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
@@ -358,7 +319,7 @@ namespace Objects
 			}
 		#endif
 		//virtual bool				CanSee(const PWorldEntity&other)	const;
-		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
+		//virtual bool				CanSee(const M::TVec3<>&center, float radius)	const;
 
 
 		/**
@@ -372,7 +333,8 @@ namespace Objects
 
 
 
-		virtual int					GetConstructionCost() const;	//!< Retrieves the minerals required to construct a new instance of this structure
+		int							GetConstructionCost() const;	//!< Retrieves the minerals required to construct a new instance of this structure
+		virtual int					GetConstructionCost(const PFaction&owner) const;	//!< Retrieves the minerals required to construct a new instance of this structure if it were owned by the specified faction
 
 		/**
 		Queries the entity height in layers. Most entities have height=1
@@ -383,6 +345,12 @@ namespace Objects
 		Connectors are not broad, everything else (ATM) is broad.
 		*/
 		virtual bool				IsBroad() const {return true;}
+
+		/**
+		Checks whether the local type supports a queue of tasks that can be cleared
+		*/
+		virtual bool				SupportsTaskQueue() const {return false;}
+
 
 		#ifndef NO_HIBERNATION
 			/**
@@ -413,54 +381,66 @@ namespace Objects
 		virtual void				OnDestroy(RemovalType, float&atTime)	{};	
 
 		/**
-		Signals that the local entity has been created.
-		Structures should handle compound disconnections and struct count decreases.
+		Signals that the local entity has been created, and placed in the world, or registered off-grid for the first time.
+		Structures should handle new compound connections and struct count increases.
+		Other types may load ammunition, depending on configuration.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
+		@param freshConstruction True if this entity has just been created, false if reconstructed from storage or savegames
 		*/
-		virtual void				OnConstructionFinished(float&atTime);
+		virtual void				OnInsert(float&atTime, bool freshConstruction);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).
 		*/
 		virtual void				PrototypeSetup()	{};
 
+		String						GetNameAndOwner() const;
 
-		virtual int					GetMaxHealth() const;
-		virtual String				DescribeMaxHealth() const;
+		virtual int					GetMaxHealth(const OwnerParameter&) const;
+		virtual String				DescribeMaxHealth(const OwnerParameter&) const;
+		int							GetMaxHealth() const	{return GetMaxHealth(owner);}
+		String						DescribeMaxHealth() const	{return DescribeMaxHealth(owner);}
 		/**
 		Queries the current scanning radius of the local entity, including research and EMP effects.
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
-		virtual float				GetScanningRange() const;
+		virtual float				GetScanningRange(const OwnerParameter&) const;
+		float						GetScanningRange() const	{return GetScanningRange(owner);}
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
+		float3						GetScanningCenter() const {return GetScanningCenter(location);}
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
-		virtual String				DescribeScanningRange() const;
+		virtual String				DescribeScanningRange(const OwnerParameter&) const;
+		String						DescribeScanningRange() const	{return DescribeScanningRange(owner);}
 		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
-		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2);}
+		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2.f);}
 		
 		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
-		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld) const;
+		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
 		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;
 		bool						CanHit(const TrajectoryEndPoint&dest) const;
 		bool						IsSleeping() const {return sleeping;}
+		virtual bool				IsAutomated() const {return false;}
+
+		bool						IsAlive() const {return health > 0;}
+		bool						IsDeadOrGhost() const {return health <= 0;}
 
 		virtual bool				AwaitsUserInteraction() const {return false;}
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 
 			/**
 			Forces all tasks to be dropped that do not result in resource loss. Other tasks must remain
@@ -474,8 +454,9 @@ namespace Objects
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
 
-		virtual bool				IsUnlockedAtState(const Lua::Reference&researchState) const	{return GetTable()->isUnlocked.GetValue(researchState);}
+		virtual bool				IsUnlockedAtState(const Research::Attributes::Table&table) const	{return GetTable()->isUnlocked.GetValue(table);}
 		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
+		virtual bool				CanBeUnlocked() const {return GetTable()->isUnlocked.IsFunctionOrConstNonZero();}
 		virtual bool				IsVehicle() const {return false;}
 		#ifndef NO_SATELLITES
 			virtual bool			IsSatellite() const {return false;}
@@ -495,26 +476,27 @@ namespace Objects
 		empty.
 		*/
 		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
+		virtual PHangar				CastToHangar() {return nullptr;}
 		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const;
 
 		/**
-		Checks if the local entity is currently above the regular grid (e.g. a satellite)
+		Checks if the local entity is currently above the regular terrain (e.g. a satellite)
 		*/
-		inline bool					IsAboveGrid() const	{return IsAboveGrid(location);}
-		static inline bool			IsAboveGrid(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
+		inline bool					IsAboveTerrain() const	{return IsAboveTerrain(location);}
+		static inline bool			IsAboveTerrain(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
 
 		/**
-		Checks whether or not a new instance of the local class can be spawned within the world grid
+		Checks whether or not a new instance of the local class can be spawned within the terrain grid
 		*/
-		virtual bool				CanSpawnInGrid() const {return true;}
+		virtual bool				CanSpawnInTerrain() const {return true;}
 		/**
-		Checks whether or not a new instance of the local class can be spawned above grid
+		Checks whether or not a new instance of the local class can be spawned above the terrain grid
 		@param[out] outHeight Height that a new instance can be spawned at. Not updated if the method returns false
 		@return true, if a new instance can be spawned above grid. @a outHeight will be updated to a valid non-grid height in this case
 		*/
-		virtual bool				CanSpawnAboveGrid(int&outHeight) const {return false;}
+		virtual bool				CanSpawnAboveTerrain(int&outHeight) const {return false;}
 
 		/**
 		Sentry entities automatically fill their attack queue
@@ -527,12 +509,6 @@ namespace Objects
 		#endif
 
 
-
-		inline void					TakeDamage(int damageLevel)
-		{
-			health -= damageLevel;
-		}
-
 		/**
 		Iterates through all sensors of the local entity
 		@param loc Location to use as entity location (the actual entity location is ignored)
@@ -541,17 +517,16 @@ namespace Objects
 		*/
 		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const;
 
-		void					RegisterSensory(float&atTime) {registeredSensor = RegisterSensory(location,atTime);}
-		void					UnregisterSensory(float&atTime)  {UnregisterSensory(registeredSensor,atTime);}
-		bool					SensoryIsRegistered() const {return registeredSensor.IsSet();}
+		void					RegisterSensory(float&atTime) {RegisterSensory(registeredSensors,location,atTime);}
+		void					UnregisterSensory(float&atTime)  {UnregisterSensory(registeredSensors,atTime);}
+		bool					SensoryIsRegistered() const {return registeredSensors.IsNotEmpty();}
 
 		/**
-		Re-registers the current sensory with the faction.
-		Assumes that grid sensory has been previously flushed
+		Inserts the all local sensors into the specified target world around the local entity location
 		*/
-		void					ReapplySensory(float&atTime);
-		TRegisteredSensor		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
-		void					UnregisterSensory(TRegisteredSensor&, float&atTime);
+		void					InsertSensoryInto(World::Data&target, float&atTime);
+		void					RegisterSensory(RegisteredSensorStorage&, const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					UnregisterSensory(RegisteredSensorStorage&, float&atTime);
 		void					MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#ifdef HAS_WINDOW
@@ -559,10 +534,24 @@ namespace Objects
 			Stores a description of the local type in the specified label
 			@param[out] label Label to store the description in
 			@param deskFlags Combination of descFlag_t to fine-tune the generation process
+			@param overrideOwner Owner to use
 			*/
-			virtual void	DescribeType(Description&label, UINT32 descFlags);
+			virtual void	DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&);
+			void			DescribeTypeOfThis(Description&label, UINT32 descFlags)	{DescribeType(label,descFlags,owner);}
 		#endif
 		void				AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const;
+
+
+		/**
+		Removes all removable matter in the occupied area of the local entity.
+		Currently only lava is considered unremovable.
+		If the local entity is indestructible, then all detected matter is removed.
+		@param atTime Time to trigger any terrain change at
+		@return True if all found matter could be removed, false otherwise. If the method returns false, the local entity should be destroyed by the caller.
+		The method never returns false for indestructible entities
+		*/
+		bool				ClearOccupiedTerrain(float atTime) const;
+		bool				ClearOccupiedTerrain(World::Data&world, float atTime) const;
 
 
 		#ifdef CLIENT
@@ -585,12 +574,18 @@ namespace Objects
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
 				/**
-				Visits each visual command the local entity provides
-				@param visitor Callback function to call for every command
-				@param force Set true to also visit commands that are currently hidden. False will visit only the currently selected command tree branch
+				Gets or constructs a global list of all commands associated with the local entity.
+				The return value must not be permanently stored or deleted.
+				Should not be called with a high frequency.
+				@param dynamicStorage Optional storage to put dynamically allocated or otherwise maintained commands into.
+						If used, the method MUST also return @b &dynamicStorage, because it will not be read otherwise.
+						This storage must be empty when passed to GetCommands(), as the method is expected to simply append to it.
+				@return Pointer to a container of all local commands, or NULL, if no commands exist.
+						May point to @b &dynamicStorage if the result needs to be constructed on the fly.
+						Must NOT be deleted.
 				*/
-				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) {};
-				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const=0;
+				virtual const CC*	GetCommands(CC&dynamicStorage) const {return nullptr;}
+				virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const=0;
 			#endif
 	
 			/**
@@ -598,16 +593,19 @@ namespace Objects
 			*/
 			void					UpdateEMPDamage(int damageLevel, bool isCreated=true);
 		#else
+			virtual void			SignalTerrainChange(float atTime);
 
-			void					HandleEMPDamage(int damageLevel, float&atTime)
+
+			bool					HandleEMPDamage(const int newDamage, float&atTime)
 			{
-				int newDamage = std::max(empDamageLevel,damageLevel);
-				if (newDamage == empDamageLevel)
-					return;
+				if (newDamage <= empDamageLevel)
+					return false;
 				UnregisterSensory(atTime);
+				LogEvent(EventSignificance::Common,this,"Altering EMP damage level "+String(empDamageLevel)+"->"+String(newDamage));
 				empDamageLevel = newDamage;
-				RegisterChange(EMPDamageChanged,atTime);
 				RegisterSensory(atTime);
+				SignalChangeByExternalCause(EMPDamageChanged,atTime);
+				return true;
 			}
 			/**
 			Removes all present emp damage. Should generally only be done for nexus entities
@@ -616,10 +614,11 @@ namespace Objects
 			{
 				if (empDamageLevel > 0)
 				{
+					LogEvent(EventSignificance::Common,this,"Healing all EMP damage");
 					UnregisterSensory(atTime);
 					empDamageLevel = 0;
-					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
+					SignalChangeByExternalCause(EMPDamageChanged,atTime);
 				}
 			}
 			void					HealEMPDamage(float&atTime)
@@ -628,72 +627,46 @@ namespace Objects
 				{
 					UnregisterSensory(atTime);
 					empDamageLevel--;
-					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
+					SignalChangeByExternalCause(EMPDamageChanged,atTime);
+					LogEvent(EventSignificance::Common,this,"Healing EMP damage level ->"+String(empDamageLevel));
 				}
 			}
 
-		private:
-			//static void				MapVisibilityBetween(const PWorldEntity&, const PWorldEntity&, float&atTime);
 
 		#endif
 
-		private:
-			TRegisteredSensor		registeredSensor;
+		/**
+		Updates the locally registered sensor to the current entity location.
+		Called ONLY by factions or client side grid handling when they repaint sensory.
+		Never call otherwise.
+		*/
+		void					OverrideSetRegisteredSensorToCurrentLocation();
+
+	protected:
+		#ifndef CLIENT
+			/**
+			Alters the sleep-state of the local entity, typically as a result to client action.
+			OnSleepChange() is NOT called.
+			@param doSleep Set true if the entity is supposed to sleep, false if it is supposed wake
+			@param[in,out] Processing time to signal changes at. Often but not always irrelevant (0'ish)
+			*/
+			bool					UpdateSleepState( bool doSleep, float&t )
+			{
+				if (sleeping == doSleep)
+					return false;
+				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
+
+				sleeping = doSleep;
+				SignalChangeByExternalCause(SleepChange,t);
+				return true;
+			}
+		#endif
+	private:
+		RegisteredSensorStorage	registeredSensors;
 
 	};
 
-
-
-
-	template <typename T>
-		template <typename F1, typename F2>
-			T	LuaAttributeCache<T>::GetEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
-			{
-				if (versionCounter != Super::versionCounter)
-				{
-					versionCounter = Super::versionCounter;
-					T val = source.GetValue(e.GetResearchState());
-					if (bonus.IsSet())
-						val += bonus.GetValue(e.GetResearchState());
-					cached = val;
-				}
-				return WorldEntity::StaticEMPModify(cached,2.f * Grid::UnitScale,e.empDamageLevel);;
-			}
-	template <typename T>
-		template <typename F1, typename F2>
-			String	LuaAttributeCache<T>::DescribeEMPModified(const WorldEntity&e,const LuaAttribute<T,F1>&source,const LuaAttribute<T,F2>&bonus)
-			{
-				if (bonus.IsSet())
-				{
-					String bonusStr = bonus.Describe(e.GetResearchState());
-					if (bonusStr != "0")
-					{
-						T val = source.GetUnfilteredValue(e.GetResearchState())
-							+ bonus.GetUnfilteredValue(e.GetResearchState());
-
-						return String(val)+" [="+source.Describe(e.GetResearchState()) + "+"+bonusStr+" (bonus)]";
-					}
-				}
-			
-				return source.Describe(e.GetResearchState());
-			}
-	template <typename T>
-		template <typename T2,typename F1, typename F2>
-			T	LuaAttributeCache<T>::Get(const Lua::Reference&researchState, const LuaAttribute<T,F1>&source, const LuaAttribute<T2,F2>&multiplier, T minimum)
-			{
-				if (versionCounter != Super::versionCounter)
-				{
-					versionCounter = Super::versionCounter;
-					T val = source.GetValue(researchState);
-					if (multiplier.IsSet())
-						val*=multiplier.GetValue(researchState);
-					
-					val = vmax(val, minimum);
-					cached = val;
-				}
-				return cached;
-			}
 
 
 	PWorldEntity							GetEntity(const TUniqueID&id);

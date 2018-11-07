@@ -3,25 +3,24 @@
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "faction.h"
+#include <runtimeConfig.h>
 
 namespace Objects
 {
 	/*static*/ Observable<Hangar&,Hangar::TStored&>	Hangar::onStored;
 
-	#ifdef HAS_WINDOW
-		/*static*/ index_t			Hangar::storeOffset;
-		/*static*/ Command::PBase		Hangar::cmdLeft,
-									Hangar::cmdRight;
-		/*static*/ int2				Hangar::cmdLeftCoords,
-									Hangar::cmdRightCoords;
-
-	#endif
 
 	/*static*/ void		Hangar::StaticSetup()
 	{
 	
 
 
+	}
+
+	/*virtual*/ void	Hangar::VisitStored(const std::function<void(const PMobileEntity&)>&visitor) const
+	{
+		foreach (stored,s)
+			visitor(s->entity.lock());
 	}
 
 
@@ -31,6 +30,7 @@ namespace Objects
 			if (s->entity.lock() == v)
 			{
 				stored.erase(s);
+				OnStorageChanged();
 				return true;
 			}
 		return false;
@@ -52,7 +52,7 @@ namespace Objects
 			for(const auto&v:stored)
 			{
 				ASSERT1__(!v.entity.expired(),ToEntity().GetName());
-				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,t,false,true);
+				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,t);
 			}
 		#endif
 		stored.Clear();
@@ -65,6 +65,7 @@ namespace Objects
 			ASSERT3__(v->storedIn.lock().get() == this,v->GetName(),v->storedIn.lock()->ToEntity().GetName(),ToEntity().GetName());
 			v->storedIn.reset();
 			ASSERT2__(RemoveStored(v),v->GetName(),ToEntity().GetName());
+			OnStorageChanged();
 		}
 
 	#endif
@@ -73,7 +74,7 @@ namespace Objects
 	{
 		auto&self = ToEntity();
 		ASSERT1__(v,self.GetName());
-		v->SyncTime(self,atTime,timeEpsilon);
+		v->SyncTime(self,atTime);
 
 		#ifndef CLIENT
 		{
@@ -83,6 +84,7 @@ namespace Objects
 				LogEvent(EventClass::Preset::commandRejected,&self,"Failed to check out "+v->GetNiceName()+": "+error);
 				return;
 			}
+			v->lastDeployment = RuntimeConfig::roundNumber;
 		}
 		#endif
 
@@ -92,14 +94,17 @@ namespace Objects
 		#endif
 		ASSERT3__(v->storedIn.lock().get() == this, v->GetName(),v->storedIn.lock()->ToEntity().GetName(),self.GetName());
 		ASSERT2__(RemoveStored(v),v->GetName(),self.GetName());
-		LogEvent(EventSignificance::Debug,&self,"Checking out "+v->GetName()+" to "+targetLocation.ToString());
+		LogEvent(EventSignificance::Debug,&self,"Checking out "+v->GetName()+" to "+ToString(targetLocation));
+
+		bool doInsert = true;
+
 		#ifndef CLIENT
 			MobilePlacementResult rs = v->PlaceExactlyAt(targetLocation,0.f,0.f,false,false,true);
-			if (rs != MobilePlacementResult::PlacementOkay && rs != MobilePlacementResult::PlacementOkayFellDown)
+			if (Failed(rs))
 			{
-				if (v->health <= 0)
+				if (v->IsDeadOrGhost())
 				{
-					LogEvent(EventSignificance::Debug,&self,v->GetName()+" did not survive checkout to "+targetLocation.ToString());
+					LogEvent(EventSignificance::Debug,&self,v->GetName()+" did not survive checkout to "+ToString(targetLocation));
 				}
 				else
 				{
@@ -109,25 +114,34 @@ namespace Objects
 			}
 			else
 			{
-				v->RegisterChange(WorldEntity::PositionChanged,atTime);
-				ASSERT3__(v->location.stackID == targetLocation.stackID,self.GetName(),v->GetName(),targetLocation.ToString());
+				doInsert = rs != MobilePlacementResult::EnteredHangar;
+				v->RegisterChange(WorldEntity::PositionChanged);
+				//as it turns out, inserting into a hangar does not guarantee it actually ends up in the hangar directly selected,
+				//but is relocated to some other connected hangar. So only check if we do not insert into the grid
+				DBG_ASSERT4__(!doInsert || v->location.stackID == targetLocation.stackID,self.GetName(),v->GetName(),targetLocation, v->location);
 			}
 		#else
-			v->preAnimationLocation = v->location = targetLocation;
+			v->location = targetLocation;
 		#endif
-		if (v->health > 0)
+		if (doInsert)
 		{
-			InsertConstructed(v,atTime);
-			#ifndef CLIENT
-				v->SignalDeployment();
-			#endif
+			if (v->IsAlive())
+			{
+				InsertConstructed(v,atTime);
+				#ifndef CLIENT
+					v->SignalDeployment();
+				#endif
+			}
+			else
+				v->storedIn.reset();
+			ASSERT__(v->storedIn.expired());
 		}
-		else
-			v->storedIn.reset();
-		ASSERT__(v->storedIn.expired());
 		#ifdef _DEBUG
 			CheckMobileEntitySanity();
 		#endif
+
+		OnStorageChanged();
+		v->SyncTime(self,atTime);
 	}
 
 
@@ -137,33 +151,38 @@ namespace Objects
 		if (!e || !CanStoreType(*e) || stored.Count() >= GetMaxStorage())
 			return false;
 
-		#ifndef CLIENT
-			e->SyncTime(ToEntity(),atTime,timeEpsilon);
-		#endif
+		e->SyncTime(ToEntity(),atTime);
 
 		if (e->isInserted)
 		{
-			Remove(e,RemovalType::EnteredStorage,atTime,false,!e->isInsertedIntoGrid,true);
+			ForceRemove(e,RemovalType::EnteredStorage,atTime);
 			#ifndef NO_HIBERNATION
 				e->Hibernate(false,atTime);
 			#endif
+
+			LogEvent(EventSignificance::Common,e.get()," Now stored in "+ToEntity().GetName());
+			e->storedIn = sharedSelf;
+			e->location = ToEntity().location;
+
 		}
 		else
 		{
+			LogEvent(EventSignificance::Common,e.get()," Now stored in "+ToEntity().GetName());
+			e->storedIn = sharedSelf;
+			e->location = ToEntity().location;
+
 			if (!GetEntity(e->id))
 			{
 				RegisterNewOffGrid(e,atTime,setHealthToFullIfNew);
 			}
 		}
-		LogEvent(EventSignificance::Common,e.get()," Now stored in "+ToEntity().GetName());
-		e->storedIn = sharedSelf;
 
 		stored.Append().entity = e;
 
 
 		#ifndef CLIENT
 			//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
-			e->RegisterChange(WorldEntity::StorageChanged,atTime);
+			e->RegisterChange(WorldEntity::changeType_t(  WorldEntity::StorageChanged | WorldEntity::PositionChanged | WorldEntity::StoredInChanged));
 		#endif
 
 		ASSERT2__(!e->isInsertedIntoGrid,ToEntity().GetName(), e->GetName());
@@ -173,6 +192,9 @@ namespace Objects
 		#endif
 
 		onStored(*this,stored.Last());
+		OnStorageChanged();
+
+		e->SyncTime(ToEntity(),atTime);
 
 		return true;
 	}

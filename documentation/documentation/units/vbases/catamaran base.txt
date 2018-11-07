@@ -1,2 +1,2 @@
 Vehicles built on a catamaran base are much faster on, but also restricted to water surfaces. They are usually a good choice on planets with extensive water surfaces, but rarely anywhere else.
-Naval [[units/turrets/terraformer]]s can dig canals through non-water terrain, but can never leave the water surface.
+Naval [[units/turrets/terraformer|terraformers]] can dig canals through non-water terrain, but can never leave the water surface.

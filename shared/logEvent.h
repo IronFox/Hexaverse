@@ -7,10 +7,11 @@
 
 
 
-CONSTRUCT_ENUMERATION9(EventSignificance,
+CONSTRUCT_ENUMERATION10(EventSignificance,
 						Common,
 						Debug,
 						PerformanceMeasurement,
+						FixedError,
 						Uncommon,		//this and everything downwards is logged on the console and sent to clients
 						Important,
 						NonFatalError,
@@ -63,22 +64,29 @@ struct EventClass
 		static EventClass	error,	//!< Non-fatal error that should be logged and displayed on the console
 							internalError,	//!< Non-fatal error that should be logged and displayed on the console. Not distributed to clients
 							fatal,
+							scriptLog,
+							scriptMessage,
+							scriptError,
 							unexpectedBehavior,
 							uncommon,
 							important,
 							debug,
 							factionDeath,
+							winningFaction,
 							commandRejected,
 							operationAborted,
 							configuration,
 							configurationPrint,
 							configurationError,
+							fixedConfigurationError,
 							fileError,
 							network,
 							networkError,
+							protocolError,
 							remoteControlResponse,
 							remoteControlCommand,
 							remoteControlError,
+							gui,	//!< GUI-Components
 							common	//!< Internal normal process that should be logged but not displayed
 							;
 	};
@@ -98,18 +106,40 @@ extern bool		inTestMode /*= false*/;
 
 namespace Logging
 {
+	enum class Origin
+	{
+		ServerPublic,
+		ServerPrivate,
+		Local
+	};
+
+	enum class Privacy
+	{
+		Auto,	//determine privacy from faction handle and event class
+		ServerPrivate,	//log only, send to nobody (except control console maybe)
+		ClientPrivate,	//log and send to specified faction. If no faction is specified, send to nobody
+		Public			//log and send to all
+	};
+
 	void	End();
 	void	Begin(const PathString&path);
+	bool	HasBegun();
+
+
+	void	CallBugReporter();
+	void	CallBugReporter(const String&message);
+
 
 	String	TimeStamp(bool filename=false);
 }
 
-void		LogEvent(const EventClass&evClass, const Objects::WorldEntity*, const String&);
-void		LogEvent(const EventClass&evClass, const Objects::OwnerParameter&, const String&);
+void		LogEvent(const EventClass&evClass, const Objects::WorldEntity*, const String&, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto);
+void		LogEvent(const EventClass&evClass, const Objects::PFaction&, const String&, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto);
+void		LogException(const Objects::WorldEntity*, const std::exception&ex);
 
-inline void LogEvent(const EventClass&evClass, const String&msg)
+inline void LogEvent(const EventClass&evClass, const String&msg, Logging::Origin origin = Logging::Origin::Local, Logging::Privacy privacy=Logging::Privacy::Auto)
 {
-	::LogEvent(evClass,nullptr,msg);
+	::LogEvent(evClass,nullptr,msg,origin,privacy);
 }
 
 

@@ -8,19 +8,29 @@ namespace RuntimeConfig
 {
 	bool aiMode = false;
 	CryptographicID aiAccessToken;
+	String serverPassword;
 	bool udpListen = true;
+	bool nexusBases=false,	nexusPortsOnAllPoles=false;
+	Timer::Time				programStart;
 
 	Network::ServerAddress	serverAddress;
-	FileSystem::File		documentationRootFolder;
 
+	String					profilePrefix,profileName;
 
 
 	void	ClientInit()
 	{
-		InitConfigDir(aiMode ? "client/ai" : "client");
+		myConfig.InitConfigDir(aiMode ? "aiClient" : "client");
+		sharedConfig.InitConfigDir("shared");
 
 
 		phase = Phase::Uninitialized;
+	}
+
+
+	PathString				GetUserNameFile()
+	{
+		return RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "userName.txt");
 	}
 
 

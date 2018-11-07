@@ -1,5 +1,10 @@
 #pragma once
 
+#include <general/random.h>
+#include <random>
+
+typedef DeltaWorks::RNG<std::mt19937>	TwisterRandom;
+
 namespace World
 {
 	class Data;

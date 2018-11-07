@@ -2,14 +2,14 @@
 #include <global_root.h>
 #include "objectSelection.h"
 #include "objectChoices.h"
-#include "objectCommands.h"
 #include <objects/interface.h>
 #include <objects/gridAndChoices.h>
 #include <objects/vehicle.h>
 #include <objects/faction.h>
 #include <globalEvents.h>
+#include "scene/vehicleAccessibilityMesh.h"
 
-#include "ui.h"
+#include "hud/hexGrid.h"
 
 namespace Objects
 {
@@ -18,7 +18,7 @@ namespace Objects
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
 	PMobileEntity			deployingMobileEntity;
-	Observable<>				onSelectionChanged;
+	Observable<>			onSelectionChanged;
 	bool					shiftPressed = false,shiftMeansQueue = true;
 
 
@@ -27,12 +27,21 @@ namespace Objects
 		shiftMeansQueue = b;
 	}
 
+	bool					ShiftMeansQueue()
+	{
+		return shiftMeansQueue;
+	}
+
 	void					SignalShiftPressed()
 	{
 		bool n = !shiftPressed;
 		shiftPressed = true;
 		if (shiftMeansQueue && n)
-			UI::RefreshButtonState();
+		{
+			HUD::HexGrid::RefreshButtonState();
+			VehicleAccessibilityMesh::Refresh();
+		}
+
 	}
 
 	void					SignalShiftReleased()
@@ -40,12 +49,15 @@ namespace Objects
 		bool n = shiftPressed;
 		shiftPressed = false;
 		if (shiftMeansQueue && n)
-			UI::RefreshButtonState();
+		{
+			HUD::HexGrid::RefreshButtonState();
+			VehicleAccessibilityMesh::Refresh();
+		}
 	}
 
 	bool					ShouldQueueCommands()
 	{
-		return shiftPressed || !shiftMeansQueue;
+		return shiftPressed || !shiftMeansQueue || Engine::input.pressed[Key::Alt];
 	}
 
 
@@ -68,10 +80,21 @@ namespace Objects
 				entity->OnSelect();
 		}
 		
+		if (e != entity)
+		{
+			//Debug	2018 04 04. 13:06:57	42	CommandPhase			Hover Artillery	940786dd	<NULL>	527[h=1]	Selected
+			LogEvent(EventSignificance::Debug,entity.get(),"Selecting: onSelectionChanged()");	//okay here
+			//crashed somewhere after this. Selected artillery was ghost of previous visible, now invisible Nexus unit (still alive)
+			//other instances selected structure ghosts. no apparent connection to mobile units
+			onSelectionChanged();
+			LogEvent(EventSignificance::Debug,entity.get(),"Selecting: GlobalEvents::invalidateObjectCache()");	//new
+		}
 		GlobalEvents::invalidateObjectCache();
 		if (e != entity)
-			onSelectionChanged();
+			LogEvent(EventSignificance::Debug,entity.get(),"Selecting: UpdatedChoices("+String(controlEnabled)+")");//new
 		UpdateChoices(controlEnabled);
+		if (e != entity)
+			LogEvent(EventSignificance::Debug,entity.get(),"Selected");//new
 	}
 
 	
@@ -89,14 +112,17 @@ namespace Objects
 
 		if (e)
 			e->OnDeselect();
-		Command::RefreshCommands(controlEnabled);
-		GlobalEvents::invalidateObjectCache();
 		if (e)
+		{
+			LogEvent(EventSignificance::Debug,"Deselected");
 			onSelectionChanged();
+		}
+
+		GlobalEvents::invalidateObjectCache();
 	}
 
 
-	PWorldEntity					GetRayIntersection(const TVec3<>&b, const TVec3<>&d, float&distance)
+	PWorldEntity					GetRayIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)
 	{
 		PWorldEntity newSel;
 		ForeachWorldEntity([b,d,&distance,&newSel](const Objects::PWorldEntity&e)
@@ -105,12 +131,12 @@ namespace Objects
 			{
 				newSel = e;
 			}
-		},true);
+		},Objects::IncludeGhosts::All);
 
 		return newSel;
 	}
 
-	bool					Select(const TVec3<>&b, const TVec3<>&d, float&distance,bool controlEnabled)
+	bool					Select(const M::TVec3<>&b, const M::TVec3<>&d, float&distance,bool controlEnabled)
 	{
 		//if (Compound::Transfer::isActive)
 			//return false;
@@ -125,7 +151,7 @@ namespace Objects
 		}
 		#ifdef HAS_WINDOW
 			else
-				Command::RefreshCommands(controlEnabled);	//in UpdateChoices() otherwise
+				HUD::HexGrid::RefreshButtonState();	//in UpdateChoices() otherwise
 		#endif
 		return !!newSel;
 	}

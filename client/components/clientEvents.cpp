@@ -5,8 +5,24 @@
 
 namespace GlobalEvents
 {
-	Observable<>	frameBegin,frameAfterCamera;
+	Observable<>	frameBegin,
+					serverConnectionEstablished,
+					serverConnectionLost,
+		serverConnectionFailed,
+		clientControlBegin,
+		playerControlBegin,
+		beginGame,
+		gridSensoryValid
+		;
+	#ifdef HAS_WINDOW
+		Observable<>frameAfterCamera,
+					shadowQualityChanged,
+					uiScaleChanged;
 
+		Observable<bool>	onFullscreenChange;
+	#endif
 
+	Observable<const Objects::PFaction&>	onAllianceChange;
+	Observable<const PVote&> voteCreated, voteClosed,voteCast;
 }
 

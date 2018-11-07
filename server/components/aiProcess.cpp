@@ -1,9 +1,9 @@
 #include <global_root.h>
 #include "aiProcess.h"
 #include <global_string.h>
-#include "../../shared/uniqueID.h"
+#include <uniqueID.h>
 #include <general/timer.h>
-#include <general/monitoredProcess.h>
+#include <io/monitoredProcess.h>
 #include <globalEvents.h>
 #include <logEvent.h>
 
@@ -12,34 +12,42 @@ namespace AIProcess
 	namespace detail
 	{
 		CryptographicID	accessToken;
+		std::function<String()> asyncGetServerPassword;
 
-		MonitoredProcess	process;
+		MonitoredProcess	process(true);
 		index_t	eventKey = InvalidIndex;
+		USHORT serverBasePort=0;
 
 		void	Start()
 		{
-			char parameterBuffer[32768];
 			PathString	path,
 						workingDirectory = "..\\client\\";
 			#ifdef _DEBUG
-				path = "..\\client\\.projector\\Debug\\Visual Client.exe";
+				path = "..\\client\\.projector\\Debug\\Visual Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+			#elif defined _OPTIMIZED_DEBUG
+				#ifdef PLATFORM_X64
+					path = "..\\client\\.projector\\x64\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				#else
+					path = "..\\client\\.projector\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				#endif
 			#else
 				path = "..\\client\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
 			#endif
-			//#ifdef _DEBUG
-			//	path = "..\\client\\Debug\\client.exe";
-			//#else
-			//	path = "..\\client\\client.exe";
-			//#endif
 
-
-//			String executable = 
-
-			sprintf_s(parameterBuffer,"aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
 
 			try
 			{
-				process.Start(workingDirectory,path,parameterBuffer,false);
+				bool window = false;
+				#ifdef _DEBUG
+					window = true;
+				#endif
+
+				process.Start(workingDirectory,path,[]()
+				{
+					char parameterBuffer[32768];
+					sprintf_s(parameterBuffer,"aiAccessToken='%s' password='%s' udpListen=false serverURL=localhost:%u",accessToken.ToFullString().c_str(), asyncGetServerPassword().c_str(),serverBasePort);
+					return PathString(parameterBuffer);
+				},window);
 			}
 			catch (const std::exception&ex)
 			{
@@ -57,13 +65,15 @@ namespace AIProcess
 	}
 
 
-	void Begin(const CryptographicID&accessToken)
+	void Begin(const CryptographicID&accessToken, USHORT serverBasePort, const std::function<String()>&asyncGetServerPassword)
 	{
 		if (detail::process.IsRunning())
 		{
 			ASSERT__(accessToken == detail::accessToken);
 			return;
 		}
+		detail::serverBasePort = serverBasePort;
+		detail::asyncGetServerPassword = asyncGetServerPassword;
 		detail::accessToken = accessToken;
 		detail::Start();
 		if (detail::eventKey == InvalidIndex)
@@ -73,14 +83,6 @@ namespace AIProcess
 	void End()
 	{
 		detail::EventEnd();
-	}
-
-
-
-
-	void Check()
-	{
-		detail::process.Check();
 	}
 
 

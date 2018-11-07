@@ -7,10 +7,8 @@
 
 #include "../objects.h"
 #include "../logEvent.h"
-//#include "../sphereGridHelper.h"
-#include "../luaGameAPI.h"
 #include "../globalEvents.h"
-
+#include "../expectedBehavior.h"
 
 namespace Grid
 {
@@ -18,7 +16,7 @@ namespace Grid
 	UINT16				empZonesLocked = 0,
 						empZonesUnlocked = 0xFFFF;
 
-	//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
+	//static Resource::coverage_t	GetResourceCoverage(const M::TVec3<>&seed, const M::TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
 
 
 
@@ -133,7 +131,49 @@ namespace Grid
 		}
 	}
 
-	int				CellStack::FindTopClearOverNonClear(bool failOnStructureCount)	const
+	void			AssertIsHorizontallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
+	{
+		if (location.stackID >= LowSetup::GridType::CellCount)
+			throw Except::Program::UnsupportedRequest(loc,"StackID "+String(location.stackID)+" exceeds valid range [0,"+String(LowSetup::GridType::CellCount)+")");
+	}
+	void			AssertIsVerticallyValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
+	{
+		if (location.height < CellStack::BottomHeight || location.height > CellStack::TopHeight)
+			throw Except::Program::UnsupportedRequest(loc,"Location height "+String(location.height)+" falls outside valid range ["+String(CellStack::BottomHeight)+ "," +String(CellStack::TopHeight)+"]");
+	}
+
+
+	void			AssertIsValid(const Grid::LCellIdI&location, const TCodeLocation&loc)
+	{
+		AssertIsHorizontallyValid(location,loc);
+		AssertIsVerticallyValid(location,loc);
+	}
+
+
+	int				CellStack::FindNextClearBeneathNonClear( bool stopOnStructureCount, bool failOnBlockingStructureAtDestination, UINT startLayer ) const
+	{
+		UINT32 h;
+		for (h = startLayer; h < Range; h++)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.content != Grid::Content::Clear)
+				break;
+			if (stopOnStructureCount && c.structureCounter > 0)
+				break;
+		}
+		h--;
+		if (h >= Range-1)
+			return BadHeight;
+		if (failOnBlockingStructureAtDestination)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.structureCounter > 1)
+				return BadHeight;
+		}
+		return ToHeight(h);
+	}
+
+	int				CellStack::FindTopClearOverNonClear( bool stopOnStructureCount, bool failOnBlockingStructureAtDestination )	const
 	{
 		UINT32 h;
 		for (h = Range-1; h < Range; h--)
@@ -141,11 +181,13 @@ namespace Grid
 			const Cell&c = volumeCell[h];
 			if (c.content != Grid::Content::Clear)
 				break;
+			if (stopOnStructureCount && c.structureCounter > 0)
+				break;
 		}
 		h++;
 		if (h >= Range-1)
 			return BadHeight;
-		if (failOnStructureCount)
+		if (failOnBlockingStructureAtDestination)
 		{
 			const Cell&c = volumeCell[h];
 			if (c.structureCounter > 1)
@@ -160,7 +202,7 @@ namespace Grid
 	LowSetup			low;
 	
 	#ifdef VOXEL_SCANNER
-		Array<LowCellStack>	lowCellStack;
+		Ctr::Array<LowCellStack>	lowCellStack;
 	#endif
 
 
@@ -242,7 +284,7 @@ namespace Grid
 
 		void	CellStack::Cell::SetLightLevel(float v)
 		{
-			BYTE val = BYTE(clamped(v * 0xFF,0,0xFF));
+			BYTE val = BYTE(M::Clamp(v * 0xFF,0,0xFF));
 			if (IsOpaque())
 				val = 0;
 			else
@@ -255,7 +297,7 @@ namespace Grid
 	
 		void	CellStack::Cell::SetIntLightLevel(int v)
 		{
-			BYTE val = BYTE(clamped(v,0,0xFF));
+			BYTE val = BYTE(M::Clamp(v,0,0xFF));
 			if (IsOpaque())
 				val = 0;
 			else
@@ -293,7 +335,7 @@ namespace Grid
 		#ifdef HAS_WINDOW
 			lowestOpenCell = (BYTE)Range;
 			highestOpaqueCell = (BYTE)Range-1;
-			waterRange = IntRange<BYTE>(0,0);
+			waterRange = M::IntRange<BYTE>(0,0);
 		#endif
 		for (UINT i = 0; i < Range; i++)
 		{
@@ -337,22 +379,37 @@ namespace Grid
 		return rs;
 	}
 
-	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater) const
+
+	static bool CanStandOn(BYTE cellContent, bool canStandOnWater, bool canStandOnLava)
+	{
+		if (Grid::CellStack::Cell::IsSolid(cellContent))
+			return true;
+		switch (cellContent)
+		{
+			case Grid::Content::Lava:
+				return canStandOnLava;
+			case Grid::Content::Water:
+				return canStandOnWater;
+		}
+		return false;
+	}
+
+	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater, bool canStandOnLava) const
 	{
 		UINT uh = ToLayer(h);
 		//unsigned(h + HalfRange);
 		if (uh < Range)
 		{
-			if (volumeCell[uh].IsSolid() || (volumeCell[uh].IsWater() && canStandOnWater))
+			if (CanStandOn(volumeCell[uh].content, canStandOnWater, canStandOnLava))
 			{
 				for (UINT i = uh + 1; i < Range; i++)
-					if (/*!volumeCell[i].IsOccupied() && */!volumeCell[i].IsSolid() && (!canStandOnWater || !volumeCell[i].IsWater()))
+					if (!CanStandOn(volumeCell[i].content,canStandOnWater,canStandOnLava))
 						return int(i) - HalfRange;
-				return 0x1FFFFFFF;
+				return BadHeight;
 			}
 			for (UINT i = uh - 1; i < uh; --i)
 			{
-				if (volumeCell[i].IsSolid() || (volumeCell[i].IsWater() && canStandOnWater))
+				if (CanStandOn(volumeCell[i].content, canStandOnWater, canStandOnLava))
 					return (int(i + 1) - HalfRange);
 				//if (volumeCell[i].IsOccupied())
 					//return 0x1FFFFFFF;
@@ -416,7 +473,7 @@ namespace Grid
 		bool tagged[HighSetup::GridType::CellCount];
 		memset(tagged, false, sizeof(tagged));
 
-			for (index_t i = 0; i < low.cells.count(); i++)
+			for (index_t i = 0; i < low.cells.Count(); i++)
 			{
 				#ifdef HYBRID_GRID
 				index_t high = low.grid.GetCell(i).higherEquivalent;
@@ -470,11 +527,11 @@ namespace Grid
 
 
 
-		GlobalEvents::terrainFlush << []()
-		{
-			empZonesLocked = 0;
-			empZonesUnlocked = ~empZonesLocked;
-		};
+		//GlobalEvents::terrainFlush << []()
+		//{
+		//	empZonesLocked = 0;
+		//	empZonesUnlocked = ~empZonesLocked;
+		//};
 
 	}
 
@@ -565,8 +622,8 @@ namespace Grid
 			ASSERT_LESS__(a.stackID,low.cells.Count());	//just to be sure ... for now
 			ASSERT_LESS__(b.stackID,low.cells.Count());
 		#endif
-		TVec3<> wa = low.cells[a.stackID].centerVertex.xyz * ToRadius(a.height);
-		TVec3<> wb = low.cells[b.stackID].centerVertex.xyz * ToRadius(b.height);
+		M::TVec3<> wa = low.cells[a.stackID].centerVertex.xyz * ToRadius(a.height);
+		M::TVec3<> wb = low.cells[b.stackID].centerVertex.xyz * ToRadius(b.height);
 		return Vec::quadraticDistance(wa,wb);
 	}
 
@@ -597,7 +654,7 @@ namespace Grid
 		//void	SetSphereDisplay(float3 center, float radius, const float4&color)
 		//{
 		//	Instruction::useSphereDisplay = true;
-		//	float4 def(center,sqr(radius));
+		//	float4 def(center,M::Sqr(radius));
 		//	if (def != Instruction::lastDef)
 		//	{
 		//		//LogEvent(EventSignificance::Debug,nullptr,"change1 detected");
@@ -662,85 +719,94 @@ namespace Grid
 
 
 	#ifdef HYBRID_GRID
-		void ToWorld(const HCellIdU&id,TVec3<>&rs)
+		void ToWorld(const HCellIdU&id,M::TVec3<>&rs)
 		{
 			Vec::mult(high.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(id.layer)),rs);
 		}
-		void ToWorld(const HCellIdI&id,TVec3<>&rs)
+		void ToWorld(const HCellIdI&id,M::TVec3<>&rs)
 		{
 			Vec::mult(high.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(id.height),rs);
 		}
 
-		TVec3<> ToWorld(const HCellIdU&id)
+		M::TVec3<> ToWorld(const HCellIdU&id)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(CellStack::ToHeight(id.layer));
 		}
-		TVec3<> ToWorld(const HCellIdI&id)
+		M::TVec3<> ToWorld(const HCellIdI&id)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 		}
-		TVec3<> ToWorld(const HCellIdU&id, float fLayerOffset)
+		M::TVec3<> ToWorld(const HCellIdU&id, float fLayerOffset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + CellStack::ToHeight(id.layer));
 		}
-		TVec3<> ToWorld(const HCellIdI&id, float fLayerOffset)
+		M::TVec3<> ToWorld(const HCellIdI&id, float fLayerOffset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
 		}
-		TVec3<> ToWorldR(const HCellIdU&id, float offset)
+		M::TVec3<> ToWorldR(const HCellIdU&id, float offset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(CellStack::ToHeight(id.layer)));
 		}
-		TVec3<> ToWorldR(const HCellIdI&id, float offset)
+		M::TVec3<> ToWorldR(const HCellIdI&id, float offset)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(id.height));
 		}
 	#endif
 
-	void ToWorld(const LCellIdU&id,TVec3<>&rs)
+	void ToWorld(const LCellIdU&id,M::TVec3<>&rs)
 	{
 		Vec::mult(low.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(id.layer)),rs);
 	}
-	void ToWorld(const LCellIdI&id,TVec3<>&rs)
+	void ToWorld(const LCellIdI&id,M::TVec3<>&rs)
 	{
 		Vec::mult(low.cells[id.stackID].centerVertex.xyz,Grid::ToRadius(id.height),rs);
 	}
 
-	TVec3<>  ToWorld(const LCellIdU&id)
+	M::TVec3<>  ToWorld(const LCellIdU&id)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(CellStack::ToHeight(id.layer));
 	}
-	TVec3<>  ToWorld(const LCellIdI&id)
+	M::TVec3<>  ToWorld(const LCellIdI&id)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 	}
 
 
-	TVec3<> ToWorld(const LCellIdU&id, float fLayerOffset)
+	M::TVec3<> ToWorld(const LCellIdU&id, float fLayerOffset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + CellStack::ToHeight(id.layer));
 	}
-	TVec3<> ToWorld(const LCellIdI&id, float fLayerOffset)
+	M::TVec3<> ToWorld(const LCellIdI&id, float fLayerOffset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadiusf(fLayerOffset + id.height);
 	}
-	TVec3<> ToWorldR(const LCellIdU&id, float offset)
+	M::TVec3<> ToWorldR(const LCellIdU&id, float offset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(CellStack::ToHeight(id.layer)));
 	}
-	TVec3<> ToWorldR(const LCellIdI&id, float offset)
+	M::TVec3<> ToWorldR(const LCellIdI&id, float offset)
 	{
 		return low.cells[id.stackID].centerVertex.xyz * (offset + Grid::ToRadius(id.height));
 	}
 
 
-	bool	AffectedByEMP(const HCellIdI&id)
+	bool	AffectedByEMP(const HCellIdI&id, UINT16 empZonesUnlocked)
 	{
 		return !(Grid::high.cells[id.stackID].cornerFlags & empZonesUnlocked);
 	}
-	bool	AffectedByEMP(const LCellIdI&id)
+	bool	AffectedByEMP(const LCellIdI&id, UINT16 empZonesUnlocked)
 	{
 		return !(Grid::low.cells[id.stackID].cornerFlags & empZonesUnlocked);
+	}
+
+	bool	AffectedByEMP(const HCellIdI&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
+	}
+	bool	AffectedByEMP(const LCellIdI&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
 	}
 
 
@@ -753,8 +819,8 @@ namespace Grid
 		{
 			Timer::Time t0 = timer.Now();
 
-			Math::Box<> test;
-			const TVec3<> worldCenter = ToWorld(center);
+			M::Box<> test;
+			const M::TVec3<> worldCenter = ToWorld(center);
 			test.SetCenter(worldCenter,radius);
 			for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
 			{
@@ -770,10 +836,10 @@ namespace Grid
 					Grid::HCellIdU cell((UINT32)i,0U);
 					{
 						Grid::HCellIdU aboveTop(cell.stackID, Grid::CellStack::Range);
-						TVec3<> bottom = Grid::ToWorld(cell),
+						M::TVec3<> bottom = Grid::ToWorld(cell),
 								top = Grid::ToWorld(aboveTop);
 
-						anyVisible = Obj::DetectSphereEdgeIntersection(worldCenter,radius,bottom,top);
+						anyVisible = M::Obj::DetectSphereEdgeIntersection(worldCenter,radius,bottom,top);
 					}
 					if (!anyVisible)
 						return;
@@ -782,7 +848,7 @@ namespace Grid
 					for (unsigned j = 0; j < Grid::CellStack::Range; j++)
 					{
 						cell.layer = j;
-						if (Vec::quadraticDistance(Grid::ToWorld(cell),worldCenter) > sqr(radius))
+						if (Vec::quadraticDistance(Grid::ToWorld(cell),worldCenter) > M::Sqr(radius))
 						{
 							if (wasIn)
 								break;

@@ -81,7 +81,7 @@ namespace Objects
 	//}
 
 
-	///*virtual override*/ bool				Satellite::CanSee(const TVec3<>&center, float radius)	const
+	///*virtual override*/ bool				Satellite::CanSee(const M::TVec3<>&center, float radius)	const
 	//{
 	//	if (Super::CanSee(center,radius))
 	//		return true;
@@ -95,14 +95,14 @@ namespace Objects
 	//		return false;	//this would be a bug... ah, whatever
 
 	//	float r0 = Grid::ToRadius(h);
-	//	const TVec3<>&n = Grid::low.cells[location.stackID].cornerCenter;
+	//	const M::TVec3<>&n = Grid::low.cells[location.stackID].cornerCenter;
 	//	float vertical = Vec::dot(n,center) - r0;
 	//	if (vertical + radius < 0.f)
 	//		return false;
-	//	TVec3<> base = n*vertical;
+	//	M::TVec3<> base = n*vertical;
 	//	float d2 = Vec::quadraticDistance(base,center);
 	//	float range = EMPModify(turret->groundScannerPenetration,2);
-	//	return d2 <= sqr(range+radius);
+	//	return d2 <= M::Sqr(range+radius);
 	//}
 
 
@@ -302,9 +302,9 @@ namespace Objects
 
 
 
-	void			SkyHub::OnConstructionFinished(float&atTime)
+	void			SkyHub::OnInsert(float&atTime)
 	{
-		Super::OnConstructionFinished(atTime);
+		Super::OnInsert(atTime);
 		SyncTime(atTime);
 		UpdateConnections();
 	}
@@ -441,7 +441,7 @@ namespace Objects
 	/*virtual override*/ void			Satellite::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		ResearchState::RegisterResearch(this,Component::Attribute::FuelDemand);
+		Research::FactionState::RegisterResearch(this,Component::Attribute::FuelDemand);
 	}
 
 
@@ -472,7 +472,7 @@ namespace Objects
 		PSkyLinkStructure port = connectedTo.lock();
 		WorkingStructure*ws = port ? port->CastToStructure() : nullptr;
 
-		if (port && ws->health <= 0)
+		if (port && ws->IsDeadOrGhost())
 		{
 			connectedTo.reset();
 			port.reset();
@@ -592,7 +592,7 @@ namespace Objects
 					if (hub && hub.get() != this)
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+						hubs.Last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#else
@@ -602,7 +602,7 @@ namespace Objects
 					if (hub && hub.get() != this && !hub->connectedTo.expired())
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+						hubs.Last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#endif
@@ -715,7 +715,7 @@ namespace Objects
 		/*virtual override*/ MobilePlacementResult	Satellite::PlaceExactlyAt(const Grid::LCellIdI&_cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
 		{
 			UINT32 cell = _cell.stackID;
-			if (health <= 0)
+			if (IsDeadOrGhost())
 			{
 				if (failIsFatal)
 				{
@@ -776,7 +776,7 @@ namespace Objects
 		}
 
 	
-		bool	Satellite::DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		bool	Satellite::DirectTo(mode_t mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			switch (mode)
 			{
@@ -843,7 +843,7 @@ namespace Objects
 
 	#if 0
 
-	/*virtual override*/ bool					SkyGuardian::CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const
+	/*virtual override*/ bool					SkyGuardian::CanHitFrom(const Grid::LCellIdI&origin, const M::TVec3<>&dest) const
 	{
 		return Turret::CanHit(TrajectoryType::Missile,FlatRange,location,0.f,dest);
 
@@ -859,16 +859,16 @@ namespace Objects
 		//const float velocity = Turret::MaxRangeToVelocity(GetFlatAttackRange());
 		const float range = GetFlatAttackRange();
 		//const float extRange = range + (turret->explosionRadius);
-		//const float range2 = sqr(range);
-		//const float extRange2 = sqr(extRange);
-		//const TVec3<> source3 = Grid::ToWorld(source);
-		TVec3<> dest3 = Grid::ToWorld(destIn);
+		//const float range2 = M::Sqr(range);
+		//const float extRange2 = M::Sqr(extRange);
+		//const M::TVec3<> source3 = Grid::ToWorld(source);
+		M::TVec3<> dest3 = Grid::ToWorld(destIn);
 		//float distance2 = Vec::quadraticDistance(source3,dest3);
 		//if (Turret::GetAngleForDistance(velocity,source,destIn))
 		//if (distance2 > extRange2)
 		//	return false;
 		const float explosionRadius = turret->explosionRadius;
-		const float explosionRadius2 = sqr(explosionRadius);
+		const float explosionRadius2 = M::Sqr(explosionRadius);
 		if (Turret::CanHit(turret->trajectoryType, range,source,zOffset,destIn)
 			&& CheckArea(myFaction,destIn,explosionRadius))
 		{
@@ -891,9 +891,9 @@ namespace Objects
 		Grid::LCellIdI current;
 		while (helper >> current)
 		{
-			TVec3<> world = Grid::ToWorld(current);
+			M::TVec3<> world = Grid::ToWorld(current);
 			float fromDest2 = Vec::quadraticDistance(dest3,world);
-			if (fromDest2 > sqr(turret->explosionRadius))
+			if (fromDest2 > M::Sqr(turret->explosionRadius))
 				continue;
 			if (!World::actual.LowCellIsClear(current) || 
 				!Turret::CanHit(turret->trajectoryType, range,source,zOffset,current))
@@ -928,9 +928,9 @@ namespace Objects
 
 	
 	#ifndef CLIENT
-		/*virtual override*/ bool					Satellite::FrontQueuePossibleAttacks()
+		/*virtual override*/ bool					Satellite::FrontQueueAutoAttack(TurretBase::TargetChoice&lastChoice)
 		{
-			if (!turret->CanAttack() || !HasAmmoForShot())
+			if (!CanAttack())
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
@@ -948,9 +948,9 @@ namespace Objects
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, target))
+				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, lastChoice))
 				{
-					AttackNext(target,true);
+					AttackNext(lastChoice.cellTarget,true);
 					return true;
 				}
 			}
@@ -1019,17 +1019,17 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
+		/*virtual override*/ bool SkyGuardian::WouldAutoAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
-			if (!turret->CanAttack() || !HasAmmoForShot())
+			if (!CanAttack())
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
 			}
 
-			static Buffer0<TVec4<> > trajectory;
+			static Buffer0<M::TVec4<> > trajectory;
 
-			TVec3<> iat;
+			M::TVec3<> iat;
 			Grid::HCellIdI ic;
 
 
@@ -1041,7 +1041,7 @@ namespace Objects
 					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(location,target->location,outTarget)
-					//&& d2 > sqr(turret->explosionRadius)
+					//&& d2 > M::Sqr(turret->explosionRadius)
 					&& TraceTrajectory(owner->knownWorld, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
 		}
 

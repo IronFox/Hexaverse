@@ -17,16 +17,36 @@ namespace Grid
 
 	struct TSharedPlanetConfig
 	{
+		typedef TSharedPlanetConfig Self;
+
 		UINT32			innerCoreType = Content::Granite;	//type used beneath the lowest cell
 		float4			atmosphereColor = float4(0.7,0.8,1.0,0.5);	//alpha=1.0 is really dense
 		float4			sunPlaneNormal_Speed = float4(0,0,1,0.5f);	//fourth parameter is rotation speed in radians per second
 		float4			sunColor = float4(1,1,1,1);	//fourth parameter is ignored
+
+
+		friend void		Deserialize(IReadStream&s, Self&v)
+		{
+			using Serialization::Deserialize;
+			s.ReadSize(v.innerCoreType);
+			Deserialize(s,v.atmosphereColor);
+			Deserialize(s,v.sunPlaneNormal_Speed);
+			Deserialize(s,v.sunColor);
+		}
+		friend void		Serialize(IWriteStream&s, const Self&v)
+		{
+			using Serialization::Serialize;
+			s.WriteSize(v.innerCoreType);
+			Serialize(s,v.atmosphereColor);
+			Serialize(s,v.sunPlaneNormal_Speed);
+			Serialize(s,v.sunColor);
+		}
 	};
 
 
 
 
-	class ExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
+	class ExtendedPlanetConfig : public TSharedPlanetConfig
 	{
 		void	RandomizeSun(Random&random)
 		{
@@ -46,7 +66,7 @@ namespace Grid
 
 		}
 	public:
-
+		typedef ExtendedPlanetConfig Self;
 
 
 
@@ -125,47 +145,43 @@ namespace Grid
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
 					liquidHeight = 0;
-		UINT32		lastSeed = 0;
+		UINT32		lastSeed = 0,
+					versionCounter = 0;
 
-		virtual serial_size_t GetSerialSize(bool) const override
+		/**/		ExtendedPlanetConfig()
 		{
-			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 4 + 8 + 4;
+			extendedCore.baseHeight = Grid::CellStack::BottomHeight;	//give some semblance of a workable planet
 		}
 
-		virtual bool HasFixedSize() const override
+		friend	void	Serialize(IWriteStream&outStream, const Self&v)
 		{
-			return true;
+			outStream.WritePrimitive((const TSharedPlanetConfig&)v);
+			outStream.WritePrimitive((const TLayerConfig&)v.extendedCore);
+			outStream.WritePrimitive((const TLayerConfig&)v.mountains);
+			outStream.WritePrimitive(v.type);
+			outStream.WritePrimitive(v.liquidCoverage);
+			outStream.WritePrimitive(v.extendedCoreType);
+			outStream.WritePrimitive(v.liquidOutline);
+			outStream.WritePrimitive(v.snowHeight);
+			outStream.WritePrimitive(v.liquidHeight);
+			outStream.WritePrimitive(v.lastSeed);
+			outStream.WritePrimitive(v.versionCounter);
 		}
 
-		virtual	bool	Serialize(IWriteStream&outStream, bool) const override
+		friend	void	Deserialize(IReadStream&inStream, Self&v)
 		{
-			return	outStream.WritePrimitive((const TSharedPlanetConfig&)*this)
-					&&	outStream.WritePrimitive((const TLayerConfig&)extendedCore)
-					&&	outStream.WritePrimitive((const TLayerConfig&)mountains)
-					&&	outStream.WritePrimitive(type)
-					&&	outStream.WritePrimitive(liquidCoverage)
-					&&	outStream.WritePrimitive(extendedCoreType)
-					&&	outStream.WritePrimitive(liquidOutline)
-					&&	outStream.WritePrimitive(snowHeight)
-					&&	outStream.WritePrimitive(liquidHeight)
-					&&	outStream.WritePrimitive(lastSeed)
-					;
-		}
-
-		virtual	bool	Deserialize(IReadStream&inStream, serial_size_t) override
-		{
-			return	inStream.ReadPrimitive((TSharedPlanetConfig&)*this)
-					&&	inStream.ReadPrimitive((TLayerConfig&)extendedCore)
-					&&	inStream.ReadPrimitive((TLayerConfig&)mountains)
-					&&	inStream.ReadPrimitive(type)
-					&&	inStream.ReadPrimitive(liquidCoverage)
-					&&	inStream.ReadPrimitive(extendedCoreType)
-					&&	inStream.ReadPrimitive(liquidOutline)
-					&&	inStream.ReadPrimitive(snowHeight)
-					&&	inStream.ReadPrimitive(liquidHeight)
-					&&	inStream.ReadPrimitive(lastSeed)
-					&&	ApplySeed()
-					;
+			inStream.ReadPrimitive((TSharedPlanetConfig&)v);
+			inStream.ReadPrimitive((TLayerConfig&)v.extendedCore);
+			inStream.ReadPrimitive((TLayerConfig&)v.mountains);
+			inStream.ReadPrimitive(v.type);
+			inStream.ReadPrimitive(v.liquidCoverage);
+			inStream.ReadPrimitive(v.extendedCoreType);
+			inStream.ReadPrimitive(v.liquidOutline);
+			inStream.ReadPrimitive(v.snowHeight);
+			inStream.ReadPrimitive(v.liquidHeight);
+			inStream.ReadPrimitive(v.lastSeed);
+			inStream.ReadPrimitive(v.versionCounter);
+			v.ApplySeed();
 		}
 		
 		/**
@@ -184,7 +200,7 @@ namespace Grid
 		Contrary to SetSeed(random.currentSeed()), @a random will actually be advanced by the operation.
 		Using a random variable with current seed equal to @a lastSeed will produce identical results
 		*/
-		void	RandomizeSeeds(Random&random);
+		void	RandomizeSeeds(TwisterRandom&random);
 
 		void	GenerateAtmosphereColorForType(BYTE t)
 		{

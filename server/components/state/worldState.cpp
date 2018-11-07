@@ -3,6 +3,7 @@
 #include <protocol.h>
 #include "networkState.h"
 #include "../networkChannels.h"
+#include <objects/nexusPresence.h>
 
 namespace World
 {
@@ -18,7 +19,9 @@ namespace World
 	{
 		Grid::WorldDiscovery	worldDiscovery;
 
-		UINT32		uplinkBandwidth = 500;
+		#ifndef NO_HIBERNATION
+			UINT32	uplinkBandwidth = 500;
+		#endif
 		bool		empZones = false,
 					simulateLiquids = true;
 
@@ -38,14 +41,14 @@ namespace World
 			d.timestamp = t;
 		}
 		numDeltas = BaseGrid::NumFamilies;
-		delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+		delta[numDeltas-1].familyAndLastFlag |= 0x80;
 	}
 
 
 	bool					DeltaContainer::Process(World::Data&clientData,bool noDelta/*=false*/)
 	{
 		numDeltas = 0;
-		Array<Grid::CellStack::TTypeDeltaBlock>	blocks;
+		Ctr::Array<Grid::CellStack::TTypeDeltaBlock>	blocks;
 			
 		float t = 0;
 		const bool rightNow = RuntimeConfig::IsInAnyCommandPhase();
@@ -65,7 +68,7 @@ namespace World
 			if (!rightNow)
 				for (index_t i = 0; i < numDeltas; i++)
 					delta[i].timestamp.atTime = t;
-			delta[numDeltas-1].familyAndLastFlag.value |= 0x80;
+			delta[numDeltas-1].familyAndLastFlag |= 0x80;
 
 			return true;
 		}
@@ -115,12 +118,12 @@ namespace World
 		{
 			static Protocol::WorldDelta	delta;
 			delta.timestamp.atTime = 0;
-			if (faction->knownWorld.ProgressiveUpdate(familyId,delta.data0,delta.timestamp.atTime.value))
+			if (faction->knownWorld.ProgressiveUpdate(familyId,delta.data0,delta.timestamp.atTime))
 			{
 				delta.timestamp.rightNow = rightNow;
 				delta.familyAndLastFlag = familyId;
 				if (last)
-					delta.familyAndLastFlag.value |= 0x80;
+					delta.familyAndLastFlag |= 0x80;
 
 				::Network::PClient client;
 				if (::Network::playerMap.Query(faction,client))
@@ -153,9 +156,8 @@ namespace World
 			CheckCoverageSendTerrain(Objects::Faction::nexus);
 			foreach (Objects::Faction::all,_f)
 			{
-				Objects::PFaction faction = _f->lock();
-				if (faction)
-					CheckCoverageSendTerrain(faction);
+				const Objects::PFaction&faction = *_f;
+				CheckCoverageSendTerrain(faction);
 			}
 		}
 
@@ -179,7 +181,7 @@ namespace World
 			{
 				BYTE	volumeCell[Grid::CellStack::Range];
 			};
-			static Array<TStack>	tempStacks;
+			static Ctr::Array<TStack>	tempStacks;
 			tempStacks.SetSize(Grid::HighSetup::GridType::CellCount);
 			for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 			{
@@ -229,21 +231,23 @@ namespace World
 						changed.Set(Grid::high.grid.GetCell(neighborhood.neighborID[i]).family);
 				}
 			});
-			auto seq = World::actual.BeginChangeSequence(0);
-			foreach (changed,ch)
 			{
-				UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
-				count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
-				for (UINT32 k = offset; k < offset+cnt; k++)
+				auto seq = World::actual.BeginChangeSequence(0);
+				foreach (changed,ch)
 				{
-					auto access = seq.AccessStack(k);
-					Grid::CellStack&target = access.GetStack();
-					const TStack&source = tempStacks[k];
-					for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
-						target.volumeCell[layer].content = source.volumeCell[layer];
+					UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
+					count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
+					for (UINT32 k = offset; k < offset+cnt; k++)
+					{
+						auto access = seq.AccessStack(k);
+						Grid::CellStack&target = access.GetStack();
+						const TStack&source = tempStacks[k];
+						for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
+							target.volumeCell[layer].content = source.volumeCell[layer];
+					}
 				}
 			}
-
+			#if 0
 			Objects::ForeachWorldEntity([changed,&seq](const Objects::PWorldEntity&entity)
 			{
 				if (!changed.IsSet(Grid::low.grid.GetCell(entity->location.stackID).family))
@@ -288,52 +292,58 @@ namespace World
 					if (kill)
 					{
 						float t = 0;
-						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t,false);
+						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t);
 					}
 				}
 			},false);
+			#endif /*0*/
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process liquids: "+String(t));
 		}
 
 	}
 
-	void			BuildConfiguredWorld(Random&random)
+	
+	static void _BuildConfiguredWorld(TwisterRandom&random)
 	{
-		Grid::currentPlanetConfig.RandomizeSeeds(random);
+		random.discard(20);
+
+
+
 		Grid::currentPlanetConfig.BuildWorld(World::actual);
 		World::actual.ExportDiscovered(World::initial, Config::worldDiscovery);
 		Grid::Resource::FillAll(random,Grid::currentCustomResourceDistribution);
 		if (Objects::Faction::nexus)
 			Objects::Faction::nexus->knownWorld = World::initial;
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports (EMP fields="+String(RuntimeConfig::empZones)+")...");
-			for (int pole = 0; pole < 12; pole++)
-				if (RuntimeConfig::empZones || BaseGrid::IsIsolatedCorner(pole))
-					Game::SpawnNexusPortAtPole(pole);
+		Game::Config::Nexus::allPorts.havePlaced = Game::Config::Nexus::allPorts.doPlace;
+		Game::Config::Nexus::bases.havePlaced = Game::Config::Nexus::bases.doPlace;
+		Game::Config::Nexus::satellitesAtopBases.havePlaced = Game::Config::Nexus::satellitesAtopBases.doPlace;
+		NexusPresence::Create(Game::Config::Nexus::bases.havePlaced,Game::Config::Nexus::allPorts.havePlaced,Game::Config::Nexus::satellitesAtopBases.havePlaced);
 
-			LogEvent(EventSignificance::Debug, "Spawning Nexus bases...");
-			if (Game::Config::Nexus::haveBases)
-				for (int pole = 0; pole < 12; pole++)
-					if (BaseGrid::IsIsolatedCorner(pole))
-					{
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-					}
-		}
 	}
 
 	void			BuildConfiguredWorld(UINT32 seed)
 	{
-		Random random(seed);
-		BuildConfiguredWorld(random);
+		//Important: Must NOT call RandomizeSeeds() here, or interactive configuration mode gets caught generating new seeds with each change!
+		Grid::currentPlanetConfig.SetSeed(seed);
+		TwisterRandom random(seed);
+		_BuildConfiguredWorld(random);
+	}
+	
+	void			BuildConfiguredWorld(TwisterRandom&rnd)
+	{
+		Grid::currentPlanetConfig.RandomizeSeeds(rnd);
+		_BuildConfiguredWorld(rnd);
 	}
 
 
 
 
-	index_t			GetFactionStartLocation(Random&random)
+
+
+
+	index_t			GetFactionStartLocation(TwisterRandom&random)
 	{
 		index_t best = InvalidIndex;
 		float bestDist = 0;
@@ -375,16 +385,16 @@ namespace World
 				}
 
 
-				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
-				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI((UINT32)i,h0-1),false,false))
+				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true, true);	//make sure we don't end up IN the lava
+				if (h0 == Objects::badHeight || h0 == Grid::CellStack::BottomHeight || !testBase->CanStandOn(World::actual,Grid::LCellIdI((UINT32)i,h0-1)))
 					continue;
 				{
 					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
 					bool broken = false;
 					for (int k = 0; k < n.numNeighbors && !broken; k++)
 					{
-						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
-						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(World::actual,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
+						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true, true);
+						if (h1 == Objects::badHeight || h1 == Grid::CellStack::BottomHeight || !testBase->CanStandOn(World::actual,Grid::LCellIdI(n.neighborID[k],h1-1)))
 							broken = true;
 					}
 					if (broken)
@@ -404,7 +414,7 @@ namespace World
 					{
 						Objects::PTurretBase base = e->GetTurretBase();
 						if (base)
-							d2 = sqr(sqrt(d2) - base->turret->horizontalAttackRange(e->owner));
+							d2 = M::sqr(sqrt(d2) - base->turret->horizontalAttackRange.GetValue(e->GetResearchState()));
 
 						dist2 = std::min(dist2, d2);
 					}
@@ -412,7 +422,7 @@ namespace World
 					{
 						minNexusHubDist2 = std::min(minNexusHubDist2, d2);
 					}
-				},false);
+				});
 
 				#ifdef LOWER_RESOLUTION_PLANET
 					static const float MinimumNexusBaseDistance = 0.4f;	//minimum distance from any nexus building (nexus hub explicitly excluded)
@@ -423,7 +433,7 @@ namespace World
 				static const float PlacementVariance = 0.1f;	//should not exceed 0.1f
 
 				if (Objects::Faction::all.IsEmpty())
-					dist2 = dist2 > MinimumNexusBaseDistance ? sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
+					dist2 = dist2 > MinimumNexusBaseDistance ? M::sqr(random.NextFloat(1,2)) : 0.f;	//0 should imply to not take this location
 				else
 					dist2 *= pow(1.f - PlacementVariance,random.NextFloat(-1,1));	//vary randomly
 
@@ -454,43 +464,51 @@ namespace World
 	{
 		if (RuntimeConfig::empZones)
 		{
-			count_t numZones = Game::Config::CountAccessibleZones(temporaryFactionCountBonus);
-
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-				
+			const count_t numZones = Game::Config::CountTheoreticallyAccessibleZones(temporaryFactionCountBonus);
+			const count_t unlocked = Game::Config::CountActuallyAccessibleZones(temporaryFactionCountBonus);
+			LogEvent(EventSignificance::Common,"Re-counted necessary EMP Zones (bonus="+String(temporaryFactionCountBonus)+"): raw="+String(numZones)+", final="+String(unlocked));
 			SetUnlockedEMPZones(unlocked);
 		}
 		else
 		{
+			LogEvent(EventSignificance::Common,"Clearing all EMP Zones");
 			SetUnlockedEMPZones(NumZones);
 		}
 	}
 
 
-	void		SetUnlockedEMPZones(int unlocked)
+	void			CorrectResidualEMPDamage(float&atTime, UINT16 oldEmpZonesUnlocked, UINT16 newEmpZonesUnlocked)
 	{
-		const UINT16 newUnlocked = ((1<<unlocked) - 1);
+		Objects::ForeachWorldEntity([&atTime,oldEmpZonesUnlocked,newEmpZonesUnlocked](const Objects::PWorldEntity&e)
+		{
+			if (Grid::AffectedByEMP(e->location,oldEmpZonesUnlocked) && !Grid::AffectedByEMP(e->location,newEmpZonesUnlocked))
+			{
+				e->HealAllEMPDamage(atTime);
+				LogEvent(EventSignificance::Common,e.get(),"EMP-Zone has liften. All EMP damage removed");
+			}
+			else
+				if (!Grid::AffectedByEMP(e->location,oldEmpZonesUnlocked) && Grid::AffectedByEMP(e->location,newEmpZonesUnlocked))
+					Game::ApplyEMPZoneDamage(e,atTime);
+		});
+	}
+
+	void		SetUnlockedEMPZones(count_t unlocked)
+	{
+		const UINT16 newUnlocked = (UINT16)(((1<<unlocked) - 1));
 		if (unlockedEMPZones == newUnlocked)
 			return;
+		LogEvent(EventSignificance::Common,"Updating unlocked EMP Zones (unlocked="+String(unlocked)+"): "+Bin2Str::Convert(&unlockedEMPZones,sizeof(unlockedEMPZones))+"->"+Bin2Str::Convert(&newUnlocked,sizeof(newUnlocked)));
+		float t = 0;
+		CorrectResidualEMPDamage(t,unlockedEMPZones,newUnlocked);
 		Grid::empZonesUnlocked = unlockedEMPZones = newUnlocked;
 		Grid::empZonesLocked = empZonesLocked = AllZones  & ~unlockedEMPZones;
-		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::FactionLevel);
+		Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,Channels::Level::Faction);
 
-		float t = 0;
-		Game::UpdateResidualEMPDamage(t);
 
 	}
 
 
-	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::Folder  folder, Buffer0<TPlanetIniFile,Swap>&outList)
+	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::FolderScan folder, Ctr::Buffer0<TPlanetIniFile,Swap>&outList)
 	{
 		if (!folder.IsValidLocation())
 		{
@@ -498,7 +516,6 @@ namespace World
 			return;
 		}
 		FileSystem::File file;
-		folder.Rewind();
 		while (folder.NextFile("ini",file))
 		{
 			outList.Append().name = String(file.GetInnerName());
@@ -510,24 +527,22 @@ namespace World
 
 	}
 
-	bool			IsPlanetIniFile(const String&filename)
+	bool			IsPlanet(const String&name)
 	{
-		if (!filename.endsWith(".ini"))
-			return IsPlanetIniFile(filename+".ini");
-		return FileSystem::Folder(RuntimeConfig::ConfigFile("config/myPlanets")).FindFile(PathString(filename)) != nullptr
-				||
-			FileSystem::Folder().FindFile("config/myPlanets/"+PathString(filename)) != nullptr;
+		if (name.BeginsWith('*'))
+			return FileSystem::IsFile(RuntimeConfig::sharedConfig.Lookup("config/myPlanets/"+name.SubString(1)+".ini"));
+		return FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(name)+".ini") != nullptr;
 	}
 
 
-	void		GetAvailablePlanetIniFiles(Array<TPlanetIniFile>&rsOut)
+	void		GetAvailablePlanetIniFiles(Ctr::Array<TPlanetIniFile>&rsOut)
 	{
-		Buffer0<TPlanetIniFile,Swap> files;
+		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
-		AppendAvailablePlanetInitFilesFrom(false, RuntimeConfig::ConfigFile("config/myPlanets"),files);
-		AppendAvailablePlanetInitFilesFrom(true,FileSystem::Folder().FindFolder("config/myPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(false, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")),files);
+		AppendAvailablePlanetInitFilesFrom(true, FileSystem::Directory().FindDirectory("../predefinedPlanets"),files);
 
-		GenericHashTable<String,TPlanetIniFile,StdHash,Swap,Swap>	merged;
+		HashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)
 		{
 			
@@ -543,15 +558,15 @@ namespace World
 				merged.Set(f->name).swap(*f);
 		}
 
-		merged.exportTo(rsOut);
+		merged.ExportTo(rsOut);
 
-		ByOperator::QuickSort(rsOut);
+		Sorting::ByOperator::QuickSort(rsOut);
 	}
 
 
-	void			GetAvailablePlanetNames(Array<String>&rsOut)
+	void			GetAvailablePlanetNames(Ctr::Array<String>&rsOut)
 	{
-		Array<TPlanetIniFile>	files;
+		Ctr::Array<TPlanetIniFile>	files;
 		GetAvailablePlanetIniFiles(files);
 		rsOut.SetSize(files.Count());
 		for (index_t i = 0; i < files.Count(); i++)

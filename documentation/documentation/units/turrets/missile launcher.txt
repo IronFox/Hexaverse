@@ -1,0 +1,2 @@
+----
+Tower-only attack turret. See [[units/structures/missile launcher tower]].

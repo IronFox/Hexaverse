@@ -5,51 +5,60 @@
 #include "cursorMode.h"
 #include "types.h"
 #include "componentAttribute.h"
-#include "luaAttribute.h"
+#include "research/attributes.h"
 #include "description.h"
 #include "entityCommand.h"
 #include "clientAttachment.h"
 #include "geometry.h"
+#include "projectileImpact.h"
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
 #endif
 
 namespace Objects
 {
-	static const constexpr float			vehicleScale = 0.01f * Grid::UnitScale * WorldScale;
+	static const constexpr float			vehicleScale = 0.4f;
 	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
 	struct THindranceVector
 	{
-		int			road,
-					air,
-					water,
-					other;
+		int			road=0,
+					air=0,
+					water=0,
+					other=0;
 	};
 
 
-	CONSTRUCT_ENUMERATION3(
-		TurretTrajectory,
-			InvalidTrajectory,
-			ReachesTarget,
-			MidFlightImpact
-	);
+
+
+
 	static const float g = 9.80665f;
 
 	CONSTRUCT_ENUMERATION3(TrajectoryType, Artillery, Missile, VerticalBeam);
 
+
+	/**
+	Determines whether the given trajectory is a vertical beam trajectory.
+	If true, it fires only up and down, and cannot affect neighboring stacks except via explosion radius
+	*/
+	inline bool IsBeam(TrajectoryType t)	{return t == TrajectoryType::VerticalBeam;}
+
 	inline bool					CursorModeExpectsLeftClick(CursorMode activeCursorMode)
 	{
-		return (
-		activeCursorMode == CursorMode::BuildConnectorChainMode 
-		|| activeCursorMode == CursorMode::BuildRoadChainMode
-		|| activeCursorMode == CursorMode::BuildBridgeMode
-		|| activeCursorMode == CursorMode::BuildWallChainMode
-		|| activeCursorMode == CursorMode::AttackMode 
-		|| activeCursorMode == CursorMode::DigTunnelMode
-		|| activeCursorMode == CursorMode::PlaceStructureMode
-		);
+		switch (activeCursorMode)
+		{
+			case CursorMode::BuildConnectorChainMode:
+			case CursorMode::BuildRoadChainMode:
+			case CursorMode::BuildBridgeMode:
+			case CursorMode::BuildHighWallChainMode:
+			case CursorMode::BuildLowWallChainMode:
+			case CursorMode::AttackMode:
+			case CursorMode::DigTunnelMode:
+			case CursorMode::PlaceStructureMode:
+				return true;
+		}
+		return false;
 	}
 
 	#ifdef HAS_WINDOW
@@ -69,11 +78,11 @@ namespace Objects
 		float			radius=0;	//!< Distance from planet center
 
 		/**/			TrajectoryEndPoint()	{}
-		/**/			TrajectoryEndPoint(const TVec3<>&worldLocation);
+		/**/			TrajectoryEndPoint(const M::TVec3<>&worldLocation);
 		/**/			TrajectoryEndPoint(const Grid::LCellIdI&, float zOffset);
 		explicit		TrajectoryEndPoint(const Grid::LCellIdI&);
 
-		String			ToString() const;
+		friend String	ToString(const TrajectoryEndPoint&);
 	};
 
 	/**
@@ -99,19 +108,20 @@ namespace Objects
 
 
 		const char*			OperationToString(operation_t);
-		Lua::Reference		ResearchStateOf(const OwnerParameter&);
+		const Research::Attributes::Table&		ResearchStateOf(const PFaction&);
 
 
 
-		template <typename T, typename Filter, int EmptyDefault=0>
-			class LuaAttribute : public Objects::LuaAttribute<T,Filter>
+		template <typename T, int EmptyDefault=0>
+			class AttributeWithDefault : public Objects::Research::Attribute<T>
 			{
+				typedef Objects::Research::Attribute<T>	Super;
 			public:
-				T						operator()(const OwnerParameter&p) const
+				T						GetValue(const Research::Attributes::Table&researchState) const
 				{
 					if (this->IsEmpty())
 						return (T)EmptyDefault;
-					return this->GetValue(ResearchStateOf(p));
+					return Super::GetValue(researchState);
 				}
 			};
 
@@ -122,10 +132,10 @@ namespace Objects
 
 			struct Detail
 			{
-				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Buffer0<TVec4<> >&outSteps);
-				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps);
-				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-				static TurretTrajectory		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static ImpactDetails		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static ImpactDetails		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
@@ -140,8 +150,8 @@ namespace Objects
 			PClientAttachment				attachment;
 			CommandContainer				commands;
 			#ifdef HAS_WINDOW
-				Array<Geometry>				parts;
-				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
+				Ctr::Array<Geometry>		parts;
+				Engine::OpenAL::Wave		ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
 			#endif
 
 
@@ -149,28 +159,26 @@ namespace Objects
 			String							typeName,shortName;
 			ConstName						constName;
 			int								initiative;
-			LuaAttribute<int,NoFilter>			productionCosts /*=1*/;
-			LuaAttribute<bool,NoFilter,true>	isUnlocked;
+			Research::Attribute<int>		productionCosts /*=1*/;
+			AttributeWithDefault<bool,true>	isUnlocked;
 											
 
 
 
-			void							GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const;
+			void							GetSubSystem(index_t geometryIndex, float angle, M::TMatrix4<>&outSystem)	const;
 			virtual bool					IsTurret() const {return false;}
 			virtual bool					IsVehicleBase() const {return false;}
 
 			
 
-			bool							TestIntersection(float zOffset, float x, float y, const TVec3<>&b, const TVec3<>&d, float & distance);
+			bool							TestIntersection(float zOffset, float x, float y, const M::TVec3<>&b, const M::TVec3<>&d, float & distance);
 
 			void							DescribeType(Description&,bool compound, const OwnerParameter&);
-			void							VisitAllCommands(FCommandVisitor visitor, bool force);
 		};
 
 
-		typedef LuaAttribute<float,NoFilter>		FFunc;
-		typedef LuaAttribute<int,NoFilter>			IFunc;
-		typedef LuaAttribute<float,UnitScaleFilter>	FScaledFunc;
+		typedef Research::Attribute<float>	FFunc;
+		typedef Research::Attribute<int>	IFunc;
 
 
 	
@@ -182,19 +190,16 @@ namespace Objects
 		{
 			typedef Base					Super;
 		public:
-			enum class MountType
-			{
+			CONSTRUCT_ENUMERATION3(MountType,
 				Vehicle,
 				TowerOnly,
-				Satellite,
-			};
+				Satellite
+			);
 
-
-			ConstName						constTowerName;
 
 			IFunc							healthMultiplier;
 			Resource						ammoType;
-			FixedArray<IFunc,OperationCount>operationSpeed;
+			Ctr::FixedArray<IFunc,OperationCount>operationSpeed;
 			FFunc							weight	/*=1*/,					//turret weight
 											damageLevel;
 			IFunc							attacksPerRound,
@@ -203,15 +208,18 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				ResourceVector				baseStorageCapacity;
 			#endif
-			bool							ignoresVehicleMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round
+			bool							attacksMovingHostilesDuringMotionPhase = false,	//indicates that mobiles using this turret behave like towers
+											independentAttackAndMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round, with neither action slowing the other
 											dealsEMPDamage = false,
 											detectsResources = false,
+											isScanner = false,	//indicates a turret explicitly designed to scan for hostile units or terrain changes
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
-											isDoomsday = false;	//server may reject their deployment
+											mainAttackIsDoomsday = false,	//server may reject their deployment
+											hasDoomsdayFunctionality = false;	//server may reject part of their functions
 
 			MountType						mountType = MountType::Vehicle;
-			FScaledFunc						explosionRadius;
+			FFunc							explosionRadius;
 			TrajectoryType					trajectoryType;
 			//int								fuelSupplyRadius = 0;	//!< Satellites only (in fact, SkyHub only): Maximum radius that friendly satellites will be supplied in
 
@@ -224,13 +232,15 @@ namespace Objects
 			//	Linear,
 			//	Missile,
 			//}								trajectory;
-			FScaledFunc						horizontalAttackRange,	//geometric firing range
+			FFunc							horizontalAttackRange,	//geometric firing range
 											scanningRange /*= 10*/,	//geometric scanning range
 											groundScanningRange /*= -1.f*/;//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
 			FFunc							groundScannerPenetration /*= 1*/;	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
 			float							continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
 
 
+			static Timer::Time				timeSpentTracing;
+			static count_t					traceCount;
 
 			/**/							Turret():
 												#ifdef NO_MUNITION
@@ -242,28 +252,26 @@ namespace Objects
 													//baseOperationSpeed.Fill(0);
 												}
 
-			static int						GetGroundHeight(const Grid::LCellIdI&location);
-			//static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt)
+			static int						GetGroundHeight(const World::Data&world, const Grid::LCellIdI&location);
+			//static void						TraceTrajectory(TrajectoryType, float flatRange, const M::TVec3<>&source, const M::TVec3<>&dest, Buffer0<M::TVec4<> >&outSteps);
+			static ImpactDetails			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+			static ImpactDetails			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest)
 			{
-				Buffer0<TVec4<> > outSteps;
-				Grid::HCellIdI impactCell;
-				float angle;
-				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,source,dest,outSteps,impactAt,impactCell,angle);
+				Ctr::Buffer0<M::TVec4<> > outSteps;
+				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,traceInActualWorld,source,dest,outSteps);
 			}
 			virtual bool					IsTurret() const override {return true;}
-			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Buffer0<TVec4<> >&outTrajectory);
+			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outTrajectory);
 
 
-			float							GetOperationSpeed(operation_t op, const OwnerParameter&owner) const;
-			int								GetDamageLevel(const OwnerParameter&owner) const;
-			float							GetExplosionRadius(const OwnerParameter&owner) const;
-			int								GetAttacksPerRound(const OwnerParameter&owner) const;
-			int								GetAmmoNeedPerShot(const OwnerParameter&owner) const;
-			float							GetHorizontalAttackRange(const OwnerParameter&owner, const FFunc&bonus=FFunc()) const;
-			float							GetScanningRange(const OwnerParameter&owner, int bonus=0) const;
-			float							GetGroundScanningRange(const OwnerParameter&owner) const;
+			float							GetOperationSpeed(operation_t op, const Research::Attributes::Table&researchState) const;
+			int								GetDamageLevel(const Research::Attributes::Table&researchState) const;
+			float							GetExplosionRadius(const Research::Attributes::Table&researchState) const;
+			int								GetAttacksPerRound(const Research::Attributes::Table&researchState) const;
+			int								GetAmmoNeedPerShot(const Research::Attributes::Table&researchState) const;
+			float							GetHorizontalAttackRange(const Research::Attributes::Table&researchState, const FFunc&bonus=FFunc()) const;
+			float							GetScanningRange(const Research::Attributes::Table&researchState, int bonus=0) const;
+			float							GetGroundScanningRange(const Research::Attributes::Table&researchState) const;
 
 			static float					MaxRangeToVelocity(float range)
 			{
@@ -273,13 +281,13 @@ namespace Objects
 
 			static float					VelocityToMaxVerticalHeight(float v)
 			{
-				return sqr(v) / (2.f * g);
+				return M::Sqr(v) / (2.f * g);
 
 			}
 
 			static float					MaxRangeAtHeight(float horizontalRange, float verticalDistance)
 			{
-				float q = sqr(horizontalRange) - 2.f * horizontalRange * verticalDistance;
+				float q = M::Sqr(horizontalRange) - 2.f * horizontalRange * verticalDistance;
 				if (q < 0)
 					return - 1.f;
 				return sqrt(q);
@@ -287,7 +295,7 @@ namespace Objects
 
 			static float					MaxHeightAtHDistance(float horizontalRange, float horizontalDistance)
 			{
-				return -0.5f / horizontalRange * sqr(horizontalDistance) + horizontalRange * 0.5f;
+				return -0.5f / horizontalRange * M::Sqr(horizontalDistance) + horizontalRange * 0.5f;
 			}
 
 			static float					MaxHeightSlopeAtHDistance(float horizontalRange, float horizontalDistance)
@@ -309,7 +317,7 @@ namespace Objects
 					return -1.f;
 				float a = acos(q);
 
-				float q2 = velocity2 * sqr(sin(a)) + 2.f * g * verticalDistance;
+				float q2 = velocity2 * M::Sqr(sin(a)) + 2.f * g * verticalDistance;
 				ASSERT_GREATER_OR_EQUAL__(q2,0);
 				q = sqrt(q2);
 
@@ -327,9 +335,9 @@ namespace Objects
 			{
 				//verticalDistance = -verticalDistance;
 				//v *= (1.f + TypeInfo<float>::error);
-				float velocity2 = sqr(v);
+				float velocity2 = M::Sqr(v);
 				TAngles rs;
-				float q0 = sqr(velocity2) - g  * (g * sqr(horizontalDistance) + 2.f * verticalDistance * velocity2 );
+				float q0 = M::Sqr(velocity2) - g  * (g * M::Sqr(horizontalDistance) + 2.f * verticalDistance * velocity2 );
 				if (q0 < 0)
 					return rs;
 
@@ -339,7 +347,7 @@ namespace Objects
 
 				if (a0 > 0)
 					rs.idealAngle[rs.numAngles++] = a0;
-				if (a1 > 0 && (rs.numAngles == 0 || !similar(a0,a1)))
+				if (a1 > 0 && (rs.numAngles == 0 || !M::Similar(a0,a1)))
 					rs.idealAngle[rs.numAngles++] = a1;
 				return rs;
 			}
@@ -349,12 +357,12 @@ namespace Objects
 
 
 
-			void							BuildBlastSystem(const Grid::LCellIdI&location, float radius, TMatrix4<>&system) const;
-			void							BuildBlastSystem(const TVec3<>&location, float radius, TMatrix4<>&system) const;
+			void							BuildBlastSystem(const Grid::LCellIdI&location, float radius, M::TMatrix4<>&system) const;
+			void							BuildBlastSystem(const M::TVec3<>&location, float radius, M::TMatrix4<>&system) const;
 
-			bool							CanAttack() const {return attacksPerRound.IsSet();}
-			bool							CanDealDamage() const {return damageLevel.IsSet();}
-			bool							CanDo(operation_t op) const {return operationSpeed[op].IsSet();}
+			bool							CanAttack() const {return attacksPerRound.IsFunctionOrConstNonZero();}
+			bool							CanDealDamage() const {return damageLevel.IsFunctionOrConstNonZero();}
+			bool							CanDo(operation_t op) const {return operationSpeed[op].IsFunctionOrConstNonZero();}
 			bool							CanRepair() const {return CanDo(Repair);}
 			bool							CanConstruct() const {return CanDo(Construct);}
 			//bool							IsStandardOffensive() const
@@ -380,15 +388,41 @@ namespace Objects
 				SmokeTrail
 			};
 
-			static float					CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
+			static float					CompileTrajectory(const Ctr::Buffer0<M::TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources(ResourceFlagSet&res, const OwnerParameter&) const;
+			bool							ConsumesResources(ResourceFlagSet&res, const Research::Attributes::Table&researchState) const;
 
 		};
 
+
+
+		enum class GroundFlags
+		{
+			None = 0x0,
+			DisallowUnknownGround = 0x1,		//!< If the detected ground is unknown, cannot stand here
+			ForceFloatOnEverything = 0x2,		//!< Except DisallowUnknownGround type, all other attributes of the ground are ignored
+			ForceFloatOnWater = 0x4,			//!< If the base cannot normally stand on water alone, and only water is found, the vehicle may stand there anyways
+		};
+
+
+		inline GroundFlags operator|(GroundFlags a, GroundFlags b)
+		{
+			typedef std::underlying_type<GroundFlags>::type U;
+			return GroundFlags( U(a) | U(b) );
+		}
+		inline GroundFlags operator|=(GroundFlags&a, GroundFlags b)
+		{
+			a = a | b;
+			return a;
+		}
+		inline bool operator&(GroundFlags a, GroundFlags b)
+		{
+			typedef std::underlying_type<GroundFlags>::type U;
+			return ( U(a) & U(b) ) != 0;
+		}
 
 
 
@@ -404,7 +438,7 @@ namespace Objects
 				int							storageMultiplier = 1;
 			#endif
 
-			FScaledFunc						turretRangeModifier /*= 0*/;
+			FFunc							turretRangeModifier /*= 0*/;
 			FFunc							operationSpeedMultiplier /*= 1*/,
 											movementSpeed,		//ideal movement speed (if not encumbered)
 											carryingCapacity;		//turret weight tolerance before movement speed is reduced
@@ -441,23 +475,16 @@ namespace Objects
 
 
 
-			float							GetBaseMovementSpeed(const OwnerParameter&owner) const;
-			float							GetCarryingCapacity(const OwnerParameter&owner) const;
-			float							GetBaseHealth(const OwnerParameter&owner) const;
+			float							GetBaseMovementSpeed(const Research::Attributes::Table&state) const;
+			float							GetCarryingCapacity(const Research::Attributes::Table&state) const;
+			float							GetBaseHealth(const Research::Attributes::Table&state) const;
 
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}
 
 			virtual bool					IsVehicleBase() const override {return true;}
 
-			/**
-			Global flag that states whether or not any base should be able to stand on unknown blocks.
-			Usually this is fine, but for AI-units this can prove fatal.
-			Make sure this variable is only ever temporarily false
-			*/
-			static bool						canStandOnUnknown	/*=true*/;
-
-			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
+			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, GroundFlags flags=GroundFlags::None);
 
 			void							DescribeType(Description&, bool compound, bool includeName, const OwnerParameter&);
 
@@ -488,43 +515,29 @@ namespace Objects
 
 		namespace Terraformer
 		{
-			extern Buffer<PStructure> canBuild;
-
-
-
 			void		Configure(Turret&);
+
+			bool		CanBuild(const PStructure&proto);
+
 		};
 
 		namespace Bomb
 		{
-			#ifdef HAS_WINDOW
-			namespace Cmd
-			{
-				template <ConstName DetonationSize>
-					void	IssueCommand()
-					{
-						PMobileEntity vehicle = selectedMobileEntity;
-						if (!vehicle)
-							return;
-						if (!ShouldQueueCommands())
-							ApplicationInterface::SignalDropSafeTasks(vehicle);
-						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
-					}
-
-			};
-			#endif
-
+			extern FFunc		doomsdayExplosionRadius;
+			extern AttributeWithDefault<int,200>	doomsdayUraniumCost;
+			extern AttributeWithDefault<int,-100>	regularUraniumCost;
+			extern IFunc		doomsdayDamageLevel;
 
 			void		Configure(Turret&);
 
-
-			float		GetRadius(bool doomsday, const OwnerParameter&);
-			int			GetDamageLevel(bool doomsday, const OwnerParameter&);
+			int			GetUraniumCost(bool doomsday, const Research::Attributes::Table&researchState);
+			float		GetRadius(bool doomsday, const Research::Attributes::Table&researchState);
+			int			GetDamageLevel(bool doomsday, const Research::Attributes::Table&researchState);
 		};
 
 	
 		extern Turret	terraformer,mechanic,
-						artillery,launcher,emp,armored,
+						artillery,launcher,rockets,emp,armored,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -540,6 +553,11 @@ namespace Objects
 		};
 
 		namespace Launcher
+		{
+			void		Configure(Turret&);
+		};
+
+		namespace Rockets
 		{
 			void		Configure(Turret&);
 		};
@@ -620,7 +638,7 @@ namespace Objects
 
 	}
 
-	inline float3 ToWorld(const TVec4<>&trajectoryPoint)
+	inline float3 ToWorld(const M::TVec4<>&trajectoryPoint)
 	{
 		return trajectoryPoint.xyz * trajectoryPoint.w;
 	}

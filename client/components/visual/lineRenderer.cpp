@@ -9,6 +9,8 @@ namespace LineRenderer
 {
 	static Engine::DX11::BaseInstructionBlock	lines;
 	static Engine::DX11::StreamVBO	geometry;
+	static Engine::DX11::ObjectBuffer<float4> tint;
+	static float4 tintColor;
 
 	static const count_t maxLines = 1024;
 
@@ -16,24 +18,40 @@ namespace LineRenderer
 	static float *const _end = _outBuffer + maxLines * 2 * 7;
 	
 
+
+	static void SetTint(const float4&c)
+	{
+		if (tintColor == c)
+			return;
+		tintColor = c;
+		tint.Update(c);
+	}
+
 	void	Create()
 	{
 		geometry.Create(maxLines*2, sizeof(float) * 7);
 		lines.vbo = geometry;
 		{
 			Engine::VertexBinding binding;
-			binding.normal.unset();
-			binding.color.set(3, 4);
+			binding.normal.Unset();
+			binding.color.Set(3, 4);
 			binding.floats_per_vertex = 7;
 			lines.binding = binding;
 		}
 
-		lines.shader.LoadFromFile("shaders/lines.hlsl", "vsMain", "psMain", nullptr, 0);
+		tint.Create(tintColor);
+		{
+			const Engine::DX11::Shader::Binding bindings[] = {
+				Engine::DX11::Shader::Binding(tint,"Tint")
+			};
+			lines.shader.LoadFromFile("shaders/lines.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		}
 		lines.UpdateLayout();
 		lines.SetLines();
 	}
 	void	Destroy()
 	{
+		tint.Clear();
 		geometry.Clear();
 		lines = Engine::DX11::BaseInstructionBlock();
 	}
@@ -49,7 +67,7 @@ namespace LineRenderer
 		Rasterize(p0, _color, p1, _color);
 	}
 
-	void	Rasterize(const TFloatRect&r)
+	void	Rasterize(const M::TFloatRect&r)
 	{
 		float3	p0 = float3(r.x.min, r.y.min, 0 ),
 				p1 = float3(r.x.max, r.y.min, 0 ),
@@ -75,12 +93,29 @@ namespace LineRenderer
 		if (_at == _outBuffer)
 			return;
 
+		SetTint(float4(1));
+
 		count_t vcnt = (_at - _outBuffer) / 7;
 		geometry.PartialUpdate(_outBuffer, vcnt, 7 * sizeof(float));
 		display.RenderVertices(lines, 0, (UINT32)vcnt);
 		_at = _outBuffer;
 
 	}
+
+	void	Baked::Bake()
+	{
+		((DX11::BaseInstructionBlock&)instruction) = lines;
+		instruction.vbo.CreateFromStructs(vertices);
+		instruction.ibo.Create(indices);
+		Clear();
+	}
+
+	void	Baked::Rasterize(const float4&tint) const
+	{
+		SetTint(tint);
+		display.Render(instruction,true);
+	}
+
 }
 
 #endif

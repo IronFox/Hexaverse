@@ -27,6 +27,16 @@ namespace World
 			initial.FlushAndValidateSensory();
 		#endif
 		actual.FlushTerrain();
+
+		if (actual.PaintingSensorsConcurrently())
+		{
+			LogEvent(EventSignificance::Common,"FlushAllWorldData: Concurrent sensor painting still in progress. Aborting painting...");
+			actual.AbortConcurrentSensorPainting();
+			while (actual.PaintingSensorsConcurrently())
+				Sleep(10);
+			LogEvent(EventSignificance::Common,"FlushAllWorldData: Aborted concurrent sensor painting");
+		}
+
 		actual.FlushAndValidateSensory();
 	}
 
@@ -40,11 +50,42 @@ namespace World
 		}
 	}
 
+	void					Data::CopyGridContent(const Data&other)
+	{
+		for (UINT32 stack = 0; stack < Grid::HighSetup::GridType::CellCount; stack++)
+		{
+			const auto& fromStack = other.cellStack[stack];
+			auto& toStack = cellStack[stack];
+			for (unsigned layer = 0; layer < Grid::CellStack::Range; layer++)
+			{
+				const auto&from = fromStack.volumeCell[layer];
+				auto&to = toStack.volumeCell[layer];
+				to.content = from.content;
+				#ifdef HAS_WINDOW
+					to.intLightLevel = from.intLightLevel;
+					to.submergence = from.submergence;
+				#endif
+			}
+			#ifdef HAS_WINDOW
+				toStack.highestOpaqueCell = fromStack.highestOpaqueCell;
+				toStack.lightingChangedTo = fromStack.lightingChangedTo;
+				toStack.lowestOpenCell = fromStack.lowestOpenCell;
+				toStack.waterRange = fromStack.waterRange;
+			#endif
+		}
+
+		BaseGrid::FamiliesChanged changed;
+		changed.SetAll();
+		SignalChange(changed,0,true);
+	}
+
+
 
 	void	Create()
 	{
 		FlushAllWorldData();
 
+		Sensor::StaticCreate();
 
 		#ifdef HAS_WINDOW
 			actual.UpdateLighting();
@@ -56,7 +97,7 @@ namespace World
 		};
 	}
 	
-	//void	FlushStackFamily(Array<CellStack>&cellStack,  BYTE family)
+	//void	FlushStackFamily(Ctr::Array<CellStack>&cellStack,  BYTE family)
 	//{
 	//	const index_t offset = high.grid.GetFamilyOffset(family);
 	//	const count_t range = high.grid.CountFamilyMembers(family);
@@ -216,15 +257,15 @@ namespace World
 	void	Data::Explode(const HCellIdI&id,float radius, float atTime)
 	{
 		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
-		const float r2 = sqr(radius);
-		Queue<UINT32> queue;
+		const float r2 = M::Sqr(radius);
+		Ctr::Queue<UINT32> queue;
 		
 		#ifdef HAS_WINDOW
 			Queue<UINT32> changed;
 		#endif
 		queue << id.stackID;
 
-		Box<> b;
+		M::Box<> b;
 		b.SetCenter(center,radius);
 
 		bool processed[HighSetup::GridType::CellCount] = {false};
@@ -239,16 +280,16 @@ namespace World
 			processed[current] = true;
 			seq.SelectStack(current);
 
-			const TVec3<>&dir = high.cells[current].centerVertex.xyz;
-			TVec3<> lower = dir * ToRadius(-CellStack::HalfRange);
-			TVec3<> upper = dir * ToRadius(CellStack::HalfRange);
+			const M::TVec3<>&dir = high.cells[current].centerVertex.xyz;
+			M::TVec3<> lower = dir * ToRadius(-CellStack::HalfRange);
+			M::TVec3<> upper = dir * ToRadius(CellStack::HalfRange);
 			float dummy = Vec::distance(upper,lower);
-			if (b.Contains(lower) || b.Contains(upper) || _oDetectOpticalBoxIntersection(b,lower,(upper-lower)/dummy,dummy))
+			if (b.Contains(lower) || b.Contains(upper) || M::Obj::DetectOpticalBoxIntersection(b,lower,(upper-lower)/dummy,dummy))
 			{
 				bool anyChanged = false;
 				for (int h = -CellStack::HalfRange; h < CellStack::HalfRange; h++)
 				{
-					TVec3<> at = dir * ToRadius(h);
+					M::TVec3<> at = dir * ToRadius(h);
 					if (Vec::quadraticDistance(center,at) < r2)
 					{
 						if (seq.Clear(h))
@@ -387,8 +428,8 @@ namespace World
 
 	//	const float r = ToRadius(refHeight);
 	//	//radius /= r;
-	//	const float hr2 = sqr(radius/r);
-	//	const TVec3<>& center = high.cells[highCenter].centerVertex.xyz;
+	//	const float hr2 = M::Sqr(radius/r);
+	//	const M::TVec3<>& center = high.cells[highCenter].centerVertex.xyz;
 	//	UINT32 current;
 	//	while (openCells >> current)
 	//	{
@@ -411,7 +452,7 @@ namespace World
 		int penetrationLeft = penetration << 1;	//account for water effect
 
 		const CellStack&stack = cellStack[highCellCenter];
-		UINT32 limit = vmin( startingLayer, CellStack::Range-1);
+		UINT32 limit = M::Min( startingLayer, CellStack::Range-1);
 
 		#ifdef HAS_WINDOW
 			if (stack.waterRange.IsNotEmpty())
@@ -430,7 +471,7 @@ namespace World
 					limit = stack.highestOpaqueCell;
 				DBG_ASSERT_LESS2__(limit,CellStack::Range, stack.lowestOpenCell, stack.highestOpaqueCell);
 			}
-			limit = vmin( limit, CellStack::Range-1);
+			limit = M::Min( limit, CellStack::Range-1);
 		#endif
 
 		UINT32 layer = limit;
@@ -501,7 +542,7 @@ namespace World
 		{
 			for (UINT layer = 0; layer < CellStack::Range; layer++)
 			{
-				rs = vmax(rs, stack->volumeCell[layer].structureCounter);
+				rs = M::Max(rs, stack->volumeCell[layer].structureCounter);
 			}
 		}
 		return rs;
@@ -518,7 +559,7 @@ namespace World
 		const auto&c = Grid::high.grid.GetCell(finer);
 		BYTE rs = cellStack[finer].GetCellI(cell.height).structureCounter;
 		for (int j = 0; j < c.neighborhood.numNeighbors; j++)
-			rs = vmax(rs, cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).structureCounter);
+			rs = M::Max(rs, cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).structureCounter);
 		return rs;
 	#else
 		return cellStack[cell.stackID].GetCellI(cell.height).structureCounter;
@@ -633,12 +674,12 @@ namespace World
 			outStrongest = outWeakest = Content::Reinterpret((cellStack[finer].GetCellI(cell.height).content));
 			bool anyUnknown = false;
 			int s0 = CellStack::Cell::typeStrength[outStrongest];
-			TFloatRange<int> strength = FloatRange<int>(s0,s0);
+			M::TFloatRange<int> strength = M::FloatRange<int>(s0,s0);
 			if (outStrongest == Content::Unknown)
 			{
 				anyUnknown = true;
 				if (!includeUnknown)
-					strength = MaxInvalidRange<int>();
+					strength = M::MaxInvalidRange<int>();
 			}
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
@@ -684,10 +725,57 @@ namespace World
 	}
 
 
+
+	Data::ChangeLock::ChangeLock(const ChangeLock&other):parent(other.parent)
+	{
+		parent->BeginChangeLock();
+	}
+	Data::ChangeLock::~ChangeLock()
+	{
+		parent->EndChangeLock();
+	}
+
+	
+	Data::ChangeLock::ChangeLock(Data*dat):parent(dat)
+	{
+		parent->BeginChangeLock();
+	}
+
+
+	void			Data::BeginChangeLock()
+	{
+		ASSERT__(!onChangeLock.isActive);
+		onChangeLock.isActive ++;
+	}
+
+	void			Data::EndChangeLock()
+	{
+		ASSERT__(onChangeLock.isActive != 0);
+		onChangeLock.isActive --;
+		if (onChangeLock.isActive == 0)
+		{
+			SignalChange(onChangeLock.changed,onChangeLock.lastChangeTime,onChangeLock.terrainChanged);
+			onChangeLock = TOnChangeLock();
+		}
+	}
+
 	void			Data::SignalChange(const BaseGrid::FamiliesChanged&changed, float atTime, bool terrainChanged)
 	{
 		if (!changed.AnyChanged())
 			return;
+		if (onChangeLock.isActive)
+		{
+			onChangeLock.lock.lock();
+			{
+				onChangeLock.changed.Set(changed);
+				onChangeLock.lastChangeTime = std::max(onChangeLock.lastChangeTime,atTime);
+				if (terrainChanged)
+					onChangeLock.terrainChanged = true;
+			}
+			onChangeLock.lock.unlock();
+			return;
+		}
+
 		bool acceptChange = false;
 		#ifdef CLIENT
 			acceptChange = true;
@@ -708,8 +796,12 @@ namespace World
 			if (acceptChange)
 				InvalidateSensory();	//for the global world this is irrelevant and never checked by the server, but the client will issue sensory updates as a result.
 			//the server, on the other hand, will apply this to client-worlds when onTerrainChange() is trigger by World::actual, resulting in the same effect for its clients.
-
-			onTerrainChange(*this,changed,atTime);
+			if (!terrainChangeCascade)
+			{
+				terrainChangeCascade = true;
+				onTerrainChange(*this,changed,atTime);
+				terrainChangeCascade = false;
+			}
 		}
 	}
 
@@ -1021,7 +1113,7 @@ namespace World
 	{
 		if (height < Grid::CellStack::BottomHeight)
 			return false;
-		return ChangeConditionally(Grid::CellStack::ToLayer(height),type,cond);
+		return ChangeConditionallyU(Grid::CellStack::ToLayer(height),type,cond);
 	}
 
 	bool				Data::ChangeSequence::ChangeConditionallyU(unsigned layer, /*Grid::Content*/ BYTE type, const FCondition&cond)
@@ -1091,6 +1183,7 @@ namespace World
 			rs.lightingChangedTo = (BYTE)CellStack::Range;
 		#endif
 		SignalChange(stackID);
+		terrainChanged = true; //can't know, assume worst
 		return Data::StackAccess(&rs);
 	}
 
@@ -1110,7 +1203,7 @@ namespace World
 	}
 	
 
-	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
+	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
 	{
 		ASSERT_LESS__(family, BaseGrid::NumFamilies);
 		const index_t offset = high.grid.GetFamilyOffset(family);
@@ -1210,7 +1303,7 @@ namespace World
 
 	
 
-	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
+	void	Data::ChangeSequence::ApplyFamilyDelta(BaseGrid::family_t family, const Ctr::Array<CellStack::TTypeDelta>&data0, bool initialization)
 	{
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
@@ -1287,6 +1380,14 @@ namespace World
 		#endif
 	}
 
+	void				Data::DbgCheckWaterRanges() const
+	{
+		#if defined _DEBUG && defined HAS_WINDOW
+			foreach (this->cellStack,s)
+				s->DbgCheckWaterRange();
+		#endif
+	}
+
 	bool				Data::IsGlobalInstance()	const
 	{
 		if (this == &actual)
@@ -1299,10 +1400,25 @@ namespace World
 	}
 
 
-
+	count_t				Data::CountVisibleCells() const
+	{
+		count_t cnt = 0;
+		for (index_t i = 0; i < cellStack.Count(); i++)
+		{
+			const auto&stack = cellStack[i];
+			for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
+			{
+				const auto&cell = stack.volumeCell[k];
+				if (cell.IsCurrentlyVisible())
+					cnt++;
+			}
+		}
+		return cnt;
+	}
 
 	void				Data::FlushAndValidateSensory(short initialValue/*=0*/)
 	{
+		ASSERT__(!PaintingSensorsConcurrently());
 		bool rs= false;
 		for (index_t i = 0; i < cellStack.Count(); i++)
 		{
@@ -1380,22 +1496,35 @@ namespace World
 	}
 
 
+	/*static*/ void		Sensor::StaticCreate()
+	{
+		const count_t numProcessors = Sys::QueryLogicalProcessorsCount();
+		perProcessor.SetSize(numProcessors);
+		foreach (perProcessor,v)
+		{
+			v->shadedSphereHelper.SetSize(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range);
+			v->shadedSphereHelper.Fill(0);
+		}
+
+	}
+
+
 	bool			Sensor::Contains(const Grid::LCellIdI&loc) const
 	{
 		switch (type)
 		{
 			case SolidSphere:
 			case ShadedSphere:
-				return Sphere<>(worldCenter,radius).Contains(Grid::ToWorld(loc));
+				return M::Sphere<>(worldCenter,radius).Contains(Grid::ToWorld(loc));
 			break;
 			case UpperHalfSolidSphere:
-				return Sphere<>(worldCenter, radius).Contains(Grid::ToWorld(loc)) && Grid::CellStack::ToHeight(gridCenter.layer) <= loc.height;
+				return M::Sphere<>(worldCenter, radius).Contains(Grid::ToWorld(loc)) && Grid::CellStack::ToHeight(gridCenter.layer) <= loc.height;
 			break;
 			case SolidCylinder:
 			case ShadedCylinder:
 			{
 				const float base = Grid::ToRadius(Grid::CellStack::ToHeight(gridCenter.layer));
-				const float hr2 = sqr(radius / base);
+				const float hr2 = M::Sqr(radius / base);
 				if (Vec::quadraticDistance(Grid::low.cells[loc.stackID].cornerCenter,Grid::high.cells[gridCenter.stackID].cornerCenter) > hr2)
 					return false;
 				return Grid::CellStack::ToLayer( loc.height ) <= gridCenter.layer;
@@ -1408,20 +1537,20 @@ namespace World
 	}
 
 
-	void			Sensor::GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc) const
+	void			Sensor::GetMaxVolume(Grid::LowSetup::TVolumeDescriptor&desc, index_t processorIndex/*=0*/) const
 	{
 		switch (type)
 		{
 			case SolidSphere:
 			case ShadedSphere:
-				Grid::low.GenerateVolume(Sphere<>(worldCenter,radius+1.f),desc);
+				Grid::low.GenerateVolume(M::Sphere<>(worldCenter,radius+1.f),perProcessor[processorIndex].lowOp,desc);
 			break;
 			case SolidCylinder:
 			case ShadedCylinder:
-				MakeShaftVolume(desc,[](UINT32){return 0;});
+				MakeShaftVolume(desc,[](UINT32){return 0;},processorIndex);
 			break;
 			case UpperHalfSolidSphere:
-				Grid::low.GenerateVolume(Sphere<>(worldCenter, radius + 1.f), desc);
+				Grid::low.GenerateVolume(M::Sphere<>(worldCenter, radius + 1.f), perProcessor[processorIndex].lowOp,desc);
 				foreach(desc.coverage, st)
 					st->range.start = gridCenter.layer;
 			break;
@@ -1456,27 +1585,27 @@ namespace World
 
 	
 	template <typename T0, typename T1>
-		static void Compress(const Array<T0>&dts, ArrayData<T1>&dest)
+		static void Compress(const Ctr::Array<T0>&dts, Ctr::ArrayData<T1>&dest)
 		{
-			static Buffer<T1>	blocks;
+			static Ctr::Buffer<T1>	blocks;
 			blocks.Clear();
 			foreach(dts,dt)
 			{
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				if (blocks.IsEmpty() || blocks.Last().value != *dt)
 				{
 					auto&b = blocks.Append();
 					b.value = *dt;
 					b.repitition = 1;
 				}
 				else
-					blocks.last().repitition++;
+					blocks.Last().repitition++;
 			}
 			blocks.CopyToArray(dest);
 		}
 	template <typename T0, typename T1>
-		static void Compress(const Array<T0>&dts, ArrayData<T1>&dest, bool assertNotNull)
+		static void Compress(const Ctr::Array<T0>&dts, Ctr::ArrayData<T1>&dest, bool assertNotNull)
 		{
-			static Buffer<T1>	blocks;
+			static Ctr::Buffer<T1>	blocks;
 			blocks.Clear();
 			foreach(dts,dt)
 			{
@@ -1484,20 +1613,20 @@ namespace World
 					if (assertNotNull)
 						ASSERT__(dt->IsSet());
 				#endif
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				if (blocks.IsEmpty() || blocks.Last().value != *dt)
 				{
 					auto&b = blocks.Append();
 					b.value = *dt;
 					b.repitition = 1;
 				}
 				else
-					blocks.last().repitition++;
+					blocks.Last().repitition++;
 			}
 			blocks.CopyToArray(dest);
 		}
 
 
-	void			Data::GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
+	void			Data::GenerateDelta(BaseGrid::family_t familyID, WorldDeltaType::delta_type_t deltaType, Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
 	{
 		const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 		const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
@@ -1506,9 +1635,9 @@ namespace World
 
 
 		const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
-		Array<Grid::CellStack::TTypeDelta> tdts(writeOutput ? length * Grid::CellStack::Range : 0);
-		//Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
-		//Array<bool> fdtsValid(length * Grid::CellStack::Range);
+		Ctr::Array<Grid::CellStack::TTypeDelta> tdts(writeOutput ? length * Grid::CellStack::Range : 0);
+		//Ctr::Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
+		//Ctr::Array<bool> fdtsValid(length * Grid::CellStack::Range);
 
 		bool any = deltaType != WorldDeltaType::ProgressiveUpdate;
 		Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
@@ -1607,7 +1736,7 @@ namespace World
 		}
 	}
 
-	void		Data::CompressFamilyState(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
+	void		Data::CompressFamilyState(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta)
 	{
 		ASSERT_LESS__(f,BaseGrid::NumFamilies);
 
@@ -1615,7 +1744,7 @@ namespace World
 	}
 
 
-	bool		Data::ProgressiveUpdate(BaseGrid::family_t f,  ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta/*=false*/)
+	bool		Data::ProgressiveUpdate(BaseGrid::family_t f,  Ctr::ArrayData<Grid::CellStack::TTypeDeltaBlock>&delta, float&t, bool noDelta/*=false*/)
 	{
 		ASSERT__(!IsGlobalInstance());
 		ASSERT__(!SensoryIsInvalid());
@@ -1627,7 +1756,7 @@ namespace World
 		GenerateDelta(f,noDelta ?  WorldDeltaType::ProgressiveUpdateNoDelta : WorldDeltaType::ProgressiveUpdate,delta);
 		if (!noDelta && (delta.Count() > 1 || delta.First().value.IsSet()))
 		{
-			t = vmax(t,t0);
+			t = M::Max(t,t0);
 			return true;
 		}
 		return false;
@@ -1647,6 +1776,80 @@ namespace World
 
 
 	#endif*/
+
+
+	void					Data::InvalidateSensory()
+	{
+		concurrentPainting.done = false;
+		sensoryValid = false;
+		#ifdef CLIENT
+			LogEvent(EventSignificance::Debug,"Grid sensory invalidated");
+		#endif
+	}
+
+	void					Data::PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors)
+	{
+		ASSERT__(!PaintingSensorsConcurrently());
+
+		concurrentPainting.sensors.swap(sensors);
+		concurrentPainting.owner = this;
+		concurrentPainting.done = false;
+		concurrentPainting.abort = false;
+		concurrentPainting.Start();
+	}
+
+	void					Data::AbortConcurrentSensorPainting()
+	{
+		concurrentPainting.abort = true;
+		concurrentPainting.done = false;
+	}
+
+
+
+	/*virtual override*/ void					Data::ConcurrentPainting::ExecuteRange(index_t begin, index_t end, index_t processorIndex)
+	{
+		for (index_t i = begin; i < end && done; i++)
+			sensors[i].ApplyTo(*owner,1,0,processorIndex,true);
+	}
+
+
+	/*virtual override*/ void					Data::ConcurrentPainting::ThreadMain()
+	{
+		const auto t0 = timer.Now();
+		while (!done && !abort)
+		{
+			#ifdef CLIENT
+				LogEvent(EventSignificance::Debug,"(Re)starting concurrent sensor painting");
+			#endif
+
+			done = true;	//set first so threads know when to stop
+
+			bool rs= false;
+			for (index_t i = 0; i < owner->cellStack.Count() && done; i++)
+			{
+				auto&stack = owner->cellStack[i];
+				for (UINT32 k = 0;  k < Grid::CellStack::Range; k++)
+				{
+					auto&cell = stack.volumeCell[k];
+					cell.visibility = 0;
+				}
+			}
+			foreach (owner->families,fam)
+				fam->structureOrSensory.Set(0);
+		
+			if (done)
+				workers.Execute(this,sensors.Count(),4);
+		}
+		#ifdef CLIENT
+			if (!abort)
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting completed after "+String(timer.GetSecondsSince(t0))+" seconds");
+			else
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting aborted after "+String(timer.GetSecondsSince(t0))+" seconds");
+		#endif
+		
+		owner->sensoryValid = !abort;
+	}
+
 
 
 	
@@ -1701,11 +1904,11 @@ namespace World
 
 			op.stacksLeft << stackCenter;
 
-			//const float r = worldCenter.Length();
+			//const float r = worldCenter.GetLength();
 
 			const float base = Grid::ToRadius(Grid::CellStack::ToHeight(topLayer));
-			const float hr2 = sqr(radius/base);
-			const TVec3<>& center = setup.cells[stackCenter].centerVertex.xyz;
+			const float hr2 = M::Sqr(radius/base);
+			const M::TVec3<>& center = setup.cells[stackCenter].centerVertex.xyz;
 			UINT32 current;
 			while (op.stacksLeft >> current)
 			{
@@ -1719,8 +1922,8 @@ namespace World
 
 				auto&cell = v.coverage.Append();
 				cell.stackID = current;
-				cell.range.end = topLayer+1;
 				cell.range.start = traceFunction(current);
+				cell.range.end = M::Min(Grid::CellStack::Range, topLayer+1);
 				const auto&n = setup.grid.GetCell(current).neighborhood;
 				for (int k = 0; k < n.numNeighbors; k++)
 					op.stacksLeft << n.neighborID[k];
@@ -1730,69 +1933,69 @@ namespace World
 
 		}
 
-	void			Sensor::MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	void			Sensor::MakeShaftVolume(Grid::HighSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const
 	{
-		MakeShaftVolumeT(Grid::high, v,op,gridCenter.stackID, radius,gridCenter.layer,traceFunction);
+		MakeShaftVolumeT(Grid::high, v,perProcessor[processorIndex].op,gridCenter.stackID, radius,gridCenter.layer,traceFunction);
 	}
 
 
-	void			Sensor::MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction)	const
+	void			Sensor::MakeShaftVolume(Grid::LowSetup::TVolumeDescriptor&v, const std::function<UINT32(UINT32 stackID)>&traceFunction, index_t processorIndex)	const
 	{
-		MakeShaftVolumeT(Grid::low, v,lowOp, Grid::low.Locate(worldCenter), radius,gridCenter.layer,traceFunction);
+		MakeShaftVolumeT(Grid::low, v,perProcessor[processorIndex].lowOp, Grid::low.Locate(worldCenter), radius,gridCenter.layer,traceFunction);
 	}
 
-	void			Sensor::ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction,Data::ChangeSequence&seq)	const
+	void			Sensor::ApplyShaftTo(World::Data&v, short change, const std::function<UINT32(UINT32 stackID)>&traceFunction,Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
-		MakeShaftVolume(volume,traceFunction);
-		ApplyVolume(v,change,seq);
-	}
-
-
-	/*static*/ Grid::HighSetup::TVolumeDescriptor::Operator Sensor::op;
-	/*static*/ Grid::LowSetup::TVolumeDescriptor::Operator Sensor::lowOp;
-	/*static*/ Grid::HighSetup::TVolumeDescriptor	Sensor::volume;
-
-	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy,Data::ChangeSequence&seq)	const
-	{
-		Grid::high.GenerateVolume(Sphere<>(worldCenter, radius),volume);
-
-		ApplyVolume(v, changeBy,seq);
+		MakeShaftVolume(perProcessor[processorIndex].volume,traceFunction,processorIndex);
+		ApplyVolume(v,change,seq, processorIndex);
 	}
 
 
-	void		Sensor::ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq)	const
+	/*static*/ Array<Sensor::TPerProcessor>	Sensor::perProcessor;
+
+	void		Sensor::ApplySolidSphereTo(World::Data&v, short changeBy,Data::ChangeSequence&seq, index_t processorIndex)	const
+	{
+		Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius),perProcessor[processorIndex].op, perProcessor[processorIndex].volume);
+
+		ApplyVolume(v, changeBy,seq,processorIndex);
+	}
+
+
+	void		Sensor::ApplyHalfSolidSphereTo(World::Data&v, short changeBy, Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
 		if (gridCenter.layer < Grid::CellStack::Range)
 		{
-			Grid::high.GenerateVolume(Sphere<>(worldCenter, radius), volume);
-			foreach(volume.coverage, c)
+			Grid::high.GenerateVolume(M::Sphere<>(worldCenter, radius), perProcessor[processorIndex].op, perProcessor[processorIndex].volume);
+			auto&cov = perProcessor[processorIndex].volume.coverage;
+			foreach(cov, c)
 			{
-				c->range.start = vmax(c->range.start, gridCenter.layer);
-				c->range.end = vmax(c->range.end, gridCenter.layer);
+				c->range.start = M::Max(c->range.start, gridCenter.layer);
+				c->range.end = M::Max(c->range.end, gridCenter.layer);
 			}
-			ApplyVolume(v, changeBy, seq);
+			ApplyVolume(v, changeBy, seq, processorIndex);
 		}
 	}
 
 
-	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy,Data::ChangeSequence&seq)
+	/*static*/ void	Sensor::ApplyVolume(World::Data&v, short changeBy,Data::ChangeSequence&seq, index_t processorIndex)
 	{
 
-		#ifdef _DEBUG
-		{
-			UINT32 crc = CRC32::getChecksum(volume.coverage.pointer(),volume.coverage.GetContentSize());
-			LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(volume.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
-		}
+		//#ifdef _DEBUG
+		//{
+		//	UINT32 crc = CRC32::Sequence().Append(volume.coverage.pointer(),volume.coverage.GetContentSize()).Finish();
+		//	LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(volume.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+		//}
 
-		#endif
+		//#endif
 
 
-		foreach (volume.coverage,c)
+		auto&cov = perProcessor[processorIndex].volume.coverage;
+		foreach (cov,c)
 		{
 			#ifdef _DEBUG
 				ASSERT_LESS__(c->stackID,Grid::HighSetup::GridType::CellCount);
 				ASSERT_LESS_OR_EQUAL__(c->range.start,c->range.end);
-				ASSERT_LESS__(c->range.start,Grid::CellStack::Range);
+				ASSERT_LESS_OR_EQUAL__(c->range.end,Grid::CellStack::Range);
 			#endif
 			if (c->range.IsEmpty())
 				continue;
@@ -1823,14 +2026,36 @@ namespace World
 	}
 
 
-	void FastNormalize(TVec3<>&v)
+	void FastNormalize(M::TVec3<>&v)
 	{
 		float fc = Q_rsqrt(Vec::dot(v));
 		Vec::mult(v,fc);
 	}
 
 
-	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq)	const
+	template <count_t Depth>
+		struct Pow
+		{
+			static float Exec(float x)
+			{
+				float y = Pow<Depth-1>::Exec(x);
+				return y * y;
+			}
+		};
+
+	template <>
+		struct Pow<1>
+		{
+			static float Exec(float x)
+			{
+				return x*x;
+			}
+		};
+
+
+
+
+	void		Sensor::ApplyShadedSphereTo(World::Data&v, short change,Data::ChangeSequence&seq, index_t processorIndex)	const
 	{
 		enum
 		{
@@ -1839,11 +2064,13 @@ namespace World
 			Translucent = 0x4
 		};
 
-		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),vmin(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
+		const Grid::HCellIdU center(Grid::high.Locate(worldCenter),M::Min(Grid::CellStack::Range-1, Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) )));
 
-		static Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
+		//static Ctr::Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
 
-		static Buffer0<Grid::HCellIdU>	marked;
+		//static Ctr::Buffer0<Grid::HCellIdU>	marked;
+		auto&user = perProcessor[processorIndex].shadedSphereHelper;
+		auto&marked = perProcessor[processorIndex].shadedSphereMarked;
 		marked.Clear();
 
 		{
@@ -1851,12 +2078,13 @@ namespace World
 			cell = Visited | Visible | Translucent;	//is visible
 			marked << center;
 		}
-		Queue<Grid::HCellIdU>	work;
+		Ctr::Queue<Grid::HCellIdU>	work;
 		Grid::high.VisitNeighborsOf(center,[&work](const Grid::HCellIdU&c)
 		{
 			work << c;
 		});
 		Grid::HCellIdU current;
+		const auto centerRadius = Grid::ToRadius(Grid::CellStack::ToHeight(center.layer));
 		while (work >> current)
 		{
 			const auto&s = World::actual.GetStack(current.stackID).volumeCell[current.layer];
@@ -1864,15 +2092,17 @@ namespace World
 			if (u&Visited)
 				continue;
 			//auto&c = v.cellStack[current.stackID].volumeCell[current.layer];
-			const TVec3<>c3 = Grid::ToWorld(current);
-			if (Vec::quadraticDistance(c3,worldCenter) > sqr(radius))
+			const M::TVec3<>c3 = Grid::ToWorld(current);
+			if (Vec::quadraticDistance(c3,worldCenter) > M::Sqr(radius))
 				continue;
 
 			float3 d03 = c3-worldCenter;
-			const TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
+			const M::TVec3<>&up = Grid::high.grid.GetCell(current.stackID).center;
 			d03 -= up * Vec::dot(d03,up);//bend around sphere
-			d03 += up * Grid::SingleLayerHeight* float((int)current.layer - (int)center.layer);
-			d03.Normalize0();
+			d03 += up * (Grid::ToRadius(Grid::CellStack::ToHeight(current.layer)) - centerRadius);
+		//		Grid::RawMeanLayerHeight * float((int)current.layer - (int)center.layer);
+			//d03.Normalize0();
+			FastNormalize(d03);
 				
 			u = Visited;
 			marked << current;
@@ -1880,13 +2110,13 @@ namespace World
 			bool translucent = s.IsClearOrWaterIgnoreStructure();
 
 			float visibleWeight=0, totalWeight=0;
-			Grid::high.VisitNeighborsOf(current,[&v,&visibleWeight,&totalWeight, &work,current,d03,c3,translucent](const Grid::HCellIdU&next)
+			Grid::high.VisitNeighborsOf(current,[&v,&user,&visibleWeight,&totalWeight, &work,current,d03,c3,translucent](const Grid::HCellIdU&next)
 			{
 				//auto&n = v.cellStack[next.stackID].volumeCell[next.layer];
 				auto&nu = user.Get(next.stackID,next.layer);
-				TVec3<> n3;
+				M::TVec3<> n3;
 				Grid::ToWorld(next,n3);
-				TVec3<> d3;
+				M::TVec3<> d3;
 				Vec::sub(n3,c3,d3);
 				FastNormalize(d3);
 				//const float3	d3 = (n3-c3).Normalized();
@@ -1901,7 +2131,8 @@ namespace World
 					//going inwards
 					if (translucent)
 					{
-						float w = pow(fabs(dot),64);
+						//float w = pow(fabs(dot),64);
+						float w = Pow<6>::Exec(fabs(dot));
 						totalWeight += w;
 						if ((nu & Visible))
 							visibleWeight += w;
@@ -1926,7 +2157,7 @@ namespace World
 
 			if (!makeVisible)
 			{
-				Grid::high.VisitNeighborsOf(*m,[&v,&makeVisible](const Grid::HCellIdU&next)
+				Grid::high.VisitNeighborsOf(*m,[&v,&makeVisible,&user](const Grid::HCellIdU&next)
 				{
 					const auto nu = user.Get(next.stackID,next.layer);
 					if (nu & Visible)
@@ -1945,25 +2176,25 @@ namespace World
 
 
 
-	void		Sensor::ApplyTo(World::Data&v, short change, float t)	const
+	void		Sensor::ApplyTo(World::Data&v, short change, float t, index_t processorIndex, bool ignoreTargetSensorValidity/*=false*/)	const
 	{
-		if (v.SensoryIsInvalid())
+		if (v.SensoryIsInvalid() && !ignoreTargetSensorValidity)
 			return;
 		Data::ChangeSequence seq = v.BeginChangeSequence(t);
 		const Timer::Time t0 = timer.Now();
 		switch (type)
 		{
 			case UpperHalfSolidSphere:
-				ApplyHalfSolidSphereTo(v, change, seq);
+				ApplyHalfSolidSphereTo(v, change, seq,processorIndex);
 			break;
 			case SolidSphere:
-				ApplySolidSphereTo(v,change,seq);
+				ApplySolidSphereTo(v,change,seq,processorIndex);
 			break;
 			case ShadedSphere:
-				ApplyShadedSphereTo(v,change,seq);
+				ApplyShadedSphereTo(v,change,seq,processorIndex);
 			break;
 			case SolidCylinder:
-				ApplyShaftTo(v,change,[](UINT32){return 0;},seq);
+				ApplyShaftTo(v,change,[](UINT32){return 0;},seq,processorIndex);
 			break;
 			case ShadedCylinder:
 				ApplyShaftTo(v,change,
@@ -1971,14 +2202,13 @@ namespace World
 					{
 						return actual.TraceSkySensorLayer(stackID,gridCenter.layer,this->terrainPenetration);
 					}
-					,seq
+					,seq,processorIndex
 				);
 			break;
 			default:
 				FATAL__("Unsupported sensor type");
 		};
 
-		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 	}
 
 
@@ -2014,7 +2244,7 @@ namespace World
 	}
 	
 /*
-	void		Data::ChangeSensorCoverage(const Sphere<>&state, signed char change)
+	void		Data::ChangeSensorCoverage(const M::Sphere<>&state, signed char change)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
 		TemplateHelper::ChangeSensory(state.center,state.radius,change,cellStack.pointer(),familyChanged);
@@ -2065,12 +2295,12 @@ namespace World
 		#endif
 	}
 
-	//void				Data::InsertSensor(const Sphere<>&desc)
+	//void				Data::InsertSensor(const M::Sphere<>&desc)
 	//{
 	//	ChangeSensorCoverage(desc,1);
 	//}
 
-	//void				Data::RemoveSensor(const Sphere<>&desc)
+	//void				Data::RemoveSensor(const M::Sphere<>&desc)
 	//{
 	//	ChangeSensorCoverage(desc,-1);
 	//}

@@ -12,14 +12,14 @@
 #include "runtimeConfig.h"
 #include "./objects/faction.h"
 #include <io/file_system.h>
+#include <io/monitoredProcess.h>
+#include <startProcess.h>
 
 #ifndef CLIENT
 	#include "../server/components/state.h"
 	#include "../server/components/serverLogEvent.h"
-#endif
-
-#ifdef HAS_WINDOW
-	void VisualLogEvent( EventClass type,  const Objects::WorldEntity*e, const String&_event);
+#else
+	#include "../client/components/visual/hud/eventLog.h"
 #endif
 
 bool		inTestMode = false;
@@ -27,23 +27,30 @@ bool		inTestMode = false;
 
 EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalError),
 			EventClass::Preset::internalError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
+			EventClass::Preset::scriptLog = EventClass(EventSignificance::Important, EventFlavor::ServerPrivate),
+			EventClass::Preset::scriptMessage = EventClass(EventSignificance::Important),
+			EventClass::Preset::scriptError = EventClass(EventSignificance::NonFatalError, EventFlavor::ServerPrivate),
 			EventClass::Preset::fatal = EventClass(EventSignificance::SystemFatal, EventFlavor::SystemError),
 			EventClass::Preset::unexpectedBehavior = EventClass(EventSignificance::ClientFatal, EventFlavor::SystemError),
 			EventClass::Preset::common = EventClass(EventSignificance::Common),
 			EventClass::Preset::debug = EventClass(EventSignificance::Debug),
 			EventClass::Preset::factionDeath = EventClass(EventSignificance::FactionFatal, EventFlavor::Loss),
+			EventClass::Preset::winningFaction = EventClass(EventSignificance::Important, EventFlavor::Gain),
 			EventClass::Preset::commandRejected = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
 			EventClass::Preset::operationAborted = EventClass(EventSignificance::NonFatalError,EventFlavor::Loss),
 			EventClass::Preset::configuration = EventClass(EventSignificance::Common,EventFlavor::Neutral),
 			EventClass::Preset::configurationPrint = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::configurationError = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
+			EventClass::Preset::fixedConfigurationError = EventClass(EventSignificance::FixedError,EventFlavor::UserError),
 			EventClass::Preset::fileError = EventClass(EventSignificance::NonFatalError,EventFlavor::SystemError),
 			EventClass::Preset::network = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::networkError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
+			EventClass::Preset::protocolError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlResponse = EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlCommand = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
 			EventClass::Preset::remoteControlError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::important = EventClass(EventSignificance::Important),
+			EventClass::Preset::gui = EventClass(EventSignificance::Common),
 			EventClass::Preset::uncommon = EventClass(EventSignificance::Uncommon);
 
 namespace Logging
@@ -63,14 +70,15 @@ namespace Logging
 
 
 	#ifndef HAS_WINDOW
-	class ConsoleThread : public ThreadObject
+	class ConsoleThread : public Sys::ThreadObject
 	{
 		volatile bool doEnd;
 	public:
-		WorkPipe<String> pipe;
+		Ctr::WorkPipe<String> pipe;
 
 		virtual void ThreadMain() override
 		{
+			Buffer0<String> lines;
 			while (!doEnd)
 			{
 				pipe.WaitForContent();
@@ -78,10 +86,11 @@ namespace Logging
 					return;
 				pipe.SignalRead();
 					foreach (pipe,line)
-					{
-						std::cout << *line;
-					}
+						lines.MoveAppend(*line);
 				pipe.ExitRead();
+				foreach (lines,line)
+					printf("%s",line->c_str());
+				lines.Clear();
 			}
 		}
 
@@ -90,7 +99,7 @@ namespace Logging
 			doEnd = true;
 			pipe.Clear();
 			pipe.OverrideSignalNow();
-			awaitCompletion();
+			AwaitCompletion();
 		}
 
 		void	Begin()
@@ -105,33 +114,54 @@ namespace Logging
 
 	//HANDLE	fileHandle = INVALID_HANDLE_VALUE;
 
+	PathString activePath;
+	bool		hasBegun = false;
+
 	void	End()
 	{
 		#ifndef HAS_WINDOW
 		consoleThread.End();
 		#endif
 		outFile.Close();
+		hasBegun = false;
 	}
 
 
-	void	Begin(const PathString&path)
+
+	void	CallBugReporter()
 	{
-		FileSystem::Folder folder(FileSystem::ExtractFileDir(path));
-		folder.Rewind();
+		StartProcess("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
+	}
+
+	void	CallBugReporter(const String&message)
+	{
+		StartProcess("../BugReporter/","BugReporter.exe","\""+activePath+"\" -m \""+PathString(message.Escape("\""))+"\"");	//start and abandon
+	}
+
+	bool	HasBegun()
+	{
+		return hasBegun;
+	}
+
+	void	Begin( const PathString&path )
+	{
+		hasBegun = true;
+		activePath = path;
+		auto scan = FileSystem::Folder(FileSystem::ExtractFileDir(path)).Scan();
 		FileSystem::File file;
 		PathString ext = FileSystem::ExtractFileExt(path);
 		typedef std::pair<FileSystem::ftime_t,PathString>  Entry;
-		Buffer0<Entry>	entries;
-		while (folder.NextFile(ext,file))
+		Ctr::Buffer0<Entry>	entries;
+		while (scan.NextFile(ext,file))
 		{
 			entries << std::make_pair(file.GetModificationTime(), file.GetLocation());
 		}
 		if (entries.Count() > 10)
 		{
-			ByComparator::QuickSort(entries,[](const Entry&a, const Entry&b){return a.first < b.first ? -1 : (a.first == b.first ? 0 : 1);});
+			Sorting::ByComparator::QuickSort(entries,[](const Entry&a, const Entry&b){return a.first < b.first ? -1 : (a.first == b.first ? 0 : 1);});
 			for (index_t i = 0; i+10 <= entries.Count(); i++)
 			{
-				FileSystem::UnlinkFile(entries[i].second);
+				FileSystem::TryToUnlinkFile(entries[i].second);	//don't care if open by other program
 			}
 		}
 
@@ -139,13 +169,13 @@ namespace Logging
 
 		if (!outFile.Open(path,10*1024*1024))
 		{
-			LogEvent(EventClass::Preset::error , getLastError());
+			LogEvent(EventClass::Preset::error , Sys::getLastError());
 		}
 		
 		#ifndef HAS_WINDOW
 		consoleThread.Begin();
 		#endif
-		LogEvent(EventClass::Preset::uncommon,"Logging to '"+String(path)+"'..." );
+		LogEvent(EventClass::Preset::uncommon,"Logging to '"+FileSystem::PathToString(path)+"'..." );
 	}
 
 
@@ -163,7 +193,7 @@ namespace Logging
 		}
 		LogBuffer&	operator<<(const String&line)
 		{
-			buffer.Write(line.c_str(),line.length());
+			buffer.Write(line.c_str(),line.GetLength());
 			return *this;
 		}
 		LogBuffer&	operator<<(char c)
@@ -175,6 +205,14 @@ namespace Logging
 		{
 			return operator<<('\n');
 		}
+		
+		template <typename T>
+			LogBuffer&	operator<<(const T&item)
+			{
+				buffer << ToString(item);
+				return *this;
+			}
+
 	}	logFile,console;
 
 	void	Flush(LogBuffer&buffer, bool toSyslog)
@@ -184,7 +222,7 @@ namespace Logging
 
 
 
-	void WriteEvent( const EventClass&evClass, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner)
+	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::PFaction&owner, Origin origin /*= Logging::Origin::Local*/)
 	{
 		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
 		//type != EventSignificance::Debug
@@ -198,8 +236,9 @@ namespace Logging
 			if (!printToConsole)
 				return;
 		}
+		const bool writeToFile = !inTestMode;
 
-		static SpinLock lock;
+		static Sys::SpinLock lock;
 
 		lock.lock();
 
@@ -207,12 +246,15 @@ namespace Logging
 		if (!headerWritten)
 		{
 			headerWritten = true;
-			if (!inTestMode)
+			if (writeToFile)
+			{
+				//if you change this, make sure to update bug reporter
 				logFile << "Sig."<< tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
+			}
 		}
 		if (printToConsole)
 			console << '[' << RuntimeConfig::roundNumber.ToString()<<"] ";
-		if (!inTestMode)
+		if (writeToFile)
 			logFile << evClass.significance.ToString()  << tab << TimeStamp() << tab << RuntimeConfig::roundNumber.ToString() << tab << RuntimeConfig::phase.ToString();
 
 		if (peer)
@@ -222,55 +264,76 @@ namespace Logging
 				if (c)
 				{
 					if (printToConsole)
-						console << c->ToString()<<" ";
-					if (!inTestMode)
-						logFile << tab << c->ToString();
+						console << c->ConvertToString()<<" ";
+					if (writeToFile)
+						logFile << tab << c->ConvertToString();
 				}
 				else
 			#endif
-				if (!inTestMode)
+				if (writeToFile)
 					logFile << tab;
 			if (printToConsole)
 				console << peer->ToString()<< ": ";
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << peer->ToString();
 		}
 		else
-			if (!inTestMode)
+			if (writeToFile)
 				logFile << tab << tab;
 		if (e)
 		{
 			if (printToConsole)
-				console << e->GetName()<<" ("<<e->location.ToString()<<"): ";
-			if (!inTestMode)
-				logFile << tab << e->GetTypeName() << tab << e->id.ToString() << tab << e->owner->GetLogName()<<tab<<e->location.ToString();
+				console << e->GetName()<<" ("<<e->location<<"): ";
+			if (writeToFile)
+				logFile << tab << e->GetTypeName() << tab << ToString(e->id) << tab << e->owner->GetLogName()<<tab<<e->location;
 		}
 		else
-			if (!inTestMode)
+			if (writeToFile)
 				if (owner)
 					logFile << tab << tab<<tab<<owner->GetLogName() <<tab;
 				else
 					logFile << tab << tab<<tab<<tab;
 
-		if (message.contains('\n') || message.contains('\r'))
+
+
+		if (message.Contains('\n') || message.Contains('\r'))
 		{
 			String copy = message;
-			copy.replace('\n',' ');
-			copy.replace('\r',"");
-			if (!inTestMode)
-				logFile << tab << copy << nl;
+			message.FindAndReplace('\n',' ');
+			message.FindAndReplace('\r',"");
 		}
-		else
-			if (!inTestMode)
-				logFile << tab << message << nl;
+		String logConsoleMsg = message;
+		switch (origin)
+		{
+			case Logging::Origin::Local:
+			break;
+			case Logging::Origin::ServerPublic:
+				logConsoleMsg = ">" +logConsoleMsg;
+			break;
+			case Logging::Origin::ServerPrivate:
+				logConsoleMsg = ">[private]" +logConsoleMsg;
+			break;
+		}
 		if (printToConsole)
-			console << message << nl;
-		if (!inTestMode)
+		{
+			if (owner && evClass.flavor == EventFlavor::ChatMessage)
+				console << owner->name << ": ";
+			console << logConsoleMsg << nl;
+		}
+
+		if (writeToFile)
+		{
+			if (evClass.flavor == EventFlavor::ChatMessage)
+				logConsoleMsg = "[Redacted Chat Message]";
+			logFile << tab << logConsoleMsg << nl;
+		}
+
+		if (writeToFile)
 			Flush(logFile,printToConsole);
 		if (printToConsole)
 		{
 			#ifdef HAS_WINDOW
-				VisualLogEvent(evClass,e,message);
+				HUD::VisualEventLog::DisplayEvent(evClass,e,owner, message,origin);
 			#else
 				consoleThread.pipe << String(console.buffer.ToStringRef());
 			#endif
@@ -282,22 +345,27 @@ namespace Logging
 
 }
 
-
-
-void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg)
+void		LogException(const Objects::WorldEntity*e, const std::exception&ex)
 {
-	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,e,Objects::OwnerParameter(),msg);
-	#endif
-	Logging::WriteEvent(type,msg,nullptr,e,Objects::OwnerParameter());
+	LogEvent(EventClass::Preset::internalError,e,ex.what());
 }
 
-void		LogEvent(const EventClass&type, const Objects::OwnerParameter&owner, const String&msg)
+
+
+void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg);
+		Logging::SendEntityEvent(nullptr,type,e,nullptr,msg,privacy);
 	#endif
-	Logging::WriteEvent(type,msg,nullptr,nullptr,owner);
+	Logging::WriteEvent(type,msg,nullptr,e,nullptr,origin);
+}
+
+void		LogEvent(const EventClass&type, const Objects::PFaction&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+{
+	#ifndef CLIENT
+		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg,privacy);
+	#endif
+	Logging::WriteEvent(type,msg,nullptr,nullptr,owner, origin);
 }
 
 

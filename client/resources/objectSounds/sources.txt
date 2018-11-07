@@ -1,3 +1,1 @@
-construct.wav: Cutout from https://www.freesound.org/people/aesqe/sounds/138214/
-catbase.wav: Cutout from https://www.freesound.org/people/jazbavac/sounds/198519/
-
+declare in info.txt

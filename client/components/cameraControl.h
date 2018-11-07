@@ -4,12 +4,12 @@
 
 #include <math/vclasses.h>
 #include <engine/aspect.h>
-#include <observer.h>
+#include <structure/observable.h>
 
-#define DebugCheckVector(T, M, MX)
-#define DebugCheckCamera()
+//#define DebugCheckVector(T, M, MX)
+//#define DebugCheckCamera()
 
-//inline void			DebugCheckVector(const TVec3<>&test, float min, float max)
+//inline void			DebugCheckVector(const M::TVec3<>&test, float min, float max)
 //{
 //	ASSERT_IS_CONSTRAINED3__(test.v,min,max);
 //	ASSERT__(!isinf(test.x));
@@ -23,10 +23,12 @@
 //}
 //void			DebugCheckCamera()
 //{
-//	const TVec3<>&test = scene.GetViewingDirection();
+//	const M::TVec3<>&test = scene.GetViewingDirection();
 //	DebugCheckVector(test,-1,1);
 //
 //}
+
+using namespace DeltaWorks;
 
 extern float3					sunDirection;
 static const float				SunOffAngle = 35.f;	//divergence between vertical axis and sun direction. 0 would be cenit
@@ -41,6 +43,12 @@ namespace Camera
 	extern Engine::OrthographicAspect<>	hud;
 
 	extern bool					autoRotation, locked;
+	
+	/**
+	If true, per-frame geometry intersection tests are performed to determine and handle if the camera is inside the terrain.
+	Defaults to true
+	*/
+	extern bool					terrainIntersectionTest;
 
 
 	extern Observable<>			onZoom, onRotate, onDrag;
@@ -111,7 +119,6 @@ namespace Camera
 
 	bool						SkyGridIsVisible();
 
-	void						Create();
 
 	/**
 	Input event handlers
@@ -122,6 +129,16 @@ namespace Camera
 		void					ZoomIn();
 		void					ZoomOut();
 		void					Zoom(float outSpeed);
+	}
+	
+	/**
+	Captures the number of terrain families checked during the last terrain intersection check.
+	Must be uncommented in the source code, or only sphereCheckFamilies will be updated
+	*/
+	namespace Statistics
+	{
+		extern count_t			noCheckFamilies, boxCheckFamilies, sphereCheckFamilies;
+
 	}
 
 }

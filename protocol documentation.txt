@@ -1,5 +1,5 @@
 unless disabled manually, server broadcasts existence info on port Base+2
-unless listening is disabled manually, client will listen for these broadcasts
+unless listening is disabled manually, client will listen for these broadcasts (only one client per system can)
 
 client: 
 	on udp package -> ServerDiscovery::RegisterNewHost() (network.cpp)
@@ -29,7 +29,8 @@ client:
 		client sends Protocol::Hello on Protocol::ChannelID::Hello (network.cpp)
 		
 	Client receives Protocol::HelloResponse on Protocol::ChannelID::Hello via Network::Receiver::OnHelloResponse() (network.cpp)
-		if in configuration mode, client will attempt faction login, otherwise gui is updated, presenting a faction choice dialog
+		client will attempt faction login if in ai or tutorial mode, otherwise gui is updated, presenting a faction choice dialog.
+		if necessary, a password dialog is presented to set the server password
 	
 	Either GUI event or automated login will call Network::AttemptFactionLogin() (network.cpp) to attempt faction login
 		This can only happen on an active connection. If a faction is currently logged in, it is logged out by the server

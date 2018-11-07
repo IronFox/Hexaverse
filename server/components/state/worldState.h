@@ -15,7 +15,7 @@ namespace World
 	Finds a randomized suitable starting location for a new faction.
 	
 	*/
-	index_t			GetFactionStartLocation(Random&random);
+	index_t			GetFactionStartLocation(TwisterRandom&random);
 
 
 	/**
@@ -23,7 +23,7 @@ namespace World
 	Any existing session will be closed, all factions terminated before commencing.
 	*/
 	void			BuildConfiguredWorld(UINT32 seed);
-	void			BuildConfiguredWorld(Random&rnd);
+	void			BuildConfiguredWorld(TwisterRandom&rnd);
 
 
 
@@ -64,22 +64,27 @@ namespace World
 	Queries the file system to determine current state (all returned files existed at the moment of fetching).
 	Any occurring error is logged, and an empty array is returned in this case.
 	*/
-	void			GetAvailablePlanetIniFiles(Array<TPlanetIniFile>&rsOut);
+	void			GetAvailablePlanetIniFiles(Ctr::Array<TPlanetIniFile>&rsOut);
 	/**
 	Fetches the unique names of all available planet types.
 	Duplicates are filtered out. No distinction is made between user-defined and factory default types of identical name.
 	Extensions are omitted.
 	*/
-	void			GetAvailablePlanetNames(Array<String>&rsOut);
+	void			GetAvailablePlanetNames(Ctr::Array<String>&rsOut);
 	/**
-	Checks if the specified ini-filename is one of the available planet ini files
-	@param filename Name of the file (name[.ini]), without folders
+	Checks if the specified planet name is among the available planet ini files
+	@param name Name of the planet, with a leading * if residing in user directory (e.g. *myPlanet)
 	@return true if it exists, false otherwise
 	*/
-	bool			IsPlanetIniFile(const String&filename);
+	bool			IsPlanet(const String&name);
 
 
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);
+
+	/**
+	Removes or applies zone EMP damage as defined by the old and new zones
+	*/
+	void			CorrectResidualEMPDamage(float&atTime, UINT16 oldEmpZonesUnlocked, UINT16 newEmpZonesUnlocked);
 
 
 	extern World::Data	spectatorWorldState;
@@ -99,14 +104,16 @@ namespace World
 	{
 		extern Grid::WorldDiscovery	worldDiscovery;
 
-		extern UINT32	uplinkBandwidth/* = 500*/;
+		#ifndef NO_HIBERNATION
+			extern UINT32	uplinkBandwidth/* = 500*/;
+		#endif
 		extern bool		simulateLiquids/* = true*/;
 
 	}
 
 
 
-	void			SetUnlockedEMPZones(int unlocked);
+	void			SetUnlockedEMPZones(count_t unlocked);
 
 
 

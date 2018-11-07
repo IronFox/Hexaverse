@@ -1,7 +1,7 @@
 #ifndef udpBroadcastH
 #define udpBroadcastH
 
-#include "../../shared/protocol.h"
+#include <protocol.h>
 
 
 namespace UDPBroadCast
