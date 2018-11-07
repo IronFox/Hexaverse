@@ -114,7 +114,7 @@ namespace Lua
 		HashSet<TUniqueID>						entityMappedToTable, 
 												factionMappedToTable, 
 												allianceMappedToTable;
-		Objects::Pathfinding::ShortestPath	shortestPath;
+		Objects::Pathfinding::ShortestPath		shortestPath;
 		bool									myFactionIsSet = false;
 
 		//feedback functions:
