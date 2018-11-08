@@ -98,7 +98,7 @@ Table-Type: TurretType extends Type
 	[canAttack]
 		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
 		string	ammoType;				-- String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
-		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot
+		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot (unresearched)
 		int		attacksPerRound;		-- Theoretical maximum number of attacks per round (unresearched)
 		float	flatAttackRange;		-- Horizontal attack range. Vertical range depends on trajectoryType (unresearched). Does not include tower bonus (or malus) (unresearched)
 		float	explosionRadius;		-- Spherical explosion radius (unresearched)
@@ -266,10 +266,11 @@ Table-Type: Turret
 	int			weight;						-- Weight affecting mobile entity speed. May change by research
 	TurretType	type;					-- Reference to the type of this turret. Never nil. May be compared using == and ~=
 	[type.canAttack]
-		int		damageLevel;			-- Damage inflicted by the local turret. May vary over time
-		int		attacksPerRound;		-- Theoretical maximum number of attacks per round. May vary over time
-		float	flatAttackRange;		-- Horizontal attack range. Effectively increased by explosionRadius. May include tower bonus (or malus). Vertical range depends on trajectoryType. May vary over time
-		float	explosionRadius;		-- Spherical explosion radius. May vary over time
+		int		damageLevel;			-- Damage inflicted by the local turret. May vary with research
+		int		attacksPerRound;		-- Theoretical maximum number of attacks per round. May vary with research
+		float	flatAttackRange;		-- Horizontal attack range. Effectively increased by explosionRadius. May include tower bonus (or malus). Vertical range depends on trajectoryType. May vary with research
+		float	explosionRadius;		-- Spherical explosion radius. May vary with research
+		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot. May vary with research
 		int		ammoAvailability;		-- Resources available to the local entity of the demanded ammo type (may be shared)
 		int		possibleAttacks;		-- Counts the number of attacks possible in the local unit's next attack phase
 		float	attackActionLeft;		-- Percentage (0.0-1.0) of attack action left in the next attack phase

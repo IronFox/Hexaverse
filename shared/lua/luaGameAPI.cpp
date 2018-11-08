@@ -2014,6 +2014,7 @@ namespace Lua
 			if (turret->CanAttack())
 			{
 				t.SetField("trajectoryType",turret->trajectoryType.ToString());
+				t.SetField("ammoDemandPerShot",turret->ammoNeedPerShot.GetValue(z));
 				t.SetField("independentAttackAndMotion",turret->independentAttackAndMotion);
 				t.SetField("attacksPerRound",turret->GetAttacksPerRound(z));
 				t.SetField("ammoType",turret->ammoType.ToString());
