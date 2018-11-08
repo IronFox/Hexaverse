@@ -4,11 +4,7 @@ Test:
 Implement:
 	Retrieve research dependencies of type - impossible (atm)
 	Random number generator function
-FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
 Game.CreateMarker: note max marker count
-Cell.index: wrong range
-isMovile, heigh
-has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
 
 
 
@@ -214,6 +210,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
+fixed: FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
 done: Complete tooltips for regular UI
 fixed: check client starting server manager
 done: further delay tooltip appearance on components

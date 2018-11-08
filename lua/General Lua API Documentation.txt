@@ -168,8 +168,9 @@ Table-Type: Unit
 	void		Destroy();				-- Attempts to destroy the local entity
 	void		Sleep(bool);			-- Updates the sleep state
 	
-	[has turret (tower,mobile) and can attack]
+	[has turret (tower,mobile)]
 		Turret	turret;					-- Table containing turret information and access. May be set for structures or mobile entities
+	[has turret (tower,mobile) and can attack]
 		void	Attack(Loc[]);			-- Schedules one or more attacks at the end of the task queue
 	[type.isMobile]
 		bool	isAutomated;			-- True if the local entity has some behavior logic attached. Currently used by surveyor only
@@ -188,6 +189,7 @@ Table-Type: Unit
 		void	SetAutomation(bool);	-- Updates automation
 
 		--[[
+		GetReach():
 		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) and the current mobile location
 		@param isBlocked Optional function that excludes certain cells. Type: bool BlockTest(Loc): true if blocked. 
 			If nil, all possible locations are considered. Otherwise invoked only once per candidate (result is cached)
@@ -201,8 +203,8 @@ Table-Type: Unit
 		Reachable[]	GetReach(func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedMobilesOnRoute, bool cannotStandOnUnknown);
 
 		--[[
+		FindShortestPath()/FindShortestPathFrom():
 		@brief Finds the shortest grid path for the specified unit to the specified target location
-		@param unit Unit to find the path for
 		@param target Target location
 		@param costModifer Optional function ((Loc location, int regularCosts)->int modifiedCosts) that can modify the cost associated with a cell.
 			Invoked once per path candidate as encountered. May be nil, using just the default costs.
@@ -398,7 +400,7 @@ Table-Type: Cell
 {
 	Vector	center;						-- Normalized center vector of the cell
 	Cell[]	neighbors;					-- Ordered table of all planar neighbor cells
-	int		index;						-- Linear index of this cell in Game.Cells in [1,#Game.unitCells]
+	int		index;						-- Linear index of this cell in Game.Cells in [1,#Game.unitCells/#Game.Terrain.cells]
 };
 
 Table-Type: Vector
