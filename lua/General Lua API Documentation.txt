@@ -11,6 +11,8 @@ int			Game.GetMainRoundNumber()		-- Fetches the primary round indicator. Non-neg
 string		Game.GetRound()					-- Fetches the full current round descriptor. Typically this is a string-cast of GetMainRoundNumber(), but some unpublished game branches use sub rounds
 string		Game.GetPhase()					-- Fetches the current phase. Typically the result will be 'CommandPhase'
 bool		Game.CanIssueUnitCommands()		-- Checks whether the current phase is valid for command execution. Typically the result will be true, so there is usually no need to check this
+float		Game.Random()					-- Fetches the next uniformly distributed random value in [0,1]
+int			Game.RandomIndex(int max)		-- Fetches the next uniformly distributed random integer in [1,max]
 
 [client only]
 	{id->Unit}	Game.myUnits				-- Table of all player-owned units currently known to the client, mapped by id (string) to unit

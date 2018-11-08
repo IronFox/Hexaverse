@@ -104,6 +104,8 @@ namespace Lua
 
 		typedef Lua::Function<void(const Lua::Table&)>	LFOnDeploy;
 
+		TwisterRandom							random = TwisterRandom(time(NULL) + timer.Now());
+
 		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
 		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;
 		Timer::Time								lastDeploymentCallbackRegistered;

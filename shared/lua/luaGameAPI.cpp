@@ -760,6 +760,15 @@ namespace Lua
 				LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
 			});
 
+			gameTable.SetFunction("Random",[this]()
+			{
+				return random.NextFloatT<double>();
+			});
+			gameTable.SetFunction("RandomIndex",[this](int max)
+			{
+				return random.Next(max) + 1;
+			});
+
 			gameTable.SetFunction("GetRound",[]()
 			{
 				return RuntimeConfig::roundNumber.ToString();
