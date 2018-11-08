@@ -124,7 +124,7 @@ Table-Type: UnitType extends Type
 {string->Type}	Game.Type.allTypes		-- All types, mapped via unique name
 {string->UnitType}	Game.Type.units			-- All non-compound unit types. Vehicles are not listed as they must be constructed on demand
 {string->TurretType}	Game.Type.turrets		-- All turret types, mapped via unique name
-{string->VBaseType}		Game.Type.vehicleBases	-- All vehicle bayse types, mapped via unique name
+{string->VBaseType}		Game.Type.vehicleBases	-- All vehicle base types, mapped via unique name. Not all can be applied to vehicles
 Type			Game.Type.ByName(string name)	-- Gets or constructs the requested type by name. Use '[turret]:[base]' for compound (vehicle) types.
 Type			Game.Type.Vehicle(TurretType, VBaseType)	-- Gets or constructs the requested type from type tables
 

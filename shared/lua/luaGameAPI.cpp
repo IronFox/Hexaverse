@@ -602,6 +602,10 @@ namespace Lua
 	void	API::Destroy()
 	{
 		FlushAllObjects(true);
+		allTypes.ClearReference();
+		unitTypes.ClearReference();
+		turretTypes.ClearReference();
+		vbaseTypes.ClearReference();
 		onDeployedCallbacks.Clear();
 		gameTable.ClearReference();
 		gridTable.ClearReference();
@@ -728,6 +732,10 @@ namespace Lua
 				terrainContentTable = terrainTable.SetSubTable("Content");
 
 			typeTable = gameTable.SetSubTable("Type");
+				allTypes = typeTable.SetSubTable("allTypes");
+				unitTypes = typeTable.SetSubTable("units");
+				turretTypes = typeTable.SetSubTable("turrets");
+				vbaseTypes = typeTable.SetSubTable("vehicleBases");
 
 			researchTable = gameTable.SetSubTable("Research");
 				researchTopicList = researchTable.SetSubTable("topics");
@@ -2005,16 +2013,29 @@ namespace Lua
 			return AddOrGetType(Objects::EntityType(bt.baseType,tt.baseType));
 		});
 
-		/*
-		{string->Type}	Game.Type.allTypes		-- All types, mapped via unique name
-{string->UnitType}	Game.Type.units			-- All non-compound unit types. Vehicles are not listed as they must be constructed on demand
-{string->TurretType}	Game.Type.turrets		-- All turret types, mapped via unique name
-{string->VBaseType}		Game.Type.vehicleBases	-- All vehicle bayse types, mapped via unique name
-Type			Game.Type.ByName(string name)	-- Gets or constructs the requested type by name. Use '[turret]:[base]' for compound (vehicle) types.
-Type			Game.Type.Vehicle(TurretType, VBaseType)	-- Gets or constructs the requested type from type tables
+		ASSERT__(allTypes.GetLength() == 0);
 
-		*/
+		foreach (Objects::Prototypes::all,p0)
+		{
+			const auto&p = **p0;
+			auto t = AddType( p.GetType());
+			allTypes.AppendElement(t);
+			unitTypes.AppendElement(t);
+		}
 
+		foreach (Objects::Component::allTurretComponents,t0)
+		{
+			auto t = AddType((*t0)->constName);
+			allTypes.AppendElement(t);
+			turretTypes.AppendElement(t);
+		}
+
+		foreach (Objects::Component::baseComponents,b0)
+		{
+			auto t = AddType((*b0)->constName);
+			allTypes.AppendElement(t);
+			vbaseTypes.AppendElement(t);
+		}
 	}
 
 

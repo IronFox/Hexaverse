@@ -51,6 +51,10 @@ namespace Lua
 		Lua::Table			entityIDMap,
 							factionIDMap,
 							allianceIDMap,
+							allTypes,
+							unitTypes,
+							turretTypes,
+							vbaseTypes,
 							researchTopicList;
 		
 		#ifdef CLIENT	
