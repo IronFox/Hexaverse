@@ -389,6 +389,40 @@ namespace ScriptedAI
 				queue.drop = doDrop;
 				Network::Channels::QueueResearch.SendTo(Network::client,queue);
 			}
+
+			Lua::API::TExportResult CheckExportValidity( const Lua::Reference&ref )
+			{
+				Lua::API::TExportResult rs;
+				rs.maxSerialSize = Protocol::ScriptedAIState{}.dataVector.MaxElementCount;
+				try
+				{
+					String err = thread.checkStateIsLoopFree(ref);
+					if (err.IsNotEmpty())
+					{
+						rs.error = Lua::API::TExportResult::ErrorType::TableLoop;
+						rs.errorExt = err;
+					}
+					else
+					{
+						ByteStreamBuffer stream;
+						ref.Serialize(stream);
+						const auto data = stream.GetWrittenData();
+
+						Array<BYTE> temp(data.GetLength()+100);
+						const size_t compressed = BZ2::compress(data.GetPointer(),data.GetLength(),temp.pointer()+4,temp.GetLength()-4);
+						rs.serialSize = compressed;
+						if (rs.serialSize > rs.maxSerialSize)
+							rs.error = Lua::API::TExportResult::ErrorType::TooLarge;
+					}
+				}
+				catch (const std::exception&ex)
+				{
+					rs.errorExt = ex.what();
+					rs.error = Lua::API::TExportResult::ErrorType::Other;
+				}
+				return rs;
+			}
+
 		}
 
 
@@ -551,7 +585,7 @@ namespace ScriptedAI
 						{
 							Protocol::ScriptedAIState compressedState;
 							compressedState.scriptName = FileSystem::PathToString(FileSystem::ExtractFileName(Details::scriptPath));
-							if (!thread.nonCompressedExportedState.IsEmpty())
+							if (thread.nonCompressedExportedState.IsNotEmpty())
 							{
 								Array<BYTE> temp(thread.nonCompressedExportedState.GetLength()+100);
 								const size_t compressed = BZ2::compress(thread.nonCompressedExportedState.pointer(),thread.nonCompressedExportedState.GetLength(),temp.pointer()+4,temp.GetLength()-4);
@@ -750,6 +784,8 @@ namespace ScriptedAI
 		api.onDeployCompletedProduction = Callback::DeployCompletedConstruction;
 		api.onDeployStored = Callback::DeployStored;
 		api.onQueueResearch = Callback::QueueResearch;
+
+		api.onCheckExportValidity = Callback::CheckExportValidity;
 
 
 		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
@@ -973,8 +1009,9 @@ namespace ScriptedAI
 			<< "Whatever you return will be fed to Init() when resuming interrupted execution." << nl
 			<< "Anything you keep in the local Lua state but don't export here will be lost during interruptions" << nl
 			<< "(e.g. save game loading, client crash, AI script reloading during debug, etc)." << nl
+			<< "Possibly use Game.CheckStateExportValidity(*) to determine validity of return values." << nl
 			<< "@return Exported state. May be any regular Lua type, including arbitrarily nested tables, or"<<nl
-			<< "plain nil." << nl
+			<< "plain nil. Avoid table loops." << nl
 			<< "]]" << nl
 			<< "function ExportState()" << nl
 			<< "\treturn nil;" << nl

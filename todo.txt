@@ -3,7 +3,6 @@ Test:
 	Tutorial
 Implement:
 	Retrieve research dependencies of type - impossible (atm)
-	Test function to determine if exported state is too large
 	Random number generator function
 FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
 Game.CreateMarker: note max marker count

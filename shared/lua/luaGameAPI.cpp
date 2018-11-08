@@ -755,38 +755,61 @@ namespace Lua
 			factionIDMap = gameTable.SetSubTable("factions");
 			allianceIDMap = gameTable.SetSubTable("alliances");
 			
-			gameTable.SetFunction("Log",[this](const String&msg)
-			{
-				LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
-			});
+		gameTable.SetFunction("Log",[this](const String&msg)
+		{
+			LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
+		});
 
-			gameTable.SetFunction("Random",[this]()
-			{
-				return random.NextFloatT<double>();
-			});
-			gameTable.SetFunction("RandomIndex",[this](int max)
-			{
-				return random.Next(max) + 1;
-			});
+		gameTable.SetFunction("Random",[this]()
+		{
+			return random.NextFloatT<double>();
+		});
+		gameTable.SetFunction("RandomIndex",[this](int max)
+		{
+			return random.Next(max) + 1;
+		});
 
-			gameTable.SetFunction("GetRound",[]()
-			{
-				return RuntimeConfig::roundNumber.ToString();
-			});
-			gameTable.SetFunction("GetMainRoundNumber",[]()
-			{
-				return RuntimeConfig::roundNumber.main;
-			});
-			gameTable.SetFunction("GetPhase",[]()
-			{
-				return RuntimeConfig::phase.ToString();
-			});
-			gameTable.SetFunction("CanIssueUnitCommands",[]()
-			{
-				return RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;	//not using IsInAnyCommandPhase() here, as unit instructions are valid only during the main command phase
-			});
+		gameTable.SetFunction("GetRound",[]()
+		{
+			return RuntimeConfig::roundNumber.ToString();
+		});
+		gameTable.SetFunction("GetMainRoundNumber",[]()
+		{
+			return RuntimeConfig::roundNumber.main;
+		});
+		gameTable.SetFunction("GetPhase",[]()
+		{
+			return RuntimeConfig::phase.ToString();
+		});
+		gameTable.SetFunction("CanIssueUnitCommands",[]()
+		{
+			return RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;	//not using IsInAnyCommandPhase() here, as unit instructions are valid only during the main command phase
+		});
 
-
+		gameTable.SetFunction("CheckStateExportValidity",[this](const Lua::Reference&ref)
+		{
+			auto table = program->CreateTable();
+			if (onCheckExportValidity)
+			{
+				const auto rs = onCheckExportValidity(ref);
+				const bool okay = rs.error == TExportResult::ErrorType::NoError;
+				table.SetField("okay",okay);
+				if (!okay)
+				{
+					table.SetField("errorType",rs.error.ToString());
+					table.SetField("errorDesc",rs.errorExt);
+				}
+				table.SetField("binarySize",rs.serialSize);
+				table.SetField("maxSupportedSize",rs.maxSerialSize);
+			}
+			else
+			{
+				table.SetField("okay",false);
+				table.SetField("errorType","NotSupported");
+				table.SetField("errorDesc","The owning context did not provide state export functionality");
+			}
+			return table;
+		});
 	}
 
 	Lua::Table	API::LuaFindShortestPathFrom(const Objects::PMobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreOwnedMobilesOnRoute)

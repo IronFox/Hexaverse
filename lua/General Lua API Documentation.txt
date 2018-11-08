@@ -28,6 +28,23 @@ int			Game.RandomIndex(int max)		-- Fetches the next uniformly distributed rando
 Unit			Game.GetMobileAt(Loc);		-- Gets the mobile unit at the given location. nil if none. Operates in O(1): fast
 Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the given location. nil if none. Operates in O(1): fast
 
+--[[
+Checks the size and loop-condition of the given state.
+Actually runs the compression to see what size the final state would be.
+Slow
+]]
+ExportResult	Game.CheckStateExportValidity(*);
+
+Table-Type: ExportResult
+{
+	int			binarySize;			-- Serialized data size in bytes. May be nil on error
+	int			maxSupportedSize;	-- Maximum allowed serialized data size in bytes. May be nil on error
+	bool		okay;				-- Size constraints are met and loops are not detected
+	string		errorType;			-- Export error. May be nil (no error), 'TooLarge', 'TableLoop', 'NotSupported', 'Other'
+	string		errorDesc;			-- Extended error description, meant to be presented to the user
+}
+
+
 Table-Type: Alliance
 {
 	string		id;

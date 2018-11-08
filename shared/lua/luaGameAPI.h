@@ -143,6 +143,17 @@ namespace Lua
 		std::function<void(const TUniqueID&hangar, const TUniqueID&mobile, const Grid::LCellIdI&location, const TUniqueID&deploymentID)> onDeployStored;
 		std::function<void(index_t,bool)>	onQueueResearch;
 
+		struct TExportResult
+		{
+			CONSTRUCT_ENUMERATION5(ErrorType,NoError,TooLarge,TableLoop,NotSupported,Other);
+
+			ErrorType	error;
+			String		errorExt;
+			size_t		serialSize=0, maxSerialSize=1;
+		};
+
+		std::function<TExportResult(const Lua::Reference&)>		onCheckExportValidity;
+
 		/**/		API():mapper(true)	{}
 
 		void		Create(const Lua::PProgram&);
