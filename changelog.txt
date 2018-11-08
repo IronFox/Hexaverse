@@ -3,10 +3,8 @@ v0.9.6
 	> Tutorial servers now use random ports in the dynamic port range to avoid port collisions.
 	> Improved visual difference between enabled and disabled mines.
 	> Removed thick frames from visual buttons.
-	> Enhanced/cleaned up Lua API resource retrieval functions.
 	> Uncontrolled bomb explosions are no longer affected by research.
-	> Lua API now provides tables to identify and compare unit types.
-	> Added various new unit and type attributes and functions.
+	> Enhanced Lua AI API.
 	> Adjusted splash screen size when using exotic screen resolutions.
 	> Added detection for loops in exported AI state.
 	> In matches without AI the only player is no longer automatically declared winner unless other alliances at some point did exist.
