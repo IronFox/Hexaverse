@@ -1,17 +1,4 @@
-Lua API documentation:
-Test:
-	Tutorial
-Implement:
-	Retrieve research dependencies of type - impossible (atm)
-Game.CreateMarker: note max marker count
-
-
-
-asynchronous configuration editor start
-
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
-Icon for idling structures and vehicles
-
 
 
 web site: blend gallery image loading
@@ -24,6 +11,7 @@ air and sub-surface defense for nexus base
 optimize camera terrain intersection test
 
 hard to reproduce/fix:
+	Tutorial: Observed very first generator selection event not triggering. Gone after restart. Unable to reproduce
 	construction finish->move directly into storage seems to drop constructed lab
 	bug: generate... ends new game in round 0 if executed after previous match has ended
 		does not happen if forced on uncompleted matches (gameHasEnded=true, generate, ...)
@@ -209,6 +197,9 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: Icon for idling structures and vehicles
+skipped: asynchronous configuration editor start. most of the time is spent recompiling the terrain. probably useless
+added: Game.CreateMarker: note max marker count
 fixed: has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
 fixed: FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
 done: Complete tooltips for regular UI
