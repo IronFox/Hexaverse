@@ -1974,6 +1974,7 @@ namespace Lua
 			t.SetField("weight",turret->weight.GetValue(Objects::Research::globalState.zeroTable));
 			t.SetField("detectsResources",turret->detectsResources);
 			t.SetField("canAttack",turret->CanAttack());
+			t.SetField("mountType",turret->mountType.ToString());
 
 			if (turret->CanAttack())
 			{
