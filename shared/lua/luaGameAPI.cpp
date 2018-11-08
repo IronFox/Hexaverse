@@ -627,9 +627,10 @@ namespace Lua
 		program.reset();
 	}
 
-	void	API::AddObjectAndPathfindingFunctions()
+	void	API::AddObjectAndPathfindingFunctions(bool priveleged)
 	{
 		#ifdef CLIENT
+			gameTable.SetField("maxMarkerCount",Objects::Faction::CountMaxMarkers(priveleged));
 			gameTable.SetFunction("CreateMarker", [this](const Lua::Table&luaEntity, const String&markerType)
 			{
 				Objects::Marker::Type t;

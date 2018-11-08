@@ -187,7 +187,7 @@ namespace Lua
 		Lua::Table	MapEntity(const Objects::PWorldEntity&e, bool isReal, bool updateIfFound);
 		TFaction*	AddFaction(const Objects::PFaction&f, bool updateIfFound);
 		TAlliance*	AddAlliance(const Objects::PAlliance&a, bool updateIfFound, bool updateMembers);
-		void		AddObjectAndPathfindingFunctions();
+		void		AddObjectAndPathfindingFunctions(bool priveleged);
 		#ifdef CLIENT
 			void	AddMyMarker(const Objects::Marker&m);
 			void	AddMyMarkers();

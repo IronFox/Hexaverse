@@ -409,6 +409,7 @@ Table-Type: Vector
 };
 
 [client only]
+	int 		Game.maxMarkerCount		-- Maximum allowed markers. Increased if the local client runs as a Nexus AI client
 	{id->Marker}Game.myMarkers			-- All client-created markers, mapped by marker id (string). Since this is a client-private feature, server does not provide this
 
 

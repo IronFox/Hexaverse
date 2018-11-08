@@ -11,6 +11,7 @@
 #include <io/string_file.h>
 #include "io.h"
 #include "playerControlBegin.h"
+#include "clientRuntimeConfig.h"
 
 namespace ScriptedAI
 {
@@ -440,7 +441,7 @@ namespace ScriptedAI
 			thread.api.AddAllFactionsAndAlliances();
 			thread.api.AddAllEntities();
 			thread.api.AddMyMarkers();
-			thread.api.AddObjectAndPathfindingFunctions();
+			thread.api.AddObjectAndPathfindingFunctions(RuntimeConfig::aiMode);
 			#ifdef HAS_WINDOW
 				thread.api.SetSelectedUnit(Objects::selectedEntity,false);
 			#endif
