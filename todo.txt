@@ -3,7 +3,6 @@ Test:
 	Tutorial
 Implement:
 	Retrieve research dependencies of type - impossible (atm)
-	Random number generator function
 Game.CreateMarker: note max marker count
 
 
