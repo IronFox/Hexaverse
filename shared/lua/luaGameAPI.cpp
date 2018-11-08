@@ -572,8 +572,8 @@ namespace Lua
 			loadedEntityTableMap.Clear();
 			loadedFactionTableMap.Clear();
 			sharedHangars.Clear();
-			typeTableMap.Clear();
-			typeTableMap2.Clear();
+			//typeTableMap.Clear();	//let's keep these
+			//typeTableMap2.Clear();
 		}
 
 		for (index_t i = 0; i < sharedHangars.Count(); i++)
@@ -622,6 +622,8 @@ namespace Lua
 		lowCellGrid.Clear();
 		highCellGrid.Clear();
 		locationMap.Clear();
+		typeTableMap.Clear();
+		typeTableMap2.Clear();
 		program.reset();
 	}
 
