@@ -1059,6 +1059,7 @@ namespace ScriptedAI
 
 			FileSystem::File file;
 			WWindow w = window;
+			Buffer0<PButton> buttons;
 			while (scripts.NextFile(".lua",file))
 			{
 				PButton button {new Button{FileSystem::PathToString(file.GetInnerName()),"Load this AI script",[file,w]()
@@ -1069,9 +1070,15 @@ namespace ScriptedAI
 
 					HUD::HexGrid::RefreshButtonState();
 				}}};
+				buttons << button;
 
 				window->AnchorBelowPrevious(CLOCATION,button);
 			};
+
+			for (index_t i = 0; i < buttons.Count(); i++)
+			{
+				buttons[i]->SetCutCorners(M::Quad<bool>(true,i+1 == buttons.Count(),true,i==0));
+			}
 
 			window->AnchorBelowPrevious(CLOCATION,new Label{"Press Escape to abort"},0,0);
 			WindowStack::Show(window);
