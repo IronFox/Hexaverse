@@ -1037,16 +1037,16 @@ namespace Journal
 				break;
 				case 'l':
 				{
-					const index_t dotAtPlusOne = value.FindFirst('.');
-					if (!dotAtPlusOne)
+					const index_t dotAtPlusOne = value.GetIndexOf('.');
+					if (dotAtPlusOne == InvalidIndex)
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected . in location parameter '"+String(paraRef)+"' while decoding line "+String(line,lineLen));
 					Grid::LCellIdI target;
-					const auto sStackID = value.SubStringRef(0,dotAtPlusOne-1);
+					const auto sStackID = value.SubStringRef(0,dotAtPlusOne);
 					if (!Convert(sStackID,target.stackID))
 					{
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid stack ID for parameter '"+String(paraRef)+"', but got '"+String(sStackID)+"' while decoding line "+String(line,lineLen));
 					}
-					StringRef sHeight = value.SubStringRef(dotAtPlusOne);
+					StringRef sHeight = value.SubStringRef(dotAtPlusOne+1);
 					if (target.stackID >= Grid::LowSetup::GridType::CellCount)
 					{
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +ToString(target)+" is out of range, while decoding line "+String(line,lineLen));

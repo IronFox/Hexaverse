@@ -41,6 +41,11 @@ namespace Objects
 				rs << Component::baseComponents.ToTypeName(t.baseType);
 			return rs.ToStringRef();
 		}
+
+		auto c = Component::allComponents.Find(t.baseType);
+		if (c)
+			return c->typeName;
+
 		return Prototypes::all.ToTypeName(t);
 	}
 
@@ -62,7 +67,13 @@ namespace Objects
 			rs.turretType = Component::allTurretComponents.ToType(turretName);
 		}
 		else
-			rs = Prototypes::all.ToType(base);
+		{
+			auto c = Component::allComponents.FindByName(combined);
+			if (c)
+				rs = c->constName;
+			else
+				rs = Prototypes::all.ToType(base);
+		}
 		if (rs.IsInvalid())
 			throw Except::Program::ParameterFault(CLOCATION,"Decoded type declaration '"+ToString(rs)+"' is not valid, trying to decode '"+combined+"'");
 		return rs;

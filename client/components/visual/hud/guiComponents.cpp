@@ -26,6 +26,8 @@ namespace Component
 	/*static*/ PBaseInput	BaseInput::focusedInput = nullptr;
 	/*static*/ const Distance Distance::Unknown = Distance(NAN,Type::Placeholder);
 	/*static*/ const Distance Distance::Disabled = Distance(NAN,Type::Disabled);
+	/*static*/ float	TooltipDeclaration::delay = 1.f;
+
 
 	ChangeRecorder::TChange::TChange(const PComponent&c, const PComponent&cause, const TCodeLocation&loc) : component(c), cause(cause), loc(loc),componentRect(c->GetRect())
 	{}
@@ -147,7 +149,7 @@ namespace Component
 		return !isnan(value) && !isinf(value) /*&& value >= 0*/;
 	}
 
-	bool	Distance::IsWellDefinedNonZero() const
+	bool	Distance::IsWellDefinedGreaterZero() const
 	{
 		return !isnan(value) && !isinf(value) && value > 0;
 	}
@@ -1215,6 +1217,11 @@ namespace Component
 	}
 
 
+	/*static*/ void	Decoration::SignalBackgroundChange()
+	{
+		DecorationDetails::backgroundChanged = true;
+	}
+
 	Decoration::Context			Decoration::RenderBackground(const float2&relativeMouse,bool lit, bool pressed, bool enabled, const Decoration::Context&ctx)
 	{
 		using namespace DecorationDetails;
@@ -1780,11 +1787,17 @@ namespace Component
 		changed = false;
 	}
 
-	/*virtual override*/ PComponent	Slider::OnMouseDown()
+	
+
+	/*virtual override*/ PComponent	Slider::GetClickCandidate()
 	{
 		if (!ContainsMouse())
 			return PComponent();
+		return shared_from_this();
+	}
 
+	/*virtual override*/ void	Slider::OnMouseDown()
+	{
 		if (outlineContainsMouse)
 		{
 			mouseDown = true;
@@ -1793,8 +1806,6 @@ namespace Component
 		{
 			dragging = true;
 		}
-
-		return shared_from_this();
 	}
 
 
@@ -1921,29 +1932,35 @@ namespace Component
 
 	}
 
-	PComponent	Panel::TScrollbar::OnMouseDown()
+	PComponent	Panel::TScrollbar::GetClickCandidate()
 	{
 		if (visible)
 		{
 			PComponent c;
-			c = up->OnMouseDown();
+			c = up->GetClickCandidate();
 			if (c)
 				return c;
-			c = down->OnMouseDown();
+			c = down->GetClickCandidate();
 			if (c)
 				return c;
-			if (outlineContainsMouse)
-			{
-				mouseDown = true;
+			if (outlineContainsMouse || barContainsMouse)
 				return owner->shared_from_this();
-			}
-			if (barContainsMouse)
-			{
-				dragging = true;
-				return owner->shared_from_this();
-			}
 		}
 		return PComponent();
+	}
+
+	void	Panel::TScrollbar::OnMouseDown()
+	{
+		if (outlineContainsMouse)
+		{
+			mouseDown = true;
+			return;
+		}
+		if (barContainsMouse)
+		{
+			dragging = true;
+			return;
+		}
 	}
 
 	void	Panel::TScrollbar::Enable(Panel*p,const M::Rect<>&rect)
@@ -2231,9 +2248,9 @@ namespace Component
 	}
 
 
-	/*virtual override*/ PComponent	Panel::OnMouseDown()
+	/*virtual override*/ PComponent	Panel::GetClickCandidate()
 	{
-		PComponent c = vscroll.OnMouseDown();
+		PComponent c = vscroll.GetClickCandidate();
 		if (c)
 			return c;
 
@@ -2244,11 +2261,11 @@ namespace Component
 
 		for (index_t i = components.Count()-1; i < components.Count(); --i)
 		{
-			PComponent c = components[i]->OnMouseDown();
+			PComponent c = components[i]->GetClickCandidate();
 			if (c)
 				return c;
 		}
-		return Super::OnMouseDown();
+		return Super::GetClickCandidate();
 	}
 
 
@@ -2306,7 +2323,7 @@ namespace Component
 	//DX11::BaseInstructionBlock	Area::shader;
 
 
-	//void		Area::Render(bool lit)
+	//void		Area::Build(bool lit)
 	//{
 	//	display.RenderVertices(instruction);
 	//
@@ -2623,7 +2640,7 @@ namespace Component
 		if (this->widthLockedToIdeal || this->heightLockedToIdeal)
 			this->SignalLayoutChangeUp();
 	}
-	void			TextField::SetText(const Array<String>&string)
+	void			TextField::SetText(const ArrayRef<const String>&string)
 	{
 		if (rawText == string)
 			return;
@@ -2802,7 +2819,7 @@ namespace Component
 		switch (vAlign)
 		{
 			case VAlign::Center:
-				top -= (contextHeight - textHeight) * 0.5f;
+				top = rect.y.GetCenter() + textHeight * 0.5f;
 				break;
 			case VAlign::Top:
 				break;
@@ -3141,7 +3158,7 @@ namespace Component
 	{
 		const float textHeight = Super::GetContentHeight();
 		
-		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//compensate vertical translation (see Render())
+		const float checkBoxHeight = GetTotalFontScale() * textout.GetScaledHeight() * 1.4f;	//compensate vertical translation (see Build())
 
 		return Math::Max(textHeight,checkBoxHeight);
 	}
@@ -3264,10 +3281,10 @@ namespace Component
 	}
 
 	
-	PButton			TabBar::AddTab(const String&caption)
+	PButton			TabBar::AddTab(const String&caption, const TooltipDeclaration&tooltip)
 	{
 		//auto&tab = tabs.Append();
-		PButton tab(new Button(caption));
+		PButton tab(new Button(caption,tooltip));
 		WButton b = tab;
 		tab->SetTriggerFunction([this,b]()
 		{
@@ -3281,7 +3298,6 @@ namespace Component
 				mod.GetHAxis().lower.Set(Super::GetReferences().Last(),0.01f);
 			mod.GetVAxis().AnchorUpper(Distance::Unknown);	//trigger exception when not updated later
 		}
-		tab->SetVerticalPadding(0.25f);
 		tab->LockToIdealWidth();
 		switch (cornerStyle)
 		{
@@ -3302,7 +3318,7 @@ namespace Component
 			break;
 		}
 		tab->SetEdges(false);
-		tab->SetPadding({1.5f,0.25f,1.5f,0.25f});
+		tab->SetPadding({1.5f,0.25f,3.5f,0.25f});
 		tab->SetAlign(VerticalTextAlign::Top);
 
 		ConfigureInactive(tab);
@@ -3418,7 +3434,7 @@ namespace Component
 	}
 
 
-	PPanel			TabCollection::AddTab(const String&caption)
+	PPanel			TabCollection::AddTab( const String&caption, const TooltipDeclaration&tooltip )
 	{
 		Setup();
 
@@ -3433,9 +3449,9 @@ namespace Component
 			mod.GetVAxis().Fill();
 			mod.GetVAxis().upper.Set(tabBar,Distance());
 		}
-		tab.button = tabBar->AddTab(caption);
+		tab.button = tabBar->AddTab(caption,tooltip);
 		//tab.panel->SetBackgroundColor(tab.button->GetBackgroundColor());
-		tab.panel->SetBackgroundTone((float3)0.6f);
+		tab.panel->SetBackgroundTone((float3)0.5f);
 		tab.panel->SetBackgroundOpacity(0.65f);
 		return tab.panel;
 	}
@@ -3450,13 +3466,13 @@ namespace Component
 		return InvalidIndex;
 	}
 
-	void			TabCollection::SetCaptionOf(const PPanel&tabPanel, const String&caption)
+	void			TabCollection::SetCaptionOf(const PPanel&tabPanel, const String&caption, const TooltipDeclaration&tooltip)
 	{
 		if (!tabPanel)
 			return;
 		index_t at = GetTabIndex(tabPanel);
 		ASSERT__(at != InvalidIndex);
-		tabs[at].button->SetText(caption);
+		tabs[at].button->SetText(caption,tooltip);
 	}
 
 	const String&	TabCollection::GetCaptionOf(const PPanel&tabPanel)	const
@@ -3583,7 +3599,7 @@ namespace Component
 
 	/*virtual override*/ Decoration::Context	MultiPlot::Render( const Decoration::Context&ctx )
 	{
-		//Super::Render(opacity);
+		//Super::Build(opacity);
 		
 		const auto chld = Decoration::RenderBackground(relativeMouse,false,false,IsEnabled(),ctx);
 
@@ -3987,9 +4003,10 @@ namespace Component
 		Super::SetBackgroundTone((float3)0.7f);
 		Super::SetBackgroundOpacity(0.8f);
 		//Super::SetEdgeOpacity(1.f);
-		Super::SetEdges(true);
+		Super::SetEdges(false);
 		//Super::SetEnabledTextAlwaysLit(true);
-		Super::SetVerticalPadding(0.25f);
+		Super::SetVerticalPadding(0.5f);
+		Super::SetAlign(TextField::VAlign::Center);
 	}
 
 	void Label::Setup()

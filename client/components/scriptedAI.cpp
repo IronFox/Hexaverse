@@ -11,6 +11,7 @@
 #include <io/string_file.h>
 #include "io.h"
 #include "playerControlBegin.h"
+#include "clientRuntimeConfig.h"
 
 namespace ScriptedAI
 {
@@ -58,6 +59,7 @@ namespace ScriptedAI
 			Lua::API		api;
 			Lua::Function<Lua::Reference()> exportState;
 			Lua::Function<void(Lua::Reference)> init;
+			Lua::Function<String(Lua::Reference)> checkStateIsLoopFree;
 			Lua::Function<void()> execute,selectionChanged;
 
 			bool			disallowEnqueue = false;
@@ -388,6 +390,40 @@ namespace ScriptedAI
 				queue.drop = doDrop;
 				Network::Channels::QueueResearch.SendTo(Network::client,queue);
 			}
+
+			Lua::API::TExportResult CheckExportValidity( const Lua::Reference&ref )
+			{
+				Lua::API::TExportResult rs;
+				rs.maxSerialSize = Protocol::ScriptedAIState{}.dataVector.MaxElementCount;
+				try
+				{
+					String err = thread.checkStateIsLoopFree(ref);
+					if (err.IsNotEmpty())
+					{
+						rs.error = Lua::API::TExportResult::ErrorType::TableLoop;
+						rs.errorExt = err;
+					}
+					else
+					{
+						ByteStreamBuffer stream;
+						ref.Serialize(stream);
+						const auto data = stream.GetWrittenData();
+
+						Array<BYTE> temp(data.GetLength()+100);
+						const size_t compressed = BZ2::compress(data.GetPointer(),data.GetLength(),temp.pointer()+4,temp.GetLength()-4);
+						rs.serialSize = compressed;
+						if (rs.serialSize > rs.maxSerialSize)
+							rs.error = Lua::API::TExportResult::ErrorType::TooLarge;
+					}
+				}
+				catch (const std::exception&ex)
+				{
+					rs.errorExt = ex.what();
+					rs.error = Lua::API::TExportResult::ErrorType::Other;
+				}
+				return rs;
+			}
+
 		}
 
 
@@ -398,13 +434,14 @@ namespace ScriptedAI
 		void			FlushAndRebuildEntities()
 		{
 			const auto t0 = timer.Now();
-			LogEvent(EventClass::Preset::debug,"ScriptedAI: Rebuilding entities...");
+			LogEvent(EventClass::Preset::debug,"ScriptedAI: Rebuilding entities and local research...");
 			ASSERT__(!thread.IsBusy());
 			thread.api.FlushAllObjects();
+			thread.api.UpdateResearch();
 			thread.api.AddAllFactionsAndAlliances();
 			thread.api.AddAllEntities();
 			thread.api.AddMyMarkers();
-			thread.api.AddObjectAndPathfindingFunctions();
+			thread.api.AddObjectAndPathfindingFunctions(RuntimeConfig::aiMode);
 			#ifdef HAS_WINDOW
 				thread.api.SetSelectedUnit(Objects::selectedEntity,false);
 			#endif
@@ -531,16 +568,25 @@ namespace ScriptedAI
 							thread.nonCompressedExportedState.Clear();
 						else
 						{
-							ByteStreamBuffer stream;
-							ref.Serialize(stream);
-							thread.nonCompressedExportedState = stream.GetWrittenData();
+							String err = thread.checkStateIsLoopFree(ref);
+							if (err.IsNotEmpty())
+							{
+								LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),"Error exporting AI state: "+err.SubString(0,32)+". Rejecting export");
+								thread.nonCompressedExportedState.Clear();
+							}
+							else
+							{
+								ByteStreamBuffer stream;
+								ref.Serialize(stream);
+								thread.nonCompressedExportedState = stream.GetWrittenData();
+							}
 						}
 
 						if (Network::client.IsConnected() && Network::haveFaction)
 						{
 							Protocol::ScriptedAIState compressedState;
 							compressedState.scriptName = FileSystem::PathToString(FileSystem::ExtractFileName(Details::scriptPath));
-							if (!thread.nonCompressedExportedState.IsEmpty())
+							if (thread.nonCompressedExportedState.IsNotEmpty())
 							{
 								Array<BYTE> temp(thread.nonCompressedExportedState.GetLength()+100);
 								const size_t compressed = BZ2::compress(thread.nonCompressedExportedState.pointer(),thread.nonCompressedExportedState.GetLength(),temp.pointer()+4,temp.GetLength()-4);
@@ -740,8 +786,11 @@ namespace ScriptedAI
 		api.onDeployStored = Callback::DeployStored;
 		api.onQueueResearch = Callback::QueueResearch;
 
+		api.onCheckExportValidity = Callback::CheckExportValidity;
+
 
 		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
+		api.AddTypes();
 		api.AddGrid();	//must be executed by main thread, because mapped entities need it, which are added by main thread, too
 
 		Details::exportedThisPhase = false;
@@ -817,6 +866,31 @@ namespace ScriptedAI
 					thread.init = api.program->RequireGlobal("Init");
 					thread.execute = api.program->RequireGlobal("Execute");
 					thread.selectionChanged = api.program->FindGlobal("OnSelectionChanged");
+
+					#define LOOP_CHECK_FUNCTION_NAME "_hexaverse_export_loop_check__"
+
+					api.program->Execute(
+						"function " LOOP_CHECK_FUNCTION_NAME "_inner(state,exclude,history)\n"
+							"for k,v in pairs(state) do\n"
+								"if type(v) == 'table' then\n"
+									"if exclude[v] ~= nil then\n"
+										"return 'Table loop detected in exported state: '..history..'->'..tostring(k);\n"
+									"end;\n"
+									"exclude[v] = true;\n"
+										"local rs = " LOOP_CHECK_FUNCTION_NAME "_inner(v,exclude,history..'->'..tostring(k));\n"
+										"if rs ~= nil then return rs; end;\n"
+									"exclude[v] = nil;\n"
+								"end;\n"
+							"end;\n"
+							"return nil;\n"
+						"end;\n"
+						"function " LOOP_CHECK_FUNCTION_NAME "(state)\n"
+							"local rs = " LOOP_CHECK_FUNCTION_NAME "_inner(state,{},'');\n"
+							"if rs == nil then rs = ''; end;\n"
+							"return rs;\n"
+						"end;\n"
+					);
+					thread.checkStateIsLoopFree = api.program->RequireGlobal(LOOP_CHECK_FUNCTION_NAME);
 				});
 
 				Details::ThreadEnqueue("Script Init",[](Details::Thread&thread)
@@ -936,8 +1010,9 @@ namespace ScriptedAI
 			<< "Whatever you return will be fed to Init() when resuming interrupted execution." << nl
 			<< "Anything you keep in the local Lua state but don't export here will be lost during interruptions" << nl
 			<< "(e.g. save game loading, client crash, AI script reloading during debug, etc)." << nl
+			<< "Possibly use Game.CheckStateExportValidity(*) to determine validity of return values." << nl
 			<< "@return Exported state. May be any regular Lua type, including arbitrarily nested tables, or"<<nl
-			<< "plain nil." << nl
+			<< "plain nil. Avoid table loops." << nl
 			<< "]]" << nl
 			<< "function ExportState()" << nl
 			<< "\treturn nil;" << nl
@@ -954,7 +1029,7 @@ namespace ScriptedAI
 
 			<< "--[[" << nl
 			<< "@brief Optional selection change reaction function" << nl << nl
-			<< "If defined, executed when the local client provides user interaction and the user has selected"
+			<< "If defined, executed when the local client provides user interaction and the user has selected" << nl
 			<< "some other entity, or deselected the previously selected entity." << nl
 			<< "]]" << nl
 			<< "function OnSelectionChanged()" << nl
@@ -1022,9 +1097,10 @@ namespace ScriptedAI
 
 			FileSystem::File file;
 			WWindow w = window;
+			Buffer0<PButton> buttons;
 			while (scripts.NextFile(".lua",file))
 			{
-				PButton button {new Button{FileSystem::PathToString(file.GetInnerName()),[file,w]()
+				PButton button {new Button{FileSystem::PathToString(file.GetInnerName()),"Load this AI script",[file,w]()
 				{
 					PWindow window = w.lock();
 					WindowStack::Hide(window);
@@ -1032,9 +1108,15 @@ namespace ScriptedAI
 
 					HUD::HexGrid::RefreshButtonState();
 				}}};
+				buttons << button;
 
 				window->AnchorBelowPrevious(CLOCATION,button);
 			};
+
+			for (index_t i = 0; i < buttons.Count(); i++)
+			{
+				buttons[i]->SetCutCorners(M::Quad<bool>(true,i+1 == buttons.Count(),true,i==0));
+			}
 
 			window->AnchorBelowPrevious(CLOCATION,new Label{"Press Escape to abort"},0,0);
 			WindowStack::Show(window);

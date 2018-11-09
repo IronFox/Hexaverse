@@ -11,6 +11,7 @@
 #include <objects/structure/tower.h>
 #include "../../voting.h"
 #include "guiVoteList.h"
+#include "tooltip.h"
 
 namespace HUD
 {
@@ -547,8 +548,9 @@ namespace HexGrid
 	One instance exists per currently visible button.
 	All instances are stored in @a allGuiCells
 	*/
-	class GridCell
+	class GridCell : public Tooltip::IProvider
 	{
+		mutable String	tooltip;
 	public:
 		/**
 		Command to draw texture and callback functions from.
@@ -588,6 +590,8 @@ namespace HexGrid
 		This calculation takes into account the hexagonal shape of the local button, accelerated by first querying @a projectedRect
 		*/
 		bool		Contains(const M::TVec2<>&p) const;
+
+		virtual Tooltip::Info	ResolveTooltip(float t, float lastT) const override;
 	};
 
 
@@ -637,17 +641,12 @@ namespace HexGrid
 	void					Destroy();
 	bool					HandleClick();
 
-	extern GridCell*		hoveringOver;
-	extern CellAnchor		hoveringAnchor;
-	extern Objects::WrappedDescription	hoveringText;
-	extern float			hoveringWidth;
-	extern bool				hoveringBrief;
 
 	/*
 	Renders in viewport -1 to +1
 	*/
 	void					RenderCommands(const TGridConfig&);
-	void					RenderHint();
+	//void					RenderHint();
 
 	/**
 	Adds a visual command at the given location (base bottom left).

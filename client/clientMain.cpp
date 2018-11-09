@@ -82,6 +82,7 @@
 #include "components/playerControlBegin.h"
 #include "components/visual/scene/vehicleAccessibilityMesh.h"
 #include "components/scriptedAI.h"
+#include "components/visual/scene/spriteRenderer.h"
 
 #include "rc/Resource.h"
 
@@ -1194,7 +1195,7 @@ bool loop()
 
 
 		{
-			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
+			//Atmosphere::Build(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
 
 	//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
@@ -1268,7 +1269,8 @@ bool loop()
 			World::RenderWater(frustum);
 
 			VehicleAccessibilityMesh::Render(frustum);
-
+			
+			Objects::Renderer::RenderStatusIcons();
 
 			Objects::Renderer::RenderTranslucent(false);
 
@@ -1277,7 +1279,7 @@ bool loop()
 
 			#ifndef NO_SATELLITES
 			if (Camera::SkyGridIsVisible())
-				Grid::visibleOrbitGrid.Render(frustum);
+				Grid::visibleOrbitGrid.Build(frustum);
 			#endif
 
 			
@@ -1432,7 +1434,7 @@ bool loop()
 					HUD::StatePanel::Render(*Objects::selectedEntity);
 
 				//if (Objects::Network::Transfer::isActive)
-				//	TransferPanel::Render(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
+				//	TransferPanel::Build(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
 				//else
 				//	TransferPanel::Invalidate();
 			}
@@ -1533,10 +1535,11 @@ bool loop()
 			display.Pick(Camera::hud);
 			HUD::WindowStack::RenderNonModal();
 
-			HUD::HexGrid::RenderHint();
 			display.Pick(Camera::hud);
 			HUD::WindowStack::RenderModal();
+			HUD::Tooltip::Render();
 
+			display.Pick(Camera::hud);
 
 			if (ConfigurationMode::IsActive())
 			{
@@ -2003,13 +2006,13 @@ int main( int argc, const char* argv[])
 
 			#ifdef HAS_WINDOW
 
-				HUD::Menu::Configuration::Assign(StartConfig::destConfig, userConfigPath);
+				HUD::Menu::Configuration::Assign(&StartConfig::baseConfig, &StartConfig::destConfig, userConfigPath);
 
 				String val = StartConfig::GetString("runtime/capFPS","-1");
 				if (!val.EqualsIgnoreCase("off"))
 					convert(val.c_str(),RuntimeConfig::FromFile::capFPS);
 				RuntimeConfig::FromFile::alwaysDay = StartConfig::GetBool("runtime/alwaysDay",true);
-				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");
+				display.config.vertical_sync = StartConfig::GetBool("runtime/vsync") ? 1 : 0;
 				display.config.vertical_sync = display.config.vertical_sync > 0 ? 1 : 0;
 				display.config.fsaa_samples = StartConfig::GetInt("runtime/fsaa",4);
 
@@ -2222,6 +2225,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Lighting",Lighting::Create);
 			Loading::Stage("Mobile Accessibility Mesh",VehicleAccessibilityMesh::Create);
 			Loading::Stage("Visual Terrain",VisualTerrain::Create);		//egg-chicken
+			Loading::Stage("Sprite Rendering", Objects::SpriteRenderer::StaticCreate);	//chicken-egg
 			Loading::Stage("Object Rendering", Objects::Renderer::Create);	//chicken-egg
 
 			Loading::Stage("Configuration Mode",
@@ -2239,6 +2243,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Explosions", Explosions::Create);
 			Loading::Stage("Object Commands", Objects::Commands::DefineAll);
 			Loading::Stage("Resource Gauge", HUD::ResourceGauges::Create);
+			Loading::Stage("Tooltip", HUD::Tooltip::Create);
 			Loading::Stage("HexGrid", HUD::HexGrid::Create);
 		#endif
 		Loading::Stage("Animation", Animation::Create);
@@ -2287,6 +2292,9 @@ int main( int argc, const char* argv[])
 				}
 				HUD::Dialog::QueryNicknameIfEmpty();
 			};
+
+			
+
 
 			display.Assign(loop);
 			display.Execute();

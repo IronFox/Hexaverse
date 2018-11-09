@@ -20,7 +20,11 @@ namespace Grid
 	#endif
 
 
-	/*static*/ Ctr::Buffer0<Resource>	Resource::all;
+	/*static*/ Buffer0<Resource>	Resource::all;
+	/*static*/ index_t				Resource::fuelAt = InvalidIndex,
+									Resource::mineralsAt=InvalidIndex,
+									Resource::uraniumAt = InvalidIndex;
+
 
 	String							currentCustomResourceDistribution="clustered";
 
@@ -311,9 +315,22 @@ namespace Grid
 	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, index_t resIndex)
 	{
 		ASSERT_LESS__(resIndex, Objects::Resource::NumberOfPossibilities);
+		const auto idx = Resource::all.Count();
 		Resource&rc = Resource::all.Append();
 		rc.Name(name,cname,color);
 		rc.resourceIndex = resIndex;
+		switch (cname)
+		{
+			case ConstName::Resource_Minerals:
+				mineralsAt = idx;
+				break;
+			case ConstName::Resource_Fuel:
+				fuelAt = idx;
+				break;
+			case ConstName::Resource_Uranium:
+				uraniumAt = idx;
+				break;
+		}
 	}
 
 

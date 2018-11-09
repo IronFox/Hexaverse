@@ -13,7 +13,7 @@
 #include "guiStatistics.h"
 #include "../scene/explosions.h"
 #include "guiFactionTable.h"
-#include <io/monitoredProcess.h>
+//#include <io/monitoredProcess.h>
 #include "../../configurationMode.h"
 #include "../../io.h"
 #include "../../cameraControl.h"
@@ -21,6 +21,8 @@
 #include "hexGrid.h"
 #include "../commandDefinitions.h"
 #include "../autoDocumentation.h"
+#include <string/converter.h>
+#include <startProcess.h>
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -41,9 +43,9 @@ namespace Menu
 		Super::OnScreenSizeOrUIScaleChange();
 	}
 
-	HUD::Component::PButton				Menu::AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check /*= std::function<bool()>()*/, bool autoHide/*=true*/)
+	HUD::Component::PButton				Menu::AddCommand(const String&name, const HUD::Component::TooltipDeclaration&tooltip,  const std::function<void()>&execute, const std::function<bool()>&check /*= std::function<bool()>()*/, bool autoHide/*=true*/)
 	{
-		HUD::Component::PButton button(new HUD::Component::Button(name,
+		HUD::Component::PButton button(new HUD::Component::Button(name,tooltip,
 			[execute,this,autoHide]()
 			{
 				if (autoHide)
@@ -57,13 +59,13 @@ namespace Menu
 			To<HUD::Component::Button>::Cast(mainPanel->GetLastChild())->SetCutCorners(M::Quad<bool>(true,false,true,false));
 			button->SetCutCorners(M::Quad<bool>(true,true,true,false));
 		}
-		mainPanel->AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.015f ));
+		mainPanel->AnchorBelowPrevious(CLOCATION,button,0.f,HUD::Component::Distance::GameWindow( Super::components.IsEmpty() ? 0.f : 0.01f ));
 
 		LogEvent(EventClass::Preset::gui,"Menu["+String(this)+"/"+myTitle+"]::AddCommand("+name+", ...)");
 		button->SetBackgroundTone((float3)0.7f);
 		button->SetBackgroundOpacity(0.8f);
-		button->SetEdges(true);
-		button->SetVerticalPadding(0.25f);
+		button->SetEdges(false);
+		button->SetVerticalPadding(0.5f);
 		button->SetEnabledTextAlwaysLit(true);
 		return button;
 	}
@@ -139,11 +141,13 @@ namespace Menu
 
 		PathString	outConfigPath;
 
-		DeltaWorks::Configuration*config;
+		DeltaWorks::Configuration*config = nullptr;
+		const DeltaWorks::Configuration*defaultConfig = nullptr;
 
-		void	Assign(DeltaWorks::Configuration&cfg, const PathString&userConfigPath)
+		void	Assign(const DeltaWorks::Configuration*baseCFG, DeltaWorks::Configuration*cfg, const PathString&userConfigPath)
 		{
-			config = &cfg;
+			defaultConfig = baseCFG;
+			config = cfg;
 			outConfigPath = userConfigPath;
 		}
 
@@ -207,9 +211,35 @@ namespace Menu
 		return s;
 	}
 
-	static Component::PCheckbox AddCheckBox(const Component::PPanel&panel, const String&name,bool initial, const std::function<void(bool)>&onChange)
+	static Component::PCheckbox AddCheckBox(const Component::PPanel&panel, const String&name, const String&configKey, const std::function<bool()>&getValue, const std::function<void(bool)>&setValue)
 	{	
-		Component::PCheckbox c(new Component::Checkbox("",initial,[onChange,name](bool b)
+		auto var = Configuration::config->GetAttrib(configKey);
+		bool b;
+		if (var && Convert(var->value,b))
+			setValue(b);
+
+		auto var2 = Configuration::defaultConfig->GetAttrib(configKey);
+		String comment = var2 ? var2->comment : "";
+
+		Component::PCheckbox c(new Component::Checkbox("",comment,getValue(),[getValue,setValue,name,configKey](bool b)
+		{
+			if (b == getValue())
+				return;
+			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' -> "+String(b));
+			Configuration::Update(configKey,b ? 1 : 0);
+			setValue(b);	
+			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' done");
+		}));
+		AddOption(panel,name,c);
+		return c;
+	}
+	static Component::PCheckbox AddNegatedCheckBox(const Component::PPanel&panel, const String&name, const String&configKey, const std::function<bool()>&getValue, const std::function<void(bool)>&setValue)
+	{	
+		return AddCheckBox(panel,name,configKey,[getValue](){return !getValue();},[setValue](bool b){setValue(!b);});
+	}
+	static Component::PCheckbox AddNonCFGCheckBox(const Component::PPanel&panel, const String&name, const Component::TooltipDeclaration&tooltip, bool initial, const std::function<void(bool)>&onChange)
+	{	
+		Component::PCheckbox c(new Component::Checkbox("",tooltip,initial,[onChange,name](bool b)
 		{
 			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' -> "+String(b));
 			onChange(b);	
@@ -219,9 +249,9 @@ namespace Menu
 		return c;
 	}
 
-	static Component::PPanel MakeTab(const Component::PTabCollection&tabs, const String&title)
+	static Component::PPanel MakeTab(const Component::PTabCollection&tabs, const String&title, const Component::TooltipDeclaration&tooltip)
 	{
-		auto result = tabs->AddTab(title);
+		auto result = tabs->AddTab(title,tooltip);
 		result->SetAutoHeightSpacing(0.02f);
 		return result;
 	}
@@ -241,8 +271,8 @@ namespace Menu
 		menu->AddComponent(closeButton,CLOCATION);
 
 		const auto tabs = std::make_shared<Component::TabCollection>();
-		const auto visual = MakeTab(tabs,"Visual");
-		const auto game = MakeTab(tabs,"Game");
+		const auto visual = MakeTab(tabs,"Visual","Graphics and window options");
+		const auto game = MakeTab(tabs,"Game","General game related settings");
 		tabs->Anchor().FillHorizontally().GetVAxis().FillBetween(closeButton,optionsLabel);
 		menu->AddComponent(tabs,CLOCATION);
 
@@ -300,18 +330,13 @@ namespace Menu
 		}
 
 
-		AddCheckBox(visual,"Vertical Sync",display.IsVSyncActive(),[](bool enabled)
+		AddCheckBox(visual,"Vertical Sync","runtime/vsync",[](){return display.IsVSyncActive();},[](bool enabled)
 		{
-			bool old = display.IsVSyncActive();
-			if (old != enabled)
-			{
-				display.SetVSyncActive(enabled);
-				Configuration::Update("runtime/vsync",enabled ? 1 : 0);
-			}
+			display.SetVSyncActive(enabled);
 		});
 
 		{
-			Component::PCheckbox box = AddCheckBox(visual,"Full Screen (Alt+Enter)",IsFullScreen(),[](bool enabled)
+			Component::PCheckbox box = AddNonCFGCheckBox(visual,"Full Screen (Alt+Enter)","Toggle borderless-window full screen mode",IsFullScreen(),[](bool enabled)
 			{
 				bool old = IsFullScreen();
 				if (old != enabled)
@@ -347,19 +372,14 @@ namespace Menu
 			}
 		);
 
-		AddCheckBox(game,"Terrain Camera Intersection Correction (slow)",Camera::terrainIntersectionTest,[](bool enabled)
+		AddCheckBox(visual,"Terrain Camera Intersection Correction (slow)","runtime/terrainCameraIntersectionCorrection",[](){return Camera::terrainIntersectionTest;},[](bool enabled)
 		{
-			bool old = Camera::terrainIntersectionTest;
-			if (old != enabled)
-			{
-				Camera::terrainIntersectionTest = enabled;
-				Configuration::Update("runtime/terrainCameraIntersectionCorrection",enabled);
-			}
+			Camera::terrainIntersectionTest = enabled;
 		});
 
 		if (AudioInterface::IsActive())
 		{
-			const auto audio = MakeTab(tabs,"Sound");
+			const auto audio = MakeTab(tabs,"Sound","Audio output settings");
 			AddOptionSlider(audio,"Sound Volume", 0, 1.f, 0.25f,AudioInterface::GetMasterVolume(), [](float&q)
 			{
 				auto old = AudioInterface::GetMasterVolume();
@@ -375,25 +395,8 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 
-			AddCheckBox(audio,"Mute sound when tabbed out",AudioInterface::MutingOnWindowFocusLoss(), [](bool enabled)
-			{
-				auto old = AudioInterface::MutingOnWindowFocusLoss();
-				if (old != enabled)
-				{
-					AudioInterface::SetMuteOnWindowFocusLoss(enabled);
-					Configuration::Update("runtime/muteOnWindowFocusLoss",enabled);
-				}
-			});
-
-			AddCheckBox(audio,"Play sound on round begin",NewRoundSound::IsEnabled(), [](bool enabled)
-			{
-				auto old = NewRoundSound::IsEnabled();
-				if (old != enabled)
-				{
-					NewRoundSound::SetEnabled(enabled);
-					Configuration::Update("runtime/playSoundOnNewRound",enabled);
-				}
-			});
+			AddCheckBox(audio,"Mute sound when tabbed out","runtime/muteOnWindowFocusLoss",AudioInterface::MutingOnWindowFocusLoss, AudioInterface::SetMuteOnWindowFocusLoss);
+			AddCheckBox(audio,"Play sound on round begin","runtime/playSoundOnNewRound",NewRoundSound::IsEnabled, NewRoundSound::SetEnabled);
 
 			AddOptionSlider(audio,"Music Volume", 0, 1.f, 0.25f,Music::GetVolume(), [](float&q)
 			{
@@ -410,40 +413,18 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 			
-			AddCheckBox(audio,"Mute music during gameplay",!Music::PlayMusicDuringGameplay(),[](bool enabled)
-			{
-				bool old = !Music::PlayMusicDuringGameplay();
-				if (old != enabled)
-				{
-					Music::SetPlayMusicDuringGameplay(!enabled);
-					Configuration::Update("runtime/musicDuringGameplay",!enabled);
-				}
-			});
+			AddNegatedCheckBox(audio,"Mute music during gameplay","runtime/musicDuringGameplay",Music::PlayMusicDuringGameplay,Music::SetPlayMusicDuringGameplay);
 
 
 		}
 
-		AddCheckBox(game,"Auto-Queue Unit Commands",!Objects::ShiftMeansQueue(),[](bool enabled)
-		{
-			bool old = !Objects::ShiftMeansQueue();
-			if (old != enabled)
-			{
-				Objects::SetShiftMeansQueue(!enabled);
-				Configuration::Update("runtime/alwaysQueueUnitCommands",enabled);
-			}
-		});
+		AddCheckBox(game,"Auto-Queue Unit Commands","runtime/alwaysQueueUnitCommands",Objects::AutoQueue,Objects::SetAutoQueue);
 
-		AddCheckBox(game,"Debug Tools for Scripted AI", ScriptedAI::visualDebugActive, [](bool enabled)
+		AddCheckBox(game,"Debug Tools for Scripted AI","runtime/aiDebugMode", [](){return ScriptedAI::visualDebugActive;}, [](bool enabled)
 		{
-			bool old = ScriptedAI::visualDebugActive;
-			if (old != enabled)
-			{
-				ScriptedAI::visualDebugActive = enabled;
-				Configuration::Update("runtime/aiDebugMode", enabled);
-
-				Objects::Commands::RedefineGlobalCommands();
-				HUD::HexGrid::Configure(Objects::selectedEntity);
-			}
+			ScriptedAI::visualDebugActive = enabled;
+			Objects::Commands::RedefineGlobalCommands();
+			HUD::HexGrid::Configure(Objects::selectedEntity);
 		});
 
 
@@ -459,11 +440,11 @@ namespace Menu
 		game = Menu::Create();
 		game->Setup(0.3f,"Game",true);
 
-		game->AddCommand("Change Nickname",HUD::Dialog::QueryNickname);
-		game->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
-		game->AddCommand("Show factions (Tab)", FactionTable::Show,[](){return Network::amOnline;});
-		game->AddCommand("Show statistics", Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
-		game->AddCommand("Save game as...",[]()
+		game->AddCommand("Change Nickname","Change your ingame alias. Nicknames are not unique", HUD::Dialog::QueryNickname);
+		game->AddCommand("Abandon faction","Flags your current faction as abandoned, and displays a selection to create a new faction (if desired)",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Show factions (Tab)","Opens a dialog presenting factions, alliances, and chat messages" ,FactionTable::Show,[](){return Network::amOnline;});
+		game->AddCommand("Show statistics","Shows statistics of the completed local game" ,Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Save game as...","Signals the server to save the game under a given name",[]()
 		{
 			Dialog::Query("Please specify a name","","ABCDEFGHIJKLMNOPQRSTUVWXZYabcdefghijklmnopqrstuvwxyz0123456789 ",[](const String&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ');},
 				[](const String&name)
@@ -495,17 +476,17 @@ namespace Menu
 	{
 		auto menu = help = Menu::Create();
 		menu->Setup(0.3f,"Help",true);
-		menu->AddCommand("View Online Manual",[]()
+		menu->AddCommand("View Online Manual","Opens your installed browser to display the game documentation",[]()
 		{
 			OpenDocumentExternally("https://www.hexaverse.net/html.php");
 		});
 
-		menu->AddCommand("Show Basic Controls",
+		menu->AddCommand("Show Basic Controls","Opens a dialog showing all main controls. For a full list open the online manual",
 			[]()
 			{
 				Tutorial::ShowMessage("Controls",true,true);
 			});
-		menu->AddCommand("Revisit All Tutorial Messages",
+		menu->AddCommand("Revisit Game Hints","Flushes memory of shown game hints (notifications) such that they are shown again where appropriate",
 			[]()
 			{
 				HUD::Dialog::Confirm("You are about to reset the game's memory of tutorial messages you have been shown. All messages will be shown again where considered appropriate.\n"
@@ -515,11 +496,11 @@ namespace Menu
 						Tutorial::FlushMemory();
 					});
 			});
-		menu->AddCommand("Start Interactive Tutorial",
+		menu->AddCommand("Start Interactive Tutorial","Starts a private tutorial server and connects to it. Interactive tasks introduce the most common mechanics",
 			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
-		menu->AddCommand("Report Bug",
+		menu->AddCommand("Report Bug","Opens the bug reporter externally",
 			[]()
 			{
 				SetFullScreen(false);
@@ -527,21 +508,21 @@ namespace Menu
 			}	
 		);
 
-		menu->AddCommand("View Changelog",[]()
+		menu->AddCommand("View Changelog","Opens the game changelog (txt file) in any associated external text viewer",[]()
 		{
 			FileSystem::File f;
 			if (FileSystem::Folder().FindFile("..\\changelog.txt",f))
 				OpenDocumentExternally(f.GetLocation());
 		});
 
-		menu->AddCommand("View Third Party Sources",[]()
+		menu->AddCommand("View Third Party Sources","Opens a text file describing all currently used third party sources (txt file) in any associated external text viewer",[]()
 		{
 			FileSystem::File f;
 			if (FileSystem::Folder().FindFile("..\\info.txt",f))
 				OpenDocumentExternally(f.GetLocation());
 		});
 
-		menu->AddCommand("About", []()
+		menu->AddCommand("About","Who made this game, when was it compiled, etc.", []()
 		{
 			String text = PRODUCT_NAME " v" PRODUCT_VERSION "\n"
 				"Compiled "+String(__DATE__)+" "+String(__TIME__) +  "\n"
@@ -570,17 +551,17 @@ namespace Menu
 		main = Menu::Create();
 		main->Setup(0.25f,"Main",true);
 
-		main->AddCommand("Return to Server List",
+		main->AddCommand("Return to Server List","Closes the connection to your current server (if any) and displays available servers. You can resume your current faction (if any) by reconnecting",
 		[]()
 		{
 			ConfigurationMode::SetActive(false);
 			Network::client.Disconnect();
 		},
 		[](){return Network::client.IsConnected() || ConfigurationMode::IsActive();});
-		main->AddCommand("Game...",[](){WindowStack::Show(game);},std::function<bool()>(),false);
-		main->AddCommand("Launch...",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
+		main->AddCommand("Game...","Actions related to the game as a whole",[](){WindowStack::Show(game);},std::function<bool()>(),false);
+		main->AddCommand("Launch...","Start external programs (e.g. server manager)",[](){WindowStack::Show(launch);},std::function<bool()>(),false);
 		
-		main->AddCommand("Help...",
+		main->AddCommand("Help...","Various help topics",
 			[]()
 			{
 				WindowStack::Show(help);
@@ -588,14 +569,14 @@ namespace Menu
 			std::function<bool()>(),
 			false
 			);
-		main->AddCommand("Options",
+		main->AddCommand("Options","Modify the client configuration",
 			[]()
 			{
 				WindowStack::Show(options);
 			});
 
 		#ifdef _DEBUG
-			main->AddCommand("Update Automatic Documentation...",
+			main->AddCommand("Update Automatic Documentation...","Queries for a target directory then recomputes all entity renderings and prefix texts" ,
 			[]()
 			{
 				if (!Network::client.IsConnected() || !Network::gameHasBegun)
@@ -619,7 +600,7 @@ namespace Menu
 
 		#endif
 
-		main->AddCommand("Quit to Desktop",[](){HUD::Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return HUD::Dialog::CheckResult::OkayContinue;});});
+		main->AddCommand("Quit to Desktop","Shuts this client down. Dependent servers are also shut down",[](){HUD::Dialog::Confirm("Return to Windows?",[](){application_shutting_down = true;},[](){return HUD::Dialog::CheckResult::OkayContinue;});});
 		//main->FullAutoLayout();
 	}
 
@@ -628,17 +609,16 @@ namespace Menu
 		auto menu = launch = Menu::Create();
 		menu->Setup(0.3f,"Launch...",true);
 
-		menu->AddCommand("Local server control console",[]()
+		menu->AddCommand("Local server control console","Launches a server control console to connect to your local server",[]()
 		{
 			SetFullScreen(false);
-			MonitoredProcess	process(false);
 			if (Network::amOnline && Network::client.IsLocalhost())
-				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+				StartProcess("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
 			else
-				process.Start("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
+				StartProcess("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
 		});
 
-		menu->AddCommand("New client with custom profile",[]()
+		menu->AddCommand("New client with custom profile","Launches another instance of the local client under a different profile. Profiles allow control of each one faction per server",[]()
 		{
 			Dialog::Query("Please enter a profile name to continue (empty for none).\n"
 				"Servers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation.\n"
@@ -647,7 +627,6 @@ namespace Menu
 				"abcdefghijklmnopqrstuvwxyz_0123456789",[](const StringRef&str){return true;},[](const String&str)
 			{
 				SetFullScreen(false);
-				MonitoredProcess	process(false);
 				PathString parameters = PathString("profile="+str);
 				if (Network::client.IsConnected())
 					parameters += PathString(" serverURL="+ToString(Network::lastServerAddress));
@@ -662,15 +641,14 @@ namespace Menu
 				}
 				while (len >= execPath.GetLength());
 
-				process.Start("./",execPath.GetPointer(),parameters);
+				StartProcess("./",execPath.GetPointer(),parameters);
 			});
 		});
 
-		menu->AddCommand("Server Manager",[]()
+		menu->AddCommand("Server Manager","Launches the server manager app to review and control locally running servers",[]()
 		{
 			SetFullScreen(false);
-			MonitoredProcess	process(false);
-			process.Start("../ServerManager","ServerManager.exe","");
+			StartProcess("../ServerManager","ServerManager.exe");
 		});
 
 
@@ -679,7 +657,7 @@ namespace Menu
 
 	static void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
 	{
-		login->AddCommand(line,
+		login->AddCommand(line,"Faction Option",
 		[typeFlags,supportFactionFlag]()
 		{
 			if (Network::HaveFactionKeyForCurrentWorld() && typeFlags != Protocol::FactionType::SpectatorFaction)
@@ -716,7 +694,7 @@ namespace Menu
 		login = Menu::Create();
 		login->Setup(0.25f,"Login",false); 	//once visible, must explicitly close
 
-		login->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
+		login->AddCommand("Continue existing faction","If you have access to an existing faction, select this option to resume control",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
 		[]()
 		{
 			return Network::amOnline && !Network::haveFaction 
@@ -785,7 +763,7 @@ namespace Menu
 			char date[64];
 			strftime(date, sizeof(date), "%Y-%m-%d %H:%M", tm);
 
-			menu->AddCommand(s->title+"\n"+date,[p]()
+			menu->AddCommand(s->title+"\n"+date,"Start a new local server from this save game",[p]()
 			{
 				ServerProcess::Begin(true,false,"-l \""+p+"\"");
 				HUD::WindowStack::SignalSituationChange();
@@ -799,14 +777,14 @@ namespace Menu
 	{
 		auto menu = startServer = Menu::Create();
 		menu->Setup(0.25f,"Start Server",true);
-		menu->AddCommand("Configure visually...",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
-		menu->AddCommand("Start using current configuration",
+		menu->AddCommand("Configure visually...","Opens the interactive visual server configuration and planet editor. A server is not started until completed. New planet types may be saved without starting a server",[](){ConfigurationMode::SetActive(true);},[](){return !Network::amOnline;});
+		menu->AddCommand("Start using current configuration","Directly starts a server using your current server configuration",
 			[]()
 		{
 			ServerProcess::Begin(true,false);
 			HUD::WindowStack::SignalSituationChange();
 		},[](){return !Network::amOnline;});
-		menu->AddCommand("Load saved game...",
+		menu->AddCommand("Load saved game...","Scans all available server save games and opens a dialog to choose one",
 			[]()
 		{
 			if (RefreshSaveGames())
@@ -814,7 +792,7 @@ namespace Menu
 			else
 				Dialog::ShowMessage("Apparently, there are no save games to load. Please try again later.");
 		});
-		menu->AddCommand("Start Interactive Tutorial",
+		menu->AddCommand("Start Interactive Tutorial","Starts a private tutorial server and connects to it. Interactive tasks introduce the most common mechanics",
 			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 	}

@@ -16,6 +16,7 @@
 #include "uiScale.h"
 #include "surfaceRenderer.h"
 #include "../lineRenderer.h"
+#include "tooltip.h"
 #include <math/graph.h>
 
 
@@ -114,32 +115,117 @@ namespace Component
 	};
 
 
+	/**
+	Container class for tooltip generation.
+	May be decleared via constrant string(s) or dynamic function
+	*/
+	class TooltipDeclaration
+	{
+		Tooltip::FInfo	getInfo;
+	public:
+		/**
+		Popup delay in seconds. Defaults to 1
+		*/
+		static float	delay;
+
+		/**/			TooltipDeclaration() {}
+		/**/			TooltipDeclaration(const char*tooltip):getInfo{[tooltip](float t, float){return t > delay ? tooltip : nullptr;}}{}
+		/**/			TooltipDeclaration(const String&tooltip):getInfo{[tooltip](float t, float){return t > delay ? tooltip.c_str() : nullptr;}}{}
+		/**/			TooltipDeclaration(const Tooltip::FInfo&info):getInfo{info}	{}
+
+		/**
+		Resolves tooltip text
+		*/
+		Tooltip::Info	operator()(float t, float lastT) const {return getInfo != nullptr ? getInfo(t,lastT) : nullptr;}
+	};
+
+
+	/**
+	Component anchor distance/size descriptor.
+	Can be measured in different units and applied accordingly
+	*/
 	struct Distance
 	{
+		/**
+		Distance unit type
+		*/
 		CONSTRUCT_ENUMERATION5(Type,RelativeToParentComponent,RelativeToGameWindow,AbsolutePixels,Placeholder,Disabled);
 
-
+		/**
+		Actual distance value.
+		Significance depends on type and possibly surrounding constellation.
+		May be NAN, indicating that distance/size is unknown/invalid
+		*/
 		float	value = 0;
+		/**
+		Distance unit
+		*/
 		Type	type;
 
 		/**/	Distance()	{}
 		/**/	Distance(float d, Type t = Type::RelativeToGameWindow) : value(d),type(t)	{}
 
+		/**
+		Defines a distance value relative to the size of the game window
+		*/
 		static Distance GameWindow(float d) {return Distance(d,Type::RelativeToGameWindow);}
+		/**
+		Defines a distance value relative to the size of the respective parent component
+		*/
 		static Distance OfParentSize(float d) {return Distance(d,Type::RelativeToParentComponent);}
+		/**
+		Defines a distance value in absolute pixels
+		*/
 		static Distance Pixels(float pixels) {return Distance(pixels,Type::AbsolutePixels);}
-		static const Distance Unknown, Disabled;
+		
+		static const Distance	Unknown;	//!< Defines a placeholder distance/size that is effectively defined completely by external factors
+		static const Distance	Disabled;	//!< Disabled distance/size. Typically utilized to disable the anchor that the distance is recorded in
 
+		/**
+		Asserts that the local distance is neither NAN nor INF if the local type is defined (IsDefined()), enforces NAN otherwise
+		*/
 		void	VerifyIntegrity() const;
+		/**
+		Determines whether the local value is neither NAN nor INF
+		*/
 		bool	IsWellDefined() const;
-		bool	IsWellDefinedNonZero() const;
+		/**
+		Determines whether the local value is neither NAN, INF, nor <=0
+		*/
+		bool	IsWellDefinedGreaterZero() const;
+		/**
+		Determines whether the local distance/size is a placeholder and defined by external factors.
+		True for Distance::Unknown
+		*/
 		bool	IsPlaceholder() const {return type == Type::Placeholder;}
+		/**
+		Determines whether the local distance/size is deactivated.
+		True for Distance::Disabled
+		*/
 		bool	IsDisabled() const {return type == Type::Disabled;}
+		/**
+		Determines whether the local distance/size is defined and 0
+		*/
 		bool	IsZero() const {return IsDefined() && value ==0;}
+		/**
+		Determines whether the local distance/size is defined and non-0
+		*/
 		bool	IsNonZero() const {return IsDefined() && value != 0;}
+		/**
+		Determines whether the local distance/size is defined and >0
+		*/
 		bool	IsPositiveNonZero() const {return IsDefined() && value > 0;}
+		/**
+		Determines whether the local distance/size is not disabled and either a placeholder or >0
+		*/
 		bool	IsPositiveNonZeroOrPlaceholder() const {return !IsDisabled() && ( value > 0 || type == Type::Placeholder);}
+		/**
+		Determines whether the local distance/size has an actual value (i.e. neither a placeholder nor disabled)
+		*/
 		bool	IsDefined() const {return type != Type::Placeholder && type != Type::Disabled;}
+		/**
+		Checks whether or not the local size/distance requires a parent of invariant size
+		*/
 		bool	RequiresFixedParentSize() const {return type == Type::RelativeToParentComponent && value != 0;}
 
 		void	operator=(const Distance&other)
@@ -150,6 +236,14 @@ namespace Component
 			value = other.value;
 		}
 
+		/**
+		Converts the local value to a size/distance applicable in screen size (ideally in [0,1]).
+		Automatically queries the global display size, as necessary.
+
+		@param parentSize screen-space size of the parent component. 1 if none
+		@param myAxis Axis this size/distance is measured along
+		@return Screen space size/distance, ideally in [0,1] (may fall outside this range in weird conditions)
+		*/
 		float	ToScreenDistance(float parentSize, AnchorAxis myAxis) const;
 		bool	operator==(const Distance&other) const
 		{
@@ -171,15 +265,36 @@ namespace Component
 	typedef std::function<void(const PComponent&)> FVerification;
 	typedef std::function<bool(const PComponent&)> FSelector;
 
+	/**
+	Individual component anchor.
+	Each component has four in total -one along each direction- which affects its location or size along that extreme.
+	The local struct may be anchored to one or more components to enforce a distance to.
+	This distance is measured between the local and opposite remote component anchor (or window edge if no component is referenced).
+	Symmetry should be avoided. If one anchor is enabled, its referenced opposite anchor should not be set, or instead anchor to some other component.
+	If multiple remote components are referenced, the one of currently closest distance (chosen dynamically) takes precedence.
+	*/
 	struct Anchor
 	{
 		typedef Buffer0<WComponent>	Components;
 
+		/**
+		Disables the local anchor.
+		The size of the owning component along this axis becomes fixed.
+		The opposing anchor is expected to be set
+		*/
 		void			Disable()
 		{
 			enabled = false;
 			references.Clear();
 		}
+
+		/**
+		Sets the local anchor.
+		If the opposing anchor is not also set, this anchor defines the location of the owning component but not its size.
+		If both are set, then the component either centers or stretches, depending on axis configuration
+		@param c Singular component to anchor to. An existing anchor components are cleared
+		@param dist Distance to the referenced component. Relative to screen edge if @a c is null
+		*/
 		void			Set(const PComponent&c, const Distance&dist)
 		{
 			enabled = true;
@@ -188,6 +303,13 @@ namespace Component
 			if (c)
 				references.Append(c);
 		}
+		/**
+		Sets the local anchor.
+		If the opposing anchor is not also set, this anchor defines the location of the owning component but not its size.
+		If both are set, then the component either centers or stretches, depending on axis configuration.
+		Any existing anchor components are cleared.
+		@param dist Distance to the respective screen edge
+		*/
 		void			Set(const Distance&dist)
 		{
 			enabled = true;
@@ -197,15 +319,53 @@ namespace Component
 
 		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&, const AnchorAxis&, bool isUpper) const;
 
-		void			SetAllOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
-		void			SetSomeOf(const PPanel&, const Distance&distance, const FSelector&, const Component*mustNotInclude);
-		void			SetLastOf(const PPanel&, const Distance&distance, const Component*mustNotInclude);
+		/**
+		Sets the same distance to all components contained by the specified panel.
+		@param p Panel to reference components of. The method does nothing if this parameter is null or empty. Subsequent changes to (or destruction of) the referenced panel has no significance
+		@param distance Distance to enforce to all referenced components
+		@param mustNotInclude Optional debugging parameter. Typically set to the owning component. Asserts that no matching component is added
+		*/
+		void			SetAllOf(const PPanel&p, const Distance&distance, const Component*mustNotInclude);
+		/**
+		More selective version of SetAllOf().
+		Only adds references which are marked true by the specified selector function.
+		@param p Panel to reference components of. The method does nothing if this parameter is null or empty. Subsequent changes to (or destruction of) the referenced panel has no significance
+		@param distance Distance to enforce to all referenced components
+		@param del Selector function which returns true for all components that should be added and false for all else
+		@param mustNotInclude Optional debugging parameter. Typically set to the owning component. Asserts that no matching component is added
+		*/
+		void			SetSomeOf(const PPanel&p, const Distance&distance, const FSelector&sel, const Component*mustNotInclude);
+		/**
+		Sets only the last component found in the given component.
+		Identical Set(p->GetLastChild(),distance)
+		@param p Panel to reference components of. The method does nothing if this parameter is null or empty. Subsequent changes to (or destruction of) the referenced panel has no significance
+		@param distance Distance to enforce to all referenced components
+		@param mustNotInclude Optional debugging parameter. Typically set to the owning component. Asserts that no matching component is added
+		*/
+		void			SetLastOf(const PPanel&p, const Distance&distance, const Component*mustNotInclude);
 
+		/**
+		Checks whether the local anchor is enabled
+		*/
 		bool			IsEnabled() const {return enabled;}
 		bool			IsInactive() const {return !enabled;}
+		/**
+		Fetches the configured distance to the referenced component (if any).
+		If not set, returns default distance (0)
+		*/
 		const Distance&	GetOffset() const {return distanceFromReference;}
+		/**
+		Returns a list reference of all referenced components. May be empty
+		*/
 		const Components&GetReferences() const {return references;}
+		/**
+		Adds another component to the list of references.
+		The local anchor must be set
+		*/
 		void			AddReference(const PComponent&c);
+		/**
+		Checks whether the local anchor is enabled and requires a parent of fixed size
+		*/
 		bool			RequiresFixedParentSize() const {return IsEnabled() && distanceFromReference.RequiresFixedParentSize();}
 	private:
 		bool			enabled = true;
@@ -392,6 +552,12 @@ namespace Component
 		void			SetOpacity(float top, float bottom) {SetBackground(true); this->bottomOpacity = bottom; this->topOpacity = top;}
 		void			SetShadow(const float4&tint/*, bool blurBack*/) {SetShadow(true); shadowTint = tint; /*blurBackground = blurBack;*/}
 
+		/**
+		Notifies the decoration renderer that background content can be expected to have changed and should be re-copied/blurred.
+		This is normally unnecessary to be calle explicitly.
+		*/
+		static void		SignalBackgroundChange();
+
 		void			OnScreenSizeOrUIScaleChange()	{recompileShadow = recompileEdges = recompileBackground =true;}
 
 		/**
@@ -444,7 +610,8 @@ namespace Component
 	};
 
 
-	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation, public M::Graph::NodeAttachment
+
+	class Component : public std::enable_shared_from_this<Component>, public ComponentLocation, public M::Graph::NodeAttachment, public Tooltip::IProvider
 	{
 		typedef ComponentLocation Super;
 	protected:
@@ -515,6 +682,7 @@ namespace Component
 		virtual PComponent GetChild(index_t i) const {return nullptr;}
 		PComponent		GetLastChild() const {const count_t cnt = CountChildren(); if (cnt) return GetChild(cnt-1); return nullptr;}
 
+		virtual Tooltip::Info	ResolveTooltip(float t, float) const override {return nullptr;}
 		
 		bool			SetWidth(const Distance&w)
 		{
@@ -561,8 +729,22 @@ namespace Component
 		virtual void	SetActive( bool isActive ) {active = isActive;}
 		virtual bool	DetectEnabledState() {return false;}
 		
-		virtual PComponent	OnMouseDown() {return PComponent();}
 		virtual WheelRs	OnMouseWheel(short) {return ContainsMouse() ? WheelRs::Ignored : WheelRs::NotContained;}
+		/**
+		Fetches the component currently beneath the mouse cursor that can actively react to a click.
+		The method must test on its own, whether it contains the mouse cursor and return null otherwise
+		@return Component that should receive any occurring OnMouseDown() event, null if none
+		*/
+		virtual PComponent	GetClickCandidate() {return PComponent();}
+		/**
+		Notifies that the local component has been chosen as a click candidate, and the mouse button has been pressed.
+		Called only if the local component was previously returned by a GetClickCandidate() invokation.
+		*/
+		virtual void	OnMouseDown() {}
+		/**
+		Notifies that the local component has been chosen as a click dandidate, the mouse button has been pressed, and now released.
+		Called only if the local component was previously returned by a GetClickCandidate() invokation, and OnMouseDown() has been called.
+		*/
 		virtual void	OnMouseUp()	{}
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 		
@@ -942,7 +1124,7 @@ namespace Component
 		float			GetTotalFontScale() const;
 
 		void			SetText(const String&string);
-		void			SetText(const Array<String>&string);
+		void			SetText(const ArrayRef<const String>&string);
 
 		const Array<String>&GetText() const {return rawText;}
 
@@ -1015,7 +1197,7 @@ namespace Component
 		/**/			LinkLabel(const String&text, float scale=1.f, const FOnPress&onPress = FOnPress()):Super(text,scale),onPress(onPress){}
 
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
-		virtual PComponent	OnMouseDown() override {return ContainsMouse() ? shared_from_this() : nullptr;}
+		virtual PComponent	GetClickCandidate() override {return ContainsMouse() ? shared_from_this() : nullptr;}
 
 		virtual void	OnMouseUp() override
 		{
@@ -1038,6 +1220,7 @@ namespace Component
 
 		bool			alwaysDown = false;
 		bool			flipWhenAlwaysDown = true;
+		TooltipDeclaration tooltip;
 
 		void			Setup();
 
@@ -1048,7 +1231,7 @@ namespace Component
 		/**/			Button()
 		{
 			Setup();
-			SetText("[-]");
+			SetText("[-]","Undefined button title");
 		}
 
 		/**/			Button(const String&text, std::function<void()> onPress = std::function<void()>(), std::function<bool()> check = std::function<bool()>() )
@@ -1056,11 +1239,37 @@ namespace Component
 			Setup();
 			this->onPress = onPress;
 			this->check = check;
-			SetText(text);
+			SetText(text,"");
 			anchorConfig.GetHAxis().AnchorLowerUnknown();
 			SetToIdealWidth();
 		}
 
+		/**/			Button(const String&text, const TooltipDeclaration&tooltip, std::function<void()> onPress = std::function<void()>(), std::function<bool()> check = std::function<bool()>() )
+		{
+			Setup();
+			this->onPress = onPress;
+			this->check = check;
+			SetText(text,tooltip);
+			anchorConfig.GetHAxis().AnchorLowerUnknown();
+			SetToIdealWidth();
+		}
+
+		void			SetText(const ArrayRef<const String>&lines, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(lines);
+			this->tooltip = tooltip;
+		}
+
+		void			SetText(const String&text, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(text);
+			this->tooltip = tooltip;
+		}
+		
+		virtual Tooltip::Info	ResolveTooltip(float t, float lastT) const override
+		{
+			return tooltip(t, lastT);
+		}
 
 		void			SetAlwaysDown(bool down) {alwaysDown = down;}
 		bool			IsAlwaysDown() const {return alwaysDown;}
@@ -1117,7 +1326,7 @@ namespace Component
 
 		virtual Ctx	 Render(const Decoration::Context&) override;
 
-		virtual PComponent	OnMouseDown() override
+		virtual PComponent	GetClickCandidate() override
 		{
 			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
@@ -1147,9 +1356,7 @@ namespace Component
 		std::function<void(bool)>	onChanged;
 		std::function<bool()>		check;
 		bool						isChecked = false;
-
-		//String					baseLabel;
-//		TextField::SetText;
+		TooltipDeclaration			tooltip;
 
 		void			Setup()
 		{
@@ -1171,7 +1378,7 @@ namespace Component
 		/**/			Checkbox()
 		{
 			Setup();
-			SetText("");
+			SetText("","");
 		}
 
 		/**/			Checkbox(const String&text, bool checked, std::function<void(bool)> onChanged = std::function<void(bool)>(), std::function<bool()> check = std::function<bool()>() )
@@ -1180,7 +1387,17 @@ namespace Component
 			this->onChanged = onChanged;
 			this->check = check;
 			isChecked = checked;
-			SetText(text);
+			SetText(text,"");
+			SetToIdealWidth();
+		}
+
+		/**/			Checkbox(const String&text, const TooltipDeclaration&tooltip, bool checked, std::function<void(bool)> onChanged = std::function<void(bool)>(), std::function<bool()> check = std::function<bool()>() )
+		{
+			Setup();
+			this->onChanged = onChanged;
+			this->check = check;
+			isChecked = checked;
+			SetText(text,tooltip);
 			SetToIdealWidth();
 		}
 
@@ -1228,7 +1445,24 @@ namespace Component
 
 		virtual Ctx	 Render(const Decoration::Context&) override;
 
-		virtual PComponent	OnMouseDown() override
+		void			SetText(const ArrayRef<const String>&lines, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(lines);
+			this->tooltip = tooltip;
+		}
+
+		void			SetText(const String&text, const TooltipDeclaration&tooltip)
+		{
+			Super::SetText(text);
+			this->tooltip = tooltip;
+		}
+		
+		virtual Tooltip::Info	ResolveTooltip(float t, float lastT) const override
+		{
+			return tooltip(t, lastT);
+		}
+
+		virtual PComponent	GetClickCandidate() override
 		{
 			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
@@ -1304,8 +1538,9 @@ namespace Component
 		typedef std::function<void(float&)>	FOnChange;
 
 		/**/				Slider();
-		virtual PComponent	OnMouseDown() override;
+		virtual PComponent	GetClickCandidate() override;
 		//virtual WheelRs	OnMouseWheel(short) override;
+		virtual void		OnMouseDown() override;
 		virtual void		OnMouseUp() override;
 		virtual void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 		virtual Ctx			Render(const Decoration::Context&) override;
@@ -1371,8 +1606,9 @@ namespace Component
 			/**/		TScrollbar();
 			void		ScrollToTop();
 			void		ScrollToBottom();
-			PComponent	OnMouseDown();
+			PComponent	GetClickCandidate();
 			WheelRs		OnMouseWheel(short);
+			void		OnMouseDown();
 			void		OnMouseUp();
 			void		OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const M::Rect<>&rect);
@@ -1476,7 +1712,8 @@ namespace Component
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
 		virtual WheelRs	OnMouseWheel(short) override;
-		virtual PComponent	OnMouseDown() override;
+		virtual PComponent	GetClickCandidate() override;
+		virtual void	OnMouseDown() override {vscroll.OnMouseDown();}
 		virtual void	OnMouseUp() override {vscroll.OnMouseUp();}
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
@@ -1636,14 +1873,14 @@ namespace Component
 			return child;
 		}
 
-		virtual PComponent	OnMouseDown() override
+		virtual PComponent	GetClickCandidate() override
 		{
 			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
 			{
 				for (index_t i = components.Count()-1; i < components.Count(); --i)
 				{
-					PComponent c = components[i]->OnMouseDown();
+					PComponent c = components[i]->GetClickCandidate();
 					if (c)
 						return c;
 				}
@@ -1688,7 +1925,7 @@ namespace Component
 		@param caption Caption to use for the tab. May be empty or already in use (but probably should not)
 		@return Handle to the panel of the new tab. The panel is anchored to fill most of the local collection area
 		*/
-		PButton			AddTab(const String&caption);
+		PButton			AddTab(const String&caption, const TooltipDeclaration&tooltip);
 		/**
 		Retrieves the index of the specified tab.
 		This method may be used to determine if a button belongs to this bar.
@@ -1773,7 +2010,7 @@ namespace Component
 		@param caption Caption to use for the tab. May be empty or already in use (but probably should not)
 		@return Handle to the panel of the new tab. The panel is anchored to fill most of the local collection area
 		*/
-		PPanel			AddTab(const String&caption);
+		PPanel			AddTab(const String&caption, const TooltipDeclaration&tooltip);
 		/**
 		Retrieves the index of the specified tab.
 		This method may be used to determine if a panel belongs to this collection.
@@ -1798,7 +2035,7 @@ namespace Component
 		Updates the caption associated with the specified tab panel.
 		The method triggers a fatal exception if the specified panel is not found.
 		*/
-		void			SetCaptionOf(const PPanel&, const String&caption);
+		void			SetCaptionOf(const PPanel&, const String&caption, const TooltipDeclaration&tooltip);
 		/**
 		Retrieves the caption of the tab associated with the specified panel.
 		The method triggers a fatal exception if the specified panel is not found.

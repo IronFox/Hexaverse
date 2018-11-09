@@ -160,6 +160,22 @@ namespace HUD
 
 			GlobalEvents::applicationTerminate << Destroy;
 
+			Tooltip::tooltipQuery << []()->const Tooltip::IProvider*
+			{
+				for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
+				{
+					auto&w = Detail::visibleWindows[i];
+					if (!w.IsVisible())
+						continue;
+					auto comp = w.window->GetClickCandidate();
+					if (comp)
+						return comp.get();
+					if (w.window->isModal)
+						return nullptr;
+				}
+				return nullptr;
+			};
+
 		}
 
 
@@ -450,8 +466,13 @@ namespace HUD
 				auto&w = Detail::visibleWindows[i];
 				if (!w.IsVisible())
 					continue;
-				Component::mousePressedComponent = w.window->OnMouseDown();
-				if (Component::mousePressedComponent || w.window->isModal)
+				Component::mousePressedComponent = w.window->GetClickCandidate();
+				if (Component::mousePressedComponent)
+				{
+					Component::mousePressedComponent->OnMouseDown();
+					return true;
+				}
+				if (w.window->isModal)
 					return true;
 			}
 			Component::mousePressedComponent.reset();

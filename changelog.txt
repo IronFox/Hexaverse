@@ -1,3 +1,17 @@
+v0.9.6
+	> Added tooltips to several buttons and checkboxes that explain in detail what those do.
+	> Tutorial servers now use random ports in the dynamic port range to avoid port collisions.
+	> Improved visual difference between enabled and disabled mines.
+	> Removed thick frames from visual buttons.
+	> Uncontrolled bomb explosions are no longer affected by research.
+	> Enhanced Lua AI API.
+	> Adjusted splash screen size when using exotic screen resolutions.
+	> Added detection for loops in exported AI state.
+	> In matches without AI the only player is no longer automatically declared winner unless other alliances at some point did exist.
+	> Reduced message complexity when displaying AI script errors.
+	* Fixed vertical text alignment of buttons when using ultra-wide resolutions.
+	* Fixed missing research state Lua game API.
+
 v0.9.5	[Aug 26 2018]
 	> Removed resource panel while configuration mode is active.
 	> Replaced 'EMP Zones On/Off' on-screen message with pressable button.
@@ -7,6 +21,7 @@ v0.9.5	[Aug 26 2018]
 	* Fixed rendering of Nexus structures in configuration mode.
 	* Fixed save game loading via client GUI.
 	* Fixed loading of ended save games.
+	* Shielded tutorial matches from global server config.
 
 v0.9.4	[Aug 20 2018]
 	> Vehicle Plants can now be configured server-side to automatically spawn their production.

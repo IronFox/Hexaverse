@@ -56,6 +56,11 @@ namespace Objects
 			return '#'+String(int(turretType))+":#"+String(int(baseType));
 		}
 
+		bool		IsVehicleBase() const
+		{
+			return turretType == ConstName::Empty && IsVehicleBase(baseType);
+		}
+
 		static bool	IsVehicleBase(ConstName baseType)
 		{
 			switch (baseType)

@@ -1344,6 +1344,7 @@ namespace Network
 					HUD::HexGrid::RefreshButtonState();
 					if (RuntimeConfig::tutorialMode)
 						Tutorial::SignalResearchChange();
+					GlobalEvents::invalidateObjectCache();
 				#endif
 			}
 		}

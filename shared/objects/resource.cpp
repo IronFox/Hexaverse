@@ -7,14 +7,17 @@ namespace Objects
 {
 	bool	NaturalResourceVector::SampleWorld(index_t lowCellID)
 	{
-		fuel = Grid::Resource::Sample(ConstName::Resource_Fuel,lowCellID)*TranslationFactor;
-		minerals = Grid::Resource::Sample(ConstName::Resource_Minerals,lowCellID)*TranslationFactor;
-		uranium = Grid::Resource::Sample(ConstName::Resource_Uranium,lowCellID)*TranslationFactor;
 		#ifdef CLIENT
-			return Grid::ResourceDiscovery::client.resourcesDiscovered[lowCellID];
-		#else
-			return true;
+			if (!Grid::ResourceDiscovery::client.resourcesDiscovered[lowCellID])
+			{
+				*this = NaturalResourceVector();
+				return false;
+			}
 		#endif
+		fuel = Grid::Resource::GetFuel().coverage[lowCellID] *TranslationFactor;
+		minerals = Grid::Resource::GetMinerals().coverage[lowCellID] *TranslationFactor;
+		uranium = Grid::Resource::GetUranium().coverage[lowCellID] *TranslationFactor;
+		return true;
 	}
 
 

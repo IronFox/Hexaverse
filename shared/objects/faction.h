@@ -349,6 +349,8 @@ namespace Objects
 		static const String				nexusName;
 		bool							isDead = false;
 
+		static count_t					CountMaxMarkers(bool priveleged) {return (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction);}
+
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
 			static HashTable<TUniqueID,PFaction>	idMap;
@@ -575,8 +577,7 @@ namespace Objects
 			*/
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 
-
-			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction); }
+			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < CountMaxMarkers(priveleged); }
 			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
 			Marker*		FindMarker(const TUniqueID&markerID);
 			bool		DestroyMarker(const TUniqueID&markerID);

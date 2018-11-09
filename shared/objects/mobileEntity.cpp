@@ -234,13 +234,27 @@ namespace Objects
 				&& myTasks.Peek().job->resourceCostLeft > 0;
 	}
 
+	/*virtual override*/ float			MobileEntity::GetMaxUncontrolledExplosionRadius() const
+	{
+		if (RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
+			return Component::Bomb::GetRadius(false,Objects::Research::globalState.zeroTable);
+		return 0;
+	}
+
+	/*virtual override*/ float			MobileEntity::GetUncontrolledExplosionRadius() const
+	{
+		return GetMaxUncontrolledExplosionRadius();
+	}
+
+
 	#ifndef CLIENT
 
 		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float&atTime)
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				const auto&state = GetResearchState();
+				const auto&state = Objects::Research::globalState.zeroTable;
+					//GetResearchState();
 
 				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,state),Component::Bomb::GetDamageLevel(false,state),false,atTime);
 			}

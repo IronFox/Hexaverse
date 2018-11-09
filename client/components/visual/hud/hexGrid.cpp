@@ -10,6 +10,7 @@
 #include "../../configurationMode.h"
 #include "menu.h"
 #include "../../scriptedAI.h"
+#include "tooltip.h"
 
 namespace HUD
 {
@@ -23,6 +24,7 @@ namespace HexGrid
 	std::shared_ptr<Custom::EntityFocusCommand>		selectedFocus;
 
 
+	GridCell*					FindFirstCellBeneathMouse(const TGridConfig&cfg);
 	
 	
 	bool		Group::operator<(const Group&other) const
@@ -558,6 +560,10 @@ namespace HexGrid
 			GlobalEvents::voteClosed << VoteRefresh;
 			GlobalEvents::voteCreated << VoteRefresh;
 
+			Tooltip::tooltipQuery << []()
+			{
+				return FindFirstCellBeneathMouse(GetGridConfig());
+			};
 		}
 
 		void Destroy()
@@ -645,6 +651,26 @@ namespace HexGrid
 	static float GetLeftCellOffset(const TGridConfig&cfg, int cellY)
 	{
 		return -1.f + float(1 - (cellY % 2)) * cfg.stepX;
+	}
+
+	/*virtual override*/ Tooltip::Info	GridCell::ResolveTooltip(float t, float lastT) const
+	{
+		if (lastT == 0 || lastT < 1.5f && t >= 1.5f)
+		{
+			Objects::Description desc;
+			command->CompileLabel(desc);
+			const bool wantShort = t > 1.5f;
+
+			Buffer0<StringRef> lines;
+			foreach(desc,line)
+			{
+				if (!wantShort || line->second)
+					lines << line->first.ToRef();
+			}
+			tooltip = implode('\n',lines.ToRef());
+			return tooltip.c_str();
+		}
+		return nullptr;
 	}
 
 	void		GridCell::Update(const TGridConfig&cfg, const Engine::Aspect<>&aspect, CellAnchor anchor)
@@ -924,6 +950,32 @@ namespace HexGrid
 	}
 
 
+	GridCell*					FindFirstCellBeneathMouse(const TGridConfig&cfg)
+	{
+		for (CellAnchor a = 0; a < Anchor::Count; a++)
+		{
+			foreach (region[a].allGuiCells,c)
+			{
+				if (c->command->texture.IsNotEmpty())
+				{
+					float2 world = c->ToFloatCoords(cfg,a);
+					float3 at;
+					camera.Project(float3(world,0),at);
+					at.xy = at.xy*0.5f + 0.5f;
+					auto&cmd = *c->command;
+
+					float4 code;
+					if (cmd.state & Objects::CommandFlags::IsInvisible)
+						continue;
+					if (c->Contains(Engine::mouse.location.windowRelative))
+						return c;
+				}
+			}
+		}
+		return nullptr;
+	}
+
+
 	void						VisitAllCells(const std::function<void(GridCell&, CellAnchor)>&f)
 	{
 		for (CellAnchor a = 0; a < Anchor::Count; a++)
@@ -1198,8 +1250,6 @@ namespace HexGrid
 						Objects::UpdateChoices(Network::ControlEnabled());
 						Tutorial::ShowMessage(name);
 						Configure(Objects::selectedEntity);
-
-						hoveringOver = nullptr;
 					}
 					return true;
 				}
@@ -1209,11 +1259,6 @@ namespace HexGrid
 		return found != nullptr;
 	}
 
-	GridCell*		hoveringOver = nullptr;
-	CellAnchor		hoveringAnchor = 0;
-	Objects::WrappedDescription	hoveringText;
-	float			hoveringWidth = 0;
-	bool			hoveringBrief = true;
 
 	/*
 		Renders in viewport -1 to +1
@@ -1225,19 +1270,7 @@ namespace HexGrid
 		float softFlashOpacity = float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
 
 
-		static float stationaryCounter = 0;
-		static int2 refPos;
 
-		if (!Vec::similar(refPos, Engine::mouse.location.absolute,10))
-		{
-			stationaryCounter = 0;
-			refPos = Engine::mouse.location.absolute;
-		}
-		else
-			stationaryCounter += Engine::timing.delta;
-
-		bool stationary = stationaryCounter > 0.25f;
-		bool extStationary = stationaryCounter > 1.5f;
 
 		camera.UpdateProjection2(-1,-1,-1+2.f * display.GetPixelAspect(),1,-1,1);
 		display.Pick(camera);
@@ -1246,11 +1279,8 @@ namespace HexGrid
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
-		GridCell*lastHovering = hoveringOver;
-		hoveringOver = nullptr;
-		//Array<String>	hoveringText;
 
-		VisitAllCells([cfg,stationary,softFlashOpacity,flashOpacity]( GridCell&cell,CellAnchor a)
+		VisitAllCells([cfg,softFlashOpacity,flashOpacity]( GridCell&cell,CellAnchor a)
 		{
 			auto c = &cell;
 			if (c->command->texture.IsNotEmpty())
@@ -1268,11 +1298,6 @@ namespace HexGrid
 					if (!WindowStack::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
 					{
 						code.r = 1.f;
-						if (stationary)
-						{
-							hoveringOver = c;
-							hoveringAnchor = a;
-						}
 					}
 					else
 						if (cmd.state & (Objects::CommandFlags::IsFlashing | Objects::CommandFlags::SoftFlashing))
@@ -1302,122 +1327,8 @@ namespace HexGrid
 
 		});
 
-		if (lastHovering != hoveringOver)
-		{
-			lastHovering = hoveringOver;
-			Objects::Description desc;
-			if (hoveringOver)
-				hoveringOver->command->CompileLabel(desc);
-			hoveringText = desc;
-			hoveringWidth = 0;
-			hoveringBrief = true;
-		}
-		else
-		{	bool wasBefore = hoveringBrief;
-			hoveringBrief = !extStationary;
-			if (wasBefore != hoveringBrief)
-				hoveringWidth = 0;
-		}
 	}
 
-	void	RenderHint()
-	{
-		if (hoveringOver)
-		{
-			//tooltips
-			display.Pick(ResourceGauges::textoutCamera);
-
-			textout.PushState();
-			float2 base = Engine::mouse.location.windowRelative * 2.f - 1.f;
-			textout.Scale(2.5f,2.5f);
-
-			SurfaceRenderer::SetColor(float4(0,0,0,0.9f));
-			if (hoveringWidth == 0)
-			{
-				if (hoveringBrief)
-				{
-					foreach (hoveringText.wrappedLines,t)
-						if (t->second)
-							hoveringWidth = std::max(hoveringWidth, textout.QueryScaledWidth(t->first));
-				}
-				else
-					foreach (hoveringText.wrappedLines,t)
-						hoveringWidth = std::max(hoveringWidth, textout.QueryScaledWidth(t->first));
-			}
-			
-			count_t lineCount = hoveringBrief ? hoveringText.CountBriefLines() : hoveringText.wrappedLines.Count();
-			float h = textout.GetScaledHeight()*(lineCount-1);
-			M::Rect<> r;
-
-			const bool flipX = (hoveringAnchor & Anchor::Right) != 0;
-			const bool flipY = (hoveringAnchor & Anchor::Top) != 0;
-
-			if (flipX)
-			{
-				if (flipY)
-				{
-					textout.MoveTo(base - float2(hoveringWidth,textout.GetScaledHeight()));
-					r = M::Rect<>(base -float2(hoveringWidth,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(0,-textout.GetScaledHeight()*0.8f));
-				}
-				else
-				{
-					textout.MoveTo(base + float2(-hoveringWidth,h + textout.GetScaledHeight()));
-					r = M::Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.GetScaledHeight()*1.2f));
-				}
-			}
-			else
-			{
-				base.x = std::min(base.x,1.f - hoveringWidth);
-
-				if (flipY)
-				{
-					textout.MoveTo(base - float2(0,textout.GetScaledHeight()));
-					r = M::Rect<>(base -float2(0,textout.GetScaledHeight() + h+textout.GetScaledHeight()),base + float2(hoveringWidth,-textout.GetScaledHeight()*0.8f));
-				}
-				else
-				{
-					textout.MoveTo(base + float2(0,h + textout.GetScaledHeight()));
-					r = M::Rect<>(base ,base + float2(hoveringWidth,h + textout.GetScaledHeight()*1.2f));
-				}
-			}
-
-			//r.x.min = r.x.min * 0.5f + 0.5f;
-			//r.x.max = r.x.max * 0.5f + 0.5f;
-			//r.y.min = r.y.min * 0.5f + 0.5f;
-			//r.y.max = r.y.max * 0.5f + 0.5f;
-			//M::Rect<>r(0,0,1,1);
-
-			SurfaceRenderer::Rasterize(r);
-			SurfaceRenderer::Flush();
-
-			textout.SetColor(1,1,1);
-			foreach (hoveringText.wrappedLines,l)
-				if (!hoveringBrief || l->second)
-					textout << l->first << nl;
-			textout.PopState();
-		}
-
-
-
-
-
-		//static Engine::Aspect<> aspect;
-		//aspect.depthTest = Engine::VisualEnum::NoDepthTest;
-		//display.Pick(aspect);
-		//SurfaceRenderer::SetColor(float4(1,0,0,0.4));
-		//foreach (activeCells,c)
-		//{
-		//	if (c->command->texture.IsNotEmpty())
-		//	{
-		//		SurfaceRenderer::Rasterize(c->projectedRect);
-		//	}
-		//}
-		//SurfaceRenderer::Flush();
-
-	}
-
-	//Buffer0<Objects::Command::PVisualCommand>	allocatedEntityCommands;
-		
 
 
 	void		AddCommand(const int2&root, const int2&location,const Objects::Command::PBase&cmd)

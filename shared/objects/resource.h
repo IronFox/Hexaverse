@@ -88,6 +88,11 @@ namespace Objects
 				Clear();
 			}
 
+			/**/ ResourceVectorT(const NaturalResourceVector&v)
+			{
+				operator=(v);
+			}
+
 			template<typename Resource2>
 				void	LoadCompatible(const ResourceVectorT<Resource2>&other)
 				{

@@ -70,7 +70,7 @@ namespace Objects
 
 			#ifdef HAS_WINDOW
 				/**
-				Render-ready, object-space instruction to be used for all instances of this structure type
+				Build-ready, object-space instruction to be used for all instances of this structure type
 				*/
 				static PClientAttachment	staticShape;
 				/**

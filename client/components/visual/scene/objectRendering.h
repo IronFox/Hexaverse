@@ -145,7 +145,7 @@ namespace Objects
 		void	Render(Structure&s);
 
 		#ifndef NO_SATELLITES
-			void	Render(Satellite&s, float light);
+			void	Build(Satellite&s, float light);
 		#endif
 
 		void	Render(SubOrbital::Plane&p, float light);
@@ -208,6 +208,12 @@ namespace Objects
 		*/
 		void	RenderTranslucentBeams();
 
+		/**
+		Passes visible entity status icons to the sprite renderer.
+		Depth-tested, cutout, limited transparency
+		*/
+		void	RenderStatusIcons();
+
 		void	SetRenderGoalMarkers(bool);
 
 		/**
@@ -265,6 +271,7 @@ namespace Objects
 		void	ClearSmokeTrails();
 
 		void	RefreshSelectedSensory();
+		void	RefreshIcons();
 
 
 

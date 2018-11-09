@@ -244,7 +244,8 @@ namespace ConfigurationMode
 					empZoneButton->SetColor(float4(0.6f,0.7f,1.8f,1.f));
 				else
 					empZoneButton->SetColor(float4(1.f));
-				empZoneButton->SetText("EMP Zones "+String(RuntimeConfig::empZones?"On":"Off"));
+				empZoneButton->SetText("EMP Zones "+String(RuntimeConfig::empZones?"On":"Off"),
+					"EMP zones hinder client/AI expansion based on the number of created factions. New factions unlock additional zones. EMP zones are currently "+String(RuntimeConfig::empZones?"On":"Off"));
 			}
 
 		}
@@ -286,7 +287,7 @@ namespace ConfigurationMode
 				String name = Grid::Content::Reinterpret(i).ToString();
 				if (i == Grid::Content::Unknown)
 					name = "Natural";
-				PButton button(new Button(name));
+				PButton button(new Button(name,"Select material '"+name+"'"));
 				auto col = Grid::CellStack::Cell::typeColor[i];
 				Vec::abs(col);
 				float max = Vec::max(col);
@@ -325,7 +326,7 @@ namespace ConfigurationMode
 			}
 
 			{
-				PButton button(new Button("Abort"));
+				PButton button(new Button("Abort","Abort material selection and keep the currently selected one"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
 				button->Anchor().FillHorizontally().BeneathLastOf(window,Distance::GameWindow(0.01f),Distance::GameWindow(0.2f));
 				button->SetCutCorners(M::Quad<bool>(true,true,true,false));
@@ -399,7 +400,7 @@ namespace ConfigurationMode
 			foreach (planetList,p)
 			{
 				index_t myIndex = p - planetList.pointer();
-				PButton button(new Button(p->displayName,[myIndex]()
+				PButton button(new Button(p->displayName,"Load configuration of planet type "+p->displayName+". Your current planet configuration will be replaced",[myIndex]()
 				{
 					//load planetList[myIndex]
 

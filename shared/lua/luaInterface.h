@@ -116,6 +116,7 @@ namespace Lua
 		void PushParameter(lua_State *state, void*p);
 		void PushParameter(lua_State *state, const Reference&);
 		void PushParameter(lua_State *state, Nil);
+		void PushParameter(lua_State *state, const char*) = delete;
 		void PushStrParameter(lua_State *state, const String&str);
 		void PushStrParameter(lua_State *state, const StringRef&str);
 		void PushStrParameter(lua_State *state, const char*str);
@@ -153,6 +154,14 @@ namespace Lua
 				static void Push(lua_State *state, const char*v)
 				{
 					PushStrParameter(state,v);
+				}
+			};
+		template <count_t L>
+			struct ParameterT<char[L]>
+			{
+				static void Push(lua_State *state, const char(&v)[L])
+				{
+					PushStrParameter(state,(const char*)v);
 				}
 			};
 		template <typename T>
@@ -354,6 +363,10 @@ namespace Lua
 								ParameterT<R>::Push(state,rs);
 								return 1;
 							}
+							catch (const Except::Exception&ex)
+							{
+								Raise(state,ex.GetRawMessage());
+							}
 							catch (const std::exception&e)
 							{
 								Raise(state,e.what());
@@ -384,6 +397,10 @@ namespace Lua
 							try
 							{
 								f(StackedT<typename Strip<P>::type,true>::Get(prog,I+1)...);
+							}
+							catch (const Except::Exception&ex)
+							{
+								Raise(state,ex.GetRawMessage());
 							}
 							catch (const std::exception&e)
 							{
@@ -705,6 +722,12 @@ namespace Lua
 		Assigns this reference to a new (or existing) global variable by the given name
 		*/
 		void			SetGlobal(const String&name);
+
+		//should not put this type into a hash table because when retrieved from a Lua-registered C++-function, the same table will be registered under a different ref ID
+		//friend hash_t Hash( const Reference&ref )
+		//{
+		//	return ref.GetRefID();
+		//}
 
 	};
 

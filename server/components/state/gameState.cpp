@@ -1574,9 +1574,9 @@ namespace Game
 					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 				else
-				if (livingPlayerAlliances == 1)
+				if (livingPlayerAlliances == 1 && mostAlliancesAlive > 1)
 				{
-					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
+					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one of several alliances left alive. Declaring winner.");
 
 					winner.reset();
 					Objects::PAlliance newWinner;

@@ -6,6 +6,7 @@
 #include "objects.h"
 #include "../objects/faction.h"
 #include "../runtimeConfig.h"
+#include "../objects/gridAndChoices.h"
 
 namespace Lua
 {
@@ -64,9 +65,19 @@ namespace Lua
 			}
 		}
 
+		bool NaturalResourcesSurveyedAt(Lua::Table cellTable)
+		{
+			const auto stackID = LuaCellToStack(cellTable,"NaturalResourcesSurveyedAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
+			#ifdef CLIENT
+				return Grid::ResourceDiscovery::client.resourcesDiscovered[stackID];
+			#else
+				return true;
+			#endif
+		}
+
 		bool NoNaturalResourcesHere(Lua::Table cellTable)
 		{
-			const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
+			const auto stackID = LuaCellToStack(cellTable,"NoNaturalResourcesHere(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
 			#ifdef CLIENT
 				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 					return false;
@@ -82,7 +93,7 @@ namespace Lua
 
 		int GetNaturalResourceAt(const String&resourceName, Lua::Table cellTable)
 		{
-			const auto stackID = LuaCellToStack(cellTable,"GetResourceCoverage(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
+			const auto stackID = LuaCellToStack(cellTable,"GetNaturalResourceAt(): cell (parameter #2)",Grid::LowSetup::GridType::CellCount);
 			foreach (Grid::Resource::all,r)
 				if (r->GetName().EqualsIgnoreCase(resourceName))
 				{
@@ -90,9 +101,20 @@ namespace Lua
 						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 							return -1;
 					#endif
-					return r->coverage[stackID];
+					return r->coverage[stackID] * Objects::NaturalResourceVector::TranslationFactor;
 				}
 			throw Lua::Exception("GetNaturalResourceAt(): Resource '"+resourceName+"' does not exist.");
+		}
+
+		Lua::Table GetNaturalResourcesAt(Lua::Table cellTable)
+		{
+			const auto stackID = LuaCellToStack(cellTable,"GetNaturalResourcesAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
+			Objects::NaturalResourceVector vec;
+			if (!vec.SampleWorld(stackID) || vec.IsEmpty())
+				return Lua::nil;
+			Lua::Table rs = cellTable.GetProgram()->CreateTable();
+			UpdateResourceTable(rs,vec);
+			return rs;
 		}
 
 
@@ -120,6 +142,29 @@ namespace Lua
 		}
 
 	
+
+		Objects::EntityType DecodeTypeExt(const Lua::Reference&ref, const String&pname, const std::function<bool(Objects::EntityType)>&checkFunction)
+		{
+			String name;
+			if (ref.IsTable())
+			{
+				Lua::Table type = ref;
+				if (!type.GetField("name",name))
+					throw Lua::Exception(CLOCATION,pname+" has no name field");
+			}
+			else
+				name = ref.GetAs<String>();
+
+			Objects::EntityType t = Objects::DecodeType(name);
+			if (t.IsEmpty() || (checkFunction && !checkFunction(t)))
+				throw Lua::Exception(CLOCATION,pname+": '"+name+"' is not valid");
+			return t;
+		}
+
+		Objects::EntityType DecodeType(const Lua::Reference&ref, const String&pname)
+		{
+			return DecodeTypeExt(ref,pname,nullptr);
+		}
 	}
 
 
@@ -175,10 +220,8 @@ namespace Lua
 
 		Lua::Table t = program->CreateTable();
 		//b.
-		t.SetField("typeName",b.turret->typeName);
+		t.SetField("type",AddOrGetType(b.turret->constName));
 		t.SetField("weight",b.turret->weight.GetValue(researchState));
-		t.SetField("detectsResources",b.turret->detectsResources);
-		t.SetField("canAttack",b.turret->CanAttack());
 		if (b.turret->CanAttack())
 		{
 			t.SetField("trajectoryType",b.turret->trajectoryType.ToString());
@@ -272,7 +315,7 @@ namespace Lua
 		{
 			const auto o = (Objects::Component::operation_t)op;
 			const String os = String(Objects::Component::OperationToString(o));
-			t.SetField("can"+os,b.turret->CanDo(o));
+			//t.SetField("can"+os,b.turret->CanDo(o));
 					
 			t.SetField("speedOf"+os,b.GetOperationSpeed(o));
 			t.SetField("perRound"+os, 1 << b.GetOperationAccelerationExponent(o));
@@ -283,6 +326,10 @@ namespace Lua
 
 
 	Lua::Table API::LuaFindHighestAvailableResourceLocation(const String&resourceName)
+	{
+		return LuaFindHighestAvailableResourceLocationExt(resourceName,false,false);
+	}
+	Lua::Table API::LuaFindHighestAvailableResourceLocationExt(const String&resourceName, bool checkLinkPath, bool checkMobiles)
 	{
 		foreach (Grid::Resource::all,r)
 			if (r->GetName().EqualsIgnoreCase(resourceName))
@@ -296,10 +343,33 @@ namespace Lua
 					{
 						if (r->coverage[i] > highest)
 						{
-							if (Objects::FindApplicableGround(Grid::LCellIdI(i,0),true,true) != Objects::badHeight)
+							auto h = Objects::FindApplicableGround(Grid::LCellIdI(i,0),true,true);
+							if (h != Objects::badHeight)
 							{
-								highest = r->coverage[i];
-								highestAt = (int)i;
+								if (checkLinkPath)
+								{
+									for (int h2 = Grid::CellStack::BottomHeight; h2 < h; h2++)
+									{
+										const auto loc = Grid::LCellIdI(i,h2);
+										if (Objects::GetStructure(loc))
+										{
+											h2 = h = Objects::badHeight;
+											break;
+										}
+										if (checkMobiles && Objects::GetMobileEntity(loc))
+										{
+											h2 = h = Objects::badHeight;
+											break;
+										}
+									}
+								}
+								if (checkMobiles && Objects::GetMobileEntity(Grid::LCellIdI(i,h)))
+									continue;
+								if (h != Objects::badHeight)
+								{
+									highest = r->coverage[i];
+									highestAt = (int)i;
+								}
 							}
 						}
 					}
@@ -450,6 +520,17 @@ namespace Lua
 
 		}
 
+		for (index_t i = 0; i < Objects::Research::globalState.allTopics.Count(); i++)
+		{
+			auto t = Objects::Research::GetTopic(i);
+			auto dep = t->dependency.lock();
+			if (dep)
+			{
+				ASSERT_EQUAL__(i,t->serialIndex);
+				res[i].SetField("dependency",res[dep->serialIndex]);
+			}
+		}
+
 
 		#ifdef CLIENT
 			foreach (q,queued)
@@ -491,6 +572,8 @@ namespace Lua
 			loadedEntityTableMap.Clear();
 			loadedFactionTableMap.Clear();
 			sharedHangars.Clear();
+			//typeTableMap.Clear();	//let's keep these
+			//typeTableMap2.Clear();
 		}
 
 		for (index_t i = 0; i < sharedHangars.Count(); i++)
@@ -519,11 +602,16 @@ namespace Lua
 	void	API::Destroy()
 	{
 		FlushAllObjects(true);
+		allTypes.ClearReference();
+		unitTypes.ClearReference();
+		turretTypes.ClearReference();
+		vbaseTypes.ClearReference();
 		onDeployedCallbacks.Clear();
 		gameTable.ClearReference();
 		gridTable.ClearReference();
 		terrainTable.ClearReference();
 		terrainContentTable.ClearReference();
+		typeTable.ClearReference();
 		researchTable.ClearReference();
 		researchTopicList.ClearReference();
 		#ifdef CLIENT
@@ -534,12 +622,15 @@ namespace Lua
 		lowCellGrid.Clear();
 		highCellGrid.Clear();
 		locationMap.Clear();
+		typeTableMap.Clear();
+		typeTableMap2.Clear();
 		program.reset();
 	}
 
-	void	API::AddObjectAndPathfindingFunctions()
+	void	API::AddObjectAndPathfindingFunctions(bool priveleged)
 	{
 		#ifdef CLIENT
+			gameTable.SetField("maxMarkerCount",Objects::Faction::CountMaxMarkers(priveleged));
 			gameTable.SetFunction("CreateMarker", [this](const Lua::Table&luaEntity, const String&markerType)
 			{
 				Objects::Marker::Type t;
@@ -643,6 +734,12 @@ namespace Lua
 			terrainTable = gameTable.SetSubTable("Terrain");
 				terrainContentTable = terrainTable.SetSubTable("Content");
 
+			typeTable = gameTable.SetSubTable("Type");
+				allTypes = typeTable.SetSubTable("allTypes");
+				unitTypes = typeTable.SetSubTable("units");
+				turretTypes = typeTable.SetSubTable("turrets");
+				vbaseTypes = typeTable.SetSubTable("vehicleBases");
+
 			researchTable = gameTable.SetSubTable("Research");
 				researchTopicList = researchTable.SetSubTable("topics");
 		
@@ -659,29 +756,61 @@ namespace Lua
 			factionIDMap = gameTable.SetSubTable("factions");
 			allianceIDMap = gameTable.SetSubTable("alliances");
 			
-			gameTable.SetFunction("Log",[this](const String&msg)
-			{
-				LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
-			});
+		gameTable.SetFunction("Log",[this](const String&msg)
+		{
+			LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
+		});
 
-			gameTable.SetFunction("GetRound",[]()
-			{
-				return RuntimeConfig::roundNumber.ToString();
-			});
-			gameTable.SetFunction("GetMainRoundNumber",[]()
-			{
-				return RuntimeConfig::roundNumber.main;
-			});
-			gameTable.SetFunction("GetPhase",[]()
-			{
-				return RuntimeConfig::phase.ToString();
-			});
-			gameTable.SetFunction("CanIssueUnitCommands",[]()
-			{
-				return RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;	//not using IsInAnyCommandPhase() here, as unit instructions are valid only during the main command phase
-			});
+		gameTable.SetFunction("Random",[this]()
+		{
+			return random.NextFloatT<double>();
+		});
+		gameTable.SetFunction("RandomIndex",[this](int max)
+		{
+			return random.Next(max) + 1;
+		});
 
+		gameTable.SetFunction("GetRound",[]()
+		{
+			return RuntimeConfig::roundNumber.ToString();
+		});
+		gameTable.SetFunction("GetMainRoundNumber",[]()
+		{
+			return RuntimeConfig::roundNumber.main;
+		});
+		gameTable.SetFunction("GetPhase",[]()
+		{
+			return RuntimeConfig::phase.ToString();
+		});
+		gameTable.SetFunction("CanIssueUnitCommands",[]()
+		{
+			return RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;	//not using IsInAnyCommandPhase() here, as unit instructions are valid only during the main command phase
+		});
 
+		gameTable.SetFunction("CheckStateExportValidity",[this](const Lua::Reference&ref)
+		{
+			auto table = program->CreateTable();
+			if (onCheckExportValidity)
+			{
+				const auto rs = onCheckExportValidity(ref);
+				const bool okay = rs.error == TExportResult::ErrorType::NoError;
+				table.SetField("okay",okay);
+				if (!okay)
+				{
+					table.SetField("errorType",rs.error.ToString());
+					table.SetField("errorDesc",rs.errorExt);
+				}
+				table.SetField("binarySize",rs.serialSize);
+				table.SetField("maxSupportedSize",rs.maxSerialSize);
+			}
+			else
+			{
+				table.SetField("okay",false);
+				table.SetField("errorType","NotSupported");
+				table.SetField("errorDesc","The owning context did not provide state export functionality");
+			}
+			return table;
+		});
 	}
 
 	Lua::Table	API::LuaFindShortestPathFrom(const Objects::PMobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreOwnedMobilesOnRoute)
@@ -847,7 +976,8 @@ namespace Lua
 		t.SetField("name",f->name);
 		t.SetField("id",f->id.ToFullString());
 		const auto*const alliance = AddAlliance(f->alliance,false,true);
-		t.SetField("alliance",alliance->table);
+		if (alliance != nullptr)
+			t.SetField("alliance",alliance->table);
 
 		auto vec = f->compound.GetVector();
 		Detail::UpdateResourceTable(found->current.balanceTable,vec.balance);
@@ -950,12 +1080,6 @@ namespace Lua
 		t.SetField("name",e->GetName());
 		t.SetField("niceName",e->GetNiceName());
 		t.SetField("id",e->id.ToFullString());
-		t.SetField("typeName",e->GetTypeName());
-		t.SetField("height",e->GetHeight());
-		t.SetField("isMobile", e->IsMobile());
-		t.SetField("isHangar",e->IsHangar());
-		t.SetField("constructionCost",e->GetConstructionCost());
-		t.SetField("isStructure",e->IsStructure());
 		#ifdef CLIENT
 			t.SetField("isOwnedByMe",e->isOwnedByMe);
 		#endif
@@ -968,14 +1092,15 @@ namespace Lua
 		}
 		else
 			t.UnsetField("owner");
+		t.SetField("type",AddOrGetType(e->GetType()));
 		t.SetField("location",ToTable(e->location));
 		t.SetField("isSleeping",e->IsSleeping());
 		t.SetField("health",e->health);
 		t.SetField("maxHealth",e->GetMaxHealth());
-		t.SetField("isIndestructible", e->IsIndestructible());
 		t.SetField("empDamageLevel",e->empDamageLevel);
 		t.SetField("scanningRange",e->GetScanningRange());
-
+		t.SetField("uncontrolledExplosionRadius",e->GetUncontrolledExplosionRadius());
+		
 		const TUniqueID id = e->id;
 
 		if (actual)
@@ -1197,11 +1322,8 @@ namespace Lua
 			Objects::ResourceVector balance,storage,storageMax;
 			ws->GetResourceVector(balance,storage,storageMax);
 
-			Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);
 			Detail::UpdateResourceTable(t.SetSubTable("resourceStorage"),storage);
-			Detail::UpdateResourceTable(t.SetSubTable("maxResourceStorage"),storageMax);
 
-			t.SetField("isWorkingStructure",true);
 			t.SetField("isEnabled",ws->IsEnabled());
 			if (actual)
 				t.SetFunction("Enable", [id,this](bool doEnable)
@@ -1224,7 +1346,6 @@ namespace Lua
 			t.SetField("isWorkingStructure",false);
 
 		auto prod = e->CastToProducer();
-		t.SetField("isMobileEntityProducer",prod != nullptr);
 		if (prod)
 		{
 			if (prod->queue.IsNotEmpty())
@@ -1305,32 +1426,31 @@ namespace Lua
 			{
 				Objects::WFaction owner = e->owner;
 				Objects::WWorldEntity w = e;
-				t.SetFunction("BuildMobile",[this,w,owner](const String&type)
+				t.SetFunction("BuildMobile",[this,w,owner](const Lua::Reference&type)
 				{
 					Objects::PWorldEntity e= w.lock();
 					if (!e)
 						throw Lua::Exception(CLOCATION,"BuildMobile(): Entity has expired");
 					auto prod = e->CastToProducer();
 					ASSERT_NOT_NULL1__(prod,e->GetName());
-					Objects::EntityType t = Objects::DecodeType(type);
-					if (t.IsEmpty())
-						throw Lua::Exception(CLOCATION,"BuildMobile(): Given type is empty");
+
+					Objects::EntityType t = Detail::DecodeType(type,"BuildMobile(): Type parameter");
+
 					if (onBeginProduction)
 						onBeginProduction(e->id,t);
 					else
 						throw Lua::Exception(CLOCATION,"BuildMobile(): onBeginProduction not set");
 				});
 
-				t.SetFunction("PredictRoundsToCompletion",[this,w,owner](const String&type)
+				t.SetFunction("PredictRoundsToCompletion",[this,w,owner](const Lua::Reference&type)
 				{
 					Objects::PWorldEntity e= w.lock();
 					if (!e)
 						throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Entity has expired");
 					auto prod = e->CastToProducer();
 					ASSERT_NOT_NULL1__(prod,e->GetName());
-					Objects::EntityType t = Objects::DecodeType(type);
-					if (t.IsEmpty())
-						throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Given type is empty");
+
+					Objects::EntityType t = Detail::DecodeType(type,"PredictRoundsToCompletion(): Type parameter");
 
 					int cost = prod->GetProductionCost(t,e->owner);
 					return prod->ProductionRounds(cost,false);
@@ -1405,7 +1525,6 @@ namespace Lua
 
 			t.SetField("movementSpeed",m->GetMovementStepsPerRound());
 
-			t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
 
 			t.SetFunction("CanStandAt",[w](const Lua::Table&loc)
 			{
@@ -1424,8 +1543,6 @@ namespace Lua
 					(!v->IsAffectedByGravity(location) || v->CanStandOn(visibleWorld,location-1));
 			});
 
-			t.SetField("maxClimbUp", m->GetMaxClimbingHeight());
-			t.SetField("minClimbDown", -m->GetMaxFallingHeight());
 
 
 			t.SetFunction("IsAffectedByGravity",[this,w,location](const Lua::Table&luaLocation)
@@ -1562,11 +1679,13 @@ namespace Lua
 
 
 				if (m->turret->CanDo(Objects::Component::Construct))
-					t.SetFunction("BuildStructure",[this,id](const String&type)
+					t.SetFunction("BuildStructure",[this,id](const Lua::Reference&type)
 					{
-						Objects::EntityType t = Objects::DecodeType(type);
-						if (t.IsEmpty())
-							throw Lua::Exception(CLOCATION,"BuildStructure(): Given type is empty: "+type);
+						if (type == Lua::nil)
+							throw Lua::Exception(CLOCATION,"BuildStructure(): Given type is nil");
+
+						Objects::EntityType t = Detail::DecodeType(type,"BuildStructure(): Type parameter");
+
 						auto proto = Objects::Prototypes::Find(t);
 						if (!proto)
 							throw Lua::Exception(CLOCATION,"BuildStructure(): Unable to find prototype for "+ToString(t));
@@ -1708,8 +1827,11 @@ namespace Lua
 		MapCells(program,cellTable,Grid::low,lowCellGrid);
 
 		gridTable.SetFunction("FindHighestAvailableResourceLocation",[this](const String&resource){return LuaFindHighestAvailableResourceLocation(resource);});
+		gridTable.SetFunction("FindHighestAvailableResourceLocationExt",[this](const String&resource,bool checkLinkPath, bool checkMobiles){return LuaFindHighestAvailableResourceLocationExt(resource,checkLinkPath,checkMobiles);});
 		gridTable.SetFunction("GetNaturalResourceAt",Detail::GetNaturalResourceAt);
+		gridTable.SetFunction("GetNaturalResourcesAt",Detail::GetNaturalResourcesAt);
 		gridTable.SetFunction("NoNaturalResourcesHere",Detail::NoNaturalResourcesHere);
+		gridTable.SetFunction("NaturalResourcesSurveyedAt",Detail::NaturalResourcesSurveyedAt);
 
 
 		gridTable.SetFunction("ToLocation",[this](const Lua::Table&cell, int height)
@@ -1759,6 +1881,199 @@ namespace Lua
 
 	}
 
+	Lua::Table	API::LuaMapType(const String&typeName)
+	{
+		{
+			Lua::Table*pt = typeTableMap.QueryPointer(typeName);
+			if (pt)
+				return *pt;
+		}
+		Objects::EntityType type = Objects::DecodeType(typeName);
+		if (type.IsEmpty())
+			return Lua::nil;
+
+		return AddType(type);
+	}
+
+
+	Lua::Table	API::AddOrGetType(Objects::EntityType type)
+	{
+		auto t = typeTableMap2.QueryPointer(type);
+		if (t)
+			return *t;
+		return AddType(type);
+	}
+
+	Lua::Table	API::AddType(Objects::EntityType type)
+	{
+		auto e = Objects::Prototypes::Find(type);
+		Lua::Table t = program->CreateTable();
+		typeTableMap.Set(Objects::ToString(type),t);
+		typeTableMap2.Set(type,t);
+		t.SetField("name",Objects::ToString(type));
+
+		if (e)
+			t.SetField("typeClass","Unit");
+		else if (type.IsVehicle())
+		{
+			auto turret = Objects::Component::vehicleTurretComponents.Find(type.turretType);
+			if (!turret)
+				throw Lua::Exception(CLOCATION,"Compound turret type is invalid");
+			auto base = Objects::Component::baseComponents.Find(type.baseType);
+			if (!base)
+				throw Lua::Exception(CLOCATION,"Compound vehicle base type is invalid");
+			e.reset(new Objects::Vehicle(nullptr,Grid::LCellIdI::Invalid,base,turret));
+			t.SetField("typeClass","Compound");
+		}
+		
+		const auto&z = Objects::Research::globalState.zeroTable;
+
+		if (e)
+		{
+			t.SetField("isInstantiable",true);
+			t.SetField("height",e->GetHeight());
+			t.SetField("isMobile", e->IsMobile());
+			t.SetField("isHangar",e->IsHangar());
+			t.SetField("constructionCost",e->GetConstructionCost());
+			t.SetField("isStructure",e->IsStructure());
+			t.SetField("isIndestructible", e->IsIndestructible());
+			t.SetField("scanningRange",e->GetScanningRange());
+			t.SetField("maxHealth",e->GetMaxHealth());
+			t.SetField("isWorkingStructure",e->IsWorkingStructure());
+			t.SetField("isMobileEntityProducer",e->CastToProducer() != nullptr);
+			t.SetField("maxUncontrolledExplosionRadius",e->GetMaxUncontrolledExplosionRadius());
+			t.SetField("canBeUnlocked",e->CanBeUnlocked());
+
+			{
+				t.SetFunction("IsUnlockedForFaction",[e,this](const Lua::Table&luaFaction)	//keep a copy of e here. is either a prototype or ad-hoc creation. either should be fine to keep in the std::function object
+				{
+
+					TUniqueID id;
+					String sid;
+					if (!luaFaction.GetField("id",sid))
+						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
+					if (!id.Decode(sid))
+						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
+
+					Objects::PFaction f = Objects::Faction::FindByID(id);
+					if (!f)
+						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter does not point to an existing faction");
+					return e->IsUnlockedAtState(f->researchState.attributeTable);
+				});
+			}
+
+			if (e->IsMobile())
+			{
+				auto m = To<Objects::MobileEntity>::Cast(e);
+				t.SetField("movementSpeed",m->GetMovementStepsPerRound());
+				t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
+			}
+
+			{
+				auto b = e->GetTurretBase();
+				if (b)
+					t.SetField("turretType",AddOrGetType(b->turret->constName));
+			}
+
+			if (e->IsVehicle())
+			{
+				auto b = To<Objects::Vehicle>::Cast(e)->base;
+				t.SetField("vehicleBaseType",AddOrGetType(b->constName));
+			}
+
+			if (e->IsWorkingStructure())
+			{
+				const auto ws = To<Objects::WorkingStructure>::Cast(e);
+				Objects::ResourceVector balance,storage,storageMax;
+				ws->GetResourceVector(balance,storage,storageMax);
+
+				Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);
+				Detail::UpdateResourceTable(t.SetSubTable("maxResourceStorage"),storageMax);
+			}
+		}
+		else if (type.IsVehicleBase())
+		{
+			auto b = Objects::Component::baseComponents.Find(type.baseType);
+			t.SetField("typeClass","VehicleBase");
+			t.SetField("motionIgnoresAttack",b->ignoresVehicleAttacks);
+			t.SetField("carryingCapacity",b->carryingCapacity.GetValue(z));
+			t.SetField("maxClimbUp", b->maxClimbUp);
+			t.SetField("minClimbDown", b->minClimbDown);
+			t.SetField("movementSpeed",b->movementSpeed.GetValue(z));
+		}
+		else
+		{
+			auto turret = Objects::Component::allTurretComponents.Find(type.baseType);
+			ASSERT_NOT_NULL__(turret);
+			t.SetField("typeClass","Turret");
+			t.SetField("weight",turret->weight.GetValue(Objects::Research::globalState.zeroTable));
+			t.SetField("detectsResources",turret->detectsResources);
+			t.SetField("canAttack",turret->CanAttack());
+			t.SetField("mountType",turret->mountType.ToString());
+
+			if (turret->CanAttack())
+			{
+				t.SetField("trajectoryType",turret->trajectoryType.ToString());
+				t.SetField("ammoDemandPerShot",turret->ammoNeedPerShot.GetValue(z));
+				t.SetField("independentAttackAndMotion",turret->independentAttackAndMotion);
+				t.SetField("attacksPerRound",turret->GetAttacksPerRound(z));
+				t.SetField("ammoType",turret->ammoType.ToString());
+				t.SetField("flatAttackRange",turret->GetHorizontalAttackRange(z));
+				t.SetField("explosionRadius",turret->GetExplosionRadius(z));
+				t.SetField("damageLevel",turret->GetDamageLevel(z));
+				t.SetField("dealsEMPDamage",turret->dealsEMPDamage);
+			}
+			for (index_t op = 0; op < Objects::Component::OperationCount; op++)
+			{
+				const auto o = (Objects::Component::operation_t)op;
+				const String os = String(Objects::Component::OperationToString(o));
+				t.SetField("can"+os,turret->CanDo(o));
+			}
+		}
+
+
+
+
+
+		return t;
+	}
+
+
+	void	API::AddTypes()
+	{
+		typeTable.SetFunction("ByName",[this](const String&name){return LuaMapType(name);});
+		typeTable.SetFunction("Vehicle",[this](const Lua::Reference&turret, const Lua::Reference&vehicleBase)
+		{
+			auto tt = Detail::DecodeTypeExt(turret,"Vehicle(): Turret parameter #1",[](auto t){return Objects::Component::vehicleTurretComponents.Find(t.baseType)!= nullptr;});
+			auto bt = Detail::DecodeTypeExt(vehicleBase,"Vehicle(): Vehicle base parameter #2",[](auto t){return t.IsVehicleBase();});
+
+			return AddOrGetType(Objects::EntityType(bt.baseType,tt.baseType));
+		});
+
+		ASSERT__(allTypes.GetLength() == 0);
+
+		foreach (Objects::Prototypes::all,p0)
+		{
+			const auto&p = **p0;
+			auto t = AddType( p.GetType());
+			allTypes.AppendElement(t);
+			unitTypes.AppendElement(t);
+		}
+
+		foreach (Objects::Component::allTurretComponents,t0)
+		{
+			auto t = AddType((*t0)->constName);
+			allTypes.AppendElement(t);
+			turretTypes.AppendElement(t);
+		}
+
+		foreach (Objects::Component::baseComponents,b0)
+		{
+			auto t = AddType((*b0)->constName);
+			allTypes.AppendElement(t);
+			vbaseTypes.AppendElement(t);
+		}
+	}
 
 
 }

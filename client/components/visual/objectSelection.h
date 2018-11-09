@@ -28,6 +28,8 @@ namespace Objects
 
 	void					SetShiftMeansQueue(bool);
 	bool					ShiftMeansQueue();
+	inline bool				AutoQueue() {return !ShiftMeansQueue();}
+	inline void				SetAutoQueue(bool b) {SetShiftMeansQueue(!b);}
 	void					SignalShiftPressed();
 	void					SignalShiftReleased();
 	bool					ShouldQueueCommands();

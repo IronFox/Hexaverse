@@ -1627,14 +1627,14 @@ namespace Reflection
 			{
 				StringFile outFile;
 				outFile.Create(configPath);
-				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configPath)+"'...");
+				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+FileSystem::PathToString(configPath)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
 				allGood = true;
 			}
 			catch (const std::exception&ex)
 			{
-				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configPath)+"'");
+				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+FileSystem::PathToString(configPath)+"'");
 				allGood = false;
 			}
 		}

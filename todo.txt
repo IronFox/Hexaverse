@@ -1,7 +1,6 @@
-Revise UI and menu (cluster hex icons, flatter, stronger outlined regular menu with hex shapes)
-Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
-Icon for idling structures and vehicles
+AI script does not request new round upon completion...?
 
+Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
 
 
 web site: blend gallery image loading
@@ -14,6 +13,7 @@ air and sub-surface defense for nexus base
 optimize camera terrain intersection test
 
 hard to reproduce/fix:
+	Tutorial: Observed very first generator selection event not triggering. Gone after restart. Unable to reproduce
 	construction finish->move directly into storage seems to drop constructed lab
 	bug: generate... ends new game in round 0 if executed after previous match has ended
 		does not happen if forced on uncompleted matches (gameHasEnded=true, generate, ...)
@@ -199,6 +199,18 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: Icon for idling structures and vehicles
+skipped: asynchronous configuration editor start. most of the time is spent recompiling the terrain. probably useless
+added: Game.CreateMarker: note max marker count
+fixed: has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
+fixed: FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
+done: Complete tooltips for regular UI
+fixed: check client starting server manager
+done: further delay tooltip appearance on components
+fixed: Group external application launches into single asynchronous unit (MonitoredProcess has been observed to deadlock the client when launching guaranteed existing program)
+done: Documentation: controls (hint-overlay -> tooltip, end round: no yet -> not yet)
+done: Read configuration tooltips from factory default .ini file instead of user directory copy
+partially done: Revise UI and menu (cluster hex icons, flatter, stronger outlined regular menu with hex shapes). Some of that done, no grouping (yet)
 Interactive configuration mode:
 	button to toggle EMP zones on screen
 	fix selection of nexus units

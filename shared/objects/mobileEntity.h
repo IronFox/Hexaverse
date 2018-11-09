@@ -555,11 +555,15 @@ namespace Objects
 
 
 		//WorldEntity overrides:
+		virtual bool			IsAutomated() const override {return isAutomated;}
 		virtual bool			SupportsTaskQueue() const override {return true;}
 		//virtual bool			IsActive() const override {return !IsHibernating() && Super::IsActive();}
 		#ifndef CLIENT
 			virtual void		ClearSafeTasks() override;
 		#endif
+		virtual float			GetMaxUncontrolledExplosionRadius() const override;
+		virtual float			GetUncontrolledExplosionRadius() const override;
+
 
 		/**
 		Checks whether there is a task out front that has consumed resources and can not be removed without irreversible losses

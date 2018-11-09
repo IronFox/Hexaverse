@@ -430,7 +430,7 @@ namespace Engine
 
 			public:
 				void			Update(const T*data, count_t numEntries)	{Super::Update(data,sizeof(T)*numEntries);}
-				void			Update(const ArrayData<T>&data)	{Update(data.pointer(),data.GetLength());}
+				void			Update(const ArrayRef<T>&data)	{Update(data.pointer(),data.GetLength());}
 				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.GetLength());}
 				String			ToString() const { return Super::ToString()+", esize=" + String(sizeof(T)); }
 			};
@@ -450,7 +450,7 @@ namespace Engine
 			template <typename T>
 				void			CreateFromStructs(const T*data, count_t numStructs, BufferAccess access = BufferAccess::Immutable) {Create((const void*)data,numStructs,sizeof(T),access);}
 			template <typename T>
-				void			CreateFromStructs(const ArrayData<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
+				void			CreateFromStructs(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
 			template <typename T>
 				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
 			template <typename T>
@@ -458,7 +458,7 @@ namespace Engine
 			template <typename T0>
 				void			UpdateStructs(const T0*data, count_t numStructs) {Super::Update((const void*)data,numStructs * sizeof(T0));}
 			template <typename T0>
-				void			UpdateStructs(const ArrayData<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
+				void			UpdateStructs(const ArrayRef<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
 			template <typename T0>
 				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
 
@@ -798,6 +798,7 @@ namespace Engine
 
 
 			void					Load(const Image&image, bool generateMipMaps=true);
+			void					Load(const Image16&image, bool generateMipMaps=true);
 			void					Load(const UnclampedFloatImage&image, bool generateMipMaps=false);
 			void					LoadCube(const Image image[6], bool generateMipMaps=true);
 
