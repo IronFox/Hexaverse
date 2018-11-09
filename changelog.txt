@@ -1,3 +1,6 @@
+v0.9.7
+	* Fixed End-Round button remaining disabled after AI OnSelectionChanged() events.
+
 v0.9.6	[Nov 9 2018]
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do.
 	> Slightly improved visual appearance of GUI components in general.
