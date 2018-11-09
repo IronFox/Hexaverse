@@ -1975,7 +1975,7 @@ namespace Lua
 					t.SetField("turretType",AddOrGetType(b->turret->constName));
 			}
 
-			if (e->IsVehicle())
+			if (e->IsPureVehicle())
 			{
 				auto b = To<Objects::Vehicle>::Cast(e)->base;
 				t.SetField("vehicleBaseType",AddOrGetType(b->constName));
