@@ -124,6 +124,7 @@ Table-Type: UnitType extends Type
 	int			maxHealth;				-- Maximum possible health of the local entity (unresearched)
 	float		maxUncontrolledExplosionRadius;		-- Maximum possible explosion radius of the local type if suffering uncontrolled destruction
 	bool		isMobile;				-- True if this is a mobile entity
+	bool		isSuborbitalPlane;		-- True if this type is a suborbital plane
 	bool		isStructure;			-- True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
 	bool		isIndestructible;		-- True if the local unit is indestructible, false otherwise
 	bool		isWorkingStructure;		-- True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
@@ -259,6 +260,7 @@ Table-Type: Loc (Location)
 	int		height;						-- Layer difference from mean planetary height. Usually in the range [-16,15], though some units may be located above the regular grid
 	Cell	cell;						-- Horizontal cell
 	Vector	world;						-- World location
+	bool	isSuborbital;				-- True if this is an airborne location
 }
 
 Table-Type: Turret

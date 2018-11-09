@@ -178,6 +178,7 @@ namespace Lua
 		c.SetField("height" ,cell.height);
 		c.SetField("cell",lowCellGrid[cell.stackID]);
 		c.SetField("world",Detail::ToTable(program,Grid::ToWorld(cell)));
+		c.SetField("isSuborbital",cell.height == Objects::SubOrbital::Height);
 
 		locationMap.Set(cell,c);
 
@@ -1930,9 +1931,11 @@ namespace Lua
 
 		if (e)
 		{
+			bool plane = e->IsPlane();
 			t.SetField("isInstantiable",true);
 			t.SetField("height",e->GetHeight());
 			t.SetField("isMobile", e->IsMobile());
+			t.SetField("isSuborbitalPlane", e->IsPlane());
 			t.SetField("isHangar",e->IsHangar());
 			t.SetField("constructionCost",e->GetConstructionCost());
 			t.SetField("isStructure",e->IsStructure());
