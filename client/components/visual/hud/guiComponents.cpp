@@ -3303,22 +3303,26 @@ namespace Component
 		{
 			case CornerStyle::LeftAligned:
 				tab->SetCutCorners({false,false,true,true});
+				tab->SetPadding({1.5f,0.25f,3.5f,0.25f});
 			break;
 			case CornerStyle::Compact:
 			{
-				tab->SetCutCorners({!HasComponents(),false,true,true});
+				const bool first = !HasComponents();
+				tab->SetCutCorners({first,false,true,true});
+				tab->SetPadding({first ? 3.5f : 1.5f,0.25f,3.5f,0.25f});
 				if (HasComponents())
 				{
 					auto b = To<Button>::Cast(GetLastChild());
 					auto c = b->GetCutCorners();
 					c.right = false;
 					b->SetCutCorners(c);
+					auto p = b->GetPadding();
+					b->SetPadding({p.left,p.bottom,1.5f,p.top});
 				}
 			}
 			break;
 		}
 		tab->SetEdges(false);
-		tab->SetPadding({1.5f,0.25f,3.5f,0.25f});
 		tab->SetAlign(VerticalTextAlign::Top);
 
 		ConfigureInactive(tab);
