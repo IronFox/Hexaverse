@@ -820,6 +820,7 @@ namespace Component
 			bottomColor;
 
 		DX11::BaseInstructionBlock
+			lineShader,
 			shader;
 		DX11::InstructionBlock16
 			shrinkShader,
@@ -904,6 +905,11 @@ namespace Component
 			mouseAt_fadeRange.Update(float4(relativeMouse,location.x.GetCenter(),std::max(0.25f,location.x.GetExtent()*1.5f) ));
 		}
 
+		struct TLineVertex
+		{
+			float2	position;
+			float4	normal_uv;
+		};
 
 		struct TVertex
 		{
@@ -1210,6 +1216,7 @@ namespace Component
 	Decoration::Decoration()
 	{
 		using namespace DecorationDetails;
+		lineInstruction = lineShader;
 		((DX11::BaseInstructionBlock&)backgroundInstruction) = shader;
 		((DX11::BaseInstructionBlock&)shadowInstruction) = shader;
 		((DX11::BaseInstructionBlock&)edgeInstruction) = shader;
@@ -1259,8 +1266,9 @@ namespace Component
 
 		}
 
-		if (background)
+		if (background || recompileBackground)
 		{
+			if (background)
 			{
 				auto col = backgroundColor;
 				//if (lit)
@@ -1293,9 +1301,37 @@ namespace Component
 
 				Bakery::Include(shape);
 				Bakery::Complete(backgroundInstruction);
+
+				if (shape.corners.IsNotEmpty())
+				{
+					static Buffer0<TLineVertex> vtx;
+					vtx.Clear();
+					count_t cnt = shape.corners.Count();
+					if (!shape.loop)
+						cnt--;
+					for (index_t i = 0; i < cnt; i++)
+					{
+						const auto&a = shape.corners[i];
+						if (!a.hasOutEdge)
+							continue;
+						const auto&b = shape.corners[(i+1)%shape.corners.Count()];
+						auto*v = vtx.AppendRow(2);
+						v[0].position = a.position;
+						v[1].position = b.position;
+						v[0].normal_uv.xy = v[1].normal_uv.xy = (a.position - b.position).Normal().normalized0();
+						v[0].normal_uv.zw = a.uv;
+						v[1].normal_uv.zw = b.uv;
+					}
+
+					lineInstruction.vbo.CreateFromStructs(vtx);
+					vtx.Clear();
+				}
 			}
-			backgroundInstruction.quickSlots.First() = backgroundTexture;
-			display.Render(backgroundInstruction);
+			if (background)
+			{
+				backgroundInstruction.quickSlots.First() = backgroundTexture;
+				display.Render(backgroundInstruction);
+			}
 		}
 
 		display.RestoreRendererState();
@@ -1366,6 +1402,14 @@ namespace Component
 				display.SetBlendMode(Engine::BlendMode::None);
 				edgeInstruction.quickSlots.First() = backgroundTexture;
 				display.Render(edgeInstruction);
+
+			display.RestoreRendererState();
+		}
+		if (renderEdges || background)
+		{
+			display.StoreRendererState();
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+				display.RenderVertices(lineInstruction);
 			display.RestoreRendererState();
 		}
 
@@ -1452,6 +1496,26 @@ namespace Component
 		blurOpacity.Create(0);
 
 		DecorationDetails::SignalScreenResize();
+
+		{
+			Engine::VertexBinding vtx;
+			vtx.vertex.Set(0,2);
+			vtx.normal.Set(2,4);
+			vtx.floats_per_vertex = 6;
+			lineShader.binding = vtx;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(mouseAt_fadeRange,"MouseAt_FadeRange"),
+				DX11::Shader::Binding(bottomColor,"BottomColor"),
+				DX11::Shader::Binding(topColor,"TopColor"),
+				DX11::Shader::Binding(Detail::viewportVector,"Viewport"),
+			};
+
+			lineShader.shader.LoadFromFile("shaders/guiShapeLine.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			lineShader.UpdateLayout();
+			lineShader.SetLines();
+		}
+
 
 		Engine::VertexBinding vtx;
 		vtx.vertex.Set(0,4);
@@ -3303,22 +3367,26 @@ namespace Component
 		{
 			case CornerStyle::LeftAligned:
 				tab->SetCutCorners({false,false,true,true});
+				tab->SetPadding({1.5f,0.25f,3.5f,0.25f});
 			break;
 			case CornerStyle::Compact:
 			{
-				tab->SetCutCorners({!HasComponents(),false,true,true});
+				const bool first = !HasComponents();
+				tab->SetCutCorners({first,false,true,true});
+				tab->SetPadding({first ? 3.5f : 1.5f,0.25f,3.5f,0.25f});
 				if (HasComponents())
 				{
 					auto b = To<Button>::Cast(GetLastChild());
 					auto c = b->GetCutCorners();
 					c.right = false;
 					b->SetCutCorners(c);
+					auto p = b->GetPadding();
+					b->SetPadding({p.left,p.bottom,1.5f,p.top});
 				}
 			}
 			break;
 		}
 		tab->SetEdges(false);
-		tab->SetPadding({1.5f,0.25f,3.5f,0.25f});
 		tab->SetAlign(VerticalTextAlign::Top);
 
 		ConfigureInactive(tab);

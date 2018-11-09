@@ -591,6 +591,7 @@ namespace Component
 	private:
 		M::Rect<>					location;
 		DX11::InstructionBlock16	shadowInstruction,backgroundInstruction,blurInstruction,edgeInstruction;
+		DX11::BaseInstructionBlock	lineInstruction;
 		bool						recompileShadow=true,
 									recompileBackground=true,
 									recompileEdges=true,
