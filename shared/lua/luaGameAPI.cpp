@@ -981,14 +981,14 @@ namespace Lua
 
 		auto vec = f->compound.GetVector();
 		Detail::UpdateResourceTable(found->current.balanceTable,vec.balance);
-		Detail::UpdateResourceTable(found->current.demandTable,vec.supply - vec.demand);
+		Detail::UpdateResourceTable(found->current.demandTable,vec.demand);
 		Detail::UpdateResourceTable(found->current.storageTable,vec.storage);
 		Detail::UpdateResourceTable(found->current.supplyTable,vec.supply);
 
 		vec = f->compound.GetAllEnabledVector();
 		Detail::UpdateResourceTable(found->max.balanceTable,vec.balance);
 		Detail::UpdateResourceTable(found->max.demandTable,vec.demand);
-		Detail::UpdateResourceTable(found->max.supplyTable,vec.supply - vec.demand);
+		Detail::UpdateResourceTable(found->max.supplyTable,vec.supply);
 		Detail::UpdateResourceTable(found->max.storageTable,vec.storageMax);
 
 		return found;
