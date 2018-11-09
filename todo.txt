@@ -1,3 +1,6 @@
+Visual log can eat FPS when exceeding several thousand visible lines at once
+
+
 AI script does not request new round upon completion...?
 
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
