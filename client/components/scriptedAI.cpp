@@ -822,6 +822,9 @@ namespace ScriptedAI
 					{
 						if (Details::thread.selectionChanged)
 						{
+							if (Details::frameBeginRegistration == InvalidIndex)
+								Details::frameBeginRegistration = GlobalEvents::frameBegin.Register(Details::PerFrameCheck);
+
 							Details::onSynchronizedEnqueue << std::make_pair("OnSelectionChanged",[](Details::Thread&thread)
 							{
 								if (thread.selectionChanged)
