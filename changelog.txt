@@ -1,5 +1,6 @@
 v0.9.6
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do.
+	> Slightly improved visual appearance of GUI components in general.
 	> Tutorial servers now use random ports in the dynamic port range to avoid port collisions.
 	> Improved visual difference between enabled and disabled mines.
 	> Removed thick frames from visual buttons.
