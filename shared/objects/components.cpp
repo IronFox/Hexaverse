@@ -1410,7 +1410,7 @@ namespace Objects
 
 				component.typeName = "Raptor";
 				component.shortName = " Raptor";
-				component.constName = ConstName::Type_Raptor;	//let's see if i can use the same name here
+				component.constName = ConstName::Turret_Raptor;	//let's see if i can use the same name here. nope!
 
 				component.mountType = Turret::MountType::Plane;
 
@@ -1449,7 +1449,7 @@ namespace Objects
 
 				component.typeName = "Bomber";
 				component.shortName = " Bomber";
-				component.constName = ConstName::Type_Bomber;
+				component.constName = ConstName::Turret_Bomber;
 				component.hasDoomsdayFunctionality = true;
 
 				component.mountType = Turret::MountType::Plane;
@@ -1468,7 +1468,7 @@ namespace Objects
 			{
 				component.typeName = "Sensor Drone";
 				component.shortName = " Sensor";
-				component.constName = ConstName::Type_SensorDrone;
+				component.constName = ConstName::Turret_SensorDrone;
 
 				component.mountType = Turret::MountType::Plane;
 				component.initiative = 110;
@@ -1481,7 +1481,7 @@ namespace Objects
 			{
 				component.typeName = "Cargo Plane";
 				component.shortName = " Cargo";
-				component.constName = ConstName::Type_CargoPlane;	//let's see if i can use the same name here
+				component.constName = ConstName::Turret_CargoPlane;
 
 				component.mountType = Turret::MountType::Plane;
 				component.initiative = 60;
