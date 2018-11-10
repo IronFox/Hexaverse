@@ -201,6 +201,7 @@ Table-Type: Unit
 		@return Array of reachable locations. The current unit location is omitted.
 		]]
 		Reachable[]	GetReach(func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedMobilesOnRoute, bool cannotStandOnUnknown);
+		Reachable[]	GetReachFrom(Loc origin, func isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedMobilesOnRoute, bool cannotStandOnUnknown);
 
 		--[[
 		FindShortestPath()/FindShortestPathFrom():

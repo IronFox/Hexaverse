@@ -213,6 +213,11 @@ namespace Lua
 		Lua::Table	LuaFindHighestAvailableResourceLocation(const String&resourceType);
 		Lua::Table	LuaFindHighestAvailableResourceLocationExt(const String&resourceType,bool checkLinkPath, bool checkMobiles);
 		Objects::PWorldEntity LuaUnitToEntity(const Lua::Table&luaUnit, const String&funcParameterName)	const;
+		Lua::Table	LuaGetReachFrom(const Objects::PMobileEntity&m,const Grid::LCellIdI&origin,
+									const Lua::Function<bool(Lua::Table)>&isBlocked, 
+									int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedVehiclesOnRoute, 
+									bool cannotStandOnUnknown);
+
 
 		Lua::Table	LuaMapType(const String&typeName);
 

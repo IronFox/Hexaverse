@@ -324,6 +324,67 @@ namespace Lua
 		return t;
 	}
 
+	Lua::Table	API::LuaGetReachFrom(const Objects::PMobileEntity&m,const Grid::LCellIdI&location,
+									const Lua::Function<bool(Lua::Table)>&isBlocked, 
+									int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedVehiclesOnRoute, 
+									bool cannotStandOnUnknown)
+	{
+		
+		Objects::Component::GroundFlags groundFlags = Objects::Component::GroundFlags::None;
+
+		if (cannotStandOnUnknown)
+			groundFlags |= Objects::Component::GroundFlags::DisallowUnknownGround;
+
+		Objects::Pathfinding::RoutingFlags routingFlags = Objects::Pathfinding::RoutingFlags::IgnoreLimit;
+		if (forceReversible)
+			routingFlags |= Objects::Pathfinding::RoutingFlags::ForceRevertible;
+		if (allowAccessibleHangars)
+			routingFlags |= Objects::Pathfinding::RoutingFlags::AllowAccessibleHangars;
+		if (ignoreOwnedVehiclesOnRoute)
+			routingFlags |= Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute;
+
+		if (!isBlocked)
+			mapper.Map(*m, location, nullptr, routingFlags,groundFlags, maxReach);
+		else
+		{
+			mapper.Map(*m, location, [&isBlocked, this](const Grid::LCellIdI&loc)->bool
+			{
+				return isBlocked(ToTable(loc));
+			}, routingFlags,groundFlags);
+		}
+
+		Lua::Table result = program->CreateTable();
+		Array<Lua::Table>	 tables;
+		tables.SetSize(mapper.result.Count());
+		for (index_t i = 0; i < mapper.result.Count(); i++)
+		{
+			const auto&in = mapper.result[i];
+			Lua::Table luaReachable = program->CreateTable();
+			tables[i] = luaReachable;
+			luaReachable.SetField("location", ToTable(in.cell));
+			luaReachable.SetField("movementCostsFromRoot", in.movementCostsFromRoot);
+			if (allowAccessibleHangars)
+			{
+				auto hangar = Objects::AccessibleHangarHere(in.cell, *m);
+				if (hangar)
+				{
+					auto e = hangar->ToEntity().shared_from_this();
+					luaReachable.SetField("hangar", MapEntity(e,true,false));
+				}
+			}
+			result.AppendElement(luaReachable);
+		}
+
+		for (index_t i = 0; i < mapper.result.Count(); i++)
+		{
+			const auto&in = mapper.result[i];
+			if (in.predecessor != InvalidIndex)
+				tables[i].SetField("predecessor", tables[in.predecessor]);
+		}
+
+		return result;
+	}
+
 
 	Lua::Table API::LuaFindHighestAvailableResourceLocation(const String&resourceName)
 	{
@@ -1575,66 +1636,22 @@ namespace Lua
 			});
 
 
+			t.SetFunction("GetReachFrom", [this,w](const Lua::Table&originLocation, const Lua::Function<bool(Lua::Table)>&isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedVehiclesOnRoute, bool cannotStandOnUnknown)->Lua::Table
+			{
+				auto v = w.lock();
+				if (!v)
+					throw Lua::Exception("GetReachFrom(): Vehicle has expired");
+				const auto origin = Detail::ToLGridCell(originLocation, "GetReachFrom(): Origin parmater #1");
+				return this->LuaGetReachFrom(v,origin,isBlocked,maxReach,forceReversible,allowAccessibleHangars,ignoreOwnedVehiclesOnRoute, cannotStandOnUnknown);
+			});
+
 			t.SetFunction("GetReach", [this,w,location](const Lua::Function<bool(Lua::Table)>&isBlocked, int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedVehiclesOnRoute, bool cannotStandOnUnknown)->Lua::Table
 			{
 				auto v = w.lock();
 				if (!v)
 					throw Lua::Exception("GetReach(): Vehicle has expired");
+				return this->LuaGetReachFrom(v,location,isBlocked,maxReach,forceReversible,allowAccessibleHangars,ignoreOwnedVehiclesOnRoute, cannotStandOnUnknown);
 
-				Objects::Component::GroundFlags groundFlags = Objects::Component::GroundFlags::None;
-
-				if (cannotStandOnUnknown)
-					groundFlags |= Objects::Component::GroundFlags::DisallowUnknownGround;
-
-				Objects::Pathfinding::RoutingFlags routingFlags = Objects::Pathfinding::RoutingFlags::IgnoreLimit;
-				if (forceReversible)
-					routingFlags |= Objects::Pathfinding::RoutingFlags::ForceRevertible;
-				if (allowAccessibleHangars)
-					routingFlags |= Objects::Pathfinding::RoutingFlags::AllowAccessibleHangars;
-				if (ignoreOwnedVehiclesOnRoute)
-					routingFlags |= Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute;
-
-				if (!isBlocked)
-					mapper.Map(*v, location, nullptr, routingFlags,groundFlags, maxReach);
-				else
-				{
-					mapper.Map(*v, location, [&isBlocked, this](const Grid::LCellIdI&loc)->bool
-					{
-						return isBlocked(ToTable(loc));
-					}, routingFlags,groundFlags);
-				}
-
-				Lua::Table result = program->CreateTable();
-				Array<Lua::Table>	 tables;
-				tables.SetSize(mapper.result.Count());
-				for (index_t i = 0; i < mapper.result.Count(); i++)
-				{
-					const auto&in = mapper.result[i];
-					Lua::Table luaReachable = program->CreateTable();
-					tables[i] = luaReachable;
-					luaReachable.SetField("location", ToTable(in.cell));
-					luaReachable.SetField("movementCostsFromRoot", in.movementCostsFromRoot);
-					if (allowAccessibleHangars)
-					{
-						auto hangar = Objects::AccessibleHangarHere(in.cell, *v);
-						if (hangar)
-						{
-							auto e = hangar->ToEntity().shared_from_this();
-							luaReachable.SetField("hangar", MapEntity(e,true,false));
-						}
-					}
-					result.AppendElement(luaReachable);
-				}
-
-				for (index_t i = 0; i < mapper.result.Count(); i++)
-				{
-					const auto&in = mapper.result[i];
-					if (in.predecessor != InvalidIndex)
-						tables[i].SetField("predecessor", tables[in.predecessor]);
-				}
-
-
-				return result;
 			});
 			
 			if (actual)
