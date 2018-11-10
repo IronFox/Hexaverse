@@ -1,5 +1,6 @@
 Visual log can eat FPS when exceeding several thousand visible lines at once
 
+Rendered hex icons become jaggy when using >100% GUI scale
 
 AI script does not request new round upon completion...?
 
