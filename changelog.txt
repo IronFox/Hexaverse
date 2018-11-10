@@ -1,4 +1,5 @@
 v0.9.7
+	> Added micro structure to GUI components to reduce banding artifacts.
 	> Improved behavior of visual log.
 	* Fixed End-Round button remaining disabled after AI OnSelectionChanged() events.
 
