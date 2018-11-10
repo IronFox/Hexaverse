@@ -2,8 +2,8 @@ v0.9.7
 	+ AI: Added Unit(mobile).GetReachFrom().
 	> Added micro structure to GUI components to reduce banding artifacts.
 	> Improved behavior of visual log.
-	* Fixed End-Round button remaining disabled after AI OnSelectionChanged() events.
-	* Fixed crash when directing mobile unit to nil location via AI script.
+	* AI: Fixed End-Round button remaining disabled after OnSelectionChanged() events.
+	* AI: Fixed crash when directing mobile unit to nil location.
 
 v0.9.6	[Nov 9 2018]
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do.
