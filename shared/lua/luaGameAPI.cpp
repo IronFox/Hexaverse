@@ -1671,8 +1671,21 @@ namespace Lua
 						path << Detail::ToLGridCell(at.GetField("location"),"DirectTo(): destination.location");
 						at = at.GetField("predecessor");
 					}
+					if (path.IsEmpty())
+					{
+						LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to nil location. Ignoring");
+						return;
+					}
 					if (path.Last() == loc)
+					{
 						path.EraseLast();
+						if (path.IsEmpty())
+						{
+							LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to nil location. Ignoring");
+							return;
+						}
+					}
+
 					path.Revert();
 					onDetailedDirectTo(id,path.ToRef());
 				});
