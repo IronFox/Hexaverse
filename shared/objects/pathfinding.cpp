@@ -486,8 +486,17 @@ namespace Objects{ namespace Pathfinding
 			{
 				tn.nodeCosts = m.IsAffectedByGravity(cellID) ? GetCellMovementCosts(world,cellID,hindrance) : 1;
 				if (cellCostModifer)
+				{
 					cellCostModifer(cellID, tn.nodeCosts);
+					if (tn.nodeCosts <= 0)
+					{
+						tn.nodeCosts = -1;
+						continue;
+					}
+				}
 			}
+			elif (tn.nodeCosts == -1)
+				continue;
 
 
 			if (cellID == to)
@@ -506,8 +515,18 @@ namespace Objects{ namespace Pathfinding
 				{
 					n.nodeCosts = GetCellMovementCosts(world, possibilities.way[i], hindrance);
 					if (cellCostModifer)
+					{
 						cellCostModifer(possibilities.way[i], n.nodeCosts);
+						if (n.nodeCosts <= 0)
+						{
+							n.nodeCosts = -1;
+							continue;
+						}
+					}
 				}
+				elif (n.nodeCosts == -1)
+					continue;
+
 				int cost = std::max(tn.nodeCosts,n.nodeCosts);
 				int hCosts = std::max(0, possibilities.way[i].height - cellID.height );
 				cost += hCosts;

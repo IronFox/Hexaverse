@@ -211,7 +211,8 @@ Table-Type: Unit
 			Invoked once per path candidate as encountered. May be nil, using just the default costs.
 			Setting this function such that it reduces costs of a given node will cause pathfinding to favor paths across that location.
 			Conversely, increasing the returned value will cause the routing mechanism to avoid the location (assuming it's not the target).
-			Note that the returned value will be factored in the calculation of Reachable.movementCostsFromRoot
+			Note that the returned value will be factored in the calculation of Reachable.movementCostsFromRoot.
+			If the returned value is equal to or less than 0, the specified location is effectively blocked.
 		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 		@return Array of path nodes, in order along the route. The current unit location is omitted, making the first entry the first step to take. Returns nil if no route was found
 		]]
