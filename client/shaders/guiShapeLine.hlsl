@@ -1,5 +1,9 @@
 #include "common.inc.hlsl"
 
+cbuffer LineNormalScale
+{
+	float LineNormalScale;
+}
 
 cbuffer TopColor
 {
@@ -47,7 +51,8 @@ void vsMain(in A2V input, out V2P output)
 float4 psMain(V2P input) : SV_TARGET
 {
 	float4 rs = lerp(BottomColor,TopColor,input.normal_uv.z);
-	float b = dot(input.normal_uv.xy,normalize(float2(-1,1)));
+	float b = dot(input.normal_uv.xy*LineNormalScale,normalize(float2(-1,1)));
+	//float b = dot(input.normal_uv.xy*LineNormalScale,normalize(MouseAt - input.world));	//makes shapes 'move' toward the mouse
 	float c = saturate(b*1000.0);
 	return rs * float4(c,c,c,abs(b));
 }

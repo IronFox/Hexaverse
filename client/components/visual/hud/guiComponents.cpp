@@ -839,7 +839,7 @@ namespace Component
 
 		DX11::ObjectBuffer<float4>	mouseAt_fadeRange;
 		DX11::ObjectBuffer<float2>	shrinkPixelScale;
-		DX11::ObjectBuffer<float>	blurOpacity;
+		DX11::ObjectBuffer<float>	blurOpacity,lineNormalScale;
 
 		bool	backgroundChanged = true;
 		float	backgroundOpacity = 1.f;
@@ -1204,7 +1204,7 @@ namespace Component
 
 		static const constexpr float	cornerSize = 0.02f;
 		static const constexpr float	shadowExt = 0.005f;
-		static const constexpr float	edgeWidth = 0.005f;
+		static const constexpr float	edgeWidth = 0.001f;
 
 	}
 
@@ -1408,6 +1408,7 @@ namespace Component
 		if (renderEdges || background)
 		{
 			display.StoreRendererState();
+				lineNormalScale.Update(pressed ? -1 : 1);
 				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 				display.RenderVertices(lineInstruction);
 			display.RestoreRendererState();
@@ -1426,7 +1427,17 @@ namespace Component
 	float			Decoration::GetClientWidthLoss() const
 	{
 		using namespace DecorationDetails;
-		return (renderEdges && includeEdges.left ? edgeWidth : 0) + (renderEdges && includeEdges.right ? edgeWidth : 0);
+		if (!cutCorners.bottom && !cutCorners.top)
+			return 0;
+		float rs = 0;
+		const float h = location.GetHeight();
+		float w = (h > 2.f * cornerSize) ? cornerSize : h/2.f;
+		if (cutCorners.left)
+			rs += w;
+		if (cutCorners.right)
+			rs += w;
+		return rs;
+		//return (renderEdges && includeEdges.left ? edgeWidth : 0) + (renderEdges && includeEdges.right ? edgeWidth : 0);
 	}
 
 
@@ -1447,41 +1458,41 @@ namespace Component
 		using namespace DecorationDetails;
 		auto rs = location;
 		const float h = rs.GetHeight();
-		//if (renderEdges && includeEdges.left)
+		if (cutCorners.left)
+		{
+			if (cutCorners.bottom || cutCorners.top)
+			{
+				if (h > 2.f * cornerSize)
+					rs.x.min += cornerSize;
+				else
+					rs.x.min += h*0.5f;
+			}
+			//else
+				//rs.x.min += edgeWidth;
+		}
+		if (cutCorners.right)
+		{
+			if (cutCorners.bottom || cutCorners.top)
+			{
+				if (h > 2.f * cornerSize)
+					rs.x.max -= cornerSize;
+				else
+					rs.x.max -= h*0.5f;
+			}
+			//else
+				//rs.x.max -= edgeWidth;
+		}
+		//const float ew = edgeWidth * Detail::ViewPortAspect();
 		//{
-		//	if (includeEdges.bottom || includeEdges.top)
-		//	{
-		//		if (h > 2.f * cornerSize)
-		//			rs.x.min += cornerSize;
-		//		else
-		//			rs.x.min += h*0.5f;
-		//	}
-		//	else
+		//	if (includeEdges.bottom)
+		//		rs.y.min += ew;
+		//	if (includeEdges.top)
+		//		rs.y.max -= ew;
+		//	if (includeEdges.left)
 		//		rs.x.min += edgeWidth;
-		//}
-		//if (renderEdges && includeEdges.right)
-		//{
-		//	if (includeEdges.bottom || includeEdges.top)
-		//	{
-		//		if (h > 2.f * cornerSize)
-		//			rs.x.max -= cornerSize;
-		//		else
-		//			rs.x.max -= h*0.5f;
-		//	}
-		//	else
+		//	if (includeEdges.right)
 		//		rs.x.max -= edgeWidth;
 		//}
-		const float ew = edgeWidth * Detail::ViewPortAspect();
-		{
-			if (includeEdges.bottom)
-				rs.y.min += ew;
-			if (includeEdges.top)
-				rs.y.max -= ew;
-			if (includeEdges.left)
-				rs.x.min += edgeWidth;
-			if (includeEdges.right)
-				rs.x.max -= edgeWidth;
-		}
 		return rs;
 	}
 
@@ -1494,6 +1505,7 @@ namespace Component
 		Detail::viewportVector.Create(float4());
 		shrinkPixelScale.Create(float2());
 		blurOpacity.Create(0);
+		lineNormalScale.Create(1);
 
 		DecorationDetails::SignalScreenResize();
 
@@ -1509,6 +1521,7 @@ namespace Component
 				DX11::Shader::Binding(bottomColor,"BottomColor"),
 				DX11::Shader::Binding(topColor,"TopColor"),
 				DX11::Shader::Binding(Detail::viewportVector,"Viewport"),
+				DX11::Shader::Binding(lineNormalScale,"LineNormalScale"),
 			};
 
 			lineShader.shader.LoadFromFile("shaders/guiShapeLine.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );

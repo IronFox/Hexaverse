@@ -537,7 +537,7 @@ namespace Component
 
 		void			SetCutCorners(const M::Quad<bool>&edges) {if (edges != this->cutCorners) {cutCorners = edges; recompileEdges=true; recompileBackground=true;}}
 		M::Quad<bool>	GetCutCorners() const {return cutCorners;}
-		void			SetEdgeVisibility(const M::Quad<bool>&edges) {if (edges != this->includeEdges) {includeEdges = edges; recompileEdges=true;}}
+		void			SetEdgeVisibility(const M::Quad<bool>&edges) {/*if (edges != this->includeEdges) {includeEdges = edges; recompileEdges=true;}*/}
 		void			SetEdges(bool renderEdges) {this->renderEdges = renderEdges;}
 		void			SetBackground(bool back) {if (back != background) {background = back; recompileBackground=true;}}
 		void			SetShadow(bool shade) {if (shade != shadow) {shadow = shade; recompileShadow = true;}}
