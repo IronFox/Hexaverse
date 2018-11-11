@@ -1,3 +1,4 @@
+Change TerrainAdd and TerrainRemove -> AddTerrain and RemoveTerrain so 'canTerrainAdd' doesn't sound quite so bad anymore. Find some solution for 'Nuclear'. Make sure to adapt research script
 
 Rendered hex icons become jaggy when using >100% GUI scale
 
