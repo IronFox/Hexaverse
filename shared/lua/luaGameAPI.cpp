@@ -1928,7 +1928,7 @@ namespace Lua
 		}
 		catch (const Except::Program::ParameterFault&ex)
 		{
-			LogEvent(EventClass::Preset::scriptError,"ByName(): '"+typeName+"' is not a valid type name: "+ex.GetRawMessage());
+			LogEvent(EventClass::Preset::scriptError,"ByName(): "+String(ex.GetRawMessage()));
 			return Lua::nil;
 		}
 	}
