@@ -1617,7 +1617,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			HUD::HexGrid::OnScreenResize();
 			HUD::WindowStack::SignalScreenResize();
-			HUD::VisualEventLog::SignalWindowResize();
+
+			GlobalEvents::windowSizeChanged();
 		}
 	}
 
@@ -2191,6 +2192,7 @@ int main( int argc, const char* argv[])
 					Engine::mouse.BindWheel(InputControl::OnWheel);
 				});
 			Loading::Stage("Progress Bars",ProgressBar::Create);
+			Loading::Stage("Visual Event Log",HUD::VisualEventLog::Create);
 			Loading::Stage("Window Stack",HUD::WindowStack::Create);
 			Loading::Stage("Dialogs",HUD::Dialog::Create);
 			Loading::Stage("HostList",HUD::HostList::Create);

@@ -13,8 +13,7 @@ Controls the visual representation of important events on screen
 namespace VisualEventLog
 {
 
-
-	void	SignalWindowResize();
+	void	Create();
 	/**
 	Adds a new event to the visual event queue.
 	It will be listed beneath any existing log messages, pushing them up.

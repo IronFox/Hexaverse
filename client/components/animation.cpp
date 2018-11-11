@@ -839,6 +839,7 @@ namespace Animation
 
 		#endif
 
+		GlobalEvents::invalidateObjectCache();
 		if (RuntimeConfig::IsInAnyCommandPhase())
 			PlayerControlBegin::CheckAutoNextRound();
 	}
@@ -969,6 +970,7 @@ namespace Animation
 			//HUD::HexGrid::Configure(Objects::selectedEntity);
 		#endif
 
+		GlobalEvents::invalidateObjectCache();
 		if (RuntimeConfig::IsInAnyCommandPhase())
 			PlayerControlBegin::CheckAutoNextRound();
 	}

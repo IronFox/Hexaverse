@@ -7,6 +7,7 @@
 #include <objects/entity.h>
 #include <objects/faction.h>
 #include "../../clientEvents.h"
+#include "uiScale.h"
 
 #include "../display.h"
 
@@ -146,22 +147,25 @@ namespace VisualEventLog
 	/*static */const float VisualEvent::MaxAge = 30.f;
 
 
-
-	float		historyHeight=1;
-	static const float eventFontScale = 0.9f;
+	volatile bool		historyChanged = true;
+	float				historyHeight=1;
+	static const float	eventFontScale = 0.9f;
 	
 	static void		UpdateHistoryHeight()
 	{
 		float h0 = textout.GetScaledHeight() * eventFontScale;
+		historyChanged = false;
 		historyHeight = 0;
 		foreach (events,ev)
 			historyHeight += h0 * ev->scale;
 	}
 
 
-	void SignalWindowResize()
+
+	void Create()
 	{
-		UpdateHistoryHeight();
+		GlobalEvents::uiScaleChanged << [](){historyChanged = true;};
+		GlobalEvents::windowSizeChanged << [](){historyChanged = true;};
 	}
 
 	void Render()
@@ -169,7 +173,6 @@ namespace VisualEventLog
 		eventLock.lock();
 
 
-			bool anyChanged = false;
 			for (index_t i = 0; i < events.Count(); i++)
 			{
 				events[i].age += Engine::timing.delta;
@@ -177,26 +180,30 @@ namespace VisualEventLog
 				{
 					events.Erase(i);
 					i--;
-					anyChanged = true;
+					historyChanged = true;
 				}
 			}
-			if (anyChanged)
+			if (historyChanged)
 				UpdateHistoryHeight();
 
 
 
 
-
-
-			count_t rows = events.Count();
-					//std::min(events.Count(), (count_t)floor(0.7f / textout.GetScaledHeight()));
-
-
 			const auto old = textout.state;
 				textout.Scale(eventFontScale,eventFontScale);
+
+
+			//count_t rows = events.Count();
+					//std::min(events.Count(), (count_t)floor(0.7f / textout.GetScaledHeight()));
+			const auto h = textout.GetScaledHeight();
+			const auto bottom = 280.f/display.GetClientHeight() * UI::GetScale();
+			const count_t rowSpace = ceil((1.f - bottom) / h);
+			const index_t skip = events.Count() > rowSpace ? events.Count() - rowSpace : 0;
+			const auto skipHeight = h * skip;
+
 			const auto common = textout.state;
-				textout.MoveTo(0.0f, 280.f/display.GetClientHeight() + historyHeight);
-				for (index_t i = events.Count() - rows; i < events.Count(); i++)
+				textout.MoveTo(0.0f, bottom + historyHeight - skipHeight);
+				for (index_t i = skip; i < events.Count(); i++)
 					//if (events[i].stackID < 10)
 					{
 						const auto&ev = events[i];
@@ -221,6 +228,8 @@ namespace VisualEventLog
 
 	void DisplayEvent( EventClass type,  const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&_event, Logging::Origin origin )
 	{
+		if (type.significance <= EventSignificance::Common)
+			return;
 		String event = _event;
 		String id;
 		if (e)
@@ -238,18 +247,13 @@ namespace VisualEventLog
 			id = owner->GetName();
 		}
 
+
 		eventLock.lock();
-
-		if (type.significance > EventSignificance::Common)
-		{
 			events << VisualEvent(id,event,type,owner,origin);
-			UpdateHistoryHeight();
-		}
+			if (events.Count() > 1000)
+				events.Erase(0,100);
+			historyChanged = true;
 		eventLock.unlock();
-
-
-
-		
 	}
 
 }

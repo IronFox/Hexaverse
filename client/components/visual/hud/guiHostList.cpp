@@ -600,11 +600,11 @@ namespace HUD{namespace HostList{
 				mod.BeneathLastOf(serverChoice, Distance::GameWindow( 0.025f )).Left();
 			}
 			b->LockToIdealWidth();
-			{
-				auto cp = b->GetPadding();
-				cp.left = 3;
-				b->SetPadding(cp);
-			}
+			//{
+			//	auto cp = b->GetPadding();
+			//	cp.left = 3;
+			//	b->SetPadding(cp);
+			//}
 			b->SetCutCorners(M::Quad<bool>(true,true,false,true));
 			ConfigureButton(b);
 

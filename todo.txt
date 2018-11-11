@@ -1,5 +1,5 @@
-Visual log can eat FPS when exceeding several thousand visible lines at once
 
+Rendered hex icons become jaggy when using >100% GUI scale
 
 AI script does not request new round upon completion...?
 
@@ -202,6 +202,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: Visual log can eat FPS when exceeding several thousand visible lines at once
 done: Icon for idling structures and vehicles
 skipped: asynchronous configuration editor start. most of the time is spent recompiling the terrain. probably useless
 added: Game.CreateMarker: note max marker count
