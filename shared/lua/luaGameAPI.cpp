@@ -1698,7 +1698,7 @@ namespace Lua
 						path.EraseLast();
 						if (path.IsEmpty())
 						{
-							LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to nil location. Ignoring");
+							LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to own location. Ignoring");
 							return;
 						}
 					}
