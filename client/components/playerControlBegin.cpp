@@ -31,11 +31,30 @@ namespace PlayerControlBegin
 
 		if (!ApplicationInterface::AutomaticProcessesAreDoneThisRound())
 			return;
+		
+		/*
+		problem:
+			if not in AI mode (non-dedicated AI), there is a temporal gap between script completion and detection of automatic end round conditions (server-round-trip).
+			if checking during this gap, further checks are prevented but new rounds are not requested
+			if not preventing further checks here, the round will be instantly ended the moment the player has issued a command to the last idle entity
+			only way around is to detect all user interactions (everything that is not purely display) and signal that automatic round end should end
+			or add 1 second timeout. that seems to also work
+		*/
+		if (!RuntimeConfig::aiMode && ScriptedAI::SuccessfullyExecutedThisRound() && timer.GetSecondsSince(ScriptedAI::GetCompletionTime()) > 1.f)
+		{
+			allowChecks = false;	//don't auto-complete if player has assumed control
+			return;
+		}
+
+
 
 		if (RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd() && !pauseAutomaticRoundProgression && (RuntimeConfig::aiMode || !SeeingHostileActivity()))
+		{
+			allowChecks = false;	//don't redo this during this round
 			ApplicationInterface::SignalRoundEnd();
-		elif (!RuntimeConfig::aiMode && ScriptedAI::DoneThisRound())
-			allowChecks = false;	//don't auto-complete if player has assumed control
+		}
+		elif (!RuntimeConfig::aiMode && !ScriptedAI::WillExecuteOnNewRound())
+			allowChecks = false;	//don't auto-complete if player has assumed control and we failed here once already
 
 		#ifdef HAS_WINDOW
 			HUD::HexGrid::RefreshButtonState();

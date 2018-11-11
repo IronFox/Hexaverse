@@ -196,8 +196,9 @@ namespace VisualEventLog
 			//count_t rows = events.Count();
 					//std::min(events.Count(), (count_t)floor(0.7f / textout.GetScaledHeight()));
 			const auto h = textout.GetScaledHeight();
-			const auto bottom = 280.f/display.GetClientHeight() * UI::GetScale();
-			const count_t rowSpace = ceil((1.f - bottom) / h);
+			const auto bottom = 260.f/display.GetClientHeight() * UI::GetScale();
+			const auto top = 1.f - 260.f/display.GetClientHeight() * UI::GetScale();
+			const count_t rowSpace = std::max(10.f, ceil((top - bottom) / h));
 			const index_t skip = events.Count() > rowSpace ? events.Count() - rowSpace : 0;
 			const auto skipHeight = h * skip;
 

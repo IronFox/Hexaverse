@@ -1,7 +1,6 @@
 
 Rendered hex icons become jaggy when using >100% GUI scale
 
-AI script does not request new round upon completion...?
 
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
 
@@ -202,6 +201,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+mitigated: AI script does not request new round upon completion...?
 fixed: Visual log can eat FPS when exceeding several thousand visible lines at once
 done: Icon for idling structures and vehicles
 skipped: asynchronous configuration editor start. most of the time is spent recompiling the terrain. probably useless

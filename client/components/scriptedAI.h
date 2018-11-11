@@ -5,6 +5,7 @@
 #include <uniqueID.h>
 #include "visual/hud/objectCommands.h"
 #include <objects/types.h>
+#include <general/timer.h>
 
 namespace ScriptedAI
 {
@@ -59,6 +60,7 @@ namespace ScriptedAI
 	bool			HasSuccessfullyExecuted();
 	D::PathString	GetDocumentationPath();
 
+	D::Timer::Time	GetCompletionTime();
 	bool			DoneThisRound();
 	bool			SuccessfullyExecutedThisRound();
 	bool			WillExecuteOnNewRound();
