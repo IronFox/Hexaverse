@@ -25,6 +25,7 @@ namespace ScriptedAI
 		PathString		scriptPath;
 		FileSystem::ftime_t	scriptTime;
 		bool			reloadScript = true;
+		Timer::Time		completionTime = timer.Now();
 
 		bool			completedThisPhase = false,
 						exportedThisPhase = false;
@@ -621,6 +622,7 @@ namespace ScriptedAI
 
 				onExecutionFinished();
 
+				Details::completionTime = timer.Now();
 				Details::completedThisPhase = true;
 
 				PlayerControlBegin::CheckAutoNextRound();
@@ -756,6 +758,7 @@ namespace ScriptedAI
 		thread.DestroyAPI();
 		
 		Details::reloadScript = true;
+		Details::completionTime = timer.Now();
 		Details::completedThisPhase = true;		//upon (re)loading, is considered having executed this phase so player can request new round
 		thread.hasSuccessfullyExecuted = true;	//set true here, since we don't know yet
 
@@ -1063,6 +1066,11 @@ namespace ScriptedAI
 		Load(path,true);
 		HUD::HexGrid::RefreshButtonState();
 		LogEvent(EventSignificance::Uncommon,"New AI script "+FileSystem::PathToString(FileSystem::ExtractFileNameExt(path))+" created");
+	}
+
+	D::Timer::Time	GetCompletionTime()
+	{
+		return Details::completionTime;
 	}
 
 
