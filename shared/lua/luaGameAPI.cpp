@@ -1918,11 +1918,19 @@ namespace Lua
 			if (pt)
 				return *pt;
 		}
-		Objects::EntityType type = Objects::DecodeType(typeName);
-		if (type.IsEmpty())
-			return Lua::nil;
+		try
+		{
+			Objects::EntityType type = Objects::DecodeType(typeName);
+			if (type.IsEmpty())
+				return Lua::nil;
 
-		return AddType(type);
+			return AddType(type);
+		}
+		catch (const Except::Program::ParameterFault&ex)
+		{
+			LogEvent(EventClass::Preset::scriptError,"ByName(): '"+typeName+"' is not a valid type name: "+ex.GetRawMessage());
+			return Lua::nil;
+		}
 	}
 
 
