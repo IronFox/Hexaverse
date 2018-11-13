@@ -30,6 +30,18 @@
 #include <expectedBehavior.h>
 #include <passwordMatch.h>
 
+#include "animation/worldDelta.h"
+#include "animation/mobileState.h"
+#include "animation/newMobileEntity.h"
+#include "animation/structureState.h"
+#include "animation/structureConstruction.h"
+#include "animation/destroyEntity.h"
+#include "animation/mobileEntityMotion.h"
+#include "animation/trajectory.h"
+#include "animation/explosion.h"
+#include "animation/turretRotation.h"
+#include "animation/resourceUpdate.h"
+
 
 namespace Network
 {
@@ -636,17 +648,19 @@ namespace Network
 			if (!delta.timestamp.rightNow)
 			{
 				foreach (Animation::primitives,p)
-					if (p->type == Animation::Primitive::TerrainChange )
+				{
+					if ((*p)->IsWorldDelta())
 					{
-						if (p->time.min == delta.timestamp.atTime)
+						auto d = To<Animation::WorldDelta>::Cast(*p);
+						if (d->time.min == delta.timestamp.atTime)
 						{
-							p->worldDelta->Append().swap(delta);
+							d->deltas.Append().swap(delta);
 							return;
 						}
-
 					}
+				}
 
-				Animation::primitives.Append().Init(delta);
+				Animation::Schedule<Animation::WorldDelta>(delta);
 				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime));
 			}
 			else
@@ -683,34 +697,34 @@ namespace Network
 				ASSERT1__(e, vs.entityState.id);
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
 				ASSERT1__(v,e->GetName());
-				Animation::ApplyState(v,vs,false,false);
+				Animation::MobileState::Apply(v,vs,false,false);
 				ASSERT_EQUAL1__(v->health,vs.entityState.health,v->id);
 			}
 			else
 			{
 				if (vs.entityState.timestamp.rightNow)
-					Animation::whenDone.Append().Init(vs);
+					Animation::ScheduleWhenDone<Animation::MobileState>(vs);
 				else
 				{
 					#ifdef _DEBUG
 						foreach (Animation::primitives,p)
 						{
-							if (p->type == Animation::Primitive::MobileState
+							if ((*p)->IsMobileState()
 								&&
-								p->targetEntityID == vs.entityState.id
+								(*p)->targetEntityID == vs.entityState.id
 								&&
-								p->time.min == vs.entityState.timestamp.atTime)
+								(*p)->time.min == vs.entityState.timestamp.atTime)
 							{
-								auto entity = Objects::GetEntity(p->targetEntityID);
+								auto entity = Objects::GetEntity((*p)->targetEntityID);
 								if (entity)
 									LogEvent(EventSignificance::ClientFatal, entity.get(), "Got multiple mobile entity updates on this entity at time " + ToString(vs.entityState.timestamp));
 								else
-									LogEvent(EventSignificance::ClientFatal,"Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+									LogEvent(EventSignificance::ClientFatal,"Got multiple mobile entity updates on entity "+ToString((*p)->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
 								FATAL__("Stop");
 							}
 						}
 					#endif
-					Animation::primitives.Append().Init(vs);
+					Animation::Schedule<Animation::MobileState>(vs);
 					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
 				}
 			}
@@ -750,7 +764,7 @@ namespace Network
 				bool isOwnedByMe = v->isOwnedByMe;
 
 				//v->id = vc.state.entityState.id;
-				Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
+				Animation::MobileState::Apply(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
 				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
 				#ifdef HAS_WINDOW
 					if (v->isOwnedByMe && !amLocated)
@@ -768,7 +782,7 @@ namespace Network
 				}
 				else
 				{
-					Animation::primitives.Append().Init(vc,v);
+					Animation::Schedule<Animation::NewMobileEntity>(vc,v);
 					LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
 
 				}
@@ -813,10 +827,10 @@ namespace Network
 				if (sc.state.entityState.timestamp.rightNow)
 					LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
 
-				Animation::UpdateState(s,sc.state);
+				Animation::StructureState::Apply(s,sc.state);
 				if (!sc.state.entityState.timestamp.rightNow)
 				{
-					Animation::primitives.Append().Init(sc,s);
+					Animation::Schedule<Animation::StructureConstruction>(sc,s);
 					LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
 				}
 				else
@@ -853,7 +867,7 @@ namespace Network
 				{
 					Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
 					if (s)
-						Animation::UpdateState(s,vs);
+						Animation::StructureState::Apply(s,vs);
 					else
 					{
 						LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+e->GetName()+", which is not a structure");
@@ -864,10 +878,10 @@ namespace Network
 			else
 			{
 				if (vs.entityState.timestamp.rightNow)
-					Animation::whenDone.Append().Init(vs);
+					Animation::ScheduleWhenDone<Animation::StructureState>(vs);
 				else
 				{
-					Animation::primitives.Append().Init(vs);
+					Animation::Schedule<Animation::StructureState>(vs);
 					LogEvent(EventSignificance::Debug, "Appended 'structure state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
 				}
 			}
@@ -893,7 +907,7 @@ namespace Network
 
 				if (explode)
 				{
-					Animation::ExplodeEntity(e,[e,type]()
+					Animation::DestroyEntity::Explode(e,[e,type]()
 					{
 						float t = 0;
 						if (Objects::GetEntity(e->id))
@@ -921,10 +935,10 @@ namespace Network
 			{
 				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type).ToString()+")");
 				if (de.timestamp.rightNow)
-					Animation::whenDone.Append().Init(de);
+					Animation::ScheduleWhenDone<Animation::DestroyEntity>(de);
 				else
 				{
-					Animation::primitives.Append().Init(de);
+					Animation::Schedule<Animation::DestroyEntity>(de);
 					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime));
 				}
 			}
@@ -1058,15 +1072,19 @@ namespace Network
 			{
 				bool found = false;
 				foreach (Animation::primitives,p)
-					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.Last().first == m.fromLocation)
+					if ((*p)->targetEntityID == m.id && (*p)->IsMobileEntityMotion())
 					{
-						p->Append(m);
-						found = true;
-						break;
+						auto s = To<Animation::MobileEntityMotion>::Cast(*p);
+						if (s->EndsAt(m.fromLocation))
+						{
+							s->Append(m);
+							found = true;
+							break;
+						}
 					}
 				if (!found)
 				{
-					Animation::primitives.Append().Init(m);
+					Animation::Schedule<Animation::MobileEntityMotion>(m);
 					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime));
 				}
 
@@ -1083,7 +1101,7 @@ namespace Network
 			}
 			else
 			{
-				Animation::primitives.Append().Init(a);
+				Animation::Schedule<Animation::Trajectory>(a);
 				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
 			}
 			
@@ -1099,7 +1117,7 @@ namespace Network
 			}
 			else
 			{
-				Animation::primitives.Append().Init(a);
+				Animation::Schedule<Animation::Trajectory>(a);
 				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
 			}
 			
@@ -1115,7 +1133,7 @@ namespace Network
 			}
 			else
 			{
-				Animation::primitives.Append().Init(ex);
+				Animation::Schedule<Animation::Explosion>(ex);
 				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime));
 			}
 			
@@ -1138,7 +1156,7 @@ namespace Network
 			}
 			else
 			{
-				Animation::primitives.Append().Init(rot);
+				Animation::Schedule<Animation::TurretRotation>(rot);
 				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime));
 			}
 		}
@@ -1156,7 +1174,7 @@ namespace Network
 			}
 			else
 			{
-				Animation::primitives.Append().Init(u);
+				Animation::Schedule<Animation::ResourceUpdate>(u);
 				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime));
 			}
 
