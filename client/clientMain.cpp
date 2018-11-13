@@ -1258,7 +1258,7 @@ bool loop()
 			display.SetRasterizer(true,false);
 			display.SetBlendMode(Engine::BlendMode::FlareBlend);
 				foreach (Animation::actives,a)
-					a->Render();
+					(*a)->Render();
 
 			display.SetDepthTest(true, true);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
