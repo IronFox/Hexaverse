@@ -108,17 +108,20 @@ namespace Animation
 		return UpdateResult::Continue;
 	}
 	
-	void	ScheduleWhenDone( Event*ev )
-	{
-		whenDone.Append(PEvent(ev));
-	}
-
-	void	Schedule( Event*ev )
-	{
-		primitives.Append(PEvent(ev));
-	}
-
 	Buffer0<PEvent>		primitives,actives,whenDone;
+
+
+	void	ScheduleEvent( const PEvent&ev )
+	{
+		primitives.Append(ev);
+		LogEvent(EventSignificance::Debug, "Appended '"+ev->Describe()+"' to animation sequence at t="+ToString(ev->time));
+	}
+
+	void	ScheduleEventWhenDone( const PEvent&ev )
+	{
+		whenDone.Append(ev);
+		LogEvent(EventSignificance::Debug, "Appended '"+ev->Describe()+"' to post-animation execution sequence");
+	}
 
 	
 	void Update()

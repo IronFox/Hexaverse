@@ -661,7 +661,6 @@ namespace Network
 				}
 
 				Animation::Schedule<Animation::WorldDelta>(delta);
-				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime));
 			}
 			else
 			{
@@ -702,11 +701,9 @@ namespace Network
 			}
 			else
 			{
-				if (vs.entityState.timestamp.rightNow)
-					Animation::ScheduleWhenDone<Animation::MobileState>(vs);
-				else
-				{
-					#ifdef _DEBUG
+				#ifdef _DEBUG
+					if (!vs.entityState.timestamp.rightNow)
+					{
 						foreach (Animation::primitives,p)
 						{
 							if ((*p)->IsMobileState()
@@ -723,10 +720,9 @@ namespace Network
 								FATAL__("Stop");
 							}
 						}
-					#endif
-					Animation::Schedule<Animation::MobileState>(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
-				}
+					}
+				#endif
+				Animation::SmartSchedule<Animation::MobileState>(vs);
 			}
 		}
 
@@ -781,11 +777,8 @@ namespace Network
 					#endif
 				}
 				else
-				{
 					Animation::Schedule<Animation::NewMobileEntity>(vc,v);
-					LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
 
-				}
 				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
 
 			}
@@ -831,7 +824,6 @@ namespace Network
 				if (!sc.state.entityState.timestamp.rightNow)
 				{
 					Animation::Schedule<Animation::StructureConstruction>(sc,s);
-					LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
 				}
 				else
 				{
@@ -876,15 +868,7 @@ namespace Network
 				}
 			}
 			else
-			{
-				if (vs.entityState.timestamp.rightNow)
-					Animation::ScheduleWhenDone<Animation::StructureState>(vs);
-				else
-				{
-					Animation::Schedule<Animation::StructureState>(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'structure state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
-				}
-			}
+				Animation::SmartSchedule<Animation::StructureState>(vs);
 
 		}
 
@@ -932,16 +916,7 @@ namespace Network
 				#endif
 			}
 			else
-			{
-				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type).ToString()+")");
-				if (de.timestamp.rightNow)
-					Animation::ScheduleWhenDone<Animation::DestroyEntity>(de);
-				else
-				{
-					Animation::Schedule<Animation::DestroyEntity>(de);
-					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime));
-				}
-			}
+				Animation::SmartSchedule<Animation::DestroyEntity>(de);
 		}
 
 		void ControlMessage(Protocol::ControlMessage&msg)
@@ -1083,10 +1058,7 @@ namespace Network
 						}
 					}
 				if (!found)
-				{
 					Animation::Schedule<Animation::MobileEntityMotion>(m);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime));
-				}
 
 			}
 		}
@@ -1100,11 +1072,7 @@ namespace Network
 				FATAL__("weird");
 			}
 			else
-			{
 				Animation::Schedule<Animation::Trajectory>(a);
-				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
-			}
-			
 		}
 
 		void	PreciseAttackTrajectory(Protocol::PreciseAttackTrajectory&a)
@@ -1116,11 +1084,7 @@ namespace Network
 				FATAL__("weird");
 			}
 			else
-			{
 				Animation::Schedule<Animation::Trajectory>(a);
-				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
-			}
-			
 		}
 
 		void	Explosion(Protocol::Explosion&ex)
@@ -1132,10 +1096,7 @@ namespace Network
 				FATAL__("weird");
 			}
 			else
-			{
 				Animation::Schedule<Animation::Explosion>(ex);
-				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime));
-			}
 			
 		}
 
@@ -1155,10 +1116,7 @@ namespace Network
 				v->turretAngleY = -(90.f - Vec::angle(rot.toWorld,Grid::low.cells[v->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
 			}
 			else
-			{
 				Animation::Schedule<Animation::TurretRotation>(rot);
-				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime));
-			}
 		}
 
 
@@ -1173,11 +1131,7 @@ namespace Network
 				#endif
 			}
 			else
-			{
 				Animation::Schedule<Animation::ResourceUpdate>(u);
-				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime));
-			}
-
 		}
 
 		void	GameProgress(Protocol::GameProgress&progress)
