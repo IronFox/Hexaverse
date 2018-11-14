@@ -5,7 +5,7 @@
 namespace Animation
 {
 
-	Explosion::Explosion(Protocol::Explosion&ex):Super(ex.timestamp,ExplosionTime,TUniqueID::Empty())
+	Explosion::Explosion(Protocol::Explosion&ex):Super(TUniqueID::Empty())
 	{
 		explosionCenter = ex.center;
 		explosionRadius = ex.radius;

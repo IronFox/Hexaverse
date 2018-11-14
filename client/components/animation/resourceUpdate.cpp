@@ -4,7 +4,7 @@
 
 namespace Animation
 {
-	ResourceUpdate::ResourceUpdate(Protocol::ResourceUpdate&u):Super(u.timestamp,0,TUniqueID::Empty())
+	ResourceUpdate::ResourceUpdate(Protocol::ResourceUpdate&u):Super(TUniqueID::Empty())
 	{
 		up.cells.adoptData(u.cells);
 		up.resourceName = u.resourceName;

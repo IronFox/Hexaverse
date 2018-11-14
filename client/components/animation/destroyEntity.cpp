@@ -18,11 +18,12 @@ namespace Animation
 	}
 
 
-	DestroyEntity::DestroyEntity(Protocol::DestroyEntity&de):Super(de.timestamp,0,de.id)
+	DestroyEntity::DestroyEntity(Protocol::DestroyEntity&de):Super(de.id)
 	{
 		explode = de.type == Objects::RemovalType::ControlledExplosion || de.type == Objects::RemovalType::UncontrolledExplosion;
 		removalType.Load(de.type);
-		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type).ToString()+") at t="+ToString(time));
+		eventTime = de.timestamp.atTime;
+//		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type).ToString()+") at t="+ToString(time));
 	}
 
 
@@ -46,10 +47,9 @@ namespace Animation
 		allocatedTarget = Objects::GetEntity(targetEntityID);
 		if (allocatedTarget)
 		{
-			ASSERT1__(allocatedTarget,targetEntityID);
 			if (explode)
 				Explode(allocatedTarget);
-			LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation (@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health)+") at time "+String(currentTime)+"/"+ToString(this->time));
+//			LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation (@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health)+") at time "+String(currentTime)+"/"+ToString(this->time));
 			//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			{
 				Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -74,7 +74,7 @@ namespace Animation
 					HUD::HexGrid::RefreshContacts();
 				HUD::WindowStack::SignalSituationChange();
 				if (removalType == Objects::RemovalType::UncontrolledExplosion)
-					HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->owner->IsAlliedWithMe(),allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName()+" ("+allocatedTarget->owner->GetName()+")");
+					HUD::HexGrid::EventLog::RegisterEntityDestruction(eventTime, allocatedTarget->owner->IsAlliedWithMe(),allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName()+" ("+allocatedTarget->owner->GetName()+")");
 
 			#endif
 		}
@@ -92,8 +92,7 @@ namespace Animation
 			e = "@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health);
 		else
 			e = ToString(targetEntityID);
-		return "DestroyEntity("+e+")";
-
+		return "DestroyEntity("+e+","+removalType.ToString()+")";
 	}
 
 

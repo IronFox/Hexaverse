@@ -8,11 +8,11 @@ namespace Animation
 	{
 		typedef Event			Super;
 	public:
-		/**/					NewMobileEntity(Protocol::NewMobileEntity&, const Objects::PMobileEntity&m);
+		/**/					NewMobileEntity(Protocol::NewMobileEntity&);
 		virtual void			Begin() override;
 		virtual D::String		Describe() const override;
 	private:
-		Objects::PMobileEntity	allocatedTarget;
+		Protocol::NewMobileEntity	construct;
 	};
 
 }

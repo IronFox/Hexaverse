@@ -92,46 +92,59 @@ namespace Animation
 	#endif
 
 
-	extern Buffer0<PEvent>		primitives,actives,whenDone;
 
+	typedef M::TFloatRange<>	TTime;
 
-	void		ScheduleEvent(const PEvent&);
+	void		ScheduleEvent(const TTime&, const PEvent&);
 	void		ScheduleEventWhenDone(const PEvent&);
+	PEvent		FindFirstScheduledEventAtTime(const Protocol::Timestamp&st,const std::function<bool(const PEvent&)>&predicate);
+	bool		AlterScheduledEvent(const std::function<bool(const PEvent&)>&predicate, const std::function<void(const PEvent&ev, TTime&t)>&updater);
+	bool		AllDone();
+	void		Flush();
+	#ifdef HAS_WINDOW
+		void	RenderActiveEvents();
+	#endif
 
-	
+
+
 	template <typename T, typename...P>
-	void		Schedule(P&...param)
+	void		SmartSchedule( Protocol::Timestamp st, P&...param)
 	{
-		ScheduleEvent(PEvent(new T(param...)));
-	}
-
-	template <typename T, typename...P>
-	void		ScheduleWhenDone(P&...param)
-	{
-		ScheduleEventWhenDone(PEvent(new T(param...)));
-	}
-
-
-	/**
-	Selectively schedules the specified animation event either
-	at its given time, or for post-animation execution (if set to execute now).
-	Do not call if immediate execution is possible.
-	*/
-	template <typename T, typename...P>
-	void		SmartSchedule(P&...param)
-	{
+		if (st.rightNow && AllDone())
+		{
+			T temp{param...};
+			LogEvent(EventSignificance::Debug, "Animation: Executing '"+temp.Describe()+"'...");
+			temp.Begin();
+			temp.End();
+			return;
+		}
 		auto ev = PEvent(new T(param...));
-		if (ev->executeNow)
+		if (st.rightNow)
 			ScheduleEventWhenDone(ev);
 		else
-			ScheduleEvent(ev);
+			ScheduleEvent(M::FloatRange(st.atTime,st.atTime), ev);
 	}
 
 
-	inline bool AllDone()
+	template <typename T, typename...P>
+	void		SmartSchedule( Protocol::TimeWindow tw, P&...param)
 	{
-		return (primitives.IsEmpty() && actives.IsEmpty());
+		if (tw.begin.rightNow && AllDone())
+		{
+			T temp{param...};
+			LogEvent(EventSignificance::Debug, "Animation: Executing '"+temp.Describe()+"'...");
+			temp.Begin();
+			temp.End();
+			return;
+		}
+		auto ev = PEvent(new T(param...));
+		if (tw.begin.rightNow)
+			ScheduleEventWhenDone(ev);
+		else
+			ScheduleEvent(M::FloatRange(tw.begin.atTime,tw.begin.atTime+tw.duration), ev);
 	}
+
+
 
 }
 

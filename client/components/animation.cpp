@@ -91,6 +91,12 @@ namespace Animation
 	#endif
 
 
+	struct TTimedEvent
+	{
+		TTime	time;
+		PEvent	event;
+	};
+
 	
 	enum class UpdateResult
 	{
@@ -98,30 +104,76 @@ namespace Animation
 		Done
 	};
 
-	static UpdateResult			UpdateEvent( const PEvent&ev, float t )
+	static UpdateResult			UpdateEvent( const TTimedEvent&ev, float t )
 	{
 		Event::currentTime = t;
-		float x = ev->time.Relativate(t);
+		float x = ev.time.Relativate(t);
 		if (x >1.f)
 			return UpdateResult::Done;
-		ev->Update(x);
+		ev.event->Update(x);
 		return UpdateResult::Continue;
 	}
 	
-	Buffer0<PEvent>		primitives,actives,whenDone;
+	Buffer0<PEvent>				whenDone;
+	Buffer0<TTimedEvent>		primitives,actives;
 
-
-	void	ScheduleEvent( const PEvent&ev )
+	bool		AlterScheduledEvent(const std::function<bool(const PEvent&)>&predicate, const std::function<void(const PEvent&ev, TTime&t)>&updater)
 	{
-		primitives.Append(ev);
-		LogEvent(EventSignificance::Debug, "Appended '"+ev->Describe()+"' to animation sequence at t="+ToString(ev->time));
+		foreach (primitives,prim)
+			if (predicate(prim->event))
+			{
+				updater(prim->event,prim->time);
+				return true;
+			}
+		return false;
+	}
+
+
+	PEvent		FindFirstScheduledEventAtTime(const Protocol::Timestamp&st,const std::function<bool(const PEvent&)>&predicate)
+	{
+		if (st.rightNow)
+			return nullptr;
+		foreach (primitives,prim)
+			if (prim->time.min == st.atTime && predicate(prim->event))
+				return prim->event;
+		return nullptr;
+	}
+
+
+	bool AllDone()
+	{
+		return (primitives.IsEmpty() && actives.IsEmpty());
+	}
+
+	void	ScheduleEvent( const TTime&time, const PEvent&ev )
+	{
+		primitives.Append({time,ev});
+		LogEvent(EventSignificance::Debug, "Animation: Appended '"+ev->Describe()+"' to animation sequence at t="+ToString(time));
 	}
 
 	void	ScheduleEventWhenDone( const PEvent&ev )
 	{
 		whenDone.Append(ev);
-		LogEvent(EventSignificance::Debug, "Appended '"+ev->Describe()+"' to post-animation execution sequence");
+		LogEvent(EventSignificance::Debug, "Animation: Appended '"+ev->Describe()+"' to post-animation execution sequence");
 	}
+
+
+	void	Flush()
+	{
+		primitives.Clear();
+		actives.Clear();
+		whenDone.Clear();
+		atTime = 0;
+	}
+
+	#ifdef HAS_WINDOW
+		void RenderActiveEvents()
+		{
+			foreach (Animation::actives,a)
+				a->event->Render();
+		}
+
+	#endif
 
 	
 	void Update()
@@ -155,9 +207,11 @@ namespace Animation
 
 				for (index_t i = 0; i < Animation::actives.Count(); i++)	//complete before adding new ones
 				{
-					if (UpdateEvent(Animation::actives[i],Animation::atTime) == UpdateResult::Done)
+					const auto&p = Animation::actives[i];
+					if (UpdateEvent(p,Animation::atTime) == UpdateResult::Done)
 					{
-						Animation::actives[i]->End();
+						LogEvent(EventSignificance::Debug, "Ending '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
+						p.event->End();
 						Animation::actives.Erase(i);
 						i--;
 					}
@@ -168,10 +222,10 @@ namespace Animation
 				for (index_t i = 0; i < Animation::primitives.Count(); i++)
 				{
 					const auto&p = Animation::primitives[i];
-					if (Animation::atTime >= p->time.min)
+					if (Animation::atTime >= p.time.min)
 					{
 						items.Append().elementIndex = i;
-						items.Last().atTime = p->time.min;
+						items.Last().atTime = p.time.min;
 					}
 				}
 
@@ -183,10 +237,12 @@ namespace Animation
 					Animation::actives << Animation::primitives[it->elementIndex];
 					{
 						const auto&p = Animation::actives.Last();
-						p->Begin();
+						LogEvent(EventSignificance::Debug, "Starting '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
+						p.event->Begin();
 						if (UpdateEvent(p,Animation::atTime) == UpdateResult::Done)
 						{
-							p->End();
+							LogEvent(EventSignificance::Debug, "Ending '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
+							p.event->End();
 							Animation::actives.EraseLast();
 						}
 					}
@@ -220,11 +276,7 @@ namespace Animation
 					LogEvent(EventSignificance::Debug,nullptr,"Executing "+String(whenDone.Count())+" post-animation event(s)");
 					for (auto&entry : whenDone)
 					{
-						entry->time.min = 0.f;
-						entry->time.max = 1.f;
-
 						entry->Begin();
-						//entry->Update(0.5f);
 						entry->End();
 					}
 

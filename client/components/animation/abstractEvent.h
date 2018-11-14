@@ -13,14 +13,12 @@ namespace Animation
 	/*abstract*/ class Event
 	{
 	public:
-		M::TFloatRange<>		time;
 		const TUniqueID			targetEntityID;
-		const bool				executeNow;
 
 		static float			currentTime;
 
 
-		/**/					Event(const Protocol::Timestamp&, float seconds, const TUniqueID&targetID);
+		/**/					Event(const TUniqueID&targetID);
 		virtual					~Event()	{};
 		virtual void			Begin()=0;
 		virtual void			End() {};

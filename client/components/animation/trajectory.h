@@ -53,6 +53,7 @@ namespace Animation
 		bool						isAutoTarget;
 		M::TVec3<>					explosionCenter;
 		float						explosionRadius;
+		float						eventTime;
 		#ifdef HAS_WINDOW
 			TTrajectoryAnimation	trajectoryAnimation;
 		#endif

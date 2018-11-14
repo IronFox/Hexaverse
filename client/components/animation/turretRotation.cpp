@@ -4,7 +4,7 @@
 namespace Animation
 {
 
-	TurretRotation::TurretRotation(Protocol::EntityTurretRotation&rot):Super(rot.timestamp,rot.rotationTime,rot.id)
+	TurretRotation::TurretRotation(Protocol::EntityTurretRotation&rot):Super(rot.id)
 	{
 		rotateToWorld = rot.toWorld;
 	}
