@@ -15,6 +15,8 @@ namespace Animation
 	public:
 		M::TFloatRange<>		time;
 		const TUniqueID			targetEntityID;
+		const bool				executeNow;
+
 		static float			currentTime;
 
 

@@ -95,17 +95,36 @@ namespace Animation
 	extern Buffer0<PEvent>		primitives,actives,whenDone;
 
 
+	void		ScheduleEvent(const PEvent&);
+	void		ScheduleEventWhenDone(const PEvent&);
+
 	
 	template <typename T, typename...P>
 	void		Schedule(P&...param)
 	{
-		primitives.Append(PEvent(new T(param...)));
+		ScheduleEvent(PEvent(new T(param...)));
 	}
 
 	template <typename T, typename...P>
 	void		ScheduleWhenDone(P&...param)
 	{
-		whenDone.Append(PEvent(new T(param...)));
+		ScheduleEventWhenDone(PEvent(new T(param...)));
+	}
+
+
+	/**
+	Selectively schedules the specified animation event either
+	at its given time, or for post-animation execution (if set to execute now).
+	Do not call if immediate execution is possible.
+	*/
+	template <typename T, typename...P>
+	void		SmartSchedule(P&...param)
+	{
+		auto ev = PEvent(new T(param...));
+		if (ev->executeNow)
+			ScheduleEventWhenDone(ev);
+		else
+			ScheduleEvent(ev);
 	}
 
 
