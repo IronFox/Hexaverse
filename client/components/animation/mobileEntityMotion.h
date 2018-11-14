@@ -1,6 +1,7 @@
 #pragma once
 #include "abstractEvent.h"
 #include <protocol.h>
+#include "../animation.h"
 
 namespace Animation
 {
@@ -9,7 +10,7 @@ namespace Animation
 		typedef Event			Super;
 	public:
 		/**/					MobileEntityMotion(Protocol::MobileEntityMotion&);
-		void					Append(Protocol::MobileEntityMotion&);
+		void					Append(Protocol::MobileEntityMotion&, Animation::TTime&);
 		virtual void			Begin() override;
 		virtual void			Update(float x) override;
 		virtual void			End() override;

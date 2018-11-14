@@ -141,7 +141,7 @@ namespace Animation
 	}
 
 
-	StructureState::StructureState(Protocol::StructureState&s):Super(s.entityState.timestamp,0,s.entityState.id)
+	StructureState::StructureState(Protocol::StructureState&s):Super(s.entityState.id)
 	{
 		state.swap(s);
 	}

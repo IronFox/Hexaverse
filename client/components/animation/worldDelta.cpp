@@ -1,11 +1,13 @@
 #include "worldDelta.h"
 #include "../visual/scene/world.h"
+#include "../network.h"
 
 namespace Animation
 {
-	WorldDelta::WorldDelta(Protocol::WorldDelta&d):Super(d.timestamp,0,TUniqueID::Empty())
+	WorldDelta::WorldDelta(Protocol::WorldDelta&d):Super(TUniqueID::Empty())
 	{
 		deltas.Append().swap(d);
+		isComplete = (d.familyAndLastFlag & 0x80) != 0;
 	}
 
 	/*virtual override*/ void WorldDelta::Begin()
@@ -17,7 +19,7 @@ namespace Animation
 			World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,block->data0,false,true);
 		}
 		#ifdef HAS_WINDOW
-			World::allowRecompilation = true;
+			World::allowRecompilation = isComplete && Network::gameHasBegun;
 		#endif
 	}
 

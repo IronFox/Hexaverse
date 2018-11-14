@@ -16,6 +16,7 @@ namespace Animation
 
 	//private:
 		Buffer0<Protocol::WorldDelta,Swap>	deltas;
+		bool					isComplete=false;
 	};
 
 }

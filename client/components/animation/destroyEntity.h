@@ -19,6 +19,7 @@ namespace Animation
 		bool					explode;
 		Objects::RemovalType	removalType;
 		Objects::PWorldEntity	allocatedTarget;
+		float					eventTime;
 	};
 
 }

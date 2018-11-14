@@ -55,7 +55,7 @@ namespace Animation
 	}
 
 
-	Trajectory::Trajectory(Protocol::VagueAttackTrajectory&a):Super(a.timestamp,a.flightTime,TUniqueID::Empty())
+	Trajectory::Trajectory(Protocol::VagueAttackTrajectory&a):Super(TUniqueID::Empty())
 	{
 		attackerTurret = Objects::Component::allTurretComponents.Find(a.turretType);
 		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType);
@@ -65,15 +65,17 @@ namespace Animation
 		explosionCenter = a.traceTo;
 		explosionRadius = a.explosionRadius;
 		isAutoTarget = false;
+		eventTime = a.time.begin.atTime;
 	}
 
-	Trajectory::Trajectory(Protocol::PreciseAttackTrajectory&a):Super(a.timestamp,a.flightTime,a.attacker)
+	Trajectory::Trajectory(Protocol::PreciseAttackTrajectory&a):Super(a.attacker)
 	{
 		attackerTurret = nullptr;	//later
 		attackAngle = a.attackAngle;
 		explosionCenter = a.traceTo;
 
 		isAutoTarget = a.isAutoAttack;
+		eventTime = a.time.begin.atTime;
 	}
 
 	/*virtual override*/ D::String		Trajectory::Describe() const
@@ -96,11 +98,11 @@ namespace Animation
 		if (!attackerTurret)
 		{
 			Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
-			ASSERT2__(attacker,targetEntityID,this->time);
+			ASSERT1__(attacker,targetEntityID);
 			attackerCell = attacker->location;
 			float zOffset;
 			Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
-			ASSERT2__(base,attacker->GetName(),this->time);
+			ASSERT1__(base,attacker->GetName());
 			attackerTurret = base->turret;
 			ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 			attackRange = base->GetFlatAttackRange();
@@ -148,7 +150,7 @@ namespace Animation
 				auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(trajectoryAnimation.activeTrajectory,Vec::dot(attackerPosition) > M::Sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
 				if (doRegister)
 				{
-					HUD::HexGrid::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
+					HUD::HexGrid::EventLog::RegisterAttack(eventTime, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
 				}
 
 				switch (attackerTurret->trajectoryType)

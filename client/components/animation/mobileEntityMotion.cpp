@@ -150,20 +150,20 @@ namespace Animation
 	}
 
 
-	/**/					MobileEntityMotion::MobileEntityMotion(Protocol::MobileEntityMotion&m):Super(m.timestamp,m.timeNeeded,m.id)
+	/**/					MobileEntityMotion::MobileEntityMotion(Protocol::MobileEntityMotion&m):Super(m.id)
 	{
-		path.rawPath.Append(std::make_pair(m.fromLocation,m.timestamp.atTime));
-		path.rawPath.Append(std::make_pair(m.toLocation,m.timestamp.atTime + m.timeNeeded));
+		path.rawPath.Append(std::make_pair(m.fromLocation,m.time.begin.atTime));
+		path.rawPath.Append(std::make_pair(m.toLocation,m.time.begin.atTime + m.time.duration));
 		path.changed = true;
 	}
 
-	void					MobileEntityMotion::Append(Protocol::MobileEntityMotion&m)
+	void					MobileEntityMotion::Append(Protocol::MobileEntityMotion&m, Animation::TTime&time)
 	{
 		EXPECT(path.rawPath.Last().first == m.fromLocation);
 		EXPECT2(targetEntityID == m.id,targetEntityID,m.id);
-		path.rawPath.Append(std::make_pair(m.toLocation,m.timestamp.atTime + m.timeNeeded));
+		path.rawPath.Append(std::make_pair(m.toLocation,m.time.begin.atTime + m.time.duration));
 		path.changed = true;
-		time.Include(M::FloatRange<float>(m.timestamp.atTime,m.timestamp.atTime + m.timeNeeded));
+		time.Include(M::FloatRange<float>(m.time.begin.atTime,m.time.begin.atTime + m.time.duration));
 
 	}
 
@@ -173,7 +173,6 @@ namespace Animation
 		EXPECT1(e,targetEntityID);
 		EXPECT1(e->IsMobile(),e->GetNameAndOwner());
 		allocatedTarget = To<Objects::MobileEntity>::Cast(e);
-		LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(currentTime)+"/"+ToString(this->time));
 		ASSERT1__(allocatedTarget,targetEntityID);
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 		ASSERT1__(v,allocatedTarget->GetName());
@@ -192,14 +191,11 @@ namespace Animation
 	/*virtual override*/ void MobileEntityMotion::Update( float x )
 	{
 		path.ApplyTo(allocatedTarget,currentTime);
-		DBG_ASSERT_LESS_OR_EQUAL__(currentTime,time.max);
 	}
 
 
 	/*virtual override*/ void MobileEntityMotion::End()
 	{
-		LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(currentTime)+"/"+ToString(this->time));
-
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 		EXPECT(v);
 		path.ApplyTo(v,path.rawPath.Last().second);

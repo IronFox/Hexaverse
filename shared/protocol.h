@@ -582,7 +582,13 @@ namespace Protocol
 		, NET(float), atTime
 	)
 
+	NETSTRUCT2(TimeWindow
+		, Timestamp, begin
+		, float, duration
+	)
+
 	String ToString(const Timestamp&t);
+	String ToString(const TimeWindow&t);
 
 	typedef Package::NetString<32>	ClientName,Hello;
 
@@ -1042,17 +1048,15 @@ namespace Protocol
 		, NET(float), movementActionLeft
 	)
 
-	NETSTRUCT5(MobileEntityMotion
-		, Timestamp, timestamp
+	NETSTRUCT4(MobileEntityMotion
+		, TimeWindow, time
 		, NET(TUniqueID), id
 		, Grid::LCellIdI, fromLocation
 		, Grid::LCellIdI, toLocation
-		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT8(VagueAttackTrajectory
-		, Timestamp, timestamp
-		, NET(float), flightTime
+	NETSTRUCT7(VagueAttackTrajectory
+		, TimeWindow, time
 		, NET(M::TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
@@ -1061,18 +1065,16 @@ namespace Protocol
 		, NET(M::TVec3<>), traceTo
 	)
 
-	NETSTRUCT6(PreciseAttackTrajectory
-		, Timestamp, timestamp
-		, NET(float), flightTime
+	NETSTRUCT5(PreciseAttackTrajectory
+		, TimeWindow, time
 		, NET(TUniqueID), attacker
 		, NET(float), attackAngle
 		, NET(M::TVec3<>), traceTo
 		, NET(bool), isAutoAttack
 	)
 
-	NETSTRUCT4(EntityTurretRotation
-		, Timestamp, timestamp
-		, NET(float), rotationTime
+	NETSTRUCT3(EntityTurretRotation
+		, TimeWindow, time
 		, NET(TUniqueID), id
 		, NET(float3), toWorld
 	)

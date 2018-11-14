@@ -8,11 +8,11 @@ namespace Animation
 	{
 		typedef Event			Super;
 	public:
-		/**/					StructureConstruction(Protocol::StructureConstruction&, const Objects::PStructure&s);
+		/**/					StructureConstruction(Protocol::StructureConstruction&);
 		virtual void			Begin() override;
 		virtual D::String		Describe() const override;
 	private:
-		Objects::PStructure		allocatedTarget;
+		Protocol::StructureConstruction construct;
 	};
 
 }

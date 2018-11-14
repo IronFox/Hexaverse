@@ -759,9 +759,10 @@ namespace Animation
 	}
 
 
-	/**/					MobileState::MobileState(Protocol::MobileState&s):Super(s.entityState.timestamp,0,s.entityState.id)
+	/**/					MobileState::MobileState(Protocol::MobileState&s):Super(s.entityState.id)
 	{
-		state.swap(s);
+		//state.swap(s);
+		state = std::move(s);
 	}
 
 
