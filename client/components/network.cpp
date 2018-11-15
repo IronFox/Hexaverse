@@ -41,6 +41,7 @@
 #include "animation/explosion.h"
 #include "animation/turretRotation.h"
 #include "animation/resourceUpdate.h"
+#include "animation/operationLacksResources.h"
 
 
 namespace Network
@@ -961,7 +962,11 @@ namespace Network
 
 		void	OperationLacksResources( Protocol::OperationLacksResources&res )
 		{
-		
+			ASSERT__(!eventsLocked);
+			#ifdef HAS_WINDOW
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
+				Animation::SmartSchedule<Animation::OperationLacksResources>(res.timestamp,res);		
+			#endif
 		}
 
 		enum class ScriptChangeFlags
