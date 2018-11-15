@@ -82,7 +82,7 @@
 #include "components/playerControlBegin.h"
 #include "components/visual/scene/vehicleAccessibilityMesh.h"
 #include "components/scriptedAI.h"
-#include "components/visual/scene/spriteRenderer.h"
+#include "components/visual/scene/objectIcons.h"
 
 #include "rc/Resource.h"
 
@@ -1269,7 +1269,7 @@ bool loop()
 
 			VehicleAccessibilityMesh::Render(frustum);
 			
-			Objects::Renderer::RenderStatusIcons();
+			Objects::Icons::Render();
 
 			Objects::Renderer::RenderTranslucent(false);
 
@@ -2226,7 +2226,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Lighting",Lighting::Create);
 			Loading::Stage("Mobile Accessibility Mesh",VehicleAccessibilityMesh::Create);
 			Loading::Stage("Visual Terrain",VisualTerrain::Create);		//egg-chicken
-			Loading::Stage("Sprite Rendering", Objects::SpriteRenderer::StaticCreate);	//chicken-egg
+			Loading::Stage("Icon Rendering", Objects::Icons::Create);
 			Loading::Stage("Object Rendering", Objects::Renderer::Create);	//chicken-egg
 
 			Loading::Stage("Configuration Mode",
