@@ -46,9 +46,12 @@ namespace Animation
 
 		//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
 		ASSERT__(!v->isInsertedIntoGrid);
-		Objects::PlaceMobileEntity(v,false);
-		ASSERT__(!v->isInsertedIntoGrid);
-		insertIntoGridLater.Set(v->id);
+		if (v->storedIn.expired())
+		{
+			Objects::PlaceMobileEntity(v,false);
+			ASSERT__(!v->isInsertedIntoGrid);
+			insertIntoGridLater.Set(v->id);
+		}
 		#ifdef HAS_WINDOW
 			if (!v->isOwnedByMe)
 				HUD::HexGrid::RefreshContacts();
