@@ -233,7 +233,12 @@ namespace Objects
 		int							health;
 		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extent of damage
 
-		bool						unstable;	//!< Indicates that something is wrong with the consumption vector of the local network. Or the vehicle state is unstable. Again, DO NOT CHANGE.
+		/**
+		Indicates that something is wrong with the consumption vector of the local network. 
+		Or the vehicle requires relocation to complete a job. 
+		Read, but DO NOT CHANGE.
+		*/
+		bool						unstable;
 
 		#ifndef CLIENT
 			enum changeType_t
