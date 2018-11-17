@@ -20,11 +20,8 @@ namespace Animation
 	{
 		auto lockedTarget = Objects::GetEntity(targetEntityID);
 		EXPECT1(lockedTarget,targetEntityID);
-		foreach (op.resourceIndices,ridx)
-		{
-
-			//Objects::Icons::AddTemporaryFloater(
-		}
+		
+		Objects::Icons::AddAnimatedFloater(lockedTarget,op.resourceIndices);
 	}
 
 
