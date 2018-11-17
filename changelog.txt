@@ -1,4 +1,5 @@
 v0.9.7
+	+ Implemented experimental floating icons if lack of resources is detected.
 	+ AI: Added Unit(mobile).GetReachFrom().
 	> Added micro structure to GUI components to reduce banding artifacts.
 	> Improved behavior of visual log.
