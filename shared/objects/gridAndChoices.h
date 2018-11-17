@@ -117,13 +117,11 @@ namespace Objects
 				for (int z = 0; z < h; z++)
 				{
 					index_t at = CellToGridIndex(location+z);
-					if (entries[at])
-					{
-						FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+",z="+String(z)+") at "+ToString(location)+": Cell occupied by "+entries[at]->GetName()+"(@"+ToString(entries[at]->location)+")");
-					}
-					ASSERT3__(!entries[at],entries[at]->GetName(),location,object->GetName());
+					auto&existing = entries[at];
+					if (existing)
+						FATAL__("Trying to register "+object->GetName()+"(@"+ToString(object->location)+",z="+String(z)+") at "+ToString(location)+": Cell occupied by "+existing->GetName()+"(@"+ToString(existing->location)+")");
 					LogEvent(EventSignificance::Debug,object.get(),"Inserted into grid location "+String(at)+"/"+ToString(location));
-					entries[at] = object;
+					existing = object;
 				}
 				object->isInsertedIntoGrid = true;
 			}
