@@ -305,6 +305,8 @@ namespace Animation
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(Objects::GetEntity(key));
 					if (v)
 					{
+						LogEvent(EventSignificance::Debug,v.get(),"Delayed inserting into grid...");
+						ASSERT__(v->storedIn.expired());
 						if (v->owner->SharesSensorsWithMe())
 						{
 							float t = 0.f;
