@@ -107,7 +107,7 @@ namespace Loading
 
 			}
 
-				TTask t;
+			TTask t;
 
 			bool	Loop()
 			{
@@ -118,11 +118,13 @@ namespace Loading
 					TerminateProcess(GetCurrentProcess(),0);	//self-terminate
 					FATAL__("User abort during loading stage");	//should not get here
 				}
+				if (t.load)
+					t.load();
 
 				if (tasks.Pop(t))
 				{
 					LogEvent(EventClass::Preset::common,"Entering loading stage: "+t.name);
-					t.load();
+					//t.load();
 				}
 				else
 					return false;
