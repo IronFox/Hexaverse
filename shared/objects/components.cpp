@@ -86,6 +86,7 @@ namespace Objects
 				ECASE(AddTerrain)
 				ECASE(RemoveTerrain)
 			}
+			DBG_FATAL__("Trying to convert unsupported operation index to string "+String(op));
 			return "undefined";
 		}
 
