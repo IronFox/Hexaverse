@@ -75,6 +75,7 @@ namespace Objects
 		auto&self = ToEntity();
 		ASSERT1__(v,self.GetName());
 		v->SyncTime(self,atTime);
+		DBG_ASSERT2__(v->myTasks.IsEmpty(),self.GetName(), v->GetName());
 
 		#ifndef CLIENT
 		{
@@ -150,7 +151,7 @@ namespace Objects
 		ASSERT2__(sharedSelf.get() == this,sharedSelf->ToEntity().GetName(),ToEntity().GetName());
 		if (!e || !CanStoreType(*e) || stored.Count() >= GetMaxStorage())
 			return false;
-
+		DBG_ASSERT2__(e->myTasks.IsEmpty(),ToEntity().GetName(), e->GetName());
 		e->SyncTime(ToEntity(),atTime);
 
 		if (e->isInserted)
@@ -195,6 +196,7 @@ namespace Objects
 		OnStorageChanged();
 
 		e->SyncTime(ToEntity(),atTime);
+		DBG_ASSERT2__(e->myTasks.IsEmpty(),ToEntity().GetName(), e->GetName());
 
 		return true;
 	}

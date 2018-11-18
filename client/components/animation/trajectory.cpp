@@ -84,7 +84,7 @@ namespace Animation
 	}
 
 
-	/*virtual override*/ void Trajectory::Begin()
+	/*virtual override*/ void Trajectory::Begin( bool instant )
 	{
 		//	allocatedTarget = Objects::GetEntity(targetEntityID);
 		//if (allocatedTarget)

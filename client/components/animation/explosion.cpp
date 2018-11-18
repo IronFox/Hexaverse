@@ -12,7 +12,7 @@ namespace Animation
 		empExplosion = ex.isEMP;
 	}
 
-	/*virtual override*/ void Explosion::Begin()
+	/*virtual override*/ void Explosion::Begin( bool instant )
 	{
 		#ifdef HAS_WINDOW
 			Explosions::InitExplosion(explosionCenter,empExplosion,explosionRadius*4.f,Objects::ExplosionTime(explosionRadius));

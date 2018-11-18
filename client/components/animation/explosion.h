@@ -14,7 +14,7 @@ namespace Animation
 
 		/**/					Explosion(Protocol::Explosion&);
 
-		virtual void			Begin() override;
+		virtual void			Begin( bool instant ) override;
 		virtual void			End() override;
 		virtual D::String		Describe() const override;
 	private:

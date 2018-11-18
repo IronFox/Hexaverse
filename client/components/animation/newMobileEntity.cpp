@@ -14,7 +14,7 @@ namespace Animation
 		EXPECT1(construct.state.entityState.health > 0,construct.state.entityState.id);
 	}
 
-	/*virtual override*/ void NewMobileEntity::Begin()
+	/*virtual override*/ void NewMobileEntity::Begin( bool instant )
 	{
 		{
 			Objects::PWorldEntity existing = Objects::GetEntity(construct.state.entityState.id);
@@ -31,9 +31,9 @@ namespace Animation
 		EXPECT(v);
 
 //		LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity (@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health)+") during animation at time "+String(currentTime)+"/"+ToString(this->time));
-
 		
-		MobileState::Apply(v,construct.state,true, !construct.state.entityState.timestamp.rightNow);
+		
+		MobileState::Apply(v,construct.state,true, !instant);
 		EXPECT1(v->health > 0,v->id);
 		ASSERT_EQUAL1__(v->health,construct.state.entityState.health,v->id);
 		#ifdef HAS_WINDOW
@@ -48,9 +48,10 @@ namespace Animation
 		ASSERT__(!v->isInsertedIntoGrid);
 		if (v->storedIn.expired())
 		{
-			Objects::PlaceMobileEntity(v,false);
-			ASSERT__(!v->isInsertedIntoGrid);
-			insertIntoGridLater.Set(v->id);
+			Objects::PlaceMobileEntity(v,instant);
+			ASSERT_EQUAL__(instant,v->isInsertedIntoGrid);
+			if (!instant)
+				insertIntoGridLater.Set(v->id);
 		}
 		#ifdef HAS_WINDOW
 			if (!v->isOwnedByMe)

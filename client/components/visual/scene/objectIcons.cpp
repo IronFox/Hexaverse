@@ -158,7 +158,7 @@ namespace Objects
 		/*static*/ float TAnimatedFloater::LocationFunction(float seconds)
 		{
 			float x = seconds / AnimatedTTL;
-			return x  * 0.3f;
+			return x  * 1.f;
 			//return 0.f;//x * 2.f;
 		}
 

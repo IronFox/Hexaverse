@@ -42,7 +42,7 @@ namespace Animation
 		#endif
 	}
 
-	/*virtual override*/ void DestroyEntity::Begin()
+	/*virtual override*/ void DestroyEntity::Begin( bool instant )
 	{
 		allocatedTarget = Objects::GetEntity(targetEntityID);
 		if (allocatedTarget)

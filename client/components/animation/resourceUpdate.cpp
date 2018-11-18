@@ -10,7 +10,7 @@ namespace Animation
 		up.resourceName = u.resourceName;
 	}
 
-	/*virtual override*/ void ResourceUpdate::Begin()
+	/*virtual override*/ void ResourceUpdate::Begin( bool instant )
 	{
 		Grid::UpdateResourceMap(up.resourceName,up.cells,Grid::ResourceDiscovery::client);
 	}

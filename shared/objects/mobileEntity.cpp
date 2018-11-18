@@ -575,6 +575,7 @@ namespace Objects
 		/*virtual override*/ bool		MobileEntity::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
 		{
 			ASSERT__(!TasksAreLocked());
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			if (!CanAttack())
 				return false;
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
@@ -1063,6 +1064,7 @@ namespace Objects
 		{
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 			ASSERT__(!TasksAreLocked());
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
 			{
 				if (myTasks.Count() >= MaxTasks)
@@ -1137,7 +1139,8 @@ namespace Objects
 				}
 			}*/
 
-			ASSERT__(!TasksAreLocked());
+			ASSERT1__(!TasksAreLocked(),GetName());
+			DBG_ASSERT1__(!TasksAreLocked(),storedIn.expired());
 			BuildChecker checker(this);
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
@@ -1260,6 +1263,8 @@ namespace Objects
 
 		bool			MobileEntity::PlotCourse( MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/ )
 		{
+			ASSERT__(!TasksAreLocked());
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			const World::Data&world = owner->knownWorld;
 			for (index_t i = 0; i < destination.GetLength(); i++)
 			{

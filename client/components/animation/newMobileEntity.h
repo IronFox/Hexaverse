@@ -9,7 +9,7 @@ namespace Animation
 		typedef Event			Super;
 	public:
 		/**/					NewMobileEntity(Protocol::NewMobileEntity&);
-		virtual void			Begin() override;
+		virtual void			Begin(bool instant) override;
 		virtual D::String		Describe() const override;
 	private:
 		Protocol::NewMobileEntity	construct;
