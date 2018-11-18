@@ -1,4 +1,3 @@
-
 Rendered hex icons become jaggy when using >100% GUI scale
 
 
@@ -201,6 +200,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+done: Change TerrainAdd and TerrainRemove -> AddTerrain and RemoveTerrain so 'canTerrainAdd' doesn't sound quite so bad anymore. Find some solution for 'Nuclear'. Make sure to adapt research script
 mitigated: AI script does not request new round upon completion...?
 fixed: Visual log can eat FPS when exceeding several thousand visible lines at once
 done: Icon for idling structures and vehicles
