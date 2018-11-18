@@ -1,4 +1,4 @@
-v0.9.7
+v0.9.7	[Nov 18 2018]
 	+ Implemented experimental floating icons if lack of resources is detected.
 	+ AI: Added Unit(mobile).GetReachFrom().
 	> Added micro structure to GUI components to reduce banding artifacts.
