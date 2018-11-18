@@ -272,7 +272,7 @@ TurretConfig =
 	},
 	Bomb =
 	{
-		Op_Nuclear = 50,
+		Op_SelfDetonate = 50,
 		Cost = 40,
 		Weight = 5,
 		HealthMultiplier = 1,
@@ -314,8 +314,8 @@ TurretConfig =
 		HealthMultiplier = 1,
 		ScanningRange = 4,
 		Op_Construct = 10,
-		Op_TerrainRemove = 10,
-		Op_TerrainAdd = 10,
+		Op_RemoveTerrain = 10,
+		Op_AddTerrain = 10,
 		IsUnlocked = true,
 	},
 	Mechanic =

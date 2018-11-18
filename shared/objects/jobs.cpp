@@ -442,7 +442,7 @@ namespace Objects
 		}
 
 		AlterTerrain::AlterTerrain(const MobileEntity&v, CursorMode mode, const Ctr::Array<Grid::HCellIdI>&selection) 
-			: BaseJob(GetConstructionCostsOf(selection,mode),v,v.location,mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
+			: BaseJob(GetConstructionCostsOf(selection,mode),v,v.location,mode == CursorMode::BuildBlockMode ? Component::AddTerrain : Component::RemoveTerrain,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
 
 		/*virtual override*/ void			AlterTerrain::UpdateEstimations(const MobileEntity&v)
 		{

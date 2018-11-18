@@ -916,7 +916,7 @@ namespace Objects
 					ASSERT__(selectedMobileEntity);
 					resourceCostOut = Component::SubOrbital::Bomber::doomsdayBeamAttackCosts.GetValue(selectedMobileEntity->GetResearchState());
 					costTypeOut = Resource::Uranium;
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::SelfDetonate);
 				}
 				));
 		}
@@ -958,7 +958,7 @@ namespace Objects
 					mineralCostOut = 0;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DigHorizontalMineralCosts,Component::TerrainRemove);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DigHorizontalMineralCosts,Component::RemoveTerrain);
 				}
 				));
 			terraformRemoveGround->Add( new Command::IconCommand("Dig Down", &Detail::TerraformerDigDown, 
@@ -969,7 +969,7 @@ namespace Objects
 					mineralCostOut = 0;
 					ASSERT__(selectedMobileEntity);
 //						PVehicle v = To<Vehicle>::Cast(selectedMobileEntity);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DigDownMineralCosts,Component::TerrainRemove);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::DigDownMineralCosts,Component::RemoveTerrain);
 				}
 			));
 			terraformRemoveGround->Add( new Command::IconCommand("Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
@@ -980,7 +980,7 @@ namespace Objects
 					mineralCostOut = 0;
 					ASSERT__(selectedMobileEntity);
 //						PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::ClearAboveMineralCosts,Component::TerrainRemove);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(VehicleJob::ClearAboveMineralCosts,Component::RemoveTerrain);
 				}
 			));
 
@@ -992,7 +992,7 @@ namespace Objects
 					mineralCostOut = 0;//NoCosts;//VehicleJob::MinBuildWallMineralCosts;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = 0;//selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::TerrainAdd);
+					timeCostOut = 0;//selectedMobileEntity->GetOperationRounds(mineralCostOut,Component::AddTerrain);
 				}
 			));
 			terraformAddGround->Add( new Command::IconCommand("Build Horizontal Wall", &Detail::IssueCommand<ConstName::Job_BuildHorizontalWall>
@@ -1003,7 +1003,7 @@ namespace Objects
 					mineralCostOut = VehicleJob::MinBuildWallMineralCosts;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,Component::AddTerrain);
 				}
 			));
 
@@ -1015,7 +1015,7 @@ namespace Objects
 					mineralCostOut = VehicleJob::MinBuildRoadMineralCosts;
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,Component::AddTerrain);
 				}
 			));
 
@@ -1057,7 +1057,7 @@ namespace Objects
 					mineralCostOut = (int)cellSelection.Count();
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::RemoveTerrain : Component::AddTerrain);
 					if (activeCursorMode != CursorMode::BuildBlockMode)
 						mineralCostOut = 0;
 				}
@@ -1070,7 +1070,7 @@ namespace Objects
 					mineralCostOut = (int)cellSelection.Count();
 					ASSERT__(selectedMobileEntity);
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::TerrainRemove : Component::TerrainAdd);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? Component::RemoveTerrain : Component::AddTerrain);
 					if (activeCursorMode != CursorMode::BuildBlockMode)
 						mineralCostOut = 0;
 				}
@@ -1127,7 +1127,7 @@ namespace Objects
 					resourceCostOut = Component::Bomb::regularUraniumCost.GetValue(selectedMobileEntity->GetResearchState());
 					costTypeOut = Resource::Uranium;
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::SelfDetonate);
 				}
 				));
 
@@ -1139,7 +1139,7 @@ namespace Objects
 					resourceCostOut = Component::Bomb::doomsdayUraniumCost.GetValue(selectedMobileEntity->GetResearchState());
 					costTypeOut = Resource::Uranium;
 					//PVehicle v = To<Vehicle>::Cast(e);
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Nuclear);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::SelfDetonate);
 				}
 				));
 

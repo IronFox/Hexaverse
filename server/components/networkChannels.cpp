@@ -1549,16 +1549,16 @@ namespace Receiver
 			case ConstName::Job_BuildRoad:
 			case ConstName::Job_BuildWallUp:
 			case ConstName::Job_BuildHorizontalWall:
-				return Objects::Component::TerrainAdd;
+				return Objects::Component::AddTerrain;
 			case ConstName::Job_DigDown:
-				return Objects::Component::TerrainRemove;
+				return Objects::Component::RemoveTerrain;
 			case ConstName::Job_Construct:
 				return Objects::Component::Construct;
 			case ConstName::Job_SelfDetonate:
 			case ConstName::Job_DoomsdayBeamAttack:
-				return Objects::Component::Nuclear;
+				return Objects::Component::SelfDetonate;
 		}
-		return Objects::Component::TerrainRemove;	//shouldn't happen, but not our case to handle here
+		return Objects::Component::RemoveTerrain;	//shouldn't happen, but not our case to handle here
 	}
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)

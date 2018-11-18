@@ -156,7 +156,7 @@ namespace Objects
 
 				/**/					DummyPathJob(const MobileEntity&v) : Super(1,v,GetOperationAffinity(),Autocomplete::Always,false) {}
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,GetOperationAffinity());}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::RemoveTerrain;}
 
 
 				virtual bool			UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination)	override
@@ -197,7 +197,7 @@ namespace Objects
 				/**/					BuildRoad(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(GetConstructionCostsAt(loc),v,loc,GetOperationAffinity(),Autocomplete::Always,false) {}
 				/**/					BuildRoad(const MobileEntity&v, bool bridgeMode);
 				virtual void			UpdateEstimations(const MobileEntity&v) override;
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainAdd;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::AddTerrain;}
 
 
 				virtual String			GetName() const override {return bridgeMode ? "Build bridge here" : "Build road here";}
@@ -219,7 +219,7 @@ namespace Objects
 			protected:
 
 				/**/					BuildWallUp(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):Super(jobAutoCompletion, movesToFocusWhenDone)	{}
-				/**/					BuildWallUp(const MobileEntity&v, const Grid::LCellIdI&loc,Autocomplete jobAutoCompletion, bool movesToFocusWhenDone) : BaseJob(GetConstructionCostsAt(loc),v,loc,Component::TerrainAdd,jobAutoCompletion, movesToFocusWhenDone) {}
+				/**/					BuildWallUp(const MobileEntity&v, const Grid::LCellIdI&loc,Autocomplete jobAutoCompletion, bool movesToFocusWhenDone) : BaseJob(GetConstructionCostsAt(loc),v,loc,Component::AddTerrain,jobAutoCompletion, movesToFocusWhenDone) {}
 
 				virtual Grid::LCellIdI	FocusToBuildLocation(const Grid::LCellIdI&focus) const {return focus-1;}
 
@@ -243,7 +243,7 @@ namespace Objects
 				/**/					BuildWallUp():Super(Autocomplete::Always,true)	{}
 				/**/					BuildWallUp(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(GetConstructionCostsAt(loc),v,loc,GetOperationAffinity(),Autocomplete::Always,true) {}
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(GetConstructionCostsAt(location),v,GetOperationAffinity());}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainAdd;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::AddTerrain;}
 
 
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&_destination, bool hasToMoveFirst)	override;
@@ -321,7 +321,7 @@ namespace Objects
 				/**/					AlterTerrain():Super(Autocomplete::Always,false),maxHeightDifference(1)	{}
 				/**/					AlterTerrain(const MobileEntity&v, CursorMode mode, const Ctr::Array<Grid::HCellIdI>&selection);
 				virtual void			UpdateEstimations(const MobileEntity&v) override;
-				static Component::operation_t	GetOperationAffinity(CursorMode mode) {return mode == CursorMode::BuildBlockMode ? Component::TerrainAdd : Component::TerrainRemove;}
+				static Component::operation_t	GetOperationAffinity(CursorMode mode) {return mode == CursorMode::BuildBlockMode ? Component::AddTerrain : Component::RemoveTerrain;}
 				virtual Component::operation_t	GetOperationAffinity() const override {return GetOperationAffinity(mode);}
 
 				virtual String			GetName() const override {return mode == CursorMode::BuildBlockMode ? "Build concrete" : "Remove terrain";}
@@ -415,7 +415,7 @@ namespace Objects
 				/**/					ClearAbove():Super(Autocomplete::Always,false)	{}
 				/**/					ClearAbove(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(ClearAboveMineralCosts,v,loc,GetOperationAffinity(),Autocomplete::Always,false) {}
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(ClearAboveMineralCosts,v,GetOperationAffinity());}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::RemoveTerrain;}
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
 				virtual String			GetName() const override {return "clear upper terrain";}
@@ -438,7 +438,7 @@ namespace Objects
 				/**/					DigHorizontal():Super(Autocomplete::Always,true)	{}
 				/**/					DigHorizontal(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(DigHorizontalMineralCosts,v,loc,GetOperationAffinity(),Autocomplete::Always,true) {}
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DigHorizontalMineralCosts,v,GetOperationAffinity());}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::RemoveTerrain;}
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
@@ -461,7 +461,7 @@ namespace Objects
 
 				/**/					DigDown(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(DigDownMineralCosts,v,loc,GetOperationAffinity(),Autocomplete::Always,true) {}
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(DigDownMineralCosts,v,GetOperationAffinity());}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::RemoveTerrain;}
 
 				virtual String			GetName() const override {return "Dig down";}
 
@@ -523,9 +523,9 @@ namespace Objects
 				bool					first;
 				/**/					Sequence():Super(Autocomplete::Always,true)	{};
 
-				/**/					Sequence(const MobileEntity&v, CursorMode mode) : Super(1,v,Component::TerrainRemove,Autocomplete::Always,/*false*/true),mode(mode),first(true) {}
-				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,Component::TerrainRemove);}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}	//we don't want this job itself to cost any kind of resources, hence TerrainRemove. This job actually does TerrainAdd or Construct, but those are child-jobs
+				/**/					Sequence(const MobileEntity&v, CursorMode mode) : Super(1,v,Component::RemoveTerrain,Autocomplete::Always,/*false*/true),mode(mode),first(true) {}
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,Component::RemoveTerrain);}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::RemoveTerrain;}	//we don't want this job itself to cost any kind of resources, hence RemoveTerrain. This job actually does AddTerrain or Construct, but those are child-jobs
 
 				virtual String			GetName() const override;
 
@@ -590,7 +590,7 @@ namespace Objects
 				virtual PJob			Instantiate() const override {return PJob(new SelfDetonate());}
 
 				virtual void			UpdateEstimations(const MobileEntity&v) override;
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::SelfDetonate;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
 			
 				virtual	void			Serialize(IWriteStream&outStream) const override;
@@ -620,7 +620,7 @@ namespace Objects
 				virtual PJob			Instantiate() const override {return PJob(new DoomsdayBeamAttack());}
 
 				virtual void			UpdateEstimations(const MobileEntity&v) override;
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::SelfDetonate;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
 			
 				virtual	void			Serialize(IWriteStream&outStream) const override	{}

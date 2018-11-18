@@ -411,7 +411,7 @@ namespace Objects
 				if (base->moveOnWater)
 					outResult.GetLastLine() += " (supported by water)";
 
-			int opSpeed = std::max(GetOperationSpeed(Component::Construct, owner),GetOperationSpeed(Component::TerrainAdd,owner));
+			int opSpeed = std::max(GetOperationSpeed(Component::Construct, owner),GetOperationSpeed(Component::AddTerrain,owner));
 			if (opSpeed)
 				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
@@ -451,7 +451,7 @@ namespace Objects
 					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
-					if (!turret->CanDo(Component::TerrainRemove))
+					if (!turret->CanDo(Component::RemoveTerrain))
 						return false;
 					if (leftClick)
 					{
@@ -549,7 +549,7 @@ namespace Objects
 				case CursorMode::BuildHighWallChainMode:
 				case CursorMode::BuildLowWallChainMode:
 				case CursorMode::BuildBridgeMode:
-					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Construct : Component::TerrainAdd  ) )
+					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Construct : Component::AddTerrain  ) )
 						return false;
 
 					if (leftClick)
