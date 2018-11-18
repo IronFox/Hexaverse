@@ -164,7 +164,7 @@ namespace Nexus
 					{
 						at->hostileNearNexus += opacity * impact;
 
-						if (b && b->turret->CanDo(Objects::Component::Construct))
+						if (b && b->turret->CanDo(Objects::Component::Operation::Construct))
 						{
 							if (isRed)
 							{

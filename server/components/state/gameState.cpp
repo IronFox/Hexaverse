@@ -793,7 +793,8 @@ namespace Game
 			task.taskFlags = 0;
 			if (t.job)
 			{
-				task.jobAffinity = t.job->GetOperationAffinity();
+				static_assert(Objects::Component::OperationCount < 0x100,"Change Protocol::MobileTask::jobAffinity type");
+				task.jobAffinity = (BYTE)t.job->GetOperationAffinity();
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
 				if (!seq)
 				{
@@ -1481,7 +1482,7 @@ namespace Game
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
 			{
-				if (v->GetOperationSpeed(Objects::Component::Construct))
+				if (v->GetOperationSpeed(Objects::Component::Operation::Construct))
 					v->owner->hasUnitClasses |= Objects::Faction::UnitClass::Terraformer;
 			});
 

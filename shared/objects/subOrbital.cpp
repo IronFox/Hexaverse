@@ -77,8 +77,8 @@ namespace Objects
 				String speed = "Speed: "+this->DescribeMovementStepsPerRound(owner) + " (aerial)";
 
 				outResult << speed;
-				if (turret->CanDo(Component::Construct))
-					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+DescribeOperationSpeed(Component::Construct,owner)+" per round";
+				if (turret->CanDo(Component::Operation::Construct))
+					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+DescribeOperationSpeed(Component::Operation::Construct,owner)+" per round";
 
 
 				int demand = 0;
@@ -315,7 +315,7 @@ namespace Objects
 						return false;
 
 					case CursorMode::BuildConnectorChainMode:
-						if (!turret->CanDo(Component::Construct))
+						if (!turret->CanDo(Component::Operation::Construct))
 							return false;
 
 						if (leftClick)

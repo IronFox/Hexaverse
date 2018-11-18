@@ -622,7 +622,7 @@ namespace Objects
 				virtual PJob			Instantiate() const override {return PJob(new DoomsdayBeamAttack());}
 
 				virtual void			UpdateEstimations(const MobileEntity&v) override;
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::FireBeam;}
+				virtual Component::Operation	GetOperationAffinity() const override {return Component::Operation::FireBeam;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
 			
 				virtual	void			Serialize(IWriteStream&outStream) const override	{}

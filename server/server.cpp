@@ -100,7 +100,7 @@ namespace ApplicationInterface
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
 
-		if (v.GetOperationSpeed(Objects::Component::Construct))
+		if (v.GetOperationSpeed(Objects::Component::Operation::Construct))
 			Game::RegisterClassGain(_v, Objects::Faction::UnitClass::Terraformer, "terraformer");
 	}
 
