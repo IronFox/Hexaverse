@@ -659,12 +659,12 @@ namespace HexGrid
 		{
 			Objects::Description desc;
 			command->CompileLabel(desc);
-			const bool wantShort = t > 1.5f;
+			const bool wantLong = t > 1.5f;
 
 			Buffer0<StringRef> lines;
 			foreach(desc,line)
 			{
-				if (!wantShort || line->second)
+				if (wantLong || line->second)
 					lines << line->first.ToRef();
 			}
 			tooltip = implode('\n',lines.ToRef());
