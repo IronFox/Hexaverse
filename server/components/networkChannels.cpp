@@ -1542,22 +1542,22 @@ namespace Receiver
 
 	}
 
-	Objects::Component::operation_t GetOperationAffinity(ConstName cname)
+	Objects::Component::Operation GetOperationAffinity(ConstName cname)
 	{
 		switch (cname)
 		{
 			case ConstName::Job_BuildRoad:
 			case ConstName::Job_BuildWallUp:
 			case ConstName::Job_BuildHorizontalWall:
-				return Objects::Component::AddTerrain;
+				return Objects::Component::Operation::AddTerrain;
 			case ConstName::Job_DigDown:
-				return Objects::Component::RemoveTerrain;
+				return Objects::Component::Operation::RemoveTerrain;
 			case ConstName::Job_Construct:
-				return Objects::Component::Construct;
+				return Objects::Component::Operation::Construct;
 			case ConstName::Job_SelfDetonate:
-				return Objects::Component::SelfDetonate;
+				return Objects::Component::Operation::SelfDetonate;
 		}
-		return Objects::Component::RemoveTerrain;	//shouldn't happen, but not our case to handle here
+		return Objects::Component::Operation::RemoveTerrain;	//shouldn't happen, but not our case to handle here
 	}
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)

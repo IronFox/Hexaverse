@@ -451,7 +451,7 @@ namespace Objects
 					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
-					if (!turret->CanDo(Component::RemoveTerrain))
+					if (!turret->CanDo(Component::Operation::RemoveTerrain))
 						return false;
 					if (leftClick)
 					{
@@ -549,7 +549,7 @@ namespace Objects
 				case CursorMode::BuildHighWallChainMode:
 				case CursorMode::BuildLowWallChainMode:
 				case CursorMode::BuildBridgeMode:
-					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Construct : Component::AddTerrain  ) )
+					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Operation::Construct : Component::Operation::AddTerrain  ) )
 						return false;
 
 					if (leftClick)
