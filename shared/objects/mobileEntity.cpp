@@ -61,6 +61,7 @@ namespace Objects
 			ASSERT1__(!m->isInsertedIntoGrid,m->GetName());
 			ASSERT1__(m->IsAlive(),m->GetName());
 			ASSERT1__(GetEntity(m->id) == m, m->GetName());
+			ASSERT1__(!m->HasTasks(),m->GetName());
 			if (m->IsVehicle())
 				ASSERT1__(!vehicles.Contains(To<Vehicle>::Cast(m)),m->GetName());
 			PHangar hangar = m->storedIn.lock();

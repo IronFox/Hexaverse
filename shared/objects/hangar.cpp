@@ -90,9 +90,6 @@ namespace Objects
 		#endif
 
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
-		#ifdef _DEBUG
-			CheckMobileEntitySanity();
-		#endif
 		ASSERT3__(v->storedIn.lock().get() == this, v->GetName(),v->storedIn.lock()->ToEntity().GetName(),self.GetName());
 		ASSERT2__(RemoveStored(v),v->GetName(),self.GetName());
 		LogEvent(EventSignificance::Debug,&self,"Checking out "+v->GetName()+" to "+ToString(targetLocation));
@@ -151,7 +148,7 @@ namespace Objects
 		ASSERT2__(sharedSelf.get() == this,sharedSelf->ToEntity().GetName(),ToEntity().GetName());
 		if (!e || !CanStoreType(*e) || stored.Count() >= GetMaxStorage())
 			return false;
-		DBG_ASSERT2__(e->myTasks.IsEmpty(),ToEntity().GetName(), e->GetName());
+//		DBG_ASSERT2__(!e->HasTasks(),ToEntity().GetName(), e->GetName());	//can't check here because this happens as the result of a task which must still be existing in the list
 		e->SyncTime(ToEntity(),atTime);
 
 		if (e->isInserted)
@@ -188,15 +185,10 @@ namespace Objects
 
 		ASSERT2__(!e->isInsertedIntoGrid,ToEntity().GetName(), e->GetName());
 
-		#ifdef _DEBUG
-			CheckMobileEntitySanity();	//this could fail (under rare circumstances) when mobile entities are currently not inserted into grid during animation
-		#endif
-
 		onStored(*this,stored.Last());
 		OnStorageChanged();
 
 		e->SyncTime(ToEntity(),atTime);
-		DBG_ASSERT2__(e->myTasks.IsEmpty(),ToEntity().GetName(), e->GetName());
 
 		return true;
 	}
