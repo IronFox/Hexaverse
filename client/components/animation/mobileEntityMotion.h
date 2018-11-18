@@ -11,7 +11,7 @@ namespace Animation
 	public:
 		/**/					MobileEntityMotion(Protocol::MobileEntityMotion&);
 		void					Append(Protocol::MobileEntityMotion&, Animation::TTime&);
-		virtual void			Begin() override;
+		virtual void			Begin(bool instant) override;
 		virtual void			Update(float x) override;
 		virtual void			End() override;
 		virtual D::String		Describe() const override;

@@ -10,7 +10,7 @@ namespace Animation
 		isComplete = (d.familyAndLastFlag & 0x80) != 0;
 	}
 
-	/*virtual override*/ void WorldDelta::Begin()
+	/*virtual override*/ void WorldDelta::Begin( bool instant )
 	{
 		foreach (deltas,block)
 		{

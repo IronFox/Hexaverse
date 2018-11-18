@@ -26,7 +26,7 @@ namespace Animation
 		/**/					Trajectory(Protocol::PreciseAttackTrajectory&);
 		/**/					Trajectory(Protocol::VagueAttackTrajectory&);
 
-		virtual void			Begin() override;
+		virtual void			Begin(bool instant) override;
 		virtual void			End() override;
 		virtual void			Update(float x) override;
 		#ifdef HAS_WINDOW

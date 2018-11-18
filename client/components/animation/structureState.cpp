@@ -146,7 +146,7 @@ namespace Animation
 		state.swap(s);
 	}
 
-	/*virtual override*/ void StructureState::Begin()
+	/*virtual override*/ void StructureState::Begin( bool instant )
 	{
 		auto allocatedTarget = Objects::GetEntity(targetEntityID);
 		if (allocatedTarget) //probably got whooped otherwise

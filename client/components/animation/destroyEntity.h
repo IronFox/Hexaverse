@@ -9,7 +9,7 @@ namespace Animation
 		typedef Event			Super;
 	public:
 		/**/					DestroyEntity(Protocol::DestroyEntity&);
-		virtual void			Begin() override;
+		virtual void			Begin(bool instant) override;
 		virtual D::String		Describe() const override;
 
 		static void				Explode(const Objects::PWorldEntity&target);

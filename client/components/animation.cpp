@@ -238,7 +238,7 @@ namespace Animation
 					{
 						const auto&p = Animation::actives.Last();
 						LogEvent(EventSignificance::Debug, "Starting '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
-						p.event->Begin();
+						p.event->Begin(false);
 						if (UpdateEvent(p,Animation::atTime) == UpdateResult::Done)
 						{
 							LogEvent(EventSignificance::Debug, "Ending '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
@@ -276,7 +276,7 @@ namespace Animation
 					LogEvent(EventSignificance::Debug,nullptr,"Executing "+String(whenDone.Count())+" post-animation event(s)");
 					for (auto&entry : whenDone)
 					{
-						entry->Begin();
+						entry->Begin(true);
 						entry->End();
 					}
 

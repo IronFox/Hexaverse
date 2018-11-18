@@ -766,7 +766,7 @@ namespace Animation
 	}
 
 
-	/*virtual override*/ void			MobileState::Begin()
+	/*virtual override*/ void			MobileState::Begin( bool instant )
 	{
 		auto allocatedTarget = Objects::GetEntity(targetEntityID);
 		if (allocatedTarget) //probably got whooped otherwise

@@ -20,7 +20,17 @@ namespace Animation
 
 		/**/					Event(const TUniqueID&targetID);
 		virtual					~Event()	{};
-		virtual void			Begin()=0;
+		/**
+		Begin execution of this event.
+		Called before Update() (if any) and End()
+		@param instant Event is being executed outside the regular animation sequence, and end instantly. Update() is never called.
+		Parameter does not relate to the timing window.
+		*/
+		virtual void			Begin(bool instant)=0;
+		/**
+		End execution of this event.
+		Called after Begin() and Update() (if any)
+		*/
 		virtual void			End() {};
 		/**
 		Updates the local event.

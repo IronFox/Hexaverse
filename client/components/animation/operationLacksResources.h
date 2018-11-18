@@ -12,7 +12,7 @@ namespace Animation
 
 		/**/					OperationLacksResources(Protocol::OperationLacksResources&);
 
-		virtual void			Begin() override;
+		virtual void			Begin(bool instant) override;
 		virtual String			Describe() const override;
 	private:
 		Protocol::OperationLacksResources	op;

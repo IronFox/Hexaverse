@@ -9,7 +9,7 @@ namespace Animation
 		rotateToWorld = rot.toWorld;
 	}
 
-	/*virtual override*/ void TurretRotation::Begin()
+	/*virtual override*/ void TurretRotation::Begin( bool instant )
 	{
 		allocatedTarget = Objects::GetEntity(targetEntityID);
 		if (allocatedTarget)

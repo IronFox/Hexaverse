@@ -9,7 +9,7 @@ namespace Animation
 		typedef Event			Super;
 	public:
 		/**/					StructureState(Protocol::StructureState&);
-		virtual void			Begin() override;
+		virtual void			Begin(bool instant) override;
 		virtual void			End() override	{};
 		virtual void			Update(float x) override	{};
 		virtual D::String		Describe() const override;

@@ -11,7 +11,7 @@ namespace Animation
 		construct = std::move(s0);
 	}
 
-	/*virtual override*/ void StructureConstruction::Begin()
+	/*virtual override*/ void StructureConstruction::Begin( bool instant )
 	{
 		{
 			Objects::PWorldEntity existing = Objects::GetEntity(construct.state.entityState.id);

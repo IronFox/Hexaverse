@@ -16,7 +16,7 @@ namespace Animation
 	}
 
 
-	/*virtual override*/ void OperationLacksResources::Begin()
+	/*virtual override*/ void OperationLacksResources::Begin( bool instant )
 	{
 		auto lockedTarget = Objects::GetEntity(targetEntityID);
 		EXPECT1(lockedTarget,targetEntityID);

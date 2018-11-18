@@ -9,7 +9,7 @@ namespace Animation
 		typedef Event			Super;
 	public:
 		/**/					WorldDelta(Protocol::WorldDelta&);
-		virtual void			Begin() override;
+		virtual void			Begin(bool instant) override;
 		virtual D::String		Describe() const override;
 
 		virtual bool			IsWorldDelta() const override {return true;}

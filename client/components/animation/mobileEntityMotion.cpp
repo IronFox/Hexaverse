@@ -167,7 +167,7 @@ namespace Animation
 
 	}
 
-	/*virtual override*/ void MobileEntityMotion::Begin()
+	/*virtual override*/ void MobileEntityMotion::Begin( bool instant )
 	{		
 		auto e = Objects::GetEntity(targetEntityID);
 		EXPECT1(e,targetEntityID);

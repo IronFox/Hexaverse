@@ -114,7 +114,7 @@ namespace Animation
 		{
 			T temp{param...};
 			LogEvent(EventSignificance::Debug, "Animation: Executing '"+temp.Describe()+"'...");
-			temp.Begin();
+			temp.Begin(true);
 			temp.End();
 			return;
 		}
@@ -133,7 +133,7 @@ namespace Animation
 		{
 			T temp{param...};
 			LogEvent(EventSignificance::Debug, "Animation: Executing '"+temp.Describe()+"'...");
-			temp.Begin();
+			temp.Begin(true);
 			temp.End();
 			return;
 		}
