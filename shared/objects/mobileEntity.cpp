@@ -1133,7 +1133,7 @@ namespace Objects
 				}
 			}*/
 
-			ASSERT__(!TasksAreLocked());
+			ASSERT1__(!TasksAreLocked(),GetName());
 			BuildChecker checker(this);
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
