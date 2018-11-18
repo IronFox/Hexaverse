@@ -173,7 +173,7 @@ namespace Objects
 
 	}
 
-	float MobileEntity::ContinuationsToRounds(int continuationsToJobCompletion, Component::operation_t op) const
+	float MobileEntity::ContinuationsToRounds(int continuationsToJobCompletion, Component::Operation op) const
 	{
 		int sub = (1<<GetConstructionAcceleration(op));
 		return float(continuationsToJobCompletion) / sub;
@@ -181,7 +181,7 @@ namespace Objects
 
 
 
-	UINT32					MobileEntity::GetOperationContinuations(int jobCosts, Component::operation_t op) const
+	UINT32					MobileEntity::GetOperationContinuations(int jobCosts, Component::Operation op) const
 	{
 		if (!jobCosts)
 			return 0;
@@ -195,7 +195,7 @@ namespace Objects
 		return rs;
 	}
 
-	UINT32					MobileEntity::GetOperationCompletionRounds(int jobCosts, Component::operation_t op) const
+	UINT32					MobileEntity::GetOperationCompletionRounds(int jobCosts, Component::Operation op) const
 	{
 		return M::CeilDiv<UINT32>(GetOperationContinuations(jobCosts,op),1 << GetConstructionAcceleration(op));
 	}

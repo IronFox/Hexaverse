@@ -83,7 +83,7 @@ namespace Animation
 			}
 			else
 			{
-				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e,(Objects::Component::operation_t)sourceTask.jobAffinity));
+				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e,(Objects::Component::Operation)sourceTask.jobAffinity));
 				t1.job = job;
 				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
@@ -288,7 +288,7 @@ namespace Animation
 			{
 				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
 				bool surveyor = o->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
-				bool constructor = o->GetOperationSpeed(Objects::Component::Construct) > 0;
+				bool constructor = o->GetOperationSpeed(Objects::Component::Operation::Construct) > 0;
 				if (!surveyor && !constructor)
 					return;
 				const Grid::LCellIdI&loc =o->GetLastPointOfOrigin();
@@ -624,7 +624,7 @@ namespace Animation
 				if (v->myTasks.IsEmpty())
 				{
 
-					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v,Objects::Component::Construct));
+					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v,Objects::Component::Operation::Construct));
 					job->continuationsToJobCompletion = 1;
 					job->movesToFocusWhenDone = false;
 					job->resourceCostLeft = 1;

@@ -76,15 +76,17 @@ namespace Objects
 						catbase;
 
 
+
 		namespace SubOrbital
 		{
 			Turret		raptor,bomber,cargoPlane,sensorDrone;
 			VehicleBase	planeBase;
 		}
-		const char*				OperationToString(operation_t op)
+
+		const char*				OperationToString(Operation op)
 		{
 			#undef ECASE
-			#define ECASE(X)	case X: return #X;
+			#define ECASE(X)	case Operation::X: return #X;
 
 			switch (op)
 			{
@@ -95,6 +97,7 @@ namespace Objects
 				ECASE(RemoveTerrain)
 				ECASE(FireBeam)
 			}
+			DBG_FATAL__("Trying to convert unsupported operation index to string "+String((int)op));
 			return "undefined";
 		}
 
@@ -120,7 +123,7 @@ namespace Objects
 
 
 
-		float							Turret::GetOperationSpeed(operation_t op, const Research::Attributes::Table&researchState) const
+		float							Turret::GetOperationSpeed(Operation op, const Research::Attributes::Table&researchState) const
 		{
 			return operationSpeed[op].GetValue(researchState);
 		}
@@ -193,12 +196,12 @@ namespace Objects
 					rs = true;
 				}
 			}
-			if (CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::AddTerrain))
+			if (CanDo(Component::Operation::Construct) || CanDo(Component::Operation::Repair) || CanDo(Component::Operation::AddTerrain))
 			{
 				res |= Resource::Minerals;
 				rs = true;
 			}
-			if (CanDo(Component::SelfDetonate) || CanDo(Component::FireBeam))
+			if (hasDoomsdayFunctionality)
 			{
 				res |= Resource::Uranium;
 				rs = true;
@@ -1528,8 +1531,8 @@ namespace Objects
 			//component.baseCarryingCapacity = 1;
 			//component.unmodulatedHealth = 4;
 
-			component.acceleration[AddTerrain] = 1;
-			component.acceleration[RemoveTerrain] = 1;
+			component.acceleration[Operation::AddTerrain] = 1;
+			component.acceleration[Operation::RemoveTerrain] = 1;
 
 			component.height *= vehicleScale;
 		}
@@ -1569,8 +1572,8 @@ namespace Objects
 			component.hindrance.water = 4;
 			component.hindrance.other = 4;
 
-			component.acceleration[AddTerrain] = 2;
-			component.acceleration[RemoveTerrain] = 2;
+			component.acceleration[Operation::AddTerrain] = 2;
+			component.acceleration[Operation::RemoveTerrain] = 2;
 
 			component.height *= vehicleScale;
 		}
@@ -1617,8 +1620,8 @@ namespace Objects
 			component.hindrance.water = 1;
 			component.hindrance.other = 10;
 
-			component.acceleration[AddTerrain] = 2;
-			component.acceleration[RemoveTerrain] = 2;
+			component.acceleration[Operation::AddTerrain] = 2;
+			component.acceleration[Operation::RemoveTerrain] = 2;
 
 			component.height *= vehicleScale;
 		}
@@ -1762,8 +1765,8 @@ namespace Objects
 				}
 
 				if (CanConstruct() && !compound)
-					outResult <<"Construction: Converts "+String(ResourceTag(Resource::Minerals))+operationSpeed[Construct].Describe(researchState)+" per round";
-				if ((CanDo(RemoveTerrain) || CanDo(AddTerrain)) && !compound)
+					outResult <<"Construction: Converts "+String(ResourceTag(Resource::Minerals))+operationSpeed[Operation::Construct].Describe(researchState)+" per round";
+				if ((CanDo(Operation::RemoveTerrain) || CanDo(Operation::AddTerrain)) && !compound)
 					outResult <<"Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
 					outResult <<"Can repair other vehicles/structures";
@@ -1837,10 +1840,7 @@ namespace Objects
 				}
 				elif (hasDoomsdayFunctionality)
 				{
-					if (this->CanDo(Objects::Component::SelfDetonate))
-						outResult << ("This "+lowerName+" type has special attacks classified as DOOMSDAY WEAPONRY. These typically require Uranium, and may be disallowed by the server.");
-					else
-						outResult << ("This "+lowerName+" type has special attacks classified as DOOMSDAY WEAPONRY. These may be disallowed by the server.");
+					outResult << ("This "+lowerName+" type has special attacks classified as DOOMSDAY WEAPONRY. These may be disallowed by the server.");
 				}
 			}
 

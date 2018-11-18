@@ -344,12 +344,12 @@ namespace Objects
 		return turret->explosionRadius.GetValue(GetResearchState(owner));
 	}
 
-	/*virtual override*/ int			Tower::GetOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	/*virtual override*/ int			Tower::GetOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
 		return turret->operationSpeed[op].GetValue(GetResearchState(owner));
 	}
 
-	/*virtual override*/ String			Tower::DescribeOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	/*virtual override*/ String			Tower::DescribeOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
 		return turret->operationSpeed[op].Describe(GetResearchState(owner));
 	}

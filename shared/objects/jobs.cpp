@@ -54,7 +54,7 @@ namespace Objects
 		}
 
 
-		/**/					BaseJob::BaseJob(int mineralCosts, const MobileEntity&v, const Grid::LCellIdI&loc, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
+		/**/					BaseJob::BaseJob(int mineralCosts, const MobileEntity&v, const Grid::LCellIdI&loc, Component::Operation op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
 										continuationsToJobCompletion(-1),resourceCostLeft(0),
 										jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone),
 										location(loc)
@@ -62,7 +62,7 @@ namespace Objects
 			ResetResourceAndRoundsLeft(mineralCosts,v,op);
 		}
 
-		void BaseJob::ResetResourceAndRoundsLeft(int cost, const MobileEntity&v, Component::operation_t op)
+		void BaseJob::ResetResourceAndRoundsLeft(int cost, const MobileEntity&v, Component::Operation op)
 		{
 			continuationsToJobCompletion = v.GetOperationContinuations(abs(cost),op);
 			resourceCostLeft = std::max(cost,0);
@@ -75,7 +75,7 @@ namespace Objects
 
 
 		#ifdef CLIENT
-			/**/					DummyJob::DummyJob(const MobileEntity&v, Component::operation_t affinity) : Super(1,v,v.location,GetOperationAffinity(),Autocomplete::Always,false),affinity(affinity) {}
+			/**/					DummyJob::DummyJob(const MobileEntity&v, Component::Operation affinity) : Super(1,v,v.location,GetOperationAffinity(),Autocomplete::Always,false),affinity(affinity) {}
 
 		#else
 
@@ -442,7 +442,9 @@ namespace Objects
 		}
 
 		AlterTerrain::AlterTerrain(const MobileEntity&v, CursorMode mode, const Ctr::Array<Grid::HCellIdI>&selection) 
-			: BaseJob(GetConstructionCostsOf(selection,mode),v,v.location,mode == CursorMode::BuildBlockMode ? Component::AddTerrain : Component::RemoveTerrain,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
+			: BaseJob(GetConstructionCostsOf(selection,mode),v,v.location,
+				mode == CursorMode::BuildBlockMode ? Component::Operation::AddTerrain : Component::Operation::RemoveTerrain,Autocomplete::Always,false),
+			mode(mode),selection(selection),maxHeightDifference(1) {}
 
 		/*virtual override*/ void			AlterTerrain::UpdateEstimations(const MobileEntity&v)
 		{

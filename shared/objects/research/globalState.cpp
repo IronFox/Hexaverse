@@ -216,7 +216,8 @@ namespace Objects
 
 			for (index_t i = 0; i < Component::OperationCount; i++)
 			{
-				InitAttrib(myTable,path,String("Op_")+Component::OperationToString((Component::operation_t)i),t.operationSpeed[i], OnAttributeNotFound::Ignore);
+				const auto op = (Component::Operation)i;
+				InitAttrib(myTable,path,String("Op_")+Component::OperationToString(op),t.operationSpeed[op], OnAttributeNotFound::Ignore);
 			}
 
 			InitAttrib(myTable,path,"GroundScannerPenetration",t.groundScannerPenetration, OnAttributeNotFound::Ignore);

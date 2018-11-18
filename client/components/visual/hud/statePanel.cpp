@@ -312,14 +312,14 @@ namespace StatePanel
 				if (m->turret->independentAttackAndMotion)
 					cachedLines << "  (ignores movement)";
 			}
-			if (m->turret->CanDo(Objects::Component::Construct))
+			if (m->turret->CanDo(Objects::Component::Operation::Construct))
 			{
-				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Construct, e.owner);
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Operation::Construct, e.owner);
 				cachedLines << " Converts "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
-			if (m->turret->CanDo(Objects::Component::Repair))
+			if (m->turret->CanDo(Objects::Component::Operation::Repair))
 			{
-				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Repair, e.owner);
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Operation::Repair, e.owner);
 				cachedLines << " Repairs "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
 	

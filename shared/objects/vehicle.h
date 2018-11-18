@@ -120,7 +120,7 @@ namespace Objects
 		using					MobileEntity::GetMovementStepsPerRound;
 		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
-		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const override {return base->acceleration[op];}
+		virtual BYTE			GetConstructionAcceleration(Component::Operation op) const override {return base->acceleration[op];}
 		virtual int				GetMaxClimbingHeight() const override {return base->maxClimbUp;}
 		virtual int				GetMaxFallingHeight() const override {return -base->minClimbDown;}
 		virtual bool			IsAffectedByGravity() const override {return true;}
@@ -136,9 +136,9 @@ namespace Objects
 		virtual float			GetFlatAttackRange(const OwnerParameter&) const override;
 		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const override;
 		virtual float			GetZOffset() const override {return base->height;}
-		virtual int				GetOperationSpeed(Component::operation_t, const OwnerParameter&) const override;
-		virtual int				GetOperationAccelerationExponent(Component::operation_t) const override;
-		virtual String			DescribeOperationSpeed(Component::operation_t, const OwnerParameter&) const override;
+		virtual int				GetOperationSpeed(Component::Operation, const OwnerParameter&) const override;
+		virtual int				GetOperationAccelerationExponent(Component::Operation) const override;
+		virtual String			DescribeOperationSpeed(Component::Operation, const OwnerParameter&) const override;
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION

@@ -173,8 +173,8 @@ namespace Objects
 		virtual String				DescribeSubOrbitalScanningRange(const OwnerParameter&) const override;
 
 		virtual bool				AttacksMovingHostilesDuringMotionPhase() const {return true;}
-		virtual int					GetOperationSpeed(Component::operation_t, const OwnerParameter&owner) const override;
-		virtual String				DescribeOperationSpeed(Component::operation_t, const OwnerParameter&owner) const override;
+		virtual int					GetOperationSpeed(Component::Operation, const OwnerParameter&owner) const override;
+		virtual String				DescribeOperationSpeed(Component::Operation, const OwnerParameter&owner) const override;
 
 		#ifndef CLIENT
 			virtual void			FlushAutoAttacks() override;

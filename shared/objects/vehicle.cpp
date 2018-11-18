@@ -180,20 +180,20 @@ namespace Objects
 		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
 	}
 
-	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::operation_t op) const
+	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::Operation op) const
 	{
 		//const auto&state = GetResearchState();
 		return base->acceleration[op];
 	}
 
 
-	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
 		const auto&state = GetResearchState(owner);
 		return (int)floor(turret->GetOperationSpeed(op,state) * base->operationSpeedMultiplier.GetValue(state));
 	}
 
-	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
 		const auto&state = GetResearchState(owner);
 		String rs = turret->operationSpeed[op].Describe(state);
@@ -411,7 +411,7 @@ namespace Objects
 				if (base->moveOnWater)
 					outResult.GetLastLine() += " (supported by water)";
 
-			int opSpeed = std::max(GetOperationSpeed(Component::Construct, owner),GetOperationSpeed(Component::AddTerrain,owner));
+			int opSpeed = std::max(GetOperationSpeed(Component::Operation::Construct, owner),GetOperationSpeed(Component::Operation::AddTerrain,owner));
 			if (opSpeed)
 				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 

@@ -94,7 +94,7 @@ namespace Objects
 
 
 
-		enum operation_t
+		enum class Operation
 		{
 			Construct,
 			SelfDetonate,
@@ -103,11 +103,23 @@ namespace Objects
 			RemoveTerrain,
 			FireBeam,
 
-			OperationCount
+			N
 		};
 
+		static const count_t OperationCount = (count_t)Operation::N;
 
-		const char*			OperationToString(operation_t);
+
+		template <typename T>
+			class OperationArray : public FixedArray<T,OperationCount>
+			{
+				typedef FixedArray<T,OperationCount> Super;
+			public:
+				T&			operator[](Operation op) {return Super::operator[]((index_t)op);}
+				const T&	operator[](Operation op) const {return Super::operator[]((index_t)op);}
+			};
+
+
+		const char*			OperationToString(Operation);
 		const Research::Attributes::Table&		ResearchStateOf(const PFaction&);
 
 
@@ -200,7 +212,7 @@ namespace Objects
 
 			IFunc							healthMultiplier;
 			Resource						ammoType;
-			Ctr::FixedArray<IFunc,OperationCount>operationSpeed;
+			OperationArray<IFunc>			operationSpeed;
 			FFunc							weight	/*=1*/,					//turret weight
 											damageLevel;
 			IFunc							attacksPerRound,
@@ -267,7 +279,7 @@ namespace Objects
 			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outTrajectory);
 
 
-			float							GetOperationSpeed(operation_t op, const Research::Attributes::Table&researchState) const;
+			float							GetOperationSpeed(Operation op, const Research::Attributes::Table&researchState) const;
 			int								GetDamageLevel(const Research::Attributes::Table&researchState) const;
 			float							GetExplosionRadius(const Research::Attributes::Table&researchState) const;
 			int								GetAttacksPerRound(const Research::Attributes::Table&researchState) const;
@@ -365,9 +377,9 @@ namespace Objects
 
 			bool							CanAttack() const {return attacksPerRound.IsFunctionOrConstNonZero();}
 			bool							CanDealDamage() const {return damageLevel.IsFunctionOrConstNonZero();}
-			bool							CanDo(operation_t op) const {return operationSpeed[op].IsFunctionOrConstNonZero();}
-			bool							CanRepair() const {return CanDo(Repair);}
-			bool							CanConstruct() const {return CanDo(Construct);}
+			bool							CanDo(Operation op) const {return operationSpeed[op].IsFunctionOrConstNonZero();}
+			bool							CanRepair() const {return CanDo(Operation::Repair);}
+			bool							CanConstruct() const {return CanDo(Operation::Construct);}
 			//bool							IsStandardOffensive() const
 			//{
 			//	return CanAttack() && 
@@ -458,7 +470,8 @@ namespace Objects
 			With a maximum action value of 128, using an exponent of 6 would allow the vehicle to continue a job 128 times each round.
 			A value of 7 or more will (theoretically) allow an infinite number of executions per round.
 			*/
-			FixedArray<BYTE,OperationCount>	acceleration;
+			OperationArray<BYTE>			acceleration;
+
 
 
 			//warning: none is broken in pathfinding
