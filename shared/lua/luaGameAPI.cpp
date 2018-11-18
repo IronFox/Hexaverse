@@ -313,7 +313,7 @@ namespace Lua
 
 		for (index_t op = 0; op < Objects::Component::OperationCount; op++)
 		{
-			const auto o = (Objects::Component::operation_t)op;
+			const auto o = (Objects::Component::Operation)op;
 			const String os = String(Objects::Component::OperationToString(o));
 			//t.SetField("can"+os,b.turret->CanDo(o));
 					
@@ -1708,7 +1708,7 @@ namespace Lua
 				});
 
 
-				if (m->turret->CanDo(Objects::Component::Construct))
+				if (m->turret->CanDo(Objects::Component::Operation::Construct))
 					t.SetFunction("BuildStructure",[this,id](const Lua::Reference&type)
 					{
 						if (type == Lua::nil)
@@ -2063,7 +2063,7 @@ namespace Lua
 			}
 			for (index_t op = 0; op < Objects::Component::OperationCount; op++)
 			{
-				const auto o = (Objects::Component::operation_t)op;
+				const auto o = (Objects::Component::Operation)op;
 				const String os = String(Objects::Component::OperationToString(o));
 				t.SetField("can"+os,turret->CanDo(o));
 			}

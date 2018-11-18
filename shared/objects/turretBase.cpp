@@ -101,7 +101,7 @@ namespace Objects
 	
 	}
 
-	int						TurretBase::GetOperationSpeed(Component::operation_t op) const
+	int						TurretBase::GetOperationSpeed(Component::Operation op) const
 	{
 		return GetOperationSpeed(op,ToEntity().owner);
 	}
