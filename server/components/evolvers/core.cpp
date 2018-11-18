@@ -197,6 +197,10 @@ namespace Evolver
 			}
 			movingVehicles.EraseLast();
 
+			#ifdef _DEBUG
+				Objects::CheckMobileEntitySanity();	//this could fail (under rare circumstances) when mobile entities are currently not inserted into grid during animation
+			#endif
+
 			return movingVehicles.IsNotEmpty() || movingVehicles2.IsNotEmpty();
 		}
 
