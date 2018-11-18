@@ -1134,6 +1134,7 @@ namespace Objects
 			}*/
 
 			ASSERT1__(!TasksAreLocked(),GetName());
+			DBG_ASSERT1__(!TasksAreLocked(),storedIn.expired());
 			BuildChecker checker(this);
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
