@@ -93,6 +93,7 @@ namespace Objects
 				ECASE(Repair)
 				ECASE(AddTerrain)
 				ECASE(RemoveTerrain)
+				ECASE(FireBeam)
 			}
 			return "undefined";
 		}
@@ -197,7 +198,7 @@ namespace Objects
 				res |= Resource::Minerals;
 				rs = true;
 			}
-			if (CanDo(Component::SelfDetonate))
+			if (CanDo(Component::SelfDetonate) || CanDo(Component::FireBeam))
 			{
 				res |= Resource::Uranium;
 				rs = true;

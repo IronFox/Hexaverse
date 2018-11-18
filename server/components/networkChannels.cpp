@@ -1555,8 +1555,9 @@ namespace Receiver
 			case ConstName::Job_Construct:
 				return Objects::Component::Construct;
 			case ConstName::Job_SelfDetonate:
-			case ConstName::Job_DoomsdayBeamAttack:
 				return Objects::Component::SelfDetonate;
+			case ConstName::Job_DoomsdayBeamAttack:
+				return Objects::Component::FireBeam;
 		}
 		return Objects::Component::RemoveTerrain;	//shouldn't happen, but not our case to handle here
 	}

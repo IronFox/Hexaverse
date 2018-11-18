@@ -101,6 +101,7 @@ namespace Objects
 			Repair,
 			AddTerrain,
 			RemoveTerrain,
+			FireBeam,
 
 			OperationCount
 		};

@@ -916,7 +916,7 @@ namespace Objects
 					ASSERT__(selectedMobileEntity);
 					resourceCostOut = Component::SubOrbital::Bomber::doomsdayBeamAttackCosts.GetValue(selectedMobileEntity->GetResearchState());
 					costTypeOut = Resource::Uranium;
-					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::SelfDetonate);
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::FireBeam);
 				}
 				));
 		}
