@@ -458,6 +458,7 @@ namespace Animation
 	/*static*/ void					MobileState::Apply(const Objects::PMobileEntity&v, Protocol::MobileState&vs, bool isNew, bool isNewForEMP)
 	{
 		ASSERT__(v);
+		DBG_ASSERT1__(v->storedIn.expired() || v->myTasks.IsEmpty(),v->GetName());
 		int oldHeight = v->location.height;
 
 		const bool locationChanged = v->storedIn.expired() 

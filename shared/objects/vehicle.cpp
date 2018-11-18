@@ -445,6 +445,7 @@ namespace Objects
 
 		bool	Vehicle::DirectTo( mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/ )
 		{
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			switch (mode)
 			{
 				case CursorMode::Idle:

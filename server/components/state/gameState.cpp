@@ -862,6 +862,7 @@ namespace Game
 
 		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
+			DBG_ASSERT1__(v.storedIn.expired() || v.myTasks.IsEmpty(),v.GetName());
 			if (v.IsAboveTerrain())
 			{
 				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
