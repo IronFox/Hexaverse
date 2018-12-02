@@ -1,3 +1,10 @@
+bugs:
+	deploying surveyor from storage does not instantly reveal resources on client
+	plane land button disabled atop vehicle store on highest possible level (-1 because of height 2)
+	
+new gui (blur?) slow on lower end machines
+
+
 terrain manipulation via ai script
 more space for top right selected entity icon when using !=100% UI scale
 Rendered hex icons become jaggy when using >100% GUI scale
