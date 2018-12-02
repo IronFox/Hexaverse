@@ -181,10 +181,12 @@ namespace Component
 		static const Distance	Unknown;	//!< Defines a placeholder distance/size that is effectively defined completely by external factors
 		static const Distance	Disabled;	//!< Disabled distance/size. Typically utilized to disable the anchor that the distance is recorded in
 
+
+		void	AssertNotNaN(const TCodeLocation&caller);
 		/**
 		Asserts that the local distance is neither NAN nor INF if the local type is defined (IsDefined()), enforces NAN otherwise
 		*/
-		void	VerifyIntegrity() const;
+		void	VerifyIntegrity(const TCodeLocation&caller);
 		/**
 		Determines whether the local value is neither NAN nor INF
 		*/
@@ -317,7 +319,7 @@ namespace Component
 			references.Clear();
 		}
 
-		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&, const AnchorAxis&, bool isUpper) const;
+		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&, const AnchorAxis&, bool isUpper);
 
 		/**
 		Sets the same distance to all components contained by the specified panel.
@@ -400,7 +402,7 @@ namespace Component
 			void		AnchorLowerUnknown(const Distance&lowerOffset = Distance());
 			void		Fill(const Distance&lowerOffset = Distance(), const Distance&upperOffset = Distance());
 			void		SetAutoCenter(const Distance&extent = Distance::Unknown) {isAutoCentering = true; this->extent = extent; lower.Disable(); upper.Disable();}
-			void		VerifyIntegrity(const TCodeLocation&sender, const FVerification&, bool allowUnknownExtent) const;
+			void		VerifyIntegrity(const TCodeLocation&sender, const FVerification&, bool allowUnknownExtent);
 			bool		BothAnchorsAreOff() const {return lower.IsInactive() && upper.IsInactive();}
 			bool		BothAnchorsAreOn() const {return lower.IsEnabled() && upper.IsEnabled();}
 			bool		IsFreeFloating() const {return BothAnchorsAreOff() && !isAutoCentering;}
@@ -416,7 +418,7 @@ namespace Component
 		Axis			axis[2];
 
 		/**/			AnchorConfig()	{axis[AnchorAxis::Horizontal].myAxis = AnchorAxis::Horizontal; axis[AnchorAxis::Vertical].myAxis = AnchorAxis::Vertical;}
-		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, bool allowUnknownExtent) const {axis[0].VerifyIntegrity(sender,check,allowUnknownExtent); axis[1].VerifyIntegrity(sender,check,allowUnknownExtent);}
+		void			VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, bool allowUnknownExtent) {axis[0].VerifyIntegrity(sender,check,allowUnknownExtent); axis[1].VerifyIntegrity(sender,check,allowUnknownExtent);}
 		Axis&			GetHAxis() {return axis[AnchorAxis::Horizontal];}
 		const Axis&		GetHAxis() const {return axis[AnchorAxis::Horizontal];}
 		Axis&			GetVAxis() {return axis[AnchorAxis::Vertical];}
@@ -780,7 +782,7 @@ namespace Component
 		AnchorModifier	Anchor() {return this;}
 		const AnchorConfig&GetAnchorConfig() const {return anchorConfig;}
 
-		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender) const;
+		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender);
 		virtual void	SetAnchorConfig(const AnchorConfig&cfg);
 
 		/**
@@ -1150,7 +1152,7 @@ namespace Component
 				ASSERT__(!heightLockedToIdeal);
 		}
 
-		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender) const override 
+		virtual void	VerifyAnchorIntegrity(const TCodeLocation&sender) override 
 		{
 			ASSERT__(!WidthChangesDynamically() || !widthLockedToIdeal);
 			ASSERT__(!HeightChangesDynamically() || !heightLockedToIdeal);
@@ -1719,7 +1721,7 @@ namespace Component
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
-		virtual void		VerifyAnchorIntegrity(const TCodeLocation&sender) const override;
+		virtual void		VerifyAnchorIntegrity(const TCodeLocation&sender) override;
 
 
 		virtual const Buffer0<PComponent>&		GetReferences() const { return components; }

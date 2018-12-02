@@ -133,14 +133,30 @@ namespace Component
 
 	}
 
-	void	Distance::VerifyIntegrity() const
+	void	Distance::AssertNotNaN( const TCodeLocation&caller )
 	{
-		if (IsDefined())
+		if (isnan(value))
 		{
-			ASSERT__(!isnan(value) && !isinf(value));
+			LogEvent(EventClass::Preset::error,"Distance::value is NaN, invoked from " + String(caller));
+			#ifdef _DEBUG
+				Except::TriggerFatal(caller,"Distance::value is NaN");
+			#endif
+			value = 0;
 		}
-		else
-			ASSERT__(isnan(value));
+	}
+
+
+	void	Distance::VerifyIntegrity( const TCodeLocation&caller )
+	{
+		AssertNotNaN(caller);
+		if (IsDefined() && isinf(value))
+		{
+			LogEvent(EventClass::Preset::error,"Distance::value is inf, invoked from " + String(caller));
+			#ifdef _DEBUG
+				Except::TriggerFatal(caller,"Distance::value is inf but local distance should be well defined");
+			#endif
+			value = 0;
+		}
 	}
 
 
@@ -161,18 +177,42 @@ namespace Component
 		references << c;
 	}
 
-	void		Anchor::VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, const AnchorAxis&axis, bool isUpper) const
+	void		Anchor::VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, const AnchorAxis&axis, bool isUpper)
 	{
-		distanceFromReference.VerifyIntegrity();
-		ASSERT2__(distanceFromReference.IsWellDefined(),axis.ToString(),isUpper);
-		ASSERT2__(enabled || references.IsEmpty(),axis.ToString(),isUpper);
+		distanceFromReference.VerifyIntegrity(sender);
+		if (!distanceFromReference.IsWellDefined())
+		{
+			const String msg = "Anchor::distanceFromReference.IsWellDefined() evaluates to false with axis="+String(axis.ToString())+" and isUpper=" +String(isUpper);
+			LogEvent(EventClass::Preset::error,String(sender)+": " +msg);
+			#ifdef _DEBUG
+				Except::TriggerFatal(sender,msg);
+			#endif
+			distanceFromReference = 0;
+		}
+		if (!enabled && references.IsNotEmpty())
+		{
+			const String msg = "Anchor is not enabled, references should be empty but aren't; with axis="+String(axis.ToString())+" and isUpper=" +String(isUpper);
+			LogEvent(EventClass::Preset::error,String(sender)+": " +msg);
+			#ifdef _DEBUG
+				Except::TriggerFatal(sender,msg);
+			#endif
+			references.Clear();
+		}
 		if (check)
 		{
 			foreach (references,ref)
 			{
 				auto locked = ref->lock();
 				if (!locked)
-					Except::TriggerFatal(sender,"Anchor::VerifyIntegrity. Found null reference "+String(ref-references.pointer())+"/"+String(references.Count())+" on axis "+String(axis.ToString())+" upper="+String(isUpper));
+				{
+					const String msg = "Anchor::VerifyIntegrity. Found null reference "+String(ref-references.pointer())+"/"+String(references.Count())+" on axis "+String(axis.ToString())+" upper="+String(isUpper);
+					LogEvent(EventClass::Preset::error,String(sender)+": " +msg);
+					#ifdef _DEBUG
+						Except::TriggerFatal(sender,msg);
+					#endif
+					references.erase(ref);
+					return;	//do NOT continue here, iterator invalid. check others later
+				}
 				//ASSERT2__(locked,axis.ToString(),isUpper);
 				check(locked);
 			}
@@ -180,11 +220,11 @@ namespace Component
 	}
 
 
-	void		AnchorConfig::Axis::VerifyIntegrity(const TCodeLocation&sender, const FVerification&v, bool allowUnknownExtent) const
+	void		AnchorConfig::Axis::VerifyIntegrity(const TCodeLocation&sender, const FVerification&v, bool allowUnknownExtent)
 	{
 		lower.VerifyIntegrity(sender,v,myAxis,false);
 		upper.VerifyIntegrity(sender,v,myAxis,true);
-		extent.VerifyIntegrity();
+		extent.VerifyIntegrity(sender);
 		if (isAutoCentering || lower.IsInactive() || upper.IsInactive())
 		{
 			ASSERT__(extent.IsDefined() || (allowUnknownExtent && extent.IsPlaceholder()));
@@ -684,7 +724,7 @@ namespace Component
 			parent->SignalLayoutChangeUp();
 	}
 
-	/*virtual*/ void	Component::VerifyAnchorIntegrity(const TCodeLocation&sender) const
+	/*virtual*/ void	Component::VerifyAnchorIntegrity(const TCodeLocation&sender)
 	{
 		auto p0 = this->GetParent();
 		anchorConfig.VerifyIntegrity(sender,
@@ -3279,7 +3319,7 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void		Panel::VerifyAnchorIntegrity(const TCodeLocation&sender) const
+	/*virtual override*/ void		Panel::VerifyAnchorIntegrity( const TCodeLocation&sender )
 	{
 		Super::VerifyAnchorIntegrity(sender);
 		if (autoHeight && (anchorConfig.GetVAxis().Stretches()))
