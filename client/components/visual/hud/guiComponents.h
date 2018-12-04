@@ -59,6 +59,9 @@ namespace Component
 	CONSTRUCT_ENUMERATION2(AnchorAxis,Horizontal,Vertical);
 
 
+	class BlurredBackground;
+	
+
 	class ChangeRecorder
 	{
 	public:
@@ -524,11 +527,11 @@ namespace Component
 		struct Context
 		{
 			float		opacity;
+			BlurredBackground*background;
 
-			explicit	Context(float opacity):opacity(opacity){};
-			Context		Recurse() const {return Context(opacity);}
+			explicit	Context(float opacity, BlurredBackground*background):opacity(opacity),background(background){};
+			Context		Recurse() const {return Context(opacity,background);}
 		};
-		
 
 		/**/			Decoration();
 		/**
@@ -610,6 +613,46 @@ namespace Component
 									bottomOpacity=1.f;
 
 
+	};
+
+
+	/**
+	Container for blurred background copying
+	*/
+	class BlurredBackground
+	{
+	public:
+		static bool		realtimeBlur;
+
+		Decoration::Context
+						BeginWindowRendering(float opacity);
+		/**
+		Signals that the backbuffer content has significantly changed and a full update should
+		be executed the next time PrepareForRendering() is called.
+		*/
+		void			ScheduleForcedUpdate();
+		/**
+		Signals (re)appearance of components referencing this container.
+		Automatically calls ScheduleForcedUpdate().
+		*/
+		void			SignalAppearance();
+		/**
+		Updates the local blur opacity.
+		May schedule a re-blend
+		*/
+		void			SetOpacity(float opacity);
+		void			SignalScreenResize();
+
+		const DX11::Texture&
+						GetTexture() const {return blended.GetColorTarget();}
+	private:
+		DX11::FBO		blurred;
+		DX11::FBO		blended;
+		float			opacity = 0;
+		bool			doCopy = true, doBlend = true;
+
+		void			Copy();
+		void			Blend();
 	};
 
 
@@ -2169,6 +2212,7 @@ namespace Component
 			}
 
 	public:
+		BlurredBackground	blurredBackground;
 		bool				logFullAutoLayout = false;
 
 		void				OnScreenSizeOrUIScaleChange()
@@ -2176,6 +2220,7 @@ namespace Component
 			Super::OnScreenSizeOrUIScaleChange();
 			FullAutoLayout(CLOCATION);
 			UpdateOuterRect();
+			blurredBackground.SignalScreenResize();
 		}
 
 	public:
@@ -2257,6 +2302,7 @@ namespace Component
 		virtual bool	SignalChange() {return true;}
 
 		virtual Ctx		Render(const Decoration::Context&ctx) override;
+		void			Render(float opacity);
 	};
 
 	

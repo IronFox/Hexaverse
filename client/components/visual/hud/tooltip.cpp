@@ -14,6 +14,8 @@ namespace HUD
 		{
 			
 			const IProvider*	hoveringOver = nullptr;	//!< Components that can display tooltips
+			HUD::Component::Decoration decoration;
+			HUD::Component::BlurredBackground background;
 
 			
 
@@ -78,24 +80,27 @@ namespace HUD
 						Hide();
 						return;
 					}
+					bool wasInvisible = hoveringInfo == nullptr;
 					hoveringOver = candidate;
 					RefreshText();
+					if (wasInvisible && hoveringInfo != nullptr)
+						background.SignalAppearance();
 				}
 
 			}
 		}
 
-
 		D::Buffer0<FGet,D::Swap>	tooltipQuery;
-		HUD::Component::Decoration decoration;
+
 
 		void	Create()
 		{
-			decoration= HUD::Component::Decoration();
-			decoration.SetCutCorners(false);
-			decoration.SetBackgroundColor(float4(0,0,0,0.4f));
-			decoration.SetShadow(float4(0,0,0,0.3f));
+			Details::decoration= HUD::Component::Decoration();
+			Details::decoration.SetCutCorners(false);
+			Details::decoration.SetBackgroundColor(float4(0,0,0,0.4f));
+			Details::decoration.SetShadow(float4(0,0,0,0.3f));
 			GlobalEvents::frameBegin << Details::Check;
+			GlobalEvents::windowSizeChanged << [](){Details::background.SignalScreenResize();};
 		}
 
 		void	Hide()
@@ -167,7 +172,7 @@ namespace HUD
 
 			decoration.SignalBackgroundChange();
 			decoration.UpdateLocation(r);
-			decoration.RenderBackground(float2(),false,false,true,HUD::Component::Decoration::Context(1.f));
+			decoration.RenderBackground(float2(),false,false,true,background.BeginWindowRendering(1.f));
 
 
 	//		SurfaceRenderer::Rasterize(r);

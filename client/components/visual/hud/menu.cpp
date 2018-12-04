@@ -287,6 +287,10 @@ namespace Menu
 		}
 		)->SetupMarkers(0.25f,true);
 
+		AddCheckBox(visual,"Real-Time GUI Blur","runtime/realtimeGUIBlur",[](){return HUD::Component::BlurredBackground::realtimeBlur;},[](bool enabled)
+		{
+			HUD::Component::BlurredBackground::realtimeBlur = enabled;
+		});
 
 		AddOptionSlider(visual,"Shadow Quality", 0, ShadedInstruction::Quality::N-1, 1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
 			{

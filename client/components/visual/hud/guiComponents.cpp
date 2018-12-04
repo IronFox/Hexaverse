@@ -135,7 +135,7 @@ namespace Component
 
 	void	Distance::AssertNotNaN( const TCodeLocation&caller )
 	{
-		if (isnan(value))
+		if (IsDefined() && isnan(value))
 		{
 			LogEvent(EventClass::Preset::error,"Distance::value is NaN, invoked from " + String(caller));
 			#ifdef _DEBUG
@@ -660,7 +660,6 @@ namespace Component
 
 
 
-
 	/*virtual*/ Decoration::Context	Component::Render( const Decoration::Context&ctx )
 	{
 		return ctx.Recurse();
@@ -874,8 +873,8 @@ namespace Component
 			shrunkTarget,
 			hBlurredTarget,
 			vBlurredTarget;
-		DX11::Texture
-			backgroundTexture;
+		//DX11::Texture
+			//backgroundTexture;
 
 		DX11::ObjectBuffer<float4>	mouseAt_fadeRange;
 		DX11::ObjectBuffer<float2>	shrinkPixelScale;
@@ -883,62 +882,24 @@ namespace Component
 
 		bool	backgroundChanged = true;
 		float	backgroundOpacity = 1.f;
+		static const DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 
 		void	SignalScreenResize()
 		{
-			shrunkTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
-			hBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
-			vBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+			shrunkTarget.Create(display.GetResolution()/4,format);
+			hBlurredTarget.Create(display.GetResolution()/4,format);
+			vBlurredTarget.Create(display.GetResolution()/4,format);
 		}
 
-		void	CopyBackground(float opacity)
-		{
-			if (!backgroundChanged)
-				return;
-			
-			backgroundChanged = false;
-			display.DirectX11::Capture(backbufferCopy);
-			//backgroundTexture = backbufferCopy.GetColorTarget();
-
-			shrinkShader.quickSlots.First() = backbufferCopy.GetColorTarget();
-			shrinkPixelScale.Update(float2(1.f / Detail::ViewPortWidth(), 1.f / Detail::ViewPortHeight()));
-			display.TargetFBO(shrunkTarget);
-				display.Render(shrinkShader);
-			//display.TargetBackbuffer();
-
-			hBlur.quickSlots.First() = shrunkTarget.GetColorTarget();
-			shrinkPixelScale.Update(float2(4.f / Detail::ViewPortWidth(), 4.f / Detail::ViewPortHeight()));
-			display.TargetFBO(hBlurredTarget);
-				display.Render(hBlur);
-			//display.TargetBackbuffer();
-
-			vBlur.quickSlots.First() = hBlurredTarget.GetColorTarget();
-			display.TargetFBO(vBlurredTarget);
-				display.Render(vBlur);
-			//display.TargetBackbuffer();
-
-			display.StoreRendererState();
-				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-				blurOpacity.Update(opacity);
-				blend.quickSlots.First() = vBlurredTarget.GetColorTarget();
-				display.TargetFBO(backbufferCopy);
-					display.Render(blend);
-			display.RestoreRendererState();
-			display.TargetBackbuffer();
-
-
-
-			backgroundTexture = backbufferCopy.GetColorTarget();
-			
-
-		}
-
+		
+		/*
 		void	UpdateBackground(const Decoration::Context&ctx)
 		{
 			backgroundChanged = true;
 			backgroundOpacity = ctx.opacity;
 		}
+		*/
 
 		void	UpdateMouseAndFade(const float2&relativeMouse,const M::Rect<>&location)
 		{
@@ -1248,7 +1209,88 @@ namespace Component
 
 	}
 
+	/*static*/ bool BlurredBackground::realtimeBlur = false;
 
+	Decoration::Context	BlurredBackground::BeginWindowRendering(float opacity)
+	{
+		SetOpacity(opacity);
+		if (doCopy || realtimeBlur)
+			Copy();
+		if (doBlend)
+			Blend();
+		return Decoration::Context(opacity,this);
+	}
+
+	void			BlurredBackground::ScheduleForcedUpdate()
+	{
+		doCopy = true;
+	}
+
+	void			BlurredBackground::SignalAppearance()
+	{
+		ScheduleForcedUpdate();
+	}
+
+	void			BlurredBackground::SetOpacity(float opacity)
+	{
+		if (opacity == this->opacity)
+			return;
+		doBlend = true;
+		this->opacity = opacity;
+	}
+
+	void			BlurredBackground::SignalScreenResize()
+	{
+		doCopy = true;
+	}
+
+	void BlurredBackground::Copy()
+	{
+		display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::None);
+			using namespace DecorationDetails;
+			doCopy = false;
+			doBlend = true;
+			display.DirectX11::Capture(backbufferCopy);
+			//backgroundTexture = backbufferCopy.GetColorTarget();
+
+			shrinkShader.quickSlots.First() = backbufferCopy.GetColorTarget();
+			shrinkPixelScale.Update(float2(1.f / Detail::ViewPortWidth(), 1.f / Detail::ViewPortHeight()));
+			display.TargetFBO(shrunkTarget);
+				display.Render(shrinkShader);
+			//display.TargetBackbuffer();
+
+			hBlur.quickSlots.First() = shrunkTarget.GetColorTarget();
+			shrinkPixelScale.Update(float2(4.f / Detail::ViewPortWidth(), 4.f / Detail::ViewPortHeight()));
+			display.TargetFBO(hBlurredTarget);
+				display.Render(hBlur);
+			//display.TargetBackbuffer();
+
+			vBlur.quickSlots.First() = hBlurredTarget.GetColorTarget();
+			if (blurred.GetResolution() != hBlurredTarget.GetResolution())
+				blurred.Create(hBlurredTarget.GetResolution(),format);
+			display.TargetFBO(blurred);
+				display.Render(vBlur);
+		display.RestoreRendererState();
+	}
+
+	void BlurredBackground::Blend()
+	{
+		using namespace DecorationDetails;
+		doBlend = false;
+
+		if (blended.GetResolution() != blurred.GetResolution())
+			blended.Create(blurred.GetResolution(),format);
+
+		display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+			blurOpacity.Update(opacity);
+			blend.quickSlots.First() = blurred.GetColorTarget();
+			display.TargetFBO(blended);
+				display.Render(blend);
+		display.RestoreRendererState();
+		display.TargetBackbuffer();
+	}
 
 
 
@@ -1280,7 +1322,6 @@ namespace Component
 
 		display.StoreRendererState();
 			display.SetBlendMode(Engine::BlendMode::None);
-			CopyBackground(ctx.opacity);
 			
 		if (shadow)
 		{
@@ -1301,7 +1342,7 @@ namespace Component
 				Bakery::Complete(shadowInstruction);
 
 			}
-			shadowInstruction.quickSlots.First() = backgroundTexture;
+			shadowInstruction.quickSlots.First() = ctx.background->GetTexture();
 			display.Render(shadowInstruction);
 
 		}
@@ -1369,7 +1410,7 @@ namespace Component
 			}
 			if (background)
 			{
-				backgroundInstruction.quickSlots.First() = backgroundTexture;
+				backgroundInstruction.quickSlots.First() = ctx.background->GetTexture();
 				display.Render(backgroundInstruction);
 			}
 		}
@@ -1386,7 +1427,6 @@ namespace Component
 
 		if (renderEdges)
 		{
-			CopyBackground(ctx.opacity);
 			{
 				float4 edge;
 				edge.rgb = backgroundColor.rgb;
@@ -1440,7 +1480,7 @@ namespace Component
 
 			display.StoreRendererState();
 				display.SetBlendMode(Engine::BlendMode::None);
-				edgeInstruction.quickSlots.First() = backgroundTexture;
+				edgeInstruction.quickSlots.First() = ctx.background->GetTexture();
 				display.Render(edgeInstruction);
 
 			display.RestoreRendererState();
@@ -3338,9 +3378,14 @@ namespace Component
 
 	/*virtual override*/ Decoration::Context		Window::Render( const Decoration::Context&ctx )
 	{
-		DecorationDetails::UpdateBackground(ctx);
 		return Super::Render(ctx);
 	}
+
+	void			Window::Render(float opacity)
+	{
+		Render(blurredBackground.BeginWindowRendering(opacity));
+	}
+
 
 
 	/*virtual override*/ PWindow	Window::GetWindow()
@@ -3359,6 +3404,7 @@ namespace Component
 			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::OnShow()");
 
 		visible = true; 
+		blurredBackground.SignalAppearance();
 		SetActive(true); 
 		OnScreenSizeOrUIScaleChange();
 		VerifyAnchorIntegrity(CLOCATION);
