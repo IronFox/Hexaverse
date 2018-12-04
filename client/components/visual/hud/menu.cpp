@@ -226,7 +226,7 @@ namespace Menu
 			if (b == getValue())
 				return;
 			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' -> "+String(b));
-			Configuration::Update(configKey,b ? 1 : 0);
+			Configuration::Update(configKey,b);
 			setValue(b);	
 			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' done");
 		}));
