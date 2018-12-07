@@ -133,14 +133,30 @@ namespace Component
 
 	}
 
-	void	Distance::VerifyIntegrity() const
+	void	Distance::AssertNotNaN( const TCodeLocation&caller )
 	{
-		if (IsDefined())
+		if (IsDefined() && isnan(value))
 		{
-			ASSERT__(!isnan(value) && !isinf(value));
+			LogEvent(EventClass::Preset::error,"Distance::value is NaN, invoked from " + String(caller));
+			#ifdef _DEBUG
+				Except::TriggerFatal(caller,"Distance::value is NaN");
+			#endif
+			value = 0;
 		}
-		else
-			ASSERT__(isnan(value));
+	}
+
+
+	void	Distance::VerifyIntegrity( const TCodeLocation&caller )
+	{
+		AssertNotNaN(caller);
+		if (IsDefined() && isinf(value))
+		{
+			LogEvent(EventClass::Preset::error,"Distance::value is inf, invoked from " + String(caller));
+			#ifdef _DEBUG
+				Except::TriggerFatal(caller,"Distance::value is inf but local distance should be well defined");
+			#endif
+			value = 0;
+		}
 	}
 
 
@@ -161,18 +177,42 @@ namespace Component
 		references << c;
 	}
 
-	void		Anchor::VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, const AnchorAxis&axis, bool isUpper) const
+	void		Anchor::VerifyIntegrity(const TCodeLocation&sender, const FVerification&check, const AnchorAxis&axis, bool isUpper)
 	{
-		distanceFromReference.VerifyIntegrity();
-		ASSERT2__(distanceFromReference.IsWellDefined(),axis.ToString(),isUpper);
-		ASSERT2__(enabled || references.IsEmpty(),axis.ToString(),isUpper);
+		distanceFromReference.VerifyIntegrity(sender);
+		if (!distanceFromReference.IsWellDefined())
+		{
+			const String msg = "Anchor::distanceFromReference.IsWellDefined() evaluates to false with axis="+String(axis.ToString())+" and isUpper=" +String(isUpper);
+			LogEvent(EventClass::Preset::error,String(sender)+": " +msg);
+			#ifdef _DEBUG
+				Except::TriggerFatal(sender,msg);
+			#endif
+			distanceFromReference = 0;
+		}
+		if (!enabled && references.IsNotEmpty())
+		{
+			const String msg = "Anchor is not enabled, references should be empty but aren't; with axis="+String(axis.ToString())+" and isUpper=" +String(isUpper);
+			LogEvent(EventClass::Preset::error,String(sender)+": " +msg);
+			#ifdef _DEBUG
+				Except::TriggerFatal(sender,msg);
+			#endif
+			references.Clear();
+		}
 		if (check)
 		{
 			foreach (references,ref)
 			{
 				auto locked = ref->lock();
 				if (!locked)
-					Except::TriggerFatal(sender,"Anchor::VerifyIntegrity. Found null reference "+String(ref-references.pointer())+"/"+String(references.Count())+" on axis "+String(axis.ToString())+" upper="+String(isUpper));
+				{
+					const String msg = "Anchor::VerifyIntegrity. Found null reference "+String(ref-references.pointer())+"/"+String(references.Count())+" on axis "+String(axis.ToString())+" upper="+String(isUpper);
+					LogEvent(EventClass::Preset::error,String(sender)+": " +msg);
+					#ifdef _DEBUG
+						Except::TriggerFatal(sender,msg);
+					#endif
+					references.erase(ref);
+					return;	//do NOT continue here, iterator invalid. check others later
+				}
 				//ASSERT2__(locked,axis.ToString(),isUpper);
 				check(locked);
 			}
@@ -180,11 +220,11 @@ namespace Component
 	}
 
 
-	void		AnchorConfig::Axis::VerifyIntegrity(const TCodeLocation&sender, const FVerification&v, bool allowUnknownExtent) const
+	void		AnchorConfig::Axis::VerifyIntegrity(const TCodeLocation&sender, const FVerification&v, bool allowUnknownExtent)
 	{
 		lower.VerifyIntegrity(sender,v,myAxis,false);
 		upper.VerifyIntegrity(sender,v,myAxis,true);
-		extent.VerifyIntegrity();
+		extent.VerifyIntegrity(sender);
 		if (isAutoCentering || lower.IsInactive() || upper.IsInactive())
 		{
 			ASSERT__(extent.IsDefined() || (allowUnknownExtent && extent.IsPlaceholder()));
@@ -620,7 +660,6 @@ namespace Component
 
 
 
-
 	/*virtual*/ Decoration::Context	Component::Render( const Decoration::Context&ctx )
 	{
 		return ctx.Recurse();
@@ -684,7 +723,7 @@ namespace Component
 			parent->SignalLayoutChangeUp();
 	}
 
-	/*virtual*/ void	Component::VerifyAnchorIntegrity(const TCodeLocation&sender) const
+	/*virtual*/ void	Component::VerifyAnchorIntegrity(const TCodeLocation&sender)
 	{
 		auto p0 = this->GetParent();
 		anchorConfig.VerifyIntegrity(sender,
@@ -834,8 +873,8 @@ namespace Component
 			shrunkTarget,
 			hBlurredTarget,
 			vBlurredTarget;
-		DX11::Texture
-			backgroundTexture;
+		//DX11::Texture
+			//backgroundTexture;
 
 		DX11::ObjectBuffer<float4>	mouseAt_fadeRange;
 		DX11::ObjectBuffer<float2>	shrinkPixelScale;
@@ -843,62 +882,24 @@ namespace Component
 
 		bool	backgroundChanged = true;
 		float	backgroundOpacity = 1.f;
+		static const DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 
 		void	SignalScreenResize()
 		{
-			shrunkTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
-			hBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
-			vBlurredTarget.Create(display.GetResolution()/4,DXGI_FORMAT_R8G8B8A8_UNORM);
+			shrunkTarget.Create(display.GetResolution()/4,format);
+			hBlurredTarget.Create(display.GetResolution()/4,format);
+			vBlurredTarget.Create(display.GetResolution()/4,format);
 		}
 
-		void	CopyBackground(float opacity)
-		{
-			if (!backgroundChanged)
-				return;
-			
-			backgroundChanged = false;
-			display.DirectX11::Capture(backbufferCopy);
-			//backgroundTexture = backbufferCopy.GetColorTarget();
-
-			shrinkShader.quickSlots.First() = backbufferCopy.GetColorTarget();
-			shrinkPixelScale.Update(float2(1.f / Detail::ViewPortWidth(), 1.f / Detail::ViewPortHeight()));
-			display.TargetFBO(shrunkTarget);
-				display.Render(shrinkShader);
-			//display.TargetBackbuffer();
-
-			hBlur.quickSlots.First() = shrunkTarget.GetColorTarget();
-			shrinkPixelScale.Update(float2(4.f / Detail::ViewPortWidth(), 4.f / Detail::ViewPortHeight()));
-			display.TargetFBO(hBlurredTarget);
-				display.Render(hBlur);
-			//display.TargetBackbuffer();
-
-			vBlur.quickSlots.First() = hBlurredTarget.GetColorTarget();
-			display.TargetFBO(vBlurredTarget);
-				display.Render(vBlur);
-			//display.TargetBackbuffer();
-
-			display.StoreRendererState();
-				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-				blurOpacity.Update(opacity);
-				blend.quickSlots.First() = vBlurredTarget.GetColorTarget();
-				display.TargetFBO(backbufferCopy);
-					display.Render(blend);
-			display.RestoreRendererState();
-			display.TargetBackbuffer();
-
-
-
-			backgroundTexture = backbufferCopy.GetColorTarget();
-			
-
-		}
-
+		
+		/*
 		void	UpdateBackground(const Decoration::Context&ctx)
 		{
 			backgroundChanged = true;
 			backgroundOpacity = ctx.opacity;
 		}
+		*/
 
 		void	UpdateMouseAndFade(const float2&relativeMouse,const M::Rect<>&location)
 		{
@@ -1208,7 +1209,88 @@ namespace Component
 
 	}
 
+	/*static*/ bool BlurredBackground::realtimeBlur = false;
 
+	Decoration::Context	BlurredBackground::BeginWindowRendering(float opacity)
+	{
+		SetOpacity(opacity);
+		if (doCopy || realtimeBlur)
+			Copy();
+		if (doBlend)
+			Blend();
+		return Decoration::Context(opacity,this);
+	}
+
+	void			BlurredBackground::ScheduleForcedUpdate()
+	{
+		doCopy = true;
+	}
+
+	void			BlurredBackground::SignalAppearance()
+	{
+		ScheduleForcedUpdate();
+	}
+
+	void			BlurredBackground::SetOpacity(float opacity)
+	{
+		if (opacity == this->opacity)
+			return;
+		doBlend = true;
+		this->opacity = opacity;
+	}
+
+	void			BlurredBackground::SignalScreenResize()
+	{
+		doCopy = true;
+	}
+
+	void BlurredBackground::Copy()
+	{
+		display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::None);
+			using namespace DecorationDetails;
+			doCopy = false;
+			doBlend = true;
+			display.DirectX11::Capture(backbufferCopy);
+			//backgroundTexture = backbufferCopy.GetColorTarget();
+
+			shrinkShader.quickSlots.First() = backbufferCopy.GetColorTarget();
+			shrinkPixelScale.Update(float2(1.f / Detail::ViewPortWidth(), 1.f / Detail::ViewPortHeight()));
+			display.TargetFBO(shrunkTarget);
+				display.Render(shrinkShader);
+			//display.TargetBackbuffer();
+
+			hBlur.quickSlots.First() = shrunkTarget.GetColorTarget();
+			shrinkPixelScale.Update(float2(4.f / Detail::ViewPortWidth(), 4.f / Detail::ViewPortHeight()));
+			display.TargetFBO(hBlurredTarget);
+				display.Render(hBlur);
+			//display.TargetBackbuffer();
+
+			vBlur.quickSlots.First() = hBlurredTarget.GetColorTarget();
+			if (blurred.GetResolution() != hBlurredTarget.GetResolution())
+				blurred.Create(hBlurredTarget.GetResolution(),format);
+			display.TargetFBO(blurred);
+				display.Render(vBlur);
+		display.RestoreRendererState();
+	}
+
+	void BlurredBackground::Blend()
+	{
+		using namespace DecorationDetails;
+		doBlend = false;
+
+		if (blended.GetResolution() != blurred.GetResolution())
+			blended.Create(blurred.GetResolution(),format);
+
+		display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+			blurOpacity.Update(opacity);
+			blend.quickSlots.First() = blurred.GetColorTarget();
+			display.TargetFBO(blended);
+				display.Render(blend);
+		display.RestoreRendererState();
+		display.TargetBackbuffer();
+	}
 
 
 
@@ -1240,7 +1322,6 @@ namespace Component
 
 		display.StoreRendererState();
 			display.SetBlendMode(Engine::BlendMode::None);
-			CopyBackground(ctx.opacity);
 			
 		if (shadow)
 		{
@@ -1261,7 +1342,7 @@ namespace Component
 				Bakery::Complete(shadowInstruction);
 
 			}
-			shadowInstruction.quickSlots.First() = backgroundTexture;
+			shadowInstruction.quickSlots.First() = ctx.background->GetTexture();
 			display.Render(shadowInstruction);
 
 		}
@@ -1329,7 +1410,7 @@ namespace Component
 			}
 			if (background)
 			{
-				backgroundInstruction.quickSlots.First() = backgroundTexture;
+				backgroundInstruction.quickSlots.First() = ctx.background->GetTexture();
 				display.Render(backgroundInstruction);
 			}
 		}
@@ -1346,7 +1427,6 @@ namespace Component
 
 		if (renderEdges)
 		{
-			CopyBackground(ctx.opacity);
 			{
 				float4 edge;
 				edge.rgb = backgroundColor.rgb;
@@ -1400,7 +1480,7 @@ namespace Component
 
 			display.StoreRendererState();
 				display.SetBlendMode(Engine::BlendMode::None);
-				edgeInstruction.quickSlots.First() = backgroundTexture;
+				edgeInstruction.quickSlots.First() = ctx.background->GetTexture();
 				display.Render(edgeInstruction);
 
 			display.RestoreRendererState();
@@ -3279,7 +3359,7 @@ namespace Component
 	}
 
 
-	/*virtual override*/ void		Panel::VerifyAnchorIntegrity(const TCodeLocation&sender) const
+	/*virtual override*/ void		Panel::VerifyAnchorIntegrity( const TCodeLocation&sender )
 	{
 		Super::VerifyAnchorIntegrity(sender);
 		if (autoHeight && (anchorConfig.GetVAxis().Stretches()))
@@ -3298,9 +3378,14 @@ namespace Component
 
 	/*virtual override*/ Decoration::Context		Window::Render( const Decoration::Context&ctx )
 	{
-		DecorationDetails::UpdateBackground(ctx);
 		return Super::Render(ctx);
 	}
+
+	void			Window::Render(float opacity)
+	{
+		Render(blurredBackground.BeginWindowRendering(opacity));
+	}
+
 
 
 	/*virtual override*/ PWindow	Window::GetWindow()
@@ -3319,6 +3404,7 @@ namespace Component
 			LogEvent(EventClass::Preset::gui,"Window["+String(this)+"]::OnShow()");
 
 		visible = true; 
+		blurredBackground.SignalAppearance();
 		SetActive(true); 
 		OnScreenSizeOrUIScaleChange();
 		VerifyAnchorIntegrity(CLOCATION);

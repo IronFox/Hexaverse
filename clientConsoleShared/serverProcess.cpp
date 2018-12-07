@@ -203,6 +203,8 @@ namespace ServerProcess
 
 	}
 
+	Observable<> onExplicitClose;
+
 	void	SetOnEndAsync(const std::function<void()>&f)
 	{
 		Detail::onEndAsync = f;
@@ -218,9 +220,13 @@ namespace ServerProcess
 	}
 
 
-	bool RunNow(const PathString&parameters)
+	bool RunNow( const PathString&parameters )
 	{
+		bool ran = Detail::process.IsRunning();
 		Detail::process.Terminate();
+		if (ran)
+			onExplicitClose();
+
 		Detail::parameters = parameters;
 		Detail::Start(DEFAULT_SERVER_BASE_PORT);
 		Detail::process.AwaitCompletion();
@@ -249,6 +255,7 @@ namespace ServerProcess
 	void End()
 	{
 		Detail::Terminate();
+		onExplicitClose();
 	}
 
 	void Destroy()

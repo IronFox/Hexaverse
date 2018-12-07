@@ -9,6 +9,7 @@ v0.9.7	[Nov 18 2018]
 	* Fixed splash screen depicting the previous loading item.
 	* Fixed tooltips changing from long to short text rather than the other way around.
 	* Fixed rare mobile task routing error after deploying units from vehicle stores.
+	* AI: Fixed Game.Type.* tables to behave as documented (string mapped, not sequential)
 
 v0.9.6	[Nov 9 2018]
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do.

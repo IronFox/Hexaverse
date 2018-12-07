@@ -671,7 +671,7 @@ namespace Tutorial
 					holdOnID = InvalidIndex;
 					RuntimeConfig::serverAddress = Network::ServerAddress();
 					HUD::Dialog::ShowMessage("Tutorial server took too long to start. Something went wrong. Please check any available logs in\n"
-							+String(FileSystem::Folder( RuntimeConfig::myConfig.GetRoot()).ParentLocation()->GetLocation())
+							+FileSystem::PathToString(FileSystem::Folder( RuntimeConfig::myConfig.GetRoot()).ParentLocation()->GetLocation(),false)
 						+"\nSorry about this :S");
 				}
 

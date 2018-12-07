@@ -6,12 +6,24 @@ namespace Animation
 {
 	WorldDelta::WorldDelta(Protocol::WorldDelta&d):Super(TUniqueID::Empty())
 	{
-		deltas.Append().swap(d);
 		isComplete = (d.familyAndLastFlag & 0x80) != 0;
+		deltas.Append(std::move(d));
 	}
+
+	void WorldDelta::Append(Protocol::WorldDelta&&d)
+	{
+		DBG_ASSERT__(!isComplete);
+		const bool last = (d.familyAndLastFlag & 0x80) != 0;
+		deltas.Append(std::move(d));
+		if (last)
+			isComplete = true;
+	}
+
+
 
 	/*virtual override*/ void WorldDelta::Begin( bool instant )
 	{
+		LogEvent(EventSignificance::Debug,"Terrain: Processing "+String(deltas.Count())+" delta(s)");
 		foreach (deltas,block)
 		{
 			BaseGrid::family_t family = block->familyAndLastFlag & 0x7F;
@@ -20,6 +32,7 @@ namespace Animation
 		}
 		#ifdef HAS_WINDOW
 			World::allowRecompilation = isComplete && Network::gameHasBegun;
+			LogEvent(EventSignificance::Debug,"Terrain: Recompilation allowed set to "+String(World::allowRecompilation)+", with complete="+String(isComplete)+" and gameHasBegun="+String(Network::gameHasBegun));
 		#endif
 	}
 

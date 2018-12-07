@@ -645,13 +645,10 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 
-			const bool last = (delta.familyAndLastFlag & 0x80) != 0;
 			auto existing = To<Animation::WorldDelta>::Cast(Animation::FindFirstScheduledEventAtTime(delta.timestamp,[](const auto&ev){return ev->IsWorldDelta();}));
 			if (existing)
 			{
-				existing->deltas.Append().swap(delta);
-				if (last)
-					existing->isComplete = true;
+				existing->Append(std::move(delta));
 				return;
 			}
 			Animation::SmartSchedule<Animation::WorldDelta>(delta.timestamp,delta);

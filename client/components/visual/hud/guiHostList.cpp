@@ -11,6 +11,7 @@
 #include "../../audio/music.h"
 #include "../../clientEvents.h"
 #include "menu.h"
+#include "../tutorial.h"
 
 #ifdef HAS_WINDOW
 
@@ -508,6 +509,7 @@ namespace HUD{namespace HostList{
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
 			label->Anchor().Top(Distance::GameWindow( 0.01f )).FillHorizontally();//.Right(Distance::GameWindow( 0.01f ));
+			pb->SetCutCorners(false);
 			pb->AddComponent( label,CLOCATION );
 			Network::ServerAddress url = *failed;
 			PButton forget(new Button("Forget this host","Removes this host from the list of queried TCP game servers",
@@ -532,6 +534,7 @@ namespace HUD{namespace HostList{
 			forget->SetLocalFontScale(forget->GetLocalFontScale() * 0.9f);
 			forget->ScaleVerticalPadding(0.5f);
 			forget->LockToIdealWidth();
+			forget->SetCutCorners(false);
 			forget->Anchor().Top().Right();
 		
 			p->AddComponent( forget ,CLOCATION);

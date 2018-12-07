@@ -11,6 +11,7 @@ using namespace DeltaWorks;
 namespace ServerProcess
 {
 	typedef std::function<void(const String&)> FLogger;
+	extern Observable<>	onExplicitClose;
 
 	void			Setup(Observable<>&onProgramTerminate, const FLogger&minor, const FLogger&common, const FLogger&important, const FLogger&error);
 	void			SetOnEndAsync(const std::function<void()>&);

@@ -14,7 +14,8 @@ namespace Animation
 
 		virtual bool			IsWorldDelta() const override {return true;}
 
-	//private:
+		void					Append(Protocol::WorldDelta&&delta);
+	private:
 		Buffer0<Protocol::WorldDelta,Swap>	deltas;
 		bool					isComplete=false;
 	};
