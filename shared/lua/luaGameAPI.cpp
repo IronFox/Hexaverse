@@ -2094,22 +2094,25 @@ namespace Lua
 		{
 			const auto&p = **p0;
 			auto t = AddType( p.GetType());
-			allTypes.AppendElement(t);
-			unitTypes.AppendElement(t);
+			const String uniqueName = (*p0)->GetTypeName();
+			allTypes.SetField(uniqueName,t);	//AppendElement(t);
+			unitTypes.SetField(uniqueName,t);	//AppendElement(t);
 		}
 
 		foreach (Objects::Component::allTurretComponents,t0)
 		{
 			auto t = AddType((*t0)->constName);
-			allTypes.AppendElement(t);
-			turretTypes.AppendElement(t);
+			const String&uniqueName = (*t0)->typeName;
+			allTypes.SetField(uniqueName,t);	//AppendElement(t);
+			turretTypes.SetField(uniqueName,t); //AppendElement(t);
 		}
 
 		foreach (Objects::Component::baseComponents,b0)
 		{
 			auto t = AddType((*b0)->constName);
-			allTypes.AppendElement(t);
-			vbaseTypes.AppendElement(t);
+			const String&uniqueName = (*b0)->typeName;
+			allTypes.SetField(uniqueName,t);	//AppendElement(t);
+			vbaseTypes.SetField(uniqueName,t); //AppendElement(t);
 		}
 	}
 
