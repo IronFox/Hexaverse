@@ -828,7 +828,7 @@ namespace Lua
 		});
 		gameTable.SetFunction("RandomIndex",[this](int max)
 		{
-			return random.Next(max) + 1;
+			return random.Next(max-1) + 1;
 		});
 
 		gameTable.SetFunction("GetRound",[]()
