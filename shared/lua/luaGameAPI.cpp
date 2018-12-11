@@ -669,6 +669,7 @@ namespace Lua
 		vbaseTypes.ClearReference();
 		onDeployedCallbacks.Clear();
 		gameTable.ClearReference();
+		markTable.ClearReference();
 		gridTable.ClearReference();
 		terrainTable.ClearReference();
 		terrainContentTable.ClearReference();
@@ -791,6 +792,7 @@ namespace Lua
 	void	API::Setup()
 	{
 		gameTable = program->SetGlobalTable("Game");
+			markTable = gameTable.SetSubTable("DebugMarkers");
 			gridTable = gameTable.SetSubTable("Grid");
 			terrainTable = gameTable.SetSubTable("Terrain");
 				terrainContentTable = terrainTable.SetSubTable("Content");
@@ -821,6 +823,30 @@ namespace Lua
 		{
 			LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
 		});
+
+
+		markTable.SetFunction("Put",[this](const Lua::Table&tloc, float red, float green, float blue, const String&msg)
+		{
+			const auto loc = Detail::ToLGridCell(tloc,"Put(): Location parameter #1");
+			if (!onVisualMarkerCreate)
+				return InvalidIndex;	//ignore
+			const auto rs = onVisualMarkerCreate(loc,float3(red,green,blue),msg);
+			return rs;
+		});
+		markTable.SetFunction("Remove",[this](index_t id)
+		{
+			if (id == InvalidIndex)
+				return;
+			if (!onVisualMarkerDelete)
+				throw Lua::Exception("Remove(): onVisualMarkerDelete not set");
+			onVisualMarkerDelete(id);
+		});
+		markTable.SetFunction("RemoveAll",[this]()
+		{
+			if (onVisualMarkerFlush)
+				onVisualMarkerFlush();
+		});
+
 
 		gameTable.SetFunction("Random",[this]()
 		{

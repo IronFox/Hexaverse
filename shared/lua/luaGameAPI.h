@@ -43,6 +43,7 @@ namespace Lua
 	{
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
+							markTable,	//Game.DebugMarkers.X
 							researchTable,	//Game.Research.X
 							typeTable,		//Game.Type.X
 							terrainTable, //Game.Terrain.X
@@ -131,6 +132,10 @@ namespace Lua
 												onDropSafeTasks,
 												onDropLastTask
 												;
+		std::function<index_t(const Grid::LCellIdI&, const M::TVec3<>&color, const String&msg)>	onVisualMarkerCreate;
+		std::function<void(index_t)>			onVisualMarkerDelete;
+		std::function<void()>					onVisualMarkerFlush;
+
 		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure,
 													onUpdateMobileAutomation,
 													onUpdateSleep;

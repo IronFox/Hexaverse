@@ -8,6 +8,7 @@
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/dialog.h"
 #include "visual/hud/guiComponents.h"
+#include "visual/scene/debugMarkers.h"
 #include <io/string_file.h>
 #include "io.h"
 #include "playerControlBegin.h"
@@ -779,6 +780,9 @@ namespace ScriptedAI
 		api.onMarkerCreate = Callback::MarkerCreate;
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
+		api.onVisualMarkerCreate = Objects::DebugMarkers::Create;
+		api.onVisualMarkerDelete = Objects::DebugMarkers::Delete;
+		api.onVisualMarkerFlush = Objects::DebugMarkers::FlushAll;
 
 		api.onRemoveEntity =Callback::RemoveEntity;
 		api.onDropLastTask = Callback::DropLastTask;
