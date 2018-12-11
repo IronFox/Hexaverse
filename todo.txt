@@ -1,3 +1,5 @@
+must fix: ai script can construct nexus ports
+
 bugs:
 	deploying surveyor from storage does not instantly reveal resources on client
 	plane land button disabled atop vehicle store on highest possible level (-1 because of height 2)
