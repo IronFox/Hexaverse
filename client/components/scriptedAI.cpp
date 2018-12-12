@@ -780,9 +780,11 @@ namespace ScriptedAI
 		api.onMarkerCreate = Callback::MarkerCreate;
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
-		api.onVisualMarkerCreate = Objects::DebugMarkers::Create;
-		api.onVisualMarkerDelete = Objects::DebugMarkers::Delete;
-		api.onVisualMarkerFlush = Objects::DebugMarkers::FlushAll;
+		#ifdef HAS_WINDOW
+			api.onVisualMarkerCreate = Objects::DebugMarkers::Create;
+			api.onVisualMarkerDelete = Objects::DebugMarkers::Delete;
+			api.onVisualMarkerFlush = Objects::DebugMarkers::FlushAll;
+		#endif
 
 		api.onRemoveEntity =Callback::RemoveEntity;
 		api.onDropLastTask = Callback::DropLastTask;
