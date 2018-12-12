@@ -98,7 +98,7 @@ namespace Objects { namespace DebugMarkers
 
 	void		Delete( index_t idx )
 	{
-		LogEvent(EventSignificance::Debug,"Erasing visual marker "+idx);
+		LogEvent(EventSignificance::Debug,"Erasing visual marker "+String(idx));
 		using namespace Details;
 		index_t at;
 		if (!indexMap.QueryAndUnset(idx,at))
