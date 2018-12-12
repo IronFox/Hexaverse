@@ -28,6 +28,32 @@ int			Game.RandomIndex(int max)		-- Fetches the next uniformly distributed rando
 Unit			Game.GetMobileAt(Loc);		-- Gets the mobile unit at the given location. nil if none. Operates in O(1): fast
 Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the given location. nil if none. Operates in O(1): fast
 
+
+
+--[[
+Put():
+Creates or replaces the visual debug marker found at the given location.
+Set all color components to 255 for a white visual debug marker, or 0 for black.
+@param	r	Red color component in [0,255]. 0=none, 255=full
+@param	g	Green color component in [0,255]
+@param	b	Blue color component in [0,255]
+@param 	label Label to print atop the marker. May be empty
+@return Marker ID
+]]
+int				Game.DebugMarkers.Put(Loc, int r, int g, int b, string label);
+
+--[[
+Remove():
+Removes a previously put visual debug marker by id.
+]]
+void			Game.DebugMarkers.Remove(int);
+
+--[[
+RemoveAll():
+Removes all placed visual debug markers.
+]]
+void			Game.DebugMarkers.RemoveAll();
+
 --[[
 Checks the size and loop-condition of the given state.
 Actually runs the compression to see what size the final state would be.
