@@ -1,4 +1,4 @@
-v0.9.7	[Nov 18 2018]
+v0.9.7	[Dec 12 2018]
 	+ Implemented experimental floating icons if lack of resources is detected.
 	+ AI: Added Unit(mobile).GetReachFrom().
 	+ AI: Added Game.DebugMarkers.Put()/Remove()/RemoveAll()
