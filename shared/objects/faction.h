@@ -98,7 +98,7 @@ namespace Objects
 
 			struct TVisited
 			{
-				M::TMatrix4<>			system;
+				M::TMatrix4<>		system;
 				UINT32				age;
 			};
 

@@ -1,6 +1,7 @@
-v0.9.7	[Nov 18 2018]
+v0.9.7	[Dec 12 2018]
 	+ Implemented experimental floating icons if lack of resources is detected.
 	+ AI: Added Unit(mobile).GetReachFrom().
+	+ AI: Added Game.DebugMarkers.Put()/Remove()/RemoveAll()
 	> Added micro structure to GUI components to reduce banding artifacts.
 	> Improved behavior of visual log.
 	> AI: FindShortestPath(From) can now block cells by having costModifier return costs of <= 0.
@@ -10,6 +11,7 @@ v0.9.7	[Nov 18 2018]
 	* Fixed tooltips changing from long to short text rather than the other way around.
 	* Fixed rare mobile task routing error after deploying units from vehicle stores.
 	* AI: Fixed Game.Type.* tables to behave as documented (string mapped, not sequential)
+	* AI: Fixed off-by-one error in Game.RandomIndex()
 
 v0.9.6	[Nov 9 2018]
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do.

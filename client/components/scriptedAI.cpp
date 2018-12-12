@@ -8,6 +8,7 @@
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/dialog.h"
 #include "visual/hud/guiComponents.h"
+#include "visual/scene/debugMarkers.h"
 #include <io/string_file.h>
 #include "io.h"
 #include "playerControlBegin.h"
@@ -15,6 +16,11 @@
 
 namespace ScriptedAI
 {
+	//domains:
+	#define MT	//main thread
+	#define LT	//lua thread
+
+
 	using namespace DeltaWorks;
 	bool			visualDebugActive = false;
 	Observable<>	onExecutionFinished;
@@ -41,6 +47,11 @@ namespace ScriptedAI
 						selectionChangedRegistration = InvalidIndex;
 
 		HashTable<TUniqueID,TUniqueID>	awaitEntity;	//entity ID -> request ID
+
+
+
+		typedef std::pair<String,std::function<void()> >	Job;
+
 
 
 		FileSystem::Folder	GetScriptFolder()
@@ -207,7 +218,35 @@ namespace ScriptedAI
 
 		}	thread;
 
-		namespace Callback
+
+		/**
+		Instructions queued for execution by the main thread.
+		Typically filled by the Lua thread.
+		Execution is (mostly) performed by PerFrameCheck()
+		*/
+		WorkPipe<Job,Swap> mainThreadExecute;	//LT -> MT
+
+		/**
+		Instructions queued for execution by the main thread, following the next synchronization completion.
+		*/
+		MT Buffer0<Job,Swap> onSynchronized;
+		/**
+		Instructions queued for LT-enqueueing by the main thread, following the next synchronization completion.
+		*/
+		MT Buffer0<Thread::Event,Swap> onSynchronizedEnqueue;	//MT -> LT
+		/**
+		Temporarily held binary import state.
+		Moved to the Lua thread and state during subsequent synchronization
+		*/
+		MT Array<BYTE>			transientImportState;
+
+
+		/**
+		Thread callback functions.
+		Must be thread-safe.
+		Assume execution from Lua thread only.
+		*/
+		LT namespace Callback
 		{
 			void	AttackTargets(const TUniqueID&entityID, Array<Grid::LCellIdI>&disposableTargets)
 			{
@@ -425,14 +464,58 @@ namespace ScriptedAI
 				return rs;
 			}
 
+
+			#ifdef HAS_WINDOW
+
+			namespace DebugMarkers
+			{
+				std::atomic<index_t>	counter;
+
+				index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+				{
+					index_t idx = counter++;
+					if (idx == InvalidIndex)
+						idx = counter++;
+					mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label](){Objects::DebugMarkers::CreatePreIdentified(idx,loc,color,label);});
+					return idx;
+				}
+
+				void		Delete( index_t idx )
+				{
+					mainThreadExecute << Job("Remove existing debug marker",[idx](){Objects::DebugMarkers::Delete(idx);});
+				}
+
+				void		FlushAll( )
+				{
+					mainThreadExecute << Job("Flush debug markers",Objects::DebugMarkers::FlushAll);
+				}
+
+			}
+			#endif
 		}
 
 
-		Buffer0<std::pair<String,std::function<void()> > > onSynchronized;
-		Buffer0<Thread::Event,Swap> onSynchronizedEnqueue;
-		Array<BYTE>			transientImportState;
+		/**
+		Executes and flushes contents of mainThreadExecute
+		*/
+		MT void	ExecuteMainThreadEvents()
+		{
+			static Buffer0<Job>	jobs;
+			mainThreadExecute.FlushContentTo(jobs);
+			foreach (jobs,job)
+			{
+				LogEvent(EventSignificance::Debug,"ScripedAI: Main Thread Execute: Executing "+job->first+"...");
+				job->second();
+			}
+			jobs.Clear();
+		}
 
-		void			FlushAndRebuildEntities()
+		/**
+		Completely flushes and rebuilds entity states in the Lua state.
+		Executed by the main thread.
+		Lua thread must be halted.
+		*/
+		MT void			FlushAndRebuildEntities()
 		{
 			const auto t0 = timer.Now();
 			LogEvent(EventClass::Preset::debug,"ScriptedAI: Rebuilding entities and local research...");
@@ -450,7 +533,14 @@ namespace ScriptedAI
 		}
 
 
-		bool			SynchronizeWithThread()
+		/**
+		Checks whether synchronization is required, then synchronizes with the Lua thread.
+		Possibly rebuilds entities, executes all onSynchronized events, and enqueues onSynchronizedEnqueue.
+		Executed by the main thread.
+		Lua thread must be halted.
+		@return true if synchronization was scheduled
+		*/
+		MT bool			SynchronizeWithThread()
 		{
 			if (stopAndSynchronize)
 			{
@@ -482,7 +572,16 @@ namespace ScriptedAI
 
 		}
 
-		void			SynchronizeWithThread(bool flushQueued, bool flushAndRebuildEntitiesOnSynchronize, const String&name, const std::function<void()>&exec)
+		/**
+		Schedules synchronization or executes it right away if the Lua thread is currently idle.
+		Executed by the main thread.
+		Lua thread may be busy, causing the function to not synchronize and simply return.
+		@param flushQueued Dump all previously enqueued content in onSynchronized and onSynchronizedEnqueue
+		@param flushAndRebuildEntitiesOnSynchronize Schedule entity state update in the Lua state
+		@param name Task name
+		@param exec Task to execute after the next successful synchronization
+		*/
+		MT void			SynchronizeWithThread(bool flushQueued, bool flushAndRebuildEntitiesOnSynchronize, const String&name, const std::function<void()>&exec)
 		{
 			stopAndSynchronize = true;
 			Buffer0<Thread::Event,Swap>	buffer;
@@ -509,8 +608,14 @@ namespace ScriptedAI
 		};
 
 		
-
-		void			ThreadEnqueue(const String&name, const std::function<void(Thread&)>&exec)
+		/**
+		Enqueues a new task to be executed by the Lua thread.
+		If synchronization is scheduled, the specified task will be enqueued after synchronization.
+		Executed by the main thread.
+		@param name Task name
+		@param exec Task to execute by the Lua thread
+		*/
+		MT void			ThreadEnqueue(const String&name, const std::function<void(Thread&)>&exec)
 		{
 			if (stopAndSynchronize)
 				onSynchronizedEnqueue << std::make_pair(name,exec);
@@ -518,8 +623,11 @@ namespace ScriptedAI
 				thread.Enqueue(name,exec);
 		}
 
-
-		void			RegisterExecution()
+		/**
+		Asserts AI execution during client control begin.
+		Executed by the main thread
+		*/
+		MT void			RegisterExecution()
 		{
 			if (controlBeginRegistration != InvalidIndex)
 				return;
@@ -527,7 +635,11 @@ namespace ScriptedAI
 
 		}
 
-		void			UnregisterExecution()
+		/**
+		Asserts non-execution of AI during client control begin.
+		Executed by the main thread
+		*/
+		MT void			UnregisterExecution()
 		{
 			GlobalEvents::clientControlBegin.UnregisterAndSetInvalid(controlBeginRegistration);
 			#ifdef HAS_WINDOW
@@ -536,8 +648,11 @@ namespace ScriptedAI
 		}
 	
 
-
-		void Interrupt(const String&cause, bool forceReload)
+		/**
+		Schedules (and potentially executes) synchronization with Lua thread and potentially reloads AI script.
+		Executed by the main thread
+		*/
+		MT void Interrupt(const String&cause, bool forceReload)
 		{
 			SynchronizeWithThread(true,false,"Interrupt ("+cause+")",[forceReload]()
 			{
@@ -547,11 +662,20 @@ namespace ScriptedAI
 		}
 
 
-		
-		void PerFrameCheck( )
+		/**
+		Executes scheduled main thread events, and rechecks/executes potential synchronization.
+		Checks necessity and potentially enqueues state export.
+		Unregisters its own execution if Lua thread is found to be permanently halted with no pending callbacks.
+		If script execution failed, automated execution is stopped.
+		Executed by the main thread automatically every frame until AI is done (for this round)
+		*/
+		MT void PerFrameCheck( )
 		{
 			auto&thread = Details::thread;
 			namespace Callback = Details::Callback;
+
+			ExecuteMainThreadEvents();
+
 			if (!thread.IsBusy() && thread.CallbacksDone())
 			{
 				if (Details::SynchronizeWithThread())
@@ -633,7 +757,13 @@ namespace ScriptedAI
 		}
 
 
-		void HandleCallbackCandidate(const TUniqueID&reqID, const Objects::PWorldEntity&e)
+		/**
+		Schedules callback function execution by the Lua thread to a given request response.
+		Executed by the main thread
+		@param reqID Previously recorded unique request ID to respond to
+		@param e Actual response entity. May be nullptr, indicating failure
+		*/
+		MT void HandleCallbackCandidate( const TUniqueID&reqID, const Objects::PWorldEntity&e )
 		{
 			if (e)
 			{
@@ -656,10 +786,11 @@ namespace ScriptedAI
 
 		}
 
+
 	}
 
 
-	void	Resume( const String&scriptName, Array<BYTE>&compressedState )
+	MT void	Resume( const String&scriptName, Array<BYTE>&compressedState )
 	{
 		using namespace Details;
 
@@ -779,6 +910,11 @@ namespace ScriptedAI
 		api.onMarkerCreate = Callback::MarkerCreate;
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
+		#ifdef HAS_WINDOW
+			api.onVisualMarkerCreate = Callback::DebugMarkers::Create;
+			api.onVisualMarkerDelete = Callback::DebugMarkers::Delete;
+			api.onVisualMarkerFlush = Callback::DebugMarkers::FlushAll;
+		#endif
 
 		api.onRemoveEntity =Callback::RemoveEntity;
 		api.onDropLastTask = Callback::DropLastTask;
@@ -854,6 +990,11 @@ namespace ScriptedAI
 
 			if (Details::reloadScript)
 			{
+				#ifdef HAS_WINDOW
+					Details::ExecuteMainThreadEvents();
+					Objects::DebugMarkers::FlushAll();
+				#endif
+
 				Details::ThreadEnqueue("Map Terrain",[](Details::Thread&thread)
 				{
 					auto&api = thread.api;
