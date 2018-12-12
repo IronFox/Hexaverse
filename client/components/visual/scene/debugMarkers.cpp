@@ -24,6 +24,7 @@ namespace Objects { namespace DebugMarkers
 
 		index_t counter = 0;
 		HashTable<index_t,index_t> indexMap;
+		HashTable<Grid::LCellIdI,index_t> locationMap;
 		Buffer0<LocalMarker>  markers;
 
 
@@ -42,17 +43,34 @@ namespace Objects { namespace DebugMarkers
 	index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
 	{
 		using namespace Details;
-		const auto at = markers.Count();
-		auto&m = markers.Append();
-		m.color = color;
-		m.id = NextID();
-		m.label = label;
-		m.location = loc;
-		m.keyColor = float4(color,1.f);
+		index_t at;
+		LocalMarker*m = nullptr;
+		if (locationMap.Query(loc,at))
+		{
+			m = markers + at;
+			LogEvent(EventSignificance::Debug,"Replacing visual marker "+String(m->id)+" at "+ToString(loc));
+			indexMap.Unset(m->id);
+		}
+		else
+		{
+			at = markers.Count();
+			m = &markers.Append();
+			locationMap.Set(loc,at);
+		}
+		m->id = NextID();
+		indexMap.Set(m->id,at);
+		m->color = color;
+		m->label = label;
+		m->location = loc;
+		m->keyColor = float4(color,1.f);
 		const auto h = Grid::GetLayerHeight(loc.height);
-		BuildSystem(loc,h,h,m.system);
-		indexMap.Set(m.id,at);
-		return m.id;
+		BuildSystem(loc,h,h,m->system);
+		LogEvent(EventSignificance::Debug,"Created visual marker "+String(m->id)+" at "+ToString(loc));
+
+		ASSERT_EQUAL__(markers.Count(),indexMap.Count());
+		ASSERT_EQUAL__(markers.Count(),locationMap.Count());
+
+		return m->id;
 	}
 
 	void		Delete( index_t idx )
@@ -65,13 +83,20 @@ namespace Objects { namespace DebugMarkers
 			LogEvent(EventSignificance::NonFatalError,"Trying to remove non-existent visual marker "+String(idx));
 			return;
 		}
+		locationMap.Unset(markers[at].location);
 		markers.Erase(at);
 		indexMap.VisitAllValues([at](index_t&found)
 		{
 			if (found > at)
 				found--;
 		});
+		locationMap.VisitAllValues([at](index_t&found)
+		{
+			if (found > at)
+				found--;
+		});
 		ASSERT_EQUAL__(markers.Count(),indexMap.Count());
+		ASSERT_EQUAL__(markers.Count(),locationMap.Count());
 	}
 
 	void		FlushAll( )
@@ -81,6 +106,7 @@ namespace Objects { namespace DebugMarkers
 			LogEvent(EventSignificance::Debug,"Erasing "+String(markers.Count())+" visual marker(s)");
 		indexMap.Clear();
 		markers.Clear();
+		locationMap.Clear();
 	}
 
 	void	Render( )
