@@ -906,6 +906,11 @@ namespace ScriptedAI
 
 			if (Details::reloadScript)
 			{
+				#ifdef HAS_WINDOW
+					Details::ExecuteMainThreadEvents();
+					Objects::DebugMarkers::FlushAll();
+				#endif
+
 				Details::ThreadEnqueue("Map Terrain",[](Details::Thread&thread)
 				{
 					auto&api = thread.api;
