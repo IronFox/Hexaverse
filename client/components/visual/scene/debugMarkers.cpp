@@ -30,19 +30,30 @@ namespace Objects { namespace DebugMarkers
 
 		index_t NextID()
 		{
-			const index_t rs = counter;
 			counter++;
-			if (counter == InvalidIndex)
+			while (counter == InvalidIndex || indexMap.IsSet(counter))
 				counter++;
-			return rs;
+			return counter;
 		}
 
 	}
 
-
-	index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+	bool		IdIsUsed(index_t id)
 	{
 		using namespace Details;
+		return indexMap.IsSet(id);
+	}
+	
+
+
+	void		CreatePreIdentified( index_t id, const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+	{
+		ASSERT__(id != InvalidIndex);
+		using namespace Details;
+		if (indexMap.IsSet(id))
+			throw new Except::Program::UniquenessViolation(CLOCATION,"Trying to re-register marker "+String(id));
+		counter = std::max(id,counter);
+
 		index_t at;
 		LocalMarker*m = nullptr;
 		if (locationMap.Query(loc,at))
@@ -57,7 +68,7 @@ namespace Objects { namespace DebugMarkers
 			m = &markers.Append();
 			locationMap.Set(loc,at);
 		}
-		m->id = NextID();
+		m->id = id;
 		indexMap.Set(m->id,at);
 		m->color = color;
 		m->label = label;
@@ -69,8 +80,14 @@ namespace Objects { namespace DebugMarkers
 
 		ASSERT_EQUAL__(markers.Count(),indexMap.Count());
 		ASSERT_EQUAL__(markers.Count(),locationMap.Count());
+	}
 
-		return m->id;
+	index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+	{
+		const index_t rs = Details::NextID();
+		CreatePreIdentified(rs,loc,color,label);
+		return rs;
+
 	}
 
 	void		Delete( index_t idx )

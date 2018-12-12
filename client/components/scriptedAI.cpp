@@ -429,9 +429,24 @@ namespace ScriptedAI
 		}
 
 
-		Buffer0<std::pair<String,std::function<void()> > > onSynchronized;
+		typedef std::pair<String,std::function<void()> >	Job;
+
+		WorkPipe<Job,Swap> mainThreadExecute;
+		Buffer0<Job,Swap> onSynchronized;
 		Buffer0<Thread::Event,Swap> onSynchronizedEnqueue;
 		Array<BYTE>			transientImportState;
+
+		void	ExecuteMainThreadEvents()
+		{
+			static Buffer0<Job>	jobs;
+			mainThreadExecute.FlushContentTo(jobs);
+			foreach (jobs,job)
+			{
+				LogEvent(EventSignificance::Debug,"ScripedAI: Main Thread Execute: Executing "+job->first+"...");
+				job->second();
+			}
+			jobs.Clear();
+		}
 
 		void			FlushAndRebuildEntities()
 		{
@@ -553,6 +568,9 @@ namespace ScriptedAI
 		{
 			auto&thread = Details::thread;
 			namespace Callback = Details::Callback;
+
+			ExecuteMainThreadEvents();
+
 			if (!thread.IsBusy() && thread.CallbacksDone())
 			{
 				if (Details::SynchronizeWithThread())
@@ -657,6 +675,34 @@ namespace ScriptedAI
 
 		}
 
+
+		#ifdef HAS_WINDOW
+
+		namespace ThreadedDebugMarkers
+		{
+			std::atomic<index_t>	counter;
+
+			index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+			{
+				index_t idx = counter++;
+				if (idx == InvalidIndex)
+					idx = counter++;
+				mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label](){Objects::DebugMarkers::CreatePreIdentified(idx,loc,color,label);});
+				return idx;
+			}
+
+			void		Delete( index_t idx )
+			{
+				mainThreadExecute << Job("Remove existing debug marker",[idx](){Objects::DebugMarkers::Delete(idx);});
+			}
+
+			void		FlushAll( )
+			{
+				mainThreadExecute << Job("Flush debug markers",Objects::DebugMarkers::FlushAll);
+			}
+
+		}
+		#endif
 	}
 
 
@@ -781,9 +827,9 @@ namespace ScriptedAI
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
 		#ifdef HAS_WINDOW
-			api.onVisualMarkerCreate = Objects::DebugMarkers::Create;
-			api.onVisualMarkerDelete = Objects::DebugMarkers::Delete;
-			api.onVisualMarkerFlush = Objects::DebugMarkers::FlushAll;
+			api.onVisualMarkerCreate = Details::ThreadedDebugMarkers::Create;
+			api.onVisualMarkerDelete = Details::ThreadedDebugMarkers::Delete;
+			api.onVisualMarkerFlush = Details::ThreadedDebugMarkers::FlushAll;
 		#endif
 
 		api.onRemoveEntity =Callback::RemoveEntity;
