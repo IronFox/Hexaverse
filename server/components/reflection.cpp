@@ -443,6 +443,24 @@ namespace Reflection
 		};
 
 
+		class FunctionalReadonly : public CLI::Variable
+		{
+		public:
+			typedef std::function<String()>	FCallback;
+			FCallback			callback;
+
+
+			/**/				FunctionalReadonly(const String&name, const FCallback&callback):CLI::Variable(name,"String",1,CLI::FullProtection),callback(callback)
+			{}
+			virtual	String		ConvertToString()			const override
+			{
+				return CLI::Quote(callback());
+			}
+
+			virtual bool		Set(const String&) override {return false;}
+		};
+
+
 		class SupportedFactions : public Base
 		{
 			typedef Base	Super;
