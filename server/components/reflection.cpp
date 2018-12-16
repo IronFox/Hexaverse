@@ -981,7 +981,7 @@ namespace Reflection
 			/**/				Name(const Objects::PFaction&f):CLI::Variable("name","String",1,CLI::FullProtection),faction(f)
 			{}
 
-			virtual	String		ConvertToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return f->name; return "<null>";}
+			virtual	String		ConvertToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return CLI::Quote(f->name); return "<null>";}
 			virtual	bool		Set(const String&value)	{return false;}
 		};
 
