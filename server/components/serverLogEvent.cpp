@@ -6,7 +6,7 @@
 
 namespace Logging
 {
-	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::PFaction&owner, const String&msg, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const Objects::PConstFaction&owner, const String&msg, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 	{
 
 		if (type.flavor == EventFlavor::ServerPrivate && privacy == Logging::Privacy::Auto)
@@ -16,7 +16,7 @@ namespace Logging
 		{
 			if (!toPeer && (e || owner))
 			{
-				Network::PClient*cl = e ? Network::playerMap.QueryPointer(e->owner) : Network::playerMap.QueryPointer(owner);
+				const Network::PClient*cl = e ? Network::playerMap.QueryPointer(e->owner) : Network::playerMap.QueryPointer(owner);
 				if (cl)
 					toPeer = (*cl)->peer.lock().get();
 				else

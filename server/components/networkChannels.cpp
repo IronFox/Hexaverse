@@ -115,7 +115,7 @@ namespace Receiver
 	static Game::Vote::FScope AllianceScope(const Objects::PAlliance&a)
 	{
 		TUniqueID tID = a->id;
-		return [tID](const Objects::PFaction&f)
+		return [tID](const Objects::PConstFaction&f)
 		{
 			return f->alliance->id == tID && !f->isDead;
 		};
@@ -125,7 +125,7 @@ namespace Receiver
 	static Game::Vote::FScope FactionScope(const Objects::PFaction&f)
 	{
 		TUniqueID tID = f->id;
-		return [tID](const Objects::PFaction&f)
+		return [tID](const Objects::PConstFaction&f)
 		{
 			return f->id == tID;
 		};

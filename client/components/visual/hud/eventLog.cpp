@@ -72,7 +72,7 @@ namespace VisualEventLog
 		}
 
 
-		/**/		VisualEvent(const String&id, const String &msg, EventClass type, const Objects::OwnerParameter&owner, Logging::Origin origin)
+		/**/		VisualEvent(const String&id, const String &msg, EventClass type, const Objects::PConstFaction&owner, Logging::Origin origin)
 		{
 
 			float3 color = float3(1.f);
@@ -227,7 +227,7 @@ namespace VisualEventLog
 	}
 
 
-	void DisplayEvent( EventClass type,  const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&_event, Logging::Origin origin )
+	void DisplayEvent( EventClass type,  const Objects::WorldEntity*e, const Objects::PConstFaction&owner, const String&_event, Logging::Origin origin )
 	{
 		if (type.significance <= EventSignificance::Common)
 			return;
