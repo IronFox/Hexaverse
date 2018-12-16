@@ -2,6 +2,7 @@ v0.9.7	[Dec 12 2018]
 	+ Implemented experimental floating icons if lack of resources is detected.
 	+ AI: Added Unit(mobile).GetReachFrom().
 	+ AI: Added Game.DebugMarkers.Put()/Remove()/RemoveAll()
+	+ Server manager can now connect a visual client to act as AI for script debugging purposes.
 	> Added micro structure to GUI components to reduce banding artifacts.
 	> Improved behavior of visual log.
 	> AI: FindShortestPath(From) can now block cells by having costModifier return costs of <= 0.

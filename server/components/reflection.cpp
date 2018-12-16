@@ -676,7 +676,7 @@ namespace Reflection
 
 			/**/			Password(const String&name, unsigned protection=CLI::EraseProtection):Super(name,"string",Persistence::ConfigOnly,1,protection)
 			{}
-			virtual String	ConvertToString()		const	override	{return Network::Config::GetServerPassword();}
+			virtual String	ConvertToString()		const	override	{return CLI::Quote(Network::Config::GetServerPassword());}
 			virtual	bool	Set(const String&value)	override
 			{
 				if (Network::Config::SetServerPassword(value))
@@ -1773,7 +1773,7 @@ namespace Reflection
 	//		RemoteControl::SignalFoldersErased();
 		Objects::ForeachFaction([](const Objects::PFaction&faction)
 		{
-			String idName = faction->id.ToFullString();
+			String idName = faction->IsNexus() ? "nexus" : faction->id.ToFullString();
 			if (factionFolder->folders.Query(idName))
 				return;
 			CLI::PFolder f = factionFolder->CreateOrGetChild(idName);
@@ -1782,10 +1782,11 @@ namespace Reflection
 
 			f->commands.Insert("terminate", FactionCommands::terminate);
 
-			f->variables.Insert("name",CLI::PVariable( new FactionCommands::Name(faction) ));
-			f->variables.Insert("isDead",CLI::PVariable( new FactionCommands::IsDead(faction) ));
-			f->variables.Insert("alliance",CLI::PVariable( new FactionCommands::Alliance(faction) ));
-			f->variables.Insert("client",CLI::PVariable( new FactionCommands::Client(faction) ));
+			f->variables.Insert("name",CLI::PVariable(new FactionCommands::Name(faction)));
+			f->variables.Insert("isDead",CLI::PVariable(new FactionCommands::IsDead(faction)));
+			f->variables.Insert("alliance",CLI::PVariable(new FactionCommands::Alliance(faction)));
+			f->variables.Insert("client",CLI::PVariable(new FactionCommands::Client(faction)));
+			f->variables.Insert("accessToken",CLI::PVariable(new CLI::StringVariable("accessToken",faction->accessToken.ToFullString(),CLI::FullProtection)));
 		});
 	}
 

@@ -23,7 +23,7 @@ namespace ServerManager
 		};
 
 
-		private Process controlConsole=null, server=null;
+		private Process controlConsole=null, visualAiClient = null, server=null;
 		private readonly ServerInfoReceiver receiver;
 		private readonly ControlConnection controlConnection;
 		public UUID ID { get; private set; }
@@ -256,6 +256,43 @@ namespace ServerManager
 
 		[DllImport("user32.dll", SetLastError = true)]
 		static extern bool SetForegroundWindow(IntPtr hWnd);
+
+		internal void StartVisualAIClient()
+		{
+			lock (this)
+			{
+				if (visualAiClient != null && !visualAiClient.HasExited)
+				{
+					SetForegroundWindow(visualAiClient.MainWindowHandle);
+					return;
+				}
+
+				try
+				{
+					if (visualAiClient != null)
+						visualAiClient.Dispose();
+					visualAiClient = null;
+
+					FetchVariableContentAsync("/Server/password", password =>
+					{
+						FetchVariableContentAsync("/Game/Factions/nexus/accessToken", accessToken =>
+						{
+							lock (this)
+							{
+								if (visualAiClient != null)
+									return;
+								visualAiClient = Program.StartComponent("client", "Visual Client", "aiAccessToken='" + accessToken + "' password='"+ password.Replace("'", "\\'") + "' udpListen=false serverURL=localhost:"+ BasePort);
+							}
+						});
+					});
+				}
+				catch (Exception ex)
+				{
+					MessageBox.Show(ex.Message, "Error opening control console", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				}
+			}
+
+		}
 
 		internal void StartControlConsole()
 		{
