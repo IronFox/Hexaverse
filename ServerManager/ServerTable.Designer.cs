@@ -67,6 +67,7 @@
 			this.hsfSaveFileDialog = new System.Windows.Forms.SaveFileDialog();
 			this.toolTip = new System.Windows.Forms.ToolTip(this.components);
 			this.connectVisualAIClientToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
 			this.globalInfoPanel.SuspendLayout();
 			this.serverContextMenuStrip.SuspendLayout();
 			this.mainStatusStrip.SuspendLayout();
@@ -208,15 +209,16 @@
 			this.serverContextMenuStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
 			this.serverContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.controlStripItem,
-            this.connectVisualAIClientToolStripMenuItem,
             this.logStripItem,
             this.saveGameAsToolStripMenuItem,
             this.toolStripSeparator2,
             this.sessionToolStripMenuItem,
+            this.toolStripMenuItem1,
+            this.connectVisualAIClientToolStripMenuItem,
             this.toolStripSeparator1,
             this.shutdownStripItem});
 			this.serverContextMenuStrip.Name = "serverContextMenuStrip";
-			this.serverContextMenuStrip.Size = new System.Drawing.Size(313, 188);
+			this.serverContextMenuStrip.Size = new System.Drawing.Size(313, 166);
 			this.serverContextMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(this.serverContextMenuStrip_Opening);
 			// 
 			// controlStripItem
@@ -341,6 +343,11 @@
 			this.connectVisualAIClientToolStripMenuItem.Text = "Connect Visual AI Client [AI Debug]";
 			this.connectVisualAIClientToolStripMenuItem.Click += new System.EventHandler(this.connectVisualAIClientToolStripMenuItem_Click);
 			// 
+			// toolStripMenuItem1
+			// 
+			this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+			this.toolStripMenuItem1.Size = new System.Drawing.Size(309, 6);
+			// 
 			// ServerTable
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -405,6 +412,7 @@
 		private System.Windows.Forms.ColumnHeader aiHeader;
 		private System.Windows.Forms.ToolTip toolTip;
 		private System.Windows.Forms.ToolStripMenuItem connectVisualAIClientToolStripMenuItem;
+		private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
 	}
 }
 
