@@ -1425,6 +1425,11 @@ namespace Objects
 
 		bool		Faction::CanSpawnType(const PWorldEntity&e, String&errorOut)	const
 		{
+			if (e->IsIndestructible())
+			{
+				errorOut = "Type is non-constructible";
+				return false;	//never build these
+			}
 			if (this == nexus.get())
 				return true;
 			if (e->IsMobile())
@@ -1433,16 +1438,35 @@ namespace Objects
 				{
 					const Component::VehicleBase*base = To<Vehicle>::Cast(e)->base;
 
-					if (!researchState.CheckUnlocked(*base,errorOut))
+					if (!base->isUnlocked.GetValue(researchState.attributeTable))
+					{
+						errorOut = base->typeName+" has not (yet) been unlocked";
 						return false;
+					}
 				}
 				const Component::Turret*turret = To<MobileEntity>::Cast(e)->turret;
 				ConstName type = turret->constName;
-				return researchState.CheckUnlocked(*turret,errorOut) && CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				if (!CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut))
+					return false;
+				if (!turret->isUnlocked.GetValue(researchState.attributeTable))
+				{
+					errorOut = turret->typeName+" has not (yet) been unlocked";
+					return false;
+				}
+				return true;
 			}
 			EntityType type = e->GetType();
 			if (e->IsStructure())
-				return researchState.CheckUnlocked(type.baseType,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+			{
+				if (!CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut))
+					return false;
+				if (!e->IsUnlockedAtState(researchState.attributeTable))
+				{
+					errorOut = e->GetTypeName()+" has not (yet) been unlocked";
+					return false;
+				}
+				return true;
+			}
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}

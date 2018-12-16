@@ -1,4 +1,3 @@
-must fix: ai script can construct nexus ports
 
 bugs:
 	deploying surveyor from storage does not instantly reveal resources on client
@@ -208,6 +207,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: ai script can construct nexus ports
 fixed: new gui (blur?) slow on lower end machines (changed rendering pipeline and added new option)
 done: Change TerrainAdd and TerrainRemove -> AddTerrain and RemoveTerrain so 'canTerrainAdd' doesn't sound quite so bad anymore. Find some solution for 'Nuclear'. Make sure to adapt research script
 mitigated: AI script does not request new round upon completion...?

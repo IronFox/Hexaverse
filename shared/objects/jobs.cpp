@@ -998,7 +998,7 @@ namespace Objects
 				String error;
 				if (!v.owner->CanSpawnType(constructWhat,error))
 				{
-					LogEvent(EventClass::Preset::commandRejected,&v, GetName()+": "+error);
+					LogEvent(EventClass::Preset::commandRejected,&v, "Cannot commence "+GetName()+": "+error);
 					return CannotStartAbort;
 				}
 			}
