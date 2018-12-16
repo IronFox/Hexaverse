@@ -223,12 +223,14 @@ namespace ServerManager
 					shutdownStripItem.Enabled = false;
 					closeSessionStripItem.Enabled = false;
 					resumeSessionStripItem.Enabled = false;
+					connectVisualAIClientToolStripMenuItem.Enabled = false;
 				}
 				else
 				{
 					shutdownStripItem.Enabled = true;
 					closeSessionStripItem.Enabled = true;
 					resumeSessionStripItem.Enabled = true;
+					connectVisualAIClientToolStripMenuItem.Enabled = true;
 				}
 			}
 			else
@@ -240,6 +242,7 @@ namespace ServerManager
 				var closed = ((Server)serverListView.SelectedItems[0]).SessionIsClosed;
 				closeSessionStripItem.Enabled = !closed;
 				resumeSessionStripItem.Enabled = closed;
+				connectVisualAIClientToolStripMenuItem.Enabled = !closed;
 			}
 		}
 
@@ -256,6 +259,14 @@ namespace ServerManager
 			foreach (Server srv in serverListView.SelectedItems)
 			{
 				srv.StartControlConsole();
+			}
+		}
+
+		private void connectVisualAIClientToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			foreach (Server srv in serverListView.SelectedItems)
+			{
+				srv.StartVisualAIClient();
 			}
 		}
 

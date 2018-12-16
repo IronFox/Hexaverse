@@ -64,8 +64,6 @@ namespace Objects
 			void					AdvanceNexusResearch();
 			void					Contribute(int c)	{totalContribution+=c;}
 
-			bool					CheckUnlocked(const Component::Base&base, String&errorOut) const	{return true;}
-			bool					CheckUnlocked(ConstName, String&errorOut) const	{return true;}
 			bool					IsIdle() const {return researchQueue.IsEmpty();}
 			ArrayRef<const PTopic>	GetResearchQueue() const	{return researchQueue.ToRef();}
 			PTopic					GetActiveTopic() const {return researchQueue.IsNotEmpty() ? researchQueue.First() : PTopic();}

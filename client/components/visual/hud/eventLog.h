@@ -19,7 +19,7 @@ namespace VisualEventLog
 	It will be listed beneath any existing log messages, pushing them up.
 	The message automatically fades after a while, depending on significance.
 	*/
-	void	DisplayEvent( EventClass type,  const Objects::WorldEntity*e, const Objects::OwnerParameter&owner, const String&_event, Logging::Origin);
+	void	DisplayEvent( EventClass type,  const Objects::WorldEntity*e, const Objects::PConstFaction&owner, const String&_event, Logging::Origin);
 	/**
 	Renders all visible events.
 	Expects Camera::hud to be bound

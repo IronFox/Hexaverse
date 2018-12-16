@@ -49,7 +49,7 @@ namespace Game
 		/**
 		Defines the set of eligible voters. Effectively a filter function that includes voters. May be empty, including all
 		*/
-		typedef std::function<bool(const Objects::PFaction&)>	FScope;
+		typedef std::function<bool(const Objects::PConstFaction&)>	FScope;
 		FScope			scope;	//defines eligible factions. If empty, concerns all
 		FCallback		onClose;
 		Quorum			quorum;

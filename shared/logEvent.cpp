@@ -222,7 +222,7 @@ namespace Logging
 
 
 
-	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::PFaction&owner, Origin origin /*= Logging::Origin::Local*/)
+	void	WriteEvent(const EventClass&evClass, String message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::PConstFaction&owner, Origin origin /*= Logging::Origin::Local*/)
 	{
 		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
 		//type != EventSignificance::Debug
@@ -360,7 +360,7 @@ void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String
 	Logging::WriteEvent(type,msg,nullptr,e,nullptr,origin);
 }
 
-void		LogEvent(const EventClass&type, const Objects::PFaction&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+void		LogEvent(const EventClass&type, const Objects::PConstFaction&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg,privacy);

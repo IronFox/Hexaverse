@@ -184,7 +184,7 @@ namespace Game
 		if (!scope)
 			Channels::VoteCreation.SendTo(::Network::server,vote,Channels::Level::Faction);
 		else
-			::Network::playerMap.VisitAllEntries([vote,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			::Network::playerMap.VisitAllEntries([vote,this](const Objects::PConstFaction&f, const ::Network::PClient&client)
 			{
 				if (scope(f))
 					Channels::VoteCreation.SendTo(client->peer.lock(),vote);
@@ -342,7 +342,7 @@ namespace Game
 		if (!scope)
 			Channels::VoteResult.SendTo(::Network::server,rs,Channels::Level::Faction);
 		else
-			::Network::playerMap.VisitAllEntries([rs,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			::Network::playerMap.VisitAllEntries([rs,this](const Objects::PConstFaction&f, const ::Network::PClient&client)
 			{
 				if (scope(f))
 					Channels::VoteResult.SendTo(client->peer.lock(),rs);

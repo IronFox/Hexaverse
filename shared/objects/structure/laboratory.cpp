@@ -17,8 +17,8 @@ namespace Objects
 			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
 			" For each two enabled neighbor laboratories this output is further increased by one."
 			" Research aimed at unlocking new components requires a number of research points to be accumulated."
-			" Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed."
-			" As a result, research facilities are a continuous construction effort and you will most likely never have enough."
+			" Research aimed at improvement will continuously improve the selected property but typically become increasingly less efficient the further research has progressed."
+			" As a result, research facilities are usually a continuous construction effort and you will most likely never have enough."
 			;
 		}
 	#endif

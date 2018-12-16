@@ -58,7 +58,7 @@ namespace ApplicationInterface
 namespace Network
 {
 	Buffer0<PClient>	activePlayersAndSpectators,spectators;
-	HashTable<Objects::PFaction,PClient,Objects::OwnerHash>	playerMap;
+	HashTable<Objects::PConstFaction,PClient,Objects::OwnerHash>	playerMap;
 
 
 	namespace Heartbeat

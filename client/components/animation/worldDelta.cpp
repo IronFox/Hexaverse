@@ -12,11 +12,9 @@ namespace Animation
 
 	void WorldDelta::Append(Protocol::WorldDelta&&d)
 	{
-		DBG_ASSERT__(!isComplete);
-		const bool last = (d.familyAndLastFlag & 0x80) != 0;
+		//DBG_ASSERT__(!isComplete);	//apparently this can mix...
+		isComplete = (d.familyAndLastFlag & 0x80) != 0;
 		deltas.Append(std::move(d));
-		if (last)
-			isComplete = true;
 	}
 
 
@@ -31,7 +29,7 @@ namespace Animation
 			World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,block->data0,false,true);
 		}
 		#ifdef HAS_WINDOW
-			World::allowRecompilation = isComplete && Network::gameHasBegun;
+			World::allowRecompilation = (!instant || isComplete) && Network::gameHasBegun;
 			LogEvent(EventSignificance::Debug,"Terrain: Recompilation allowed set to "+String(World::allowRecompilation)+", with complete="+String(isComplete)+" and gameHasBegun="+String(Network::gameHasBegun));
 		#endif
 	}
