@@ -1,3 +1,5 @@
+v0.9.8
+
 v0.9.7	[Dec 23 2018]
 	+ Implemented experimental floating icons if lack of resources is detected.
 	+ AI: Added Unit(mobile).GetReachFrom().
