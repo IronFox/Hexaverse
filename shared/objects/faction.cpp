@@ -1425,7 +1425,7 @@ namespace Objects
 
 		bool		Faction::CanSpawnType(const PWorldEntity&e, String&errorOut)	const
 		{
-			if (e->IsIndestructible())
+			if (e->IsIndestructible() && !RuntimeConfig::tutorialMode)
 			{
 				errorOut = "Type is non-constructible";
 				return false;	//never build these
