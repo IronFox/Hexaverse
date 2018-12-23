@@ -696,7 +696,7 @@ namespace Objects
 									}
 									else
 									{
-										ASSERT__(!v2->TasksAreLocked(),v2->GetNameAndOwner());
+										ASSERT1__(!v2->TasksAreLocked(),v2->GetNameAndOwner());
 										LogEvent(EventSignificance::Common,v2.get(),"Truncating tasks to "+String(i));
 										bool anyChanged = false;
 										while (v2->myTasks.Count() > i)	//must be greater. task 1 is bad => queue max length is 1 (task 0 is assumed good)
