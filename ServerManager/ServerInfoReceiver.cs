@@ -70,6 +70,14 @@ namespace ServerManager
 		private static Protocol.ChannelMap staticMap = new Protocol.ChannelMap();
 		public override Protocol.ChannelMap ChannelMap => staticMap;
 
+		public bool AiIsEnabled
+		{
+			get
+			{
+				var up = LastUpdate;
+				return up != null && (up.Package.game.gameConfig.gameFlags & (uint)flag_t.NexusAI) != 0;
+			}
+		}
 
 		static ServerInfoReceiver()
 		{

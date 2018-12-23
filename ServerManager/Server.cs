@@ -17,13 +17,13 @@ namespace ServerManager
 			public int port;
 			public bool isDependent;
 			public bool eraseConfigOnceLoaded;
-			public string configPath;	//ignored if saveGamePath is non-null and non-empty
+			public string configPath;   //ignored if saveGamePath is non-null and non-empty
 			public string saveGamePath; //superseeds configPath
 			public bool startSession;
 		};
 
 
-		private Process controlConsole=null, visualAiClient = null, server=null;
+		private Process controlConsole = null, visualAiClient = null, server = null;
 		private readonly ServerInfoReceiver receiver;
 		private readonly ControlConnection controlConnection;
 		public UUID ID { get; private set; }
@@ -34,9 +34,19 @@ namespace ServerManager
 
 		public DateTime LastUDPPing { get; private set; }
 
-		private volatile bool aiIsEnabled = false;
 		private volatile string aiScript = null;
 		private HeartbeatSender heartbeatSender;
+
+		public bool VisualAiClientIsConnected
+		{
+			get
+			{
+				bool rs;
+				lock (this)
+					rs = visualAiClient != null && !visualAiClient.HasExited;
+				return rs;
+			}
+		}
 
 		public Server(int basePort, Action<string> asyncLog, Action<string> asyncDisplayError)
 		{
@@ -58,10 +68,6 @@ namespace ServerManager
 				asyncDisplayError(ID.ToNiceString() + ": " + msg);
 			});
 
-			controlConnection.GetValue("/Rules/Nexus/enableAI", 
-				(str) => {
-					bool.TryParse(str, out aiIsEnabled);
-				});
 			controlConnection.GetValue("/Rules/Nexus/aiScript", (str) => { aiScript = str; });
 		}
 
@@ -145,11 +151,6 @@ namespace ServerManager
 			if (controlConnection.IsConnected && aiUpdateCnt++ > 10)
 			{
 				aiUpdateCnt = 0;
-				controlConnection.GetValue("/Rules/Nexus/enableAI",
-					(str) =>
-					{
-						bool.TryParse(str, out aiIsEnabled);
-					});
 				controlConnection.GetValue("/Rules/Nexus/aiScript", (str) => { aiScript = str; });
 			}
 
@@ -184,7 +185,7 @@ namespace ServerManager
 			{
 				status.Text = "";
 
-				if (!aiIsEnabled)
+				if (!receiver.AiIsEnabled)
 					ai.Text = "No";
 				else
 				{
@@ -277,6 +278,7 @@ namespace ServerManager
 					{
 						FetchVariableContentAsync("/Game/Factions/nexus/accessToken", accessToken =>
 						{
+							controlConnection.SetValue("/Rules/Nexus/enableAI", false);
 							lock (this)
 							{
 								if (visualAiClient != null)
