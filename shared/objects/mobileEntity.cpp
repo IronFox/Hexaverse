@@ -437,7 +437,7 @@ namespace Objects
 								if (dropRemaining)
 								{
 									this->ClearAllTasks(true,CLOCATION);
-									remaining = true;
+									remaining = 0;
 								}
 								else
 								{
