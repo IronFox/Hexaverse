@@ -2645,7 +2645,7 @@ namespace Objects
 			Renderer::RefreshFactionColors(false);
 			if (fbo.IsEmpty() || fbo.GetResolution() != res)
 			{
-				fbo.Create(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,DX11::FBO::PrepareMips);
+				fbo.CreateMSAA(res,DXGI_FORMAT_R8G8B8A8_UNORM,true,display.GetHighestMultisamplingLevel());
 
 				camera.retraction = float3(0,0,-6 * distanceFactor);
 				camera.angle.x = 45.f;
@@ -2655,7 +2655,7 @@ namespace Objects
 			}
 			else
 			{
-				fbo.RecreateColorTarget(0,DXGI_FORMAT_R8G8B8A8_UNORM);	//previous one is in use
+				//fbo.RecreateColorTarget(0,DXGI_FORMAT_R8G8B8A8_UNORM);	//previous one is in use
 
 				camera.retraction = float3(0,0,-6 * distanceFactor);
 			}
@@ -2687,12 +2687,12 @@ namespace Objects
 		{
 			
 			display.TargetBackbuffer();
-			fbo.GenerateMips();
+			//fbo.GenerateMips();
 			//display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 			display.RestoreRendererState();
-				
-			//fbo.Clear();
-			return fbo.GetColorTarget();
+			DX11::Texture rs;
+			display.Copy(fbo.GetColorTarget().GetHandle2D(),rs,true);
+			return rs;
 		}
 
 

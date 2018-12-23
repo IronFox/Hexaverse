@@ -1,9 +1,5 @@
-bugs:
-	plane land button disabled atop vehicle store on highest possible level (-1 because of height 2)
-
 terrain manipulation via ai script
 more space for top right selected entity icon when using !=100% UI scale
-Rendered hex icons become jaggy when using >100% GUI scale
 
 
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
@@ -205,6 +201,8 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: plane land button disabled atop vehicle store on highest possible level (-1 because of height 2)
+fixed: Rendered hex icons become jaggy when using >100% GUI scale
 possibly fixed: deploying surveyor from storage does not instantly reveal resources on client
 fixed: ai script can construct nexus ports
 fixed: new gui (blur?) slow on lower end machines (changed rendering pipeline and added new option)

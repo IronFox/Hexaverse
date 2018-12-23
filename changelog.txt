@@ -6,6 +6,7 @@ v0.9.7	[Dec 23 2018]
 	> Added micro structure to GUI components to reduce banding artifacts.
 	> Improved behavior of visual log.
 	> AI: FindShortestPath(From) can now block cells by having costModifier return costs of <= 0.
+	> Object icons are now rendered using max quality MSAA, thus removing jagged edges when utilizing higher UI scales.
 	* AI: Fixed End-Round button remaining disabled after OnSelectionChanged() events.
 	* AI: Fixed crash when directing mobile unit to nil location.
 	* Fixed splash screen depicting the previous loading item rather than the active one.
@@ -16,6 +17,7 @@ v0.9.7	[Dec 23 2018]
 	* Fixed server-side check when trying to build unresearched or fully locked types.
 	* Fixed planes refusing to land in max-elevation vehicle stores.
 	* Fixed resource visualization sometimes not updating.
+	* Fixed state panel text overlapping with selected unit icon.
 
 v0.9.6	[Nov 9 2018]
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do.

@@ -834,16 +834,16 @@ namespace Engine
 		public:
 			/**/				FBO():numTargets(0),supportsMips(false)	{}
 
-			enum mips_t
+			enum class Mips
 			{
-				NoMips,
-				PrepareMips	//!< Signals that layers should be allocated for mip-map generation
+				None,
+				Prepare//!< Signals that layers should be allocated for mip-map generation
 			};
 
-			void				Create(Resolution res, DXGI_FORMAT, bool depthStencil=false, mips_t mips = NoMips);	//!< Creates one target, clears rest
-			void				Create(Resolution3D res, DXGI_FORMAT, mips_t mips = NoMips);	//!< Creates one target, clears rest
-			void				Create(Resolution res, const DXGI_FORMAT*, count_t numTargets, bool depthStencil=false, mips_t mips = NoMips);
-			void				Create(Resolution3D res, const DXGI_FORMAT*, count_t numTargets, mips_t mips = NoMips);
+			void				Create(Resolution res, DXGI_FORMAT, bool depthStencil=false, Mips mips = Mips::None);	//!< Creates one target, clears rest
+			void				Create(Resolution3D res, DXGI_FORMAT, Mips mips = Mips::None);	//!< Creates one target, clears rest
+			void				Create(Resolution res, const DXGI_FORMAT*, count_t numTargets, bool depthStencil=false, Mips mips = Mips::None);
+			void				Create(Resolution3D res, const DXGI_FORMAT*, count_t numTargets, Mips mips = Mips::None);
 			void				CreateMSAA(const Resolution&,DXGI_FORMAT, bool depthStencil, const DXGI_SAMPLE_DESC&);
 			void				CreateMSAA(const Resolution&,const DXGI_FORMAT*, count_t numTargets, bool depthStencil, const DXGI_SAMPLE_DESC&);
 
@@ -1097,6 +1097,7 @@ namespace Engine
 		void						ClearDepth();
 
 		void						Copy(const DX11::Handle<ID3D11Texture2D>&source, Image&destination);
+		void						Copy(const DX11::Handle<ID3D11Texture2D>&source, Texture&destination, bool generateMips);
 
 		void						Capture(Image&target);
 		void						Capture(FBO&);
@@ -1110,6 +1111,7 @@ namespace Engine
 		BYTE						GetMSAARate(index_t mode) const;
 		void						SetMSAAMode(index_t mode);
 		void						SelectMSAARate(BYTE numSamples) {SetMSAAMode(_FindMSAAConfig(numSamples));}
+		DXGI_SAMPLE_DESC			GetHighestMultisamplingLevel() const;
 
 		bool						IsVSyncActive() const {return vsync != 0;}
 		void						SetVSyncActive(bool a) {vsync = a ? 1 : 0;}
