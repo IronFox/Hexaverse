@@ -1837,7 +1837,7 @@ namespace Engine
 	{
 		Clear();
 
-		supportsMips = NoMips;
+		supportsMips = false;
 
 		D3D11_TEXTURE2D_DESC	desc;
 		memset(&desc,0,sizeof(desc));
@@ -1887,7 +1887,7 @@ namespace Engine
 	}
 
 
-	void					DX11::FBO::Create(Resolution res, DXGI_FORMAT format, bool depthStencil/*=false*/, mips_t mips /*=NoMips*/)
+	void					DX11::FBO::Create(Resolution res, DXGI_FORMAT format, bool depthStencil/*=false*/, Mips mips /*=Mips::None*/)
 	{
 		Create(res,&format,1,depthStencil,mips);
 	}
@@ -2003,11 +2003,11 @@ namespace Engine
 		colorTarget[targetIndex]._CreateView(desc);
 	}
 
-	void					DX11::FBO::Create(Resolution res, const DXGI_FORMAT*format, count_t numTargets, bool depthStencil/*=false*/, mips_t mips /*=NoMips*/)
+	void					DX11::FBO::Create(Resolution res, const DXGI_FORMAT*format, count_t numTargets, bool depthStencil/*=false*/, Mips mips /*=Mips::None*/)
 	{
 		Clear();
 
-		supportsMips = mips == PrepareMips;
+		supportsMips = mips == Mips::Prepare;
 
 		D3D11_TEXTURE2D_DESC	desc;
 		memset(&desc,0,sizeof(desc));
@@ -2069,12 +2069,12 @@ namespace Engine
 	}
 
 
-	void					DX11::FBO::Create(Resolution3D res, DXGI_FORMAT format, mips_t mips /*=NoMips*/)
+	void					DX11::FBO::Create(Resolution3D res, DXGI_FORMAT format, Mips mips /*=Mips::None*/)
 	{
 		Create(res,&format,1,mips);
 	}
 
-	void					DX11::FBO::Create(Resolution3D res, const DXGI_FORMAT*format, count_t numTargets, mips_t mips /*=NoMips*/)
+	void					DX11::FBO::Create(Resolution3D res, const DXGI_FORMAT*format, count_t numTargets, Mips mips /*=Mips::None*/)
 	{
 		if (res.depth == 1)
 		{
@@ -2083,7 +2083,7 @@ namespace Engine
 		}
 		Clear();
 
-		supportsMips = mips == PrepareMips;
+		supportsMips = mips == Mips::Prepare;
 
 
 		D3D11_TEXTURE3D_DESC	desc;
@@ -3286,7 +3286,7 @@ namespace Engine
 		destination.FlipVertically();
 	}
 
-	void						DirectX11::Copy(const DX11::Handle<ID3D11Texture2D>&source, Texture&target)
+	void						DirectX11::Copy(const DX11::Handle<ID3D11Texture2D>&source, Texture&target, bool generateMips)
 	{
 		D3D11_TEXTURE2D_DESC desc;
 		source->GetDesc(&desc);
@@ -3295,9 +3295,11 @@ namespace Engine
 		fbo.Append(target);
 		
 		Resolution res(desc.Width,desc.Height);
-		if (fbo.GetResolution() != res || fbo.CountColorTargets() != 1 || fbo.GetColorTarget(0).GetFormat() != format)
+		if (fbo.GetResolution() != res || fbo.CountColorTargets() != 1 || fbo.GetColorTarget(0).GetFormat() != format || 
+			((fbo.GetColorTarget().GetMipLevels() > 1) != generateMips)
+			)
 		{
-			fbo.Create(res,format);
+			fbo.Create(res,format,false,  generateMips ? DX11::FBO::Mips::Prepare : DX11::FBO::Mips::None);
 			target = fbo.GetColorTarget();
 		}
 
@@ -3307,6 +3309,8 @@ namespace Engine
 		}
 		else
 			devcon->CopyResource(fbo.GetColorTarget().GetHandle2D(),source);
+		if (generateMips)
+			devcon->GenerateMips(fbo.colorTarget[0].view);
 	}
 
 

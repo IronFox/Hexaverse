@@ -2570,7 +2570,7 @@ namespace Objects
 			//display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 			display.RestoreRendererState();
 			DX11::Texture rs;
-			display.Copy(fbo.GetColorTarget().GetHandle2D(),rs);
+			display.Copy(fbo.GetColorTarget().GetHandle2D(),rs,true);
 			return rs;
 		}
 
