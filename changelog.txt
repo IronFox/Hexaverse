@@ -16,6 +16,7 @@ v0.9.7	[Dec 23 2018]
 	* AI: Fixed off-by-one error in Game.RandomIndex()
 	* Fixed server-side check when trying to build unresearched or fully locked types.
 	* Fixed resource visualization sometimes not updating.
+	* Fixed state panel text overlapping with selected unit icon.
 
 v0.9.6	[Nov 9 2018]
 	> Added tooltips to several buttons and checkboxes that explain in detail what those do.

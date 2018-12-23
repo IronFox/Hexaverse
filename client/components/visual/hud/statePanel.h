@@ -32,6 +32,7 @@ namespace HUD
 		void		SignalChange();
 
 		float		GetPanelWidth();
+		void		Create();
 
 	}
 

@@ -2057,6 +2057,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("HostList",HUD::HostList::Create);
 			Loading::Stage("Voting",Vote::StaticCreate);
 			Loading::Stage("VoteList",HUD::VoteList::Create);
+			Loading::Stage("State Panel",HUD::StatePanel::Create);
 		#endif
 
 		Loading::Stage("Marker Check",ObjectHelper::MarkerCheck::Create);

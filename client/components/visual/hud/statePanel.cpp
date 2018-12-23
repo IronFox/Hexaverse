@@ -11,6 +11,7 @@
 #include <objects/structure/laboratory.h>
 #include <objects/faction.h>
 #include "../display.h"
+#include "hexGrid.h"
 
 namespace HUD
 {
@@ -732,20 +733,20 @@ namespace StatePanel
 			
 		//textout.GetActiveFont()->EndTagMode();
 		textout.PushState();
-
-		float len = GetPanelWidth();
+		//textout.Scale(UI::GetScale());
+		const float len = GetPanelWidth();
 		//if (len == 0)
 			//len = textout.GetScaledWidth("012345678901234567890123456789012345");
 
 		const float h = textout.GetScaledHeight();
-		float at = 0.95f;
+
+		float at = UI::GetScale() > 1.f ? 1.f - HexGrid::GetGridConfig().stepY * 0.8f : 0.95f;
 
 		if (doRewrap)
 		{
 			doRewrap = false;
-			const float w = GetPanelWidth();
 			foreach (cachedLines,line)
-				line->Rewrap(w);
+				line->Rewrap(len);
 		}
 
 
@@ -758,6 +759,10 @@ namespace StatePanel
 	
 	}
 
+	void		Create()
+	{
+		GlobalEvents::uiScaleChanged << [](){doRewrap = true;};
+	}
 
 }
 }

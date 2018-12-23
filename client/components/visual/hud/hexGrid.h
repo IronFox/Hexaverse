@@ -353,7 +353,7 @@ namespace HexGrid
 		{
 		public:
 			typedef	Objects::Command::VisualCommand	Super;
-			M::TVec3<>				focusLocation;
+			M::TVec3<>			focusLocation;
 			float				atTime;
 
 			/**
@@ -563,12 +563,7 @@ namespace HexGrid
 		Updated by Update()
 		*/
 		M::Rect<>		projectedRect;
-		///**
-		//Configures button grid orientation.
-		//Default orientation is left to right, and bottom to top.
-		//Set flipX and flipY to alter this grid orientation, thus changing how command->coords are interpreted
-		//*/
-		//bool		flipY,flipX;
+
 		int2		gridCoords;
 
 		/**/		GridCell():command(nullptr)/*,flipY(false),flipX(false)*/	{}
