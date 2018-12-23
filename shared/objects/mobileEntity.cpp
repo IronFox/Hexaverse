@@ -443,7 +443,7 @@ namespace Objects
 								if (dropRemaining)
 								{
 									this->ClearAllTasks(true,CLOCATION);
-									remaining = true;
+									remaining = 0;
 								}
 								else
 								{
@@ -668,7 +668,8 @@ namespace Objects
 						{
 							if (v2->turret->CanAttack() && v2->turret->independentAttackAndMotion && !movingAttack)
 								return;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
-
+							if (!v2->HasTasks())
+								return;	//might be locked, so v2->myTasks may no longer contain valid tasks
 							for (index_t i = 0; i < v2->myTasks.Count(); i++)
 							{
 								const Task&task = v2->myTasks[i];
@@ -701,6 +702,7 @@ namespace Objects
 									}
 									else
 									{
+										ASSERT__(!v2->TasksAreLocked(),v2->GetNameAndOwner());
 										LogEvent(EventSignificance::Common,v2.get(),"Truncating tasks to "+String(i));
 										bool anyChanged = false;
 										while (v2->myTasks.Count() > i)	//must be greater. task 1 is bad => queue max length is 1 (task 0 is assumed good)

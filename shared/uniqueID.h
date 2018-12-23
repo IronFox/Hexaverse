@@ -249,6 +249,13 @@ public:
 		ASSERT__(CryptGenRandom(provider,ARRAYSIZE(bytes),bytes));
 	}
 
+	static Self New()
+	{
+		Self result;
+		result.Generate();
+		return result;
+	}
+
 	void	Write(FILE*f) const
 	{
 		size_t written = fwrite(bytes,NumBytes,1,f);

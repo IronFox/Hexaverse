@@ -6,6 +6,7 @@
 #include "../journalSaveGame.h"
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
+#include <objects/faction.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -42,6 +43,11 @@ namespace Game
 		{
 			StartAI();
 		}
+	}
+
+	bool AIIsActive()
+	{
+		return Config::Nexus::enableAI || (Objects::Faction::nexus && Objects::Faction::nexus->online);
 	}
 
 	#pragma region vote
@@ -594,7 +600,7 @@ namespace Game
 				rs |= Protocol::GameFlag::BasesRequired;
 			if (Config::startBases)
 				rs |= Protocol::GameFlag::StartBases;
-			if (Config::Nexus::enableAI)
+			if (AIIsActive())
 				rs |= Protocol::GameFlag::NexusAI;
 			if (RuntimeConfig::tutorialMode)
 				rs |= Protocol::GameFlag::TutorialMode;
@@ -632,7 +638,9 @@ namespace Game
 			AssembleGameConfig(info.gameConfig,allowSpectatorFactions);
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
-			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
+			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count();
+			if (AIIsActive())
+				info.numFactionsCreated ++;
 			info.roundNumber = RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
 		}

@@ -365,7 +365,12 @@ namespace Game
 
 	void			StartAIIfEnabled();
 	void			StartAI();
-
+	/**
+	Checks whether an AI client should be or is currently active.
+	If found active, disregards whether it should be there
+	to account for debugging AI clients.
+	*/
+	bool			AIIsActive();
 
 
 	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);

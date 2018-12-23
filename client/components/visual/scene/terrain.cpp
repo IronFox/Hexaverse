@@ -1222,12 +1222,12 @@ namespace VisualTerrain
 						BakeBlockInstruction(World::actual.GetStacks(), k, Grid::Clip::NoClip);
 					}
 				}
-				if (dat.resourceOutdated)
+				if (dat.resourceOutdated || ResourceDiscovery::client.familyChanged[k])
 				{
 					dat.resourceOutdated = false;
 					if (SeeThrough::IsEnabled())
 					{
-						BakeResourceInstruction(k,Grid::ResourceDiscovery::client, SeeThrough::ClipHeight,Grid::Resource::all.pointer(),Grid::Resource::all.Count());
+						BakeResourceInstruction(k, Grid::ResourceDiscovery::client, SeeThrough::ClipHeight,Grid::Resource::all.pointer(),Grid::Resource::all.Count());
 					}
 					else
 					{

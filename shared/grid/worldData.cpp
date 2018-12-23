@@ -1470,35 +1470,6 @@ namespace World
 		}
 	}
 
-	//void				Volume::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
-	//{
-	//	bool familyChanged[BaseGrid::NumFamilies] = { false };
-	//	Grid::TemplateHelper::ChangeSensory(desc, changeBy, cellStack.pointer(), familyChanged);
-	//	for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-	//		if (familyChanged[i])
-	//		{
-	//			families[i].changed = true;
-	//			//families[i].lastChange
-	//		}
-	//}
-
-	//void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
-	//{
-	//	bool familyChanged[BaseGrid::NumFamilies] = { false };
-	//	Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center), radius, changeBy, cellStack.pointer(), familyChanged);
-	//	for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-	//		if (familyChanged[i])
-	//			families[i].changed = true;
-	//}
-	/*void				Volume::ChangeSensory(const SkySensorState&state, float t, short changeBy)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
-		Grid::TemplateHelper::ChangeSensorCoverage(state, changeBy, cellStack.pointer(), familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				families[i].changed = true;
-	}*/
-
 	void				Data::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
 	{
 		Sensor(center,0.5f,radius,Sensor::SolidSphere).ApplyTo(*this,0,t);	//causes temporary visibility
@@ -2282,45 +2253,6 @@ namespace World
 		return false;
 	}
 	
-/*
-	void		Data::ChangeSensorCoverage(const M::Sphere<>&state, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensory(state.center,state.radius,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-	}
-
-	void		Data::ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensory(state,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-	}
-
-	void		Data::ChangeSensorCoverage(const SkySensorState&state, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensorCoverage(state,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-	}
-
-	void		Data::ChangeSensory(const LCellIdI&center, float radius, signed char change)
-	{
-		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		TemplateHelper::ChangeSensory(Grid::ToWorld(center),radius,change,cellStack.pointer(),familyChanged);
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-				Grid::high.family[i].SetOutdated(0);
-		
-	}*/
-
-
 	
 	bool		Data::HasSensor(const LCellIdI&cell, float radius) const
 	{
@@ -2334,24 +2266,5 @@ namespace World
 		#endif
 	}
 
-	//void				Data::InsertSensor(const M::Sphere<>&desc)
-	//{
-	//	ChangeSensorCoverage(desc,1);
-	//}
-
-	//void				Data::RemoveSensor(const M::Sphere<>&desc)
-	//{
-	//	ChangeSensorCoverage(desc,-1);
-	//}
-
-	//void				Data::InsertSensor(const HighSetup::TVolumeDescriptor&desc)
-	//{
-	//	ChangeSensorCoverage(desc,1);
-	//}
-
-	//void				Data::RemoveSensor(const HighSetup::TVolumeDescriptor&desc)
-	//{
-	//	ChangeSensorCoverage(desc,-1);
-	//}
 
 }
