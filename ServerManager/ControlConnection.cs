@@ -127,6 +127,12 @@ namespace ServerManager
 			
 		}
 
+
+		public void SetValue<T>(string path, T value)
+		{
+			ExecuteCommand("set '"+path.Replace("'", "\\'")+"' '" + value.ToString().Replace("'", "\\'") + "'");
+		}
+
 		public void GetValue(string path, Action<string> asyncOnValue)
 		{
 			onValueMap.TryAdd(path, asyncOnValue);
