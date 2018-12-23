@@ -1,5 +1,6 @@
 terrain manipulation via ai script
-more space for top right selected entity icon when using !=100% UI scale
+
+blending in and out of blurred gui background is rather harsh, somehow. maybe preserve both blurred and sharp copy and blend on the fly in shader?
 
 
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
@@ -201,6 +202,7 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: more space for top right selected entity icon when using !=100% UI scale
 fixed: plane land button disabled atop vehicle store on highest possible level (-1 because of height 2)
 fixed: Rendered hex icons become jaggy when using >100% GUI scale
 possibly fixed: deploying surveyor from storage does not instantly reveal resources on client
