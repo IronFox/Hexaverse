@@ -60,6 +60,7 @@
 #include "components/visual/scene/world.h"
 #include "components/visual/scene/lighting.h"
 #include "components/visual/scene/atmosphere.h"
+#include "components/visual/scene/debugMarkers.h"
 #include "components/visual/hud/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
 #include "components/visual/hud/menu.h"
@@ -82,7 +83,8 @@
 #include "components/playerControlBegin.h"
 #include "components/visual/scene/vehicleAccessibilityMesh.h"
 #include "components/scriptedAI.h"
-#include "components/visual/scene/spriteRenderer.h"
+#include "components/visual/scene/objectIcons.h"
+#include "components/startConfiguration.h"
 
 #include "rc/Resource.h"
 
@@ -1210,13 +1212,12 @@ bool loop()
 
 			Objects::Renderer::RefreshFactionColors(!InputControl::saveScreenshot);
 			Objects::Renderer::RenderScene();
-
+			Objects::DebugMarkers::Render();
 
 			display.SetDepthTest(true,false);
 			display.SetRasterizer(true,false);
 			display.SetBlendMode(Engine::BlendMode::FlareBlend);
-				foreach (Animation::actives,a)
-					a->Render();
+				Animation::RenderActiveEvents();
 
 			display.SetDepthTest(true, true);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
@@ -1228,7 +1229,7 @@ bool loop()
 
 			VehicleAccessibilityMesh::Render(frustum);
 			
-			Objects::Renderer::RenderStatusIcons();
+			Objects::Icons::Render();
 
 			Objects::Renderer::RenderTranslucent(false);
 
@@ -1388,6 +1389,7 @@ bool loop()
 				//else
 				//	TransferPanel::Invalidate();
 			}
+			Objects::DebugMarkers::RenderText();
 
 			if (HUD::showControlsAndContacts)
 			{
@@ -1567,7 +1569,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			HUD::HexGrid::OnScreenResize();
 			HUD::WindowStack::SignalScreenResize();
-			HUD::VisualEventLog::SignalWindowResize();
+
+			GlobalEvents::windowSizeChanged();
 		}
 	}
 
@@ -1781,97 +1784,6 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 	return rs;
 }
 
-namespace StartConfig
-{
-	Configuration	sourceConfig,baseConfig,destConfig;
-	bool			changed = false;
-	PathString		configPath;
-
-	void			Load(const PathString&userConfigPath)
-	{
-		configPath = userConfigPath;
-		baseConfig.LoadFromFile("game.ini");
-		if (!sourceConfig.LoadFromFile(userConfigPath))
-		{
-			LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+sourceConfig.Report()+"'. Attempting to load original config");
-			sourceConfig = baseConfig;
-		}
-		destConfig = sourceConfig;
-	}
-
-
-	void Fix(const String&path, const String&fallback)
-	{
-
-
-		StringRef comment,def = fallback.ref();
-		const Configuration::Attribute*attrib = baseConfig.GetAttrib(path);
-		if (attrib)
-		{
-			comment = attrib->comment.ref();
-			def = attrib->value.ref();
-			LogEvent(EventClass::Preset::fixedConfigurationError,"Fixing config error: '"+path+"' not found. Defaulting to '"+(def)+"'");
-		}
-		else
-			LogEvent(EventClass::Preset::fixedConfigurationError,"Fixing config error: '"+path+"' not found in actual or base configuration. Defaulting to '"+(def)+"'");
-		destConfig.Define(path,def).comment = comment;
-		changed = true;
-	}
-
-	const String&	GetString(const String&path, const String&fallback)
-	{
-		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
-		if (attrib)
-			return attrib->value;
-		Fix(path,fallback);
-		static String staticCopy;
-		staticCopy = fallback;	//fallback might be a temporary string, so this at least keeps it alive
-		return staticCopy;
-	}
-
-	
-	bool	GetBool(const String&path, bool fallback = false)
-	{
-		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
-		bool rs;
-		if (attrib && convert(attrib->value.c_str(),rs))
-			return rs;
-		Fix(path,fallback);
-		return fallback;
-	}
-	
-	int	GetInt(const String&path, int fallback = 0)
-	{
-		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
-		int rs;
-		if (attrib && convert(attrib->value.c_str(),rs))
-			return rs;
-		Fix(path,fallback);
-		return fallback;
-	}
-	
-	float	GetFloat(const String&path, float fallback = 0)
-	{
-		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
-		float rs;
-		if (attrib && convert(attrib->value.c_str(),rs))
-			return rs;
-		Fix(path,fallback);
-		return fallback;
-	}
-
-	void	Finish()
-	{
-		if (changed)
-		{
-			LogEvent(EventClass::Preset::configuration,"Rewriting configuration ("+String(configPath)+")");
-			destConfig.SaveToFile(configPath,PRODUCT_NAME " Client");
-			changed = false;
-		}
-	}
-
-
-}
 
 
 int main( int argc, const char* argv[])
@@ -1956,7 +1868,6 @@ int main( int argc, const char* argv[])
 
 			#ifdef HAS_WINDOW
 
-				HUD::Menu::Configuration::Assign(&StartConfig::baseConfig, &StartConfig::destConfig, userConfigPath);
 
 				String val = StartConfig::GetString("runtime/capFPS","-1");
 				if (!val.EqualsIgnoreCase("off"))
@@ -2140,11 +2051,13 @@ int main( int argc, const char* argv[])
 					Engine::mouse.BindWheel(InputControl::OnWheel);
 				});
 			Loading::Stage("Progress Bars",ProgressBar::Create);
+			Loading::Stage("Visual Event Log",HUD::VisualEventLog::Create);
 			Loading::Stage("Window Stack",HUD::WindowStack::Create);
 			Loading::Stage("Dialogs",HUD::Dialog::Create);
 			Loading::Stage("HostList",HUD::HostList::Create);
 			Loading::Stage("Voting",Vote::StaticCreate);
 			Loading::Stage("VoteList",HUD::VoteList::Create);
+			Loading::Stage("State Panel",HUD::StatePanel::Create);
 		#endif
 
 		Loading::Stage("Marker Check",ObjectHelper::MarkerCheck::Create);
@@ -2174,7 +2087,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Lighting",Lighting::Create);
 			Loading::Stage("Mobile Accessibility Mesh",VehicleAccessibilityMesh::Create);
 			Loading::Stage("Visual Terrain",VisualTerrain::Create);		//egg-chicken
-			Loading::Stage("Sprite Rendering", Objects::SpriteRenderer::StaticCreate);	//chicken-egg
+			Loading::Stage("Icon Rendering", Objects::Icons::Create);
 			Loading::Stage("Object Rendering", Objects::Renderer::Create);	//chicken-egg
 
 			Loading::Stage("Configuration Mode",

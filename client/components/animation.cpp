@@ -4,242 +4,21 @@
 #include "visual/scene/world.h"
 #include "clientRuntimeConfig.h"
 #include "ai.h"
-#include <grid/resources.h>
-#include "visual/hud/hexGrid.h"
-#include "visual/hud/resourceGauges.h"
-#include "visual/scene/explosions.h"
-#include "visual/objectSelection.h"
-#include "visual/scene/objectComponent.h"
 #include "visual/objectChoices.h"
-#include "configurationMode.h"
-#include <objects/structure/mine.h>
-#include "visual/commandDefinitions.h"
-#include "clientEvents.h"
-#include <objects/structure/tower.h>
-#include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
-#include <expectedBehavior.h>
+#include "animation/trajectory.h"
+#include "animation/mobileState.h"
+#include "animation/delayedMobileInsertion.h"
+#include "clientEvents.h"
 
 namespace Animation
 {
-	typedef Buffer0<M::TVec4<> >	Trajectory;
 
-
-
-	#ifdef HAS_WINDOW
-		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		OpenAL::Wave				artilleryShot,missileHiss,constructSound,beamSound;
-
-		DX11::BaseInstructionBlock	trajectoryVisualizationBase;
-	#endif
 
 	float						atTime = 0.f;
 
 
 
-
-	bool NoBlock(const Grid::LCellIdI&cell)
-	{
-		return false;
-	}
-
-	bool EstimateThreatLevel(const Objects::PWorldEntity&self,   Grid::LCellIdI&location, float&closestCompetition, float&closestAlly, float&closestGhost)
-	{
-		const M::TVec3<>&reference = Grid::low.cells[location.stackID].centerVertex.xyz;
-		M::TVec3<> world = reference * Grid::ToRadius(location.height);
-
-		bool canDo = true;
-		Objects::ForeachWorldEntity([&canDo,world,reference,self,&closestCompetition,&closestAlly,&closestGhost](const Objects::PWorldEntity&e)
-		{
-			if (!canDo)
-				return;
-			if (e == self)
-				return;
-
-			if (!e->isOwnedByMe)
-			{
-				float d2 = Vec::quadraticDistance(world,e->system.w.xyz);
-				if (d2 < M::Sqr(e->GetScanningRange()))
-				{
-					canDo = false;
-					return;
-				}
-				if (e->CanHit(world))
-				{
-					canDo = false;
-					return;
-				}
-				return;
-			}
-
-
-			if (e->IsMobile() && e->IsAlive())
-			{
-				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
-				bool surveyor = o->IsVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
-				bool constructor = o->GetOperationSpeed(Objects::Component::Construct) > 0;
-				if (!surveyor && !constructor)
-					return;
-				const Grid::LCellIdI&loc =o->GetLastPointOfOrigin();
-				float d = Vec::quadraticDistance(Grid::low.cells[loc.stackID].centerVertex.xyz,reference);
-
-				if (surveyor)
-				{
-					if (d < closestCompetition)
-						closestCompetition = d;
-				}
-				else
-				{
-					if (d < closestAlly)
-						closestAlly = d;
-				}
-				return;
-			}
-
-			if (e->IsDeadOrGhost())
-			{
-				float d = Vec::quadraticDistance(e->system.w.xyz,world);
-				if (d < closestGhost)
-					closestGhost = d;
-				if (d < 2.f)
-					canDo = false;
-			}
-		},Objects::IncludeGhosts::Living);
-		return canDo;
-	}
-
-
-
-
-	void			UpdateAutomation(const Objects::PVehicle&v)
-	{
-		static const float maxGhost = 30.f;
-
-		ASSERT__(v);
-		ASSERT__(v->isOwnedByMe);
-		ASSERT__(v->turret->detectsResources);
-		if (v->IsHibernating())
-			return;
-		if (v->myTasks.IsNotEmpty())
-		{
-			if (v->myTasks.Peek().type == Objects::Vehicle::Task::MoveTo && v->myTasks.Count() == 1)
-			{
-				Grid::LCellIdI last = v->GetLastPointOfOrigin();
-				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[last.stackID])
-				{
-					float competition = 100.f;
-					float ally = 100.f;
-					float ghost = M::Sqr(maxGhost);
-					bool canDo = true;
-					foreach (v->myTasks.GetNewest().path,node)
-					{
-						if (node->cell == v->location)
-							continue;
-						const bool threatless = EstimateThreatLevel(v,node->cell,competition,ally,ghost);
-						const auto blocking = Objects::GetBlockingHere(node->cell,true);
-						if (!threatless || blocking)
-						{
-							canDo = false;
-							break;
-						}
-					}
-					if (sqrt(ghost) < 16.f)
-						canDo = false;
-				
-					if (canDo)
-						return;	//looks okay
-				}
-			}
-		}
-		ApplicationInterface::SignalDropAllTasks(v);
-		v->myTasks.Clear();	//will happen anyways
-
-		int referenceSpeed = v->GetMovementStepsPerRound()-1;
-
-	//	static Buffer<Objects::MapNode>	nodes;
-		static Objects::Pathfinding::ReachabilityMapper mapper(false);
-
-
-		AI::BeginBlockTest(v,false,false,false);
-
-		using namespace Objects::Pathfinding;
-
-		mapper.Map(*v,v->location,AI::BlockTest,RoutingFlags::ForceRevertible,Objects::Component::GroundFlags::DisallowUnknownGround,referenceSpeed*5);
-
-		float dummy = 0;
-		const bool originGood = EstimateThreatLevel(v,v->location,dummy,dummy,dummy);;
-
-
-		float closestDistance = std::numeric_limits<float>::max();
-		const Objects::Pathfinding::ReachabilityMapper::MapNode*closest = nullptr;
-		//Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
-		//float closestCompetingDistance = 0;
-
-		const auto&known = Grid::ResourceDiscovery::client.resourcesDiscovered;
-
-	
-		for (int retries = 0; retries < 2; retries++)
-		{
-			foreach(mapper.result,node)
-			{
-				if (known[node->cell.stackID])
-					continue;
-				if (retries == 0 && node->movementCostsFromRoot < referenceSpeed)
-					continue;
-
-				float competition = 100.f;
-				float ally = 100.f;
-				float ghost = M::Sqr(maxGhost);
-
-
-				if (!(Grid::low.cells[node->cell.stackID].cornerFlags & Grid::empZonesUnlocked))
-					continue;
-
-
-				bool canDo = !originGood || EstimateThreatLevel(v,node->cell,competition,ally,ghost);
-
-
-				if (!competition || !canDo || !ghost)
-					continue;
-				//const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
-				int score = 0;
-				Objects::Pathfinding::ReachabilityMapper::MapNode*at = node;
-				for (;;)
-				{
-					if (at->customScore < 0)
-					{
-						at->customScore = 0;
-						const auto &n = Grid::low.grid.GetCell(at->cell.stackID).neighborhood;
-						for (int i = 0; i < n.numNeighbors; i++)
-							if (!known[n.neighborID[i]])
-							{
-								at->customScore++;
-							}
-					}
-					if (at == node || at->predecessor == InvalidIndex)	//first or last
-						score += M::CeilDiv(at->customScore,2);	//consider half
-					else
-						score += M::CeilDiv(at->customScore,3);	//consider one third
-					if (at->predecessor == InvalidIndex)
-						break;
-					at = mapper.result + at->predecessor;
-				}
-				float ghostFear = M::Sqr(maxGhost) / ((ghost));
-				float dist = float(node->movementCostsFromRoot) * sqrt(ally) / sqrt(competition) / float(score+1) * ghostFear;
-				if (dist > closestDistance)
-					continue;
-				closestDistance = dist;
-				closest = node;
-			}
-			if (closest)
-				break;
-		}
-		if (closest)
-		{
-			AI::IssuePath(v,mapper,closest);
-	//		DirectTo(v,closest,false,Objects::Vehicle::Idle);
-		}
-	}
 
 
 
@@ -263,7 +42,7 @@ namespace Animation
 			if (v->isOwnedByMe)
 			{
 				if (v->isAutomated && v->turret->detectsResources)
-					UpdateAutomation(v);
+					MobileState::UpdateAutomation(v);
 				else
 					if (RuntimeConfig::aiMode)
 					{
@@ -279,1529 +58,122 @@ namespace Animation
 	}
 
 
-
-
-	bool						LocateProjectile(float3&outPosition, float3&out);
-
 	void Update();
 
 	void						Create()
 	{
-		#ifdef HAS_WINDOW
-			trajectoryTint.Create(float4(1));
-			trajectoryProgression.Create(float4(1));
-			DX11::Shader::Binding bindings[] =
-			{
-				DX11::Shader::Binding(trajectoryTint, "Tint"),
-				DX11::Shader::Binding(trajectoryProgression, "Progression"),
-			};
-			trajectoryVisualizationBase.binding = Objects::stdVehicleShader.binding;
-			trajectoryVisualizationBase.shader.LoadFromFile("shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
-			trajectoryVisualizationBase.UpdateLayout();
-			trajectoryVisualizationBase.SetTriangles();
-
-			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
-			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-			//{
-			//	trajectoryFireSource[i].Create();
-			//	trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
-			//	trajectoryFireSource[i].SetReferenceDistance(10.f);
-			//}
-
-			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
-			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
-			beamSound = OpenAL::Load("resources/objectSounds/beam.wav");
-
-		#endif
+		Trajectory::StaticCreate();
+		MobileState::StaticCreate();
 
 		GlobalEvents::frameBegin << Update;
 	}
 
 	void						Destroy()
 	{
-		#ifdef HAS_WINDOW
-			trajectoryVisualizationBase = DX11::InstructionBlock32();
-			trajectoryProgression.Clear();
-			trajectoryTint.Clear();
-			OpenAL::Discard(missileHiss);
-			OpenAL::Discard(beamSound);
-			OpenAL::Discard(constructSound);
-			OpenAL::Discard(artilleryShot);
-		#endif
+		Trajectory::StaticDestroy();
+		MobileState::StaticDestroy();
 	}
 
 
-	bool	Equals(const Objects::PVehicleJob&a, const Objects::PVehicleJob&b)
-	{
-		if (!a && !b)
-			return true;
-		if (!a || !b)
-			return false;
 
-		
-		std::shared_ptr<Objects::VehicleJob::DummyPathJob> pj0 = To<Objects::VehicleJob::DummyPathJob>::DynamicCast(a);
-		std::shared_ptr<Objects::VehicleJob::DummyPathJob> pj1 = To<Objects::VehicleJob::DummyPathJob>::DynamicCast(b);
 
-		std::shared_ptr<Objects::VehicleJob::DummyJob> j0 = To<Objects::VehicleJob::DummyJob>::DynamicCast(a);
-		std::shared_ptr<Objects::VehicleJob::DummyJob> j1 = To<Objects::VehicleJob::DummyJob>::DynamicCast(b);
 
-		if ((!pj0 == !pj1) && (!j0 == !j1))
-		{
-			if (pj0)
-			{
-				return pj0->path == pj1->path;
-			}
-			else
-				return true;
-		}
-		else
-			return false;
 
-	}
 
-	//a=serverVersion, b = localVersion
-	bool	Mergeable(const Objects::MobileEntity::Task&a, const Objects::MobileEntity::Task&b)
-	{
-		if (a.name != b.name || a.mode != b.mode || a.type != b.type)
-			return false;
-		if (a.foci.IsNotEmpty())
-		{
-			if (b.foci.IsEmpty())
-				return false;
 
-			if (a.foci.GetNewest() != b.foci.GetNewest() && a.foci.GetOldest() != b.foci.GetOldest())
-				return false;
-			if (b.path.IsEmpty())
-				return false;
-		}
-		else
-			if (b.foci.IsNotEmpty())
-				return false;
-		return Equals(a.job,b.job);
-	}
 
-	void	Merge(const Objects::MobileEntity&parent, const Grid::LCellIdI&pointOfOrigin, Objects::MobileEntity::Task&serverVersion, Objects::MobileEntity::Task&localVersion, Objects::MobileEntity::Task&outMerged)
-	{
-		ASSERT__(Mergeable(serverVersion,localVersion));
 
 
-		if (serverVersion.foci == localVersion.foci)
-		{
-			localVersion.job = serverVersion.job;
-			outMerged.swap(localVersion);
-			return;
-		}
-		outMerged.mode = localVersion.mode;
-		outMerged.job = localVersion.job;
-		#ifdef HAS_WINDOW
-			outMerged.visualization.swap(localVersion.visualization);
-		#endif
-		outMerged.name.adoptData(localVersion.name);
-		outMerged.type = localVersion.type;
-		#ifdef HAS_WINDOW
-			outMerged.visualization = localVersion.visualization;
-		#endif
-		if (serverVersion.foci.GetOldest() == localVersion.foci.GetOldest())
-		{
-			auto it0 = serverVersion.foci.begin();
-			auto it1 = localVersion.foci.begin();
-			outMerged.path.Clear();
-			auto pit = localVersion.path.begin();
-			while (it0 != serverVersion.foci.end() && it1 != localVersion.foci.end() && *it0 == *it1)
-			{
-				while (pit->cell != it0->target && pit != localVersion.path.end())
-				{
-					outMerged.path << *pit;
-					++pit;
-				}
-				if (pit == localVersion.path.end())
-				{
-					outMerged = serverVersion;
-					outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
-					return;
-				}
-				outMerged.foci << *it0;
-				++it0;
-				++it1;
-			}
-			outMerged.path << *pit;
-			while (it0 != serverVersion.foci.end())
-			{
-				outMerged.foci << *it0;
-
-				outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FocusAppended,false);
-
-				++it0;
-			}
-			outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::NoChange,true);
-			return;
-		}
-		else if (serverVersion.foci.GetNewest() == localVersion.foci.GetNewest())
-		{
-			if (serverVersion.foci.Count() < localVersion.foci.Count())	//first n foci deleted
-			{
-				auto pit = localVersion.path.begin();
-				while (pit != localVersion.path.end() && pit->cell != /*serverVersion.foci.Peek().target*/ parent.location)
-					pit++;
-				if (pit == localVersion.path.end())
-				{
-					outMerged.swap(serverVersion);
-					outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
-					return;
-				}
-				while (localVersion.foci.IsNotEmpty() && localVersion.foci.Peek() != serverVersion.foci.Peek())
-					localVersion.foci.Pop();
-				auto it0 = localVersion.foci.begin();
-				auto it1 = serverVersion.foci.begin();
-				while (it0 != localVersion.foci.end() && it1 != serverVersion.foci.end() && *it0 == *it1)
-				{
-					++it0;
-					++it1;
-				}
-
-				if (it0 != localVersion.foci.end() || it1 != serverVersion.foci.end())
-				{
-					outMerged.swap(serverVersion);
-					outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
-					return;
-				}
-				while (pit != localVersion.path.end())
-				{
-					outMerged.path << *pit;
-					++pit;
-				}
-				outMerged.foci.swap(serverVersion.foci);
-				outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::NoChange,true);
-				return;
-			}
-			//foci added out front ...? probably all mismatched. ignoring this case
-
-		}
-
-		outMerged.swap(serverVersion);
-		outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
-	}
-
-
-	
-	void	TranslateTask(const Objects::MobileEntity&e, const Protocol::MobileTask&sourceTask, Objects::MobileEntity::Task&t1)
-	{
-		foreach (sourceTask.foci,f)
-			t1.foci.Push().target = *f;
-		t1.mode = (Objects::Vehicle::mode_t) sourceTask.mode;
-		t1.name = sourceTask.name;
-		t1.type = (Objects::Vehicle::Task::type_t) sourceTask.type;
-		if (t1.type == Objects::Vehicle::TaskData::Job)
-		{
-			if (sourceTask.buildPath.IsNotEmpty())
-			{
-				std::shared_ptr<Objects::VehicleJob::DummyPathJob>	job(new Objects::VehicleJob::DummyPathJob(e));
-				job->path.Clear(sourceTask.buildPath.GetLength());
-				foreach (sourceTask.buildPath,p)
-					job->path << *p;
-				t1.job = job;
-			}
-			else
-			{
-				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e,(Objects::Component::operation_t)sourceTask.jobAffinity));
-				t1.job = job;
-				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
-			}
-			t1.job->movesToFocusWhenDone = (sourceTask.taskFlags & Protocol::TaskFlags::VisualizePathToFocus) != 0;
-			t1.job->continuationsToJobCompletion = sourceTask.continuationsToJobCompletion;
-			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
-			
-			#ifdef HAS_WINDOW
-				if (sourceTask.foci.Count())
-				{
-					Grid::LCellIdI loc = sourceTask.foci.First();
-					#ifndef NO_SATELLITES
-						if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
-						{
-							int h = Objects::SkyHub::GetStructureBuildHeight(loc);
-							if (h != Objects::badHeight)
-								loc.height = h;
-						}
-					#endif
-					
-					Objects::TaskAttachment::Allocate(t1).SetLocalizableShape(sourceTask.visualizationName,loc,e.GetResearchState());
-				}
-			#endif
-		}
-		//t1.Recompile(v->GetPrevPointOfOrigin(),v.get());
-	}
-
-
-	static HashSet<TUniqueID> insertIntoGridLater;
-
-
-	static void AppendTask(const Objects::PMobileEntityProducer&p,const TUniqueID&id, Objects::EntityType type)
-	{
-		p->AppendTask(id,type);
-	}
-
-	static void StoreLocally(const Objects::PHangar&h,const Objects::PVehicle&v,float&t,bool setHealthToFull)
-	{
-		if (!h->StoreLocally(v,t,setHealthToFull,h))
-			throw Except::Program::DataConsistencyFault(CLOCATION,"Failed to store "+v->GetName()+" in hangar "+h->ToEntity().GetName()+" at "+ToString(h->ToEntity().location));
-	}
-
-
-	void ApplyState(const Objects::PMobileEntity&v, Protocol::MobileState&vs, bool isNew, bool isNewForEMP)
-	{
-		ASSERT__(v);
-		int oldHeight = v->location.height;
-
-		const bool locationChanged = v->storedIn.expired() 
-								&& v->location != vs.entityState.location 
-								&& vs.entityState.location != Grid::LCellIdI::Invalid;
-		const auto info = vs.myMobileEntity.Get0();
-		const bool relocateToStorage = info && info->storedIn.Get0();
-
-		if (locationChanged && !relocateToStorage)
-		{
-			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+ToString(v->location)+"->"+ToString(vs.entityState.location));
-			/*
-			This moves sensors. May occur during animation phase (e.g. Move->*Store)
-			*/
-			if (!insertIntoGridLater.IsSet(v->id))
-			{
-				/*
-				No motion has happened during the local animation phase, or currently not in any phase
-				*/
-				ASSERT2__(!v->isInMovementStream, v->GetName(), v->location);
-				v->Relocate(vs.entityState.location,false);
-			}
-			else
-				v->location = vs.entityState.location;	//Motioned happend before. Just update location
-		}
-		v->health = vs.entityState.health;
-		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
-		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
-
-		v->UpdateEMPDamage(vs.entityState.empDamageLevel, !isNewForEMP);	//must remove visible sensory, must be linked to destructor
-		//v->roundsDisabled = vs.entityState.disabledRounds;
-
-		#ifndef NO_HIBERNATION
-			bool hibernating = (vs.flags & Protocol::VehicleFlags::Hibernating) != 0;
-			v->Hibernate(hibernating,0);
-		#endif
-
-		bool automationChange = false;
-		if (v->IsVehicle())
-		{
-			Objects::PVehicle&veh = To<Objects::Vehicle>::Cast(v);
-			bool newAutomated = (vs.flags & Protocol::VehicleFlags::Automated) != 0;
-			automationChange = newAutomated != veh->isAutomated;
-			veh->isAutomated = newAutomated;
-		}
-
-		Objects::PWorldEntity storeIn;
-		Objects::PHangar storeInHangar;
-		if (info)
-		{
-			#ifndef ONE_COMPOUND_PER_FACTION
-				v->currentStorage = info->resourceVector;
-			#endif
-			v->constructionActionCounter = info->constructionActionCounter;
-
-			Array<Objects::MobileEntity::Task>	currentTasks,newTasks(info->tasks.Count());
-			v->myTasks.MoveToArray(currentTasks);
-
-			for (index_t i = 0; i < info->tasks.Count(); i++)
-				TranslateTask(*v, info->tasks[i],newTasks[i]);
-			if (newTasks.IsEmpty())
-			{
-			}
-			else
-			{
-				bool fullRebuild = false;
-//				if (v->myTasks.Count() >= newTasks.Count())
-				{
-					if (currentTasks.IsNotEmpty() && Mergeable(newTasks.First(),currentTasks.First()))
-					{
-						Grid::LCellIdI last = v->location;
-						for (index_t i = 0; i < newTasks.Count(); i++)
-						{
-							if (i < currentTasks.Count() && Mergeable(newTasks[i],currentTasks[i]))
-								Merge(*v, last,newTasks[i],currentTasks[i],v->myTasks.Push());
-							else
-							{
-								v->myTasks.Push().swap(newTasks[i]);
-								v->myTasks.GetNewest().Replot(last,v.get(),Objects::FocusChangeType::FullChange,true);
-							}
-							last = v->GetLastPointOfOrigin();
-						}
-					}
-					elif (currentTasks.IsNotEmpty() && Mergeable(newTasks.Last(),currentTasks.Last()))
-					{
-						while (currentTasks.IsNotEmpty() && !Mergeable(newTasks.First(),currentTasks.First()))
-							currentTasks.Erase(0);
-						if (currentTasks.IsEmpty())
-							fullRebuild = true;
-						else
-						{
-							Grid::LCellIdI last = v->location;
-							for (index_t i = 0; i < newTasks.Count(); i++)
-							{
-								if (i < currentTasks.Count() && Mergeable(newTasks[i],currentTasks[i]))
-									Merge(*v, last,newTasks[i],currentTasks[i],v->myTasks.Push());
-								else
-								{
-									v->myTasks.Push().swap(newTasks[i]);
-									v->myTasks.GetNewest().Replot(last,v.get(),Objects::FocusChangeType::FullChange,true);
-								}
-								last = v->GetLastPointOfOrigin();
-							}
-						}
-					}
-					else
-						fullRebuild = true;
-				}
-
-				if (fullRebuild)
-				{
-					Grid::LCellIdI last = v->location;
-					for (index_t i = 0; i < newTasks.Count(); i++)
-					{
-						v->myTasks.Push().swap(newTasks[i]);
-						v->myTasks.GetNewest().Replot(last,v.get(),Objects::FocusChangeType::FullChange,true);
-						last = v->GetLastPointOfOrigin();
-					}
-				}
-
-			}
-
-
-			//v->myTasks.Clear();
-			//foreach (info->tasks,t)
-			//{
-			//	AppendTask(v,t);
-			//}
-
-			auto id = info->storedIn.Get0();
-			if (id)
-			{
-				storeIn = Objects::GetEntity(*id);
-				storeInHangar = To<Objects::Hangar>::DynamicCast(storeIn);
-				ASSERT1__(storeIn,*id);
-				ASSERT1__(storeInHangar,storeIn->GetName());
-			}
-
-			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(v);
-			if (p)
-			{
-				const Protocol::ProducerState*state = info->producerState.Get0();
-				if (state)
-				{
-					p->queue.Clear();
-					p->productionDone = state->productionDone;
-					p->gatheringPoint.Set(state->gatheringPoint, Objects::IsSelected(v));
-
-					
-					foreach (state->productionTasks,t)
-						AppendTask(p,t->id,t->type);
-				}
-			}
-
-
-
-
-		}
-		else if (!v->isOwnedByMe)
-		{
-			const bool building = (vs.flags & Protocol::VehicleFlags::Building) != 0;
-			if (building)
-			{
-				if (v->myTasks.IsEmpty())
-				{
-
-					Objects::PVehicleJob job(new Objects::VehicleJob::DummyJob(*v,Objects::Component::Construct));
-					job->continuationsToJobCompletion = 1;
-					job->movesToFocusWhenDone = false;
-					job->resourceCostLeft = 1;
-
-					auto&t = v->myTasks.Push();
-					t.name = "Building";
-					t.job = job;
-					t.type = Objects::MobileEntity::Task::Job;
-					#ifdef HAS_WINDOW
-						Objects::TaskAttachment::Allocate(t);
-					#endif
-				}
-			}
-			else
-				v->myTasks.Clear();
-			//v->currentStorage
-		}
-		Objects::PHangar currentlyStoredIn = v->storedIn.lock();
-		if (storeInHangar != currentlyStoredIn)
-		{
-			if (currentlyStoredIn)
-				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->ToEntity().GetName()+" -> "+storeIn->GetName()+")");
-			else
-				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ( -> "+storeIn->GetName()+")");
-			float f = 0;
-
-			Objects::PVehicle veh = To<Objects::Vehicle>::DynamicCast(v);
-			ASSERT1__(veh,v->GetName());
-
-			if (storeIn)
-			{
-				if (currentlyStoredIn)
-					currentlyStoredIn->Lose(veh);
-				else
-				{
-					insertIntoGridLater.Unset(v->id);
-				}
-				StoreLocally(storeInHangar,veh,f,false);
-				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//should never happen. If failed, StoreLocally would have thrown an exception
-
-				#ifdef HAS_WINDOW
-					if (!currentlyStoredIn)
-						HUD::ResourceGauges::UpdateTraffic();
-				#endif
-
-			}
-			else
-			{
-				ASSERT1__(vs.entityState.location != Grid::LCellIdI::Invalid,v->GetName());
-				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
-				currentlyStoredIn->LocalCheckout(veh,vs.entityState.location,f);
-				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+ToString(vs.entityState.location));
-				ASSERT1__(v->location == vs.entityState.location,v->GetName());
-				ASSERT1__(v->isInserted,v->GetName());
-				ASSERT1__(Objects::vehicles.Contains(v),v->GetName());
-				v->UpdateSystem();
-				#ifdef HAS_WINDOW
-					HUD::ResourceGauges::UpdateTraffic();
-				#endif
-			}
-			#ifdef HAS_WINDOW
-				HUD::HexGrid::RefreshContacts();
-			#endif
-		}
-		//else
-			//LogEvent(EventSignificance::Debug,v.get(),"StoredIn unchanged ("+currentlyStoredIn->GetName()+")");
-
-		v->attackActionLeft = vs.attackActionLeft;
-		v->movementActionLeft = vs.movementActionLeft;
-		if (locationChanged || isNew)
-			v->UpdateSystem();
-
-		#ifdef HAS_WINDOW
-			if (v == Objects::selectedEntity)
-			{
-				GlobalEvents::invalidateObjectCache();
-				Objects::UpdateChoices(Network::ControlEnabled());
-			}
-		#endif
-
-		if (automationChange && v->isOwnedByMe && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
-		{
-			UpdateAutomation(To<Objects::Vehicle>::Cast(v));
-		}
-
-		#ifdef HAS_WINDOW
-			if (storeInHangar != currentlyStoredIn)
-			{
-				Objects::deployingMobileEntity.reset();
-				HUD::HexGrid::Configure(Objects::selectedEntity);
-			}
-
-
-			if (!v->turret->CanAttack())
-			{
-				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && (!v->IsSleeping() || !v->myTasks.Peek().job->DelayedBySleep()))
-				{
-					if (!v->activitySound.IsCreated())
-					{
-						v->activitySound.Create();
-						#ifdef _DEBUG
-							v->activitySound.name = v->GetName()+".activity";
-						#endif
-						v->activitySound.SetLooping(true);
-						v->activitySound.SetReferenceDistance(3.f,1.f);
-						v->activitySound.EnqueueWaveBuffer(constructSound);
-						static Random random;
-						v->activitySound.SetPitch(1.f + random.NextFloat(-0.05f,0.05f));
-						v->activitySound.SetGain(0.5f);
-					}
-					if (!v->activitySound.IsPlaying())
-						v->activitySound.Play();
-					v->activitySound.SetPosition(v->GetWorldPosition());
-					v->activitySound.SetGain((v->GetSoundLevel()));
-				}
-				else
-					if (v->activitySound.IsPlaying())
-						v->activitySound.Stop();
-			}
-
-		#endif
-
-		if (RuntimeConfig::IsInAnyCommandPhase())
-			PlayerControlBegin::CheckAutoNextRound();
-	}
-
-	void	UpdateState(const Objects::PStructure&s,Protocol::StructureState&vs)
-	{
-		Objects::PWorkingStructure w = To<Objects::WorkingStructure>::DynamicCast(s);
-		if (w)
-		{
-			w->SetResourceStorage(vs.resourceStorage);
-			w->ApplyEnableChangeFromServer((vs.flags & Protocol::StructureFlags::Enabled) != 0);
-			#ifndef NO_HIBERNATION
-				w->Hibernate((vs.flags & Protocol::StructureFlags::Hibernating) != 0,0);
-			#endif
-	
-
-			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(s);
-
-
-			if (p)
-			{
-				const Protocol::ProducerState*state = vs.selective.Get1();
-				if (state)
-				{
-					p->queue.Clear();
-					p->productionDone = state->productionDone;
-					if (state->gatheringPoint != Grid::LCellIdI::Invalid)
-						Grid::AssertIsValid(state->gatheringPoint,CLOCATION);
-					p->gatheringPoint.Set(state->gatheringPoint,Objects::IsSelected(s));
-					
-					foreach (state->productionTasks,t)
-					{
-						AppendTask(p,t->id,t->type);
-					}
-				}
-			}
-
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(s);
-			if (t)
-			{
-				const Protocol::TowerState*state = vs.selective.Get3();
-				if (state)
-				{
-					t->attackActionLeft = state->attackActionLeft;
-					t->attackQueue.Clear();
-					foreach (state->attackTasks,at)
-					{
-						Grid::AssertIsValid(*at,CLOCATION);
-						auto&task = t->AppendTask(*at);
-						#ifdef HAS_WINDOW
-							Objects::TowerAttackVisualization::Allocate(task).Recompile(*t,*at);
-						#endif
-					}
-				}
-			}
-			else
-			{
-				Objects::NexusPort*n = dynamic_cast<Objects::NexusPort*>(s.get());
-				if (n)
-				{
-					const Protocol::NexusPortState*state = vs.selective.Get2();
-					if (state)
-						n->resistance = *state;
-				}
-				else
-				{
-					Objects::Mine*m = dynamic_cast<Objects::Mine*>(s.get());
-					if (m)
-					{
-						const Protocol::MineState*state = vs.selective.Get0();
-						if (state)
-						{
-							m->SetLinkedToCore(state->linkedToCore,Network::ControlEnabled());
-							m->naturalResources = state->naturalResources;
-							#ifdef HAS_WINDOW
-								if (Objects::selectedEntity == s)
-									Objects::UpdateChoices(Network::ControlEnabled());
-							#endif
-						}
-					}
-				}
-			
-			}
-		}
-		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
-		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
-
-
-		s->health = vs.entityState.health;
-		s->UpdateEMPDamage(vs.entityState.empDamageLevel);
-
-		if (vs.entityState.location != Grid::LCellIdI::Invalid && vs.entityState.location != s->location)
-		{
-			s->location = vs.entityState.location;	//very unusual
-			s->UpdateAutomaticSystem();
-			Objects::RefreshCompoundCoverage(0);
-		}
-
-		#ifndef NO_SATELLITES
-			if (s->IsSkyPort())
-			{
-				Objects::PSatellite sat = Objects::GetSatellite(s->location.stackID);
-				if (sat && sat->IsSkyHub())
-				{
-					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(sat);
-					hub->UpdateConnections();
-				}
-			}
-		#endif
-
-		if (w && w->isInserted)
-		{
-			#ifndef ONE_COMPOUND_PER_FACTION
-				if (s->compoundID = 0xFFFFFFFF)
-					Objects::RefreshCompoundCoverage(0);
-			#endif
-			s->GetCompound().RefreshState(0);
-		}
-
-		#ifdef HAS_WINDOW
-			GlobalEvents::invalidateObjectCache();	//could be affecting selected network
-			if (s == Objects::selectedEntity)
-			{
-				Objects::UpdateChoices(Network::ControlEnabled());
-			}
-			//HUD::HexGrid::Configure(Objects::selectedEntity);
-		#endif
-
-		if (RuntimeConfig::IsInAnyCommandPhase())
-			PlayerControlBegin::CheckAutoNextRound();
-	}
-
-	float GetExplosionSize(const Objects::PWorldEntity&target)
-	{
-		return !target->IsStructure() && !target->IsVehicle() ? 12.f : 4.f;
-	}
-
-	float GetExplosionTime(const Objects::PWorldEntity&target)
-	{
-		return Objects::ExplosionTime(GetExplosionSize(target)/4.f);
-		//target->IsSatellite() ? 4.f : 1.3f;
-	}
-
-	void ExplodeEntity(const Objects::PWorldEntity&target)
-	{
-		#ifdef HAS_WINDOW
-			Explosions::InitExplosion(target->system.w.xyz + Grid::low.cells[target->location.stackID].centerVertex.xyz * Grid::GetLayerHeight(target->location.height)*0.5f, false,GetExplosionSize(target), GetExplosionTime(target));
-		#endif
-	}
-	void ExplodeEntity(const Objects::PWorldEntity&target, const std::function<void()>&onQuarterDone)
-	{
-		#ifdef HAS_WINDOW
-			Explosions::InitExplosion(target->system.w.xyz + Grid::low.cells[target->location.stackID].centerVertex.xyz *Grid::GetLayerHeight(target->location.height)*0.5f, false, GetExplosionSize(target), GetExplosionTime(target), onQuarterDone);
-		#else
-			onQuarterDone();
-		#endif
-	}
-
-
-	void					Primitive::Init(Protocol::WorldDelta&delta)
-	{
-		type = TerrainChange;
-		time.SetMinAndMax(delta.timestamp.atTime);
-		worldDelta.reset(new DeltaField());
-		worldDelta->Append().swap(delta);
-		//data.adoptData(delta.data);
-		//worldDelta->family = delta.family;
-		//worldDelta->timestamp = delta.timestamp;
-	}
-
-	void					Primitive::Init(Protocol::StructureConstruction&sc, const Objects::PStructure&s)
-	{
-		type = Construction;
-		allocatedTarget = s;
-		time.SetMinAndMax(sc.state.entityState.timestamp.atTime/*-0.01f*/);
-	}
-
-	void					Primitive::Init(Protocol::NewMobileEntity&sc, const Objects::PMobileEntity&v)
-	{
-		type = NewMobileEntity;
-		ASSERT1__(v->IsAlive(),v->GetNameAndOwner());
-		allocatedTarget = v;
-		time.SetMinAndMax(sc.state.entityState.timestamp.atTime/*-0.01f*/);
-	}
-	void					Primitive::Init(Protocol::MobileState&vs)
-	{
-		type = MobileState;
-		//targetID = vs.entityState.id;	//is in vehicleState
-		vehicleState.reset(new Protocol::MobileState(vs));
-		targetEntityID = vs.entityState.id;
-//			target = Objects::GetEntity(vs.entityState.id,true);
-		time.SetMinAndMax(vs.entityState.timestamp.atTime);
-	}
-	void					Primitive::Init(Protocol::StructureState&vs)
-	{
-		type = StructureState;
-		structureState.reset(new Protocol::StructureState(vs));
-		targetEntityID = vs.entityState.id;
-		//target = Objects::GetEntity(vs.entityState.id,true);
-		//ASSERT1__(target,vs.entityState.id.value.ToString());
-		time.SetMinAndMax(vs.entityState.timestamp.atTime);
-	}
-	void					Primitive::Init(Protocol::MobileEntityMotion&motion/*, const Objects::PVehicle&v*/)
-	{
-		type = MovementStream;
-		//target = v;
-		path.reset(new Path());
-		path->rawPath.Append(std::make_pair(motion.fromLocation,motion.timestamp.atTime));
-		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
-		path->changed = true;
-		targetEntityID = motion.id;
-		//LogEvent(EventSignificance::Debug,nullptr,"Initiating movement stream at time "+String(motion.timestamp.atTime.value));
-		time.Set(motion.timestamp.atTime, motion.timestamp.atTime + motion.timeNeeded);
-	}
-	void				Primitive::Append(Protocol::MobileEntityMotion&motion)
-	{
-		ASSERT__(path);
-		ASSERT__(path->rawPath.Last().first == motion.fromLocation);
-		ASSERT2__(targetEntityID == motion.id,targetEntityID,motion.id);
-		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
-		path->changed = true;
-		time.Include(M::FloatRange<float>(motion.timestamp.atTime,motion.timestamp.atTime + motion.timeNeeded));
-	}
-	void					Primitive::Init(Protocol::DestroyEntity&e)
-	{
-		type = DestroyEntity;
-		targetEntityID = e.id;
-		//target = Objects::GetEntity(e.id,true);
-		explode = e.type == Objects::RemovalType::ControlledExplosion || e.type == Objects::RemovalType::UncontrolledExplosion;
-		removalType = e.type;
-		//ASSERT__(target);
-		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
-		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+ToString(e.id)+" ("+Objects::RemovalType::Reinterpret(e.type).ToString()+") at t="+ToString(time));
-	}
-	void					Primitive::Init(Protocol::VagueAttackTrajectory&a)
-	{
-		type = Attack;
-		targetEntityID = TUniqueID::Empty();
-		attackerTurret = Objects::Component::allTurretComponents.Find(a.turretType);
-		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType);
-		attackRange = a.turretRange;
-		attackAngle = a.attackAngle,
-		attackerPosition = a.sourcePosition;
-		explosionCenter = a.traceTo;
-		explosionRadius = a.explosionRadius;
-		isAutoTarget = false;
-
-		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
-	}
-	void					Primitive::Init(Protocol::PreciseAttackTrajectory&a)
-	{
-		type = Attack;
-		targetEntityID = a.attacker;
-		attackerTurret = nullptr;	//later
-		attackAngle = a.attackAngle;
-		explosionCenter = a.traceTo;
-
-		isAutoTarget = a.isAutoAttack;
-		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
-	}
-	void					Primitive::Init(Protocol::Explosion&ex)
-	{
-		type = Explosion;
-		explosionCenter = ex.center;
-		explosionRadius = ex.radius;
-		empExplosion = ex.isEMP;
-		time.min = ex.timestamp.atTime;
-		time.max = time.min + ExplosionTime;
-	}
-
-	void					Primitive::Init(Protocol::EntityTurretRotation&rot)
-	{
-		type = TurretRotation;
-//			Objects::PWorldEntity e = Objects::GetEntity(rot.id,true);
-		//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-		//Objects::PVehicle t = To<Objects::Vehicle>::DynamicCast(e);
-//		float dummy;
-	//	ASSERT__(e->GetTurretBase(dummy));
-		//target = e;
-		targetEntityID = rot.id;
-		time.min = rot.timestamp.atTime;
-		time.max = time.min + rot.rotationTime;
-		rotateToWorld = rot.toWorld;
-
-	}
-
-	void					Primitive::Init(Protocol::ResourceUpdate&up)
-	{
-		type = ResourceUpdate;
-		resourceUpdate.reset(new Protocol::ResourceUpdate());
-		resourceUpdate->cells.adoptData(up.cells);
-		resourceUpdate->resourceName = up.resourceName;
-		//Protocol::ResourceUpdate&u
-		time.min = up.timestamp.atTime;
-		time.max = time.min;
-	}
 
 
 	#ifdef _DEBUG
 		float dbgLastRelative;
 	#endif
 
-	void				Primitive::Begin()
+
+	struct TTimedEvent
 	{
-		#ifdef _DEBUG
-			dbgLastRelative = 0.f;
-		#endif
-		switch (type)
-		{
-			case Construction:
-			{
-				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-				Objects::PWorldEntity existing = Objects::GetEntity(allocatedTarget->id);
-				if (existing)
-				{
-					//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
-					LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+allocatedTarget->GetTypeName()+" (structure)");
-				}
-				else
-				{
-					Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
-					#ifdef HAS_WINDOW
-						if (!allocatedTarget->isOwnedByMe)
-							HUD::HexGrid::RefreshContacts();
-					#endif
-				}
-			}
-			break;
-			case NewMobileEntity:
-			{
-				EXPECT(allocatedTarget);
-				EXPECT1(allocatedTarget->health > 0,allocatedTarget->id);
-				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
-				if (v)
-				{
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity (@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health)+") during animation at time "+String(Animation::atTime)+"/"+ToString(this->time));
-					Objects::PWorldEntity existing = Objects::GetEntity(v->id);
-					if (existing)
-					{
-						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
-						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+v->GetTypeName()+" (mobile)");
-					}
-					else
-					{
-						//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
-						ASSERT__(!v->isInsertedIntoGrid);
-						Objects::PlaceMobileEntity(v,false);
-						ASSERT__(!v->isInsertedIntoGrid);
-						insertIntoGridLater.Set(v->id);
-						#ifdef HAS_WINDOW
-							if (!allocatedTarget->isOwnedByMe)
-								HUD::HexGrid::RefreshContacts();
-						#endif
-					}
-				}
-			}
-			break;
-			case DestroyEntity:
-			{
-				allocatedTarget = Objects::GetEntity(targetEntityID);
-				if (allocatedTarget)
-				{
-					ASSERT1__(allocatedTarget,targetEntityID);
-					if (explode)
-						ExplodeEntity(allocatedTarget);
-					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation (@"+String(allocatedTarget.get())+", health "+String(allocatedTarget->health)+") at time "+String(Animation::atTime)+"/"+ToString(this->time));
-					//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
-					{
-						Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
-						if (v)
-						{
-							if (!insertIntoGridLater.Unset(v->id) && removalType != Objects::RemovalType::DestroyedInStorage)
-								Objects::RemoveFromGrid(v,v->location);
-						}
-					}
-					if (allocatedTarget->IsMobile() && allocatedTarget->owner->SharesSensorsWithMe())
-					{
-						Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
-						float t = 0.f;
-						if (removalType != Objects::RemovalType::DestroyedInStorage)
-							v->MoveSensoryToCurrentLocation(t);
-					}
+		TTime	time;
+		PEvent	event;
+	};
 
-					float t = 0;
-					Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t);
-					#ifdef HAS_WINDOW
-						if (!allocatedTarget->isOwnedByMe)
-							HUD::HexGrid::RefreshContacts();
-						HUD::WindowStack::SignalSituationChange();
-						if (removalType == Objects::RemovalType::UncontrolledExplosion)
-							HUD::HexGrid::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->owner->IsAlliedWithMe(),allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName()+" ("+allocatedTarget->owner->GetName()+")");
-
-					#endif
-				}
-				else
-				{
-					LogEvent(EventClass::Preset::internalError,"Unable to allocate target for DestroyEntity "+ToString(targetEntityID));
-					DBG_FATAL__("Unable to allocate target for DestroyEntity "+ToString(targetEntityID));
-				}
-			}
-			break;
-			case MovementStream:
-			{
-				allocatedTarget = Objects::GetEntity(targetEntityID);
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+ToString(this->time));
-				ASSERT1__(allocatedTarget,targetEntityID);
-				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
-				ASSERT1__(v,allocatedTarget->GetName());
-				ASSERT1__(!v->isInMovementStream ,v->location);
-
-				if (!insertIntoGridLater.IsSet(v->id))
-				{
-					Objects::RemoveFromGrid(v,v->location);
-					insertIntoGridLater.Set(v->id);
-				}
-				v->isInMovementStream = true;
-
-				path->Rebuild(v);
-			}
-			break;
-			case TurretRotation:
-			{
-				//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(target);
-				//Objects::PTower t = To<Objects::Tower>::DynamicCast(target);
-				//ASSERT__(v);
-				allocatedTarget = Objects::GetEntity(targetEntityID);
-				if (allocatedTarget)
-				{
-					float dummy;
-					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
-					ASSERT__(b);
-
-					#ifdef HAS_WINDOW
-						if (!b->activitySound.IsCreated())
-						{
-							b->activitySound.Create();
-							b->activitySound.SetLooping(true);
-							#ifdef _DEBUG
-								b->activitySound.name = allocatedTarget->GetName()+".turretRotate";
-							#endif
-						}
-						b->activitySound.SetWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
-						b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
-						b->activitySound.SetPitch(0.7f);
-						b->activitySound.Play();
-					#endif
-
-					float3 dir = rotateToWorld;
-					float3 innerDir;
-					Mat::rotate(allocatedTarget->inverse,dir,innerDir);
-					rotateTo.x = Vec::angle2PI(innerDir.xy) + M_PIF/2.f;
-					rotateTo.y = -(90.f - Vec::angle(rotateToWorld,Grid::low.cells[allocatedTarget->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
-
-					rotateFrom = float2(b->turretAngleX,b->turretAngleY);
-					while (rotateFrom.x - rotateTo.x > M_PIF) rotateFrom.x -= M_PIF*2.f;
-					while (rotateFrom.x - rotateTo.x < -M_PIF) rotateFrom.x += M_PIF*2.f;
-				}
-				else
-				{
-					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+ToString(targetEntityID)+" for turret rotation");
-					/*let's ignore this for now. this event is caused, when visibility of
-					its target has been determined but at a latter time by some vehicle.
-					during the motion phase of a different vehicle an automated attack is caused.
-					since visualization time and processing time are not identical, this can lead
-					to a temporal distortion. should be minor security violation. the player is
-					notified of a turret rotation that they can't actually see yet.
-					the same goes for attacks, i guess
-					*/
-				}
-			}
-			break;
-			case Attack:
-			{
-			//	allocatedTarget = Objects::GetEntity(targetEntityID);
-				//if (allocatedTarget)
-				bool isFriendly = false;
-				bool doRegister = true;
-				#ifdef HAS_WINDOW
-					TUniqueID attackerID = TUniqueID::Empty();
-				#endif
-
-				Grid::LCellIdI attackerCell = Grid::LCellIdI::Invalid;
-				if (!attackerTurret)
-				{
-					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
-					ASSERT2__(attacker,targetEntityID,this->time);
-					attackerCell = attacker->location;
-					float zOffset;
-					Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
-					ASSERT2__(base,attacker->GetName(),this->time);
-					attackerTurret = base->turret;
-					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
-					attackRange = base->GetFlatAttackRange();
-					explosionRadius = base->GetAttackExplosionRadius();
-					attackerPosition = attacker->GetWorldPosition();
-					attackerPosition += Grid::low.cells[attacker->location.stackID].cornerCenter * zOffset;
-					#ifdef HAS_WINDOW
-						attackerID = attacker->id;
-					#endif
-					doRegister = !attacker->isOwnedByMe || isAutoTarget;
-					isFriendly = attacker->owner->IsAlliedWithMe();
-				}
-
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+",angle="+String(attackAngle)+") at "+String(Animation::atTime)+"/"+String(this->time.min));
-				
-				{
-					#ifdef HAS_WINDOW
-						trajectoryAnimation.reset(new TTrajectoryAnimation());
-						((DX11::BaseInstructionBlock&) trajectoryAnimation->instruction) = trajectoryVisualizationBase;
-						Objects::Component::Turret::TraceAnimationTrajectory(
-							attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
-							trajectoryAnimation->activeTrajectory);
-
-						trajectoryAnimation->trajectoryGeometry.Clear();
-						#ifdef _DEBUG
-							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(trajectoryAnimation->activeTrajectory.Count())+" steps, starting from "+Vec::toString(trajectoryAnimation->activeTrajectory.First())+", ending "+Vec::toString(trajectoryAnimation->activeTrajectory.Last()));
-						#endif
-						trajectoryAnimation->maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(trajectoryAnimation->activeTrajectory,Objects::Component::Turret::Animation,trajectoryAnimation->trajectoryGeometry,0.25f);
-						trajectoryAnimation->instruction.vbo.CreateFromStructs(trajectoryAnimation->trajectoryGeometry.GetLOD(0).vertices);
-						trajectoryAnimation->instruction.ibo.Create(trajectoryAnimation->trajectoryGeometry.GetLOD(0).indices);
-
-						if (attackerTurret->trajectoryType == Objects::TrajectoryType::VerticalBeam)
-						{
-
-							UINT32 fine;
-							if (attackerCell != Grid::LCellIdI::Invalid)
-								fine = Grid::low.grid.GetCell(attackerCell.stackID).higherEquivalent;
-							else
-								fine = Grid::low.Locate(attackerPosition);
-							int h = World::actual.GetStack(fine).FindTopClearOverNonClear(true,false);
-							if (h == InvalidIndex)
-								h = Grid::CellStack::BottomHeight;
-							const float rh = Grid::ToRadius(h);
-							trajectoryAnimation->beamBase = Grid::high.cells[fine].cornerCenter * rh;
-							trajectoryAnimation->beamHeight = Vec::length(attackerPosition) - rh;
-						}
-
-
-						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(trajectoryAnimation->activeTrajectory,Vec::dot(attackerPosition) > M::Sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
-						if (doRegister)
-						{
-							HUD::HexGrid::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
-						}
-
-						switch (attackerTurret->trajectoryType)
-						{
-							case Objects::TrajectoryType::Artillery:
-							{
-								OpenAL::PlayOnce(attackerPosition,artilleryShot,1.f,10.f);
-								//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-								//{
-								//	OpenAL::Source&s = trajectoryFireSource[i];
-								//	s.SetPosition(attackerPosition);
-								//	s.SetWaveBuffer(artilleryShot);
-								//	s.Play();
-								//}
-							}
-							break;
-							case Objects::TrajectoryType::Missile:
-							{
-								trajectoryAnimation->localizedSoundSource.Create();
-								#ifdef _DEBUG
-									trajectoryAnimation->localizedSoundSource.name = "localized attack sound";
-								#endif
-								trajectoryAnimation->localizedSoundSource.SetReferenceDistance(10.f,0.5f);
-								trajectoryAnimation->localizedSoundSource.SetWaveBuffer(missileHiss);
-								trajectoryAnimation->localizedSoundSource.SetLooping(true);
-								trajectoryAnimation->localizedSoundSource.SetPosition(attackerPosition);
-								trajectoryAnimation->localizedSoundSource.Play();
-							}
-							break;
-							case Objects::TrajectoryType::VerticalBeam:
-								OpenAL::PlayOnce(attackerPosition,beamSound,1.f,10.f);
-							break;
-						}
-
-						
-
-					#endif
-
-
-				}
-			}
-			break;
-			case Explosion:
-			{
-				#ifdef HAS_WINDOW
-					Explosions::InitExplosion(explosionCenter,empExplosion,explosionRadius*4.f,Objects::ExplosionTime(explosionRadius));
-				#endif
-			}
-			break;
-		}
-
-	}
-
-	void			Primitive::End()
+	
+	enum class UpdateResult
 	{
-		switch (type)
-		{
-			case  MovementStream:
-			{
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+ToString(this->time));
+		Continue,
+		Done
+	};
 
-				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
-				ASSERT__(v);
-				path->ApplyTo(v,path->rawPath.Last().second);
-				//v->Relocate(path->rawPath.Last().first,false);
-				v->location = path->rawPath.Last().first;
-				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
-				if (v->owner->SharesSensorsWithMe())
-				{
-					float t = 0.f;
-					v->MoveSensoryToCurrentLocation(t);
-				}
-				ASSERT1__(v->isInMovementStream,v->id);
-				v->isInMovementStream = false;
-
-				allocatedTarget.reset();	//for debugging purposes
-				#ifdef HAS_WINDOW
-					if (v->myTasks.IsNotEmpty())
-					{
-						auto&task = v->myTasks.Peek();
-						while (task.foci.IsNotEmpty() && this->path->Contains(task.foci.Peek().target))
-							task.foci.Pop();
-						//this->path->nodes
-						v->myTasks.Peek().Replot(v->location,v.get(),Objects::FocusChangeType::FirstSegmentChanged,true);
-					}
-				#endif
-			}
-			break;
-			case Attack:
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending attack at "+String(Animation::atTime)+"/"+String(this->time.max));
-				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-				{
-					const Objects::Marker&m = Objects::Marker::all[i];
-					if (m.type != Objects::Marker::Type::HostileContact)
-						continue;
-					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
-					{
-						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						ObjectHelper::SignalMarkerDeletion(m.id);
-						i--;
-					}
-				}
-				#ifdef HAS_WINDOW
-					trajectoryAnimation->localizedSoundSource.Stop();
-					trajectoryAnimation.reset();
-				#endif
-			break;
-			case Explosion:
-				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-				{
-					const Objects::Marker&m = Objects::Marker::all[i];
-					if (m.type != Objects::Marker::Type::HostileContact)
-						continue;
-					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
-					{
-						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						ObjectHelper::SignalMarkerDeletion(m.id);
-						i--;
-					}
-				}
-
-				//auto-closed by Explosions-module
-			break;
-			case TurretRotation:
-			{
-				if (allocatedTarget)
-				{
-					float dummy;
-					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
-					b->turretAngleX = rotateTo.x;
-					b->turretAngleY = rotateTo.y;
-
-					#ifdef HAS_WINDOW
-						b->activitySound.Stop();
-					#endif
-
-				}
-			}
-			break;
-		}
-		path.reset();
-	}
-
-
-	#ifdef HAS_WINDOW
-		void						Primitive::Render()	const
-		{
-			switch (type)
-			{
-				case Attack:
-
-					if (attackerTurret->trajectoryType != Objects::TrajectoryType::VerticalBeam)
-					{
-						trajectoryProgression.Update(float4(trajectoryAnimation->projectileAt * trajectoryAnimation->maxProjectileProjection,1.f,5.f,1.f));
-						display.Render(trajectoryAnimation->instruction);
-					}
-					else
-					{
-						const float f = trajectoryAnimation->projectileAt;
-						static const float maxWidth = 0.125f;
-						float w = maxWidth * (1.f - M::Sqr(1.f - f));
-						float4 color = float4(1,f,f,f);
-						Objects::Renderer::RenderBeam(trajectoryAnimation->beamBase,trajectoryAnimation->beamHeight,w,color,color);
-					}
-
-				break;
-
-			}
-		}
-	#endif
-
-	Primitive::result_t			Primitive::Update(float t)
+	static UpdateResult			UpdateEvent( const TTimedEvent&ev, float t )
 	{
-		switch (type)
-		{
-			case MobileState:
-				allocatedTarget = Objects::GetEntity(targetEntityID);
-				if (allocatedTarget) //probably got whooped otherwise
-				{
-					ASSERT1__(allocatedTarget,targetEntityID);
-					ApplyState(To<Objects::MobileEntity>::DynamicCast(allocatedTarget),*vehicleState,false,false);
-				}
-				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to update mobile entity "+ToString(targetEntityID)+" at t="+String(t));
-			return Done;
-			case StructureState:
-				allocatedTarget = Objects::GetEntity(targetEntityID);
-				if (allocatedTarget) //probably got whooped otherwise
-				{
-					ASSERT1__(allocatedTarget,targetEntityID);
-					UpdateState(To<Objects::Structure>::DynamicCast(allocatedTarget),*structureState);
-				}
-				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to update structure "+ToString(targetEntityID)+" at t="+String(t));
-			return Done;
-			case Construction:
-			return Done;
-			case NewMobileEntity:
-			return Done;
-			case DestroyEntity:
-			return Done;
-			case ResourceUpdate:
-				Grid::UpdateResourceMap(resourceUpdate->resourceName,resourceUpdate->cells,Grid::ResourceDiscovery::client);
-			return Done;
-			case TerrainChange:
-			{
-				foreach (*worldDelta,block)
-				{
-					BaseGrid::family_t family = block->familyAndLastFlag & 0x7F;
-					//bool last = (block->family & 0x80) != 0;
-					World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,block->data0,false,true);
-				}
-				#ifdef HAS_WINDOW
-					World::allowRecompilation = true;
-				#endif
-			}
-			return Done;
-		}
-		float x = time.Relativate(t);
-
-		//DBG_ASSERT_GREATER_OR_EQUAL__(x,dbgLastRelative );
-		//#ifdef _DEBUG
-		//	dbgLastRelative = x;
-		//#endif
-
-		if (x > 1.f)
-			return Done;
-
-		switch (type)
-		{
-			case Explosion:
-				//explosion->progression = x;
-			break;
-			case Attack:
-			{
-				#ifdef HAS_WINDOW
-					trajectoryAnimation->projectileAt = x;
-					index_t at = std::min(index_t(x * trajectoryAnimation->activeTrajectory.GetLength()),trajectoryAnimation->activeTrajectory.GetLength()-1);
-					const M::TVec4<>&v = trajectoryAnimation->activeTrajectory[at];
-					trajectoryAnimation->localizedSoundSource.SetPosition(v.xyz * v.w);
-					float volume = M::Sqr(M::Sqr(1.f - x))*0.75f + 0.25f;
-					//localizedSoundSource.SetGain(volume);
-					trajectoryAnimation->localizedSoundSource.SetPitch(0.75f + x);
-				#endif
-			}
-			break;
-			case MovementStream:
-				//LogEvent(EventSignificance::Debug,allocatedTarget.get(),"Animation stream updated at "+String(t));
-				path->ApplyTo(To<Objects::Vehicle>::Cast(allocatedTarget),t);
-				ASSERT_LESS_OR_EQUAL__(t,time.max);
-			break;
-			case TurretRotation:
-			{
-				if (allocatedTarget)
-				{
-					float dummy;
-					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
-					M::TVec2<> angles;
-					Vec::interpolate(rotateFrom,rotateTo,x,angles);
-					//Objects::PVehicle v = To<Objects::Vehicle>::Cast(target);
-					b->turretAngleX = angles.x;
-					b->turretAngleY = angles.y;
-					//b->rotationSound.SetPitch(0.5f + 0.3f * (sqrt((x))));
-
-				}
-			}
-			break;
-			
-		}
-			
-		return Continue;
+		Event::currentTime = t;
+		float x = ev.time.Relativate(t);
+		if (x >1.f)
+			return UpdateResult::Done;
+		ev.event->Update(x);
+		return UpdateResult::Continue;
 	}
 	
+	Buffer0<PEvent>				whenDone;
+	Buffer0<TTimedEvent>		primitives,actives;
 
-	void Primitive::Path::Rebuild(const Objects::PMobileEntity&target)
+	bool		AlterScheduledEvent(const std::function<bool(const PEvent&)>&predicate, const std::function<void(const PEvent&ev, TTime&t)>&updater)
 	{
-		changed = false;
-
-		nodes.SetSize(rawPath.Count());
-		for (index_t i = 0; i < rawPath.Count(); i++)
-		{
-			const Grid::LCellIdI&a = rawPath[i].first;
-			nodes[i].position = Grid::low.cells[a.stackID].centerVertex.xyz * Grid::ToRadius(a.height);
-		}
-
-		for (index_t i = 0; i+1 < rawPath.Count(); i++)
-		{
-			TNode	&na = nodes[i],
-					&nb = nodes[i+1];
-
-			const Grid::LCellIdI&a = rawPath[i].first,
-								&b = rawPath[i+1].first;
-			const float3&p0 = na.position;
-			const float3&p1 = nb.position;
-			M::TVec3<> n,d = p1 - p0;
-			Vec::cross(p0,d,n);
-			na.normal += n;
-			nb.normal += n*0.9f;
-			na.dir += d;
-			nb.dir += d*0.9f;
-		}
-		ASSERT__(nodes.IsNotEmpty());	//this shouldn't be possible
-		{
-			//Vec::makeNormalTo(nodes.First().dir,nodes.First().position);
-			Vec::makeNormalTo(nodes.Last().dir,nodes.Last().position);
-		}
-		if (target->IsVehicle())
-			nodes.First().dir = -target->system.y.xyz;
-		foreach (nodes, n)
-		{
-			Vec::setLen0(n->dir,Objects::vehicleScale);
-			Vec::setLen0(n->normal,Objects::vehicleScale);
-		}
-	}
-
-	void Primitive::Path::ApplyTo(const Objects::PMobileEntity&target, float t)
-	{
-		ASSERT__(!changed);
-
-
-		//String out;
-		//foreach (rawPath,p)
-			//out += ","+String(p->second);
-		//LogEvent(EventSignificance::Debug,target.get()," Applying at "+String(t)+" in {"+out+"}");
-
-		for (index_t i = 0; i+1 < rawPath.Count(); i++)
-		{
-			//if (t < rawPath[i].second)
-			//{
-				//return;
-			if (t > rawPath[i+1].second)
-				continue;
-
-			TNode	&na = nodes[i],
-					&nb = nodes[i+1];
-
-			const Grid::LCellIdI&a = rawPath[i].first,
-								&b = rawPath[i+1].first;
-			const M::TVec3<>&d0 = Grid::low.cells[a.stackID].cornerCenter; //centerVertex.xyz;
-			float3 p0 = d0  * Grid::ToRadiusf(float(a.height));
-			const M::TVec3<>&d1 = Grid::low.cells[b.stackID].cornerCenter;// centerVertex.xyz;
-			float3 p1 = d1 * Grid::ToRadiusf(float(b.height));
-
-			float3 c0 = p0 + na.dir;
-			float3 c1 = p1 - nb.dir;
-
-			float relative = std::max(0.f,(t - rawPath[i].second) / (rawPath[i+1].second - rawPath[i].second));
-
-			//LogEvent(EventSignificance::Debug,target.get()," Relative ("+String(i)+"/"+String(rawPath.Count())+")="+String(relative));
-			//!((i+1)% stepsPerRound);
-
-			//M::TVec3<> d = p1 - p0;
-			//if (a.height == b.height)
-
-			
-			float fj = relative;
-
-			M::TVec3<> p;
-			Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
-
-			M::TMatrix4<>&sys = target->system;
-			#ifdef HAS_WINDOW
-				const M::TVec3<> prev = sys.w.xyz;
-			#endif
-			if (!target->IsVehicle())
+		foreach (primitives,prim)
+			if (predicate(prim->event))
 			{
-				sys.z.xyz = p;
-				Vec::normalize0(sys.z.xyz);
-
-				Vec::cross(sys.y.xyz,sys.z.xyz,sys.x.xyz);
-				Vec::normalize0(sys.x.xyz);
-				Vec::cross(sys.z.xyz,sys.x.xyz,sys.y.xyz);
-				Vec::normalize0(sys.y.xyz);
+				updater(prim->event,prim->time);
+				return true;
 			}
-			else
-			{
-				M::TVec3<> n,d,axis;
-				Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,axis);
-				Vec::normalize0(axis);
-				axis = -axis;
-
-				Vec::cross(axis,p,n);
-				Vec::normalize0(n);
-				//target->Relocate(rawPath[i].first,false);
-				target->location = rawPath[i].first;
-				sys.x.xyz = n;
-				sys.y.xyz = axis;
-				Vec::cross(n,axis,sys.z.xyz);
-				Vec::normalize0(sys.z.xyz);
-			}
-			#ifdef HAS_WINDOW
-				target->ambientSound.SetPosition(sys.w.xyz);
-				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
-				float x = t / rawPath.Last().second;
-				float activity = 1.f - (M::Sqr(((x - 0.5f)*2.f)));
-				target->ambientSound.SetPitch(1.f + activity * 0.5f);
-				target->ambientSound.SetGain(std::min(target->GetSoundLevel() + activity,1.f));
-				target->activitySound.SetPosition(sys.w.xyz);
-				target->activitySound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
-			#endif
-
-			target->system.w.xyz = p;
-			Mat::resetBottomRow(target->system);
-
-			const float scale = Objects::WorldEntity::GetScaleAtRadius(Vec::length(target->system.w.xyz));
-
-			Mat::invertSystem(target->system, target->inverse);
-			target->system.x.xyz *= scale;
-			target->system.y.xyz *= scale;
-			target->system.z.xyz *= scale;
-			target->inverse.x.xyz /= scale;
-			target->inverse.y.xyz /= scale;
-			target->inverse.z.xyz /= scale;
-			target->inverse.w.xyz /= scale;
-			return;
-		}
+		return false;
 	}
 
 
+	PEvent		FindFirstScheduledEventAtTime(const Protocol::Timestamp&st,const std::function<bool(const PEvent&)>&predicate)
+	{
+		if (st.rightNow)
+			return nullptr;
+		foreach (primitives,prim)
+			if (prim->time.min == st.atTime && predicate(prim->event))
+				return prim->event;
+		return nullptr;
+	}
 
-	Buffer0<Primitive>		primitives,actives,whenDone;
+
+	bool AllDone()
+	{
+		return (primitives.IsEmpty() && actives.IsEmpty());
+	}
+
+	void	ScheduleEvent( const TTime&time, const PEvent&ev )
+	{
+		primitives.Append({time,ev});
+		LogEvent(EventSignificance::Debug, "Animation: Appended '"+ev->Describe()+"' to animation sequence at t="+ToString(time));
+	}
+
+	void	ScheduleEventWhenDone( const PEvent&ev )
+	{
+		whenDone.Append(ev);
+		LogEvent(EventSignificance::Debug, "Animation: Appended '"+ev->Describe()+"' to post-animation execution sequence");
+	}
+
+
+	void	Flush()
+	{
+		primitives.Clear();
+		actives.Clear();
+		whenDone.Clear();
+		atTime = 0;
+	}
+
+	#ifdef HAS_WINDOW
+		void RenderActiveEvents()
+		{
+			foreach (Animation::actives,a)
+				a->event->Render();
+		}
+
+	#endif
 
 	
 	void Update()
@@ -1835,9 +207,11 @@ namespace Animation
 
 				for (index_t i = 0; i < Animation::actives.Count(); i++)	//complete before adding new ones
 				{
-					if (Animation::actives[i].Update(Animation::atTime) == Animation::Primitive::Done)
+					const auto&p = Animation::actives[i];
+					if (UpdateEvent(p,Animation::atTime) == UpdateResult::Done)
 					{
-						Animation::actives[i].End();
+						LogEvent(EventSignificance::Debug, "Ending '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
+						p.event->End();
 						Animation::actives.Erase(i);
 						i--;
 					}
@@ -1847,10 +221,11 @@ namespace Animation
 				items.Clear();
 				for (index_t i = 0; i < Animation::primitives.Count(); i++)
 				{
-					if (Animation::atTime >= Animation::primitives[i].time.min)
+					const auto&p = Animation::primitives[i];
+					if (Animation::atTime >= p.time.min)
 					{
 						items.Append().elementIndex = i;
-						items.Last().atTime = Animation::primitives[i].time.min;
+						items.Last().atTime = p.time.min;
 					}
 				}
 
@@ -1860,11 +235,16 @@ namespace Animation
 				foreach (items,it)
 				{
 					Animation::actives << Animation::primitives[it->elementIndex];
-					Animation::actives.Last().Begin();
-					if (Animation::actives.Last().Update(Animation::atTime) == Animation::Primitive::Done)
 					{
-						Animation::actives.Last().End();
-						Animation::actives.EraseLast();
+						const auto&p = Animation::actives.Last();
+						LogEvent(EventSignificance::Debug, "Starting '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
+						p.event->Begin(false);
+						if (UpdateEvent(p,Animation::atTime) == UpdateResult::Done)
+						{
+							LogEvent(EventSignificance::Debug, "Ending '"+p.event->Describe()+"' at "+String(atTime)+"/"+ToString(p.time));
+							p.event->End();
+							Animation::actives.EraseLast();
+						}
 					}
 					Animation::primitives.Erase(it->elementIndex);
 					auto nxt = it;
@@ -1896,12 +276,8 @@ namespace Animation
 					LogEvent(EventSignificance::Debug,nullptr,"Executing "+String(whenDone.Count())+" post-animation event(s)");
 					for (auto&entry : whenDone)
 					{
-						entry.time.min = 0.f;
-						entry.time.max = 1.f;
-
-						entry.Begin();
-						entry.Update(1.1f);
-						entry.End();
+						entry->Begin(true);
+						entry->End();
 					}
 
 					whenDone.Clear();
@@ -1929,6 +305,8 @@ namespace Animation
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(Objects::GetEntity(key));
 					if (v)
 					{
+						LogEvent(EventSignificance::Debug,v.get(),"Delayed inserting into grid...");
+						ASSERT__(v->storedIn.expired());
 						if (v->owner->SharesSensorsWithMe())
 						{
 							float t = 0.f;

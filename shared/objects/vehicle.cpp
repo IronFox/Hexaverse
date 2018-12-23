@@ -180,20 +180,20 @@ namespace Objects
 		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
 	}
 
-	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::operation_t op) const
+	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::Operation op) const
 	{
 		//const auto&state = GetResearchState();
 		return base->acceleration[op];
 	}
 
 
-	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	/*virtual override*/ int			Vehicle::GetOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
 		const auto&state = GetResearchState(owner);
 		return (int)floor(turret->GetOperationSpeed(op,state) * base->operationSpeedMultiplier.GetValue(state));
 	}
 
-	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::operation_t op, const OwnerParameter&owner) const
+	/*virtual override*/ String			Vehicle::DescribeOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
 		const auto&state = GetResearchState(owner);
 		String rs = turret->operationSpeed[op].Describe(state);
@@ -411,7 +411,7 @@ namespace Objects
 				if (base->moveOnWater)
 					outResult.GetLastLine() += " (moves over water)";
 
-			int opSpeed = std::max(GetOperationSpeed(Component::Construct, owner),GetOperationSpeed(Component::TerrainAdd,owner));
+			int opSpeed = std::max(GetOperationSpeed(Component::Operation::Construct, owner),GetOperationSpeed(Component::Operation::AddTerrain,owner));
 			if (opSpeed)
 				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
@@ -445,13 +445,14 @@ namespace Objects
 
 		bool	Vehicle::DirectTo( mode_t mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/ )
 		{
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			switch (mode)
 			{
 				case CursorMode::Idle:
 					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
-					if (!turret->CanDo(Component::TerrainRemove))
+					if (!turret->CanDo(Component::Operation::RemoveTerrain))
 						return false;
 					if (leftClick)
 					{
@@ -549,7 +550,7 @@ namespace Objects
 				case CursorMode::BuildHighWallChainMode:
 				case CursorMode::BuildLowWallChainMode:
 				case CursorMode::BuildBridgeMode:
-					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Construct : Component::TerrainAdd  ) )
+					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Operation::Construct : Component::Operation::AddTerrain  ) )
 						return false;
 
 					if (leftClick)

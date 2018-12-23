@@ -65,7 +65,7 @@ namespace AIProcess
 	}
 
 
-	void Begin(const CryptographicID&accessToken, USHORT serverBasePort, const std::function<String()>&asyncGetServerPassword)
+	void Begin( const CryptographicID&accessToken, USHORT serverBasePort, const std::function<String()>&asyncGetServerPassword )
 	{
 		if (detail::process.IsRunning())
 		{

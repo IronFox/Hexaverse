@@ -53,9 +53,22 @@ float4 psMain(V2P input) : SV_TARGET
 	
 	float4 rs = lerp(BottomColor,TopColor,input.uv.y);
 	float2 delta = MouseAt - input.world;
-	rs.a *= smoothstep(0.0,1.0, 1.0 - abs(input.world.x - ShapeCenter) / FadeStretch);
+	//delta.y *= Viewport.x / Viewport.y;
+	float rand0 = fmod(input.position.x*13.92374 + input.position.y*17.239478,1.0);
+	float rand2 = fmod(input.position.x*54.169148 + input.position.y*25.784247,1.0);
+	float rand3 = fmod(input.position.x*36.702146 + input.position.y*89.742514,1.0);
+	rs.a *= smoothstep(0.0,1.0, 1.0 - abs(input.world.x - ShapeCenter) / FadeStretch * (0.7+0.1*(rand0+rand2+rand3)));
 //	(0.5 - abs(0.5 - input.uv.x)*0.5)*2.0);
-	rs.rgb *= 0.8 + 0.3 * (1.0 / (1.0 + 50.0 * dot(delta,delta)));
+
+	float rand = fmod(input.position.x*18.5902374 + input.position.y*11.951932,1.0);
+	float rand1 = fmod(input.position.x*14.23987 + input.position.y*14.569871,1.0);
+	float rand4 = fmod(input.position.x*38.106577 + input.position.y*89.32154,1.0);
+
+	float lightDist = dot(delta,delta);
+	lightDist *= (rand1 * 0.4 + 0.8);
+	float distAlpha = (1.0 / (1.0 + 50.0 * lightDist));
+	distAlpha *= ((rand+rand4) * 0.1 + 0.8);
+	rs.rgb *= 0.8 + 0.3 * distAlpha;
 	
 	rs.a = saturate(rs.a);
 	rs.rgb *= max(1.0,rs.a);

@@ -61,6 +61,7 @@ namespace Objects
 			ASSERT1__(!m->isInsertedIntoGrid,m->GetName());
 			ASSERT1__(m->IsAlive(),m->GetName());
 			ASSERT1__(GetEntity(m->id) == m, m->GetName());
+			ASSERT1__(!m->HasTasks(),m->GetName());
 			if (m->IsVehicle())
 				ASSERT1__(!vehicles.Contains(To<Vehicle>::Cast(m)),m->GetName());
 			PHangar hangar = m->storedIn.lock();
@@ -167,7 +168,7 @@ namespace Objects
 
 	}
 
-	float MobileEntity::ContinuationsToRounds(int continuationsToJobCompletion, Component::operation_t op) const
+	float MobileEntity::ContinuationsToRounds(int continuationsToJobCompletion, Component::Operation op) const
 	{
 		int sub = (1<<GetConstructionAcceleration(op));
 		return float(continuationsToJobCompletion) / sub;
@@ -175,7 +176,7 @@ namespace Objects
 
 
 
-	UINT32					MobileEntity::GetOperationContinuations(int jobCosts, Component::operation_t op) const
+	UINT32					MobileEntity::GetOperationContinuations(int jobCosts, Component::Operation op) const
 	{
 		if (!jobCosts)
 			return 0;
@@ -189,7 +190,7 @@ namespace Objects
 		return rs;
 	}
 
-	UINT32					MobileEntity::GetOperationCompletionRounds(int jobCosts, Component::operation_t op) const
+	UINT32					MobileEntity::GetOperationCompletionRounds(int jobCosts, Component::Operation op) const
 	{
 		return M::CeilDiv<UINT32>(GetOperationContinuations(jobCosts,op),1 << GetConstructionAcceleration(op));
 	}
@@ -228,13 +229,27 @@ namespace Objects
 				&& myTasks.Peek().job->resourceCostLeft > 0;
 	}
 
+	/*virtual override*/ float			MobileEntity::GetMaxUncontrolledExplosionRadius() const
+	{
+		if (RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
+			return Component::Bomb::GetRadius(false,Objects::Research::globalState.zeroTable);
+		return 0;
+	}
+
+	/*virtual override*/ float			MobileEntity::GetUncontrolledExplosionRadius() const
+	{
+		return GetMaxUncontrolledExplosionRadius();
+	}
+
+
 	#ifndef CLIENT
 
 		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float&atTime)
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				const auto&state = GetResearchState();
+				const auto&state = Objects::Research::globalState.zeroTable;
+					//GetResearchState();
 
 				ApplicationInterface::SignalChainReactionExplosion(shared_from_this(), location, Component::Bomb::GetRadius(false,state),Component::Bomb::GetDamageLevel(false,state),false,atTime);
 			}
@@ -422,7 +437,7 @@ namespace Objects
 								if (dropRemaining)
 								{
 									this->ClearAllTasks(true,CLOCATION);
-									remaining = true;
+									remaining = 0;
 								}
 								else
 								{
@@ -555,6 +570,7 @@ namespace Objects
 		/*virtual override*/ bool		MobileEntity::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
 		{
 			ASSERT__(!TasksAreLocked());
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			if (!CanAttack())
 				return false;
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
@@ -646,7 +662,8 @@ namespace Objects
 						{
 							if (v2->turret->CanAttack() && v2->turret->independentAttackAndMotion && !movingAttack)
 								return;	//otherwise this entity is a hunter, with low sensor range, plus probably able to tank the damage and/or counter-attack
-
+							if (!v2->HasTasks())
+								return;	//might be locked, so v2->myTasks may no longer contain valid tasks
 							for (index_t i = 0; i < v2->myTasks.Count(); i++)
 							{
 								const Task&task = v2->myTasks[i];
@@ -679,6 +696,7 @@ namespace Objects
 									}
 									else
 									{
+										ASSERT1__(!v2->TasksAreLocked(),v2->GetNameAndOwner());
 										LogEvent(EventSignificance::Common,v2.get(),"Truncating tasks to "+String(i));
 										bool anyChanged = false;
 										while (v2->myTasks.Count() > i)	//must be greater. task 1 is bad => queue max length is 1 (task 0 is assumed good)
@@ -1043,6 +1061,7 @@ namespace Objects
 		{
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 			ASSERT__(!TasksAreLocked());
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
 			{
 				if (myTasks.Count() >= MaxTasks)
@@ -1117,7 +1136,8 @@ namespace Objects
 				}
 			}*/
 
-			ASSERT__(!TasksAreLocked());
+			ASSERT1__(!TasksAreLocked(),GetName());
+			DBG_ASSERT1__(!TasksAreLocked(),storedIn.expired());
 			BuildChecker checker(this);
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
@@ -1240,6 +1260,8 @@ namespace Objects
 
 		bool			MobileEntity::PlotCourse( MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/ )
 		{
+			ASSERT__(!TasksAreLocked());
+			DBG_ASSERT1__(storedIn.expired(),GetName());
 			const World::Data&world = owner->knownWorld;
 			for (index_t i = 0; i < destination.GetLength(); i++)
 			{

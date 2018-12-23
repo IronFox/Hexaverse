@@ -23,6 +23,7 @@
 #include "../autoDocumentation.h"
 #include <string/converter.h>
 #include <startProcess.h>
+#include "../../startConfiguration.h"
 
 bool	IsFullScreen();
 void	SetFullScreen(bool isFull);
@@ -213,10 +214,7 @@ namespace Menu
 
 	static Component::PCheckbox AddCheckBox(const Component::PPanel&panel, const String&name, const String&configKey, const std::function<bool()>&getValue, const std::function<void(bool)>&setValue)
 	{	
-		auto var = Configuration::config->GetAttrib(configKey);
-		bool b;
-		if (var && Convert(var->value,b))
-			setValue(b);
+		setValue(StartConfig::GetBool(configKey, getValue()));
 
 		auto var2 = Configuration::defaultConfig->GetAttrib(configKey);
 		String comment = var2 ? var2->comment : "";
@@ -226,7 +224,7 @@ namespace Menu
 			if (b == getValue())
 				return;
 			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' -> "+String(b));
-			Configuration::Update(configKey,b ? 1 : 0);
+			Configuration::Update(configKey,b);
 			setValue(b);	
 			LogEvent(EventSignificance::Common,"Checkbox change '"+name+"' done");
 		}));
@@ -289,6 +287,10 @@ namespace Menu
 		}
 		)->SetupMarkers(0.25f,true);
 
+		AddCheckBox(visual,"Real-Time GUI Blur","runtime/realtimeGUIBlur",[](){return HUD::Component::BlurredBackground::realtimeBlur;},[](bool enabled)
+		{
+			HUD::Component::BlurredBackground::realtimeBlur = enabled;
+		});
 
 		AddOptionSlider(visual,"Shadow Quality", 0, ShadedInstruction::Quality::N-1, 1, ShadedInstruction::Quality::N-1 - ShadedInstruction::chosenQuality, [](float&q)
 			{

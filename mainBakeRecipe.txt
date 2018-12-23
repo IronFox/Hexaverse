@@ -12,6 +12,7 @@ client/resources/objectSounds/*.wav
 client/resources/*.png
 client/resources/nice/*.txt
 client/resources/icons/*.png
+client/resources/floaters/*.png
 client/resources/textures/*.png
 client/resources/tutorial/*.png
 client/resources/tutorial/*.jpg

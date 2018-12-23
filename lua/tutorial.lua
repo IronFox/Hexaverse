@@ -53,13 +53,17 @@ end
 
 function SurveyorIsAutomated() 
 	for _,u in pairs(Game.myUnits) do
-		if u.typeName == 'Hoversurveyor' and u.isAutomated then
+		if u.turret and u.turret.type.name == 'Surveyor' and u.isAutomated then
 			return true;
 		end;
 	end;
 	return false;
 end;
 		
+		
+function TurretIsSelected(turretName --[[string]]) -- bool
+	return Game.selectedUnit and Game.selectedUnit.turret and Game.selectedUnit.turret.type.name == turretName;
+end;
 
 --test:
 
@@ -91,18 +95,18 @@ CreateTask(function() Game.DescribeTask("Rotate the camera around your current f
 CreateTask(function() Game.DisplayMessage("Now that you have some understanding of camera control, let's explore your units.") end);
 
 --buildings:
-CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Generator'; end);
+CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.type.name == 'Generator'; end);
 CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy while consuming %Fuel%fuel. This generator suffices to support your mine, and one more consumer. After that you will need more.","generator.jpg") end);
 
-CreateTask(function() Game.DescribeTask("Now, find and select your Mine.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Mine'; end);
+CreateTask(function() Game.DescribeTask("Now, find and select your Mine.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.type.name == 'Mine'; end);
 CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the planet core underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out, but they are also rarely enough.","mine.jpg") end);
 
 --build lab:
-CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer'; end);
-CreateTask(function() Game.DisplayMessage("Terraformers are your primary working force. While not all terraformers are equally manuverable, resilient, or productive, they can all shape the terrain and build new structures.\n Now, let's build something!","terraformer.png") end);
+CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() return TurretIsSelected("Terraformer"); end);
+CreateTask(function() Game.DisplayMessage("Terraformers are your primary work force. While not all terraformers are equally manuverable, resilient, or productive, they can all shape the terrain and build new structures.\n Now, let's build something!","terraformer.png") end);
 CreateTask(function() Game.DescribeTask("Instruct your Terraformer to build a laboratory. Using the unit commands in the bottom screen section, select Build->Miscellaneous->Laboratory, and click anywhere on the terrain.") end, 
 	function() 
-		if Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoverformer' then 
+		if TurretIsSelected("Terraformer") then 
 			for _,t in ipairs(Game.selectedUnit.tasks) do
 				if t.name == 'construct Laboratory' then
 					return true;
@@ -111,7 +115,7 @@ CreateTask(function() Game.DescribeTask("Instruct your Terraformer to build a la
 		end;
 		--also done when it already exists
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Laboratory' then
+			if u.type.name == 'Laboratory' then
 				return true;
 			end;
 		end;
@@ -121,7 +125,7 @@ CreateTask(function() Game.DescribeTask("Instruct your Terraformer to build a la
 	
 function HaveLab()
 	for _,u in pairs(Game.myUnits) do
-		if u.typeName == 'Laboratory' then
+		if u.type.name == 'Laboratory' then
 			return true;
 		end;
 	end;
@@ -143,7 +147,7 @@ CreateTask(function() Game.DescribeTask("Task your laboratory to unlock the Reac
 	end
 );
 
-CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, find and select your Surveyor.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.typeName == 'Hoversurveyor'; end);
+CreateTask(function() Game.DescribeTask("While we wait for the laboratory to finish, find and select your Surveyor.") end, function() return TurretIsSelected("Surveyor"); end);
 
 CreateTask(function() Game.DisplayMessage("Surveyors automatically identify new natural resources in their yellow scanning sphere. The dark discs near your starting location indicate that there isn't anything there (except beneath your starting mine). Instruct your surveyor to move, by right-clicking anywhere without discs.","surveyor.png") end);
 CreateTask(function() Game.DescribeTask("Please move your surveyor until it found some more %Fuel%fuel (a green bar atop the terrain). Select the vehicle and right-click anywhere on the terrain to schedule the motion. Request new rounds to execute movement operations") end, 
@@ -161,7 +165,7 @@ CreateTask(function() Game.DescribeTask("Please construct a mine atop the newly 
 	function()
 		local count = 0;
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Mine' and Game.Grid.GetNaturalResourceAt('Fuel', u.location.cell) > 0 then
+			if u.type.name == 'Mine' and Game.Grid.GetNaturalResourceAt('Fuel', u.location.cell) > 0 then
 				count = count + 1;
 			end;
 		end;
@@ -182,7 +186,7 @@ CreateTask(function() Game.DescribeTask(
 	function()
 		local count = 0;
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Generator' then
+			if u.type.name == 'Generator' then
 				count = count + 1;
 			end;
 		end;
@@ -194,7 +198,7 @@ CreateTask(function() Game.DescribeTask(
 function SecondGeneratorIsEnabled()
 	local enabled = 0;
 	for _,u in pairs(Game.myUnits) do
-		if (u.typeName == 'Generator' or u.typeName == 'Mine') and u.isEnabled then
+		if (u.type.name == 'Generator' or u.type.name == 'Mine') and u.isEnabled then
 			enabled = enabled + 1;
 		end;
 	end;
@@ -209,7 +213,7 @@ CreateTask(function() Game.DisplayMessage("Both the new generator and mine are c
 CreateTask(
 	function() 
 		for _,u in pairs(Game.myUnits) do
-			if (u.typeName == 'Laboratory') and not u.isEnabled then
+			if (u.type.name == 'Laboratory') and not u.isEnabled then
 				u.Enable(true);
 			end;
 		end;
@@ -224,7 +228,7 @@ CreateTask(function() Game.DisplayMessage("Notice how enabling either the genera
 CreateTask(function() Game.DescribeTask("Next, construct a Vehicle Plant using your terraformer. In the bottom screen section, select Build->Factories->Vehicle Plant, and click anywhere on the terrain. Request new rounds until done.") end,
 	function()
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Vehicle Plant' then
+			if u.type.name == 'Vehicle Plant' then
 				return true;
 			end;
 		end;
@@ -237,7 +241,7 @@ CreateTask(function() Game.DisplayMessage("Vehicle Plants can construct all sort
 CreateTask(function() Game.DescribeTask("Task your Vehicle Plant to construct another hoverformer by selecting the plant and then choosing the Terraformer turret in the top row of its unit commands.") end,
 	function()
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Vehicle Plant' and u.productionQueue ~= nil then
+			if u.type.name == 'Vehicle Plant' and u.productionQueue ~= nil then
 				local found = false;
 
 				for _,t in ipairs(u.productionQueue) do
@@ -264,7 +268,7 @@ CreateTask(function() Game.DescribeTask("Now, find some %Uranium%uranium, and co
 	function()
 		local count = 0;
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Mine' and Game.Grid.GetNaturalResourceAt('Uranium', u.location.cell) > 0 then
+			if u.type.name == 'Mine' and Game.Grid.GetNaturalResourceAt('Uranium', u.location.cell) > 0 then
 				count = count + 1;
 			end;
 		end;
@@ -286,13 +290,13 @@ CreateTask(function() Game.DescribeTask("Now, construct a Reactor Core next to o
 	function()
 		
 		for _,u in pairs(Game.myUnits) do
-			if u.typeName == 'Reactor Core' then
+			if u.type.name == 'Reactor Core' then
 				Game.Log("Found reactor");
 				local cell = u.location.cell;
 				for _,n in ipairs(cell.neighbors) do
 					Game.Log("Looking at "..n.index..", "..u.location.height);
 					local neighbor = FindUnitIn(n,u.location.height);
-					if (neighbor ~= nil and neighbor.typeName == 'Generator') then
+					if (neighbor ~= nil and neighbor.type.name == 'Generator') then
 						return true;
 					end;
 				end;
@@ -325,7 +329,7 @@ CreateTask(function() Game.DisplayMessage("This concludes the interactive tutori
 function CountType(strTypeName)
 	local cnt = 0;
 	for _,u in pairs(Game.myUnits) do
-		if u.typeName == strTypeName then
+		if u.type.name == strTypeName then
 			cnt = cnt + 1;
 		end;
 	end;

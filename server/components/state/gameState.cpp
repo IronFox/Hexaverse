@@ -6,6 +6,7 @@
 #include "../journalSaveGame.h"
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
+#include <objects/faction.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -42,6 +43,11 @@ namespace Game
 		{
 			StartAI();
 		}
+	}
+
+	bool AIIsActive()
+	{
+		return Config::Nexus::enableAI || (Objects::Faction::nexus && Objects::Faction::nexus->online);
 	}
 
 	#pragma region vote
@@ -184,7 +190,7 @@ namespace Game
 		if (!scope)
 			Channels::VoteCreation.SendTo(::Network::server,vote,Channels::Level::Faction);
 		else
-			::Network::playerMap.VisitAllEntries([vote,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			::Network::playerMap.VisitAllEntries([vote,this](const Objects::PConstFaction&f, const ::Network::PClient&client)
 			{
 				if (scope(f))
 					Channels::VoteCreation.SendTo(client->peer.lock(),vote);
@@ -342,7 +348,7 @@ namespace Game
 		if (!scope)
 			Channels::VoteResult.SendTo(::Network::server,rs,Channels::Level::Faction);
 		else
-			::Network::playerMap.VisitAllEntries([rs,this](const Objects::PFaction&f, const ::Network::PClient&client)
+			::Network::playerMap.VisitAllEntries([rs,this](const Objects::PConstFaction&f, const ::Network::PClient&client)
 			{
 				if (scope(f))
 					Channels::VoteResult.SendTo(client->peer.lock(),rs);
@@ -594,7 +600,7 @@ namespace Game
 				rs |= Protocol::GameFlag::BasesRequired;
 			if (Config::startBases)
 				rs |= Protocol::GameFlag::StartBases;
-			if (Config::Nexus::enableAI)
+			if (AIIsActive())
 				rs |= Protocol::GameFlag::NexusAI;
 			if (RuntimeConfig::tutorialMode)
 				rs |= Protocol::GameFlag::TutorialMode;
@@ -632,7 +638,9 @@ namespace Game
 			AssembleGameConfig(info.gameConfig,allowSpectatorFactions);
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
-			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
+			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count();
+			if (AIIsActive())
+				info.numFactionsCreated ++;
 			info.roundNumber = RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
 		}
@@ -793,7 +801,8 @@ namespace Game
 			task.taskFlags = 0;
 			if (t.job)
 			{
-				task.jobAffinity = t.job->GetOperationAffinity();
+				static_assert(Objects::Component::OperationCount < 0x100,"Change Protocol::MobileTask::jobAffinity type");
+				task.jobAffinity = (BYTE)t.job->GetOperationAffinity();
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
 				if (!seq)
 				{
@@ -861,6 +870,7 @@ namespace Game
 
 		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
 		{
+			DBG_ASSERT1__(v.storedIn.expired() || v.myTasks.IsEmpty(),v.GetName());
 			if (v.IsAboveTerrain())
 			{
 				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
@@ -1472,7 +1482,7 @@ namespace Game
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
 			{
-				if (v->GetOperationSpeed(Objects::Component::Construct))
+				if (v->GetOperationSpeed(Objects::Component::Operation::Construct))
 					v->owner->hasUnitClasses |= Objects::Faction::UnitClass::Terraformer;
 			});
 
@@ -1565,9 +1575,9 @@ namespace Game
 					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 				else
-				if (livingPlayerAlliances == 1)
+				if (livingPlayerAlliances == 1 && mostAlliancesAlive > 1)
 				{
-					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
+					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one of several alliances left alive. Declaring winner.");
 
 					winner.reset();
 					Objects::PAlliance newWinner;

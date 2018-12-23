@@ -1,26 +1,9 @@
-Lua API documentation:
-Test:
-	Tutorial
-	Game.Grid.NaturalResourcesSurveyedAt
-	Game.Grid.GetNaturalResourcesAt
-Implement:
-	Retrieve research dependencies of type
-	List type names (IsType()?)
-	Test function to determine if exported state is too large
-	Random number generator function
-FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
-Game.CreateMarker: note max marker count
-Cell.index: wrong range
-isMovile, heigh
-has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
+terrain manipulation via ai script
 
+blending in and out of blurred gui background is rather harsh, somehow. maybe preserve both blurred and sharp copy and blend on the fly in shader?
 
-
-asynchronous configuration editor start
 
 Improve interactive tutorial ("too text-based with telling too much and explaining too few. After I played the tutorial, I still had many problems with the very basics")
-Icon for idling structures and vehicles
-
 
 
 web site: blend gallery image loading
@@ -33,6 +16,7 @@ air and sub-surface defense for nexus base
 optimize camera terrain intersection test
 
 hard to reproduce/fix:
+	Tutorial: Observed very first generator selection event not triggering. Gone after restart. Unable to reproduce
 	construction finish->move directly into storage seems to drop constructed lab
 	bug: generate... ends new game in round 0 if executed after previous match has ended
 		does not happen if forced on uncompleted matches (gameHasEnded=true, generate, ...)
@@ -218,6 +202,20 @@ multi-planet
 
 ------------- done (newest first) -------------
 
+fixed: more space for top right selected entity icon when using !=100% UI scale
+fixed: plane land button disabled atop vehicle store on highest possible level (-1 because of height 2)
+fixed: Rendered hex icons become jaggy when using >100% GUI scale
+possibly fixed: deploying surveyor from storage does not instantly reveal resources on client
+fixed: ai script can construct nexus ports
+fixed: new gui (blur?) slow on lower end machines (changed rendering pipeline and added new option)
+done: Change TerrainAdd and TerrainRemove -> AddTerrain and RemoveTerrain so 'canTerrainAdd' doesn't sound quite so bad anymore. Find some solution for 'Nuclear'. Make sure to adapt research script
+mitigated: AI script does not request new round upon completion...?
+fixed: Visual log can eat FPS when exceeding several thousand visible lines at once
+done: Icon for idling structures and vehicles
+skipped: asynchronous configuration editor start. most of the time is spent recompiling the terrain. probably useless
+added: Game.CreateMarker: note max marker count
+fixed: has turret (tower,mobile) and can attack: maps turret member table. check if this can't be set on e.g. radars
+fixed: FindShortestPath()/GetReach() still assumes a unit is explicitly specified (is not self). Add function names to documentation
 done: Complete tooltips for regular UI
 fixed: check client starting server manager
 done: further delay tooltip appearance on components

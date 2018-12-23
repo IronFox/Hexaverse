@@ -320,7 +320,7 @@ namespace Objects
 		/**
 		Calculates the number of rounds needed to complete the given number of job continuations
 		*/
-		float					ContinuationsToRounds(int continuationsToJobCompletion, Component::operation_t op) const;
+		float					ContinuationsToRounds(int continuationsToJobCompletion, Component::Operation op) const;
 
 
 		/**
@@ -437,11 +437,11 @@ namespace Objects
 		@param op Operation affinity to calculate speed from
 		@return Number of continuations necessary to complete the job (rounded up)
 		*/
-		UINT32					GetOperationContinuations(int jobCosts, Component::operation_t op) const;
+		UINT32					GetOperationContinuations(int jobCosts, Component::Operation op) const;
 		/**
 		Estimates the number of actual rounds necessary to complete a job of the given costs and operation affinity.
 		*/
-		UINT32					GetOperationCompletionRounds(int jobCosts, Component::operation_t op) const;
+		UINT32					GetOperationCompletionRounds(int jobCosts, Component::Operation op) const;
 
 		Grid::LCellIdI			GetConstructionLocation() const {return GetConstructionLocation(location);}
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
@@ -450,7 +450,7 @@ namespace Objects
 		float					GetAttackExplosionRadius(const OwnerParameter&) const override;
 		using					TurretBase::GetAttackExplosionRadius;
 		bool					CanRepair() const {return turret->CanRepair();}
-		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const {return 0;}
+		virtual BYTE			GetConstructionAcceleration(Component::Operation op) const {return 0;}
 
 		int						GetCurrentMineralConsumption() const;
 
@@ -561,6 +561,9 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void		ClearSafeTasks() override;
 		#endif
+		virtual float			GetMaxUncontrolledExplosionRadius() const override;
+		virtual float			GetUncontrolledExplosionRadius() const override;
+
 
 		/**
 		Checks whether there is a task out front that has consumed resources and can not be removed without irreversible losses

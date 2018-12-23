@@ -49,7 +49,7 @@ namespace Game
 		/**
 		Defines the set of eligible voters. Effectively a filter function that includes voters. May be empty, including all
 		*/
-		typedef std::function<bool(const Objects::PFaction&)>	FScope;
+		typedef std::function<bool(const Objects::PConstFaction&)>	FScope;
 		FScope			scope;	//defines eligible factions. If empty, concerns all
 		FCallback		onClose;
 		Quorum			quorum;
@@ -365,7 +365,12 @@ namespace Game
 
 	void			StartAIIfEnabled();
 	void			StartAI();
-
+	/**
+	Checks whether an AI client should be or is currently active.
+	If found active, disregards whether it should be there
+	to account for debugging AI clients.
+	*/
+	bool			AIIsActive();
 
 
 	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);

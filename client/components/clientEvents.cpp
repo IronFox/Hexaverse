@@ -17,6 +17,7 @@ namespace GlobalEvents
 	#ifdef HAS_WINDOW
 		Observable<>frameAfterCamera,
 					shadowQualityChanged,
+					windowSizeChanged,
 					uiScaleChanged;
 
 		Observable<bool>	onFullscreenChange;

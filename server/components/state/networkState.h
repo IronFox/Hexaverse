@@ -74,7 +74,7 @@ namespace Network
 	/**
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
-	extern HashTable<Objects::PFaction,PClient,Objects::OwnerHash>		playerMap;
+	extern HashTable<Objects::PConstFaction,PClient,Objects::OwnerHash>		playerMap;
 
 
 

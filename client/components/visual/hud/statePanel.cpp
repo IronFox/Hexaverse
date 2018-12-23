@@ -11,6 +11,7 @@
 #include <objects/structure/laboratory.h>
 #include <objects/faction.h>
 #include "../display.h"
+#include "hexGrid.h"
 
 namespace HUD
 {
@@ -313,14 +314,14 @@ namespace StatePanel
 				if (m->turret->independentAttackAndMotion)
 					cachedLines << "  (ignores movement)";
 			}
-			if (m->turret->CanDo(Objects::Component::Construct))
+			if (m->turret->CanDo(Objects::Component::Operation::Construct))
 			{
-				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Construct, e.owner);
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Operation::Construct, e.owner);
 				cachedLines << " Converts "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
-			if (m->turret->CanDo(Objects::Component::Repair))
+			if (m->turret->CanDo(Objects::Component::Operation::Repair))
 			{
-				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Repair, e.owner);
+				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Operation::Repair, e.owner);
 				cachedLines << " Repairs "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
 			}
 	
@@ -732,20 +733,20 @@ namespace StatePanel
 			
 		//textout.GetActiveFont()->EndTagMode();
 		textout.PushState();
-
-		float len = GetPanelWidth();
+		//textout.Scale(UI::GetScale());
+		const float len = GetPanelWidth();
 		//if (len == 0)
 			//len = textout.GetScaledWidth("012345678901234567890123456789012345");
 
 		const float h = textout.GetScaledHeight();
-		float at = 0.95f;
+
+		float at = UI::GetScale() > 1.f ? 1.f - HexGrid::GetGridConfig().stepY * 0.8f : 0.95f;
 
 		if (doRewrap)
 		{
 			doRewrap = false;
-			const float w = GetPanelWidth();
 			foreach (cachedLines,line)
-				line->Rewrap(w);
+				line->Rewrap(len);
 		}
 
 
@@ -758,6 +759,10 @@ namespace StatePanel
 	
 	}
 
+	void		Create()
+	{
+		GlobalEvents::uiScaleChanged << [](){doRewrap = true;};
+	}
 
 }
 }

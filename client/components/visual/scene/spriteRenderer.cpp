@@ -64,7 +64,7 @@ namespace Objects
 			int2 origin;
 			bool	isset = false;
 
-			static TDistanceSample Self(int2 coords) {return {0,coords,false};}
+			static TDistanceSample Self(int2 coords) {TDistanceSample rs; rs.d = 0; rs.origin = coords; return rs;}
 		};
 
 

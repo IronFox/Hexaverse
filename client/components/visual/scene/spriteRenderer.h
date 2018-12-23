@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef HAS_WINDOW
+
 #include <global_string.h>
 #include <math/vclasses.h>
 #include <container/buffer.h>
@@ -84,3 +86,4 @@ namespace Objects
 
 }
 
+#endif

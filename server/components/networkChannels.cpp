@@ -115,7 +115,7 @@ namespace Receiver
 	static Game::Vote::FScope AllianceScope(const Objects::PAlliance&a)
 	{
 		TUniqueID tID = a->id;
-		return [tID](const Objects::PFaction&f)
+		return [tID](const Objects::PConstFaction&f)
 		{
 			return f->alliance->id == tID && !f->isDead;
 		};
@@ -125,7 +125,7 @@ namespace Receiver
 	static Game::Vote::FScope FactionScope(const Objects::PFaction&f)
 	{
 		TUniqueID tID = f->id;
-		return [tID](const Objects::PFaction&f)
+		return [tID](const Objects::PConstFaction&f)
 		{
 			return f->id == tID;
 		};
@@ -787,7 +787,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (Game::Config::Nexus::enableAI && Password::HashMatch(client->passwordChallenge,Objects::Faction::nexus->accessToken,req.hashedFactionToken))
+		if (/*Game::Config::Nexus::enableAI &&*/ Password::HashMatch(client->passwordChallenge,Objects::Faction::nexus->accessToken,req.hashedFactionToken))
 		{
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
@@ -1542,22 +1542,22 @@ namespace Receiver
 
 	}
 
-	Objects::Component::operation_t GetOperationAffinity(ConstName cname)
+	Objects::Component::Operation GetOperationAffinity(ConstName cname)
 	{
 		switch (cname)
 		{
 			case ConstName::Job_BuildRoad:
 			case ConstName::Job_BuildWallUp:
 			case ConstName::Job_BuildHorizontalWall:
-				return Objects::Component::TerrainAdd;
+				return Objects::Component::Operation::AddTerrain;
 			case ConstName::Job_DigDown:
-				return Objects::Component::TerrainRemove;
+				return Objects::Component::Operation::RemoveTerrain;
 			case ConstName::Job_Construct:
-				return Objects::Component::Construct;
+				return Objects::Component::Operation::Construct;
 			case ConstName::Job_SelfDetonate:
-				return Objects::Component::Nuclear;
+				return Objects::Component::Operation::SelfDetonate;
 		}
-		return Objects::Component::TerrainRemove;	//shouldn't happen, but not our case to handle here
+		return Objects::Component::Operation::RemoveTerrain;	//shouldn't happen, but not our case to handle here
 	}
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)

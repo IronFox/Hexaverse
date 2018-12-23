@@ -66,6 +66,8 @@
 			this.receiverTimer = new System.Windows.Forms.Timer(this.components);
 			this.hsfSaveFileDialog = new System.Windows.Forms.SaveFileDialog();
 			this.toolTip = new System.Windows.Forms.ToolTip(this.components);
+			this.connectVisualAIClientToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
 			this.globalInfoPanel.SuspendLayout();
 			this.serverContextMenuStrip.SuspendLayout();
 			this.mainStatusStrip.SuspendLayout();
@@ -78,9 +80,10 @@
 			this.globalInfoPanel.Controls.Add(this.globalAttributeView);
 			this.globalInfoPanel.Controls.Add(this.launchClientButton);
 			this.globalInfoPanel.Dock = System.Windows.Forms.DockStyle.Top;
-			this.globalInfoPanel.Location = new System.Drawing.Point(0, 24);
+			this.globalInfoPanel.Location = new System.Drawing.Point(0, 28);
+			this.globalInfoPanel.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.globalInfoPanel.Name = "globalInfoPanel";
-			this.globalInfoPanel.Size = new System.Drawing.Size(800, 121);
+			this.globalInfoPanel.Size = new System.Drawing.Size(1067, 149);
 			this.globalInfoPanel.TabIndex = 0;
 			// 
 			// launchServerButton
@@ -88,9 +91,10 @@
 			this.launchServerButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
 			this.launchServerButton.Image = global::ServerManager.Properties.Resources.hexaverse_server_capsule_87;
 			this.launchServerButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
-			this.launchServerButton.Location = new System.Drawing.Point(550, 3);
+			this.launchServerButton.Location = new System.Drawing.Point(733, 4);
+			this.launchServerButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.launchServerButton.Name = "launchServerButton";
-			this.launchServerButton.Size = new System.Drawing.Size(247, 112);
+			this.launchServerButton.Size = new System.Drawing.Size(329, 138);
 			this.launchServerButton.TabIndex = 8;
 			this.launchServerButton.Text = "Add Server...";
 			this.launchServerButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
@@ -111,11 +115,12 @@
 			this.globalAttributeView.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.None;
 			this.globalAttributeView.Items.AddRange(new System.Windows.Forms.ListViewItem[] {
             listViewItem1});
-			this.globalAttributeView.Location = new System.Drawing.Point(256, 3);
+			this.globalAttributeView.Location = new System.Drawing.Point(341, 4);
+			this.globalAttributeView.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.globalAttributeView.MultiSelect = false;
 			this.globalAttributeView.Name = "globalAttributeView";
 			this.globalAttributeView.ShowItemToolTips = true;
-			this.globalAttributeView.Size = new System.Drawing.Size(288, 112);
+			this.globalAttributeView.Size = new System.Drawing.Size(384, 138);
 			this.globalAttributeView.TabIndex = 7;
 			this.globalAttributeView.UseCompatibleStateImageBehavior = false;
 			this.globalAttributeView.View = System.Windows.Forms.View.Details;
@@ -139,9 +144,10 @@
 			// 
 			this.launchClientButton.Image = global::ServerManager.Properties.Resources.hexaverse_cover_capsule_87;
 			this.launchClientButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
-			this.launchClientButton.Location = new System.Drawing.Point(3, 3);
+			this.launchClientButton.Location = new System.Drawing.Point(4, 4);
+			this.launchClientButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.launchClientButton.Name = "launchClientButton";
-			this.launchClientButton.Size = new System.Drawing.Size(247, 112);
+			this.launchClientButton.Size = new System.Drawing.Size(329, 138);
 			this.launchClientButton.TabIndex = 0;
 			this.launchClientButton.Text = "Launch Client";
 			this.launchClientButton.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
@@ -161,9 +167,10 @@
 			this.serverListView.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.serverListView.FullRowSelect = true;
 			this.serverListView.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
-			this.serverListView.Location = new System.Drawing.Point(0, 145);
+			this.serverListView.Location = new System.Drawing.Point(0, 177);
+			this.serverListView.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
 			this.serverListView.Name = "serverListView";
-			this.serverListView.Size = new System.Drawing.Size(800, 283);
+			this.serverListView.Size = new System.Drawing.Size(1067, 355);
 			this.serverListView.TabIndex = 1;
 			this.serverListView.UseCompatibleStateImageBehavior = false;
 			this.serverListView.View = System.Windows.Forms.View.Details;
@@ -199,43 +206,46 @@
 			// 
 			// serverContextMenuStrip
 			// 
+			this.serverContextMenuStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
 			this.serverContextMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.controlStripItem,
             this.logStripItem,
             this.saveGameAsToolStripMenuItem,
             this.toolStripSeparator2,
             this.sessionToolStripMenuItem,
+            this.toolStripMenuItem1,
+            this.connectVisualAIClientToolStripMenuItem,
             this.toolStripSeparator1,
             this.shutdownStripItem});
 			this.serverContextMenuStrip.Name = "serverContextMenuStrip";
-			this.serverContextMenuStrip.Size = new System.Drawing.Size(209, 126);
+			this.serverContextMenuStrip.Size = new System.Drawing.Size(313, 166);
 			this.serverContextMenuStrip.Opening += new System.ComponentModel.CancelEventHandler(this.serverContextMenuStrip_Opening);
 			// 
 			// controlStripItem
 			// 
 			this.controlStripItem.Name = "controlStripItem";
-			this.controlStripItem.Size = new System.Drawing.Size(208, 22);
+			this.controlStripItem.Size = new System.Drawing.Size(312, 24);
 			this.controlStripItem.Text = "Connect Control Console";
 			this.controlStripItem.Click += new System.EventHandler(this.controlStripItem_Click);
 			// 
 			// logStripItem
 			// 
 			this.logStripItem.Name = "logStripItem";
-			this.logStripItem.Size = new System.Drawing.Size(208, 22);
+			this.logStripItem.Size = new System.Drawing.Size(312, 24);
 			this.logStripItem.Text = "View Log File";
 			this.logStripItem.Click += new System.EventHandler(this.logStripItem_Click);
 			// 
 			// saveGameAsToolStripMenuItem
 			// 
 			this.saveGameAsToolStripMenuItem.Name = "saveGameAsToolStripMenuItem";
-			this.saveGameAsToolStripMenuItem.Size = new System.Drawing.Size(208, 22);
+			this.saveGameAsToolStripMenuItem.Size = new System.Drawing.Size(312, 24);
 			this.saveGameAsToolStripMenuItem.Text = "Save Game as...";
 			this.saveGameAsToolStripMenuItem.Click += new System.EventHandler(this.saveGameAsToolStripMenuItem_Click);
 			// 
 			// toolStripSeparator2
 			// 
 			this.toolStripSeparator2.Name = "toolStripSeparator2";
-			this.toolStripSeparator2.Size = new System.Drawing.Size(205, 6);
+			this.toolStripSeparator2.Size = new System.Drawing.Size(309, 6);
 			// 
 			// sessionToolStripMenuItem
 			// 
@@ -243,42 +253,44 @@
             this.closeSessionStripItem,
             this.resumeSessionStripItem});
 			this.sessionToolStripMenuItem.Name = "sessionToolStripMenuItem";
-			this.sessionToolStripMenuItem.Size = new System.Drawing.Size(208, 22);
+			this.sessionToolStripMenuItem.Size = new System.Drawing.Size(312, 24);
 			this.sessionToolStripMenuItem.Text = "Session";
 			// 
 			// closeSessionStripItem
 			// 
 			this.closeSessionStripItem.Name = "closeSessionStripItem";
-			this.closeSessionStripItem.Size = new System.Drawing.Size(116, 22);
+			this.closeSessionStripItem.Size = new System.Drawing.Size(216, 26);
 			this.closeSessionStripItem.Text = "Close";
 			this.closeSessionStripItem.Click += new System.EventHandler(this.closeSessionStripItem_Click);
 			// 
 			// resumeSessionStripItem
 			// 
 			this.resumeSessionStripItem.Name = "resumeSessionStripItem";
-			this.resumeSessionStripItem.Size = new System.Drawing.Size(116, 22);
+			this.resumeSessionStripItem.Size = new System.Drawing.Size(216, 26);
 			this.resumeSessionStripItem.Text = "Resume";
 			this.resumeSessionStripItem.Click += new System.EventHandler(this.resumeSessionStripItem_Click);
 			// 
 			// toolStripSeparator1
 			// 
 			this.toolStripSeparator1.Name = "toolStripSeparator1";
-			this.toolStripSeparator1.Size = new System.Drawing.Size(205, 6);
+			this.toolStripSeparator1.Size = new System.Drawing.Size(309, 6);
 			// 
 			// shutdownStripItem
 			// 
 			this.shutdownStripItem.Name = "shutdownStripItem";
-			this.shutdownStripItem.Size = new System.Drawing.Size(208, 22);
+			this.shutdownStripItem.Size = new System.Drawing.Size(312, 24);
 			this.shutdownStripItem.Text = "Shut Down";
 			this.shutdownStripItem.Click += new System.EventHandler(this.shutdownStripItem_Click);
 			// 
 			// mainStatusStrip
 			// 
+			this.mainStatusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
 			this.mainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripStatusLabel});
-			this.mainStatusStrip.Location = new System.Drawing.Point(0, 428);
+			this.mainStatusStrip.Location = new System.Drawing.Point(0, 532);
 			this.mainStatusStrip.Name = "mainStatusStrip";
-			this.mainStatusStrip.Size = new System.Drawing.Size(800, 22);
+			this.mainStatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 19, 0);
+			this.mainStatusStrip.Size = new System.Drawing.Size(1067, 22);
 			this.mainStatusStrip.TabIndex = 2;
 			this.mainStatusStrip.Text = "statusStrip1";
 			// 
@@ -289,11 +301,13 @@
 			// 
 			// menuStrip1
 			// 
+			this.menuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
 			this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fileToolStripMenuItem});
 			this.menuStrip1.Location = new System.Drawing.Point(0, 0);
 			this.menuStrip1.Name = "menuStrip1";
-			this.menuStrip1.Size = new System.Drawing.Size(800, 24);
+			this.menuStrip1.Padding = new System.Windows.Forms.Padding(8, 2, 0, 2);
+			this.menuStrip1.Size = new System.Drawing.Size(1067, 28);
 			this.menuStrip1.TabIndex = 3;
 			this.menuStrip1.Text = "menuStrip1";
 			// 
@@ -302,13 +316,13 @@
 			this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.exitToolStripMenuItem});
 			this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
-			this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
+			this.fileToolStripMenuItem.Size = new System.Drawing.Size(44, 24);
 			this.fileToolStripMenuItem.Text = "File";
 			// 
 			// exitToolStripMenuItem
 			// 
 			this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-			this.exitToolStripMenuItem.Size = new System.Drawing.Size(92, 22);
+			this.exitToolStripMenuItem.Size = new System.Drawing.Size(108, 26);
 			this.exitToolStripMenuItem.Text = "Exit";
 			this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
 			// 
@@ -322,18 +336,31 @@
 			this.hsfSaveFileDialog.DefaultExt = "hsf";
 			this.hsfSaveFileDialog.Filter = "Hexaverse Save File|*.hsf";
 			// 
+			// connectVisualAIClientToolStripMenuItem
+			// 
+			this.connectVisualAIClientToolStripMenuItem.Name = "connectVisualAIClientToolStripMenuItem";
+			this.connectVisualAIClientToolStripMenuItem.Size = new System.Drawing.Size(312, 24);
+			this.connectVisualAIClientToolStripMenuItem.Text = "Connect Visual AI Client [AI Debug]";
+			this.connectVisualAIClientToolStripMenuItem.Click += new System.EventHandler(this.connectVisualAIClientToolStripMenuItem_Click);
+			// 
+			// toolStripMenuItem1
+			// 
+			this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+			this.toolStripMenuItem1.Size = new System.Drawing.Size(309, 6);
+			// 
 			// ServerTable
 			// 
-			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+			this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(800, 450);
+			this.ClientSize = new System.Drawing.Size(1067, 554);
 			this.Controls.Add(this.serverListView);
 			this.Controls.Add(this.mainStatusStrip);
 			this.Controls.Add(this.globalInfoPanel);
 			this.Controls.Add(this.menuStrip1);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MainMenuStrip = this.menuStrip1;
-			this.MinimumSize = new System.Drawing.Size(816, 489);
+			this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.MinimumSize = new System.Drawing.Size(1082, 591);
 			this.Name = "ServerTable";
 			this.Text = "Server Manager";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ServerTable_FormClosing);
@@ -384,6 +411,8 @@
 		private System.Windows.Forms.ToolStripMenuItem resumeSessionStripItem;
 		private System.Windows.Forms.ColumnHeader aiHeader;
 		private System.Windows.Forms.ToolTip toolTip;
+		private System.Windows.Forms.ToolStripMenuItem connectVisualAIClientToolStripMenuItem;
+		private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
 	}
 }
 

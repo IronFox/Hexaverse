@@ -1486,7 +1486,7 @@ namespace Test
 
 		World::BuildConfiguredWorld(random);
 
-		for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
+		for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 		{
 			const auto&stack = World::actual.GetStack(i);
 			ASSERT__(stack.GetCellI(1).content == Grid::Content::Clear);

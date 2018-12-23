@@ -10,6 +10,7 @@
 #include "../objects/mobileEntity.h"
 #include "../objects/pathfinding.h"
 #include <functional>
+#include "../objects/entityType.h"
 
 namespace Lua
 {
@@ -42,13 +43,19 @@ namespace Lua
 	{
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
+							markTable,	//Game.DebugMarkers.X
 							researchTable,	//Game.Research.X
+							typeTable,		//Game.Type.X
 							terrainTable, //Game.Terrain.X
 							terrainContentTable,	//Game.Terrain.Content.X
 							gridTable;	//Game.Grid.X
 		Lua::Table			entityIDMap,
 							factionIDMap,
 							allianceIDMap,
+							allTypes,
+							unitTypes,
+							turretTypes,
+							vbaseTypes,
 							researchTopicList;
 		
 		#ifdef CLIENT	
@@ -98,6 +105,8 @@ namespace Lua
 
 		typedef Lua::Function<void(const Lua::Table&)>	LFOnDeploy;
 
+		TwisterRandom							random = TwisterRandom(time(NULL) + timer.Now());
+
 		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
 		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;
 		Timer::Time								lastDeploymentCallbackRegistered;
@@ -107,8 +116,12 @@ namespace Lua
 		HashTable<TUniqueID,TFaction>			loadedFactionTableMap;
 		HashTable<TUniqueID,std::pair<Lua::Table,bool> >	loadedEntityTableMap;
 		HashTable<TUniqueID,Objects::WWorldEntity>	entityMap;
-		HashSet<TUniqueID>	entityMappedToTable, factionMappedToTable, allianceMappedToTable;
-		Objects::Pathfinding::ShortestPath	shortestPath;
+		HashTable<String,Lua::Table>				typeTableMap;
+		HashTable<Objects::EntityType,Lua::Table>	typeTableMap2;
+		HashSet<TUniqueID>						entityMappedToTable, 
+												factionMappedToTable, 
+												allianceMappedToTable;
+		Objects::Pathfinding::ShortestPath		shortestPath;
 		bool									myFactionIsSet = false;
 
 		//feedback functions:
@@ -119,6 +132,10 @@ namespace Lua
 												onDropSafeTasks,
 												onDropLastTask
 												;
+		std::function<index_t(const Grid::LCellIdI&, const M::TVec3<>&color, const String&msg)>	onVisualMarkerCreate;
+		std::function<void(index_t)>			onVisualMarkerDelete;
+		std::function<void()>					onVisualMarkerFlush;
+
 		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure,
 													onUpdateMobileAutomation,
 													onUpdateSleep;
@@ -131,12 +148,28 @@ namespace Lua
 		std::function<void(const TUniqueID&hangar, const TUniqueID&mobile, const Grid::LCellIdI&location, const TUniqueID&deploymentID)> onDeployStored;
 		std::function<void(index_t,bool)>	onQueueResearch;
 
+		struct TExportResult
+		{
+			CONSTRUCT_ENUMERATION5(ErrorType,NoError,TooLarge,TableLoop,NotSupported,Other);
+
+			ErrorType	error;
+			String		errorExt;
+			size_t		serialSize=0, maxSerialSize=1;
+		};
+
+		std::function<TExportResult(const Lua::Reference&)>		onCheckExportValidity;
+
 		/**/		API():mapper(true)	{}
 
 		void		Create(const Lua::PProgram&);
 		void		Create(const String&programNameToCreate);
 		void		Destroy();
 		bool		IsCreated() const {return program != nullptr;}
+
+		/**
+		Adds members to Game.Type.X table, including construction functions
+		*/
+		void		AddTypes();
 
 		/**
 		Adds the regular unit (low) grid cells, and functions
@@ -159,7 +192,7 @@ namespace Lua
 		Lua::Table	MapEntity(const Objects::PWorldEntity&e, bool isReal, bool updateIfFound);
 		TFaction*	AddFaction(const Objects::PFaction&f, bool updateIfFound);
 		TAlliance*	AddAlliance(const Objects::PAlliance&a, bool updateIfFound, bool updateMembers);
-		void		AddObjectAndPathfindingFunctions();
+		void		AddObjectAndPathfindingFunctions(bool priveleged);
 		#ifdef CLIENT
 			void	AddMyMarker(const Objects::Marker&m);
 			void	AddMyMarkers();
@@ -185,6 +218,17 @@ namespace Lua
 		Lua::Table	LuaFindHighestAvailableResourceLocation(const String&resourceType);
 		Lua::Table	LuaFindHighestAvailableResourceLocationExt(const String&resourceType,bool checkLinkPath, bool checkMobiles);
 		Objects::PWorldEntity LuaUnitToEntity(const Lua::Table&luaUnit, const String&funcParameterName)	const;
+		Lua::Table	LuaGetReachFrom(const Objects::PMobileEntity&m,const Grid::LCellIdI&origin,
+									const Lua::Function<bool(Lua::Table)>&isBlocked, 
+									int maxReach, bool forceReversible, bool allowAccessibleHangars, bool ignoreOwnedVehiclesOnRoute, 
+									bool cannotStandOnUnknown);
+
+
+		Lua::Table	LuaMapType(const String&typeName);
+
+		Lua::Table	AddOrGetType(Objects::EntityType type);
+		Lua::Table	AddType(Objects::EntityType t);
+
 
 		void	Setup();
 	};

@@ -11,6 +11,7 @@ namespace GlobalEvents
 	#ifdef HAS_WINDOW
 		extern Observable<>	frameAfterCamera,
 							shadowQualityChanged,
+							windowSizeChanged,
 							uiScaleChanged;
 	#endif
 

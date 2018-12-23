@@ -30,6 +30,19 @@
 #include <expectedBehavior.h>
 #include <passwordMatch.h>
 
+#include "animation/worldDelta.h"
+#include "animation/mobileState.h"
+#include "animation/newMobileEntity.h"
+#include "animation/structureState.h"
+#include "animation/structureConstruction.h"
+#include "animation/destroyEntity.h"
+#include "animation/mobileEntityMotion.h"
+#include "animation/trajectory.h"
+#include "animation/explosion.h"
+#include "animation/turretRotation.h"
+#include "animation/resourceUpdate.h"
+#include "animation/operationLacksResources.h"
+
 
 namespace Network
 {
@@ -521,9 +534,7 @@ namespace Network
 		Objects::Faction::allKnown.Clear();
 		Objects::Faction::mine.reset();
 
-		Animation::primitives.Clear();
-		Animation::actives.Clear();
-		Animation::atTime = 0;
+		Animation::Flush();
 
 		if (alsoFlushWorld)
 		{
@@ -633,36 +644,14 @@ namespace Network
 		void	OnWorldDelta(Protocol::WorldDelta&delta)
 		{
 			ASSERT__(!eventsLocked);
-			if (!delta.timestamp.rightNow)
+
+			auto existing = To<Animation::WorldDelta>::Cast(Animation::FindFirstScheduledEventAtTime(delta.timestamp,[](const auto&ev){return ev->IsWorldDelta();}));
+			if (existing)
 			{
-				foreach (Animation::primitives,p)
-					if (p->type == Animation::Primitive::TerrainChange )
-					{
-						if (p->time.min == delta.timestamp.atTime)
-						{
-							p->worldDelta->Append().swap(delta);
-							return;
-						}
-
-					}
-
-				Animation::primitives.Append().Init(delta);
-				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime));
+				existing->Append(std::move(delta));
+				return;
 			}
-			else
-			{
-				#ifdef HAS_WINDOW
-					DBG_ASSERT__(!ConfigurationMode::IsActive());
-				#endif
-				BYTE family = delta.familyAndLastFlag & 0x7F;
-				bool last = (delta.familyAndLastFlag & 0x80) != 0;
-				World::actual.BeginChangeSequence(0).ApplyFamilyDelta(family,delta.data0,false,true);
-
-				#ifdef HAS_WINDOW
-					World::allowRecompilation = last && gameHasBegun;
-				#endif
-			}
-
+			Animation::SmartSchedule<Animation::WorldDelta>(delta.timestamp,delta);
 		}
 
 
@@ -677,43 +666,22 @@ namespace Network
 
 			EXPECT2(vs.entityState.health>0,vs.entityState.health,vs.entityState.id);
 
-			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
-			{
-				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				ASSERT1__(e, vs.entityState.id);
-				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-				ASSERT1__(v,e->GetName());
-				Animation::ApplyState(v,vs,false,false);
-				ASSERT_EQUAL1__(v->health,vs.entityState.health,v->id);
-			}
-			else
-			{
-				if (vs.entityState.timestamp.rightNow)
-					Animation::whenDone.Append().Init(vs);
-				else
+			#ifdef _DEBUG
+				if (!vs.entityState.timestamp.rightNow)
 				{
-					#ifdef _DEBUG
-						foreach (Animation::primitives,p)
-						{
-							if (p->type == Animation::Primitive::MobileState
-								&&
-								p->targetEntityID == vs.entityState.id
-								&&
-								p->time.min == vs.entityState.timestamp.atTime)
-							{
-								auto entity = Objects::GetEntity(p->targetEntityID);
-								if (entity)
-									LogEvent(EventSignificance::ClientFatal, entity.get(), "Got multiple mobile entity updates on this entity at time " + ToString(vs.entityState.timestamp));
-								else
-									LogEvent(EventSignificance::ClientFatal,"Got multiple mobile entity updates on entity "+ToString(p->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
-								FATAL__("Stop");
-							}
-						}
-					#endif
-					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
+					auto existing = Animation::FindFirstScheduledEventAtTime(vs.entityState.timestamp,[vs](const auto&ev){return ev->targetEntityID == vs.entityState.id && ev->IsMobileState();});
+					if (existing)
+					{
+						auto entity = Objects::GetEntity(existing->targetEntityID);
+						if (entity)
+							LogEvent(EventSignificance::NonFatalError, entity.get(), "Got multiple mobile entity updates on this entity at time " + ToString(vs.entityState.timestamp));
+						else
+							LogEvent(EventSignificance::NonFatalError,"Got multiple mobile entity updates on entity "+ToString(existing->targetEntityID)+", at time "+ToString(vs.entityState.timestamp));
+						FAIL_EXPECT("Multiple mobile entity updates detected");
+					}
 				}
-			}
+			#endif
+			Animation::SmartSchedule<Animation::MobileState>(vs.entityState.timestamp, vs);
 		}
 
 
@@ -724,62 +692,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
-
-			try
-			{
-
-				Objects::PMobileEntity v;
-				
-				EXPECT2(vc.state.entityState.health>0,vc.state.entityState.health,vc.state.entityState.id);
-
-				auto m = vc.state.myMobileEntity.Get0();
-				const bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
-				if (place)
-				{
-					Objects::PWorldEntity existing = Objects::GetEntity(vc.state.entityState.id);
-					if (existing)
-					{
-						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
-						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(vc.type)+" (mobile)");
-						return;
-					}
-				}
-				v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.type,place,Network::haveID && Network::myID == vc.owner);
-				if (vc.state.entityState.timestamp.rightNow)
-					LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
-				bool isOwnedByMe = v->isOwnedByMe;
-
-				//v->id = vc.state.entityState.id;
-				Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
-				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
-				#ifdef HAS_WINDOW
-					if (v->isOwnedByMe && !amLocated)
-					{
-						amLocated = true;
-						Camera::TranslateTo(v->system.w.xyz);
-					}
-				#endif
-				if (vc.state.entityState.timestamp.rightNow)
-				{
-					#ifdef HAS_WINDOW
-						if (!isOwnedByMe)
-							HUD::HexGrid::RefreshContacts();
-					#endif
-				}
-				else
-				{
-					Animation::primitives.Append().Init(vc,v);
-					LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+ToString(vc.state.entityState.id)+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime));
-
-				}
-				ASSERT_EQUAL1__(v->health,vc.state.entityState.health,v->id);
-
-			}
-			catch (const std::exception & ex)
-			{
-				LogEvent(EventClass::Preset::protocolError,ex.what());
-				DBG_FATAL__(ex.what());
-			}
+			Animation::SmartSchedule<Animation::NewMobileEntity>(vc.state.entityState.timestamp, vc);
 		}
 
 		
@@ -790,48 +703,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
-
-			//#ifdef HAS_WINDOW
-			//	if (World::actual.lightingOutdated && World::allowRecompilation)
-			//		World::actual.UpdateLighting();
-			//#endif
-			try
-			{
-				const bool place = sc.state.entityState.timestamp.rightNow;
-				if (place)
-				{
-					Objects::PWorldEntity existing = Objects::GetEntity(sc.state.entityState.id);
-					if (existing)
-					{
-						//could throw an exception here, but observed that if this happens, it happens A LOT in quick succession
-						LogEvent(EventClass::Preset::protocolError,existing.get(),"Trying to double-spawn as "+ToString(sc.type)+" (structure)");
-						return;
-					}
-				}
-				Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.type, place, Network::haveID && Network::myID == sc.owner);
-				ASSERT__(s);
-				if (sc.state.entityState.timestamp.rightNow)
-					LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
-
-				Animation::UpdateState(s,sc.state);
-				if (!sc.state.entityState.timestamp.rightNow)
-				{
-					Animation::primitives.Append().Init(sc,s);
-					LogEvent(EventSignificance::Debug, "Appended 'new structure("+ToString(sc.state.entityState.id)+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime));
-				}
-				else
-				{
-					#ifdef HAS_WINDOW
-						if (!s->isOwnedByMe)
-							HUD::HexGrid::RefreshContacts();
-					#endif
-				}
-			}
-			catch (const std::exception & ex)
-			{
-				LogEvent(EventClass::Preset::protocolError,ex.what());
-				DBG_FATAL__(ex.what());
-			}
+			Animation::SmartSchedule<Animation::StructureConstruction>(sc.state.entityState.timestamp, sc);
 		}
 
 		void OnStructureState(Protocol::StructureState&vs)
@@ -840,38 +712,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
-
-			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
-			{
-				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
-				if (!e)
-				{
-					LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+ToString(vs.entityState.id)+", which is currently not registered");
-					DBG_FATAL__("Invalid state detected");
-				}
-				else
-				{
-					Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-					if (s)
-						Animation::UpdateState(s,vs);
-					else
-					{
-						LogEvent(EventClass::Preset::networkError,"Trying to update structure state of entity "+e->GetName()+", which is not a structure");
-						DBG_FATAL__("Invalid state detected");
-					}
-				}
-			}
-			else
-			{
-				if (vs.entityState.timestamp.rightNow)
-					Animation::whenDone.Append().Init(vs);
-				else
-				{
-					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'structure state("+ToString(vs.entityState.id)+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime));
-				}
-			}
-
+			Animation::SmartSchedule<Animation::StructureState>(vs.entityState.timestamp,vs);
 		}
 
 		void DestroyEntity(Protocol::DestroyEntity&de)
@@ -880,54 +721,7 @@ namespace Network
 			#ifdef HAS_WINDOW
 				DBG_ASSERT__(!ConfigurationMode::IsActive());
 			#endif
-
-			if (de.timestamp.rightNow && Animation::AllDone())
-			{
-				const Objects::PWorldEntity&e = Objects::GetEntity(de.id);
-				ASSERT__(e);
-				LogEvent(EventSignificance::Common,e.get(),  "Removed entity outside animation");
-
-				const Objects::RemovalType type = Objects::RemovalType::Reinterpret(de.type);
-				bool explode = type == Objects::RemovalType::ControlledExplosion 
-							|| type == Objects::RemovalType::UncontrolledExplosion;
-
-				if (explode)
-				{
-					Animation::ExplodeEntity(e,[e,type]()
-					{
-						float t = 0;
-						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, t);
-						#ifdef HAS_WINDOW
-							HUD::WindowStack::SignalSituationChange();
-						#endif
-					});
-				}
-				else
-				{
-					float t = 0;
-					Objects::Remove(e,type, t);
-					#ifdef HAS_WINDOW
-						HUD::WindowStack::SignalSituationChange();
-					#endif
-				}
-
-				#ifdef HAS_WINDOW
-					if (!e->isOwnedByMe)
-						HUD::HexGrid::RefreshContacts();
-				#endif
-			}
-			else
-			{
-				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+ToString(de.id)+" ("+Objects::RemovalType::Reinterpret(de.type).ToString()+")");
-				if (de.timestamp.rightNow)
-					Animation::whenDone.Append().Init(de);
-				else
-				{
-					Animation::primitives.Append().Init(de);
-					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime));
-				}
-			}
+			Animation::SmartSchedule<Animation::DestroyEntity>(de.timestamp,de);
 		}
 
 		void ControlMessage(Protocol::ControlMessage&msg)
@@ -1042,124 +836,44 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 
-//			Objects::PWorldEntity e = Objects::GetEntity(m.id,true);
-	//		Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-		//	ASSERT__(v);
-			if (m.timestamp.rightNow)
-			{
-				Objects::PWorldEntity e = Objects::GetEntity(m.id);
-				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-				ASSERT__(v);
-				v->Relocate(m.toLocation,true);
-				//v->location = m.toLocation;
-				//v->UpdateSystem();
-			}
-			else
-			{
-				bool found = false;
-				foreach (Animation::primitives,p)
-					if (p->targetEntityID == m.id && p->type == Animation::Primitive::MovementStream && p->path->rawPath.Last().first == m.fromLocation)
-					{
-						p->Append(m);
-						found = true;
-						break;
-					}
-				if (!found)
-				{
-					Animation::primitives.Append().Init(m);
-					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime));
-				}
+			if (Animation::AlterScheduledEvent(
+				[&m](const auto&ev){return ev->targetEntityID == m.id && ev->IsMobileEntityMotion() && To<Animation::MobileEntityMotion>::Cast(ev)->EndsAt(m.fromLocation);},
+				[&m](const auto&ev, auto&t){To<Animation::MobileEntityMotion>::Cast(ev)->Append(m,t);}
+				))
+				return;
 
-			}
+			Animation::SmartSchedule<Animation::MobileEntityMotion>(m.time, m);
 		}
 
 		void	VagueAttackTrajectory(Protocol::VagueAttackTrajectory&a)
 		{
 			ASSERT__(!eventsLocked);
-
-			if (a.timestamp.rightNow)
-			{
-				FATAL__("weird");
-			}
-			else
-			{
-				Animation::primitives.Append().Init(a);
-				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
-			}
-			
+			Animation::SmartSchedule<Animation::Trajectory>(a.time, a);
 		}
 
 		void	PreciseAttackTrajectory(Protocol::PreciseAttackTrajectory&a)
 		{
 			ASSERT__(!eventsLocked);
-
-			if (a.timestamp.rightNow)
-			{
-				FATAL__("weird");
-			}
-			else
-			{
-				Animation::primitives.Append().Init(a);
-				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime));
-			}
-			
+			Animation::SmartSchedule<Animation::Trajectory>(a.time, a);
 		}
 
 		void	Explosion(Protocol::Explosion&ex)
 		{
 			ASSERT__(!eventsLocked);
-
-			if (ex.timestamp.rightNow)
-			{
-				FATAL__("weird");
-			}
-			else
-			{
-				Animation::primitives.Append().Init(ex);
-				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime));
-			}
-			
+			Animation::SmartSchedule<Animation::Explosion>(Protocol::TimeWindow(ex.timestamp,Animation::Explosion::ExplosionTime), ex);
 		}
 
 		void	EntityTurretRotation(Protocol::EntityTurretRotation&rot)
 		{
 			ASSERT__(!eventsLocked);
-
-			if (rot.timestamp.rightNow)
-			{
-				Objects::PWorldEntity e = Objects::GetEntity(rot.id);
-				Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-				ASSERT__(v);
-				float3 dir = rot.toWorld;
-				float3 innerDir;
-				Mat::rotate(v->inverse,dir,innerDir);
-				v->turretAngleX = Vec::angle2PI(innerDir.xy) + M_PIF/2.f;
-				v->turretAngleY = -(90.f - Vec::angle(rot.toWorld,Grid::low.cells[v->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
-			}
-			else
-			{
-				Animation::primitives.Append().Init(rot);
-				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime));
-			}
+			Animation::SmartSchedule<Animation::TurretRotation>(rot.time, rot);
 		}
 
 
 		void	ResourceUpdate(Protocol::ResourceUpdate&u)
 		{
 			ASSERT__(!eventsLocked);
-
-			if (u.timestamp.rightNow)
-			{
-				#ifdef HAS_WINDOW
-					Grid::UpdateResourceMap(u.resourceName,u.cells,Grid::ResourceDiscovery::client);
-				#endif
-			}
-			else
-			{
-				Animation::primitives.Append().Init(u);
-				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime));
-			}
-
+			Animation::SmartSchedule<Animation::ResourceUpdate>(u.timestamp, u);
 		}
 
 		void	GameProgress(Protocol::GameProgress&progress)
@@ -1243,9 +957,13 @@ namespace Network
 			#endif
 		}
 
-		void	OperationLacksResources(Protocol::OperationLacksResources&res)
+		void	OperationLacksResources( Protocol::OperationLacksResources&res )
 		{
-			bool brk = true;
+			ASSERT__(!eventsLocked);
+			#ifdef HAS_WINDOW
+				DBG_ASSERT__(!ConfigurationMode::IsActive());
+				Animation::SmartSchedule<Animation::OperationLacksResources>(res.timestamp,res);		
+			#endif
 		}
 
 		enum class ScriptChangeFlags
@@ -1344,6 +1062,7 @@ namespace Network
 					HUD::HexGrid::RefreshButtonState();
 					if (RuntimeConfig::tutorialMode)
 						Tutorial::SignalResearchChange();
+					GlobalEvents::invalidateObjectCache();
 				#endif
 			}
 		}

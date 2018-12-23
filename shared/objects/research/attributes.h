@@ -257,7 +257,7 @@ namespace Objects
 				}
 				bool		IsSet() const
 				{
-					return isInvariant || Research::LuaAttributeIsSet<T>(linearIndex);
+					return isInvariant || (linearIndex != InvalidIndex && Research::LuaAttributeIsSet<T>(linearIndex));
 				}
 				bool		IsEmpty() const {return !IsSet();}
 

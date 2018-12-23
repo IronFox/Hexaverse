@@ -100,7 +100,7 @@ namespace ApplicationInterface
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
 
-		if (v.GetOperationSpeed(Objects::Component::Construct))
+		if (v.GetOperationSpeed(Objects::Component::Operation::Construct))
 			Game::RegisterClassGain(_v, Objects::Faction::UnitClass::Terraformer, "terraformer");
 	}
 
@@ -262,13 +262,13 @@ namespace ApplicationInterface
 		motion.id = v->id;
 		motion.fromLocation = from;
 		motion.toLocation = to;
-		motion.timeNeeded = timeNeeded;
-		motion.timestamp.rightNow = false;
-		motion.timestamp.atTime = t0;
+		motion.time.duration = timeNeeded;
+		motion.time.begin.rightNow = false;
+		motion.time.begin.atTime = t0;
 
 		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
 		{
-			Game::Network::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.timestamp);
+			Game::Network::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.time.begin);
 		}
 
 
@@ -294,9 +294,9 @@ namespace ApplicationInterface
 		Protocol::EntityTurretRotation rot;
 		rot.id = e->id;
 		rot.toWorld = toWorld;
-		rot.rotationTime = rotationTime;
-		rot.timestamp.rightNow = false;
-		rot.timestamp.atTime = e->entityTime;
+		rot.time.duration = rotationTime;
+		rot.time.begin.rightNow = false;
+		rot.time.begin.atTime = e->entityTime;
 
 		foreach (Network::activePlayersAndSpectators,cl)
 		{
@@ -368,20 +368,20 @@ namespace ApplicationInterface
 		preciseAttack.traceTo = attack.traceTo;
 		preciseAttack.isAutoAttack = attack.isAutoAttack;
 		preciseAttack.attackAngle = attack.attackAngle;
-		preciseAttack.timestamp.rightNow = false;
-		preciseAttack.timestamp.atTime = attack.attackFrom->entityTime;
+		preciseAttack.time.begin.rightNow = false;
+		preciseAttack.time.begin.atTime = attack.attackFrom->entityTime;
+		preciseAttack.time.duration = attack.flightTime;
 	
-		LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
+		LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+ToString(preciseAttack.time));
 
 
-		preciseAttack.flightTime = attack.flightTime;
 
 		for (auto cl : Network::activePlayersAndSpectators)
 		{
 			TCP::PPeer peer = (cl)->peer.lock();
 			if (!peer)
 				continue;
-			if (Network::CanSee(cl,attack.attackFrom,preciseAttack.timestamp.atTime))
+			if (Network::CanSee(cl,attack.attackFrom,preciseAttack.time.begin.atTime))
 				Channels::preciseAttackTrajectory.SendTo(peer,preciseAttack);
 		}
 	}
@@ -453,9 +453,9 @@ namespace ApplicationInterface
 			roughAttack.turretType = base->turret->constName;
 			roughAttack.traceTo = attack.traceTo;
 
-			roughAttack.timestamp.rightNow = false;
-			roughAttack.timestamp.atTime = atTime - attack.flightTime;
-			roughAttack.flightTime = attack.flightTime;
+			roughAttack.time.begin.rightNow = false;
+			roughAttack.time.begin.atTime = atTime - attack.flightTime;
+			roughAttack.time.duration = attack.flightTime;
 			roughAttack.attackAngle = attack.attackAngle;
 			roughAttack.turretRange = base->GetFlatAttackRange();
 			roughAttack.explosionRadius = base->GetAttackExplosionRadius();
@@ -490,7 +490,7 @@ namespace ApplicationInterface
 			TCP::PPeer peer = client->peer.lock();
 			if (peer)
 			{
-				if (!client->CanSee(attack.attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+				if (!client->CanSee(attack.attackFrom,roughAttack.time.begin.atTime) && hasTrajectory)
 					Channels::vagueAttackTrajectory.SendTo(peer,roughAttack);
 				Channels::explosion.SendTo(peer,explosion);
 			}

@@ -53,7 +53,7 @@ function EstimateLivingThreatLevelFrom(u --[[Unit]], estimateAt --[[Loc]], canIg
 		estimation.beingSeen = true;	--this is not necessarily true anymore, but a more extensive test will be added later
 	end;
 
-	if (u.turret and u.turret.canAttack and u.turret.IsInRange(estimateAt.world)) then
+	if (u.turret and u.turret.type.canAttack and u.turret.IsInRange(estimateAt.world)) then
 		estimation.damageThreat = estimation.damageThreat + 
 			u.turret.damageLevel * u.turret.attacksPerRound;
 	end;
@@ -109,7 +109,7 @@ function ProcessAttackPriority(u--[[Unit]],explosionCenter--[[Vector]],maxExplos
 		return 0.0;
 	end;
 	local rs = u.scanningRange;
-	if (u.turret and u.turret.canAttack) then
+	if (u.turret and u.turret.type.canAttack) then
 		rs = math.max(rs, u.turret.flatAttackRange + u.turret.explosionRadius);
 	end;
 	local health = u.health > 0 and u.health or u.maxHealth;
@@ -172,14 +172,14 @@ end;
 
 function EstimateInterest(turret, constructionCost)
 	local rs = constructionCost;
-	if (turret and turret.canAttack) then
+	if (turret and turret.type.canAttack) then
 		rs = rs / (1.0 + (turret.damageLevel * turret.attacksPerRound * turret.flatAttackRange * 0.1));
 	end;
 	return rs * 3.0;
 end;
 
 function IsRadar(u)
-	return string.find(string.lower(u.typeName),'radar') ~= nil;
+	return u.turret and u.turret.type.name == 'Radar';
 end;
 
 function ProcessVehicle(v)
@@ -189,14 +189,14 @@ function ProcessVehicle(v)
 		return;
 	end;
 	
-	if (t.detectsResources or t.canConstruct) then
+	if (t.type.detectsResources or t.type.canConstruct) then
 		Game.Log("Skipping unsupported vehicle type "..v.niceName);
 		return;
 	end;
 
 	local referenceSpeed = v.movementSpeed*3;
 	local minMotion = v.movementSpeed;
-	local attacker = t.canAttack;
+	local attacker = t.type.canAttack;
 	local bestScore = 0.0;
 
 	if (attacker and t.ammoDemandPerShot > t.ammoAvailability) then
@@ -287,7 +287,7 @@ function ProcessVehicle(v)
 	local radarProximity = 0;
 	for _,u in pairs(Game.units) do
 		if u.isOwnedByMe and u.turret and QuadraticDistance(v.location.world,u.location.world) < 25.0 then
-			if u.turret.canAttack then
+			if u.turret.type.canAttack then
 				proximityPresence = proximityPresence+ 1;
 			elseif IsRadar(u) then
 				radarProximity = radarProximity + 1;
@@ -399,12 +399,12 @@ function ProcessIgnorance(e)
 		end;
 	end;
 	local ref = e.location.world;
-	if (e.canAttack and e.turret.damageLevel > 0) then
+	if (e.turret.type.canAttack and e.turret.damageLevel > 0) then
 		local r = e.turret.flatAttackRange + e.turret.explosionRadius;
 		local damagePotentialPerRound = 0.0;
 		local participants = 0;
 		for _,u in pairs(Game.myUnits) do
-			if (u.isMobile and u.canAttack and not u.turret.dealsEMPDamage) then
+			if (u.type.isMobile and u.turret.type.canAttack and not u.turret.dealsEMPDamage) then
 				local d2 = QuadraticDistance(u.location.world,ref);
 				if (d2 < Sqr(r*1.2)) then	--might be okay anyway
 					local p = u.turret.damageLevel * u.turret.attacksPerRound;
@@ -442,7 +442,7 @@ end;
 function	Execute()
 	for _,m in pairs(Game.myMarkers) do
 		if (m.type == 'HostileContact') then
-			if (m.age >= 10 and m.unitReference and m.unitReference.isMobile) then	--after 10 rounds, assume vehicle has moved
+			if (m.age >= 10 and m.unitReference and m.unitReference.type.isMobile) then	--after 10 rounds, assume vehicle has moved
 				Game.Log("Deleting marker "..m.id.." since hostile vehicle markers are considered outdated after 10 rounds (age="..tostring(m.age)..")");
 				m.Destroy();
 			end;
@@ -459,7 +459,7 @@ function	Execute()
 	end;
 
 	for _,u in pairs(Game.units) do
-		if (u.isMobile) then
+		if (u.type.isMobile) then
 			ProcessVehicle(u);
 		end;
 	end;
