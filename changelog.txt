@@ -1,4 +1,4 @@
-v0.9.7	[Dec 16 2018]
+v0.9.7	[Dec 23 2018]
 	+ Implemented experimental floating icons if lack of resources is detected.
 	+ AI: Added Unit(mobile).GetReachFrom().
 	+ AI: Added Game.DebugMarkers.Put()/Remove()/RemoveAll()
@@ -8,7 +8,7 @@ v0.9.7	[Dec 16 2018]
 	> AI: FindShortestPath(From) can now block cells by having costModifier return costs of <= 0.
 	* AI: Fixed End-Round button remaining disabled after OnSelectionChanged() events.
 	* AI: Fixed crash when directing mobile unit to nil location.
-	* Fixed splash screen depicting the previous loading item.
+	* Fixed splash screen depicting the previous loading item rather than the active one.
 	* Fixed tooltips changing from long to short text rather than the other way around.
 	* Fixed rare mobile task routing error after deploying units from vehicle stores.
 	* AI: Fixed Game.Type.* tables to behave as documented (string mapped, not sequential)
