@@ -6,6 +6,7 @@ v0.9.7	[Dec 23 2018]
 	> Added micro structure to GUI components to reduce banding artifacts.
 	> Improved behavior of visual log.
 	> AI: FindShortestPath(From) can now block cells by having costModifier return costs of <= 0.
+	> Object icons are now rendered using max quality MSAA, thus removing jagged edges when utilizing higher UI scales.
 	* AI: Fixed End-Round button remaining disabled after OnSelectionChanged() events.
 	* AI: Fixed crash when directing mobile unit to nil location.
 	* Fixed splash screen depicting the previous loading item rather than the active one.

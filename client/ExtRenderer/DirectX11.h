@@ -1097,6 +1097,7 @@ namespace Engine
 		void						ClearDepth();
 
 		void						Copy(const DX11::Handle<ID3D11Texture2D>&source, Image&destination);
+		void						Copy(const DX11::Handle<ID3D11Texture2D>&source, Texture&destination);
 
 		void						Capture(Image&target);
 		void						Capture(FBO&);
@@ -1110,6 +1111,7 @@ namespace Engine
 		BYTE						GetMSAARate(index_t mode) const;
 		void						SetMSAAMode(index_t mode);
 		void						SelectMSAARate(BYTE numSamples) {SetMSAAMode(_FindMSAAConfig(numSamples));}
+		DXGI_SAMPLE_DESC			GetHighestMultisamplingLevel() const;
 
 		bool						IsVSyncActive() const {return vsync != 0;}
 		void						SetVSyncActive(bool a) {vsync = a ? 1 : 0;}

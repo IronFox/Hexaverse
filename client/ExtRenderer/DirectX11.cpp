@@ -243,6 +243,11 @@ namespace Engine
 	}
 
 
+	DXGI_SAMPLE_DESC			DirectX11::GetHighestMultisamplingLevel() const
+	{
+		return _CompileSampleDesc(_msaaConfigs.Last());
+	}
+
 	DXGI_SAMPLE_DESC			DirectX11::_CompileSampleDesc(const MSAAConfig&cfg)	const
 	{
 		DXGI_SAMPLE_DESC rs;
@@ -3279,6 +3284,29 @@ namespace Engine
 			devcon->CopyResource(stageTexture.GetHandle(),source);
 		stageTexture.DownloadData(destination.GetData());
 		destination.FlipVertically();
+	}
+
+	void						DirectX11::Copy(const DX11::Handle<ID3D11Texture2D>&source, Texture&target)
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		source->GetDesc(&desc);
+		DXGI_FORMAT format = desc.Format;
+		FBO fbo;
+		fbo.Append(target);
+		
+		Resolution res(desc.Width,desc.Height);
+		if (fbo.GetResolution() != res || fbo.CountColorTargets() != 1 || fbo.GetColorTarget(0).GetFormat() != format)
+		{
+			fbo.Create(res,format);
+			target = fbo.GetColorTarget();
+		}
+
+		if (desc.SampleDesc.Count > 1)	
+		{
+			devcon->ResolveSubresource(fbo.GetColorTarget().GetHandle2D(),D3D11CalcSubresource(0,0,1),source,D3D11CalcSubresource(0,0,1),format);
+		}
+		else
+			devcon->CopyResource(fbo.GetColorTarget().GetHandle2D(),source);
 	}
 
 
