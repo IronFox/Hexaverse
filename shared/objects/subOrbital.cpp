@@ -120,7 +120,7 @@ namespace Objects
 				}
 			}
 			h++;
-			if (h >= Grid::CellStack::Range-1)
+			if (h >= Grid::CellStack::Range-1 && !stoppedAtStructure)
 				return Result::NoFreeCellFound;
 			if (h == 0)
 			{
