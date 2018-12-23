@@ -6,11 +6,11 @@ namespace VisualTerrain
 {
 	struct TLeafBlob
 	{
-		TVec3<>	center;
+		M::TVec3<>	center;
 		float radius;
 		float windSensitivity;
 
-		void	Set(const TMatrix3<>&sys,const TVec3<>&dir, float z, float r, float wind)
+		void	Set(const M::TMatrix3<>&sys,const M::TVec3<>&dir, float z, float r, float wind)
 		{
 			Vec::mad(dir,sys.z,z,center);
 			radius = r;
@@ -20,11 +20,11 @@ namespace VisualTerrain
 
 	struct TTreeTrunk
 	{
-		TVec3<>	center;
+		M::TVec3<>	center;
 		float	height,
 				radius;
 
-		void	Set(const TMatrix3<>&sys,const TVec3<>&dir, float z, float r, float h)
+		void	Set(const M::TMatrix3<>&sys,const M::TVec3<>&dir, float z, float r, float h)
 		{
 			Vec::mad(dir,sys.z,z,center);
 			radius = r;

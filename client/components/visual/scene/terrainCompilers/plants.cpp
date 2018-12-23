@@ -15,9 +15,9 @@ namespace VisualTerrain
 	{
 	public:
 
-		static const constexpr float TreeHeight = SingleLayerHeight*0.5f;
-		static const constexpr float TreeRadius = SingleLayerHeight*0.25f;
-		static const constexpr float TrunkRadius = TreeRadius/4.f;
+		//static const constexpr float TreeHeight = SingleLayerHeight*0.5f;
+		//static const constexpr float TreeRadius = SingleLayerHeight*0.25f;
+		//static const constexpr float TrunkRadius = TreeRadius/4.f;
 
 		const CellStack * stacks;
 		const BaseGrid::TCell*  gridCells;
@@ -29,10 +29,14 @@ namespace VisualTerrain
 		StaticList<TTreeTrunk,BatchSize * CellStack::Range *3>	treeTrunks;
 		//more types added later
 			
-		void	PutTree(const TMatrix3<>&sys, const TVec3<>&dir, float z)
+		void	PutTree(const M::TMatrix3<>&sys, const M::TVec3<>&dir, float z, int height)
 		{
-			leafBlobs.Append().Set(sys,dir,z+TreeHeight,TreeRadius,1.f);
-			treeTrunks.Append().Set(sys,dir,z,TrunkRadius,TreeHeight);
+			const float singleLayerHeight = Grid::GetLayerHeight(height);
+			const float treeHeight = singleLayerHeight * 0.5f;
+			const float treeRadius = singleLayerHeight * 0.25f;
+			const float trunkRadius = treeRadius / 4.f;
+			leafBlobs.Append().Set(sys,dir,z+treeHeight,treeRadius,1.f);
+			treeTrunks.Append().Set(sys,dir,z,trunkRadius,treeHeight);
 		}
 
 		void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
@@ -45,19 +49,19 @@ namespace VisualTerrain
 			this->clipHeight = clipHeight;
 			wasEmpty = true;
 		}
-		void	Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,SpinLock&lock);
+		void	Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,Sys::SpinLock&lock);
 	};
 
 
-	void	PlantCompiler::Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,SpinLock&lock)
+	void	PlantCompiler::Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,Sys::SpinLock&lock)
 	{
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
 			const ::Grid::CellStack&stack = stacks[i];
 			const auto&cell = netCells[i];
 			const bool empThis = !(cell.cornerFlags & empZonesUnlocked);
-			const TVec3<>&up = cell.cornerCenter;
-			TMatrix3<> sys;
+			const M::TVec3<>&up = cell.cornerCenter;
+			M::TMatrix3<> sys;
 			Mat::makeAxisSystem(up,2,sys);
 				
 			float orientation = float((i*45959)%10000)/10000.f * M_PIF*2.f;
@@ -65,7 +69,7 @@ namespace VisualTerrain
 			static const constexpr count_t NumDirs = 6;
 
 
-			TVec3<> plantDirection[NumDirs];//for now only three plants in equally spaced directions
+			M::TVec3<> plantDirection[NumDirs];//for now only three plants in equally spaced directions
 			for (index_t k = 0; k < NumDirs; k++)
 			{
 				float a = float(k)/float(NumDirs)*2.f*M_PIF+orientation;
@@ -76,7 +80,7 @@ namespace VisualTerrain
 
 
 			const float r = cell.minCornerDistance;
-			const UINT32 to = vmin(CellStack::Range, CellStack::ToLayer( clipHeight(i) ));
+			const UINT32 to = M::Min(CellStack::Range, CellStack::ToLayer(clipHeight(i)));
 			
 			for (UINT ih = 0; ih < to; ih++)
 			{
@@ -86,11 +90,12 @@ namespace VisualTerrain
 						case Content::Trees:
 						case Content::Forest:
 						{
+							const int hl = Grid::CellStack::ToHeight(ih);
 							float h = ToRadius(CellStack::ToHeight(ih+1));
 							const float r2 = r * h * 0.7f;
 							for (index_t k = 0; k < NumDirs; k++)
-								PutTree(sys,plantDirection[k]*r2,h);
-							PutTree(sys,Vector<>::zero,h);
+								PutTree(sys,plantDirection[k]*r2,h,hl);
+							PutTree(sys,M::Vector3<>::zero,h,hl);
 						}
 						break;
 						case Content::Shrubs:
@@ -114,7 +119,7 @@ namespace VisualTerrain
 	void		CompilePlants(const Array<Grid::CellStack>&stacks, TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks, index_t offset, count_t count, Grid::FClipHeight clipHeight)
 	{
 		const index_t end = offset + count;
-		SpinLock lock;
+		Sys::SpinLock lock;
 		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock, &leafBlobs,&treeTrunks, &stacks, clipHeight](index_t i)	//looks good - at least in release
 		{
 			BYTE data[sizeof(PlantCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
