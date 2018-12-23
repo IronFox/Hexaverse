@@ -176,7 +176,7 @@ namespace Objects
 
 				static bool IsSet( index_t idx )
 				{
-					if (list.IsEmpty())
+					if (list.IsEmpty() || idx == InvalidIndex)
 						return false;
 					return Expect::SafeGet(list,idx,CLOCATION).IsSet();
 				}
