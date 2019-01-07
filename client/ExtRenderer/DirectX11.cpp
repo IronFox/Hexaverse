@@ -1541,6 +1541,26 @@ namespace Engine
 		return *this;
 	}
 
+	void	DX11::VertexDescription::AddAsNewStream(const VertexDescription&other, D3D11_INPUT_CLASSIFICATION newClass)
+	{
+		if (desc.IsNotEmpty())
+		{
+			atStream++;
+			ASSERT_LESS__(atStream,ARRAYSIZE(stride));
+		}
+		for (const auto&src : other.desc)
+		{
+			ASSERT_EQUAL__(src.InputSlot,0);
+			auto&dest = desc.Append();
+			dest = src;
+			dest.InputSlot = atStream;
+			dest.InputSlotClass = newClass;
+			dest.AlignedByteOffset = stride[atStream];
+			stride[atStream] += SizeOf(dest.Format);
+		}
+	}
+
+
 	DX11::VertexDescription&	DX11::VertexDescription::AppendInstance(const char*semanticName, UINT semanticIndex, DXGI_FORMAT format)
 	{
 		D3D11_INPUT_ELEMENT_DESC&desc = this->desc.Append();
@@ -1585,7 +1605,7 @@ namespace Engine
 		return current;
 	}
 
-	DX11::Handle<ID3D11InputLayout>	DX11::Shader::BuildLayout(const VertexDescription&binding)
+	DX11::Handle<ID3D11InputLayout>	DX11::Shader::BuildLayout(const VertexDescription&binding) const
 	{
 		DX11::Handle<ID3D11InputLayout> rs;
 		if (binding.desc.IsEmpty())
@@ -1655,7 +1675,7 @@ namespace Engine
 	}
 
 
-	void					DirectX11::BindVertices(const DX11::VBO&buffer, UINT stride, const DX11::VertexLayout&layout)
+	void					DirectX11::BindVertices(const DX11::VBO&buffer, UINT stride)
 	{
 		UINT //stride = binding.stride,
 				offset = 0;
@@ -1698,32 +1718,37 @@ namespace Engine
 		_BindIndices(devcon,buffer.handle,DXGI_FORMAT_R32_UINT);
 	}
 
-	void					DirectX11::LinkShader(const DX11::ShaderInstructionBlock&block, bool lazy, bool lock)
+	void					DirectX11::LinkShader(const DX11::Shader&shader, const ArrayRef<DX11::Texture>&quickSlots, D3D11_PRIMITIVE_TOPOLOGY topology, const DX11::VertexLayout&layout, bool lazy, bool lock)
 	{
 		if (shaderLockLevel)
 			return;
 		if (lock)
 			shaderLockLevel ++;
-		DBG_ASSERT__(block.shader.IsSet());
+		DBG_ASSERT__(shader.IsSet());
 		if (lazy)
 		{
-			if (lazyPixelShaderHandle == block.shader.pixelStage.shaderHandle)
+			if (lazyPixelShaderHandle == shader.pixelStage.shaderHandle)
 				return;
 		}
-		lazyPixelShaderHandle = block.shader.pixelStage.shaderHandle;
+		lazyPixelShaderHandle = shader.pixelStage.shaderHandle;
 
 
-		SetShader(block.shader,block.quickSlots);
-		devcon->IASetPrimitiveTopology(block.topology); 
-		devcon->IASetInputLayout(block.layout);
+		SetShader(shader,quickSlots);
+		devcon->IASetPrimitiveTopology(topology); 
+		devcon->IASetInputLayout(layout);
+	}
+
+
+	void					DirectX11::LinkShader(const DX11::ShaderInstructionBlock&block, bool lazy, bool lock)
+	{
+		LinkShader(block.shader,block.quickSlots,block.topology,block.layout,lazy,lock);
 	}
 
 
 
 	void						DirectX11::Link(const DX11::BaseInstructionBlock&block, bool lazy)
 	{
-		//DBG_ASSERT__(tolerateNoVBO || block.vbo.IsSet());	//must tolerate this ... sadly
-		BindVertices(block.vbo,block.stride,block.layout);
+		BindVertices(block.vbo,block.stride);
 		LinkShader(block,lazy,false);
 		if (block.streamOutTarget.IsSet())
 		{
@@ -1764,6 +1789,28 @@ namespace Engine
 			devcon->SOSetTargets(0,NULL,NULL);
 	}
 
+	void						DirectX11::Render(const DX11::InstructionBlock32I&block, bool lazy/*=false*/)
+	{
+		Render(block,(UINT)block.instances.vbo.GetVertexCount(),lazy);
+	}
+
+	void						DirectX11::Render(const DX11::InstructionBlock32I&block, UINT32 instanceCount, bool lazy/*=false*/)
+	{
+		if (!instanceCount)
+			return;
+		BindVertices(block.prototype.vbo,block.generatedData.protoStride,block.instances.vbo,block.generatedData.instanceStride);
+		LinkShader(block.shader,block.quickSlots,block.prototype.topology,block.generatedData.combinedLayout,lazy,false);
+		if (block.streamOutTarget.IsSet())
+		{
+			UINT offset = 0;
+			devcon->SOSetTargets(1,block.streamOutTarget.GetHandle().Reference(),&offset);
+		}
+		BindIndices(block.prototype.ibo);
+		RenderIndexedInstanced(block.prototype.ibo.GetEntryCount(),instanceCount,block.prototype.topology);
+
+		if (block.streamOutTarget.IsSet())
+			devcon->SOSetTargets(0,NULL,NULL);
+	}
 
 	void						DirectX11::LazyRenderVertices(const DX11::BaseInstructionBlock&block)
 	{

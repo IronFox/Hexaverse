@@ -36,21 +36,23 @@ void					ShadedInstruction::LoadQualitiesFromFile(const PathString&filename, con
 	Shader::macroDefinitions.EraseLast();
 }
 
-void					ShadedInstruction::SetTopology(D3D_PRIMITIVE_TOPOLOGY t)
-{
-	for (index_t i = 0; i < Quality::N; i++)
-	{
-		quality[i].topology = t;
-	}
-}
-
 void					ShadedInstruction::UpdateLayout()
 {
 	for (index_t i = 0; i < Quality::N; i++)
 	{
-		quality[i].binding = binding;
-		quality[i].UpdateLayout();
+		if (instanceBinding.IsNotEmpty())
+		{
+			DX11::VertexDescription combined;
+			combined.AddAsNewStream(binding,D3D11_INPUT_PER_VERTEX_DATA);
+			combined.AddAsNewStream(instanceBinding,D3D11_INPUT_PER_INSTANCE_DATA);
+			quality[i].vertexLayout = quality[i].shader.BuildLayout(combined);
+		}
+		else
+			quality[i].vertexLayout = quality[i].shader.BuildLayout(binding);
 	}
+
+	stride = binding.GetStride();
+	instanceStride = instanceBinding.GetStride();
 }
 
 

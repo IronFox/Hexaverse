@@ -568,7 +568,6 @@ namespace Objects
 		};
 		stdVehicleShader.LoadQualitiesFromFile("shaders/vehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		stdVehicleShader.UpdateLayout();
-		stdVehicleShader.SetTriangles();
 
 
 		{
@@ -629,7 +628,6 @@ namespace Objects
 		standardLocalizableShader.binding = stdVehicleShader.binding;
 		standardLocalizableShader.LoadQualitiesFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		standardLocalizableShader.UpdateLayout();
-		standardLocalizableShader.SetTriangles();
 
 		{
 			Image smoke;
@@ -2283,7 +2281,7 @@ namespace Objects
 
 	static void _RenderShadow(const DX11::InstructionBlock32&instruction)
 	{
-		display.BindVertices(instruction.vbo,shadowInstruction.binding.GetStride(),shadowInstruction.GetLayout());
+		display.BindVertices(instruction.vbo,shadowInstruction.binding.GetStride());
 		display.BindIndices(instruction.ibo);
 		display.GetDeviceContext()->DrawIndexed((UINT)instruction.ibo.GetEntryCount(),0,0);
 	}
