@@ -28,53 +28,10 @@ namespace VisualTerrain
 		static_assert(sizeof(TVertex) == 10 * sizeof(float),"Alignment error");
 
 
-		Buffer0<TVertex>	vertices;
-		Buffer0<UINT32>		indices;
-
 		float3				currentColor = float3(1);
-		index_t				indexOffset = 0;
 
-		void			Vertex(const float3&position, float windSensitivity)
-		{
-			TVertex&vtx = vertices.Append();
-			vtx.position = position;
-			vtx.colorRGB_windSensitivity = float4(currentColor,windSensitivity);
-		}
+
 		
-		void			SetIndexOffset()
-		{
-			indexOffset = vertices.Count();
-		}
-
-
-		void			Triangle(index_t v0, index_t v1, index_t v2)
-		{
-			Index(v0);
-			Index(v1);
-			Index(v2);
-		}
-
-		void			TriangleInv(index_t v0, index_t v1, index_t v2)
-		{
-			Index(v0);
-			Index(v2);
-			Index(v1);
-		}
-
-		void			Quad(index_t v0, index_t v1, index_t v2, index_t v3)
-		{
-			Triangle(v0,v1,v2);
-			Triangle(v0,v2,v3);
-		}
-
-		void			QuadInv(index_t v0, index_t v1, index_t v2, index_t v3)
-		{
-			TriangleInv(v0,v1,v2);
-			TriangleInv(v0,v2,v3);
-		}
-
-
-
 
 		void			Finish(DX11::InstructionBlock32I::Prototype&target)
 		{
@@ -98,23 +55,142 @@ namespace VisualTerrain
 			target.ibo.Create(indices);
 			target.vbo.CreateFromStructs(vertices);
 		}
-
-	private:
-
-		void			Index(index_t i)
-		{
-			indices << UINT32(i + indexOffset);
-		}
+	protected:
+		Buffer0<TVertex>	vertices;
+		Buffer0<UINT32>		indices;
+		index_t				indexOffset = 0;
 
 
 	};
 
 
+	class SmoothPlantConstructor : public PlantConstructor
+	{
+	public:
+
+		void			SetIndexOffset()
+		{
+			indexOffset = vertices.Count();
+		}
+		
+		
+		void			Vertex(const float3&position, float windSensitivity)
+		{
+			TVertex&vtx = vertices.Append();
+			vtx.position = position;
+			vtx.colorRGB_windSensitivity = float4(currentColor,windSensitivity);
+		}
+		
+
+		void			Triangle(index_t v0, index_t v1, index_t v2)
+		{
+			Index(v0);
+			Index(v1);
+			Index(v2);
+		}
+
+		void			TriangleInv(index_t v0, index_t v1, index_t v2)
+		{
+			Triangle(v0,v2,v1);
+		}
+
+		void			Quad(index_t v0, index_t v1, index_t v2, index_t v3)
+		{
+			Triangle(v0,v1,v2);
+			Triangle(v0,v2,v3);
+		}
+
+		void			QuadInv(index_t v0, index_t v1, index_t v2, index_t v3)
+		{
+			Quad(v3,v2,v1,v0);
+		}
+
+
+
+
+	private:
+		void			Index(index_t i)
+		{
+			indices << UINT32(i + indexOffset);
+		}
+	};
+
+
+
+
+	
+
+	class FacetedPlantConstructor : public PlantConstructor
+	{
+	public:
+
+
+		void			SetIndexOffset()
+		{
+			indexOffset = rawVertices.Count();
+		}
+		
+		
+		void			Vertex(const float3&position, float windSensitivity)
+		{
+			TVertex&vtx = rawVertices.Append();
+			vtx.position = position;
+			vtx.colorRGB_windSensitivity = float4(currentColor,windSensitivity);
+		}
+		
+
+		void			Triangle(index_t v0, index_t v1, index_t v2)
+		{
+			const index_t offset = vertices.Count();
+			vertices << Index(v0);
+			vertices << Index(v1);
+			vertices << Index(v2);
+			indices << offset + 0;
+			indices << offset + 1;
+			indices << offset + 2;
+		}
+
+		void			TriangleInv(index_t v0, index_t v1, index_t v2)
+		{
+			Triangle(v0,v2,v1);
+		}
+
+		void			Quad(index_t v0, index_t v1, index_t v2, index_t v3)
+		{
+			const index_t offset = vertices.Count();
+			vertices << Index(v0);
+			vertices << Index(v1);
+			vertices << Index(v2);
+			vertices << Index(v3);
+			indices << offset + 0;
+			indices << offset + 1;
+			indices << offset + 2;
+			indices << offset + 0;
+			indices << offset + 2;
+			indices << offset + 3;
+		}
+
+		void			QuadInv(index_t v0, index_t v1, index_t v2, index_t v3)
+		{
+			Quad(v3,v2,v1,v0);
+		}
+
+
+	private:
+		Buffer0<TVertex>	rawVertices;
+
+		TVertex&		Index(index_t i)
+		{
+			return rawVertices[i+indexOffset];
+		}
+
+	};
+
 
 	static void CreateTree(DX11::InstructionBlock32I::Prototype& target)
 	{
 
-		PlantConstructor c;
+		FacetedPlantConstructor c;
 
 		//trunk:
 		c.currentColor = float3(0.68,0.5,0.4)*0.9f;
