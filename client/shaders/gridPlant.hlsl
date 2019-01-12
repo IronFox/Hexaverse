@@ -30,13 +30,59 @@ struct V2P
 	float4 atmosphere : Atmosphere;
 };
 
+TextureCube<float>	HeightMap;
+SamplerState			HeightMapSampler;
+
+cbuffer HeightMapOrientation
+{
+	float4x4	HeightMapOrientation0,
+				HeightMapOrientation1,
+				HeightMapOrientation2;
+};
+
+
+float4 Amplitude(float3 p, float frequency, float tfrequency, float offset, float dir)
+{
+	float amp = 1.0 / abs(frequency);
+	return float4(	dir * (float3)sin((p*frequency+Time*tfrequency+offset)) *amp,
+					amp);
+}
+
+float4 Amplitude(float3 p, float frequency, float offset)
+{
+	p.xyz += float3(-17.9837,79.334698,-127.0346);
+	return Amplitude(p,frequency,0.7*frequency,offset,1.0) + Amplitude(p,frequency,-0.7*frequency,PI *1.0124125* offset,-1.0);
+}
+
+float SampleHeightMap(float3 p)
+{
+	return
+		(
+		HeightMap.SampleLevel(HeightMapSampler,p,0.0)
+		*
+		HeightMap.SampleLevel(HeightMapSampler,mul(HeightMapOrientation0,float4(p,1.0)).xyz,0.0)
+		*
+		HeightMap.SampleLevel(HeightMapSampler,mul(HeightMapOrientation1,float4(p,1.0)).xyz,0.0)
+		*
+		HeightMap.SampleLevel(HeightMapSampler,mul(HeightMapOrientation2,float4(p,1.0)).xyz,0.0)
+		)
+		;
+}
 
 void vsMain(A2V input, out V2P output, uint instanceID : SV_InstanceID)
 {
 	float3x3 system;
 	system[0] = input.instDir;
 	system[2] = input.instUp;
-	system[1] = cross(input.instUp,input.instDir);
+	system[1] = cross(system[2],system[0]);
+	
+	float3 dir = normalize(system[0] * SampleHeightMap(input.instPosition)
+				+ system[1] * SampleHeightMap(-input.instPosition));
+	float3 dir2 = cross(dir,input.instUp);
+	system[2] += dir * input.colorRGB_wind.w * (cos(Time*0.5 + dot(input.instPosition,dir)*10.0+ dot(input.instPosition,dir2)*10.0)+sin(Time*3.23512*0.5)*0.25) * 0.125;
+	
+	
+	
 	output.normal = mul(input.normal,system);
 	output.world = mul(input.position,system)*input.instScale + input.instPosition;
 	output.position = TransformAndProject(output.world);
