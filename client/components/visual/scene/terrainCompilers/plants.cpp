@@ -408,7 +408,7 @@ namespace VisualTerrain
 							const int height = CellStack::ToHeight(ih+1);
 							const float heightRadius = ToRadius(height);
 							const float r2 = cellRadius * heightRadius * 0.7f;
-							const float scale = Grid::GetLayerHeight(height) * 0.5f;
+							const float scale = Grid::GetLayerHeight(height);
 							for (index_t k = 0; k < NumDirs; k+=2)
 								PutTree(up*heightRadius+plantDirection[k]*r2,up,sys.x,scale);
 						}
@@ -418,7 +418,7 @@ namespace VisualTerrain
 							const int height = CellStack::ToHeight(ih+1);
 							const float heightRadius = ToRadius(height);
 							const float r2 = cellRadius * heightRadius * 0.7f;
-							const float scale = Grid::GetLayerHeight(height) * 0.5f;
+							const float scale = Grid::GetLayerHeight(height);
 							for (index_t k = 0; k < NumDirs; k++)
 								PutTree(up*heightRadius+plantDirection[k]*r2,up,sys.x,scale);
 							PutTree(up*heightRadius,up,sys.x,scale);
