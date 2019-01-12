@@ -190,7 +190,8 @@ Table-Type: Unit
 	float		scanningRange;			-- Regular grid scanning range. May vary with research
 	float		uncontrolledExplosionRadius; -- Retrieves the explosion radius of the local unit if suffering uncontrolled destruction
 	
-	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
+	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded. No effect if not owned by the local player, or outside command phase
+	
 	void		Destroy();				-- Attempts to destroy the local entity
 	void		Sleep(bool);			-- Updates the sleep state
 	
@@ -208,7 +209,7 @@ Table-Type: Unit
 		bool	CanStandAt(Loc);		-- Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
 		bool	IsAffectedByGravity(Loc)	-- Checks whether or not the local unit would be affected by gravity at the given location. If the parameter is nil, will use the current mobile location
 		void	DirectTo(Reachable);	-- Schedules a motion to the specified location along the path defined by the Reachable
-		void	ClearTasks();			-- Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
+		void	ClearTasks();			-- Flushes all tasks
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
 		void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
@@ -216,12 +217,12 @@ Table-Type: Unit
 
 		--[[
 		GetReach():
-		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) and the current mobile location
+		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) AND the current mobile location
 		@param isBlocked Optional function that excludes certain cells. Type: bool BlockTest(Loc): true if blocked. 
 			If nil, all possible locations are considered. Otherwise invoked only once per candidate (result is cached)
 		@param maxReach Maximum distance (in terms of mobile movementSpeed) to consider. Larger values increase time necessary to complete
-		@param forceReversible If true only consider paths that the specified unit can return on (as opposed to e.g. falling safely from a cliff, but not being able to climb back up)
-		@param allowAccessibleHangars If true also include possible destination hangars of the local unit, false to consider those areas blocked
+		@param forceReversible If true, only consider paths that the specified unit can return on (as opposed to e.g. falling safely from a cliff but not being able to climb back up)
+		@param allowAccessibleHangars If true, also include possible destination hangars of the local unit, false to consider those areas blocked
 		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 		@param cannotStandOnUnknown Set true to disallow relocation onto unknown terrain
 		@return Array of reachable locations. The current unit location is omitted.
@@ -249,7 +250,7 @@ Table-Type: Unit
 		bool	isEnabled;				-- True if the local structure is active
 		ResVec	resourceStorage;		-- Resource vector containing all locally stored resources. All values are >= 0
 		
-		void 	Enable(bool);			-- Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
+		void 	Enable(bool);			-- Change enable state of the local structure
 	[type.isMobileEntityProducer]
 		Prod[]	productionQueue;		-- Table of all production jobs currently enqueued to the local unit. nil if none
 		Loc[]	deploymentOptions;		-- List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production is completed
@@ -258,21 +259,21 @@ Table-Type: Unit
 		
 		void	BuildMobile(UnitType);	-- Schedules the construction of the specified type at the end of the local queue
 		int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
-		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified, it will be called on success once a response from the server has been received
+		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified (not nil/omitted), it will be called on success once a response from the server has been received
 	[type.isHangar]
 		Unit[]	storedUnits;					--Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
-		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. nil if deployableUnits is nil
+		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. The function is nil if storedUnits is nil
 		--[[
 		Deploys the specified stored unit to the specified location.
 		If onDeploy is specified, it will be called on success once a
 		response from the server has been received.
-		nil if deployableUnits is nil
+		The function is nil if storedUnits is nil
 		]]
 		void	DeployStored(Unit, Loc, func onDeploy(Unit));
 		bool	CanStore(Unit);			-- Checks whether or not the local unit can store the specified unit
-		bool	SharesStorageWith(Unit);-- Checks whether the local unit shares its storage with the specified unit
+		bool	SharesStorageWith(Unit);-- Checks whether the local unit shares its storage with the specified other unit
 	[Client only]
-		bool	isOwnedByMe;			-- true if the local player owns this entity
+		bool	isOwnedByMe;			-- true if the local player owns this unit
 }
 
 Table-Type: Prod (Production)
@@ -291,7 +292,7 @@ Table-Type: Loc (Location)
 
 Table-Type: Turret
 {
-	int			weight;						-- Weight affecting mobile entity speed. May change by research
+	int			weight;						-- Weight affecting mobile unit speed. May change by research
 	TurretType	type;					-- Reference to the type of this turret. Never nil. May be compared using == and ~=
 	[type.canAttack]
 		int		damageLevel;			-- Damage inflicted by the local turret. May vary with research
@@ -461,8 +462,8 @@ Table-Type: Vector
 Table-Type: Reachable
 {
 	Loc		location;				-- Grid/world location
-	int		movementCostsFromRoot;	-- Costs to reach this location from the current unit location
-	Reachable	predecessor;		-- nil if this is root (the current unit location)
+	int		movementCostsFromRoot;	-- Costs to reach this location from the routing origin
+	Reachable	predecessor;		-- Previous path node. Nil if there is none, indicating that this is a first step from the routing origin (the origin itself is omitted)
 	Unit	hangar;					-- Non-nil if accessible hangars were included and there is a hangar here
 }
 		
