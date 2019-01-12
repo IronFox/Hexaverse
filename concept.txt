@@ -1,3 +1,40 @@
+resource model 2.0:
+	Growing resources:
+		+Harvesting turret
+			full/conservative setting
+		+Trees -> organic compounds
+		+Crystal Dendrites -> inorganic compounds
+	Fusion:
+		organic + inorganic -> advanced compounds
+		fuel + uranium + energy -> organic compounds
+		minerals + uranium + energy -> inorganic compounds
+
+	Munitions 2.0:
+		advanced compounds + minerals -> enhanced ammo (blast+,damage+)
+	
+	Vehicles factory 2.0 (extra building):
+		+new turrets:
+			* hacking
+		+colors vehicles black.
+		+second set of properties for all components
+		+selectable enhancement composition (+X% price per additional component):
+			* instant return to next vehicle store
+			* ranged teleportation
+			* gradual self repair
+			* stealth
+			* anti-stealth
+			* emp damage on regular attacks
+			* regular damage on emp attacks (may be dangerous due to range)
+			* AA on regular units
+			* self-improving by age/kills/damage taken/repaired
+			
+			
+		
+		
+
+
+
+
 hexaverse modulation:
 
 
