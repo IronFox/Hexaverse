@@ -1541,7 +1541,7 @@ namespace Engine
 		return *this;
 	}
 
-	void	DX11::VertexDescription::AddAsNewStream(const VertexDescription&other, D3D11_INPUT_CLASSIFICATION newClass)
+	void	DX11::VertexDescription::AddAsNewStream( const VertexDescription&other, D3D11_INPUT_CLASSIFICATION newClass )
 	{
 		if (desc.IsNotEmpty())
 		{
@@ -1556,6 +1556,7 @@ namespace Engine
 			dest.InputSlot = atStream;
 			dest.InputSlotClass = newClass;
 			dest.AlignedByteOffset = stride[atStream];
+			dest.InstanceDataStepRate = newClass == D3D11_INPUT_PER_INSTANCE_DATA ? 1 : 0;
 			stride[atStream] += SizeOf(dest.Format);
 		}
 	}
@@ -1806,8 +1807,7 @@ namespace Engine
 			devcon->SOSetTargets(1,block.streamOutTarget.GetHandle().Reference(),&offset);
 		}
 		BindIndices(block.prototype.ibo);
-		RenderIndexedInstanced(block.prototype.ibo.GetEntryCount(),instanceCount,block.prototype.topology);
-
+		devcon->DrawIndexedInstanced(block.prototype.ibo.GetEntryCount(),instanceCount,0,0,0);
 		if (block.streamOutTarget.IsSet())
 			devcon->SOSetTargets(0,NULL,NULL);
 	}
