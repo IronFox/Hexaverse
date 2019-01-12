@@ -410,7 +410,7 @@ namespace VisualTerrain
 							const float r2 = cellRadius * heightRadius * 0.7f;
 							const float scale = Grid::GetLayerHeight(height);
 							for (index_t k = 0; k < NumDirs; k+=2)
-								PutTree(up*heightRadius+plantDirection[k]*r2,up,sys.x,scale);
+								PutTree(up*heightRadius+plantDirection[k]*r2,up,sys.x,scale*0.8f);
 						}
 						break;
 						case Content::Forest:
@@ -420,7 +420,7 @@ namespace VisualTerrain
 							const float r2 = cellRadius * heightRadius * 0.7f;
 							const float scale = Grid::GetLayerHeight(height);
 							for (index_t k = 0; k < NumDirs; k++)
-								PutTree(up*heightRadius+plantDirection[k]*r2,up,sys.x,scale);
+								PutTree(up*heightRadius+plantDirection[k]*r2,up,sys.x,scale*0.8f);
 							PutTree(up*heightRadius,up,sys.x,scale);
 						}
 						break;
