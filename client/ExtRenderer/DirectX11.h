@@ -1135,7 +1135,7 @@ namespace Engine
 		const char*					GetName()	{return "DirectX11";}
 		void						SignalWindowResize(const Resolution&);
 
-		void						SetShader(const DX11::Shader&, const Array<DX11::Texture>&);
+		void						SetShader(const DX11::Shader&, const ArrayRef<DX11::Texture>&);
 
 		void						BindVertices(const DX11::VBO&vbo, UINT stride);
 		void						BindVertices(const DX11::VBO&vbo0, UINT stride0, const DX11::VBO&vbo1, UINT stride1);

@@ -984,7 +984,7 @@ namespace Engine
 
 
 	
-	void	DirectX11::SetShader(const DX11::Shader&shader, const Array<DX11::Texture>&quickSlots)
+	void	DirectX11::SetShader(const DX11::Shader&shader, const ArrayRef<DX11::Texture>&quickSlots)
 	{
 		devcon->VSSetShader(shader.vertexStage.shaderHandle, NULL, 0);
 		devcon->GSSetShader(shader.geometryStage.shaderHandle,NULL,0);
