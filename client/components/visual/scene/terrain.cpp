@@ -353,22 +353,23 @@ namespace VisualTerrain
 		Instruction::terrainShadowBase.SetTriangles();
 
 
-		Instruction::plantBase.shader.LoadQualitiesFromFile("shaders/gridPlant.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::plantBase.LoadQualitiesFromFile("shaders/gridPlant.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		{
-			Instruction::plantBase.shader.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
-			Instruction::plantBase.shader.binding.Append("NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT);
-			Instruction::plantBase.shader.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+			Instruction::plantBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.binding.Append("NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 
-			Instruction::plantBase.shader.instanceBinding.Append("InstancePosition",0,DXGI_FORMAT_R32G32B32_FLOAT);
-			Instruction::plantBase.shader.instanceBinding.Append("InstanceUp",0,DXGI_FORMAT_R32G32B32_FLOAT);
-			Instruction::plantBase.shader.instanceBinding.Append("InstanceDir",0,DXGI_FORMAT_R32G32B32_FLOAT);
-			Instruction::plantBase.shader.instanceBinding.Append("InstanceScale",0,DXGI_FORMAT_R32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstancePosition",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceUp",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceDir",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceScale",0,DXGI_FORMAT_R32_FLOAT);
 
 			Instruction::plantBase.UpdateLayout();
 		}
-		Instruction::plantShadowBase.shader.LoadFromFile("shaders/gridPlantShadow.hlsl", "vsMain", "psMain");
-		Instruction::plantShadowBase.prototype.vDesc = Instruction::plantBase.shader.binding;
-		Instruction::plantShadowBase.instances.vDesc = Instruction::plantBase.shader.instanceBinding;
+		Instruction::plantShadowBase.shader.LoadFromFile("shaders/gridPlantShadow.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::plantShadowBase.prototype.vDesc = Instruction::plantBase.binding;
+		Instruction::plantShadowBase.instances.vDesc = Instruction::plantBase.instanceBinding;
+		Instruction::plantShadowBase.UpdateLayout();
 
 		CreatePlants();
 
@@ -715,16 +716,32 @@ namespace VisualTerrain
 			dat.water.instruction[2] = Instruction::waterSphereBase;
 		}
 
-		if (dat.treeInstances.instruction.shader.IsEmpty())
+		if (Instruction::tree.ibo.IsSet())
 		{
-			dat.treeInstances.instruction = Instruction::plantBase;
-			dat.treeInstances.instruction.prototype = Instruction::tree;
-			dat.treeInstances.shadowInstruction = Instruction::plantShadowBase;
-			dat.treeInstances.shadowInstruction.prototype = Instruction::tree;
-		}
-		dat.treeInstances.instruction.instances.vbo.CreateFromStructs(dat.treeInstances.vertices);
-		dat.treeInstances.shadowInstruction.instances.vbo = dat.treeInstances.instruction.instances.vbo;
+			if (dat.treeInstances.instruction.shader.IsEmpty())
+			{
+				ASSERT__(Instruction::tree.ibo.IsSet());
+				ASSERT__(Instruction::tree.vbo.IsSet());
+				ASSERT__(Instruction::tree.vDesc.IsNotEmpty());
+				dat.treeInstances.instruction = Instruction::plantBase;
+				dat.treeInstances.instruction.assembled.prototype = Instruction::tree;
+				dat.treeInstances.instruction.SignalShadowQualityChange();
+				dat.treeInstances.shadowInstruction = Instruction::plantShadowBase;
+				dat.treeInstances.shadowInstruction.prototype = Instruction::tree;
+				ASSERT__(dat.treeInstances.shadowInstruction.prototype.ibo.IsSet());
+				ASSERT__(dat.treeInstances.shadowInstruction.generatedData.combinedLayout.IsSet());
+				ASSERT_EQUAL__(dat.treeInstances.shadowInstruction.generatedData.protoStride,Instruction::tree.vDesc.GetStride());
 
+			}
+			if (dat.treeInstances.vertices.IsNotEmpty())
+			{
+				//dat.treeInstances.instruction.assembled.instances.vbo.CreateFromStructs(dat.treeInstances.vertices.SubRef(0,1));
+			//	dat.treeInstances.instruction.assembled.instances.vbo.CreateFromStructs(dat.treeInstances.vertices.SubRef(dat.treeInstances.vertices.Count()-1,1));
+				dat.treeInstances.instruction.assembled.instances.vbo.CreateFromStructs(dat.treeInstances.vertices);
+				dat.treeInstances.shadowInstruction.instances.vbo = dat.treeInstances.instruction.assembled.instances.vbo;
+			}
+			dat.treeInstances.instruction.AssertAssembled(dat.treeInstances.vertices.IsNotEmpty());
+		}
 
 		dat.terrain.instruction[0].vbo.CreateFromStructs(dat.terrain.vertices);
 		dat.terrain.instruction[0].ibo.Create(dat.terrain.indices);
@@ -1320,7 +1337,10 @@ namespace VisualTerrain
 		{
 			TFamily::TData&dat = family[k].normal;
 			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
-				display.Render(dat.treeInstances.instruction,true);
+			{
+				dat.treeInstances.instruction.AssertAssembled(false);
+				display.Render(dat.treeInstances.instruction.assembled,false);
+			}
 		}
 	}
 
@@ -1333,6 +1353,8 @@ namespace VisualTerrain
 				display.Render(dat.terrain.shadowInstruction);
 			if (dat.overlay.shadowInstruction.shader.IsSet())
 				display.Render(dat.overlay.shadowInstruction);
+			if (dat.treeInstances.shadowInstruction.shader.IsSet())
+				display.Render(dat.treeInstances.shadowInstruction);
 		}
 	}
 }

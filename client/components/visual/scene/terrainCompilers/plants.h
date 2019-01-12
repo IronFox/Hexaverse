@@ -26,7 +26,7 @@ namespace VisualTerrain
 					dir;	//horizontal x direction, normalized
 		float		scale;	// >0
 
-		void		Set(const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale)
+		void		Set( const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale )
 		{
 			this->position = position;
 			this->up = up;
@@ -35,7 +35,7 @@ namespace VisualTerrain
 		}
 	};
 
-
+	static_assert(sizeof(TPlantInstance)==40,"Bad struct alignment");
 
 	struct TLeafBlob
 	{
@@ -87,7 +87,7 @@ namespace VisualTerrain
 
 	namespace Instruction
 	{
-		extern ShadedInstructionBlock32I			plantBase;
+		extern ShadedInstruction					plantBase;
 		extern Engine::DX11::InstructionBlock32I	plantShadowBase;
 		extern Engine::DX11::InstructionBlock32I::Prototype	tree,dendrite;
 	}

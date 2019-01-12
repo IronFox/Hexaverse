@@ -6,7 +6,7 @@ namespace VisualTerrain
 
 	namespace Instruction
 	{
-		ShadedInstructionBlock32I			plantBase;
+		ShadedInstruction					plantBase;
 		Engine::DX11::InstructionBlock32I	plantShadowBase;
 		Engine::DX11::InstructionBlock32I::Prototype	tree,dendrite;
 		//Engine::DX11::BaseInstructionBlock	leafBlobShadowBase,treeTrunkShadowBase;
@@ -78,6 +78,9 @@ namespace VisualTerrain
 
 		void			Finish(DX11::InstructionBlock32I::Prototype&target)
 		{
+			foreach (vertices,vtx)
+				Vec::clear(vtx->normal);
+
 			for (index_t i = 0; i < indices.Count(); i+=3)
 			{
 				M::TVec3<> n;
@@ -114,9 +117,9 @@ namespace VisualTerrain
 		PlantConstructor c;
 
 		//trunk:
-		c.currentColor = float3(5,0.35,0.2);
+		c.currentColor = float3(0.68,0.5,0.4)*0.9f;
 		const float tr = 0.2f;	//trunk radius
-		const float lr = 0.2f;	//leaf radius
+		const float lr = 0.5f;	//leaf radius
 		const float th = 1.f - lr;	//trunk height = leaf center
 		const float wt = 1.f;	//wind top
 		c.Vertex(float3(tr,0,0),0);
@@ -145,10 +148,10 @@ namespace VisualTerrain
 		c.Vertex(float3(0,-lr,th),wt);
 		c.Vertex(float3(0,0,th+lr),wt);
 
-		c.Triangle(0,1,2);
-		c.Triangle(0,2,3);
-		c.Triangle(0,3,4);
-		c.Triangle(0,4,1);
+		c.TriangleInv(0,1,2);
+		c.TriangleInv(0,2,3);
+		c.TriangleInv(0,3,4);
+		c.TriangleInv(0,4,1);
 
 		c.Triangle(1,2,5);
 		c.Triangle(2,3,5);
@@ -168,11 +171,12 @@ namespace VisualTerrain
 
 	void	CreatePlants()
 	{
+		ASSERT__(Instruction::plantBase.binding.IsNotEmpty());
 		//LoadPrototype(Instruction::dendrite,"objects/dendrite.obj");
 		//LoadPrototype(Instruction::tree,"objects/tree.obj");
 
 		CreateTree(Instruction::tree);
-		Instruction::tree.vDesc = Instruction::plantBase.prototype.vDesc;
+		Instruction::tree.vDesc = Instruction::plantBase.binding;
 
 
 
@@ -289,7 +293,7 @@ namespace VisualTerrain
 	//}
 
 	
-	void	PlantCompiler::Compile(const index_t offset, const index_t end,TPlantHull<TPlantInstance>&instances,Sys::SpinLock&lock)
+	void	PlantCompiler::Compile( const index_t offset, const index_t end,TPlantHull<TPlantInstance>&instances,Sys::SpinLock&lock )
 	{
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
@@ -362,7 +366,7 @@ namespace VisualTerrain
 	}
 
 
-	void		CompilePlants(const Array<Grid::CellStack>&stacks, TPlantHull<TPlantInstance>&instances, index_t offset, count_t count, Grid::FClipHeight clipHeight)
+	void		CompilePlants( const Array<Grid::CellStack>&stacks, TPlantHull<TPlantInstance>&instances, index_t offset, count_t count, Grid::FClipHeight clipHeight )
 	{
 		const index_t end = offset + count;
 		Sys::SpinLock lock;
