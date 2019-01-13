@@ -1790,9 +1790,11 @@ namespace Engine
 			devcon->SOSetTargets(0,NULL,NULL);
 	}
 
-	void						DirectX11::Render(const DX11::InstructionBlock32I&block, bool lazy/*=false*/)
+	count_t						DirectX11::Render(const DX11::InstructionBlock32I&block, bool lazy/*=false*/)
 	{
-		Render(block,(UINT)block.instances.vbo.GetVertexCount(),lazy);
+		const count_t instCount = block.instances.vbo.GetVertexCount();
+		Render(block,(UINT)instCount,lazy);
+		return instCount;
 	}
 
 	void						DirectX11::Render(const DX11::InstructionBlock32I&block, UINT32 instanceCount, bool lazy/*=false*/)

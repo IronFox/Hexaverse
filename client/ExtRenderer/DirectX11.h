@@ -1155,7 +1155,7 @@ namespace Engine
 		void						Render(const DX11::InstructionBlock16&, UINT32 offset, UINT32 count, bool lazy=false);
 		void						Render(const DX11::InstructionBlock32&, bool lazy=false);
 		void						Render(const DX11::InstructionBlock32&, UINT32 offset, UINT32 count, bool lazy=false);
-		void						Render(const DX11::InstructionBlock32I&, bool lazy=false);
+		count_t						Render(const DX11::InstructionBlock32I&, bool lazy=false);
 		void						Render(const DX11::InstructionBlock32I&, UINT32 instanceCount, bool lazy=false);
 		void						RenderVertices(const DX11::BaseInstructionBlock&, const DX11::Query&);
 		void						RenderVertices(const DX11::BaseInstructionBlock&, UINT32 offset, UINT32 count, const DX11::Query&);
