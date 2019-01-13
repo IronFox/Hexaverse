@@ -401,7 +401,7 @@ namespace VisualTerrain
 			for (UINT ih = 0; ih < to; ih++)
 			{
 				const auto&nextCell = stack.volumeCell[ih+1];
-				const float light = nextCell.GetLightLevel();
+				const float light = nextCell.GetLightLevel() * 0.75f + 0.25f;
 				if (ih+1 == CellStack::Range || nextCell.content == Content::Clear)
 					switch (stack.volumeCell[ih].content)
 					{
