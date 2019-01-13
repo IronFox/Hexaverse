@@ -202,16 +202,12 @@ namespace VisualTerrain
 		c.Vertex(float3(0,tr,0),0);
 		c.Vertex(float3(-tr,0,0),0);
 		c.Vertex(float3(0,-tr,0),0);
+		c.Vertex(float3(0,0,0.95f),0.95f*wt);
 
-		c.Vertex(float3(tr,0,th),wt);
-		c.Vertex(float3(0,tr,th),wt);
-		c.Vertex(float3(-tr,0,th),wt);
-		c.Vertex(float3(0,-tr,th),wt);
-
-		c.Quad(0,1,5,4);
-		c.Quad(1,2,6,5);
-		c.Quad(2,3,7,6);
-		c.Quad(3,0,4,7);
+		c.Triangle(0,1,4);
+		c.Triangle(1,2,4);
+		c.Triangle(2,3,4);
+		c.Triangle(3,0,4);
 
 		c.SetIndexOffset();
 
