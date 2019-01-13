@@ -405,14 +405,48 @@ namespace VisualTerrain
 				if (ih+1 == CellStack::Range || nextCell.content == Content::Clear)
 					switch (stack.volumeCell[ih].content)
 					{
+						#if 0	//this looks like crap
+						case Content::Shrubs:
+						{
+							const int height = CellStack::ToHeight(ih+1);
+							const float heightRadius = ToRadius(height);
+							const float r2 = cellRadius * heightRadius * 0.7f;
+							const float scale = Grid::GetLayerHeight(height);
+
+							const UINT32 seed = orientation * 3802 + ih;
+							index_t dir = seed % NumDirs;
+							float ext = M::Sqr(float((seed / NumDirs) %100) / 100.f);
+
+							const auto base = up*(heightRadius - GetLayerHeight(height)*0.125f);
+							for (index_t k = 0; k < NumDirs; k+=3)
+							{
+								PutTree(base+plantDirection[k]*r2,sys,scale*0.5f,light*1.2f);
+								if (seed % 3)
+									break;
+							}
+							//PutTree(up*heightRadius + plantDirection[dir]* r2 * ext,sys,scale*0.8f,light/0.8f);
+						}
+						break;
+						#endif /*0*/
 						case Content::Trees:
 						{
 							const int height = CellStack::ToHeight(ih+1);
 							const float heightRadius = ToRadius(height);
 							const float r2 = cellRadius * heightRadius * 0.7f;
 							const float scale = Grid::GetLayerHeight(height);
-							for (index_t k = 0; k < NumDirs; k+=2)
-								PutTree(up*heightRadius+plantDirection[k]*r2,sys,scale,light);
+
+							const UINT32 seed = orientation * 18924 + ih;
+							index_t dir = seed % NumDirs;
+							float ext = M::Sqr(float((seed / NumDirs) %100) / 100.f);
+
+							const auto base = up*heightRadius;
+							for (index_t k = 0; k < NumDirs; k+=3)
+							{
+								PutTree(base+plantDirection[k]*r2,sys,scale,light);
+								if (seed % 2)
+									break;
+							}
+							//PutTree(up*heightRadius + plantDirection[dir]* r2 * ext,sys,scale*0.8f,light/0.8f);
 						}
 						break;
 						case Content::Forest:
@@ -421,13 +455,11 @@ namespace VisualTerrain
 							const float heightRadius = ToRadius(height);
 							const float r2 = cellRadius * heightRadius * 0.7f;
 							const float scale = Grid::GetLayerHeight(height)*0.9f;
+							const auto base = up*heightRadius;
 							for (index_t k = 0; k < NumDirs; k++)
-								PutTree(up*heightRadius+plantDirection[k]*r2,sys,scale,light);
-							PutTree(up*heightRadius,sys,scale,light);
+								PutTree(base+plantDirection[k]*r2,sys,scale,light);
+							PutTree(base,sys,scale,light);
 						}
-						break;
-						case Content::Shrubs:
-							//later
 						break;
 					}
 			}

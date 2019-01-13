@@ -57,7 +57,7 @@ namespace Grid
 				stack.volumeCell[i].content = PlaceholderType::Clear;
 	}
 
-	void			ExtendedPlanetConfig::FillTypes(CellStack&stack) const
+	void			ExtendedPlanetConfig::FillTypes(CellStack&stack, index_t stackID, const SimplexNoise&plantNoise) const
 	{
 		UINT top = 0;
 		int h = CellStack::BottomHeight;
@@ -85,10 +85,30 @@ namespace Grid
 						if (h < liquidHeight && CellStack::Cell::IsLiquid(liquidCoverage) && CellStack::Cell::IsSolid(liquidOutline))
 							content = liquidOutline;
 						else  
+						{
 							if (type == Content::Unknown)
-								content = h < 3 ? Content::Grass : Content::Rock;
+							{
+								if (h >= 3)
+									content = Content::Rock;	//actual mountains
+								else
+								{
+									const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
+									float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
+									p /= 3;
+
+									if (p < 0.65f)
+										content = Content::Grass;
+									//elif (p < 0.75f)
+									//	content = Content::Shrubs;
+									elif (p < 0.75f)
+										content = Content::Trees;
+									else 
+										content = Content::Forest;
+								}
+							}
 							else
 								content = type;
+						}
 					continue;
 				}
 			}
@@ -124,7 +144,7 @@ namespace Grid
 	}
 
 
-	float2	RandomHeight(const M::TVec3<>&center0, const ExtendedPlanetConfig&config);
+	//float2	RandomHeight(const M::TVec3<>&center0, const ExtendedPlanetConfig&config);
 
 	bool	ExtendedPlanetConfig::ApplySeed()
 	{
@@ -183,11 +203,11 @@ namespace Grid
 		//return (float)Sign(rs)*pow(fabs(rs),1.3f) ;
 	}
 
-	float2	RandomHeight(const M::TVec3<>&center0, const ExtendedPlanetConfig&config)
+	float2	RandomHeight(const M::TVec3<>&center0, const ExtendedPlanetConfig&config, const ExtendedPlanetConfig::NoiseSet&mountainSet, const ExtendedPlanetConfig::NoiseSet&extCoreSet)
 	{
 		return float2(
-			RandomHeight(center0*config.extendedCore.frequency,config.extendedCore),
-			RandomHeight(center0*config.mountains.frequency,config.mountains)
+			RandomHeight(center0*config.extendedCore.frequency,extCoreSet),
+			RandomHeight(center0*config.mountains.frequency,mountainSet)
 			);
 
 	}
@@ -201,9 +221,12 @@ namespace Grid
 
 		World::Data::ChangeSequence seq = world.BeginChangeSequence(0);
 
-		Concurrency::parallel_for(UINT32(0),HighSetup::GridType::CellCount,[&world,this,&seq](UINT32 i)
+		const NoiseSet mountainSet{mountains};
+		const NoiseSet extCoreSet{extendedCore};
+
+		Concurrency::parallel_for(UINT32(0),HighSetup::GridType::CellCount,[&world,this,&seq,&mountainSet,&extCoreSet](UINT32 i)
 		{
-			InitUnknown(seq.AccessStack(i).GetStack(),RandomHeight(high.cells[i].centerVertex.xyz,*this));
+			InitUnknown(seq.AccessStack(i).GetStack(),RandomHeight(high.cells[i].centerVertex.xyz,*this,mountainSet,extCoreSet));
 		});
 
 		for (UINT32 i = 0; i < LowSetup::GridType::CellCount; i++)
@@ -293,9 +316,9 @@ namespace Grid
 		});
 
 
-		Concurrency::parallel_for(UINT32(0),HighSetup::GridType::CellCount,[&world,this,&seq](UINT32 i)
+		Concurrency::parallel_for(UINT32(0),HighSetup::GridType::CellCount,[&world,this,&seq,&mountainSet](UINT32 i)
 		{
-			FillTypes(seq.AccessStack(i).GetStack());
+			FillTypes(seq.AccessStack(i).GetStack(),i, mountainSet.plants);
 		});
 
 

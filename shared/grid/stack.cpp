@@ -42,8 +42,8 @@ namespace Grid
 		float3(0.25f),	//Granite
 		float3(94.f / 255.f, 69.f / 255.f, 28.f / 255.f)*2.f,	//earth
 		float3(0.5f, 1.f, 0.5f),	//grass
-		float3(0.5f, 0.8f, 0.4f),	//Shrubs
-		float3(0.5f, 0.6f, 0.2f),	//Trees
+		//float3(0.5f, 0.9f, 0.45f),	//Shrubs
+		float3(0.5f, 0.8f, 0.4f),	//Trees
 		float3(0.4f, 0.5f, 0.1f),	//Forest
 		float3(0.8f),	//rock
 		float3(1.f,1.f,0.6f)*1.2f,	//sand
@@ -64,7 +64,7 @@ namespace Grid
 		9,	//granite
 		4,	//earth
 		4,	//grass
-		4,	//Shrubs
+		//4,	//Shrubs
 		4,	//Trees
 		4,	//Forest
 		5,	//rock
@@ -84,7 +84,7 @@ namespace Grid
 		true,	//granite
 		true,	//earth
 		true,	//grass
-		true,	//Shrubs
+		//true,	//Shrubs
 		true,	//Trees
 		true,	//Forest
 		true,	//rock
@@ -106,7 +106,7 @@ namespace Grid
 		1,	//granite
 		1,	//earth
 		1,	//grass
-		1,	//Shrubs
+		//1,	//Shrubs
 		1,	//Trees
 		1,	//Forest
 		1,	//rock

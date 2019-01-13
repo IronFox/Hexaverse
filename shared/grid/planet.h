@@ -77,7 +77,8 @@ namespace Grid
 					depressionSeed0,
 					depressionSeed1,
 					depressionSeed2,
-					depressionSeed3;
+					depressionSeed3,
+					plantSeed;
 
 
 			void	Randomize(Random&random)
@@ -89,6 +90,7 @@ namespace Grid
 				depressionSeed2 = random.NextSeed();
 				depressionSeed3 = random.NextSeed();
 				productSeed = random.NextSeed();
+				plantSeed = random.NextSeed();
 			}
 		};
 
@@ -99,7 +101,8 @@ namespace Grid
 							depression0,
 							depression1,
 							depression2,
-							depression3;
+							depression3,
+							plants;
 
 			/**/			NoiseSet(const TSeedSet&set):
 								fractal
@@ -114,7 +117,8 @@ namespace Grid
 								depression0(set.depressionSeed0),
 								depression1(set.depressionSeed1),
 								depression2(set.depressionSeed2),
-								depression3(set.depressionSeed3)
+								depression3(set.depressionSeed3),
+								plants(set.plantSeed)
 			{}
 		};
 
@@ -140,7 +144,6 @@ namespace Grid
 		TLayer		extendedCore,mountains;
 		BYTE		type = Content::Unknown,
 					liquidCoverage = Content::Water,
-					naturalCover = Content::Forest,	//!< Temporary solution. Set to a plant type, or Grass
 					extendedCoreType = Content::Granite,
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
@@ -233,7 +236,7 @@ namespace Grid
 		}
 
 		void	InitUnknown(CellStack&stack, float2 heights) const;
-		void	FillTypes(CellStack&stack) const;
+		void	FillTypes(CellStack&stack, index_t stackID, const SimplexNoise&plantNoise) const;
 
 		void	BuildWorld(World::Data&world) const;
 
