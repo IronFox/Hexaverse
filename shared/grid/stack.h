@@ -517,6 +517,7 @@ namespace Grid
 
 	typedef CellStack::Cell::Content Content;
 
+	CONSTRUCT_ENUMERATION5(PlaceholderType, Clear, LiquidMountains, LiquidExtendedCore, Mountains, ExtendedCore);
 
 	class Resource;
 

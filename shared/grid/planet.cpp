@@ -36,14 +36,14 @@ namespace Grid
 		#endif
 		if (type != Content::Clear)
 			for (UINT i = 0; i <= uh; i++)
-				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? Content::Water : Content::Unknown;
+				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? PlaceholderType::LiquidMountains : PlaceholderType::Mountains;
 		else
 			for (UINT i = 0; i <= uh; i++)
-				stack.volumeCell[i].content = Content::Clear;
+				stack.volumeCell[i].content = PlaceholderType::Clear;
 
 
 		for (UINT l = uh+1; l < CellStack::Range; l++)
-			stack.volumeCell[l].content = Content::Clear;
+			stack.volumeCell[l].content = PlaceholderType::Clear;
 
 		//if (Cell::IsLiquid(config.extendedCoreType ) || config.extendedCoreType == Content::Clear)
 		//	for (UINT i = 0; i < coreLayer; i++)
@@ -51,10 +51,10 @@ namespace Grid
 		//else
 		if (extendedCoreType != Content::Clear)
 			for (UINT i = 0; i < coreLayer; i++)
-				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? Content::Lava : Content::Granite;
+				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? PlaceholderType::LiquidExtendedCore : PlaceholderType::ExtendedCore;
 		else
 			for (UINT i = 0; i < coreLayer; i++)
-				stack.volumeCell[i].content = Content::Clear;
+				stack.volumeCell[i].content = PlaceholderType::Clear;
 	}
 
 	void			ExtendedPlanetConfig::FillTypes(CellStack&stack) const
@@ -64,8 +64,9 @@ namespace Grid
 		for (UINT layer = CellStack::Range-1; layer < CellStack::Range; layer--)
 		{
 			BYTE&content = stack.volumeCell[layer].content;
-			if (content == Content::Clear)
+			if (content == PlaceholderType::Clear)
 			{
+				content = Content::Clear;
 				continue;
 			}
 			if (!top)
@@ -73,7 +74,7 @@ namespace Grid
 				bool isSolid = true;
 				//isSolid = Cell::IsSolid(content);
 
-				if (content == Content::Unknown)
+				if (content == PlaceholderType::Mountains)
 				{
 					top = layer;
 					h = CellStack::ToHeight(top);
@@ -85,28 +86,29 @@ namespace Grid
 							content = liquidOutline;
 						else  
 							if (type == Content::Unknown)
-								content = h < 3 ? naturalCover : Content::Rock;
+								content = h < 3 ? Content::Grass : Content::Rock;
 							else
 								content = type;
 					continue;
 				}
 			}
-			if (content == Content::Unknown || content == Content::Water)	//mountain layer
+			if (content == PlaceholderType::Mountains || content == PlaceholderType::LiquidMountains)	//mountain layer
 			{
-				if (type == Content::Unknown)
+				if (type == PlaceholderType::Mountains)
 				{
-					//bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
 					UINT rockHeight = h > 3 ? top : top - (3 - h);
-					//if (!hasEarth)
-					//	rockHeight = Range;
-					
 					content = layer <= rockHeight ? Content::Rock : Content::Earth;
 				}
 				else
 					content = type;
+				continue;
 			}
-			else if (content == Content::Granite || content == Content::Lava)
+			if (content == PlaceholderType::ExtendedCore || content == PlaceholderType::LiquidExtendedCore)
+			{
 				content = extendedCoreType;
+				continue;
+			}
+			FATAL__("Unexpected placeholder type encountered: #"+String(content));
 		}
 
 
