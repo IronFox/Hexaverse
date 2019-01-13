@@ -220,23 +220,28 @@ public:
 };
 
 
-class ShadedInstructionBlock32I : public DX11::InstructionBlock32I
+class ShadedInstructionBlock32I
 {
 	typedef Engine::DX11::InstructionBlock32I	Super;
 	index_t					callback=InvalidIndex;
 public:
 	typedef ShadedInstructionBlock32I	Self;
 	ShadedInstruction		shader;
-
+	/**
+	Final, render-capable, instanced instruction.
+	Bindings are updated during SignalShadowQualityChange().
+	*/
+	DX11::InstructionBlock32I	assembled;
 
 
 	/**/					ShadedInstructionBlock32I()
 	{
 		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
 	}
-	/**/					ShadedInstructionBlock32I(const Self&other):Super(other)
+	/**/					ShadedInstructionBlock32I(const Self&other)
 	{
 		shader = other.shader;
+		assembled = other.assembled;
 		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
 	}
 	virtual					~ShadedInstructionBlock32I()
@@ -246,15 +251,26 @@ public:
 		callback = InvalidIndex;
 	}
 
-	void					operator=(const Self&other)
-	{
-		((Super&)*this) = other;
-		shader = other.shader;
-	}
 
 	void					SignalShadowQualityChange()
 	{
-		shader.ApplyCurrentTo(*this);
+		shader.ApplyCurrentTo(assembled);
+		assembled.instances.vDesc = shader.instanceBinding;
+		assembled.prototype.vDesc = shader.binding;
+	}
+
+	void					AssertAssembled(bool requireInstances)
+	{
+		if (requireInstances)
+			ASSERT__(assembled.instances.vbo.IsSet());
+		ASSERT__(assembled.instances.vDesc.IsNotEmpty());
+		ASSERT__(assembled.instances.vDesc.GetStride() > 0);
+		ASSERT__(assembled.prototype.vbo.IsSet());
+		ASSERT__(assembled.prototype.ibo.IsSet());
+		ASSERT_EQUAL__(assembled.prototype.topology,D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		ASSERT__(assembled.prototype.vDesc.IsNotEmpty());
+		ASSERT__(assembled.prototype.vDesc.GetStride() > 0);
+		ASSERT__(assembled.shader.IsSet());
 	}
 
 	void					operator=(const ShadedInstruction&inst)
@@ -264,7 +280,7 @@ public:
 	}
 	void					Clear()
 	{
-		Super::Clear();
+		assembled.Clear();
 		shader.Clear();
 	}
 };
