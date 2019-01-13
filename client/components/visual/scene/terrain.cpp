@@ -1331,17 +1331,19 @@ namespace VisualTerrain
 		}
 	}
 
-	void	RenderPlants(const Engine::Frustum<>&frustum)
+	count_t	RenderPlants(const Engine::Frustum<>&frustum)
 	{
+		count_t rs = 0;
 		for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			TFamily::TData&dat = family[k].normal;
 			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
 			{
 				dat.treeInstances.instruction.AssertAssembled(false);
-				display.Render(dat.treeInstances.instruction.assembled,false);
+				rs += display.Render(dat.treeInstances.instruction.assembled,false);
 			}
 		}
+		return rs;
 	}
 
 	void	RenderShadows()

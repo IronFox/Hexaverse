@@ -1471,6 +1471,7 @@ bool loop()
 				textout.MoveTo(0.0f,0.05f);
 				textout.SetColor(1,1,1);
 				textout << "FPS: "<<M::RoundToInt(1.f / Engine::timing.delta) << nl;
+				textout << "Plants: "<< World::CountRenderedPlants() << nl;
 				if (Camera::locked && !TimeLapse::enabled)
 					textout << "Camera locked. Press F4 to unlock" << nl;
 				#ifdef _DEBUG

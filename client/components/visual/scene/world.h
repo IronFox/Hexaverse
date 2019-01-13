@@ -15,6 +15,7 @@ namespace World
 
 	void		RenderBuildBlocks();
 
+	count_t		CountRenderedPlants();
 }
 
 
