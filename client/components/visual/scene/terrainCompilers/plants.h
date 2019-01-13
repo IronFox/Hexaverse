@@ -24,18 +24,23 @@ namespace VisualTerrain
 		M::TVec3<>	position,	//absolute
 					up,		//normalized
 					dir;	//horizontal x direction, normalized
-		float		scale;	// >0
+		float		scale, 
+					tone, 
+					light;	// >0
 
-		void		Set( const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale )
+
+		void		Set( const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, float tone, float light )
 		{
 			this->position = position;
 			this->up = up;
 			this->dir = dir;
 			this->scale = scale;
+			this->tone = tone;
+			this->light = light;
 		}
 	};
 
-	static_assert(sizeof(TPlantInstance)==40,"Bad struct alignment");
+	static_assert(sizeof(TPlantInstance)==48,"Bad struct alignment");
 
 	struct TLeafBlob
 	{

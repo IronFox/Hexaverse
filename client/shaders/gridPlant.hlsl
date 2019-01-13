@@ -16,6 +16,8 @@ struct A2V
 	float3 instUp : InstanceUp;
 	float3 instDir : InstanceDir;
 	float  instScale : InstanceScale;
+	float  instTone : InstanceTone;
+	float  instLight : InstanceLight;
 };
 
 struct V2P
@@ -69,7 +71,13 @@ float SampleHeightMap(float3 p)
 		;
 }
 
-void vsMain(A2V input, out V2P output, uint instanceID : SV_InstanceID)
+float3 Tone(float tone)
+{
+	float gb = 0.5 + tone * 0.5;
+	return float3(1+tone,gb,gb);
+}
+
+void vsMain(A2V input, out V2P output)
 {
 	float3x3 system;
 	system[0] = input.instDir;
@@ -89,6 +97,20 @@ void vsMain(A2V input, out V2P output, uint instanceID : SV_InstanceID)
 	output.color = float4(max(input.colorRGB_wind.rgb,(float3)0.0),1.0);
 	output.glowColor = max(-input.colorRGB_wind.rgb,(float3)0.0)*0.5;
 	output.color.rgb *= SunColor.rgb;
+	
+	float red = saturate((input.instTone - 0.5) *2.0);
+	float redYellow = saturate((input.instTone) *2.0);
+	float yellow = redYellow - red;
+	
+	
+	float rTone = red*0.35;
+	float ryTone = redYellow * 0.35;
+	output.color.r *= 1.0 + ryTone;
+	output.color.g *= 0.5 + 0.5 * (1.0 - rTone);
+	output.color.b *= 0.5 + 0.5 * (1.0 - ryTone);
+	output.color.rgb = saturate(output.color.rgb);
+	output.color.rgb *= input.instLight;
+	
 	output.diffuse = max(0.0, dot(output.normal, Sun.xyz));
 	output.blueshift = smoothstep(-0.4,0.3, -dot(normalize(output.world),Sun.xyz));
 	output.atmosphere = CalculatePositionFog(output.world);

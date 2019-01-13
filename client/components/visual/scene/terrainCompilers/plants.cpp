@@ -193,7 +193,7 @@ namespace VisualTerrain
 		FacetedPlantConstructor c;
 
 		//trunk:
-		c.currentColor = float3(0.6,0.5,0.4)*0.7f;
+		c.currentColor = float3(0.5,0.5,0.4)*0.7f;
 		const float tr = 0.15f;	//trunk radius
 		const float lr = 0.5f;	//leaf radius
 		const float th = 1.f - lr;	//trunk height = leaf center
@@ -215,7 +215,7 @@ namespace VisualTerrain
 
 		c.SetIndexOffset();
 
-		c.currentColor = float3(0.4,1,0.3);
+		c.currentColor = float3(0.5,0.9,0.3);
 		
 		c.Vertex(float3(0,0,th-lr),wt);
 		c.Vertex(float3(lr,0,th),wt);
@@ -277,7 +277,7 @@ namespace VisualTerrain
 		StaticList<TPlantInstance,BatchSize * CellStack::Range *3>	instances;
 		
 			
-		void	PutTree(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale);
+		void	PutTree(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light);
 		void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
 		{
 			instances.Reset();
@@ -298,13 +298,15 @@ namespace VisualTerrain
 						angleNoise = SimplexNoise(323948713285797852ull),
 						colorNoise = SimplexNoise(84567898764583245ull);
 
-	void	PlantCompiler::PutTree(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale)
+	void	PlantCompiler::PutTree(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light)
 	{
 		float angle = angleNoise.GetUniform(position.x*10,position.y*10,position.z*10) * M_PI * 2.0;
 		float x = cos(angle);
 		float y = sin(angle);
 		M::TVec3<> dir = sys.x * x + sys.y * y;
-		instances.Append().Set(position,sys.z,dir,scale * (0.75f + 0.5f * sizeNoise.GetUniform(position.x*10,position.y*10,position.z*10)));
+		float tone = colorNoise.GetUniform(position.x*2,position.y*2,position.z*2)*0.5 + colorNoise.GetUniform(position.x*0.5,position.y*0.5,position.z*0.5)*0.5;
+		float sizeR = sizeNoise.GetUniform(position.x*10,position.y*10,position.z*10);
+		instances.Append().Set(position,sys.z,dir,scale * (0.75f + 0.5f * sizeR),tone,light*(0.5f + 0.5f * sizeR));
 	}
 
 
@@ -387,7 +389,6 @@ namespace VisualTerrain
 
 			static const constexpr count_t NumDirs = 6;
 
-
 			M::TVec3<> plantDirection[NumDirs];//for now only three plants in equally spaced directions
 			for (index_t k = 0; k < NumDirs; k++)
 			{
@@ -403,7 +404,9 @@ namespace VisualTerrain
 			
 			for (UINT ih = 0; ih < to; ih++)
 			{
-				if (ih+1 == CellStack::Range || stack.volumeCell[ih+1].content == Content::Clear)
+				const auto&nextCell = stack.volumeCell[ih+1];
+				const float light = nextCell.GetLightLevel();
+				if (ih+1 == CellStack::Range || nextCell.content == Content::Clear)
 					switch (stack.volumeCell[ih].content)
 					{
 						case Content::Trees:
@@ -413,7 +416,7 @@ namespace VisualTerrain
 							const float r2 = cellRadius * heightRadius * 0.7f;
 							const float scale = Grid::GetLayerHeight(height);
 							for (index_t k = 0; k < NumDirs; k+=2)
-								PutTree(up*heightRadius+plantDirection[k]*r2,sys,scale);
+								PutTree(up*heightRadius+plantDirection[k]*r2,sys,scale,light);
 						}
 						break;
 						case Content::Forest:
@@ -423,8 +426,8 @@ namespace VisualTerrain
 							const float r2 = cellRadius * heightRadius * 0.7f;
 							const float scale = Grid::GetLayerHeight(height)*0.9f;
 							for (index_t k = 0; k < NumDirs; k++)
-								PutTree(up*heightRadius+plantDirection[k]*r2,sys,scale);
-							PutTree(up*heightRadius,sys,scale);
+								PutTree(up*heightRadius+plantDirection[k]*r2,sys,scale,light);
+							PutTree(up*heightRadius,sys,scale,light);
 						}
 						break;
 						case Content::Shrubs:

@@ -15,6 +15,8 @@ struct A2V
 	float3 instUp : InstanceUp;
 	float3 instDir : InstanceDir;
 	float  instScale : InstanceScale;
+	float  instTone : InstanceTone;
+	float  instLight : InstanceLight;
 };
 
 struct V2P
