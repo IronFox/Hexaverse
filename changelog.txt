@@ -1,4 +1,5 @@
 v0.9.8
+	* AI: Improved display and logging of AI state export errors.
 
 v0.9.7	[Dec 23 2018]
 	+ Implemented experimental floating icons if lack of resources is detected.
