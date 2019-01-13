@@ -87,7 +87,8 @@ void vsMain(A2V input, out V2P output)
 	float3 dir = normalize(system[0] * SampleHeightMap(input.instPosition)
 				+ system[1] * SampleHeightMap(-input.instPosition));
 	float3 dir2 = cross(dir,input.instUp);
-	system[2] += dir * input.colorRGB_wind.w * (cos(Time*0.5 + dot(input.instPosition,dir)*10.0+ dot(input.instPosition,dir2)*10.0)+sin(Time*3.23512*0.5)*0.25) * 0.125;
+	float wind = (cos(Time*0.5 + dot(input.instPosition,dir)*10.0+ dot(input.instPosition,dir2)*10.0)+sin(Time*3.23512*0.5)*0.25) * input.colorRGB_wind.w;
+	system[2] += dir * wind * 0.125;
 	
 	
 	
@@ -109,7 +110,7 @@ void vsMain(A2V input, out V2P output)
 	output.color.g *= 0.5 + 0.5 * (1.0 - rTone);
 	output.color.b *= 0.5 + 0.5 * (1.0 - ryTone);
 	output.color.rgb = saturate(output.color.rgb);
-	output.color.rgb *= input.instLight;
+	output.color.rgb *= input.instLight / (1.0 + abs(wind)*0.2);
 	
 	output.diffuse = max(0.0, dot(output.normal, Sun.xyz));
 	output.blueshift = smoothstep(-0.4,0.3, -dot(normalize(output.world),Sun.xyz));
