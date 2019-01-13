@@ -110,9 +110,9 @@ void vsMain(A2V input, out V2P output)
 	output.color.g *= 0.5 + 0.5 * (1.0 - rTone);
 	output.color.b *= 0.5 + 0.5 * (1.0 - ryTone);
 	output.color.rgb = saturate(output.color.rgb);
-	output.color.rgb *= input.instLight / (1.0 + abs(wind)*0.2);
+	output.color.rgb *= input.instLight;
 	
-	output.diffuse = max(0.0, dot(output.normal, Sun.xyz));
+	output.diffuse = max(0.0, dot(output.normal, Sun.xyz)) / (1.0 + abs(wind)*0.5);
 	output.blueshift = smoothstep(-0.4,0.3, -dot(normalize(output.world),Sun.xyz));
 	output.atmosphere = CalculatePositionFog(output.world);
 }
