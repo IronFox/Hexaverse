@@ -1367,6 +1367,7 @@ namespace Objects
 			#endif
 			DefineMechanic(Component::mechanic);
 			DefineAutomatable(Component::resourceScanner);
+			DefineAutomatable(Component::radar);
 
 
 			foreach (Objects::Component::vehicleTurretComponents,tc)

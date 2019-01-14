@@ -328,7 +328,11 @@ namespace Animation
 
 		ASSERT__(v);
 		ASSERT__(v->isOwnedByMe);
-		ASSERT__(v->turret->detectsResources);
+		if (!v->turret->detectsResources)
+		{
+			AI::Route(v,false,false,true);
+			return;
+		}
 		if (v->IsHibernating())
 			return;
 		if (v->myTasks.IsNotEmpty())
@@ -704,7 +708,7 @@ namespace Animation
 			}
 		#endif
 
-		if (automationChange && v->isOwnedByMe && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
+		if (automationChange && v->isOwnedByMe && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomated())
 		{
 			UpdateAutomation(To<Objects::Vehicle>::Cast(v));
 		}

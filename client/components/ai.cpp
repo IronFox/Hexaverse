@@ -235,7 +235,7 @@ namespace AI
 	
 	}
 
-	static void ProcessVehicle(const Objects::PVehicle&v)
+	static void ProcessVehicle( const Objects::PVehicle&v )
 	{
 		Objects::Component::Turret*t = v->turret;
 		if (t->detectsResources || t->CanDo(Objects::Component::Operation::Construct))
@@ -244,12 +244,8 @@ namespace AI
 			return;
 		}
 
-		int referenceSpeed = v->GetMovementStepsPerRound()*3;
-		int minMotion = v->GetMovementStepsPerRound();
 
 		//attacker logic
-		Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr;
-		float bestScore = 0.f;
 		const bool attacker = t->CanAttack();
 //		const float myRange = t->maxRange + t->GetExplosionRadius(e.owner) - 1;
 
@@ -270,42 +266,6 @@ namespace AI
 		}
 
 
-
-		bool haveMarker = false;
-		foreach (Objects::Marker::all,_m)
-		{
-			if (_m->type == Objects::Marker::Type::Visited)
-			{
-				float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),v->system.w.xyz);
-				if (distance < 25.f)
-				{
-					ObjectHelper::SignalMarkerTouch(*_m);
-					haveMarker = true;
-//					break;
-				}
-			}
-		}
-		if (!haveMarker)
-			foreach (tempMarkers,_m)
-			{
-				float distance = Vec::quadraticDistance(*_m,v->system.w.xyz);
-				if (distance < 25.f)
-				{
-					haveMarker = true;
-					break;
-				}
-			}
-
-		if (!haveMarker)
-		{
-			Protocol::Marker marker;
-			marker.id.Generate();
-			marker.location = v->location;
-			tempMarkers << v->system.w.xyz;
-			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
-			marker.data.Set2();
-			ObjectHelper::SignalMarkerCreation(marker);
-		}
 
 		const float explosionRadius = v->GetAttackExplosionRadius();
 
@@ -385,14 +345,66 @@ namespace AI
 
 
 		
-		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 
-		const bool canIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
+		const bool canIgnoreThreat = (attacker /*|| random.NextFloat() < 0.5f*/) && !t->dealsEMPDamage;
+		Route(v,canIgnoreThreat,overconfident,false);
+
+	}
+
+	void Route(const Objects::PVehicle&v, bool canIgnoreThreat, bool overconfident, bool flushExistingTasks)
+	{
+		if (flushExistingTasks)
+			ApplicationInterface::SignalDropAllTasks(v);
+
+		Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr;
+		float bestScore = 0.f;
+
+		bool haveMarker = false;
+		foreach (Objects::Marker::all,_m)
+		{
+			if (_m->type == Objects::Marker::Type::Visited)
+			{
+				float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),v->system.w.xyz);
+				if (distance < 25.f)
+				{
+					ObjectHelper::SignalMarkerTouch(*_m);
+					haveMarker = true;
+//					break;
+				}
+			}
+		}
+		if (!haveMarker)
+			foreach (tempMarkers,_m)
+			{
+				float distance = Vec::quadraticDistance(*_m,v->system.w.xyz);
+				if (distance < 25.f)
+				{
+					haveMarker = true;
+					break;
+				}
+			}
+
+		if (!haveMarker)
+		{
+			Protocol::Marker marker;
+			marker.id.Generate();
+			marker.location = v->location;
+			tempMarkers << v->system.w.xyz;
+			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
+			marker.data.Set2();
+			ObjectHelper::SignalMarkerCreation(marker);
+		}
+
+		const float explosionRadius = v->GetAttackExplosionRadius();
+		int minMotion = v->GetMovementStepsPerRound();
+
 		BeginBlockTest(v,true,canIgnoreThreat,overconfident);	//force current to have no threat level, limiting motion to areas with zero threat
 
 		const Objects::Component::GroundFlags groundFlags = Objects::Component::GroundFlags::DisallowUnknownGround;
 
+		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 
+		int referenceSpeed = v->GetMovementStepsPerRound()*3;
 		mapper.Map(*v, v->location, BlockTest, Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed);
 		if (mapper.result.IsEmpty())
 		{
@@ -445,10 +457,6 @@ namespace AI
 							badWeight += 10.f;
 					}
 
-				}
-				if (!haveMarker)
-				{
-					badWeight += 1.f;
 				}
 			
 				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
@@ -570,6 +578,10 @@ namespace AI
 		return done;
 	}
 
+	void	FlushTempMarkers( )
+	{
+		tempMarkers.Clear();
+	}
 
 	void	Process( float timeQuantum )
 	{
@@ -583,7 +595,7 @@ namespace AI
 		}
 
 		LogEvent(EventSignificance::Debug,nullptr,"AI: Resuming processing ("+String(timeQuantum)+")");
-		tempMarkers.Clear();
+		FlushTempMarkers();
 		Timer::Time started = timer.Now();
 		for (index_t i = vehicles.Count() - 1; i < vehicles.Count(); i--)
 		{
