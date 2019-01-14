@@ -1469,12 +1469,12 @@ namespace Objects
 			}
 		#endif
 
-		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGrid/*=true*/ )
+		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGrid/*=true*/, bool setHealthToFull/*=true*/ )
 		{
 			ASSERT__(m);
 			ASSERT2__(!m->isInMovementStream,m->location,m->GetName());
 			float t = 0;
-			InsertConstructed(m,t,insertIntoGrid);
+			InsertConstructed(m,t,insertIntoGrid,setHealthToFull);
 			#ifndef NO_SATELLITES
 				if (m->IsSatellite())
 				{
