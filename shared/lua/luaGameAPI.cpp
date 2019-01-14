@@ -1231,136 +1231,141 @@ namespace Lua
 
 			{
 				auto h = e->CastToHangar();
-				if (h && h->GetLoad() > 0)
+				if (h)
 				{
-					if (h->SharesStorage())
+					t.SetField("maxStoredUnits",h->GetMaximumLoad());
+
+					if (h->GetLoad() > 0)
 					{
-						TSharedHangar*sh = nullptr;
-						foreach (sharedHangars,other)
+						if (h->SharesStorage())
 						{
-							auto h2 = other->hangar.lock();
-							if (h2 && h->SharesStorageWith(h2))
+							TSharedHangar*sh = nullptr;
+							foreach (sharedHangars,other)
 							{
-								sh = other;
-								break;
+								auto h2 = other->hangar.lock();
+								if (h2 && h->SharesStorageWith(h2))
+								{
+									sh = other;
+									break;
+								}
+							}
+							if (!sh)
+							{
+								sh = &sharedHangars.Append();
+								sh->hangar = h;
+								sh->rebuild = true;
+								sh->sharedDeployables = program->CreateTable();
+							}
+
+							t.SetField("storedUnits",sh->sharedDeployables);
+
+							if (sh->rebuild)
+							{
+								sh->rebuild = false;
+								auto&table = sh->sharedDeployables;
+								h->VisitStored([this,&table](const Objects::PMobileEntity&m)
+								{
+									table.AppendElement(MapEntity(m,true,false));
+								});
 							}
 						}
-						if (!sh)
+						else
 						{
-							sh = &sharedHangars.Append();
-							sh->hangar = h;
-							sh->rebuild = true;
-							sh->sharedDeployables = program->CreateTable();
-						}
+							auto deployableUnits = t.SetSubTable("storedUnits");
 
-						t.SetField("storedUnits",sh->sharedDeployables);
-
-						if (sh->rebuild)
-						{
-							sh->rebuild = false;
-							auto&table = sh->sharedDeployables;
-							h->VisitStored([this,&table](const Objects::PMobileEntity&m)
+							h->VisitStored([this,&deployableUnits](const Objects::PMobileEntity&m)
 							{
-								table.AppendElement(MapEntity(m,true,false));
+								deployableUnits.AppendElement(MapEntity(m,true,false));
 							});
 						}
+
+
+						Objects::WWorldEntity w = e;
+						t.SetFunction("GetStoredDeploymentOptions",[this,w](const Lua::Table&luaEntity)
+						{
+							auto d = LuaUnitToEntity(luaEntity,"GetDeploymentOptionsFor(): Unit");
+							if (!d->IsMobile())
+								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Unit is not a mobile unit");
+							auto m = To<Objects::MobileEntity>::Cast(d);
+							auto e = w.lock();
+							if (!e)
+								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Local entity has expired");
+							#ifdef CLIENT
+								if (!m->isOwnedByMe)
+									throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+m->GetNameAndOwner());
+								if (!e->isOwnedByMe)
+									throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+e->GetNameAndOwner());
+							#endif
+							auto h = e->CastToHangar();
+							if (m->storedIn.lock() != h)
+							{
+								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Unit "+m->GetName()+" is not stored in "+e->GetName());
+							}
+							Buffer0<Objects::Choice> choices;
+							Objects::TChoiceVisualization dummy;
+							Objects::GetChoices(e,m,Objects::CursorMode::Idle,choices,dummy);
+							Lua::Table rs = program->CreateTable();
+							foreach (choices,ch)
+								rs.AppendElement(ToTable(ch->location));
+							return rs;
+						});
+
+						t.SetFunction("DeployStored",[this,w](const Lua::Table&luaEntity, const Lua::Table&luaLocation, const Lua::Function<void(const Lua::Table&)>&onDeploy)
+						{
+							if (!onDeployStored)
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): onDeployStored not set");
+
+							auto d = LuaUnitToEntity(luaEntity,"DeployStoredAt(): Unit parameter #1");
+							if (!d->IsMobile())
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Unit is not a mobile unit");
+							auto m = To<Objects::MobileEntity>::Cast(d);
+							auto e = w.lock();
+							if (!e)
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Local entity has expired");
+							#ifdef CLIENT
+								if (!m->isOwnedByMe)
+									throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+m->GetNameAndOwner());
+								if (!e->isOwnedByMe)
+									throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+e->GetNameAndOwner());
+							#endif
+							auto h = e->CastToHangar();
+							if (m->storedIn.lock() != h)
+							{
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Unit "+m->GetName()+" is not stored in "+e->GetName());
+							}
+
+							const auto loc = Detail::ToLGridCell(luaLocation,"DeployStoredAt(): Location parameter #2");
+							Buffer0<Objects::Choice> choices;
+							Objects::TChoiceVisualization dummy;
+							Objects::GetChoices(e,m,Objects::CursorMode::Idle,choices,dummy);
+							bool found = false;
+							foreach (choices,ch)
+								if (ch->location == loc)
+								{
+									found = true;
+									break;
+								}
+
+							if (!found)
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Chosen location "+ToString(loc)+" is not a valid deployment choice of "+m->GetName()+", being deployed from "+e->GetName());
+
+							TUniqueID depID = TUniqueID::Empty();
+							if (onDeploy)
+							{
+								depID.Generate();
+								onDeployedCallbacks.Set(depID,onDeploy);
+								lastDeploymentCallbackRegistered = timer.Now();
+							}
+							onDeployStored(e->id,m->id,loc,depID);
+						});
+
 					}
 					else
 					{
-						auto deployableUnits = t.SetSubTable("storedUnits");
-
-						h->VisitStored([this,&deployableUnits](const Objects::PMobileEntity&m)
-						{
-							deployableUnits.AppendElement(MapEntity(m,true,false));
-						});
+						t.UnsetField("storedUnits");
+						t.UnsetField("GetStoredDeploymentOptions");
+						t.UnsetField("DeployStored");
 					}
-
-
-					Objects::WWorldEntity w = e;
-					t.SetFunction("GetStoredDeploymentOptions",[this,w](const Lua::Table&luaEntity)
-					{
-						auto d = LuaUnitToEntity(luaEntity,"GetDeploymentOptionsFor(): Unit");
-						if (!d->IsMobile())
-							throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Unit is not a mobile unit");
-						auto m = To<Objects::MobileEntity>::Cast(d);
-						auto e = w.lock();
-						if (!e)
-							throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Local entity has expired");
-						#ifdef CLIENT
-							if (!m->isOwnedByMe)
-								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+m->GetNameAndOwner());
-							if (!e->isOwnedByMe)
-								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Access denied to "+e->GetNameAndOwner());
-						#endif
-						auto h = e->CastToHangar();
-						if (m->storedIn.lock() != h)
-						{
-							throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Unit "+m->GetName()+" is not stored in "+e->GetName());
-						}
-						Buffer0<Objects::Choice> choices;
-						Objects::TChoiceVisualization dummy;
-						Objects::GetChoices(e,m,Objects::CursorMode::Idle,choices,dummy);
-						Lua::Table rs = program->CreateTable();
-						foreach (choices,ch)
-							rs.AppendElement(ToTable(ch->location));
-						return rs;
-					});
-
-					t.SetFunction("DeployStored",[this,w](const Lua::Table&luaEntity, const Lua::Table&luaLocation, const Lua::Function<void(const Lua::Table&)>&onDeploy)
-					{
-						if (!onDeployStored)
-							throw Lua::Exception(CLOCATION,"DeployStoredAt(): onDeployStored not set");
-
-						auto d = LuaUnitToEntity(luaEntity,"DeployStoredAt(): Unit parameter #1");
-						if (!d->IsMobile())
-							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Unit is not a mobile unit");
-						auto m = To<Objects::MobileEntity>::Cast(d);
-						auto e = w.lock();
-						if (!e)
-							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Local entity has expired");
-						#ifdef CLIENT
-							if (!m->isOwnedByMe)
-								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+m->GetNameAndOwner());
-							if (!e->isOwnedByMe)
-								throw Lua::Exception(CLOCATION,"DeployStoredAt(): Access denied to "+e->GetNameAndOwner());
-						#endif
-						auto h = e->CastToHangar();
-						if (m->storedIn.lock() != h)
-						{
-							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Unit "+m->GetName()+" is not stored in "+e->GetName());
-						}
-
-						const auto loc = Detail::ToLGridCell(luaLocation,"DeployStoredAt(): Location parameter #2");
-						Buffer0<Objects::Choice> choices;
-						Objects::TChoiceVisualization dummy;
-						Objects::GetChoices(e,m,Objects::CursorMode::Idle,choices,dummy);
-						bool found = false;
-						foreach (choices,ch)
-							if (ch->location == loc)
-							{
-								found = true;
-								break;
-							}
-
-						if (!found)
-							throw Lua::Exception(CLOCATION,"DeployStoredAt(): Chosen location "+ToString(loc)+" is not a valid deployment choice of "+m->GetName()+", being deployed from "+e->GetName());
-
-						TUniqueID depID = TUniqueID::Empty();
-						if (onDeploy)
-						{
-							depID.Generate();
-							onDeployedCallbacks.Set(depID,onDeploy);
-							lastDeploymentCallbackRegistered = timer.Now();
-						}
-						onDeployStored(e->id,m->id,loc,depID);
-					});
-
-				}
-				else
-				{
-					t.UnsetField("storedUnits");
-					t.UnsetField("GetStoredDeploymentOptions");
-					t.UnsetField("DeployStored");
 				}
 
 				t.SetFunction("CanStore",[this,w](const Lua::Table&luaEntity)

@@ -261,7 +261,9 @@ Table-Type: Unit
 		int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
 		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified (not nil/omitted), it will be called on success once a response from the server has been received
 	[type.isHangar]
-		Unit[]	storedUnits;					--Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
+		int		maxStoredUnits;				-- Determines the maximum number of storable units in this and all connected hangar structures
+		Unit[]	storedUnits;				-- Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
+		
 		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. The function is nil if storedUnits is nil
 		--[[
 		Deploys the specified stored unit to the specified location.
