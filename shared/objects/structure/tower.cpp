@@ -229,7 +229,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			Tower::DirectTo( CursorMode mode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/ )
 		{
 		
 			if (mode != Objects::CursorMode::AttackMode || !leftClick)
