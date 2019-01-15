@@ -313,7 +313,7 @@ Table-Type: Turret
 		Hit		TraceTrajectory(Loc);				-- Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
 		Hit		TraceTrajectoryFrom(Loc src, Loc);	-- Traces a trajectory from a given location to the specified location and determines the outcome. Returns nil if no trajectory could be found
 	int		speedOf[Operation];					-- Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, SelfDetonate, Repair, AddTerrain, RemoveTerrain (e.g. speedOfConstruct)
-	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minim 1, maximum 256. Typical numbers are 1,2, or 4
+	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minimum 1, maximum 256. Typical numbers are 1,2, or 4
 }
 
 Table-Type: Hit
