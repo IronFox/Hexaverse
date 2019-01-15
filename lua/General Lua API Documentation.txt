@@ -212,8 +212,10 @@ Table-Type: Unit
 		void	ClearTasks();			-- Flushes all tasks
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
-		void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
 		void	SetAutomation(bool);	-- Updates automation
+		[type.turretType.canConstruct]
+			void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
+			int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified structure type if enough resources are available
 
 		--[[
 		GetReach():

@@ -1740,6 +1740,7 @@ namespace Lua
 
 
 				if (m->turret->CanDo(Objects::Component::Operation::Construct))
+				{
 					t.SetFunction("BuildStructure",[this,id](const Lua::Reference&type)
 					{
 						if (type == Lua::nil)
@@ -1757,6 +1758,23 @@ namespace Lua
 						else
 							throw Lua::Exception(CLOCATION,"BuildStructure(): onBeginStructureConstruction not set");
 					});
+					t.SetFunction("PredictRoundsToCompletion",[this,id,w](const Lua::Reference&type)
+					{
+						if (type == Lua::nil)
+							throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Given type is nil");
+						Objects::EntityType t = Detail::DecodeType(type,"PredictRoundsToCompletion(): Type parameter");
+						auto proto = Objects::Prototypes::Find(t);
+						if (!proto)
+							throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Unable to find prototype for "+ToString(t));
+						if (!proto->IsStructure())
+							throw Lua::Exception(CLOCATION,"PredictRoundsToCompletion(): Chosen type '"+ToString(t)+"' is no structure");
+						auto v = w.lock();
+						if (!v)
+							throw Lua::Exception("PredictRoundsToCompletion(): Vehicle has expired");
+						UINT32 cont = v->GetOperationContinuations(proto->GetConstructionCost(),Objects::Component::Operation::Construct);
+						return M::CeilDiv<int>(cont,1 << v->GetOperationAccelerationExponent(Objects::Component::Operation::Construct));
+					});
+				}
 			}
 			else
 			{
