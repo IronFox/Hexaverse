@@ -90,9 +90,9 @@ Table-Type: Faction
 Table-Type: ResBalance
 {
 	ResVec		storage;		-- Total resource storage. All values are >= 0
-	ResVec		balance;		-- Sum of supply and demand(negative) among all working structures
-	ResVec		demand;			-- Sum of all working structure demand. All values are >= 0
-	ResVec		supply;			-- Sum of all working structure supply. All values are >= 0
+	ResVec		balance;		-- Sum of supply, demand(negative), and storage among all participants
+	ResVec		demand;			-- Sum of all demand vectors. All values are >= 0
+	ResVec		supply;			-- Sum of all supply vectors. All values are >= 0
 }
 	
 Table-Type: ResVec
