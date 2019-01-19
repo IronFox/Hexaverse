@@ -212,6 +212,13 @@ namespace Lua
 			foci.AppendElement(ToTable(f->target));
 		taskOut.SetField("foci",foci);
 
+		if (task.ContainsMovement())
+		{
+			Lua::Table path = taskOut.SetSubTable("path");
+			foreach (task.path,p)
+				path.AppendElement(ToTable(p->cell));
+		}
+
 		return taskOut;
 	}
 

@@ -338,6 +338,7 @@ Table-Type: Task
 	string	name;			-- Task name
 	Job		job;			-- Non-nil if this is a construction job (e.g. by a terraformer), as opposed to motion or attack
 	Loc[]	foci;			-- List of location tables, representing each one stage in the task (movement waypoints, construction destinations, and so forth, most tasks only have one focus point)
+	Loc[]	path;			-- Last routed path. nil if this task does not involve movement
 }
 
 {fullName->Topic}	Game.Research.topics			-- Table of all researchable topics, keyed by fullName (string)
