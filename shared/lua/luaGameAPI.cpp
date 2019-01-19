@@ -212,6 +212,9 @@ namespace Lua
 			foci.AppendElement(ToTable(f->target));
 		taskOut.SetField("foci",foci);
 
+		taskOut.SetField("isAttack",task.IsMode(Objects::CursorMode::AttackMode));
+		taskOut.SetField("isMotion",task.type == Objects::MobileEntity::Task::MoveTo);
+
 		if (task.ContainsMovement())
 		{
 			Lua::Table path = taskOut.SetSubTable("path");
