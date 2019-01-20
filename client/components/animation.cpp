@@ -37,17 +37,16 @@ namespace Animation
 			//LogEvent(EventSignificance::Debug,nullptr,"Automation issued by "+String(loc.ToString()));
 			AI::vehicles.Clear();
 		}
-		AI::FlushTempMarkers();
 		Objects::vehicles.Foreach([](const Objects::PVehicle&v)
 		{
 			if (v->isOwnedByMe)
 			{
-				if (RuntimeConfig::aiMode)
-					AI::vehicles << v;
+				if (v->isAutomated && v->turret->detectsResources)
+					MobileState::UpdateAutomation(v);
 				else
-					if (v->isAutomated)
+					if (RuntimeConfig::aiMode)
 					{
-						MobileState::UpdateAutomation(v);
+						AI::vehicles << v;
 					}
 			}
 		});
