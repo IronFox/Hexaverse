@@ -1,5 +1,6 @@
 v0.9.8
-	+ AI: Added Unit.maxStoredUnits
+	+ AI: Added Unit.maxStoredUnits.
+	+ AI: Added Game.Grid.FindVehicleGround().
 	+ AI: Added Unit.PredictRoundsToCompletion() for structure building mobiles.
 	+ AI: Added Task.path where available.
 	+ AI: Added Task.isAttack and .isMotion.

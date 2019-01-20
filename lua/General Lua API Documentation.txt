@@ -375,11 +375,20 @@ int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
 bool		Game.Grid.IsClear(Loc);												-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:
-Identifies the height level where the specified unit (vehicle) can stand
+Identifies the first height level from the top down where the specified unit (vehicle) can stand
 without falling or taking damage.
 @return Location or nil if none exists
 ]]
 Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
+--[[
+FindNextVehicleGround:
+Identifies the height level from the given height where the specified unit (vehicle) can stand
+without falling or taking damage.
+Search down if the specified location is clear, up otherwise.
+@return Location or nil if none exists
+]]
+Loc			Game.Grid.FindVehicleGround(Unit unit, Loc from)
+
 [client only]
 	--[[
 	GetNaturalResourceAt:

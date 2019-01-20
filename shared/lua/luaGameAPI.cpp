@@ -1955,7 +1955,21 @@ namespace Lua
 				return Lua::nil;
 			return this->ToTable(Grid::LCellIdI(stack,h));
 		});
+		gridTable.SetFunction("FindVehicleGround",[this](const Lua::Table&unit, const Lua::Table&luaLoc)->Lua::Table
+		{
+			const auto loc = Detail::ToLGridCell(luaLoc,"FindVehicleGround(): Cell parameter #2");
+			auto e = LuaUnitToEntity(unit, "FindVehicleGround(): Unit parameter #1");
+			if (!e->IsVehicle())
+				throw Lua::Exception("FindVehicleGround(): Unit parameter #1 does not point to a vehicle");
+			auto v = To<Objects::Vehicle>::Cast(e);
 
+			int h = Objects::FindApplicableGround(Grid::LCellIdI(loc.stackID,loc.height),v->base->moveOnWater,false);
+			if (h == Grid::BadHeight)
+				return Lua::nil;
+			return this->ToTable(Grid::LCellIdI(loc.stackID,h));
+		});
+
+		
 
 
 		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
