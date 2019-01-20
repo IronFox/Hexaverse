@@ -182,7 +182,6 @@ namespace Objects
 
 	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::Operation op) const
 	{
-		//const auto&state = GetResearchState();
 		return base->acceleration[op];
 	}
 

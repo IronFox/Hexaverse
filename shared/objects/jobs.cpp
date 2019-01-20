@@ -70,7 +70,7 @@ namespace Objects
 
 		BYTE					BaseJob::GetConstructionActionCostPerContinuation(const MobileEntity&v) const
 		{
-			return MobileEntity::MaxConstructionActionLeft >> v.GetConstructionAcceleration(GetOperationAffinity());
+			return MobileEntity::MaxConstructionActionLeft >> v.GetOperationAccelerationExponent(GetOperationAffinity());
 		}
 
 

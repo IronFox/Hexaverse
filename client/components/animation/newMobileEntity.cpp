@@ -48,7 +48,7 @@ namespace Animation
 		ASSERT__(!v->isInsertedIntoGrid);
 		if (v->storedIn.expired())
 		{
-			Objects::PlaceMobileEntity(v,instant);
+			Objects::PlaceMobileEntity(v,instant,false);
 			ASSERT_EQUAL__(instant,v->isInsertedIntoGrid);
 			if (!instant)
 				insertIntoGridLater.Set(v->id);

@@ -19,7 +19,7 @@ namespace Objects
 	class Compound 
 	{
 		static int					GetEnableChangeBalance(const ResourceVector&local);
-		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const;
+		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, count_t&bestDepth, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const;
 		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const;
 
 		static void					TempSetEnabled(WorkingStructure*,bool);

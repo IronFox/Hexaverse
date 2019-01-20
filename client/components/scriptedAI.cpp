@@ -696,7 +696,8 @@ namespace ScriptedAI
 							String err = thread.checkStateIsLoopFree(ref);
 							if (err.IsNotEmpty())
 							{
-								LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),"Error exporting AI state: "+err.SubString(0,32)+". Rejecting export");
+								LogEvent(EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),"Error exporting AI state: "+err.SubString(0,48)+". Rejecting export");
+								LogEvent(EventClass(EventSignificance::Debug,EventFlavor::UserError),"Full error description: "+err);
 								thread.nonCompressedExportedState.Clear();
 							}
 							else
@@ -1021,7 +1022,7 @@ namespace ScriptedAI
 							"for k,v in pairs(state) do\n"
 								"if type(v) == 'table' then\n"
 									"if exclude[v] ~= nil then\n"
-										"return 'Table loop detected in exported state: '..history..'->'..tostring(k);\n"
+										"return 'table loop: '..history..'->'..tostring(k);\n"
 									"end;\n"
 									"exclude[v] = true;\n"
 										"local rs = " LOOP_CHECK_FUNCTION_NAME "_inner(v,exclude,history..'->'..tostring(k));\n"

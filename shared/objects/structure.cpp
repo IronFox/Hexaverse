@@ -615,7 +615,7 @@ namespace Objects
 		#endif
 
 		#ifndef NO_SATELLITES
-			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+			/*virtual override*/ bool			SkyPort::DirectTo( CursorMode mode, Ctr::ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/ )
 			{
 				if (waypoints.Count() != 1)
 					return false;

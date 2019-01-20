@@ -251,7 +251,7 @@ namespace Objects
 			void	Place( const PSatellite&s);
 		#endif
 		void		Place(const SubOrbital::PPlane&s);
-		void		PlaceMobileEntity(const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
+		void		PlaceMobileEntity(const PMobileEntity&m, bool insertIntoGrid=true, bool setHealthToFull=true);
 
 
 

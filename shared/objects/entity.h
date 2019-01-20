@@ -211,9 +211,6 @@ namespace Objects
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			//typedef Objects::Command::Base		Command;
-//			typedef Objects::FCommandVisitor	FCommandVisitor;
-
 			Engine::OpenAL::Source	ambientSound;
 		#endif
 

@@ -11,7 +11,7 @@ namespace VisualTerrain
 	namespace Instruction
 	{	
 		namespace DX11 = Engine::DX11;
-		using namespace DeltaWorks;
+		//using namespace DeltaWorks;
 
 		enum displayMode_t
 		{

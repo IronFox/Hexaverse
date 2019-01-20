@@ -100,6 +100,17 @@ namespace Engine
 			void	SetStride(UINT s, int streamIndex=0)	{ASSERT_LESS__(streamIndex, ARRAYSIZE(stride)); ASSERT_GREATER_OR_EQUAL__(s,stride[streamIndex]); stride[streamIndex] = s;}	//this is usually unnecessary
 			UINT	GetStride(int streamIndex=0) const {return stride[streamIndex];}
 			void	Clear()	{desc.clear(); memset(stride,0,sizeof(stride)); atStream = 0;}
+			UINT	GetCurrentStreamTarget() const {return atStream;}
+
+			bool	IsEmpty() const {return desc.IsEmpty();}
+			bool	IsNotEmpty() const {return desc.IsNotEmpty();}
+			/**
+			Adds the specified existing vertex description as a new (incremented) stream to the local description.
+			If the local description is empty, the new stream will be appointed index 0, otherwise the next higher index.
+			All element descriptions found in the remote description must point to stream 0 and will be remapped accordingly.
+			The input slot class will be set as specified.
+			*/
+			void	AddAsNewStream(const VertexDescription&other, D3D11_INPUT_CLASSIFICATION newClass);
 		};
 
 
@@ -316,7 +327,7 @@ namespace Engine
 				geometryStage.swap(other.geometryStage);
 				pixelStage.swap(other.pixelStage);
 			}
-			VertexLayout		BuildLayout(const VertexDescription&);
+			VertexLayout		BuildLayout(const VertexDescription&) const;
 
 			void				LoadFromFile(const PathString&filename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
 			void				LoadFromFile(const PathString&filename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
@@ -664,6 +675,9 @@ namespace Engine
 
 			const VertexLayout&		GetLayout()	const {return Super::layout;}
 
+			void					SetBase(const BaseInstructionBlock&base)	{operator=(base);}
+
+
 		private:
 			friend class DirectX11;
 
@@ -674,7 +688,6 @@ namespace Engine
 			IBO16					ibo;
 			/**/					InstructionBlock16()	{SetTriangles();}
 			explicit				InstructionBlock16(const BaseInstructionBlock&base) : BaseInstructionBlock(base)	{SetTriangles();}
-			void					SetBase(const BaseInstructionBlock&base)	{BaseInstructionBlock::operator=(base);}
 
 			void					Clear()
 			{
@@ -688,11 +701,93 @@ namespace Engine
 			IBO32					ibo;
 			/**/					InstructionBlock32()	{SetTriangles();}
 			explicit				InstructionBlock32(const BaseInstructionBlock&base) : BaseInstructionBlock(base)	{SetTriangles();}
-			void					SetBase(const BaseInstructionBlock&base)	{BaseInstructionBlock::operator=(base);}
 
 			void					Clear()
 			{
 				(*this) = InstructionBlock32();
+			}
+		};
+
+		/**
+		Instanced instruction block
+		*/
+		struct InstructionBlock32I
+		{
+			/**
+			Generated data
+			*/
+			struct GeneratedData
+			{
+				/**
+				Final layout as applied during rendering
+				*/
+				VertexLayout		combinedLayout;
+				/**
+				Vertex strides (in bytes) applied during prototype and instance binding
+				*/
+				UINT				protoStride, instanceStride;
+				void				Update(const Shader&shader, const VertexDescription&desc)
+				{
+					combinedLayout = shader.BuildLayout(desc);
+					protoStride = desc.GetStride(0);
+					instanceStride = desc.GetStride(1);
+				}
+			}						generatedData;
+
+			struct Instances
+			{
+				VBO					vbo;
+				VertexDescription	vDesc;
+			}						instances;
+
+			struct Prototype
+			{
+				VBO							vbo;
+				IBO32						ibo;
+				VertexDescription			vDesc;
+				D3D11_PRIMITIVE_TOPOLOGY	topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+				void						Clear()
+				{
+					*this = Prototype();
+				}
+			}								prototype;
+
+			/**
+			Shader used to render all instances. Must support instantiation
+			*/
+			Shader					shader;
+			/**
+			Quick-slot textures as defined in the shader bindings
+			*/
+			Array<DX11::Texture>	quickSlots;
+			/**
+			Optional out buffer
+			*/
+			StreamOutBuffer			streamOutTarget;
+
+			/**/					InstructionBlock32I()	{}
+
+			void					UpdateLayout()
+			{
+				VertexDescription	combinedBinding;
+				combinedBinding.AddAsNewStream(prototype.vDesc,D3D11_INPUT_PER_VERTEX_DATA);
+				ASSERT_EQUAL__(combinedBinding.GetCurrentStreamTarget(),0);
+				combinedBinding.AddAsNewStream(instances.vDesc,D3D11_INPUT_PER_INSTANCE_DATA);
+				ASSERT_EQUAL__(combinedBinding.GetCurrentStreamTarget(),1);
+				generatedData.Update(shader,combinedBinding);
+			}
+
+			void					SetPrototype(const InstructionBlock32&block)
+			{
+				prototype.topology = block.topology;
+				prototype.vbo = block.vbo;
+				prototype.ibo = block.ibo;
+			}
+
+			void					Clear()
+			{
+				(*this) = InstructionBlock32I();
 			}
 		};
 
@@ -1040,9 +1135,10 @@ namespace Engine
 		const char*					GetName()	{return "DirectX11";}
 		void						SignalWindowResize(const Resolution&);
 
-		void						SetShader(const DX11::Shader&, const Array<DX11::Texture>&);
-		void						BindVertices(const DX11::VBO&, UINT stride, const DX11::VertexLayout&);
-		void						BindVertices(const DX11::VBO&, UINT stride0, const DX11::VBO&, UINT stride1/*,const DX11::VertexLayout&*/);
+		void						SetShader(const DX11::Shader&, const ArrayRef<DX11::Texture>&);
+
+		void						BindVertices(const DX11::VBO&vbo, UINT stride);
+		void						BindVertices(const DX11::VBO&vbo0, UINT stride0, const DX11::VBO&vbo1, UINT stride1);
 		void						BindIndices(const DX11::IBO16&);
 		void						BindIndices(const DX11::IBO32&);
 		void						RenderVertices(UINT32 offset, UINT32 count, D3D11_PRIMITIVE_TOPOLOGY topology)	{devcon->IASetPrimitiveTopology(topology); devcon->Draw(count,offset);}
@@ -1050,6 +1146,7 @@ namespace Engine
 		void						RenderIndexedInstanced(UINT32 indexCount, UINT32 instanceCount, D3D11_PRIMITIVE_TOPOLOGY topology)	{devcon->IASetPrimitiveTopology(topology); devcon->DrawIndexedInstanced(indexCount,instanceCount,0,0,0);}
 
 		void						LinkShader(const DX11::ShaderInstructionBlock&, bool lazy, bool lock);
+		void						LinkShader(const DX11::Shader&, const ArrayRef<DX11::Texture>&, D3D11_PRIMITIVE_TOPOLOGY, const DX11::VertexLayout&, bool lazy, bool lock);
 		void						UnlockShader()	{shaderLockLevel--;ASSERT__(shaderLockLevel >= 0);}
 		void						Link(const DX11::BaseInstructionBlock&, bool lazy);
 		inline void					DrawVertices(UINT32 offset, UINT32 count)	{devcon->Draw(count,offset);}
@@ -1058,6 +1155,12 @@ namespace Engine
 		void						Render(const DX11::InstructionBlock16&, UINT32 offset, UINT32 count, bool lazy=false);
 		void						Render(const DX11::InstructionBlock32&, bool lazy=false);
 		void						Render(const DX11::InstructionBlock32&, UINT32 offset, UINT32 count, bool lazy=false);
+		/**
+		Renders all instances of the specified instanced instruction block
+		@return Number of rendered instances.
+		*/
+		UINT						Render(const DX11::InstructionBlock32I&, bool lazy=false);
+		void						Render(const DX11::InstructionBlock32I&, UINT32 instanceCount, bool lazy=false);
 		void						RenderVertices(const DX11::BaseInstructionBlock&, const DX11::Query&);
 		void						RenderVertices(const DX11::BaseInstructionBlock&, UINT32 offset, UINT32 count, const DX11::Query&);
 		void						RenderVertices(const DX11::BaseInstructionBlock&);

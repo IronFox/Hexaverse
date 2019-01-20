@@ -81,7 +81,6 @@ namespace Atmosphere
 		bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::atmosphereConfig, "AtmosphereConfig"));
 
 		base.LoadQualitiesFromFile("shaders/atmosphere.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-		base.SetTriangles();
 		base.UpdateLayout();	
 
 

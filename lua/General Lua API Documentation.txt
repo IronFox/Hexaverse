@@ -90,9 +90,9 @@ Table-Type: Faction
 Table-Type: ResBalance
 {
 	ResVec		storage;		-- Total resource storage. All values are >= 0
-	ResVec		balance;		-- Sum of supply and demand(negative) among all working structures
-	ResVec		demand;			-- Sum of all working structure demand. All values are >= 0
-	ResVec		supply;			-- Sum of all working structure supply. All values are >= 0
+	ResVec		balance;		-- Sum of supply, demand(negative), and storage among all participants
+	ResVec		demand;			-- Sum of all demand vectors. All values are >= 0
+	ResVec		supply;			-- Sum of all supply vectors. All values are >= 0
 }
 	
 Table-Type: ResVec
@@ -191,7 +191,8 @@ Table-Type: Unit
 	float		scanningRange;			-- Regular grid scanning range. May vary with research
 	float		uncontrolledExplosionRadius; -- Retrieves the explosion radius of the local unit if suffering uncontrolled destruction
 	
-	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded
+	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded. No effect if not owned by the local player, or outside command phase
+	
 	void		Destroy();				-- Attempts to destroy the local entity
 	void		Sleep(bool);			-- Updates the sleep state
 	
@@ -209,20 +210,22 @@ Table-Type: Unit
 		bool	CanStandAt(Loc);		-- Checks whether or not the specified location is clear and the ground beneath it is suitable for standing atop of
 		bool	IsAffectedByGravity(Loc)	-- Checks whether or not the local unit would be affected by gravity at the given location. If the parameter is nil, will use the current mobile location
 		void	DirectTo(Reachable);	-- Schedules a motion to the specified location along the path defined by the Reachable
-		void	ClearTasks();			-- Flushes all tasks. No effect if not owned by the local player, or outside command phase. Change will not affect local record until next invocation
+		void	ClearTasks();			-- Flushes all tasks
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
-		void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
 		void	SetAutomation(bool);	-- Updates automation
+		[type.turretType.canConstruct]
+			void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
+			int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified structure type if enough resources are available
 
 		--[[
 		GetReach():
-		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) and the current mobile location
+		@brief This function determines the full reach of the specified unit, excluding locations for which isBlocked returns true (if not nil) AND the current mobile location
 		@param isBlocked Optional function that excludes certain cells. Type: bool BlockTest(Loc): true if blocked. 
 			If nil, all possible locations are considered. Otherwise invoked only once per candidate (result is cached)
 		@param maxReach Maximum distance (in terms of mobile movementSpeed) to consider. Larger values increase time necessary to complete
-		@param forceReversible If true only consider paths that the specified unit can return on (as opposed to e.g. falling safely from a cliff, but not being able to climb back up)
-		@param allowAccessibleHangars If true also include possible destination hangars of the local unit, false to consider those areas blocked
+		@param forceReversible If true, only consider paths that the specified unit can return on (as opposed to e.g. falling safely from a cliff but not being able to climb back up)
+		@param allowAccessibleHangars If true, also include possible destination hangars of the local unit, false to consider those areas blocked
 		@param ignoreOwnedMobilesOnRoute If true, owned vehicles will be ignored, otherwise considered blocking
 		@param cannotStandOnUnknown Set true to disallow relocation onto unknown terrain
 		@return Array of reachable locations. The current unit location is omitted.
@@ -250,7 +253,7 @@ Table-Type: Unit
 		bool	isEnabled;				-- True if the local structure is active
 		ResVec	resourceStorage;		-- Resource vector containing all locally stored resources. All values are >= 0
 		
-		void 	Enable(bool);			-- Change enable state of the local structure. No effect if not owned by the local player, or outside command phase
+		void 	Enable(bool);			-- Change enable state of the local structure
 	[type.isMobileEntityProducer]
 		Prod[]	productionQueue;		-- Table of all production jobs currently enqueued to the local unit. nil if none
 		Loc[]	deploymentOptions;		-- List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production is completed
@@ -259,21 +262,23 @@ Table-Type: Unit
 		
 		void	BuildMobile(UnitType);	-- Schedules the construction of the specified type at the end of the local queue
 		int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
-		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified, it will be called on success once a response from the server has been received
+		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified (not nil/omitted), it will be called on success once a response from the server has been received
 	[type.isHangar]
-		Unit[]	storedUnits;					--Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
-		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. nil if deployableUnits is nil
+		int		maxStoredUnits;				-- Determines the maximum number of storable units in this and all connected hangar structures
+		Unit[]	storedUnits;				-- Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
+		
+		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. The function is nil if storedUnits is nil
 		--[[
 		Deploys the specified stored unit to the specified location.
 		If onDeploy is specified, it will be called on success once a
 		response from the server has been received.
-		nil if deployableUnits is nil
+		The function is nil if storedUnits is nil
 		]]
 		void	DeployStored(Unit, Loc, func onDeploy(Unit));
 		bool	CanStore(Unit);			-- Checks whether or not the local unit can store the specified unit
-		bool	SharesStorageWith(Unit);-- Checks whether the local unit shares its storage with the specified unit
+		bool	SharesStorageWith(Unit);-- Checks whether the local unit shares its storage with the specified other unit
 	[Client only]
-		bool	isOwnedByMe;			-- true if the local player owns this entity
+		bool	isOwnedByMe;			-- true if the local player owns this unit
 }
 
 Table-Type: Prod (Production)
@@ -293,7 +298,7 @@ Table-Type: Loc (Location)
 
 Table-Type: Turret
 {
-	int			weight;						-- Weight affecting mobile entity speed. May change by research
+	int			weight;						-- Weight affecting mobile unit speed. May change by research
 	TurretType	type;					-- Reference to the type of this turret. Never nil. May be compared using == and ~=
 	[type.canAttack]
 		int		damageLevel;			-- Damage inflicted by the local turret. May vary with research
@@ -312,7 +317,7 @@ Table-Type: Turret
 		Hit		TraceTrajectory(Loc);				-- Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
 		Hit		TraceTrajectoryFrom(Loc src, Loc);	-- Traces a trajectory from a given location to the specified location and determines the outcome. Returns nil if no trajectory could be found
 	int		speedOf[Operation];					-- Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, SelfDetonate, Repair, AddTerrain, RemoveTerrain, FireBeam (e.g. speedOfConstruct)
-	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minim 1, maximum 256. Typical numbers are 1,2, or 4
+	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minimum 1, maximum 256. Typical numbers are 1,2, or 4
 }
 
 Table-Type: Hit
@@ -335,6 +340,9 @@ Table-Type: Task
 	string	name;			-- Task name
 	Job		job;			-- Non-nil if this is a construction job (e.g. by a terraformer), as opposed to motion or attack
 	Loc[]	foci;			-- List of location tables, representing each one stage in the task (movement waypoints, construction destinations, and so forth, most tasks only have one focus point)
+	Loc[]	path;			-- Last routed path. nil if this task does not involve movement
+	bool	isAttack;		-- True if this task represents an attack
+	bool	isMotion;		-- True if this task represents a plain motion
 }
 
 {fullName->Topic}	Game.Research.topics			-- Table of all researchable topics, keyed by fullName (string)
@@ -369,11 +377,20 @@ int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
 bool		Game.Grid.IsClear(Loc);												-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:
-Identifies the height level where the specified unit (vehicle) can stand
+Identifies the first height level from the top down where the specified unit (vehicle) can stand
 without falling or taking damage.
 @return Location or nil if none exists
 ]]
 Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
+--[[
+FindNextVehicleGround:
+Identifies the height level from the given height where the specified unit (vehicle) can stand
+without falling or taking damage.
+Search down if the specified location is clear, up otherwise.
+@return Location or nil if none exists
+]]
+Loc			Game.Grid.FindVehicleGround(Unit unit, Loc from)
+
 [client only]
 	--[[
 	GetNaturalResourceAt:
@@ -463,8 +480,8 @@ Table-Type: Vector
 Table-Type: Reachable
 {
 	Loc		location;				-- Grid/world location
-	int		movementCostsFromRoot;	-- Costs to reach this location from the current unit location
-	Reachable	predecessor;		-- nil if this is root (the current unit location)
+	int		movementCostsFromRoot;	-- Costs to reach this location from the routing origin
+	Reachable	predecessor;		-- Previous path node. Nil if there is none, indicating that this is a first step from the routing origin (the origin itself is omitted)
 	Unit	hangar;					-- Non-nil if accessible hangars were included and there is a hangar here
 }
 		

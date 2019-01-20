@@ -904,7 +904,6 @@ namespace Game
 			{
 				auto&info = state.myMobileEntity.Set0();
 				Objects::PHangar h = v.storedIn.lock();
-				//Objects::PVehicleStore storedIn = To<Objects::VehicleStore>::DynamicCast(v.storedIn.lock());
 				if (h)
 					info.storedIn.Set0() = h->ToEntity().id;
 				info.tasks.SetSize(v.myTasks.Count());

@@ -7,24 +7,63 @@
 #include <global_string.h>
 #include "../../clientEvents.h"
 
+namespace DX11 = Engine::DX11;
 
 class ShadedInstruction
 {
 public:
+
 	CONSTRUCT_ENUMERATION4(Quality,
 				Filtered6x6,
 				Filtered3x3,
 				Unfiltered,
 				Off);
-	typedef Engine::DX11::BaseInstructionBlock	Base;
+
+	struct TQuality
+	{
+		DX11::Shader		shader;
+		DX11::VertexLayout	vertexLayout;
+
+		void				Clear()
+		{
+			shader.Clear();
+			vertexLayout.Clear();
+		}
+
+		void				ApplyTo(DX11::ShaderInstructionBlock&block)	const
+		{
+			block.shader = shader;
+			block.layout = vertexLayout;
+		}
+
+		void				ApplyTo(DX11::InstructionBlock32I&block) const
+		{
+			block.shader = shader;
+			block.generatedData.combinedLayout = vertexLayout;
+		}
+	};
+
+	//typedef Engine::DX11::BaseInstructionBlock	Base;
 	typedef DeltaWorks::PathString	PathString;
 	typedef DeltaWorks::String		String;
 
-	Base					quality[Quality::N];
+	TQuality				quality[Quality::N];
 	static Quality			chosenQuality;
-	Engine::DX11::VertexDescription	binding;
+	Engine::DX11::VertexDescription	binding, instanceBinding;
+	UINT					stride,instanceStride;
 
-	const Base&				Current() const {return quality[chosenQuality];}
+	const TQuality&			Current() const {return quality[chosenQuality];}
+	void					ApplyCurrentTo(DX11::ShaderInstructionBlock&block)	const
+	{
+		block.stride = stride;
+		Current().ApplyTo(block);
+	}
+	void					ApplyCurrentTo(DX11::InstructionBlock32I&block)	const
+	{
+		block.generatedData.protoStride = stride;
+		block.generatedData.instanceStride = instanceStride;
+		Current().ApplyTo(block);
+	}
 	void					LoadQualitiesFromFile(const PathString&filename, const String&vsMain, const String&psMain, const Engine::DX11::Shader::Binding*b=NULL, count_t numBindings=0);
 	void					LoadQualitiesFromFile(const PathString&filename, const String&vsMain, const String&gsMain, const String&psMain, const Engine::DX11::Shader::Binding*b=NULL, count_t numBindings=0);
 	void					Clear()
@@ -35,10 +74,6 @@ public:
 	bool					IsEmpty() const {return quality[0].shader.IsEmpty();}
 	bool					IsSet() const {return quality[0].shader.IsSet();}
 	void					UpdateLayout();
-	void					SetTopology(D3D_PRIMITIVE_TOPOLOGY);
-	void					SetPoints()	{SetTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);}
-	void					SetLines()	{SetTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);}
-	void					SetTriangles()	{SetTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);}
 };
 
 class ShadedVertexInstructionBlock : public Engine::DX11::BaseInstructionBlock
@@ -72,13 +107,13 @@ public:
 
 	void					SignalShadowQualityChange()
 	{
-		((Engine::DX11::ShaderInstructionBlock&)*this) = shader.Current();
+		shader.ApplyCurrentTo(*this);
 	}
 
 	void					operator=(const ShadedInstruction&inst)
 	{
-		((Engine::DX11::BaseInstructionBlock&)*this) = inst.Current();
 		shader = inst;
+		SignalShadowQualityChange();
 	}
 	void					Clear()
 	{
@@ -120,13 +155,13 @@ public:
 
 	void					SignalShadowQualityChange()
 	{
-		((Engine::DX11::ShaderInstructionBlock&)*this) = shader.Current();
+		shader.ApplyCurrentTo(*this);
 	}
 
 	void					operator=(const ShadedInstruction&inst)
 	{
-		((Engine::DX11::BaseInstructionBlock&)*this) = inst.Current();
 		shader = inst;
+		SignalShadowQualityChange();
 	}
 	void					Clear()
 	{
@@ -169,13 +204,13 @@ public:
 
 	void					SignalShadowQualityChange()
 	{
-		((Engine::DX11::ShaderInstructionBlock&)*this) = shader.Current();
+		shader.ApplyCurrentTo(*this);
 	}
 
 	void					operator=(const ShadedInstruction&inst)
 	{
-		((Engine::DX11::BaseInstructionBlock&)*this) = inst.Current();
 		shader = inst;
+		SignalShadowQualityChange();
 	}
 	void					Clear()
 	{
@@ -185,7 +220,71 @@ public:
 };
 
 
-//
+class ShadedInstructionBlock32I
+{
+	typedef Engine::DX11::InstructionBlock32I	Super;
+	index_t					callback=InvalidIndex;
+public:
+	typedef ShadedInstructionBlock32I	Self;
+	ShadedInstruction		shader;
+	/**
+	Final, render-capable, instanced instruction.
+	Bindings are updated during SignalShadowQualityChange().
+	*/
+	DX11::InstructionBlock32I	assembled;
+
+
+	/**/					ShadedInstructionBlock32I()
+	{
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	/**/					ShadedInstructionBlock32I(const Self&other)
+	{
+		shader = other.shader;
+		assembled = other.assembled;
+		callback = GlobalEvents::shadowQualityChanged.Register([this](){SignalShadowQualityChange();});
+	}
+	virtual					~ShadedInstructionBlock32I()
+	{
+		if (!application_shutting_down)
+			GlobalEvents::shadowQualityChanged.Unregister(callback);
+		callback = InvalidIndex;
+	}
+
+
+	void					SignalShadowQualityChange()
+	{
+		shader.ApplyCurrentTo(assembled);
+		assembled.instances.vDesc = shader.instanceBinding;
+		assembled.prototype.vDesc = shader.binding;
+	}
+
+	void					AssertAssembled(bool requireInstances)
+	{
+		if (requireInstances)
+			ASSERT__(assembled.instances.vbo.IsSet());
+		ASSERT__(assembled.instances.vDesc.IsNotEmpty());
+		ASSERT__(assembled.instances.vDesc.GetStride() > 0);
+		ASSERT__(assembled.prototype.vbo.IsSet());
+		ASSERT__(assembled.prototype.ibo.IsSet());
+		ASSERT_EQUAL__(assembled.prototype.topology,D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		ASSERT__(assembled.prototype.vDesc.IsNotEmpty());
+		ASSERT__(assembled.prototype.vDesc.GetStride() > 0);
+		ASSERT__(assembled.shader.IsSet());
+	}
+
+	void					operator=(const ShadedInstruction&inst)
+	{
+		shader = inst;
+		SignalShadowQualityChange();
+	}
+	void					Clear()
+	{
+		assembled.Clear();
+		shader.Clear();
+	}
+};
+
 
 
 

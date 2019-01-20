@@ -36,14 +36,14 @@ namespace Grid
 		#endif
 		if (type != Content::Clear)
 			for (UINT i = 0; i <= uh; i++)
-				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? Content::Water : Content::Unknown;
+				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? PlaceholderType::LiquidMountains : PlaceholderType::Mountains;
 		else
 			for (UINT i = 0; i <= uh; i++)
-				stack.volumeCell[i].content = Content::Clear;
+				stack.volumeCell[i].content = PlaceholderType::Clear;
 
 
 		for (UINT l = uh+1; l < CellStack::Range; l++)
-			stack.volumeCell[l].content = Content::Clear;
+			stack.volumeCell[l].content = PlaceholderType::Clear;
 
 		//if (Cell::IsLiquid(config.extendedCoreType ) || config.extendedCoreType == Content::Clear)
 		//	for (UINT i = 0; i < coreLayer; i++)
@@ -51,10 +51,10 @@ namespace Grid
 		//else
 		if (extendedCoreType != Content::Clear)
 			for (UINT i = 0; i < coreLayer; i++)
-				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? Content::Lava : Content::Granite;
+				stack.volumeCell[i].content = CellStack::Cell::IsLiquid(type) ? PlaceholderType::LiquidExtendedCore : PlaceholderType::ExtendedCore;
 		else
 			for (UINT i = 0; i < coreLayer; i++)
-				stack.volumeCell[i].content = Content::Clear;
+				stack.volumeCell[i].content = PlaceholderType::Clear;
 	}
 
 	void			ExtendedPlanetConfig::FillTypes(CellStack&stack) const
@@ -64,8 +64,9 @@ namespace Grid
 		for (UINT layer = CellStack::Range-1; layer < CellStack::Range; layer--)
 		{
 			BYTE&content = stack.volumeCell[layer].content;
-			if (content == Content::Clear)
+			if (content == PlaceholderType::Clear)
 			{
+				content = Content::Clear;
 				continue;
 			}
 			if (!top)
@@ -73,7 +74,7 @@ namespace Grid
 				bool isSolid = true;
 				//isSolid = Cell::IsSolid(content);
 
-				if (content == Content::Unknown)
+				if (content == PlaceholderType::Mountains)
 				{
 					top = layer;
 					h = CellStack::ToHeight(top);
@@ -91,22 +92,23 @@ namespace Grid
 					continue;
 				}
 			}
-			if (content == Content::Unknown || content == Content::Water)	//mountain layer
+			if (content == PlaceholderType::Mountains || content == PlaceholderType::LiquidMountains)	//mountain layer
 			{
-				if (type == Content::Unknown)
+				if (type == PlaceholderType::Mountains)
 				{
-					//bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
 					UINT rockHeight = h > 3 ? top : top - (3 - h);
-					//if (!hasEarth)
-					//	rockHeight = Range;
-					
 					content = layer <= rockHeight ? Content::Rock : Content::Earth;
 				}
 				else
 					content = type;
+				continue;
 			}
-			else if (content == Content::Granite || content == Content::Lava)
+			if (content == PlaceholderType::ExtendedCore || content == PlaceholderType::LiquidExtendedCore)
+			{
 				content = extendedCoreType;
+				continue;
+			}
+			FATAL__("Unexpected placeholder type encountered: #"+String(content));
 		}
 
 
@@ -191,6 +193,21 @@ namespace Grid
 	}
 
 
+	namespace Placeholder
+	{
+		bool	IsClearOrLiquid(BYTE cellContent)
+		{
+			return cellContent == PlaceholderType::Clear 
+				|| cellContent == PlaceholderType::LiquidMountains 
+				|| cellContent == PlaceholderType::LiquidExtendedCore;
+		}
+
+		bool	IsClearOrLiquid(const Grid::CellStack::Cell&cell)
+		{
+			return IsClearOrLiquid(cell.content);
+		}
+	}
+
 
 	void ExtendedPlanetConfig::BuildWorld(World::Data&world) const
 	{
@@ -212,14 +229,14 @@ namespace Grid
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			for (UINT l = 0; l < CellStack::Range; l++)
 			{
-				if (stack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
+				if (Placeholder::IsClearOrLiquid(stack.volumeCell[l]))
 				{
 					int cnt = 0;
 					BYTE staticDeltaContainer;
 					for (int ni = 0; ni < n.numNeighbors; ni++)
 					{
 						const auto&other = world.GetCell(Grid::HCellIdU(n.neighborID[ni],l));
-						if (!other.IsClearOrLiquidIgnoreStructure())
+						if (!Placeholder::IsClearOrLiquid(other))
 						{
 							cnt ++;
 							staticDeltaContainer = other.content;
@@ -238,7 +255,7 @@ namespace Grid
 							const auto&other = world.GetCell(otherAt);
 							//auto&otherStack = world.cellStack[n.neighborID[ni]];
 							//auto&other = otherStack.volumeCell[l];
-							if (!other.IsClearOrLiquidIgnoreStructure())
+							if (!Placeholder::IsClearOrLiquid(other))
 							{
 								staticDeltaContainer = stack.volumeCell[l].content;
 
@@ -268,14 +285,14 @@ namespace Grid
 				auto&nStack = nStackAccess.GetStack();
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
-					if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
+					if (!Placeholder::IsClearOrLiquid(nStack.volumeCell[l].content))
 						continue;
 					count_t cnt = 0;
 					BYTE staticDeltaContainer = 0;
 					for (int nj = 0; nj < n2.numNeighbors; nj++)
 					{
 						const auto&n2c = world.GetCell(Grid::HCellIdU(n2.neighborID[nj],l));
-						if (!n2c.IsClearOrLiquidIgnoreStructure())
+						if (!Placeholder::IsClearOrLiquid(n2c.content))
 						{
 							cnt ++;
 							staticDeltaContainer = n2c.content;
