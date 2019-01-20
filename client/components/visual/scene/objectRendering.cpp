@@ -41,7 +41,8 @@ namespace Objects
 								showHostileRanges = false,
 								showFriendlyRanges = false,
 								showSensorRanges = true,
-								objectView = true;
+								objectView = true,
+								uncontrolledExplosionRanges = false;
 
 
 	DX11::ObjectBuffer<float4>	keyColor, overallTint,
@@ -336,6 +337,15 @@ namespace Objects
 				,Objects::IncludeGhosts::Living
 			);
 		}
+	}
+
+	bool	Renderer::UncontrolledExplosionRanges()
+	{
+		return uncontrolledExplosionRanges;
+	}
+	void	Renderer::SetUncontrolledExplosionRanges(bool b)
+	{
+		uncontrolledExplosionRanges = b;
 	}
 
 	bool	Renderer::RenderingFriendlyRanges()
@@ -1844,6 +1854,18 @@ namespace Objects
 			}
 		
 		});
+
+		if (uncontrolledExplosionRanges)
+		{
+			overallTint.Update(float4(red2,1));
+			ForeachWorldEntity([orbital](const Objects::PWorldEntity&e)
+			{
+				float expRadius = e->GetUncontrolledExplosionRadius();
+				if (expRadius > 0)
+					RenderRangeSphere(e->system.w.xyz,expRadius,float4(0.6f,0,0,1),false);
+			});
+			overallTint.Update(noTint);
+		}
 		display.SetObjectMatrix(M::Matrix<>::eye4);
 
 

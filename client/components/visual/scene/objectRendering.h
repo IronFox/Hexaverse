@@ -131,6 +131,9 @@ namespace Objects
 		bool	RenderingHostileRanges();
 		void	SetRenderFriendlyRanges(bool);
 		void	SetRenderHostileRanges(bool);
+		bool	UncontrolledExplosionRanges();
+		void	SetUncontrolledExplosionRanges(bool b);
+
 
 
 		void	RenderBeam(const M::TVec3<>&base, float height, float width, const float4&bottomColor, const M::TVec4<>&topColor);
