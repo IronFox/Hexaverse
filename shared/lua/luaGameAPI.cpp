@@ -2015,6 +2015,25 @@ namespace Lua
 		return AddType(type);
 	}
 
+	void	API::SetResearchProperties(Lua::Table&t, const Objects::Component::Base*component)
+	{
+		t.SetField("canBeUnlocked",component->isUnlocked.IsFunctionOrConstNonZero());
+		t.SetFunction("IsUnlockedForFaction",[component](const Lua::Table&luaFaction)
+		{
+			TUniqueID id;
+			String sid;
+			if (!luaFaction.GetField("id",sid))
+				throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
+			if (!id.Decode(sid))
+				throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
+
+			Objects::PFaction f = Objects::Faction::FindByID(id);
+			if (!f)
+				throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter does not point to an existing faction");
+			return component->isUnlocked.GetValue(f->researchState.attributeTable);
+		});
+	}
+
 	Lua::Table	API::AddType(Objects::EntityType type)
 	{
 		auto e = Objects::Prototypes::Find(type);
@@ -2111,6 +2130,8 @@ namespace Lua
 			t.SetField("maxClimbUp", b->maxClimbUp);
 			t.SetField("minClimbDown", b->minClimbDown);
 			t.SetField("movementSpeed",b->movementSpeed.GetValue(z));
+
+			SetResearchProperties(t,b);
 		}
 		else
 		{
@@ -2140,6 +2161,10 @@ namespace Lua
 				const String os = String(Objects::Component::OperationToString(o));
 				t.SetField("can"+os,turret->CanDo(o));
 			}
+
+			SetResearchProperties(t,turret);
+
+
 		}
 
 
