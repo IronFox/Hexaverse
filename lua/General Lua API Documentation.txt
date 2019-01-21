@@ -110,7 +110,7 @@ Table-Type: Type
 	string		typeClass;				-- 'Unit', 'Compound', 'Turret', or 'VehicleBase'
 	string		name;					-- String representation of the local type. May be a compound 'X:Y'
 	bool		canBeUnlocked;			-- Indicates whether this type can be unlocked at all
-	bool		IsUnlockedForFaction(faction)	-- Query unlocked-state for a specific function
+	bool		IsUnlockedForFaction(faction)	-- Query unlocked-state for a specific faction
 }
 
 
