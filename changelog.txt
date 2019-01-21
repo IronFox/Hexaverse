@@ -1,4 +1,4 @@
-v0.9.8	[Jan 20 2019]
+v0.9.8	[Jan 21 2019]
 	+ AI: Added Unit.maxStoredUnits.
 	+ AI: Added Game.Grid.FindVehicleGround().
 	+ AI: Added Unit.PredictRoundsToCompletion() for structure building mobiles.
