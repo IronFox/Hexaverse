@@ -228,6 +228,7 @@ namespace Lua
 
 		Lua::Table	AddOrGetType(Objects::EntityType type);
 		Lua::Table	AddType(Objects::EntityType t);
+		void		SetResearchProperties(Lua::Table&t, const Objects::Component::Base*component);
 
 
 		void	Setup();

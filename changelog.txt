@@ -1,10 +1,11 @@
-v0.9.8	[Jan 20 2019]
+v0.9.8	[Jan 21 2019]
 	+ AI: Added Unit.maxStoredUnits.
 	+ AI: Added Game.Grid.FindVehicleGround().
 	+ AI: Added Unit.PredictRoundsToCompletion() for structure building mobiles.
 	+ AI: Added Task.path where available.
 	+ AI: Added Task.isAttack and .isMotion.
 	+ Added option to visualize uncontrolled explosion ranges around susceptible units.
+	> AI: Added missing VBaseType/TurretType.canBeUnlocked and .IsUnlockedForFaction().
 	* AI: Server now rejects instructions issued on stored mobile units.
 	* AI: Improved display and logging of AI state export errors.
 	* Fixed client crash when receiving partial mobile state updates on stored units.
