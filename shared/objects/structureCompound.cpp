@@ -374,6 +374,7 @@ namespace Objects
 		}
 
 		int balance = -1000;
+		count_t depth = 0;
 		PWorkingStructure bestEnable[2];
 		TempSetEnabled(toEnable,true);
 			FullResourceVector total = GetVector();
@@ -382,7 +383,7 @@ namespace Objects
 				TempSetEnabled(toEnable,false);
 				return true;
 			}
-			if (FindBestEnableCandidates(bestEnable,balance, total.balance, ARRAYSIZE(bestEnable)-1,0,nullptr))
+			if (FindBestEnableCandidates(bestEnable,balance, depth, total.balance, ARRAYSIZE(bestEnable)-1,0,nullptr))
 			{
 				TempSetEnabled(toEnable,false);
 				return true;
@@ -483,7 +484,8 @@ namespace Objects
 	{
 		ResourceVector balance = total.balance;
 		int bestBalance = -1000;
-		return FindBestEnableCandidates(bestOut, bestBalance, balance,  bestOutCount-1, 0,nullptr);
+		count_t bestDepth = 0;
+		return FindBestEnableCandidates(bestOut, bestBalance, bestDepth, balance,  bestOutCount-1, 0,nullptr);
 	}
 
 	/*static*/ int Compound::GetEnableChangeBalance(const ResourceVector&local)
@@ -491,7 +493,7 @@ namespace Objects
 		return local.SumNegative() + local.SumPositive()/10;
 	}
 
-	bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const
+	bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, count_t&bestDepth, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const
 	{
 		bool rs = false;
 		ResourceVector dummy;
@@ -513,16 +515,19 @@ namespace Objects
 					continue;
 			#endif
 
-			ResourceVector local;
-			s->GetResourceVector(local,dummy,dummy);
+			ResourceVector local,storage;
+			s->GetResourceVector(local,storage,dummy);
+			local -= storage;
+			
 			balance += local;
 			int summed = GetEnableChangeBalance(local)+parentSum;
 			if (balance.IsStable())
 			{
-				if (summed > bestBalance)
+				if (summed > bestBalance || (summed == bestBalance && bestDepth < recursionDepth))
 				{
 					rs = true;
 					bestBalance = summed;
+					bestDepth = recursionDepth;
 					*bestOut = s;
 					for (index_t r = 1; r <= recursionDepth; r++)
 						bestOut[r].reset();
@@ -530,7 +535,7 @@ namespace Objects
 			}
 			if (recursionDepth)
 			{
-				if (FindBestEnableCandidates(bestOut+1, bestBalance, balance,  recursionDepth-1, summed, _s))
+				if (FindBestEnableCandidates(bestOut+1, bestBalance, bestDepth, balance,  recursionDepth-1, summed, _s))
 				{
 					*bestOut = s;
 					rs = true;

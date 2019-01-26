@@ -1301,7 +1301,12 @@ namespace Objects
 					}
 					, Detail::GlobalPermaSwitch(VehicleAccessibilityMesh::visible)
 				));
-
+			viewCommands->Add( new CustomIconCommand("Show Uncontrolled Explosion Ranges","Self-Detonate", []()
+					{
+						Renderer::SetUncontrolledExplosionRanges(!Renderer::UncontrolledExplosionRanges());
+					}
+					, Detail::GlobalPermaSwitch(Renderer::UncontrolledExplosionRanges)
+				));
 		}
 		
 		void RebuildTerraformerButtons()

@@ -170,7 +170,7 @@ namespace Objects
 
 	float MobileEntity::ContinuationsToRounds(int continuationsToJobCompletion, Component::Operation op) const
 	{
-		int sub = (1<<GetConstructionAcceleration(op));
+		int sub = (1<<GetOperationAccelerationExponent(op));
 		return float(continuationsToJobCompletion) / sub;
 	}
 
@@ -192,7 +192,7 @@ namespace Objects
 
 	UINT32					MobileEntity::GetOperationCompletionRounds(int jobCosts, Component::Operation op) const
 	{
-		return M::CeilDiv<UINT32>(GetOperationContinuations(jobCosts,op),1 << GetConstructionAcceleration(op));
+		return M::CeilDiv<UINT32>(GetOperationContinuations(jobCosts,op),1 << GetOperationAccelerationExponent(op));
 	}
 
 

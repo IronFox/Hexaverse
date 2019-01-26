@@ -90,9 +90,9 @@ Table-Type: Faction
 Table-Type: ResBalance
 {
 	ResVec		storage;		-- Total resource storage. All values are >= 0
-	ResVec		balance;		-- Sum of supply and demand(negative) among all working structures
-	ResVec		demand;			-- Sum of all working structure demand. All values are >= 0
-	ResVec		supply;			-- Sum of all working structure supply. All values are >= 0
+	ResVec		balance;		-- Sum of supply, demand(negative), and storage among all participants
+	ResVec		demand;			-- Sum of all demand vectors. All values are >= 0
+	ResVec		supply;			-- Sum of all supply vectors. All values are >= 0
 }
 	
 Table-Type: ResVec
@@ -110,7 +110,7 @@ Table-Type: Type
 	string		typeClass;				-- 'Unit', 'Compound', 'Turret', or 'VehicleBase'
 	string		name;					-- String representation of the local type. May be a compound 'X:Y'
 	bool		canBeUnlocked;			-- Indicates whether this type can be unlocked at all
-	bool		IsUnlockedForFaction(faction)	-- Query unlocked-state for a specific function
+	bool		IsUnlockedForFaction(faction)	-- Query unlocked-state for a specific faction
 }
 
 
@@ -212,8 +212,10 @@ Table-Type: Unit
 		void	ClearTasks();			-- Flushes all tasks
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
-		void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
 		void	SetAutomation(bool);	-- Updates automation
+		[type.turretType.canConstruct]
+			void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
+			int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified structure type if enough resources are available
 
 		--[[
 		GetReach():
@@ -261,7 +263,9 @@ Table-Type: Unit
 		int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified type if the local factory remains enabled and has enough resources
 		void	DeployProductionAt(Loc, func onDeploy(Unit));	-- Deploys the completed production. If onDeploy is specified (not nil/omitted), it will be called on success once a response from the server has been received
 	[type.isHangar]
-		Unit[]	storedUnits;					--Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
+		int		maxStoredUnits;				-- Determines the maximum number of storable units in this and all connected hangar structures
+		Unit[]	storedUnits;				-- Table containing all deployable units. nil if empty. Shared among members of the same hangar park (vehicle stores connect)
+		
 		Loc[]	GetStoredDeploymentOptions(Unit);		--Determines the deployment options of the specified unit relative to the local unit. The function is nil if storedUnits is nil
 		--[[
 		Deploys the specified stored unit to the specified location.
@@ -311,7 +315,7 @@ Table-Type: Turret
 		Hit		TraceTrajectory(Loc);				-- Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
 		Hit		TraceTrajectoryFrom(Loc src, Loc);	-- Traces a trajectory from a given location to the specified location and determines the outcome. Returns nil if no trajectory could be found
 	int		speedOf[Operation];					-- Speed of the local turret at performing the specified operation, where [Operation] may be: Construct, SelfDetonate, Repair, AddTerrain, RemoveTerrain (e.g. speedOfConstruct)
-	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minim 1, maximum 256. Typical numbers are 1,2, or 4
+	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minimum 1, maximum 256. Typical numbers are 1,2, or 4
 }
 
 Table-Type: Hit
@@ -334,6 +338,9 @@ Table-Type: Task
 	string	name;			-- Task name
 	Job		job;			-- Non-nil if this is a construction job (e.g. by a terraformer), as opposed to motion or attack
 	Loc[]	foci;			-- List of location tables, representing each one stage in the task (movement waypoints, construction destinations, and so forth, most tasks only have one focus point)
+	Loc[]	path;			-- Last routed path. nil if this task does not involve movement
+	bool	isAttack;		-- True if this task represents an attack
+	bool	isMotion;		-- True if this task represents a plain motion
 }
 
 {fullName->Topic}	Game.Research.topics			-- Table of all researchable topics, keyed by fullName (string)
@@ -368,11 +375,20 @@ int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
 bool		Game.Grid.IsClear(Loc);												-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:
-Identifies the height level where the specified unit (vehicle) can stand
+Identifies the first height level from the top down where the specified unit (vehicle) can stand
 without falling or taking damage.
 @return Location or nil if none exists
 ]]
 Loc			Game.Grid.FindHighestVehicleGround(Unit unit, Cell cell)
+--[[
+FindNextVehicleGround:
+Identifies the height level from the given height where the specified unit (vehicle) can stand
+without falling or taking damage.
+Search down if the specified location is clear, up otherwise.
+@return Location or nil if none exists
+]]
+Loc			Game.Grid.FindVehicleGround(Unit unit, Loc from)
+
 [client only]
 	--[[
 	GetNaturalResourceAt:

@@ -1122,7 +1122,7 @@ namespace Receiver
 	//	return CanSee(p,*e);
 	//}
 
-	bool	CheckCommandMode(TCP::Peer&peer)
+	bool	CheckCommandMode( TCP::Peer&peer )
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 		{
@@ -1132,7 +1132,7 @@ namespace Receiver
 		return false;
 	}
 
-	Objects::PWorldEntity	CheckCommandModeGetAccessibleEntity(const TUniqueID&eid, TCP::Peer&peer)
+	Objects::PWorldEntity	CheckCommandModeGetAccessibleEntity( const TUniqueID&eid, TCP::Peer&peer )
 	{
 		if (!CheckCommandMode(peer))
 			return nullptr;
@@ -1163,14 +1163,17 @@ namespace Receiver
 			return nullptr;
 		}
 
+		if (!e->isInserted)
 		{
-			if (e->IsHibernating())
-			{
-				LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Entity is hibernating.");
-				return nullptr;
-			}
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Entity cannot comply at this point");
+			return nullptr;
 		}
 
+		if (e->IsHibernating())
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Entity is hibernating.");
+			return nullptr;
+		}
 
 		return e;
 	}

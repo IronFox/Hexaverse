@@ -248,7 +248,7 @@ namespace Objects
 		#ifndef NO_SATELLITES
 			void	Place( const PSatellite&s);
 		#endif
-		void		PlaceMobileEntity(const PMobileEntity&m, bool insertIntoGrid=true);
+		void		PlaceMobileEntity(const PMobileEntity&m, bool insertIntoGrid=true, bool setHealthToFull=true);
 
 
 

@@ -644,7 +644,7 @@ namespace Animation
 			//v->currentStorage
 		}
 		Objects::PHangar currentlyStoredIn = v->storedIn.lock();
-		if (storeInHangar != currentlyStoredIn)
+		if (info != nullptr && storeInHangar != currentlyStoredIn)
 		{
 			if (currentlyStoredIn)
 				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->ToEntity().GetName()+" -> "+storeIn->GetName()+")");
@@ -690,8 +690,6 @@ namespace Animation
 				HUD::HexGrid::RefreshContacts();
 			#endif
 		}
-		//else
-			//LogEvent(EventSignificance::Debug,v.get(),"StoredIn unchanged ("+currentlyStoredIn->GetName()+")");
 
 		v->attackActionLeft = vs.attackActionLeft;
 		v->movementActionLeft = vs.movementActionLeft;

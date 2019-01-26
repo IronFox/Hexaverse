@@ -235,7 +235,7 @@ namespace AI
 	
 	}
 
-	static void ProcessVehicle(const Objects::PVehicle&v)
+	static void ProcessVehicle( const Objects::PVehicle&v )
 	{
 		Objects::Component::Turret*t = v->turret;
 		if (t->detectsResources || t->CanDo(Objects::Component::Operation::Construct))

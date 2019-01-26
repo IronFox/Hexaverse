@@ -450,7 +450,6 @@ namespace Objects
 		float					GetAttackExplosionRadius(const OwnerParameter&) const override;
 		using					TurretBase::GetAttackExplosionRadius;
 		bool					CanRepair() const {return turret->CanRepair();}
-		virtual BYTE			GetConstructionAcceleration(Component::Operation op) const {return 0;}
 
 		int						GetCurrentMineralConsumption() const;
 

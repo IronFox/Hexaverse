@@ -213,6 +213,21 @@ namespace Grid
 	}
 
 
+	namespace Placeholder
+	{
+		bool	IsClearOrLiquid(BYTE cellContent)
+		{
+			return cellContent == PlaceholderType::Clear 
+				|| cellContent == PlaceholderType::LiquidMountains 
+				|| cellContent == PlaceholderType::LiquidExtendedCore;
+		}
+
+		bool	IsClearOrLiquid(const Grid::CellStack::Cell&cell)
+		{
+			return IsClearOrLiquid(cell.content);
+		}
+	}
+
 
 	void ExtendedPlanetConfig::BuildWorld(World::Data&world) const
 	{
@@ -237,14 +252,14 @@ namespace Grid
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			for (UINT l = 0; l < CellStack::Range; l++)
 			{
-				if (stack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
+				if (Placeholder::IsClearOrLiquid(stack.volumeCell[l]))
 				{
 					int cnt = 0;
 					BYTE staticDeltaContainer;
 					for (int ni = 0; ni < n.numNeighbors; ni++)
 					{
 						const auto&other = world.GetCell(Grid::HCellIdU(n.neighborID[ni],l));
-						if (!other.IsClearOrLiquidIgnoreStructure())
+						if (!Placeholder::IsClearOrLiquid(other))
 						{
 							cnt ++;
 							staticDeltaContainer = other.content;
@@ -263,7 +278,7 @@ namespace Grid
 							const auto&other = world.GetCell(otherAt);
 							//auto&otherStack = world.cellStack[n.neighborID[ni]];
 							//auto&other = otherStack.volumeCell[l];
-							if (!other.IsClearOrLiquidIgnoreStructure())
+							if (!Placeholder::IsClearOrLiquid(other))
 							{
 								staticDeltaContainer = stack.volumeCell[l].content;
 
@@ -293,14 +308,14 @@ namespace Grid
 				auto&nStack = nStackAccess.GetStack();
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
-					if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
+					if (!Placeholder::IsClearOrLiquid(nStack.volumeCell[l].content))
 						continue;
 					count_t cnt = 0;
 					BYTE staticDeltaContainer = 0;
 					for (int nj = 0; nj < n2.numNeighbors; nj++)
 					{
 						const auto&n2c = world.GetCell(Grid::HCellIdU(n2.neighborID[nj],l));
-						if (!n2c.IsClearOrLiquidIgnoreStructure())
+						if (!Placeholder::IsClearOrLiquid(n2c.content))
 						{
 							cnt ++;
 							staticDeltaContainer = n2c.content;
