@@ -1087,6 +1087,7 @@ namespace Journal
 
 	void	Helper::WriteToFile(World::Data&data, const PathString&filename)
 	{
+		FATAL__("To re-enable journal world data saving, include grid type mapping from FileIO");
 		Riff::Chunk	world;
 		FileIO::WriteToListChunk(data,world);
 		bool success = world.SaveToFile(filename.c_str());
@@ -1097,10 +1098,11 @@ namespace Journal
 
 	void	Helper::LoadFromFile(World::Data&data, const PathString&filename)
 	{
+		FATAL__("To re-enable journal world data loading, include grid type mapping from FileIO");
 		Riff::Chunk world;
 		if (!world.LoadFromFile(filename.c_str()))
 			throw Except::IO::DriveAccess::DataReadFault(CLOCATION, "Unable to read world from "+String(filename));
-		FileIO::ReadFromListChunk(world,data);
+		FileIO::ReadFromListChunk(world,data,nullptr);
 	}
 
 	void	Helper::WriteToFile(const Grid::Resource&resource, const PathString&filename)
