@@ -1217,7 +1217,8 @@ namespace FileIO
 			DeserializeFromCompactMemory(typeArray,chunk.pointer(),chunk.size());
 			if (typeTranslator)
 				foreach (typeArray, c)
-					c->value.newType = typeTranslator(c->value.newType-1) + 1;
+					if (c->value.IsSet())
+						c->value.newType = typeTranslator(c->value.newType-1) + 1;
 		}
 	}
 
