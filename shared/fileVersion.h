@@ -7,7 +7,7 @@ namespace ApplicationInterface
 	#ifndef CLIENT
 		extern UINT32			globalVersionOfCurrentFile;
 
-		static const UINT32	SupportedFileVersion = 1047;	//doubles as current file version to write to files
+		static const UINT32	SupportedFileVersion = 1048;	//doubles as current file version to write to files
 
 		struct FileVersions
 		{
@@ -21,6 +21,7 @@ namespace ApplicationInterface
 				EntitiesHaveFlags = 1045,
 				NewSerializationEngine = 1046,	//i suspect loading anything before this version could cause losses. so far it seems to work (most of the serialization is, in fact, identical, but not all)
 				SeparateRoadAndBridgeJobs = 1047,
+				IncludeGridContentMap = 1048,
 			};
 		};
 	#endif

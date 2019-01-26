@@ -56,6 +56,148 @@ namespace FileIO
 		SetConsoleTitleA(title.c_str());
 	}
 
+	/**
+	Map from grid content name to index and vice versa
+	*/
+	class GridContentMap
+	{
+	public:
+		typedef Package::NetString<128>  Name;
+
+		/**
+		File content as common prior to the introduction of this translation.
+		If a file does not contain any mapping, then this grid definition will be used.
+		Do not change. Ever.
+		*/
+		CONSTRUCT_ENUMERATION13(BaseContent,
+			Unknown,
+			Granite,
+			Earth,
+			Grass,
+			Rock,
+			Sand,
+			Snow,
+			Foundation,
+			Road,
+			Lava,
+			Technite,
+			Water,
+			Clear
+		)
+
+
+		void					Clear()
+		{
+			indexToName.Clear();
+			nameToIndex.Clear();
+		}
+
+		count_t					Count() const
+		{
+			return indexToName.Count();
+		}
+
+		void					LoadLocalConfiguration()
+		{
+			LoadEnum<Grid::Content>();
+		}
+
+		void					LoadBaseConfiguration()
+		{
+			LoadEnum<BaseContent>();
+		}
+
+		friend void Deserialize(IReadStream&stream, GridContentMap&map)
+		{
+			map.Clear();
+			const serial_size_t numEntries = stream.ReadSize();
+			map.indexToName.SetSize(numEntries);
+			for (serial_size_t i = 0; i < numEntries; i++)
+			{
+				Deserialize(stream,map.indexToName[i]);
+				map.nameToIndex.Set(map.indexToName[i],i);
+			}
+		}
+
+		friend void Serialize(IWriteStream&stream, const GridContentMap&map)
+		{
+			stream.WriteSize(map.indexToName.Count());
+			foreach (map.indexToName,name)
+				Serialize(stream,*name);
+		}
+
+
+		bool operator==(const GridContentMap&other)
+		{
+			if (Count() != other.Count())
+				return false;
+			for (index_t i = 0; i < Count(); i++)
+				if (indexToName[i] != other.indexToName[i])
+					return false;
+			return true;
+		}
+
+		bool	operator!=(const GridContentMap&other)
+		{
+			return !operator==(other);
+		}
+
+		const Name&	operator[](index_t at) const
+		{
+			return indexToName[at];
+		}
+
+		index_t		GetIndexOf(const Name&name) const
+		{
+			auto p = nameToIndex.QueryPointer(name);
+			if (p)
+				return *p;
+			return InvalidIndex;
+		}
+
+	private:
+
+		Array<Name>				indexToName;
+		HashTable<Name,index_t>	nameToIndex;
+
+		template<typename T>
+			void			LoadEnum()
+			{
+				Clear();
+				indexToName.SetSize(T::N);
+				for (index_t i = 0; i < T::N; i++)
+				{
+					indexToName[i] = T::Reinterpret(i).ToString();
+					nameToIndex.Set(indexToName[i],i);
+				}
+			}
+	};
+
+	class GridTranslator
+	{
+	public:
+		/**/			GridTranslator(const GridContentMap&sourceMap, const GridContentMap&targetMap)
+		{
+			destType.SetSize(sourceMap.Count());
+			for (index_t i = 0; i < sourceMap.Count(); i++)
+			{
+				index_t outIndex = targetMap.GetIndexOf(sourceMap[i]);
+				if (outIndex == InvalidIndex)
+					outIndex = Grid::Content::Earth;
+				destType[i] = (BYTE)outIndex;
+			}
+		}
+
+		BYTE	operator()(index_t inType)
+		{
+			return destType[inType];
+		}
+
+	private:
+		Array<BYTE>		destType;
+
+	};
+
 
 	struct FactionFlags
 	{
@@ -186,7 +328,6 @@ namespace FileIO
 								gamePhase("GAMP"),
 								worldConfig("WCFG"),
 								snowHeight("SNWH"),
-								worldContentTypeCount("WCTC"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
 								factionFlags("FFLG"),
@@ -197,6 +338,7 @@ namespace FileIO
 								winningAlliance("WINA"),
 								aiScriptName("AISN"),
 								aiScriptState("AISS"),
+								terrainTypeMap("TTMP"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -1056,7 +1198,7 @@ namespace FileIO
 	}
 
 
-	void ReadTypeArrayFromChunk(Protocol::TypeDeltaArray&typeArray, const Riff::Chunk&chunk)
+	void ReadTypeArrayFromChunk(Protocol::TypeDeltaArray&typeArray, const Riff::Chunk&chunk, const TerrainTypeTranslator&typeTranslator)
 	{
 		if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::NewSerializationEngine)
 		{
@@ -1073,10 +1215,13 @@ namespace FileIO
 		else
 		{
 			DeserializeFromCompactMemory(typeArray,chunk.pointer(),chunk.size());
+			if (typeTranslator)
+				foreach (typeArray, c)
+					c->value.newType = typeTranslator(c->value.newType-1) + 1;
 		}
 	}
 
-	void	ReadFromListChunk(const Riff::Chunk&list, World::Data&outData)
+	void	ReadFromListChunk(const Riff::Chunk&list, World::Data&outData, const TerrainTypeTranslator&t)
 	{
 		Protocol::TypeDeltaArray	typeArray;
 
@@ -1089,7 +1234,7 @@ namespace FileIO
 			{
 				if (child->IsID(RID::worldTypeChunk))
 				{
-					ReadTypeArrayFromChunk(typeArray,*child);
+					ReadTypeArrayFromChunk(typeArray,*child,t);
 					ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
 					seq.ApplyFamilyDelta(atFamily,typeArray,false,true);
 
@@ -1161,13 +1306,6 @@ namespace FileIO
 								ApplicationInterface::globalVersionOfCurrentFile = vid;
 					}
 
-				}
-				UINT32 contentTypeCount = 0;
-				GetOptionalPOD(&file,RID::worldContentTypeCount,contentTypeCount,(UINT32)12);
-				if (contentTypeCount != Grid::Content::NumberOfPossibilities)
-				{
-					LogEvent(EventClass::Preset::error,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
-					failed = true;
 				}
 				UINT32 exponent = 6;
 				GetOptionalPOD(&file, RID::terrainExponent,exponent,6U);
@@ -1244,6 +1382,8 @@ namespace FileIO
 			static const int NewFactionRound = ConfigureAllianceRound+1;
 			TUniqueID winnerID = TUniqueID::Empty();
 
+			TerrainTypeTranslator translator;
+
 			for (int round = 0; round < 3; round++)
 			{
 				Riff::Chunk*name,*list;
@@ -1285,6 +1425,26 @@ namespace FileIO
 													else
 														RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 											}
+										}
+
+										{
+											GridContentMap fileMap;
+
+											auto t = list->FindFirst(RID::terrainTypeMap);
+											if (t)
+											{
+												Deserialize(MemReadStream(t->pointer(),t->size()),fileMap);
+											}
+											else
+											{
+												fileMap.LoadBaseConfiguration();
+											}
+
+											GridContentMap localMap;
+											localMap.LoadLocalConfiguration();
+
+											if (localMap != fileMap)
+												translator = GridTranslator(fileMap,localMap);
 										}
 
 
@@ -1434,13 +1594,13 @@ namespace FileIO
 								case ChunkName::WorldGroup:
 									if (round == 0)
 									{
-										ReadFromListChunk(*list,World::actual);
+										ReadFromListChunk(*list,World::actual,translator);
 									}
 								break;
 								case ChunkName::InitialWorldGroup:
 									if (round == 0)
 									{
-										ReadFromListChunk(*list,World::initial);
+										ReadFromListChunk(*list,World::initial,translator);
 									}
 								break;
 								case ChunkName::ResourceSection:
@@ -1615,7 +1775,7 @@ namespace FileIO
 
 													if (child->IsID(RID::factionWorldTypeChunk))
 													{
-														ReadTypeArrayFromChunk(typeArray,*child);
+														ReadTypeArrayFromChunk(typeArray,*child,translator);
 														ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
 														seq.ApplyFamilyDelta(atFamily,typeArray,false,false);
 														atFamily++;
@@ -1814,7 +1974,6 @@ namespace FileIO
 		Riff::Container container;
 		UINT32 vid = ApplicationInterface::SupportedFileVersion;
 		container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
-		container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
 		container.AppendBlock(RID::terrainExponent)->SetPODData((UINT32)Grid::HighExponent);
 
 
@@ -1833,6 +1992,14 @@ namespace FileIO
 		{
 			String phase = savePhase.ToString();
 			general->AppendBlock(RID::gamePhase, phase.c_str(),phase.GetLength());
+		}
+
+		{
+			GridContentMap outMap;
+			outMap.LoadLocalConfiguration();
+			Array<BYTE> data;
+			SerializeToCompactMemory(outMap,data.GetPointer(),data.GetContentSize());
+			general->AppendBlock(RID::terrainTypeMap,data);
 		}
 
 		{
