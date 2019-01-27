@@ -561,8 +561,7 @@ namespace VisualTerrain
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
 				TResourceHull			resources;	//!< low-resolution resource visualization. M::Similar to @a overlay, but uses different shader
-				TPlantHull<TPlantInstance>	treeInstances;	//!< high-resolution plant instances
-				TPlantHull<TPlantInstance>	dendriteInstances;	//!< high-resolution plant instances
+				FixedArray<TPlantHull<TPlantInstance>,PlantType::N>	plants;
 				
 			#endif 
 			bool						outdated,resourceOutdated;
@@ -581,8 +580,8 @@ namespace VisualTerrain
 					resources.Destroy();
 					//leafBlobs.Destroy();
 					//treeTrunks.Destroy();
-					treeInstances.Destroy();
-					dendriteInstances.Destroy();
+					foreach (plants,p)
+						p->Destroy();
 				#endif
 			}
 		};
@@ -625,8 +624,8 @@ namespace VisualTerrain
 		resourceBase.Clear();
 		plantBase.Clear();
 		plantShadowBase.Clear();
-		tree.Clear();
-		dendrite.Clear();
+		foreach (plantPrototypes,proto)
+			proto->Clear();
 		#if 0
 		leafBlobBase.Clear();
 		leafBlobShadowBase.Clear();
@@ -681,8 +680,8 @@ namespace VisualTerrain
 		dat.terrain.Clear();
 		dat.overlay.Clear();
 		dat.water.Clear();
-		dat.treeInstances.Clear();
-		dat.dendriteInstances.Clear();
+		foreach (dat.plants,p)
+			p->Clear();
 		//dat.leafBlobs.Clear();
 		//dat.treeTrunks.Clear();
 
@@ -690,7 +689,7 @@ namespace VisualTerrain
 		const count_t members = Grid::high.grid.CountFamilyMembers(family);
 		CompileSolidTerrain(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
 		CompileWater(stacks, dat.water, offset, members, clipHeight);
-		CompilePlants(stacks, dat.treeInstances, offset, members, clipHeight);
+		CompilePlants(stacks, dat.plants, offset, members, clipHeight);
 
 		M::Box<> box = M::Box<>::Invalid();
 
@@ -720,31 +719,35 @@ namespace VisualTerrain
 			dat.water.instruction[2] = Instruction::waterSphereBase;
 		}
 
-		if (Instruction::tree.ibo.IsSet())
+		if (Instruction::plantPrototypes.First().ibo.IsSet())
 		{
-			if (dat.treeInstances.instruction.shader.IsEmpty())
+			foreach (dat.plants,p)
 			{
-				ASSERT__(Instruction::tree.ibo.IsSet());
-				ASSERT__(Instruction::tree.vbo.IsSet());
-				ASSERT__(Instruction::tree.vDesc.IsNotEmpty());
-				dat.treeInstances.instruction = Instruction::plantBase;
-				dat.treeInstances.instruction.assembled.prototype = Instruction::tree;
-				dat.treeInstances.instruction.SignalShadowQualityChange();
-				dat.treeInstances.shadowInstruction = Instruction::plantShadowBase;
-				dat.treeInstances.shadowInstruction.prototype = Instruction::tree;
-				ASSERT__(dat.treeInstances.shadowInstruction.prototype.ibo.IsSet());
-				ASSERT__(dat.treeInstances.shadowInstruction.generatedData.combinedLayout.IsSet());
-				ASSERT_EQUAL__(dat.treeInstances.shadowInstruction.generatedData.protoStride,Instruction::tree.vDesc.GetStride());
+				if (p->instruction.shader.IsEmpty())
+				{
+					const index_t plantType = p - dat.plants.begin();
+					const auto&proto = Instruction::plantPrototypes[plantType];
 
+					ASSERT__(proto.ibo.IsSet());
+					ASSERT__(proto.vbo.IsSet());
+					ASSERT__(proto.vDesc.IsNotEmpty());
+					p->instruction = Instruction::plantBase;
+					p->instruction.assembled.prototype = proto;
+					p->instruction.SignalShadowQualityChange();
+					p->shadowInstruction = Instruction::plantShadowBase;
+					p->shadowInstruction.prototype = proto;
+					ASSERT__(p->shadowInstruction.prototype.ibo.IsSet());
+					ASSERT__(p->shadowInstruction.generatedData.combinedLayout.IsSet());
+					ASSERT_EQUAL__(p->shadowInstruction.generatedData.protoStride,proto.vDesc.GetStride());
+				}
+
+				if (p->vertices.IsNotEmpty())
+				{
+					p->instruction.assembled.instances.vbo.CreateFromStructs(p->vertices);
+					p->shadowInstruction.instances.vbo = p->instruction.assembled.instances.vbo;
+				}
+				p->instruction.AssertAssembled(p->vertices.IsNotEmpty());
 			}
-			if (dat.treeInstances.vertices.IsNotEmpty())
-			{
-				//dat.treeInstances.instruction.assembled.instances.vbo.CreateFromStructs(dat.treeInstances.vertices.SubRef(0,1));
-			//	dat.treeInstances.instruction.assembled.instances.vbo.CreateFromStructs(dat.treeInstances.vertices.SubRef(dat.treeInstances.vertices.Count()-1,1));
-				dat.treeInstances.instruction.assembled.instances.vbo.CreateFromStructs(dat.treeInstances.vertices);
-				dat.treeInstances.shadowInstruction.instances.vbo = dat.treeInstances.instruction.assembled.instances.vbo;
-			}
-			dat.treeInstances.instruction.AssertAssembled(dat.treeInstances.vertices.IsNotEmpty());
 		}
 
 		dat.terrain.instruction[0].vbo.CreateFromStructs(dat.terrain.vertices);
@@ -1338,13 +1341,17 @@ namespace VisualTerrain
 	count_t	RenderPlants(const Engine::Frustum<>&frustum)
 	{
 		count_t rs = 0;
-		for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
+		for (index_t pi = 0; pi < PlantType::N; pi++)
 		{
-			TFamily::TData&dat = family[k].normal;
-			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
+			for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				dat.treeInstances.instruction.AssertAssembled(false);
-				rs += display.Render(dat.treeInstances.instruction.assembled,false);
+				TFamily::TData&dat = family[k].normal;
+				if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
+				{
+					auto p = dat.plants + pi;
+					p->instruction.AssertAssembled(false);
+					rs += display.Render(p->instruction.assembled,true);
+				}
 			}
 		}
 		return rs;
@@ -1359,8 +1366,9 @@ namespace VisualTerrain
 				display.Render(dat.terrain.shadowInstruction);
 			if (dat.overlay.shadowInstruction.shader.IsSet())
 				display.Render(dat.overlay.shadowInstruction);
-			if (dat.treeInstances.shadowInstruction.shader.IsSet())
-				display.Render(dat.treeInstances.shadowInstruction);
+			foreach (dat.plants,p)
+				if (p->shadowInstruction.shader.IsSet())
+					display.Render(p->shadowInstruction);
 		}
 	}
 }

@@ -12,7 +12,7 @@ namespace VisualTerrain
 	geometry presented.
 
 	Plant geometries are expected to be normalized in height [0,1], and width set proportionally,
-	semi-evenly distributed around the point of origin.
+	semi-evenly distributed atop the point of origin.
 
 	Plant geometry is expected to provide vertex configuration:
 	position:3, normal:3, color:3, wind sensitivity:1 = 10 floats per vertex
@@ -29,7 +29,7 @@ namespace VisualTerrain
 					light;	// >0
 
 
-		void		Set( const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, float tone, float light )
+		void		SetParameters( const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, float tone, float light )
 		{
 			this->position = position;
 			this->up = up;
@@ -40,41 +40,35 @@ namespace VisualTerrain
 		}
 	};
 
-	static_assert(sizeof(TPlantInstance)==48,"Bad struct alignment");
+	static_assert(sizeof(TPlantInstance)==48,"Bad struct alignment");	//this data is uploaded to the gpu so must be compact
 
-	struct TLeafBlob
+	CONSTRUCT_ENUMERATION2(PlantType,
+			Tree,
+			Crystal
+			);
+
+	struct TExtPlantInstance : public TPlantInstance
 	{
-		M::TVec3<>	center;
-		float radius;
-		float windSensitivity;
+		typedef TPlantInstance	Super;
+		PlantType		type;	//!< Plant type
 
-		void	Set(const M::TMatrix3<>&sys,const M::TVec3<>&dir, float z, float r, float wind)
+		void		Set( PlantType t, const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, float tone, float light )
 		{
-			Vec::mad(dir,sys.z,z,center);
-			radius = r;
-			windSensitivity = wind;
+			type = t;
+			Super::SetParameters(position,up,dir,scale,tone,light);
 		}
 	};
 
-	struct TTreeTrunk
-	{
-		M::TVec3<>	center;
-		float	height,
-				radius;
 
-		void	Set(const M::TMatrix3<>&sys,const M::TVec3<>&dir, float z, float r, float h)
-		{
-			Vec::mad(dir,sys.z,z,center);
-			radius = r;
-			height = h;
-		}
-	};
 
+
+
+	
 	
 	template <typename TPlant>
 		struct TPlantHull : public TPointSet<TPlant>
 		{
-			typedef TPointSet<TPlant>	Super;
+			typedef TPointSet<TPlant>			Super;
 			ShadedInstructionBlock32I			instruction;
 			Engine::DX11::InstructionBlock32I	shadowInstruction;
 
@@ -87,14 +81,14 @@ namespace VisualTerrain
 		};
 
 	//void		CompilePlants(const Array<Grid::CellStack>&stacks, TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks, index_t offset, count_t count, Grid::FClipHeight clipHeight);
-	void		CompilePlants(const Array<Grid::CellStack>&stacks, TPlantHull<TPlantInstance>&treeInstances, index_t offset, count_t count, Grid::FClipHeight clipHeight);
+	void		CompilePlants(const Array<Grid::CellStack>&stacks, FixedArray<TPlantHull<TPlantInstance>, PlantType::N>&outPlants, index_t offset, count_t count, Grid::FClipHeight clipHeight);
 
 
 	namespace Instruction
 	{
 		extern ShadedInstruction					plantBase;
 		extern Engine::DX11::InstructionBlock32I	plantShadowBase;
-		extern Engine::DX11::InstructionBlock32I::Prototype	tree,dendrite;
+		extern FixedArray<Engine::DX11::InstructionBlock32I::Prototype,PlantType::N>	plantPrototypes;
 	}
 	void	CreatePlants();
 

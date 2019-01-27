@@ -8,9 +8,7 @@ namespace VisualTerrain
 	{
 		ShadedInstruction					plantBase;
 		Engine::DX11::InstructionBlock32I	plantShadowBase;
-		Engine::DX11::InstructionBlock32I::Prototype	tree,dendrite;
-		//Engine::DX11::BaseInstructionBlock	leafBlobShadowBase,treeTrunkShadowBase;
-		//ShadedInstruction					leafBlobBase, treeTrunkBase;
+		FixedArray<Engine::DX11::InstructionBlock32I::Prototype,PlantType::N>	plantPrototypes;
 	}
 	typedef M::TVec3<>	V3;
 
@@ -54,7 +52,10 @@ namespace VisualTerrain
 
 			target.ibo.Create(indices);
 			target.vbo.CreateFromStructs(vertices);
+
+			target.vDesc = Instruction::plantBase.binding;
 		}
+
 	protected:
 		Buffer0<TVertex>	vertices;
 		Buffer0<UINT32>		indices;
@@ -231,27 +232,45 @@ namespace VisualTerrain
 		c.Triangle(4,1,5);
 
 		c.Finish(target);
+	}
 
+	
+	static void CreateCrystal(DX11::InstructionBlock32I::Prototype& target)
+	{
 
+		FacetedPlantConstructor c;
 
+		c.currentColor = float3(0.2,0.25,0.25);
+		const float tr = 0.3f;
 
+		const float h0 = 1.f;
+		const float h1 = 0.8f;
+		const float h2 = 0.6f;
 
+		c.Vertex(float3(tr,0,-0.05),0);
+		c.Vertex(float3(0,tr,-0.05),0);
+		c.Vertex(float3(-tr/2,-tr/2,-0.05),0);
+		c.currentColor = float3(0.3,0.3,0.6);
+		c.Vertex(float3(tr,0,h1),0);
+		c.Vertex(float3(0,tr,h2),0);
+		c.Vertex(float3(-tr/2,-tr/2,h0),0);
+		c.Triangle(3,4,5);
 
+		c.Quad(0,1,4,3);
+		c.Quad(1,2,5,4);
+		c.Quad(2,0,3,5);
 
-
+		c.Finish(target);
 	}
 
 	void	CreatePlants()
 	{
 		ASSERT__(Instruction::plantBase.binding.IsNotEmpty());
-		//LoadPrototype(Instruction::dendrite,"objects/dendrite.obj");
-		//LoadPrototype(Instruction::tree,"objects/tree.obj");
-
-		CreateTree(Instruction::tree);
-		Instruction::tree.vDesc = Instruction::plantBase.binding;
+		ASSERT_EQUAL__(Instruction::plantBase.binding.GetStride(),sizeof(PlantConstructor::TVertex));
 
 
-
+		CreateTree(Instruction::plantPrototypes[PlantType::Tree]);
+		CreateCrystal(Instruction::plantPrototypes[PlantType::Crystal]);
 	}
 
 
@@ -268,12 +287,12 @@ namespace VisualTerrain
 		FClipHeight	clipHeight;
 		bool	wasEmpty;
 		TLitColor	cornerColor[6];
-		//StaticList<TLeafBlob,BatchSize * CellStack::Range *3>	leafBlobs;
-		//StaticList<TTreeTrunk,BatchSize * CellStack::Range *3>	treeTrunks;
-		StaticList<TPlantInstance,BatchSize * CellStack::Range *3>	instances;
+
+		StaticList<TExtPlantInstance,BatchSize * CellStack::Range *3>	instances;
 		
 			
 		void	PutTree(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light);
+		void	PutCrystal(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light);
 		void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
 		{
 			instances.Reset();
@@ -285,8 +304,7 @@ namespace VisualTerrain
 			this->clipHeight = clipHeight;
 			wasEmpty = true;
 		}
-		void	Compile(const index_t offset, const index_t end,TPlantHull<TPlantInstance>&treeTrunks,Sys::SpinLock&lock);
-		//void	Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,Sys::SpinLock&lock);
+		void	Compile(const index_t offset, const index_t end,BasicBuffer<TExtPlantInstance>&plants,Sys::SpinLock&plantLock);
 	};
 
 
@@ -302,75 +320,21 @@ namespace VisualTerrain
 		M::TVec3<> dir = sys.x * x + sys.y * y;
 		float tone = colorNoise.GetUniform(position.x*2,position.y*2,position.z*2)*0.5 + colorNoise.GetUniform(position.x*0.5,position.y*0.5,position.z*0.5)*0.5;
 		float sizeR = sizeNoise.GetUniform(position.x*10,position.y*10,position.z*10);
-		instances.Append().Set(position,sys.z,dir,scale * (0.75f + 0.5f * sizeR),tone,light*(0.5f + 0.5f * sizeR));
+		instances.Append().Set( PlantType::Tree,position,sys.z,dir,scale * (0.75f + 0.5f * sizeR),tone,light*(0.5f + 0.5f * sizeR));
 	}
 
-
-	//void	PlantCompiler::Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,Sys::SpinLock&lock)
-	//{
-	//	for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
-	//	{
-	//		const ::Grid::CellStack&stack = stacks[i];
-	//		const auto&cell = netCells[i];
-	//		const bool empThis = !(cell.cornerFlags & empZonesUnlocked);
-	//		const M::TVec3<>&up = cell.cornerCenter;
-	//		M::TMatrix3<> sys;
-	//		Mat::makeAxisSystem(up,2,sys);
-	//			
-	//		float orientation = float((i*45959)%10000)/10000.f * M_PIF*2.f;
-
-	//		static const constexpr count_t NumDirs = 6;
-
-
-	//		M::TVec3<> plantDirection[NumDirs];//for now only three plants in equally spaced directions
-	//		for (index_t k = 0; k < NumDirs; k++)
-	//		{
-	//			float a = float(k)/float(NumDirs)*2.f*M_PIF+orientation;
-	//			float x = cos(a);
-	//			float y = sin(a);
-	//			plantDirection[k] = sys.x * x + sys.y * y;
-	//		}
-
-
-	//		const float r = cell.minCornerDistance;
-	//		const UINT32 to = M::Min(CellStack::Range, CellStack::ToLayer(clipHeight(i)));
-	//		
-	//		for (UINT ih = 0; ih < to; ih++)
-	//		{
-	//			if (ih+1 == CellStack::Range || stack.volumeCell[ih+1].content == Content::Clear)
-	//				switch (stack.volumeCell[ih].content)
-	//				{
-	//					case Content::Trees:
-	//					case Content::Forest:
-	//					{
-	//						const int hl = Grid::CellStack::ToHeight(ih);
-	//						float h = ToRadius(CellStack::ToHeight(ih+1));
-	//						const float r2 = r * h * 0.7f;
-	//						for (index_t k = 0; k < NumDirs; k++)
-	//							PutTree(sys,plantDirection[k]*r2,h,hl);
-	//						PutTree(sys,M::Vector3<>::zero,h,hl);
-	//					}
-	//					break;
-	//					case Content::Shrubs:
-	//						//later
-	//					break;
-	//				}
-	//		}
-	//	}
-
-	//	if (this->leafBlobs.IsNotEmpty() || this->treeTrunks.IsNotEmpty())
-	//	{
-	//		lock.lock();
-
-	//		leafBlobs.vertices.Append(this->leafBlobs.begin(),this->leafBlobs.Count());
-	//		treeTrunks.vertices.Append(this->treeTrunks.begin(),this->treeTrunks.Count());
-
-	//		lock.unlock();
-	//	}
-	//}
-
+	void	PlantCompiler::PutCrystal(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light)
+	{
+		float angle = angleNoise.GetUniform(position.x*10,position.y*10,position.z*10) * M_PI * 2.0;
+		float x = cos(angle);
+		float y = sin(angle);
+		M::TVec3<> dir = sys.x * x + sys.y * y;
+		float tone = colorNoise.GetUniform(position.x*2,position.y*2,position.z*2)*0.5 + colorNoise.GetUniform(position.x*0.5,position.y*0.5,position.z*0.5)*0.5;
+		float sizeR = sizeNoise.GetUniform(position.x*10,position.y*10,position.z*10);
+		instances.Append().Set( PlantType::Crystal,position,sys.z,dir,scale * (0.75f + 0.5f * sizeR),tone,light*(0.5f + 0.5f * sizeR));
+	}
 	
-	void	PlantCompiler::Compile( const index_t offset, const index_t end,TPlantHull<TPlantInstance>&instances,Sys::SpinLock&lock )
+	void	PlantCompiler::Compile( const index_t offset, const index_t end,BasicBuffer<TExtPlantInstance>&plants,Sys::SpinLock&lock )
 	{
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
@@ -461,6 +425,38 @@ namespace VisualTerrain
 							PutTree(base,sys,scale,light);
 						}
 						break;
+						case Content::Crystals:
+						{
+							const int height = CellStack::ToHeight(ih+1);
+							const float heightRadius = ToRadius(height);
+							const float r2 = cellRadius * heightRadius * 0.7f;
+							const float scale = Grid::GetLayerHeight(height);
+
+							const UINT32 seed = orientation * 18924 + ih;
+							index_t dir = seed % NumDirs;
+							float ext = M::Sqr(float((seed / NumDirs) %100) / 100.f);
+
+							const auto base = up*heightRadius;
+							for (index_t k = 0; k < NumDirs; k+=3)
+							{
+								PutCrystal(base+plantDirection[k]*r2,sys,scale,light);
+								if (seed % 2)
+									break;
+							}
+						}
+						break;
+						case Content::CrystalForest:
+						{
+							const int height = CellStack::ToHeight(ih+1);
+							const float heightRadius = ToRadius(height);
+							const float r2 = cellRadius * heightRadius * 0.7f;
+							const float scale = Grid::GetLayerHeight(height)*0.9f;
+							const auto base = up*heightRadius;
+							for (index_t k = 0; k < NumDirs; k++)
+								PutCrystal(base+plantDirection[k]*r2,sys,scale,light);
+							PutCrystal(base,sys,scale,light);
+						}
+						break;
 					}
 			}
 		}
@@ -469,24 +465,29 @@ namespace VisualTerrain
 		{
 			lock.lock();
 
-			instances.vertices.Append(this->instances.begin(),this->instances.Count());
+			plants.Append(this->instances.begin(),this->instances.Count());
 
 			lock.unlock();
 		}
 	}
 
 
-	void		CompilePlants( const Array<Grid::CellStack>&stacks, TPlantHull<TPlantInstance>&instances, index_t offset, count_t count, Grid::FClipHeight clipHeight )
+	void		CompilePlants( const Array<Grid::CellStack>&stacks, FixedArray<TPlantHull<TPlantInstance>, PlantType::N>&outPlants, index_t offset, count_t count, Grid::FClipHeight clipHeight )
 	{
 		const index_t end = offset + count;
 		Sys::SpinLock lock;
-		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock, &instances, &stacks, clipHeight](index_t i)	//looks good - at least in release
+		static Buffer<TExtPlantInstance> plants;
+		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock, &stacks, clipHeight](index_t i)	//looks good - at least in release
 		{
 			BYTE data[sizeof(PlantCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 			PlantCompiler&compiler = *(PlantCompiler*)data;
 			compiler.Setup(stacks.pointer(),Grid::high.grid.GetCells(),Grid::high.cells.pointer(),clipHeight);
-			compiler.Compile(i,end,instances,lock);
+			compiler.Compile(i,end,plants,lock);
 		});
+
+		foreach (plants,p)
+			outPlants[p->type].vertices.Append(*p);
+		plants.Clear();
 	}
 
 	//void		CompilePlants(const Array<Grid::CellStack>&stacks, TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks, index_t offset, count_t count, Grid::FClipHeight clipHeight)
