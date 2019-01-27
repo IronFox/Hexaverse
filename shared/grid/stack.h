@@ -887,18 +887,22 @@ namespace Grid
 	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
 	*/
 	bool	AffectedByEMP(const HCellIdI&, UINT16 empZonesUnlocked);
+	bool	AffectedByEMP(const HCellIdU&, UINT16 empZonesUnlocked);
 	/**
 	Checks whether or not a given location is affected by residual emp fields, given the specified zone flag set
 	*/
 	bool	AffectedByEMP(const LCellIdI&, UINT16 empZonesUnlocked);
+	bool	AffectedByEMP(const LCellIdU&, UINT16 empZonesUnlocked);
 	/**
 	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
 	*/
 	bool	AffectedByEMP(const HCellIdI&);
+	bool	AffectedByEMP(const HCellIdU&);
 	/**
 	Checks whether or not a given location is affected by residual emp fields, using the global zone flag set
 	*/
 	bool	AffectedByEMP(const LCellIdI&);
+	bool	AffectedByEMP(const LCellIdU&);
 
 
 	void	ToWorld(const HCellIdU&,M::TVec3<>&rs);
