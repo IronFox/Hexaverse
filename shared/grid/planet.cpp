@@ -91,20 +91,7 @@ namespace Grid
 								if (h >= 3)
 									content = Content::Rock;	//actual mountains
 								else
-								{
-									const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
-									float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
-									p /= 3;
-
-									if (p < 0.65f)
-										content = Content::Grass;
-									//elif (p < 0.75f)
-									//	content = Content::Shrubs;
-									elif (p < 0.75f)
-										content = Content::Trees;
-									else 
-										content = Content::Forest;
-								}
+									content = Content::Grass;
 							}
 							else
 								content = type;
@@ -140,6 +127,47 @@ namespace Grid
 				{
 					stack.volumeCell[i].content = liquidCoverage;
 				}
+		}
+
+		
+		{
+			auto&content = stack.volumeCell[top].content;
+			switch (content)
+			{
+				case Content::Grass:
+				{
+					const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
+					float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
+					p /= 3;
+					p = 1.f - p;
+
+					if (p > treeDensity + 0.1f)
+					{
+					}
+					elif (p > treeDensity)
+						content = Content::Trees;
+					else 
+						content = Content::Forest;
+				}
+				break;
+				case Content::Granite:
+				{
+					const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
+					float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
+					p /= 3;
+					p = 1.f - p;
+					
+					if (p > crystalDensity + 0.1f)
+					{
+					}
+					elif (p > crystalDensity)
+						content = Content::Crystals;
+					else 
+						content = Content::CrystalForest;
+				}
+				break;
+			}
+
 		}
 	}
 
