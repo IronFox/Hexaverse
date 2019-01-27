@@ -72,9 +72,10 @@ namespace VisualTerrain
 		/**/	TLitColor(float lightLevel, float emp=0.f):lightLevel(lightLevel),emp(emp)	{}
 		/**/	TLitColor(const Grid::TVisibility&v):visibility(v.value)	{}
 		void	CompileFinalColor(M::TVec4<>&)	const;
+		
+		static void ApplyEMP(float intensity,M::TVec3<>&rs);
 
 	private:
-		static void ApplyEMP(float intensity,M::TVec3<>&rs);
 		void	CapColor(M::TVec3<>&rs)	const;
 	};
 
@@ -180,6 +181,11 @@ namespace VisualTerrain
 				T*rs = current;
 				++current;
 				return *rs;
+			}
+
+			T&			Last()
+			{
+				return *(current-1);
 			}
 
 			void		operator<<(const T&el)
