@@ -362,10 +362,8 @@ namespace VisualTerrain
 			Instruction::plantBase.instanceBinding.Append("InstancePosition",0,DXGI_FORMAT_R32G32B32_FLOAT);
 			Instruction::plantBase.instanceBinding.Append("InstanceUp",0,DXGI_FORMAT_R32G32B32_FLOAT);
 			Instruction::plantBase.instanceBinding.Append("InstanceDir",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceColor",0,DXGI_FORMAT_R32G32B32_FLOAT);
 			Instruction::plantBase.instanceBinding.Append("InstanceScale",0,DXGI_FORMAT_R32_FLOAT);
-			Instruction::plantBase.instanceBinding.Append("InstanceTone",0,DXGI_FORMAT_R32_FLOAT);
-			Instruction::plantBase.instanceBinding.Append("InstanceLight",0,DXGI_FORMAT_R32_FLOAT);
-
 			ASSERT_EQUAL__(Instruction::plantBase.instanceBinding.GetStride(), sizeof(TPlantInstance));
 
 			Instruction::plantBase.UpdateLayout();

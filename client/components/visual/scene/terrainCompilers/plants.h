@@ -23,24 +23,22 @@ namespace VisualTerrain
 	{
 		M::TVec3<>	position,	//absolute
 					up,		//normalized
-					dir;	//horizontal x direction, normalized
-		float		scale, 
-					tone, 
-					light;	// >0
+					dir,	//horizontal x direction, normalized
+					color;
+		float		scale;
 
 
-		void		SetParameters( const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, float tone, float light )
+		void		SetParameters( const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, const M::TVec3<>&color )
 		{
 			this->position = position;
 			this->up = up;
 			this->dir = dir;
 			this->scale = scale;
-			this->tone = tone;
-			this->light = light;
+			this->color = color;
 		}
 	};
 
-	static_assert(sizeof(TPlantInstance)==48,"Bad struct alignment");	//this data is uploaded to the gpu so must be compact
+	static_assert(sizeof(TPlantInstance)==52,"Bad struct alignment");	//this data is uploaded to the gpu so must be compact
 
 	CONSTRUCT_ENUMERATION2(PlantType,
 			Tree,
@@ -52,10 +50,10 @@ namespace VisualTerrain
 		typedef TPlantInstance	Super;
 		PlantType		type;	//!< Plant type
 
-		void		Set( PlantType t, const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, float tone, float light )
+		void		Set( PlantType t, const M::TVec3<>&position, const M::TVec3<>&up,const M::TVec3<>&dir, float scale, const M::TVec3<>&color )
 		{
 			type = t;
-			Super::SetParameters(position,up,dir,scale,tone,light);
+			Super::SetParameters(position,up,dir,scale,color);
 		}
 	};
 
