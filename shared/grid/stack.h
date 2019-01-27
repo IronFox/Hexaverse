@@ -193,13 +193,15 @@ namespace Grid
 		class CompactCell
 		{
 		public:
-			CONSTRUCT_ENUMERATION15(Content,
+			CONSTRUCT_ENUMERATION17(Content,
 				Unknown,
 				Granite,
 				Earth,
 				Grass,
 				Trees,
 				Forest,
+				Crystals,
+				CrystalForest,
 				Rock,
 				Sand,
 				Snow,
@@ -264,7 +266,7 @@ namespace Grid
 				#endif
 			#endif
 
-			static const count_t TypeCount = 15;
+			static const count_t TypeCount = 17;
 
 			static float3	typeColor[TypeCount];
 			static float	typeStructureFactor[TypeCount];
