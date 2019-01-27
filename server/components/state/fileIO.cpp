@@ -1998,9 +1998,14 @@ namespace FileIO
 		{
 			GridContentMap outMap;
 			outMap.LoadLocalConfiguration();
+
+			SerialSizeScanner scanner;
+			Serialize(scanner,outMap);
 			Array<BYTE> data;
+			data.SetSize(scanner.GetTotalSize());
 			SerializeToCompactMemory(outMap,data.GetPointer(),data.GetContentSize());
 			general->AppendBlock(RID::terrainTypeMap,data);
+
 		}
 
 		{
