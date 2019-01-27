@@ -744,8 +744,10 @@ namespace VisualTerrain
 				if (p->vertices.IsNotEmpty())
 				{
 					p->instruction.assembled.instances.vbo.CreateFromStructs(p->vertices);
-					p->shadowInstruction.instances.vbo = p->instruction.assembled.instances.vbo;
 				}
+				else
+					p->instruction.assembled.instances.vbo.Clear();
+				p->shadowInstruction.instances.vbo = p->instruction.assembled.instances.vbo;
 				p->instruction.AssertAssembled(p->vertices.IsNotEmpty());
 			}
 		}
