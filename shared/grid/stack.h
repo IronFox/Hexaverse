@@ -323,6 +323,7 @@ namespace Grid
 			bool	SetToIfSolid(BYTE cnt)	{if (IsSolid() && content != cnt) {content = cnt; return true;} return false;}
 			bool	IsWater() const { return content == Content::Water; }
 			bool	IsTechnite() const {return content == Content::Technite; }
+			bool	IsPlant() const {return content == Content::CrystalForest || content == Content::Crystals || content == Content::Trees || content == Content::Forest;}
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
 			bool	IsOccupied() const
 			{
