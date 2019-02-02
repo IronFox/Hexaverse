@@ -1186,7 +1186,12 @@ namespace World
 		terrainChanged = true; //can't know, assume worst
 		return Data::StackAccess(&rs);
 	}
+	
 
+	UINT32				Data::ChangeSequence::GetSelectedStack() const
+	{
+		return selectedStackIndex;
+	}
 
 	void				Data::ChangeSequence::SelectStack(UINT32 stackID)
 	{
