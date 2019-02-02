@@ -40,9 +40,11 @@ namespace VisualTerrain
 
 	static_assert(sizeof(TPlantInstance)==52,"Bad struct alignment");	//this data is uploaded to the gpu so must be compact
 
-	CONSTRUCT_ENUMERATION2(PlantType,
+	CONSTRUCT_ENUMERATION4(PlantType,
 			Tree,
-			Crystal
+			InvisibleTree,
+			Crystal,
+			InvisibleCrystal
 			);
 
 	struct TExtPlantInstance : public TPlantInstance

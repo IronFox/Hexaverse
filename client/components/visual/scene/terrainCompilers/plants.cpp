@@ -188,13 +188,15 @@ namespace VisualTerrain
 	};
 
 
-	static void CreateTree(DX11::InstructionBlock32I::Prototype& target)
+	static void CreateTree(DX11::InstructionBlock32I::Prototype& target, bool isInvisible)
 	{
 
 		FacetedPlantConstructor c;
 
 		//trunk:
 		c.currentColor = float3(0.5,0.5,0.4)*0.7f;
+		if (isInvisible)
+			VisualTerrain::TLitColor::ColorInvisible(c.currentColor);
 		const float tr = 0.15f;	//trunk radius
 		const float lr = 0.5f;	//leaf radius
 		const float th = 1.f - lr;	//trunk height = leaf center
@@ -213,6 +215,8 @@ namespace VisualTerrain
 		c.SetIndexOffset();
 
 		c.currentColor = float3(0.5,0.9,0.3);
+		if (isInvisible)
+			VisualTerrain::TLitColor::ColorInvisible(c.currentColor);
 		
 		c.Vertex(float3(0,0,th-lr),wt);
 		c.Vertex(float3(lr,0,th),wt);
@@ -235,12 +239,14 @@ namespace VisualTerrain
 	}
 
 	
-	static void CreateCrystal(DX11::InstructionBlock32I::Prototype& target)
+	static void CreateCrystal(DX11::InstructionBlock32I::Prototype& target, bool isInvisible)
 	{
 
 		FacetedPlantConstructor c;
 
 		c.currentColor = float3(0.2,0.25,0.25);
+		if (isInvisible)
+			VisualTerrain::TLitColor::ColorInvisible(c.currentColor);
 		const float tr = 0.25f;
 
 		const float h0 = 1.f;
@@ -269,8 +275,10 @@ namespace VisualTerrain
 		ASSERT_EQUAL__(Instruction::plantBase.binding.GetStride(),sizeof(PlantConstructor::TVertex));
 
 
-		CreateTree(Instruction::plantPrototypes[PlantType::Tree]);
-		CreateCrystal(Instruction::plantPrototypes[PlantType::Crystal]);
+		CreateTree(Instruction::plantPrototypes[PlantType::Tree],false);
+		CreateTree(Instruction::plantPrototypes[PlantType::InvisibleTree],true);
+		CreateCrystal(Instruction::plantPrototypes[PlantType::Crystal],false);
+		CreateCrystal(Instruction::plantPrototypes[PlantType::InvisibleCrystal],true);
 	}
 
 
@@ -291,8 +299,8 @@ namespace VisualTerrain
 		StaticList<TExtPlantInstance,BatchSize * CellStack::Range *3>	instances;
 		
 			
-		void	PutTree(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp);
-		void	PutCrystal(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp);
+		void	PutTree(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp, bool isVisible);
+		void	PutCrystal(const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp, bool isVisible);
 		void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
 		{
 			instances.Reset();
@@ -312,7 +320,7 @@ namespace VisualTerrain
 						angleNoise = SimplexNoise(323948713285797852ull),
 						colorNoise = SimplexNoise(84567898764583245ull);
 
-	void	PlantCompiler::PutTree( const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp )
+	void	PlantCompiler::PutTree( const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp, bool isVisible )
 	{
 		float angle = angleNoise.GetUniform(position.x*10,position.y*10,position.z*10) * M_PI * 2.0;
 		float x = cos(angle);
@@ -337,13 +345,19 @@ namespace VisualTerrain
 
 		VisualTerrain::TLitColor::ApplyEMP(emp,color);
 
-		instances.Append().Set( PlantType::Tree,position,sys.z,dir,scale * (0.75f + 0.5f * sizeR),color);
+		if (!isVisible)
+			instances.Append().Set( PlantType::InvisibleTree,position,sys.z,dir,scale * (0.75f + 0.5f * sizeR),color);
+		else
+			instances.Append().Set( PlantType::Tree,position,sys.z,dir,scale * (0.75f + 0.5f * sizeR),color);
 	}
 
-	void	PlantCompiler::PutCrystal( const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp )
+	void	PlantCompiler::PutCrystal( const M::TVec3<>&position, const M::TMatrix3<>&sys, float scale, float light, float emp, bool isVisible )
 	{
-		PutTree(position,sys,scale,light,emp);
-		instances.Last().type = PlantType::Crystal;
+		PutTree(position,sys,scale,light,emp,isVisible);
+		if (isVisible)
+			instances.Last().type = PlantType::Crystal;
+		else
+			instances.Last().type = PlantType::InvisibleCrystal;
 	}
 	
 	void	PlantCompiler::Compile( const index_t offset, const index_t end,BasicBuffer<TExtPlantInstance>&plants,Sys::SpinLock&lock )
@@ -373,12 +387,13 @@ namespace VisualTerrain
 
 			const float cellRadius = cell.minCornerDistance;
 			const UINT32 to = M::Min(CellStack::Range, CellStack::ToLayer(clipHeight(i)));
-			
+
 			for (UINT ih = 0; ih < to; ih++)
 			{
 				const float emp = Grid::AffectedByEMP(Grid::HCellIdU(i,ih)) ? 1 : 0;
 				const auto&nextCell = stack.volumeCell[ih+1];
 				const float light = nextCell.GetLightLevel() * 0.75f + 0.25f;
+				const bool visible = nextCell.IsCurrentlyVisible();
 				if (ih+1 == CellStack::Range || nextCell.content == Content::Clear)
 					switch (stack.volumeCell[ih].content)
 					{
@@ -419,7 +434,7 @@ namespace VisualTerrain
 							const auto base = up*heightRadius;
 							for (index_t k = 0; k < NumDirs; k+=3)
 							{
-								PutTree(base+plantDirection[k]*r2,sys,scale,light, emp);
+								PutTree(base+plantDirection[k]*r2,sys,scale,light, emp,visible);
 								if (seed % 2)
 									break;
 							}
@@ -434,8 +449,8 @@ namespace VisualTerrain
 							const float scale = Grid::GetLayerHeight(height)*0.9f;
 							const auto base = up*heightRadius;
 							for (index_t k = 0; k < NumDirs; k++)
-								PutTree(base+plantDirection[k]*r2,sys,scale,light, emp);
-							PutTree(base,sys,scale,light, emp);
+								PutTree(base+plantDirection[k]*r2,sys,scale,light, emp,visible);
+							PutTree(base,sys,scale,light, emp,visible);
 						}
 						break;
 						case Content::Crystals:
@@ -452,7 +467,7 @@ namespace VisualTerrain
 							const auto base = up*heightRadius;
 							for (index_t k = 0; k < NumDirs; k+=3)
 							{
-								PutCrystal(base+plantDirection[k]*r2,sys,scale,light, emp);
+								PutCrystal(base+plantDirection[k]*r2,sys,scale,light, emp,visible);
 								if (seed % 2)
 									break;
 							}
@@ -466,8 +481,8 @@ namespace VisualTerrain
 							const float scale = Grid::GetLayerHeight(height)*0.9f;
 							const auto base = up*heightRadius;
 							for (index_t k = 0; k < NumDirs; k++)
-								PutCrystal(base+plantDirection[k]*r2,sys,scale,light, emp);
-							PutCrystal(base,sys,scale,light, emp);
+								PutCrystal(base+plantDirection[k]*r2,sys,scale,light, emp,visible);
+							PutCrystal(base,sys,scale,light, emp,visible);
 						}
 						break;
 					}
