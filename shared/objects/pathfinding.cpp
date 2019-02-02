@@ -331,21 +331,23 @@ namespace Objects{ namespace Pathfinding
 
 	
 
-	void AccumulateCellMovementCosts(const World::Data&world, count_t&airCount,count_t&waterCount,count_t&roadCount,const Grid::HCellIdI&cell,count_t multiplier=1)
+	void AccumulateCellMovementCosts(const World::Data&world, THindranceVector&outCount, const Grid::HCellIdI&cell,count_t multiplier=1)
 	{
 		const Grid::CellStack::Cell&c = world.GetStack(cell.stackID).GetCellI(cell.height);
 		switch (c.content)
 		{
 			case Grid::Content::Clear:
-				airCount += multiplier;
+				outCount.air += multiplier;
 			break;
 			case Grid::Content::Water:
-				waterCount += multiplier;
+				outCount.water += multiplier;
 			break;
 			case Grid::Content::Road:
 			case Grid::Content::Foundation:
-				roadCount += multiplier;
+				outCount.road += multiplier;
 			break;
+			default:
+				outCount.other += multiplier;
 		}
 	}
 
@@ -359,34 +361,17 @@ namespace Objects{ namespace Pathfinding
 			const UINT32 high = cell.cellID;
 		#endif
 
-		count_t airCount = 0;
-		count_t waterCount = 0;
-		count_t roadCount = 0;
+
+		THindranceVector count;
 		
 
-		AccumulateCellMovementCosts(world, airCount,waterCount,roadCount,Grid::HCellIdI(high,cell.height-1),2);
+		AccumulateCellMovementCosts(world, count, Grid::HCellIdI(high,cell.height-1),2);
 		#ifdef HYBRID_GRID
 			for (int i = 0; i < n.numNeighbors; i++)
-				AccumulateCellMovementCosts(world, airCount,waterCount,roadCount,Grid::HCellIdI(n.neighborID[i],cell.height-1));
-			count_t total = 2 + n.numNeighbors;
-		#else
-			count_t total = 2;
+				AccumulateCellMovementCosts(world, count, Grid::HCellIdI(n.neighborID[i],cell.height-1));
 		#endif
 
-		count_t rest = total - airCount - waterCount - roadCount;
-
-		return M::Round(float(hindrance.road) * float(roadCount) / float(total) + 
-						float(hindrance.air) * float(airCount) / float(total) + 
-						float(hindrance.water) * float(waterCount) / float(total) + 
-						float(hindrance.other) * float(rest) / float(total));
-
-
-		//float speed = 1.f - hindrance.road * float(roadCount) / float(total)
-		///*speed *= 1.f */- hindrance.air * float(airCount) / float(total)
-		///*speed *= 1.f */- hindrance.water * float(waterCount) / float(total)
-		///*speed *= 1.f */- hindrance.other * float(rest) / float(total);
-
-		//return std::max(1,(int)ceil(  (1.f - speed) * vehicleSpeed));
+		return M::Round(float((hindrance * count).Sum()) / count.Sum());
 	}
 
 
