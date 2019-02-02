@@ -471,6 +471,13 @@ namespace Objects
 	{
 		const bool forceRemoveAll = this->IsIndestructible();
 		const int objHeight = GetHeight();
+
+		{
+			const auto&existing = seq.GetCellI(location.height-1);
+			if (existing.IsPlant())
+				seq.Change(location.height-1,existing.GetPlantDeteriorationType());
+		}
+
 		for (int a = 0; a < objHeight; a++)
 		{
 			if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)

@@ -129,6 +129,22 @@ namespace Grid
 	};
 			
 
+
+	BYTE			CellStack::Cell::GetPlantDeteriorationType() const
+	{
+		switch (content)
+		{
+			case Content::CrystalForest:
+			case Content::Crystals:
+				return Content::Granite;
+			case Content::Trees:
+			case Content::Forest:
+				return Content::Grass;
+		}
+		return content;
+	}
+
+
 	void			CellStack::ChangeStructureCounterI(int height, int by)
 	{
 		if (height >= BottomHeight && height <= TopHeight)

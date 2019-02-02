@@ -324,6 +324,7 @@ namespace Grid
 			bool	IsWater() const { return content == Content::Water; }
 			bool	IsTechnite() const {return content == Content::Technite; }
 			bool	IsPlant() const {return content == Content::CrystalForest || content == Content::Crystals || content == Content::Trees || content == Content::Forest;}
+			BYTE	GetPlantDeteriorationType() const;
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
 			bool	IsOccupied() const
 			{
