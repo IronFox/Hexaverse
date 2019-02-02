@@ -21,15 +21,38 @@ namespace Objects
 	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
-	struct THindranceVector
-	{
-		int			road=0,
+	template <typename T>
+		struct TGroundVector
+		{
+			typedef TGroundVector<T> Self;
+
+			T		road=0,
 					air=0,
 					water=0,
 					other=0;
-	};
 
+			Self	operator*(const Self&that) const
+			{
+				Self rs = 
+				{
+					road * that.road, 
+					air * that.air,
+					water * that.water,
+					other * that.other
+				};
+				return rs;
+			}
 
+			T		Sum() const
+			{
+				return road 
+					+ air 
+					+ water 
+					+ other;
+			}
+		};
+
+	typedef TGroundVector<int> THindranceVector;
 
 
 
