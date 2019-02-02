@@ -29,6 +29,8 @@ namespace Objects
 			T		road=0,
 					air=0,
 					water=0,
+					fewPlants=0,
+					manyPlants=0,
 					other=0;
 
 			Self	operator*(const Self&that) const
@@ -38,6 +40,8 @@ namespace Objects
 					road * that.road, 
 					air * that.air,
 					water * that.water,
+					fewPlants * that.fewPlants,
+					manyPlants * that.manyPlants,
 					other * that.other
 				};
 				return rs;
@@ -48,6 +52,8 @@ namespace Objects
 				return road 
 					+ air 
 					+ water 
+					+ fewPlants
+					+ manyPlants
 					+ other;
 			}
 		};
@@ -506,6 +512,8 @@ namespace Objects
 				hindrance.air = 2;
 				hindrance.water = 5;
 				hindrance.other = 4;
+				hindrance.fewPlants = 7;
+				hindrance.manyPlants = 10;
 				acceleration.Fill(0);
 			}
 
