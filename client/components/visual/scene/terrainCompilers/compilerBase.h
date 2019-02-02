@@ -74,6 +74,7 @@ namespace VisualTerrain
 		void	CompileFinalColor(M::TVec4<>&)	const;
 		
 		static void ApplyEMP(float intensity,M::TVec3<>&rs);
+		static void ColorInvisible(M::TVec3<>&rs);
 
 	private:
 		void	CapColor(M::TVec3<>&rs)	const;
