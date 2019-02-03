@@ -1259,7 +1259,20 @@ namespace Reflection
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
 			Variable::SetStringReference("resourceDistribution","ResourceDistribution", Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 
-
+			parser->EnterNewFolder("Plants")->attachment = persistenceAttachment;
+				VAR(grassGrowthProbability,World::Config,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+				parser->EnterNewFolder("Crystals")->attachment = persistenceAttachment;
+					Variable::Set("deathProbability",World::Config::crystals.deathProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("growthProbability",World::Config::crystals.growthProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("spawnProbability",World::Config::crystals.spawnProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+				parser->ExitFolder();
+				parser->EnterNewFolder("Trees")->attachment = persistenceAttachment;
+					Variable::Set("deathProbability",World::Config::trees.deathProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("growthProbability",World::Config::trees.growthProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("spawnProbability",World::Config::trees.spawnProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+				parser->ExitFolder();
+			parser->ExitFolder();
+			
 			parser->EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","PlanetName","LushGreen",Variable::Persistence::PlanetConfig);
 

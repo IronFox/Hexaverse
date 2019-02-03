@@ -24,8 +24,9 @@ namespace World
 		#endif
 		bool		empZones = false,
 					simulateLiquids = true;
-
-
+		TPlantGrowth	crystals,
+						trees;
+		float		grassGrowthProbability = 0.1f;
 	}
 	
 
@@ -160,28 +161,23 @@ namespace World
 				CheckCoverageSendTerrain(faction);
 			}
 		}
-
-
-
 	}
 
 
-
-	
-
-	void	SimulateLiquidsIfEnabled()
+	class ParallelTerrainChanger
 	{
 	
-		
-		if (Config::simulateLiquids)
+	public:
+		struct TStack
 		{
-			Timer::Time t0 = timer.Now();
+			UINT32	hash;
+			BYTE	volumeCell[Grid::CellStack::Range];
+		};
 
-			struct TStack
-			{
-				BYTE	volumeCell[Grid::CellStack::Range];
-			};
-			static Ctr::Array<TStack>	tempStacks;
+		void		Begin()
+		{
+			t0 = timer.Now();
+
 			tempStacks.SetSize(Grid::HighSetup::GridType::CellCount);
 			for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
 			{
@@ -190,10 +186,156 @@ namespace World
 				for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
 					target.volumeCell[layer] = source.volumeCell[layer].content;
 			}
+		}
 
-			BaseGrid::FamiliesChanged changed;
+		void		End()
+		{
+			auto seq = World::actual.BeginChangeSequence(0);
+			foreach (changed,ch)
+			{
+				UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
+				count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
+				for (UINT32 k = offset; k < offset+cnt; k++)
+				{
+					auto access = seq.AccessStack(k);
+					Grid::CellStack&target = access.GetStack();
+					const TStack&source = tempStacks[k];
+					for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
+						target.volumeCell[layer].content = source.volumeCell[layer];
+				}
+			}
 
-			Concurrency::parallel_for(UINT32(0),Grid::HighSetup::GridType::CellCount,[&changed](UINT32 stackIndex)
+			float t = timer.GetSecondsSince(t0);
+			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process terrain change: "+String(t));
+		}
+
+		void		ForeachStack(const std::function<void(UINT32 stackIndex, TStack&stack)>&f)
+		{
+			Concurrency::parallel_for(UINT32(0),Grid::HighSetup::GridType::CellCount,[&f,this](UINT32 stackIndex)
+			{
+				f(stackIndex,tempStacks[stackIndex]);
+			});
+		}
+
+		void		SetStackChanged(UINT32 stackIndex)
+		{
+			changed.Set(Grid::high.grid.GetCell(stackIndex).family);
+		}
+
+		UINT32		MakeRandomSeed()
+		{
+			Concurrency::parallel_for(UINT32(0),Grid::HighSetup::GridType::CellCount,[this](UINT32 stackIndex)
+			{
+				TStack&stack = tempStacks[stackIndex];
+				CRC32::Sequence seq;
+				seq.Append(stack.volumeCell,sizeof(stack.volumeCell));
+				stack.hash = seq.Finish();
+			});
+
+			CRC32::Sequence seq;
+			foreach (tempStacks,stack)
+				seq.AppendPOD(stack->hash);
+			return seq.Finish();
+		}
+
+
+	private:
+		Ctr::Array<TStack>	tempStacks;
+		Timer::Time t0;
+		BaseGrid::FamiliesChanged changed;
+	};
+
+	static ParallelTerrainChanger	changer;
+
+
+
+	static void RandomPlantTransition(float p, Grid::Content from, Grid::Content to, Random&randomSource)
+	{
+		if (p <= 0)
+			return;
+
+		const auto seed = randomSource.NextSeed();
+		changer.ForeachStack([seed,from,to,p](UINT32 stackIndex, ParallelTerrainChanger::TStack&stack)
+		{
+			Random localRandom(CRC32::Sequence().AppendPOD(stackIndex).AppendPOD(seed).Finish());
+			for (UINT layer = 0; layer+1 < ARRAYSIZE(stack.volumeCell); layer++)
+			{
+				if (	stack.volumeCell[layer+1] == Grid::Content::Clear 
+					&&	stack.volumeCell[layer] == from 
+					&&	localRandom.NextFloat() < p)
+				{
+					stack.volumeCell[layer] = to;
+					changer.SetStackChanged(stackIndex);
+				}
+			}
+		});
+	}
+
+	static void EnvironmentalRandomTransition(float p, Grid::Content from, Grid::Content to, Grid::Content neighbor, Random&randomSource)
+	{
+		if (p <= 0)
+			return;
+
+		const auto seed = randomSource.NextSeed();
+		changer.ForeachStack([seed,from,to,neighbor,p](UINT32 stackIndex, ParallelTerrainChanger::TStack&stack)
+		{
+			Random localRandom(CRC32::Sequence().AppendPOD(stackIndex).AppendPOD(seed).Finish());
+			const Grid::CellStack*nStacks[6] = {nullptr};
+			const auto&neighborhood = Grid::high.grid.GetCell(stackIndex).neighborhood;
+			DBG_ASSERT_LESS_OR_EQUAL__(neighborhood.numNeighbors,ARRAYSIZE(nStacks));
+			for (int i = 0; i < neighborhood.numNeighbors; i++)
+				nStacks[i] = &World::actual.GetStack(neighborhood.neighborID[i]);
+
+			for (UINT layer = 0; layer+1 < ARRAYSIZE(stack.volumeCell); layer++)
+			{
+				const UINT lower = layer > 0 ? layer -1 : layer;
+				const UINT upper = layer+1 < ARRAYSIZE(stack.volumeCell) ? layer+1 : layer;
+
+				if (stack.volumeCell[layer+1] == Grid::Content::Clear && stack.volumeCell[layer] == from)
+				{
+					count_t numFound = 0;
+					for (int i = 0; i < neighborhood.numNeighbors; i++)
+					{
+						for (UINT l2 = lower; l2 <= upper; l2++)
+							if (nStacks[i]->volumeCell[l2].content == neighbor)
+								numFound++;
+					}
+					if (numFound > 0 && localRandom.NextFloat() < 1.f - M::PowU(1.f - p,numFound))
+					{
+						stack.volumeCell[layer] = to;
+						changer.SetStackChanged(stackIndex);
+					}
+				}
+			}
+		});
+	}
+
+	void	SimulatePlantGrowth(Random&randomSource)
+	{
+		RandomPlantTransition(Config::crystals.deathProbability, Grid::Content::CrystalForest, Grid::Content::Granite, randomSource);
+		RandomPlantTransition(Config::crystals.growthProbability, Grid::Content::Crystals, Grid::Content::CrystalForest, randomSource);
+
+		RandomPlantTransition(Config::trees.deathProbability, Grid::Content::Forest, Grid::Content::Grass, randomSource);
+		RandomPlantTransition(Config::trees.growthProbability, Grid::Content::Trees, Grid::Content::Forest, randomSource);
+
+		RandomPlantTransition(Config::grassGrowthProbability, Grid::Content::Earth, Grid::Content::Grass, randomSource);
+
+		EnvironmentalRandomTransition(Config::trees.spawnProbability, Grid::Content::Grass, Grid::Content::Trees, Grid::Content::Forest, randomSource);
+		EnvironmentalRandomTransition(Config::crystals.spawnProbability, Grid::Content::Granite, Grid::Content::Crystals, Grid::Content::CrystalForest, randomSource);
+	}
+
+
+	void	SimulateLiquidsIfEnabled()
+	{
+		changer.Begin();
+		{
+			Random plantRandom = Random(changer.MakeRandomSeed());
+			SimulatePlantGrowth(plantRandom);
+		}
+		
+		if (Config::simulateLiquids)
+		{
+			changer.ForeachStack([](UINT32 stackIndex, ParallelTerrainChanger::TStack&target)
 			{
 				const Grid::CellStack&stack = World::actual.GetStack(stackIndex);
 				const Grid::CellStack*nStacks[6] = {nullptr};
@@ -201,7 +343,6 @@ namespace World
 				DBG_ASSERT_LESS_OR_EQUAL__(neighborhood.numNeighbors,ARRAYSIZE(nStacks));
 				for (int i = 0; i < neighborhood.numNeighbors; i++)
 					nStacks[i] = &World::actual.GetStack(neighborhood.neighborID[i]);
-				TStack&target = tempStacks[stackIndex];
 				bool thisChanged = false;
 				for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
 				{
@@ -226,80 +367,14 @@ namespace World
 				}
 				if (thisChanged)
 				{
-					changed.Set(Grid::high.grid.GetCell(stackIndex).family);
+					changer.SetStackChanged(stackIndex);
 					for (int i = 0; i < neighborhood.numNeighbors; i++)
-						changed.Set(Grid::high.grid.GetCell(neighborhood.neighborID[i]).family);
+						changer.SetStackChanged(neighborhood.neighborID[i]);
 				}
 			});
-			{
-				auto seq = World::actual.BeginChangeSequence(0);
-				foreach (changed,ch)
-				{
-					UINT32 offset = Grid::high.grid.GetFamilyOffset(*ch);
-					count_t cnt = Grid::high.grid.CountFamilyMembers(*ch);
-					for (UINT32 k = offset; k < offset+cnt; k++)
-					{
-						auto access = seq.AccessStack(k);
-						Grid::CellStack&target = access.GetStack();
-						const TStack&source = tempStacks[k];
-						for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
-							target.volumeCell[layer].content = source.volumeCell[layer];
-					}
-				}
-			}
-			#if 0
-			Objects::ForeachWorldEntity([changed,&seq](const Objects::PWorldEntity&entity)
-			{
-				if (!changed.IsSet(Grid::low.grid.GetCell(entity->location.stackID).family))
-					return;
-
-				const int h = entity->GetHeight();
-				const bool broad = entity->IsBroad();
-
-				if (entity->IsIndestructible())
-				{
-					for (int y = 0; y < h; y++)
-					{
-						if (broad)
-							seq.Clear(entity->location + y);
-						else
-							seq.Clear(Grid::ToHigh(entity->location+y));
-					}
-				}
-				else
-				{
-					bool kill = false;
-					for (int y = 0; y < h; y++)
-					{
-						if (broad)
-						{
-							if (!seq.ClearNonLava(entity->location + y))
-							{
-								kill = true;
-								break;
-							}
-						}
-						else
-						{
-							const Grid::HCellIdI loc = Grid::ToHigh(entity->location+y);
-							if (!seq.ClearNonLava(loc))
-							{
-								kill = true;
-								break;
-							}
-						}
-					}
-					if (kill)
-					{
-						float t = 0;
-						Objects::Remove(entity,Objects::RemovalType::UncontrolledExplosion,t);
-					}
-				}
-			},false);
-			#endif /*0*/
-			float t = timer.GetSecondsSince(t0);
-			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process liquids: "+String(t));
 		}
+
+		changer.End();
 
 	}
 

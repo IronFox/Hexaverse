@@ -8,7 +8,10 @@
 
 namespace World
 {
-
+	/**
+	Random source for terrain processes
+	*/
+	extern Random	terrainRandom;
 
 
 	/**
@@ -102,6 +105,25 @@ namespace World
 
 	namespace Config
 	{
+		struct TPlantGrowth
+		{
+			/**
+			The probability per round that a thin cluster of plants
+			changes into a thick.
+			*/
+			float	growthProbability=0.1f;
+			/**
+			Probability per round that a clear cell will spawn
+			a thin cluster next to an existing thick cluster.
+			*/
+			float	spawnProbability=0.1f;
+			/**
+			Probability per round that a thick plant cluster dies.
+			*/
+			float	deathProbability=0.1f;
+		};
+
+
 		extern Grid::WorldDiscovery	worldDiscovery;
 
 		#ifndef NO_HIBERNATION
@@ -109,6 +131,9 @@ namespace World
 		#endif
 		extern bool		simulateLiquids/* = true*/;
 
+		extern TPlantGrowth	crystals,
+							trees;
+		extern float		grassGrowthProbability;
 	}
 
 
