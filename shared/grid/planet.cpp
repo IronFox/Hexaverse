@@ -141,10 +141,10 @@ namespace Grid
 					p /= 3;
 					p = 1.f - p;
 
-					if (p > treeDensity + 0.1f)
+					if (p > treeDensity)
 					{
 					}
-					elif (p > treeDensity)
+					elif (p > treeDensity - 0.1f)
 						content = Content::Trees;
 					else 
 						content = Content::Forest;
@@ -157,10 +157,10 @@ namespace Grid
 					p /= 3;
 					p = 1.f - p;
 					
-					if (p > crystalDensity + 0.1f)
+					if (p > crystalDensity)
 					{
 					}
-					elif (p > crystalDensity)
+					elif (p > crystalDensity - 0.1f)
 						content = Content::Crystals;
 					else 
 						content = Content::CrystalForest;

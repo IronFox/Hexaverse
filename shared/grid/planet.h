@@ -148,8 +148,8 @@ namespace Grid
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
 					liquidHeight = 0;
 		UINT32		lastSeed = 0;
-		float		crystalDensity=0.25f,
-					treeDensity=0.25f;
+		float		crystalDensity=0.35f,
+					treeDensity=0.35f;
 
 		static const UINT32 VersionWithPlants = 1;
 
