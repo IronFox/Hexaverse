@@ -472,6 +472,23 @@ namespace Objects
 		}
 	#endif
 
+	bool		WorldEntity::ClearOccupiedTerrain(World::Data::ChangeSequence&seq)	const
+	{
+		const bool forceRemoveAll = this->IsIndestructible();
+		const int objHeight = GetHeight();
+		for (int a = 0; a < objHeight; a++)
+		{
+			if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)
+			{
+				LogEvent(EventSignificance::Common,this,"Lava encountered in cell "+ToString(Grid::HCellIdI(seq.GetSelectedStack(),location.height+a)));
+				return false;
+			}
+			if (seq.Clear(location.height+a))
+				LogEvent(EventSignificance::Common,this,"Clearing cell "+ToString(Grid::HCellIdI(seq.GetSelectedStack(),location.height+a)));
+		}
+		return true;
+	}
+
 	bool			WorldEntity::ClearOccupiedTerrain(World::Data&world, float atTime) const
 	{
 		#ifdef HYBRID_GRID
@@ -482,36 +499,16 @@ namespace Objects
 		#endif
 		auto seq = world.BeginChangeSequence(atTime);
 		using StringConversion::ToString;
-		const int height = GetHeight();
-		const bool forceRemoveAll = this->IsIndestructible();
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < n.numNeighbors; j++)
 			{
 				seq.SelectStack(n.neighborID[j]);
-				for (int a = 0; a < height; a++)
-				{
-					if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)
-					{
-						LogEvent(EventSignificance::Common,this,"Lava encountered in cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
-						return false;
-					}
-					if (seq.Clear(location.height+a))
-						LogEvent(EventSignificance::Common,this,"Clearing cell "+ToString(Grid::HCellIdI(n.neighborID[j],location.height+a)));
-				}
+				if (!ClearOccupiedTerrain(seq))
+					return false;
 			}
 		#endif
 		seq.SelectStack(higher);
-		for (int a = 0; a < height; a++)
-		{
-			if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)
-			{
-				LogEvent(EventSignificance::Common,this,"Lava encountered in cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
-				return false;
-			}
-			if (seq.Clear(location.height+a))
-				LogEvent(EventSignificance::Common,this,"Clearing cell "+ToString(Grid::HCellIdI(higher,location.height+a)));
-		}
-		return true;
+		return ClearOccupiedTerrain(seq);
 	}
 
 

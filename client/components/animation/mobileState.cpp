@@ -321,6 +321,20 @@ namespace Animation
 
 
 
+	static float sensorRange =0;
+	static Buffer0<UINT32> stacks;
+	static void SearchCostModifier( const Grid::LCellIdI&loc, int&cost )
+	{
+		AI::CostModifier(loc,cost);
+		if (cost == -1)
+			return;
+		Grid::ResourceDiscovery::DetermineCoverage(loc,sensorRange,stacks);
+		int step = M::CeilDiv(cost,3);
+		foreach (stacks, st)
+			if (Grid::ResourceDiscovery::client.resourcesDiscovered[*st])
+				cost += step;
+	}
+
 	
 	/*static*/ void			MobileState::UpdateAutomation( const Objects::PVehicle&v )
 	{
@@ -331,6 +345,9 @@ namespace Animation
 		ASSERT__(v->turret->detectsResources);
 		if (v->IsHibernating())
 			return;
+
+		sensorRange = v->GetScanningRange();
+
 		if (v->myTasks.IsNotEmpty())
 		{
 			if (v->myTasks.Peek().type == Objects::Vehicle::Task::MoveTo && v->myTasks.Count() == 1)
@@ -375,7 +392,7 @@ namespace Animation
 
 		using namespace Objects::Pathfinding;
 
-		mapper.Map(*v,v->location,AI::BlockTest,RoutingFlags::ForceRevertible,Objects::Component::GroundFlags::DisallowUnknownGround,referenceSpeed*5);
+		mapper.Map(*v,v->location,RoutingFlags::ForceRevertible,Objects::Component::GroundFlags::DisallowUnknownGround,referenceSpeed*5, SearchCostModifier);
 
 		float dummy = 0;
 		const bool originGood = EstimateThreatLevel(v,v->location,dummy,dummy,dummy);;

@@ -205,25 +205,25 @@ namespace Objects
 			Clears this->result before filling it with the new outcome
 			@param vehicle Vehicle to use for reference. Must not be NULL. Must have a non-NULL owner
 			@param from Specifies the starting location
-			@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
 			*/
-			void			Map(const MobileEntity&vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, UINT32 maxRange=0xFFFFFFFF);
+			void			Map(const MobileEntity&vehicle, const Grid::LCellIdI&from, RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, UINT32 maxRange=0xFFFFFFFF,  const FCellCostModifier&costModifier=nullptr);
 
 		private:
 			struct TReachableNode
 			{
-				Grid::LCellIdI backLink;
-				UINT32	minDistance;
-				int		nodeCosts;
-				bool	isBlocked, blockedTested;
-				index_t	mapped;
+				Grid::LCellIdI backLink = Grid::LCellIdI::Invalid;
+				UINT32	minDistance = 0xFFFFFFFF;
+				UINT32	unmodifiedDistance = 0xFFFFFFFF;
+				int		nodeCosts = 0, unmodifiedCosts = 0;
+				bool	isBlocked = false;
+				index_t	mapped = InvalidIndex;
 			};
-			bool					logPerformance;
+			bool						logPerformance;
 			Buffer<Grid::LCellIdI>		touched;
 			VolumeGrid<TReachableNode>	buffer;
 
-			bool					CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked);
-			void					CheckNodeCosts(TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FBlockTest&isBlocked, const THindranceVector&vec);
+//			bool					CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked);
+			void					CheckNodeCosts(TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FCellCostModifier&cellCostModifer, const THindranceVector&vec);
 		};
 
 

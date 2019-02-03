@@ -575,6 +575,7 @@ namespace Objects
 		*/
 		bool				ClearOccupiedTerrain(float atTime) const;
 		bool				ClearOccupiedTerrain(World::Data&world, float atTime) const;
+		bool				ClearOccupiedTerrain(World::Data::ChangeSequence&seq) const;
 
 
 		#ifdef CLIENT

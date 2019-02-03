@@ -151,26 +151,7 @@ namespace VisualTerrain
 		#ifndef DEBUG_HIDE_SENSORY
 			if (visibility < 0.5f)
 			{
-				#if 0
-					color = (float3)0.f;
-				#else
-					//float avg = (color.r + color.g + color.b) / 3.f * 0.5f + 0.5f;
-					if (color.r < 0)
-					{
-						rs.r = -(1.f - (1.f + color.r) / 4.f);
-						rs.g = -(1.f - (1.f + color.g) / 4.f);
-						rs.b = -(1.f - (1.f + color.b) / 4.f);
-					}
-					else
-					{
-						rs.r = 1.f - (1.f - color.r) / 4.f;
-						rs.g = 1.f - (1.f - color.g) / 4.f;
-						rs.b = 1.f - (1.f - color.b) / 4.f;
-					}
-					//color.r = (color.r + typeColor[0].r*2) / 3.f;
-					//color.g = (color.g + typeColor[0].g*2) / 3.f;
-					//color.b = (color.b + typeColor[0].b*2) / 3.f;
-				#endif
+				ColorInvisible(rs.rgb);
 			}
 			else
 		#endif
@@ -179,6 +160,31 @@ namespace VisualTerrain
 			CapColor(rs.rgb);
 		ApplyEMP(emp,rs.rgb);
 	}
+
+	/*static*/ void TLitColor::ColorInvisible(M::TVec3<>&rs)
+	{
+		#if 0
+			rs = (float3)0.f;
+		#else
+			//float avg = (color.r + color.g + color.b) / 3.f * 0.5f + 0.5f;
+			if (rs.r < 0)
+			{
+				rs.r = -(1.f - (1.f + rs.r) / 4.f);
+				rs.g = -(1.f - (1.f + rs.g) / 4.f);
+				rs.b = -(1.f - (1.f + rs.b) / 4.f);
+			}
+			else
+			{
+				rs.r = 1.f - (1.f - rs.r) / 4.f;
+				rs.g = 1.f - (1.f - rs.g) / 4.f;
+				rs.b = 1.f - (1.f - rs.b) / 4.f;
+			}
+			//color.r = (color.r + typeColor[0].r*2) / 3.f;
+			//color.g = (color.g + typeColor[0].g*2) / 3.f;
+			//color.b = (color.b + typeColor[0].b*2) / 3.f;
+		#endif
+	}
+
 
 	/*static*/ void TLitColor::ApplyEMP(float intensity,M::TVec3<>&rs)
 	{

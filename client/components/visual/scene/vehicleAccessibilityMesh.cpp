@@ -155,7 +155,7 @@ namespace VehicleAccessibilityMesh
 			return;
 
 		using namespace Objects::Pathfinding;
-		mapper.Map(*e,root,nullptr, RoutingFlags::IgnoreOwnMobilesOnRoute | RoutingFlags::IgnoreMobilesOnDestination | RoutingFlags::AllowAccessibleHangars | RoutingFlags::DisallowOffTerrain);
+		mapper.Map(*e,root, RoutingFlags::IgnoreOwnMobilesOnRoute | RoutingFlags::IgnoreMobilesOnDestination | RoutingFlags::AllowAccessibleHangars | RoutingFlags::DisallowOffTerrain);
 
 		const count_t rootAt = mapper.result.Count();
 		mapper.result.Append().cell = root;

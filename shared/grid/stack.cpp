@@ -779,6 +779,16 @@ namespace Grid
 	}
 
 
+
+	bool	AffectedByEMP(const HCellIdU&id, UINT16 empZonesUnlocked)
+	{
+		return !(Grid::high.cells[id.stackID].cornerFlags & empZonesUnlocked);
+	}
+	bool	AffectedByEMP(const LCellIdU&id, UINT16 empZonesUnlocked)
+	{
+		return !(Grid::low.cells[id.stackID].cornerFlags & empZonesUnlocked);
+	}
+
 	bool	AffectedByEMP(const HCellIdI&id, UINT16 empZonesUnlocked)
 	{
 		return !(Grid::high.cells[id.stackID].cornerFlags & empZonesUnlocked);
@@ -797,6 +807,14 @@ namespace Grid
 		return AffectedByEMP(id,empZonesUnlocked);
 	}
 
+	bool	AffectedByEMP(const HCellIdU&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
+	}
+	bool	AffectedByEMP(const LCellIdU&id)
+	{
+		return AffectedByEMP(id,empZonesUnlocked);
+	}
 
 
 

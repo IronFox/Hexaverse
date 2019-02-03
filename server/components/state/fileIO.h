@@ -26,6 +26,7 @@ namespace FileIO
 	void			Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="");
 
 
+	typedef std::function<BYTE(BYTE)> TerrainTypeTranslator;
 
 	void			WriteActualWorldToContainer(Riff::Chunk&container);
 	/**
@@ -34,7 +35,7 @@ namespace FileIO
 	@param outChunk Riff-Chunk to write to
 	*/
 	void			WriteToListChunk(World::Data&inData, Riff::Chunk&outChunk);
-	void			ReadFromListChunk(const Riff::Chunk&, World::Data&);
+	void			ReadFromListChunk(const Riff::Chunk&, World::Data&, const TerrainTypeTranslator&t);
 	void			Save(const PathString&name, RuntimeConfig::Phase savePhase);
 	void			Load(const PathString&name);
 	bool			CanSaveRightNow();

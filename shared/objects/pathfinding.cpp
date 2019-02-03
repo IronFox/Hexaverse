@@ -392,21 +392,23 @@ namespace Objects{ namespace Pathfinding
 
 	
 
-	void AccumulateCellMovementCosts(const World::Data&world, count_t&airCount,count_t&waterCount,count_t&roadCount,const Grid::HCellIdI&cell,count_t multiplier=1)
+	void AccumulateCellMovementCosts(const World::Data&world, THindranceVector&outCount, const Grid::HCellIdI&cell,count_t multiplier=1)
 	{
 		const Grid::CellStack::Cell&c = world.GetStack(cell.stackID).GetCellI(cell.height);
 		switch (c.content)
 		{
 			case Grid::Content::Clear:
-				airCount += multiplier;
+				outCount.air += multiplier;
 			break;
 			case Grid::Content::Water:
-				waterCount += multiplier;
+				outCount.water += multiplier;
 			break;
 			case Grid::Content::Road:
 			case Grid::Content::Foundation:
-				roadCount += multiplier;
+				outCount.road += multiplier;
 			break;
+			default:
+				outCount.other += multiplier;
 		}
 	}
 
@@ -420,34 +422,17 @@ namespace Objects{ namespace Pathfinding
 			const UINT32 high = cell.cellID;
 		#endif
 
-		count_t airCount = 0;
-		count_t waterCount = 0;
-		count_t roadCount = 0;
+
+		THindranceVector count;
 		
 
-		AccumulateCellMovementCosts(world, airCount,waterCount,roadCount,Grid::HCellIdI(high,cell.height-1),2);
+		AccumulateCellMovementCosts(world, count, Grid::HCellIdI(high,cell.height-1),2);
 		#ifdef HYBRID_GRID
 			for (int i = 0; i < n.numNeighbors; i++)
-				AccumulateCellMovementCosts(world, airCount,waterCount,roadCount,Grid::HCellIdI(n.neighborID[i],cell.height-1));
-			count_t total = 2 + n.numNeighbors;
-		#else
-			count_t total = 2;
+				AccumulateCellMovementCosts(world, count, Grid::HCellIdI(n.neighborID[i],cell.height-1));
 		#endif
 
-		count_t rest = total - airCount - waterCount - roadCount;
-
-		return M::Round(float(hindrance.road) * float(roadCount) / float(total) + 
-						float(hindrance.air) * float(airCount) / float(total) + 
-						float(hindrance.water) * float(waterCount) / float(total) + 
-						float(hindrance.other) * float(rest) / float(total));
-
-
-		//float speed = 1.f - hindrance.road * float(roadCount) / float(total)
-		///*speed *= 1.f */- hindrance.air * float(airCount) / float(total)
-		///*speed *= 1.f */- hindrance.water * float(waterCount) / float(total)
-		///*speed *= 1.f */- hindrance.other * float(rest) / float(total);
-
-		//return std::max(1,(int)ceil(  (1.f - speed) * vehicleSpeed));
+		return M::Round(float((hindrance * count).Sum()) / count.Sum());
 	}
 
 
@@ -603,7 +588,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 
-
+	/*
 	bool	ReachabilityMapper::CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked)
 	{
 		if (!isBlocked)
@@ -616,24 +601,31 @@ namespace Objects{ namespace Pathfinding
 		b.isBlocked = isBlocked(cell);
 		return b.isBlocked;
 	}
+	*/
 
-
-	void	ReachabilityMapper::CheckNodeCosts( TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FBlockTest&isBlocked, const THindranceVector&hindrance )
+	void	ReachabilityMapper::CheckNodeCosts( TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, 
+		const FCellCostModifier&costModifier, const THindranceVector&hindrance )
 	{
 		if (!tn.nodeCosts)
 		{
-			tn.isBlocked = CheckIsBlocked(cellID,isBlocked);
-			if (tn.isBlocked)
-				tn.nodeCosts = 1000000;
-			elif (m.IsAffectedByGravity(cellID))
+			if (m.IsAffectedByGravity(cellID))
 				tn.nodeCosts = 1;
 			else
 				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
+			tn.unmodifiedCosts = tn.nodeCosts;
+			if (costModifier)
+			{
+				costModifier(cellID,tn.nodeCosts);
+				if (tn.nodeCosts <= 0)
+				{
+					tn.isBlocked = true;
+					tn.nodeCosts = std::numeric_limits<int>::max();
+				}
+			}
 		}
-
 	}
 
-	void ReachabilityMapper::Map( const MobileEntity&m, const Grid::LCellIdI&from, FBlockTest isBlocked, RoutingFlags routingFlags, Component::GroundFlags groundFlags, UINT32 maxRange/*=0xFFFFFFFF*/ )
+	void ReachabilityMapper::Map( const MobileEntity&m, const Grid::LCellIdI&from, RoutingFlags routingFlags, Component::GroundFlags groundFlags, UINT32 maxRange/*=0xFFFFFFFF*/,  const FCellCostModifier&costModifier/*=nullptr*/)
 	{
 		ASSERT1__(m.owner,m.GetName());
 
@@ -650,8 +642,7 @@ namespace Objects{ namespace Pathfinding
 
 
 
-		TReachableNode empty = {Grid::LCellIdI::Invalid,0xFFFFFFFF,0,false,false,InvalidIndex};
-		buffer.Fill(empty);
+		buffer.Fill(TReachableNode());
 
 		PriorityQueue<Grid::LCellIdI,int>	queue;
 
@@ -676,7 +667,7 @@ namespace Objects{ namespace Pathfinding
 
 			const Grid::LCellIdI cellID(current);
 			TReachableNode&tn = buffer[current];
-			CheckNodeCosts(tn, world,m, cellID,isBlocked,hindrance);
+			CheckNodeCosts(tn, world,m, cellID,costModifier,hindrance);
 			if (tn.isBlocked)
 				continue;
 
@@ -692,7 +683,7 @@ namespace Objects{ namespace Pathfinding
 			{
 				const auto option = possibilities.way[i];
 				TReachableNode&n = buffer[option];
-				CheckNodeCosts(n, world,m,option,isBlocked,hindrance);
+				CheckNodeCosts(n, world,m,option,costModifier,hindrance);
 				if (n.isBlocked)
 					continue;
 
@@ -702,8 +693,9 @@ namespace Objects{ namespace Pathfinding
 				if (tn.minDistance + cost < n.minDistance)
 				{
 					n.minDistance = tn.minDistance + cost;
+					n.unmodifiedDistance = tn.unmodifiedDistance + std::max(tn.unmodifiedCosts,n.unmodifiedCosts);
 					n.backLink = current;
-					if (n.minDistance < maxRange)
+					if (n.unmodifiedDistance < maxRange)
 						queue.Push(option,n.minDistance);
 				}
 			}
