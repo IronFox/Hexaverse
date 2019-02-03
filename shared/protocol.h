@@ -64,7 +64,6 @@ namespace PortOffset
 	#define NAME_APPEND_L
 #endif
 
-#define NAME_APPEND_P		"p"	//plants
 
 
 
@@ -73,8 +72,8 @@ namespace PortOffset
 							NAME_APPEND0\
 							NAME_APPEND1\
 							NAME_APPEND_S\
+							"p" /*plants*/\
 							NAME_APPEND_L\
-							NAME_APPEND_P\
 							"]"
 
 #include "objects/resource.h"
