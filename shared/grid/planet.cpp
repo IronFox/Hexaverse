@@ -101,7 +101,7 @@ namespace Grid
 			}
 			if (content == PlaceholderType::Mountains || content == PlaceholderType::LiquidMountains)	//mountain layer
 			{
-				if (type == PlaceholderType::Mountains)
+				if (type == Content::Unknown)
 				{
 					UINT rockHeight = h > 3 ? top : top - (3 - h);
 					content = layer <= rockHeight ? Content::Rock : Content::Earth;
