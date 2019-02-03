@@ -256,7 +256,10 @@ namespace VisualTerrain
 		c.Vertex(float3(tr,0,-0.05),0);
 		c.Vertex(float3(0,tr,-0.05),0);
 		c.Vertex(float3(-tr/2,-tr/2,-0.05),0);
-		c.currentColor = float3(0.3,0.3,0.6);
+		//c.currentColor = float3(0.3,0.3,0.6);
+		c.currentColor = float3(0.5,0.5,0.9);
+		if (isInvisible)
+			VisualTerrain::TLitColor::ColorInvisible(c.currentColor);
 		c.Vertex(float3(tr,0,h1),0);
 		c.Vertex(float3(0,tr,h2),0);
 		c.Vertex(float3(-tr/2,-tr/2,h0),0);
