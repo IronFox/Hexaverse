@@ -1,4 +1,5 @@
 v0.9.9
+	+ Added experimental tree/crystal growth and rendering.
 	> Improved automated surveyor routing.
 	* AI: Fixed Unit.GetReach[From]() ignoring maxReach when a block function is specified.
 
