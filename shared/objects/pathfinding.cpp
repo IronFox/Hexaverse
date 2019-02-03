@@ -535,7 +535,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 
-
+	/*
 	bool	ReachabilityMapper::CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked)
 	{
 		if (!isBlocked)
@@ -548,24 +548,31 @@ namespace Objects{ namespace Pathfinding
 		b.isBlocked = isBlocked(cell);
 		return b.isBlocked;
 	}
+	*/
 
-
-	void	ReachabilityMapper::CheckNodeCosts( TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FBlockTest&isBlocked, const THindranceVector&hindrance )
+	void	ReachabilityMapper::CheckNodeCosts( TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, 
+		const FCellCostModifier&costModifier, const THindranceVector&hindrance )
 	{
 		if (!tn.nodeCosts)
 		{
-			tn.isBlocked = CheckIsBlocked(cellID,isBlocked);
-			if (tn.isBlocked)
-				tn.nodeCosts = 1000000;
-			elif (m.IsAffectedByGravity(cellID))
+			if (m.IsAffectedByGravity(cellID))
 				tn.nodeCosts = 1;
 			else
 				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
+			tn.unmodifiedCosts = tn.nodeCosts;
+			if (costModifier)
+			{
+				costModifier(cellID,tn.nodeCosts);
+				if (tn.nodeCosts <= 0)
+				{
+					tn.isBlocked = true;
+					tn.nodeCosts = std::numeric_limits<int>::max();
+				}
+			}
 		}
-
 	}
 
-	void ReachabilityMapper::Map( const MobileEntity&m, const Grid::LCellIdI&from, FBlockTest isBlocked, RoutingFlags routingFlags, Component::GroundFlags groundFlags, UINT32 maxRange/*=0xFFFFFFFF*/ )
+	void ReachabilityMapper::Map( const MobileEntity&m, const Grid::LCellIdI&from, RoutingFlags routingFlags, Component::GroundFlags groundFlags, UINT32 maxRange/*=0xFFFFFFFF*/,  const FCellCostModifier&costModifier/*=nullptr*/)
 	{
 		ASSERT1__(m.owner,m.GetName());
 
@@ -582,8 +589,7 @@ namespace Objects{ namespace Pathfinding
 
 
 
-		TReachableNode empty = {Grid::LCellIdI::Invalid,0xFFFFFFFF,0,false,false,InvalidIndex};
-		buffer.Fill(empty);
+		buffer.Fill(TReachableNode());
 
 		PriorityQueue<Grid::LCellIdI,int>	queue;
 
@@ -608,7 +614,7 @@ namespace Objects{ namespace Pathfinding
 
 			const Grid::LCellIdI cellID(current);
 			TReachableNode&tn = buffer[current];
-			CheckNodeCosts(tn, world,m, cellID,isBlocked,hindrance);
+			CheckNodeCosts(tn, world,m, cellID,costModifier,hindrance);
 			if (tn.isBlocked)
 				continue;
 
@@ -624,7 +630,7 @@ namespace Objects{ namespace Pathfinding
 			{
 				const auto option = possibilities.way[i];
 				TReachableNode&n = buffer[option];
-				CheckNodeCosts(n, world,m,option,isBlocked,hindrance);
+				CheckNodeCosts(n, world,m,option,costModifier,hindrance);
 				if (n.isBlocked)
 					continue;
 
@@ -634,8 +640,9 @@ namespace Objects{ namespace Pathfinding
 				if (tn.minDistance + cost < n.minDistance)
 				{
 					n.minDistance = tn.minDistance + cost;
+					n.unmodifiedDistance = tn.unmodifiedDistance + std::max(tn.unmodifiedCosts,n.unmodifiedCosts);
 					n.backLink = current;
-					if (n.minDistance < maxRange)
+					if (n.unmodifiedDistance < maxRange)
 						queue.Push(option,n.minDistance);
 				}
 			}

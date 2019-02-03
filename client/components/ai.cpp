@@ -118,16 +118,14 @@ namespace AI
 		EstimateThreatFromAll(v->system.w.xyz,zeroThreatOnly, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
 	}
 
-	bool BlockTest( const Grid::LCellIdI&location )
+	void CostModifier( const Grid::LCellIdI&location, int&cost )
 	{
-		if (!(Grid::low.cells[location.stackID].cornerFlags & Grid::empZonesUnlocked))
-			return true;
-
 		const M::TVec3<> reference = Grid::ToWorld(location);
 		TThreatEstimation threat;
 		EstimateThreatFromAll(reference,currentIsOverconfident,  currentCanIgnoreThreat,threat);
 
-		return threat.ShouldBlock(currentThreat);
+		if (threat.ShouldBlock(currentThreat))
+			cost = -1;
 	}
 
 
@@ -393,14 +391,14 @@ namespace AI
 		const Objects::Component::GroundFlags groundFlags = Objects::Component::GroundFlags::DisallowUnknownGround;
 
 
-		mapper.Map(*v, v->location, BlockTest, Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed);
+		mapper.Map(*v, v->location,  Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed, CostModifier);
 		if (mapper.result.IsEmpty())
 		{
 			//no chance to get out of danger, so try to reduce threat level
 			BeginBlockTest(v,false,canIgnoreThreat,overconfident);
-			mapper.Map(*v, v->location, BlockTest, Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed);
+			mapper.Map(*v, v->location, Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed, CostModifier);
 			if (mapper.result.IsEmpty())
-				mapper.Map(*v, v->location, BlockTest, Objects::Pathfinding::RoutingFlags::None, groundFlags,referenceSpeed);
+				mapper.Map(*v, v->location, Objects::Pathfinding::RoutingFlags::None, groundFlags,referenceSpeed, CostModifier);
 		}
 
 
