@@ -131,43 +131,49 @@ namespace Grid
 
 		
 		{
-			auto&content = stack.volumeCell[top].content;
-			switch (content)
+			UINT plantTop = std::min(std::max(top, CellStack::ToLayer(liquidHeight)),CellStack::Range-2);
+			for (UINT top = 0; top <= plantTop; top++)
 			{
-				case Content::Grass:
+				if (stack.volumeCell[top+1].content == Content::Clear)
 				{
-					const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
-					float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
-					p /= 3;
-					p = 1.f - p;
-
-					if (p > treeDensity)
+					auto&content = stack.volumeCell[top].content;
+					switch (content)
 					{
-					}
-					elif (p > treeDensity - 0.1f)
-						content = Content::Trees;
-					else 
-						content = Content::Forest;
-				}
-				break;
-				case Content::Granite:
-				{
-					const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
-					float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
-					p /= 3;
-					p = 1.f - p;
+						case Content::Grass:
+						{
+							const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
+							float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
+							p /= 3;
+							p = 1.f - p;
+
+							if (p > treeDensity)
+							{
+							}
+							elif (p > treeDensity - 0.1f)
+								content = Content::Trees;
+							else 
+								content = Content::Forest;
+						}
+						break;
+						case Content::Granite:
+						{
+							const auto world = Grid::ToWorld(Grid::HCellIdI(stackID,h));
+							float p = plantNoise.GetUniform(world.x,world.y,world.z,0.1) + plantNoise.GetUniform(world.x,world.y,world.z,0.01) + plantNoise.GetUniform(world.x,world.y,world.z);
+							p /= 3;
+							p = 1.f - p;
 					
-					if (p > crystalDensity)
-					{
+							if (p > crystalDensity)
+							{
+							}
+							elif (p > crystalDensity - 0.1f)
+								content = Content::Crystals;
+							else 
+								content = Content::CrystalForest;
+						}
+						break;
 					}
-					elif (p > crystalDensity - 0.1f)
-						content = Content::Crystals;
-					else 
-						content = Content::CrystalForest;
 				}
-				break;
 			}
-
 		}
 	}
 
