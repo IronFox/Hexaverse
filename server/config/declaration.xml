@@ -41,6 +41,37 @@
 			Any non-empty string X implies that [installDir]\lua\distributions\X.lua exists and is a valid Lua script.
 			If the required script does not exist or cannot be executed, then the internal program is used instead, which uses the planet-specific density and max values.
 		</variable>
+		<context name="Plants">
+			Plant growth configuration.
+			<variable name="grassGrowthProbability" default="0.2">
+				Probability per round that open earth cells change to grass.
+			</variable>
+			<context name="Crystals">
+				Crystal groth configuration. Crystals grow on granite and revert to it on death.
+				<variable name="deathProbability" default="0.05">
+					Probability per round that a crystal forest reverts back
+					to granite.
+				</variable>
+				<variable name="growthProbability" default="0.1">
+					Probability per round that sparse crystals change to a crystal forest.
+				</variable>
+				<variable name="spawnProbability" default="0.1">
+					Probability per round and neighbor crystal forest that sparse crystals grow from granite.
+				</variable>
+			</context>
+			<context name="Trees">
+				Tree groth configuration. Trees grow on grass and revert to it on death.
+				<variable name="deathProbability" default="0.05">
+					Probability per round that a forest reverts back to grass.
+				</variable>
+				<variable name="growthProbability" default="0.1">
+					Probability per round that sparse trees change to a forest.
+				</variable>
+				<variable name="spawnProbability" default="0.1">
+					Probability per round and neighbor forest that sparse trees grow from grass.
+				</variable>
+			</context>
+		</context>
 		<context name="Planet">
 			<variable name="Type" default="LushGreen">
 				The following defines which planet type to use.

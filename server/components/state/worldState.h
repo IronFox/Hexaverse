@@ -120,7 +120,7 @@ namespace World
 			/**
 			Probability per round that a thick plant cluster dies.
 			*/
-			float	deathProbability=0.1f;
+			float	deathProbability=0.05f;
 		};
 
 

@@ -26,7 +26,7 @@ namespace World
 					simulateLiquids = true;
 		TPlantGrowth	crystals,
 						trees;
-		float		grassGrowthProbability = 0.1f;
+		float		grassGrowthProbability = 0.2f;
 	}
 	
 
