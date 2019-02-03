@@ -64,6 +64,8 @@ namespace PortOffset
 	#define NAME_APPEND_L
 #endif
 
+#define NAME_APPEND_P		"p"	//plants
+
 
 
 #define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION\
@@ -72,6 +74,7 @@ namespace PortOffset
 							NAME_APPEND1\
 							NAME_APPEND_S\
 							NAME_APPEND_L\
+							NAME_APPEND_P\
 							"]"
 
 #include "objects/resource.h"
