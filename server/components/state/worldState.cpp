@@ -233,6 +233,7 @@ namespace World
 			});
 
 			CRC32::Sequence seq;
+			seq.AppendPOD(RuntimeConfig::roundNumber);
 			foreach (tempStacks,stack)
 				seq.AppendPOD(stack->hash);
 			return seq.Finish();
