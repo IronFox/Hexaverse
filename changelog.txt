@@ -1,3 +1,5 @@
+v0.9.9
+
 v0.9.8	[Jan 21 2019]
 	+ AI: Added Unit.maxStoredUnits.
 	+ AI: Added Game.Grid.FindVehicleGround().
