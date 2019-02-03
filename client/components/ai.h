@@ -22,12 +22,12 @@ namespace AI
 	*/
 	void	BeginBlockTest(const Objects::PVehicle&v, bool zeroThreatOnly, bool canIgnoreThreat, bool overConfident);
 	/**
-	The following block function is used by AI mapping and can be used by other automating vehicles.
+	The following cost function is used by AI mapping and can be used by other automating vehicles.
+	It modifies the previously determined location cost to -1 if a blocking condition is determined.
 	Must call BeginBlockTest() before using BlockTest()
-	@return true, if cell is 'blocked' and should not be passed
 	*/
-	bool	BlockTest(const Grid::LCellIdI&location);
-
+	void	CostModifier( const Grid::LCellIdI&location, int&cost );
+	
 	void	AssemblePath(const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult);
 	void	IssuePath(const Objects::PVehicle&v, const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current);
 

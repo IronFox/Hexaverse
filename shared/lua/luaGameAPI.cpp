@@ -354,13 +354,14 @@ namespace Lua
 			routingFlags |= Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute;
 
 		if (!isBlocked)
-			mapper.Map(*m, location, nullptr, routingFlags,groundFlags, maxReach);
+			mapper.Map(*m, location, routingFlags,groundFlags, maxReach);
 		else
 		{
-			mapper.Map(*m, location, [&isBlocked, this](const Grid::LCellIdI&loc)->bool
+			mapper.Map(*m, location, routingFlags,groundFlags, maxReach, [&isBlocked, this](const Grid::LCellIdI&loc, int&cost)
 			{
-				return isBlocked(ToTable(loc));
-			}, routingFlags,groundFlags);
+				if (isBlocked(ToTable(loc)))
+					cost = -1;
+			});
 		}
 
 		Lua::Table result = program->CreateTable();

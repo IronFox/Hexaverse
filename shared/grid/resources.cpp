@@ -372,20 +372,17 @@ namespace Grid
 				r->coverage[i] = 0;
 	}
 
-
-	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, Ctr::BasicBuffer<UINT32>&outNewDiscoveries)
+	/*static*/ void			ResourceDiscovery::DetermineCoverage(const Grid::LCellIdI&center,float range,BasicBuffer<UINT32>&outCoveredStacks)
 	{
 		static Ctr::IndexSet covered;
-		static Ctr::Buffer0<UINT32>	coverage;
 		static Ctr::Queue<UINT32>	stacks;
 		covered.Clear();
-		coverage.Clear();
-		stacks.Clear();
-		outNewDiscoveries.Clear();
-
-		stacks << center.stackID;
-
+		outCoveredStacks.Clear();
+		
 		const M::TVec3<> worldCenter = Grid::ToWorld(center);
+		
+		stacks.Clear();
+		stacks << center.stackID;
 
 		UINT32 stackID;
 		while (stacks >> stackID)
@@ -396,7 +393,7 @@ namespace Grid
 			if (!covered.IsSet(stackID))
 			{
 				covered.Set(stackID);
-				coverage << stackID;
+				outCoveredStacks << stackID;
 			}
 			else
 				continue;
@@ -405,6 +402,17 @@ namespace Grid
 			for (BYTE k = 0; k < n.numNeighbors; k++)
 				stacks << n.neighborID[k];
 		}
+
+	}
+
+
+
+	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, Ctr::BasicBuffer<UINT32>&outNewDiscoveries)
+	{
+		static Ctr::Buffer0<UINT32>	coverage;
+		outNewDiscoveries.Clear();
+
+		DetermineCoverage(center,range,coverage);
 			
 		foreach (coverage,cov)
 		{
