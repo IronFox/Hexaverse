@@ -150,6 +150,19 @@
 					<variable name="level" default="0" />
 					<variable name="outline" default="Unknown" />
 				</context>
+				<context name="Plants">
+					These densities describe the probability of initial plant presence.
+					If the respective probability is less than 10% (0.1), only thin plant instances are spawned.
+					Otherwise forests may spawn in certain areas.
+					<variable name="crystalDensity" default="0.35">
+						Probability of crystals forming on granite.
+						If the local planet has no open granite, then no crystals are placed initially.
+					</variable>
+					<variable name="treeDensity" default="0.35">
+						Probability of trees forming on grass.
+						If the local planet has no open grass, then no trees are placed initially.
+					</variable>
+				</context>
 				<context name="Resources">
 					<context name="Fuel">
 						<variable name="density" default="0.04" />

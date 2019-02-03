@@ -1302,6 +1302,11 @@ namespace Reflection
 						Variable::SetMappedEnum<Grid::Content,BYTE>("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::PlanetConfig);
 					parser->ExitFolder();
 
+					parser->EnterNewFolder("Plants")->attachment = persistenceAttachment;
+						Variable::Set("crystalDensity",Grid::currentPlanetConfig.crystalDensity,0.f, 1.f,Variable::Persistence::PlanetConfig);
+						Variable::Set("treeDensity",Grid::currentPlanetConfig.treeDensity,0.f, 1.f,Variable::Persistence::PlanetConfig);
+					parser->ExitFolder();
+
 					MapConfig(Grid::currentPlanetConfig.extendedCore,parser->GetFocus()->CreateOrGetChild("ExtendedCore"));
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
 
