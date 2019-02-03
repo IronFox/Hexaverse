@@ -512,8 +512,8 @@ namespace Objects
 				hindrance.air = 2;
 				hindrance.water = 5;
 				hindrance.other = 4;
-				hindrance.fewPlants = 7;
-				hindrance.manyPlants = 10;
+				hindrance.fewPlants = 8;
+				hindrance.manyPlants = 16;
 				acceleration.Fill(0);
 			}
 
