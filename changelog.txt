@@ -1,4 +1,6 @@
-v0.9.9
+v1.0.0
+
+v0.9.9	[Feb 3 2019]
 	> Improved automated surveyor routing.
 	* AI: Fixed Unit.GetReach[From]() ignoring maxReach when a block function is specified.
 
