@@ -62,14 +62,14 @@ namespace Objects
 			return result;
 		}
 
-		int					Compound::GetOverproduction(Resource res) const
+		int					Compound::GetOverproduction(Resource::ID res) const
 		{
 			int result = 0;
 			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
 				if (s)
-					result += s->overproduction.level[res];
+					result += s->overproduction[res];
 			}
 			return result;
 		}
@@ -77,16 +77,16 @@ namespace Objects
 
 		void				Compound::DistributeOverproduction(const ResourceVector&v)
 		{
-			if (v.IsEmpty())
+			if (v.IsZero())
 				return;
 			int active = (int)CountWorkingStructures();
 			if (!active)
 				return;
 			ResourceVector perStructure,remainder;
-			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+			for (index_t i = 0; i < Resource::table.GetSize(); i++)
 			{
-				perStructure.level[i] = v.level[i] / active;
-				remainder.level[i] = v.level[i] % active;
+				perStructure.Set(i,v[i] / active);
+				remainder.Set(i,v[i] % active);
 			}
 			bool first = true;
 			foreach (workingStructures,_s)
@@ -110,22 +110,22 @@ namespace Objects
 				PWorkingStructure s = Reference(*_s);
 				if (s)
 				{
-					for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
+					for (index_t r = 0; r < Resource::table.GetSize(); r++)
 					{
-						if (s->overproduction.level[r] > 0)
+						if (s->overproduction[r] > 0)
 						{
-							int transfer = std::min(s->overproduction.level[r],positiveVector.level[r]);
-							positiveVector.level[r] -= transfer;
-							s->overproduction.level[r] -= transfer;
+							int transfer = std::min(s->overproduction[r],positiveVector[r]);
+							positiveVector.Add(r, -transfer);
+							s->overproduction.Add(r, -transfer);
 						}
 					}
-					if (positiveVector.IsEmpty())
+					if (positiveVector.IsZero())
 						return;
 				}
 			}
 		}
 
-		void			Compound::ForceWithdrawOverproduction(Resource res ,int positiveAmount)
+		void			Compound::ForceWithdrawOverproduction(Resource::ID res ,int positiveAmount)
 		{
 			if (positiveAmount <= 0)
 				return;
@@ -134,11 +134,11 @@ namespace Objects
 				PWorkingStructure s = Reference(*_s);
 				if (s)
 				{
-					if (s->overproduction.level[res] > 0)
+					if (s->overproduction[res] > 0)
 					{
-						int transfer = std::min(s->overproduction.level[res],positiveAmount);
+						int transfer = std::min(s->overproduction[res],positiveAmount);
 						positiveAmount -= transfer;
-						s->overproduction.level[res] -= transfer;
+						s->overproduction.Add(res, -transfer);
 						if (!positiveAmount)
 							return;
 					}
@@ -150,11 +150,11 @@ namespace Objects
 
 		void				Compound::FeedLeftovers( ResourceVector&vector, float&atTime )
 		{
-			if (vector.IsNotEmpty())
+			if (vector.IsNonZero())
 			{
 				ResourceVector supply,demand;
 				vector.SeparateBySign(supply,demand);
-				if (supply.IsNotEmpty())
+				if (supply.IsNonZero())
 				{
 					bool done = false;
 					for (index_t i = 0; i <= WorkingStructure::FinalLeftoverIteration && !done; i++)
@@ -166,7 +166,7 @@ namespace Objects
 							if (s->IsEnabled() || i == WorkingStructure::FinalLeftoverIteration/*&& !s->AwaitsUserInteraction()*/)
 							{
 								s->ProcessLeftovers(supply,i,atTime);
-								if (supply.IsEmpty())
+								if (supply.IsZero())
 								{
 									done = true;
 									break;
@@ -174,7 +174,7 @@ namespace Objects
 							}
 						}
 				}
-				if (demand.IsNotEmpty())
+				if (demand.IsNonZero())
 				{
 					bool done = false;
 					for (index_t i = WorkingStructure::FinalLeftoverIteration-1; i <= WorkingStructure::FinalLeftoverIteration && !done; i--)
@@ -186,7 +186,7 @@ namespace Objects
 							if (s->IsEnabled())
 							{
 								s->ProcessLeftovers(demand,i,atTime);
-								if (demand.IsEmpty())
+								if (demand.IsZero())
 								{
 									done = true;
 									break;
@@ -201,7 +201,7 @@ namespace Objects
 								continue;
 							{
 								s->ProcessLeftovers(demand,WorkingStructure::FinalLeftoverIteration,atTime);
-								if (demand.IsEmpty())
+								if (demand.IsZero())
 								{
 									done = true;
 									break;
@@ -358,7 +358,7 @@ namespace Objects
 	Temporarily changes the structure's state to enabled without signalling the change or registering change.
 	This method must be kept in sync with RefreshState() auto-balancing strategy!
 	*/
-	bool				Compound::CanEnable( WorkingStructure*toEnable, String*outWhy/*=nullptr*/, Ctr::Array<Resource>*outMissedResources/*=nullptr*/, bool ignoreCanEnable/*=false*/) const
+	bool				Compound::CanEnable( WorkingStructure*toEnable, String*outWhy/*=nullptr*/, ResourceFlagSet*outMissedResources/*=nullptr*/, bool ignoreCanEnable/*=false*/) const
 	{
 		DBG_ASSERT_NOT_NULL__(toEnable);
 		if (toEnable->IsHibernating() || (!ignoreCanEnable && !toEnable->CanEnable()))
@@ -390,44 +390,34 @@ namespace Objects
 			}
 		TempSetEnabled(toEnable,false);
 
-		bool lacking[Resource::NumberOfPossibilities]	= {false};
+		ResourceFlagSet lacking;
 		count_t currentlyLacking = 0;
-		for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-			if (total.balance.level[r] < 0)
+		for (index_t r = 0; r < Resource::table.Count(); r++)
+			if (total.balance[r] < 0)
 			{
 				currentlyLacking ++;
-				lacking[r] = true;
+				lacking |= r;
 			}
 
-		if (!outWhy &&!outMissedResources)
+		if (!outWhy && !outMissedResources)
 			return false;
 
 		if (outWhy)
 			(*outWhy) = "lacking";
 		count_t cnt = 0;
-		for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-			if (lacking[r])
+		for (index_t r = 0; r < Resource::table.Count(); r++)
+			if (lacking & r)
 			{
 				if (outWhy)
 				{
 					if (cnt!=0)
 						(*outWhy) += ',';
-					*outWhy += ' '+String(Resource::Reinterpret(r).ToString());
+					*outWhy += ' '+Resource::ID(r).ToType().name;
 				}
 				cnt++;
 			}
 		if (outMissedResources)
-		{
-			outMissedResources->SetSize(cnt);
-			auto*ptr = outMissedResources->pointer();
-			for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-				if (lacking[r])
-				{
-					ptr->Load(r);
-					ptr++;
-				}
-			ASSERT_CONCLUSION(*outMissedResources,ptr);
-		}
+			*outMissedResources = lacking;
 		return false;
 	}
 
@@ -618,9 +608,9 @@ namespace Objects
 					s->GetResourceVector(vec,storageCurrent,storageMax);
 
 					bool isAtFault = false;
-					for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+					for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 					{
-						if (total.balance.level[i] < 0 && vec.level[i] < 0)
+						if (total.balance[i] < 0 && vec[i] < 0)
 						{
 							isAtFault = true;
 							break;

@@ -111,7 +111,7 @@ namespace Objects
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
 				#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 					if (newVehiclesHaveFullAmmo)
-						ChangeStorage(*this,atTime,Resource::Munitions,GetMaxStorageCapacity().level[Resource::Munitions] - currentStorage.level[Resource::Munitions]);
+						ChangeStorage(*this,atTime,R::Munitions,GetMaxStorageCapacity()[R::Munitions] - currentStorage[R::Munitions]);
 				#endif
 			}
 		}
@@ -412,18 +412,18 @@ namespace Objects
 
 			int opSpeed = std::max(GetOperationSpeed(Component::Operation::Construct, owner),GetOperationSpeed(Component::Operation::AddTerrain,owner));
 			if (opSpeed)
-				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
+				outResult << "Effective construction speed: "+String(ResourceTag(R::Minerals))+String(opSpeed)+" per round";
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				if (turret->baseStorageCapacity.IsNotEmpty())
 				{
 					outResult << "Effective storage capacity:";
 					ResourceVector vec = this->GetMaxStorageCapacity(owner);
-					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					for (index_t i = 0; i < R::table.GetSize(); i++)
 					{
-						if (vec.level[i])
+						if (vec[i])
 						{
-							outResult << " "+String(ResourceTag(i))+String(vec.level[i]);
+							outResult << " "+String(ResourceTag(i))+String(vec[i]);
 						}
 					}
 				}

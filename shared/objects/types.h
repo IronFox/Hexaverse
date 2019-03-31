@@ -88,17 +88,13 @@ namespace Objects
 	struct TChoiceVisualization;
 
 
-	struct ResourceWithMunition;	//enum container
-	struct ResourceWithoutMunition;	//enum container
-
-
-	#ifdef NO_MUNITION
-		typedef ResourceWithoutMunition	Resource;
-	#else
-		typedef ResourceWithMunition	Resource;
-	#endif
-
-
+	namespace Resource
+	{
+		class Table;
+		struct ID;
+		struct Type;
+	}
+	class ResourceFlagSet;
 	
 
 
