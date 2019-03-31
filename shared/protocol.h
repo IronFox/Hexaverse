@@ -646,11 +646,10 @@ namespace Protocol
 	typedef NETA(TUnitLimit)	UnitLimits;
 
 
-	static_assert(Objects::Resource::N<0x100,"Resource type limit exceeded: Must change storage type of OperationLacksResources array");
 	NETSTRUCT3(OperationLacksResources
 		, Timestamp, timestamp
 		, NET(TUniqueID), entityID
-		, NETA(BYTE), resourceIndices
+		, UINT64,	resourceFlagSet
 	)
 
 	NETSTRUCT2(ResearchFactionState

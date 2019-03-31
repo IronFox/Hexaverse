@@ -16,7 +16,7 @@ namespace Grid
 	UINT16				empZonesLocked = 0,
 						empZonesUnlocked = 0xFFFF;
 
-	//static Resource::coverage_t	GetResourceCoverage(const M::TVec3<>&seed, const M::TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
+	//static R::coverage_t	GetResourceCoverage(const M::TVec3<>&seed, const M::TVec3<>&center0,float rarity,R::coverage_t maxYield, float probabilityModifier);
 
 
 

@@ -18,7 +18,7 @@
 namespace Objects
 {
 	static const constexpr float			vehicleScale = 0.4f;
-	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
+	inline void NoCosts(int&mineralCostOut, ResourceFlagSet&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
 	template <typename T>
@@ -237,7 +237,7 @@ namespace Objects
 
 
 			IFunc							healthMultiplier;
-			Resource						ammoType;
+			Resource::ID					ammoType;
 			OperationArray<IFunc>			operationSpeed;
 			FFunc							weight	/*=1*/,					//turret weight
 											damageLevel;
@@ -285,7 +285,7 @@ namespace Objects
 												#ifdef NO_MUNITION
 													ammoType(Resource::Minerals)
 												#else
-													ammoType(Resource::Munitions)
+													ammoType(R::Munitions)
 												#endif
 												{
 													//baseOperationSpeed.Fill(0);
@@ -410,7 +410,7 @@ namespace Objects
 			//			#ifdef NO_MUNITION
 			//				ammoNeedPerShot == 0
 			//			#else
-			//				ammoType == Resource::Munition
+			//				ammoType == R::Munition
 			//			#endif
 			//			;
 			//}

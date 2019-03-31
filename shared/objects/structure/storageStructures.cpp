@@ -21,8 +21,8 @@ namespace Objects
 			const float bombDamage = Component::Bomb::GetDamageLevel(false,state);
 			const float nukeDamage = Component::Bomb::GetDamageLevel(doomsday,state);
 
-			const float ff = float(storage.level[Resource::Fuel]) / MaxStorage;
-			const float uf = float(storage.level[Resource::Uranium]) / MaxStorage;
+			const float ff = float(storage[Resource::Fuel]) / MaxStorage;
+			const float uf = float(storage[Resource::Uranium]) / MaxStorage;
 
 			if (damageOut)
 				*damageOut = 

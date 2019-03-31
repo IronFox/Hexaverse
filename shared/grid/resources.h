@@ -69,9 +69,6 @@ namespace Grid
 		*/
 		static coverage_t		GetRandomCoverage(const SimplexNoise&n, const float3&direction, float p, coverage_t max, float scale);
 
-		static float			probability[],density[];
-		static coverage_t		maximum[];
-
 		static Buffer0<Resource>all;
 		static index_t			fuelAt,mineralsAt,uraniumAt;
 
@@ -93,8 +90,7 @@ namespace Grid
 		{}
 		void					Name(const String&name, ConstName cname, const float3&color)	{this->name = name; this->cname = cname; this->color = color;}
 		
-		void					FillInternal(TwisterRandom&random, float p, coverage_t, float density);
-		void					FillInternal(TwisterRandom&random);
+		void					Clear();
 
 		static void				FillAll(TwisterRandom&random, const String&distribution);
 

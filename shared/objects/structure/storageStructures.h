@@ -40,30 +40,30 @@ namespace Objects
 			{
 				if (iteration != LeftoverUpdateIteration && iteration != FinalLeftoverIteration)
 					return;
-				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+				for (index_t i = 0; i < Resource::table.GetSize(); i++)
 				{
-					if (v.level[i] == 0)
+					if (v[i] == 0)
 						continue;
-					if (v.level[i] < 0 )
+					if (v[i] < 0 )
 					{
-						if (storage.level[i] > 0)
+						if (storage[i] > 0)
 						{
-							int delta = std::min(-v.level[i], storage.level[i]);
-							ChangeStorage(*this,atTime,Resource::Reinterpret(i),-delta);
+							int delta = std::min(-v[i], storage[i]);
+							ChangeStorage(*this,atTime,Resource::ID(i),-delta);
 
-							v.level[i] += delta;
-							//storage.level[i] -= delta;
+							v.Add(i, delta);
+							//storage[i] -= delta;
 						}
 					}
 					else
 					{
-						int capacity = maxStorage.level[i] - storage.level[i];
+						int capacity = maxStorage[i] - storage[i];
 						if (capacity > 0)
 						{
-							int delta = std::min(v.level[i], capacity);
-							v.level[i] -= delta;
+							int delta = std::min(v[i], capacity);
+							v.Add(i, -delta);
 
-							ChangeStorage(*this,atTime,Resource::Reinterpret(i),delta);
+							ChangeStorage(*this,atTime,Resource::ID(i),delta);
 						}	
 					}
 				}
@@ -87,7 +87,7 @@ namespace Objects
 						label << "Storage structures accumulate excess production of the respective resources from the local compound until they are full."
 						" Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted."
 						" Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty."
-						" Storage structures do not require "+String(ResourceTag(Resource::Energy))+" to operate."
+						" Storage structures do not require "+String(ResourceTag(R::Energy))+" to operate."
 						;
 					}
 				}
@@ -114,8 +114,8 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<FuelContainer>;
 		/**/						FuelContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Fuel] = MaxStorage;}
-		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = MaxStorage; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Fuel, MaxStorage);}
+		/**/						FuelContainer()	{maxStorage.Set(Resource::Fuel, MaxStorage); }	//global prototype
 	public:
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
@@ -129,8 +129,8 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<MineralContainer>;
 		/**/						MineralContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MaxStorage;}
-		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = MaxStorage; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Minerals, MaxStorage);}
+		/**/						MineralContainer()	{maxStorage.Set(Resource::Minerals, MaxStorage); }	//global prototype
 	public:
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
@@ -144,8 +144,8 @@ namespace Objects
 		friend class Super;
 		friend class WorkingStructureT<UraniumStorage>;
 		/**/						UraniumStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Uranium] = MaxStorage;}
-		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = MaxStorage; }	//global prototype
+									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Uranium, MaxStorage);}
+		/**/						UraniumStorage()	{maxStorage.Set(Resource::Uranium, MaxStorage);}	//global prototype
 	public:
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
@@ -164,13 +164,13 @@ namespace Objects
 									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = MaxStorage;
+				maxStorage[R::Munitions] = MaxStorage;
 			#endif
 		}
 		/**/						Self()
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = MaxStorage; 
+				maxStorage[R::Munitions] = MaxStorage; 
 			#endif
 		}	//global prototype
 	public:
@@ -194,7 +194,7 @@ namespace Objects
 									: Super(table,owner,location,atTime)
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = LocalMunitionStorage;
+				maxStorage[R::Munitions] = LocalMunitionStorage;
 			#endif
 			#ifndef CLIENT
 				SetEnabled(false,atTime,false,ForceEnable);
@@ -203,7 +203,7 @@ namespace Objects
 		/**/						Self()
 		{
 			#ifndef NO_MUNITION
-				maxStorage.level[Resource::Munitions] = LocalMunitionStorage;
+				maxStorage[R::Munitions] = LocalMunitionStorage;
 			#endif
 		}	//global prototype
 	protected:
@@ -217,10 +217,10 @@ namespace Objects
 
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&storage, ResourceVector&max) const override
 		{
-			v.level[Resource::Energy] = -EnergyConsumption; 
-			v.level[Resource::Minerals] = -MineralConsumption; 
+			v.Set(Resource::Energy, -EnergyConsumption);
+			v.Set(Resource::Minerals, -MineralConsumption);
 			#ifndef NO_MUNITION
-				v.level[Resource::Munitions] = MunitionOutput; 
+				v.Set(R::Munitions, MunitionOutput);
 			#endif
 			Super::GetResourceVector(v,storage,max);
 		}
@@ -245,7 +245,7 @@ namespace Objects
 				#ifdef NO_MUNITION
 					label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
 				#else
-					label << "Enabled munition factories continuiously produce "+String(ResourceTag(Resource::Munitions))+" to supply connected offensive turrets."
+					label << "Enabled munition factories continuiously produce "+String(ResourceTag(R::Munitions))+" to supply connected offensive turrets."
 				#endif
 				;
 			}

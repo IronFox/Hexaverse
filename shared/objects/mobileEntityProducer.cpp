@@ -296,10 +296,10 @@ namespace Objects
 			{
 				int delta = (queue.First().producing->GetConstructionCost() - productionDone);
 				ASSERT_IS_CONSTRAINED__(delta, 0, (int)productionPerRound);
-				v.level[Resource::Minerals] -= delta;
+				v.Add(Resource::Minerals, -delta);
 			}
 			else
-				v.level[Resource::Minerals] -= productionPerRound;
+				v.Add(Resource::Minerals, -(int)productionPerRound);
 
 			productionDone += productionPerRound;
 			productionRoundsLeft = ProductionRounds(queue.First().producing,true);

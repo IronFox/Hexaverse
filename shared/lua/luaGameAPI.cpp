@@ -57,11 +57,11 @@ namespace Lua
 
 		void UpdateResourceTable(Lua::Table&t,const Objects::ResourceVector&v)
 		{
-			for (index_t i = 0; i < Objects::Resource::N; i++)
+			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			{
-				String name = Objects::Resource::Reinterpret(i).ToString();
+				String name = Objects::Resource::ID(i).ToString();
 				name.Set(0,CharFunctions::tolower(name.GetFirstChar()));
-				t.SetField(name,v.level[i]);
+				t.SetField(name,v[i]);
 			}
 		}
 
@@ -240,9 +240,9 @@ namespace Lua
 			t.SetField("ammoDemandPerShot",b.turret->ammoNeedPerShot.GetValue(researchState));
 			#ifdef ONE_COMPOUND_PER_FACTION
 				const auto&compound = b.ToEntity().owner->compound;
-				const int ammo = compound.total.storage.level[b.turret->ammoType];
+				const int ammo = compound.total.storage[b.turret->ammoType];
 			#else
-				const int ammo = b.ToEntity().currentStorage.level[b.turret->ammoType];
+				const int ammo = b.ToEntity().currentStorage[b.turret->ammoType];
 			#endif
 			t.SetField("ammoAvailability",ammo);
 			t.SetField("possibleAttacks",b.CountPossibleAttacks());

@@ -1468,7 +1468,7 @@ namespace Game
 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						s->GetResourceVector(dummy,dummy,storage);
-						if (storage.level[Objects::Resource::Minerals] > 0)
+						if (storage[Objects::Resource::Minerals] > 0)
 							hasMineralContainer = true;
 					#endif
 					if (To<Objects::VehiclePlant>::DynamicCast(s))

@@ -45,9 +45,9 @@ namespace Objects
 
 		#ifndef CLIENT
 			ResourceVector	GetOverproduction() const;
-			int				GetOverproduction(Resource) const;
+			int				GetOverproduction(Resource::ID) const;
 			void			DistributeOverproduction(const ResourceVector&v);
-			void			ForceWithdrawOverproduction(Resource res ,int positiveAmount);
+			void			ForceWithdrawOverproduction(Resource::ID res ,int positiveAmount);
 			void			TryWithdrawOverproduction(ResourceVector&positiveVector);
 		#endif
 
@@ -82,7 +82,7 @@ namespace Objects
 			void			ChangeStorage(ResourceVector&supply, float&atTime);
 			FullResourceVector	GetVector(const Ctr::Array<bool>&virtualEnabled) const;
 		#endif
-		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Ctr::Array<Resource>*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
+		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, ResourceFlagSet*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
 		void				RefreshState(float atTime);
 		FullResourceVector	GetVector() const;
 		FullResourceVector	GetAllEnabledVector() const;
