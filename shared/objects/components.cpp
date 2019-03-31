@@ -1474,7 +1474,8 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-		
+			namespace R = Objects::Resource;
+
 			void			Base::DescribeType(Command::Base::Label&label, bool compound, const OwnerParameter&owner)
 			{
 				if (!compound)
@@ -1585,7 +1586,7 @@ namespace Objects
 					if (need == 0)
 						outResult <<"Does not require ammunition";
 					else
-						outResult <<"Consumes "+String(ResourceTag(ammoType))+ammoNeedPerShot.Describe(researchState)+" per shot";
+						outResult <<"Consumes "+ammoType.GetTagStr()+ammoNeedPerShot.Describe(researchState)+" per shot";
 					int count = attacksPerRound.GetValue(researchState);
 					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
 				}
@@ -1593,7 +1594,7 @@ namespace Objects
 				{
 					outResult <<"Explosion radius: "+explosionRadius.Describe(researchState);
 					if (this == &bomb)
-						outResult.GetLastLine() +=" ("+String(ResourceTag(R::Uranium))+": *2)";
+						outResult.GetLastLine() +=" ("+R::Uranium.GetTagStr()+": *2)";
 						//bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
 				}
 				if (damageLevel.IsFunctionOrConstNonZero())
@@ -1603,11 +1604,11 @@ namespace Objects
 					else
 						outResult <<"Damage: "+damageLevel.Describe(researchState);
 					if (this == &bomb)
-						outResult.GetLastLine() +=" ("+String(ResourceTag(R::Uranium))+": *5)";
+						outResult.GetLastLine() +=" ("+R::Uranium.GetTagStr()+": *5)";
 				}
 
 				if (CanConstruct() && !compound)
-					outResult <<"Construction: Converts "+String(ResourceTag(R::Minerals))+operationSpeed[Operation::Construct].Describe(researchState)+" per round";
+					outResult <<"Construction: Converts "+R::Minerals.GetTagStr()+operationSpeed[Operation::Construct].Describe(researchState)+" per round";
 				if ((CanDo(Operation::RemoveTerrain) || CanDo(Operation::AddTerrain)) && !compound)
 					outResult <<"Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
@@ -1629,9 +1630,9 @@ namespace Objects
 				#endif
 				outResult.MarkBriefEnd();
 				if (CanConstruct())
-					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(R::Minerals))+" to initiate construction.");
+					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+R::Minerals.GetTagStr()+" to initiate construction.");
 				if (CanRepair())
-					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(R::Minerals))+" to initiate repair.");
+					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+R::Minerals.GetTagStr()+" to initiate repair.");
 				if (detectsResources)
 					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())
@@ -1663,7 +1664,7 @@ namespace Objects
 
 				if (this == &bomb)
 					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
-					"Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+String(ResourceTag(R::Uranium))+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
+					"Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+R::Uranium.GetTagStr()+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
 				if (mainAttackIsDoomsday)
 				{
 					outResult << ("This "+lowerName+" type is classified as DOOMSDAY WEAPONRY. Careful with this one.");

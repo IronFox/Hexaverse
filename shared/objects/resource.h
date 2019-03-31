@@ -93,6 +93,8 @@ namespace Objects
 			String			GetTagStr(const Table&) const;
 			String			GetTagStr() const;
 			const String&	ToString() const;
+
+			friend hash_t	Hash(const ID&id) {return (hash_t)id.serialIndex;}
 		};
 
 		struct Type
@@ -100,7 +102,7 @@ namespace Objects
 			//serialized:
 			String		name, icon;
 			//local/derived:
-			index_t		serialIndex;	//!< Updated when copied into Table
+			index_t		serialIndex;
 			char		tag;
 
 			void		swap(Type&other)
@@ -204,6 +206,12 @@ namespace Objects
 		*/
 		extern Table table;
 		extern const Table standard;
+
+		/**
+		Invariant indices of natural resources.
+		The first three resources _must_ be natural resources as implemented by the original engine
+		*/
+		static const constexpr index_t FuelID = 0, MineralID = 1, UraniumID = 2;
 
 		/**
 		Non dynamic resources. These are always available:

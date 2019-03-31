@@ -653,8 +653,8 @@ namespace Objects
 					Super::DescribeType(label,descFlags);
 					//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 					label.MarkBriefEnd();
-					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(R::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
-										" Failure to supply the required "+String(ResourceTag(R::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
+					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+Resource::Fuel.GetTagStr()+"fuel is transferred up, to supply the hub and its satellites."
+										" Failure to supply the required "+Resource::Fuel.GetTagStr()+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
 				}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 				virtual void			OnSelect()	override;

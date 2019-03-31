@@ -11,10 +11,7 @@ namespace Grid
 {
 
 
-	/*static*/ Buffer0<Resource>	Resource::all;
-	/*static*/ index_t				Resource::fuelAt = InvalidIndex,
-									Resource::mineralsAt=InvalidIndex,
-									Resource::uraniumAt = InvalidIndex;
+	/*static*/ FixedArray<Resource,3>	Resource::all;
 
 
 	String							currentCustomResourceDistribution="clustered";
@@ -82,9 +79,9 @@ namespace Grid
 
 	void	CreateResources()
 	{
-		Resource::Create("Fuel", ConstName::Resource_Fuel, float3(0.1,1,0.1), Objects::Resource::Fuel.serialIndex);
-		Resource::Create("Minerals", ConstName::Resource_Minerals, float3(0.9,0.9,0.9), Objects::Resource::Minerals.serialIndex);
-		Resource::Create("Uranium", ConstName::Resource_Uranium, float3(1,1,0.1), Objects::Resource::Uranium.serialIndex);
+		Resource::Create(Objects::Resource::Fuel, float3(0.1,1,0.1));
+		Resource::Create(Objects::Resource::Minerals, float3(0.9,0.9,0.9));
+		Resource::Create(Objects::Resource::Uranium, float3(1,1,0.1));
 
 
 		GlobalEvents::terrainFlush << Resource::FlushAll;
@@ -101,20 +98,12 @@ namespace Grid
 	/*static*/ Resource::coverage_t			Resource::Sample(const String&resourceName, index_t stackID)
 	{
 		ASSERT_LESS__(stackID, ARRAYSIZE(((Resource*)nullptr)->coverage));
-		foreach (all,res)
-			if (res->name.EqualsIgnoreCase(resourceName))
-				return res->coverage[stackID];
-		FATAL__("Unable to locate resource '"+resourceName+'"');	//may be disabled later when resources are fully dynamic
-		return 0;
+		return Require(resourceName).coverage[stackID];
 	}
-	/*static*/ Resource::coverage_t			Resource::Sample(ConstName resourceName, index_t stackID)
+	/*static*/ Resource::coverage_t			Resource::Sample(Objects::Resource::ID id, index_t stackID)
 	{
 		ASSERT_LESS__(stackID, ARRAYSIZE(((Resource*)nullptr)->coverage));
-		foreach (all,res)
-			if (res->cname == resourceName)
-				return res->coverage[stackID];
-		FATAL__("Unable to locate resource #"+String(int(resourceName)));	//may be disabled later when resources are fully dynamic
-		return 0;
+		return Require(id).coverage[stackID];
 	}
 
 	/*static*/ Resource&		Resource::Require(const String&name)
@@ -127,14 +116,10 @@ namespace Grid
 		return all.First();
 	}
 
-	/*static*/ Resource&		Resource::Require(ConstName name)
+	/*static*/ Resource&		Resource::Require(Objects::Resource::ID id)
 	{
-		foreach (all,res)
-			if (res->cname == name)
-				return *res;
-
-		FATAL__("Unable to locate resource #"+String(int(name)));
-		return all.First();
+		ASSERT_LESS__(id.serialIndex,3);
+		return all[id.serialIndex];
 	}
 
 
@@ -214,44 +199,37 @@ namespace Grid
 		}
 	}
 
-	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, index_t resIndex)
+	/*static*/ void Resource::Create(Objects::Resource::ID id, const float3&color)
 	{
-		ASSERT_LESS__(resIndex, Objects::Resource::table.Count());
-		const auto idx = Resource::all.Count();
-		Resource&rc = Resource::all.Append();
-		rc.Name(name,cname,color);
-		rc.resourceIndex = resIndex;
-		switch (cname)
-		{
-			case ConstName::Resource_Minerals:
-				mineralsAt = idx;
-				break;
-			case ConstName::Resource_Fuel:
-				fuelAt = idx;
-				break;
-			case ConstName::Resource_Uranium:
-				uraniumAt = idx;
-				break;
-		}
+		ASSERT_LESS__(id.serialIndex, Objects::Resource::table.Count());
+		ASSERT_LESS__(id.serialIndex, Resource::all.Count());
+		Resource&rc = Resource::all[id.serialIndex];
+		rc.Name(id,color);
 	}
+
+	void			Resource::Name(Objects::Resource::ID id, const float3&color)	
+	{
+		this->name = id.ToString(); 
+		this->resourceIndex = id.serialIndex; 
+		this->color = color;
+	}
+
+	/*static*/ Resource&		Resource::GetFuel()		{return all[Objects::Resource::FuelID];}
+	/*static*/ Resource&		Resource::GetMinerals()	{return all[Objects::Resource::MineralID];}
+	/*static*/ Resource&		Resource::GetUranium()	{return all[Objects::Resource::UraniumID];}
 
 
 	#ifdef CLIENT
-		void		UpdateResourceMap(ConstName resourceName,const Ctr::ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
+		void		UpdateResourceMap(Objects::Resource::ID resourceID,const Ctr::ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
 		{
-			foreach (R::all, res)
-				if (res->GetCName() == resourceName)
-				{
-					foreach (data,el)
-					{
-						ASSERT_LESS__(el->cellIndex,ARRAYSIZE(res->coverage));
-						res->coverage[el->cellIndex] = el->coverage;
-						setSensor.resourcesDiscovered[el->cellIndex] = true;
-						setSensor.familyChanged[low.grid.GetCell(el->cellIndex).family] = true;
-					}
-					return;
-				}
-			FATAL__("Unable to locate resource type #"+String((int)resourceName));
+			auto&res = Grid::Resource::all[resourceID.serialIndex];
+			foreach (data,el)
+			{
+				ASSERT_LESS__(el->cellIndex,ARRAYSIZE(res.coverage));
+				res.coverage[el->cellIndex] = el->coverage;
+				setSensor.resourcesDiscovered[el->cellIndex] = true;
+				setSensor.familyChanged[low.grid.GetCell(el->cellIndex).family] = true;
+			}
 		}
 	#endif
 

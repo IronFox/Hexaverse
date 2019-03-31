@@ -272,7 +272,7 @@ namespace Objects
 			outResult << speed;
 			int opSpeed = GetOperationSpeed(Component::Construct);
 			if (opSpeed)
-				outResult << "Effective construction speed: "+String(ResourceTag(R::Minerals))+String(opSpeed)+" per round";
+				outResult << "Effective construction speed: "+Resource::Minerals.GetTagStr()+String(opSpeed)+" per round";
 
 			const String fuel (ResourceTag(R::Fuel));
 

@@ -1034,7 +1034,7 @@ namespace Objects
 			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Enabled generators provide energy for the local compound."
-			" Since many structures consume "+R::Energy.GetTagStr()+" when enabled, generators are a crucial component of any active base."
+			" Since many structures consume "+Resource::Energy.GetTagStr()+" when enabled, generators are a crucial component of any active base."
 			" Combine with reactor cores for increased output."
 			;
 		}

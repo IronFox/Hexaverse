@@ -107,9 +107,9 @@ namespace Objects
 		Table table = standard;
 
 		const ID	
-			Fuel = 0, 
-			Minerals = 1,
-			Uranium = 2,
+			Fuel = FuelID, 
+			Minerals = MineralID,
+			Uranium = UraniumID,
 			Energy = 3,
 			#ifndef NO_MUNITION
 				Munitions = 4,

@@ -412,7 +412,7 @@ namespace Objects
 
 			int opSpeed = std::max(GetOperationSpeed(Component::Operation::Construct, owner),GetOperationSpeed(Component::Operation::AddTerrain,owner));
 			if (opSpeed)
-				outResult << "Effective construction speed: "+String(ResourceTag(R::Minerals))+String(opSpeed)+" per round";
+				outResult << "Effective construction speed: "+Resource::Minerals.GetTagStr()+String(opSpeed)+" per round";
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				if (turret->baseStorageCapacity.IsNotEmpty())

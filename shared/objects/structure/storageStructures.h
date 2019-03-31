@@ -81,13 +81,13 @@ namespace Objects
 				virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 				{
 					Super::DescribeType(label,descFlags,owner);
-					if (maxStorage.IsNotEmpty())
+					if (maxStorage.IsNonZero())
 					{
 						label.MarkBriefEnd();
 						label << "Storage structures accumulate excess production of the respective resources from the local compound until they are full."
 						" Disabling a storage structure will change its priority such, that excess resources are stored here only if all other storage capacities are exhausted."
 						" Likewise, resource demand will remove resources from disabled storage structures first, such that they tend towards empty."
-						" Storage structures do not require "+String(ResourceTag(R::Energy))+" to operate."
+						" Storage structures do not require "+Resource::Energy.GetTagStr()+" to operate."
 						;
 					}
 				}
@@ -245,7 +245,7 @@ namespace Objects
 				#ifdef NO_MUNITION
 					label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
 				#else
-					label << "Enabled munition factories continuiously produce "+String(ResourceTag(R::Munitions))+" to supply connected offensive turrets."
+					label << "Enabled munition factories continuiously produce "+Resource::Munitions.GetTagStr()+" to supply connected offensive turrets."
 				#endif
 				;
 			}
