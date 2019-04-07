@@ -746,6 +746,7 @@ namespace StatePanel
 	void		Create()
 	{
 		GlobalEvents::uiScaleChanged << [](){doRewrap = true;};
+		GlobalEvents::resourceTableUpdated << SignalChange;
 	}
 
 }
