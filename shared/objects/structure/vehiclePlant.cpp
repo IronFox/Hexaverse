@@ -12,7 +12,7 @@ namespace Objects
 	/*static*/ Ctr::Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
 	
 	#ifndef CLIENT
-		/*virtual override*/ void				VehiclePlant::Tick(ResourceVector&v)
+		/*virtual override*/ void				VehiclePlant::Tick(Resource::Vector&v)
 		{
 			v.Add(Resource::Energy, -EnergyConsumption);
 

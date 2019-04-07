@@ -256,7 +256,7 @@ namespace Objects
 		}
 
 
-		void MobileEntityProducer::Tick( ResourceVector&v, float&t, bool forceAutoSpawn )
+		void MobileEntityProducer::Tick( Resource::Vector&v, float&t, bool forceAutoSpawn )
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);

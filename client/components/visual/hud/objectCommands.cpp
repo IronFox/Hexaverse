@@ -215,7 +215,7 @@ namespace Objects
 
 
 
-		/*virtual override*/ void		EntityConstructionCommand::GetCosts( int&costOut, Resource&costTypeOut, int&timeCostOut )
+		/*virtual override*/ void		EntityConstructionCommand::GetCosts( int&costOut, Resource::ID&costTypeOut, int&timeCostOut )
 		{
 			if (getCosts)
 				getCosts(costOut,costTypeOut,timeCostOut);
@@ -355,7 +355,7 @@ namespace Objects
 				rounds = (int)std::min(roundsLeft, rawRounds);
 
 				outResult << name;
-				outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
+				outResult << Resource::Minerals.GetTagStr()+ " "+String(price);
 				if (price != rawPrice)
 					outResult.GetLastLine() += "/"+String(rawPrice);
 				if (rounds)
@@ -420,7 +420,7 @@ namespace Objects
 		{
 			outResult.BeginBrief();
 			int resourceCost, timeCost;
-			Resource resourceType;
+			Resource::ID resourceType;
 			GetCosts(resourceCost,resourceType,timeCost);
 
 			if (timeCost == 0)
@@ -432,7 +432,7 @@ namespace Objects
 			outResult << name;
 			if (resourceCost > 0)
 			{
-				outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost) + "  ";
+				outResult << " "+resourceType.GetTagStr()+ " "+String(resourceCost) + "  ";
 			}
 			else
 				outResult<<" ";

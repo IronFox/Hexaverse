@@ -55,7 +55,7 @@ namespace Lua
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
-		void UpdateResourceTable(Lua::Table&t,const Objects::ResourceVector&v)
+		void UpdateResourceTable(Lua::Table&t,const Objects::Resource::Vector&v)
 		{
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			{
@@ -101,7 +101,7 @@ namespace Lua
 						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 							return -1;
 					#endif
-					return r->coverage[stackID] * Objects::NaturalResourceVector::TranslationFactor;
+					return r->coverage[stackID] * Objects::Resource::NaturalVector::TranslationFactor;
 				}
 			throw Lua::Exception("GetNaturalResourceAt(): Resource '"+resourceName+"' does not exist.");
 		}
@@ -109,7 +109,7 @@ namespace Lua
 		Lua::Table GetNaturalResourcesAt(Lua::Table cellTable)
 		{
 			const auto stackID = LuaCellToStack(cellTable,"GetNaturalResourcesAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
-			Objects::NaturalResourceVector vec;
+			Objects::Resource::NaturalVector vec;
 			if (!vec.SampleWorld(stackID) || vec.IsEmpty())
 				return Lua::nil;
 			Lua::Table rs = cellTable.GetProgram()->CreateTable();
@@ -1422,7 +1422,7 @@ namespace Lua
 		if (e->IsWorkingStructure())
 		{
 			const auto ws = To<Objects::WorkingStructure>::Cast(e);
-			Objects::ResourceVector balance,storage,storageMax;
+			Objects::Resource::Vector balance,storage,storageMax;
 			ws->GetResourceVector(balance,storage,storageMax);
 
 			Detail::UpdateResourceTable(t.SetSubTable("resourceStorage"),storage);
@@ -2115,7 +2115,7 @@ namespace Lua
 			if (e->IsWorkingStructure())
 			{
 				const auto ws = To<Objects::WorkingStructure>::Cast(e);
-				Objects::ResourceVector balance,storage,storageMax;
+				Objects::Resource::Vector balance,storage,storageMax;
 				ws->GetResourceVector(balance,storage,storageMax);
 
 				Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);

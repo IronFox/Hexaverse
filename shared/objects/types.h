@@ -93,8 +93,11 @@ namespace Objects
 		class Table;
 		struct ID;
 		struct Type;
+		class FlagSet;
+		class Vector;
+		struct NaturalVector;
+		class PositiveVector;
 	}
-	class ResourceFlagSet;
 	
 
 

@@ -440,6 +440,52 @@ namespace ResourceGauges
 	bool			resourcesAsList = false;
 
 
+	void UpdateGauges()
+	{
+		static const float stepX = (0.5f + 1.f) * 2.2f * 1.2f HIB(/1.2f);
+		static const float stepY = 0.86602540378443864676372317075294f * 2.2f;
+//			const float3 base(-38,0,-36);
+		const float3 base(-33,0,-36);
+		Random random(1024);
+
+		gauges.SetSize(Objects::Resource::table.GetSize());
+		#ifndef NO_HIBERNATION
+			trafficGauge.isTraffic = true;
+		#endif
+
+		for (index_t i = 0; i < gauges.Count(); i++)
+		{
+			Gauge&g = gauges[i];
+			g.base.x = float(i HIB(+2)) * (stepX );
+			g.base.y = (1.f - float(i%2)) * stepY;
+			g.base += base;
+			g.LoadTexture(Objects::Resource::ID(i));
+			//test.Construct();
+		}
+		#ifndef NO_HIBERNATION
+		{
+			Gauge&g = trafficGauge;
+			g.base.x = 0;
+			g.base.y = stepY;
+			g.base += base;
+
+			g.IconItem::LoadTexture("Traffic");
+			g.myTag = Objects::TrafficResourceTag();
+			g.color = float3(0.1,1,1);
+		}
+		#endif
+
+
+		gauges[Objects::Resource::Energy.serialIndex].color = float3(0.2,0.4,1);
+		gauges[Objects::Resource::FuelID].color = float3(0.4,1,0.2);
+		gauges[Objects::Resource::MineralID].color = float3(0.7,0.7,0.7);
+		#ifndef NO_MUNITION
+			gauges[Objects::Resource::Munitions.serialIndex].color = float3(1,0.4,0.2);
+		#endif
+		gauges[Objects::Resource::UraniumID].color = float3(1,1,0.1);
+		gauges[Objects::Resource::UraniumID].alternatingColor = float3(0.1,0.1,0.1);
+		gauges[Objects::Resource::UraniumID].usesAlternatingColors = true;
+	}
 
 
 
@@ -464,54 +510,12 @@ namespace ResourceGauges
 
 
 
-		static const float stepX = (0.5f + 1.f) * 2.2f * 1.2f HIB(/1.2f);
-		static const float stepY = 0.86602540378443864676372317075294f * 2.2f;
-//			const float3 base(-38,0,-36);
-		const float3 base(-33,0,-36);
-		Random random(1024);
 
-		gauges.SetSize(Objects::ResourceVector::NumEntries);
-		#ifndef NO_HIBERNATION
-			trafficGauge.isTraffic = true;
-		#endif
-
-		for (index_t i = 0; i < gauges.Count(); i++)
-		{
-			Gauge&g = gauges[i];
-			g.base.x = float(i HIB(+2)) * (stepX );
-			g.base.y = (1.f - float(i%2)) * stepY;
-			g.base += base;
-			g.LoadTexture(Objects::Resource::Reinterpret(i));
-			//test.Construct();
-		}
-		#ifndef NO_HIBERNATION
-		{
-			Gauge&g = trafficGauge;
-			g.base.x = 0;
-			g.base.y = stepY;
-			g.base += base;
-
-			g.IconItem::LoadTexture("Traffic");
-			g.myTag = Objects::TrafficResourceTag();
-			g.color = float3(0.1,1,1);
-		}
-		#endif
-
-
+		UpdateGauges();
+		GlobalEvents::resourceTableUpdated << UpdateGauges;
+		
 		timeResource.color = float3(1);
 		timeResource.LoadTexture("time");
-
-
-
-		gauges[Objects::Resource::Energy].color = float3(0.2,0.4,1);
-		gauges[Objects::Resource::Fuel].color = float3(0.4,1,0.2);
-		gauges[Objects::Resource::Minerals].color = float3(0.7,0.7,0.7);
-		#ifndef NO_MUNITION
-			gauges[Objects::Resource::Munitions].color = float3(1,0.4,0.2);
-		#endif
-		gauges[Objects::Resource::Uranium].color = float3(1,1,0.1);
-		gauges[Objects::Resource::Uranium].alternatingColor = float3(0.1,0.1,0.1);
-		gauges[Objects::Resource::Uranium].usesAlternatingColors = true;
 	}
 
 
@@ -565,41 +569,41 @@ namespace ResourceGauges
 		#endif
 	}
 
-	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change)
+	void	Update( TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change)
 	{
 		#ifndef NO_HIBERNATION
 			UpdateTraffic(traffic);
 		#else
 			showExtraGauges = true;
 		#endif
-		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			gauges[i].Set(current.level[i],max.level[i],change.level[i],0,0,true);
+		for (index_t i = 0; i < gauges.Count(); i++)
+			gauges[i].Set(current[i],max[i],change[i],0,0,true);
 
 	}
 
-	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max)
+	void	Update( TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max)
 	{
 		#ifndef NO_HIBERNATION
 			UpdateTraffic(traffic);
 		#else
 			showExtraGauges = true;
 		#endif
-		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			gauges[i].Set(current.level[i],max.level[i],0,0,0,true);
+		for (index_t i = 0; i < gauges.Count(); i++)
+			gauges[i].Set(current[i],max[i],0,0,0,true);
 
 	}
 
-	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-					const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/)
+	void	Update( TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change,
+					const Objects::Resource::Vector&localCurrent/*, const Objects::Resource::Vector&localChange, bool isEnabled*/)
 	{
 		#ifndef NO_HIBERNATION
 			UpdateTraffic(traffic);
 		#else
 			showExtraGauges = true;
 		#endif
-		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+		for (index_t i = 0; i < gauges.Count(); i++)
 //			resources[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],localChange.level[i],isEnabled);
-			gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
+			gauges[i].Set(current[i],max[i],change[i],localCurrent[i],0,true);
 	}
 
 	void	Render()

@@ -274,7 +274,7 @@ namespace Objects
 			if (opSpeed)
 				outResult << "Effective construction speed: "+Resource::Minerals.GetTagStr()+String(opSpeed)+" per round";
 
-			const String fuel (ResourceTag(R::Fuel));
+			const String fuel (ResourceTag(Resource::Fuel));
 
 			String demand = this->DescribeFuelConsumptionPerRound();
 			//if ((descFlags & DescIncludeFuelDemandModifier) && !this->RequiresFuel())
@@ -665,14 +665,14 @@ namespace Objects
 						demand *= 2;
 
 					Compound&compound = port->CastToStructure()->GetCompound();
-					int available = compound.total.storage[R::Fuel];
+					int available = compound.total.storage[Resource::Fuel];
 					//#ifdef ONE_COMPOUND_PER_FACTION
-					available += compound.GetOverproduction(R::Fuel);
+					available += compound.GetOverproduction(Resource::Fuel);
 					//#endif
 
 					if (available >= demand)
 					{
-						ChangeCompoundStorage(compound, this, atTime, R::Fuel, -demand);
+						ChangeCompoundStorage(compound, this, atTime, Resource::Fuel, -demand);
 						return port;
 					}
 				}
@@ -701,7 +701,7 @@ namespace Objects
 			if (MobileEntityProducer::queue.IsNotEmpty())
 			{
 				Compound&cmp = port->CastToStructure()->GetCompound();
-				if (cmp.total.balance[R::Minerals] >= (int)MobileEntityProducer::productionPerRound)
+				if (cmp.total.balance[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
 				{
 					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
@@ -940,7 +940,7 @@ namespace Objects
 			{
 				Grid::LCellIdI target;
 
-				const ResourceVector&storage = 
+				const Resource::Vector&storage = 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else

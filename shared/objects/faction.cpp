@@ -420,7 +420,7 @@ namespace Objects
 		}
 
 
-		void ChangeStorage(WorldEntity&e, float&atTime, const ResourceVector&max, ResourceVector&storage, Resource::ID res, int change)
+		void ChangeStorage(WorldEntity&e, float&atTime, const Resource::Vector&max, Resource::Vector&storage, Resource::ID res, int change)
 		{
 			if (change == 0)
 				return;
@@ -434,12 +434,12 @@ namespace Objects
 		{
 			if (change == 0)
 				return;
-			ResourceVector dummy,current,max;
+			Resource::Vector dummy,current,max;
 			ws.GetResourceVector(dummy,current,max);
 			ChangeStorage(ws,atTime,max,current,res,change);
 			ws.SetResourceStorage(current);
 			#ifdef _DEBUG
-				ResourceVector testCurrent;
+				Resource::Vector testCurrent;
 				ws.GetResourceVector(dummy,testCurrent,max);
 				ASSERT2__(current == testCurrent,current.ToString(),testCurrent.ToString());
 			#endif
@@ -447,11 +447,11 @@ namespace Objects
 
 		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource::ID res, int change)
 		{
-			ResourceVector demand;
+			Resource::Vector demand;
 
 			if (change < 0 )
 			{
-				ResourceVector withdraw;
+				Resource::Vector withdraw;
 				withdraw.Set(res, -change);
 				compound.TryWithdrawOverproduction(withdraw);
 				change = -withdraw[res];

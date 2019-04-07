@@ -26,6 +26,7 @@ namespace Engine
 		public:
 			typedef float (*FOnTag)(const float3&, char, float scaleX, float scaleY);
 			typedef float (*FTagWidth)(char);
+			typedef bool  (*FIsTag)(char);
 
 		protected:
 			struct TCharacter
@@ -52,8 +53,7 @@ namespace Engine
 			StreamVBO				stream;
 			BaseInstructionBlock	instruction;
 			unsigned			at = 0;
-			bool				tagMode = false;
-			M::TIntRange<char>	tagRange;
+			FIsTag				isTag;
 
 			FOnTag				onTag = nullptr;
 			FTagWidth			tagWidth = nullptr;
@@ -83,16 +83,15 @@ namespace Engine
 	        void                Write(const StringRef&str);	//!< Print the specified string. Newline characters are overridden  \param str String to Print \param len Number of characters to Print of \b str
 	        void                End();									//!< Ends text output
 
-			void				BeginTagMode(FOnTag onTag,FTagWidth tagWidth,char tagRangeBegin,char tagRangeEnd)
+			void				BeginTagMode(FIsTag isTag, FOnTag onTag,FTagWidth tagWidth)
 			{
-				tagMode = true;
 				this->onTag = onTag;
 				this->tagWidth = tagWidth;
-				this->tagRange = M::IntRange(tagRangeBegin,tagRangeEnd);
+				this->isTag = isTag;
 			}
 			void				EndTagMode()
 			{
-				tagMode = false;
+				isTag = nullptr;
 			}
 		};
 	}

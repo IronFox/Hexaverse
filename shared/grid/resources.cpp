@@ -123,10 +123,10 @@ namespace Grid
 	}
 
 
-	///*static*/ void R::Create(const String&name, ConstName cname, const float3&color, const M::TVec3<>&seed,float rarity, float maxYield)
+	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const M::TVec3<>&seed,float rarity, float maxYield)
 	//{
 	//	// low.cells[i].centerVertex.xyz,
-	//	R&rc = R::all.Append();
+	//	R&rc = Resource::all.Append();
 	//	rc.Name(name,cname,color);
 	//	for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 	//	{

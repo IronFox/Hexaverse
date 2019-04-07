@@ -109,7 +109,7 @@ namespace Objects
 				else
 				{
 					RefreshCompoundCoverageIfNeeded(entityTime);
-					ResourceVector change;
+					Resource::Vector change;
 					change.Set(turret->ammoType, -ammoNeed);
 					GetCompound().ChangeStorage(change,entityTime);
 					//ASSERT__(change.IsEmpty());
@@ -153,12 +153,12 @@ namespace Objects
 			return false;
 		}
 
-		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)
+		/*virtual override*/ void			Tower::ProcessLeftovers(Resource::Vector&v, index_t iteration, float&atTime)
 		{
-			ResourceVector maxStorage = GetMaxStorageCapacity();
+			Resource::Vector maxStorage = GetMaxStorageCapacity();
 			index_t targetIteration = 1;
 			#ifndef NO_MUNITION
-				if (storage[R::Munitions] < maxStorage[R::Munitions] / 4)
+				if (storage[Resource::Munitions] < maxStorage[Resource::Munitions] / 4)
 					targetIteration = 0;
 			#endif
 			if (iteration != targetIteration && iteration != FinalLeftoverIteration)

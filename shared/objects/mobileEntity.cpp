@@ -1027,7 +1027,7 @@ namespace Objects
 			{
 				Grid::LCellIdI target;
 
-				const ResourceVector&storage = 
+				const Resource::Vector&storage = 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else
@@ -1129,7 +1129,7 @@ namespace Objects
 		void					MobileEntity::RegisterNewJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const Grid::LCellIdI*destination)
 		{
 			/*{
-				if (job->resourceCostLeft > this->currentStorage[R::Minerals])
+				if (job->resourceCostLeft > this->currentStorage[Resource::Minerals])
 				{
 					LogEvent(GetName()+": Unable to comply. Insufficient minerals left in storage.");
 					return;

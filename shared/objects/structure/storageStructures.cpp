@@ -11,7 +11,7 @@ namespace Objects
 	namespace StorageCommon
 	{
 
-		float	GetUncontrolledExplosionRadius(const ResourceVector&storage, float*damageOut, bool*doomsdayOut)
+		float	GetUncontrolledExplosionRadius(const Resource::Vector&storage, float*damageOut, bool*doomsdayOut)
 		{
 			const bool doomsday = RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow;
 			const auto&state = Research::globalState.zeroTable;
@@ -38,7 +38,7 @@ namespace Objects
 			return myRadius;
 		}
 
-		void	HandleStorageDestruction(const Grid::LCellIdI&location,const ResourceVector&storage,float&atTime)
+		void	HandleStorageDestruction(const Grid::LCellIdI&location,const Resource::Vector&storage,float&atTime)
 		{
 			#ifndef CLIENT
 				if (!RuntimeConfig::storagesExplodeWhenDestroyed)

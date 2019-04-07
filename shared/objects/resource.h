@@ -9,7 +9,6 @@
 
 namespace Objects
 {
-	struct NaturalResourceVector;
 
 	/**
 	Structures no longer used in contemporary runtime or io-operations.
@@ -45,12 +44,6 @@ namespace Objects
 				{
 					Clear();
 				}
-
-				/**/ ResourceVectorT(const NaturalResourceVector&v)
-				{
-					operator=(v);
-				}
-
 
 				void	Clear()
 				{
@@ -140,6 +133,7 @@ namespace Objects
 			char		IndexToTag(index_t);
 			ID			TagToID(char);
 			index_t		TagToIndex(char);
+			bool		IsTag(char);
 		}
 
 		/**
@@ -223,288 +217,293 @@ namespace Objects
 			Energy,
 			Munitions,
 			_;	//not a resource, just a terminal symbol so the previous one can end with a comma. do not use
-	}
-
-	class ResourceFlagSet;
-
-	class ResourceVector
-	{
-	public:
-		typedef ResourceVector Self;
 
 
-		/**/	ResourceVector(){}
-		/**/	ResourceVector(const NaturalResourceVector&v){operator=(v);}
-		void	Clear()	{storage.Clear();}
-		int		Get(index_t resource) const	{return operator[](resource);}
-		int		Get(Resource::ID resource) const	{return operator[](resource.serialIndex);}
-		void	Set(index_t, int);
-		void	Set(Resource::ID idx, int v)	{Set(idx.serialIndex,v);}
-		void	Add(index_t, int);
-		void	Add(Resource::ID idx, int v)	{Add(idx.serialIndex,v);}
-		bool	IsZero() const;
-		bool	IsNonZero() const;
-		void	operator=(const NaturalResourceVector&);
-		void	operator+=(const NaturalResourceVector&v);
-
-		void	ImportForeign(const ResourceVector&foreignData, const Resource::Table&foreignTable)
+		class FlagSet
 		{
-			Clear();
-			for (index_t i = 0; i < Resource::table.Count(); i++)
+		public:
+			typedef FlagSet Self;
+			typedef UINT64	flag_t;
+			struct TFlagSet
 			{
-				const Resource::Type*ot = foreignTable.FindByName(Resource::table[i].name);
-				if (ot != nullptr)
-					Set(i,foreignData.Get(ot->serialIndex));
-			}
-		}
+				flag_t	set;
 
-		template <typename R>
-			void	ImportDeprecated(const Deprecated::ResourceVectorT<R>&source)
+				/**/	TFlagSet(flag_t set):set(set)	{}
+			};
+			/**/	FlagSet(TFlagSet set) : isSet(set.set)	{}
+			/**/	FlagSet()	{}
+			/**/	FlagSet(index_t resourceIndex)		{Set(resourceIndex);}
+			/**/	FlagSet(Resource::ID id) {Set(id);}
+
+			void	Set(index_t resourceIndex)	{isSet |= ((flag_t)1 << (flag_t)resourceIndex);}
+			void	Set(Resource::ID resource)	{Set(resource.serialIndex);}
+			flag_t	GetNumeric() const {return isSet;}
+			static Self	FromNumeric(flag_t num) {return Self(TFlagSet(num));}
+
+			bool	IsEmpty() const {return isSet == 0;}
+			bool	IsNotEmpty() const {return isSet != 0;}
+		
+			void	operator=(Resource::ID resource)	{isSet = ((flag_t)1 << (flag_t)resource.serialIndex);}
+
+			void	operator|=(Self res)	{isSet |= res.isSet;}
+			void	operator|=(Resource::ID res)	{Set(res);}
+			void	operator|=(index_t res)	{Set(res);}
+			Self	operator|(Self res) const	{return TFlagSet(isSet | res.isSet);}
+			bool	operator&(index_t resIndex) const {return (isSet & ((flag_t)1 << (flag_t)resIndex)) != 0;}
+			count_t	Count() const;
+		private:
+			flag_t	isSet = 0;
+		};
+	
+		class Vector
+		{
+		public:
+			typedef Vector Self;
+
+
+			/**/	Vector(){}
+			/**/	Vector(const NaturalVector&v){operator=(v);}
+			void	Clear()	{storage.Clear();}
+			int		Get(index_t resource) const	{return operator[](resource);}
+			int		Get(Resource::ID resource) const	{return operator[](resource.serialIndex);}
+			void	Set(index_t, int);
+			void	Set(Resource::ID idx, int v)	{Set(idx.serialIndex,v);}
+			void	Add(index_t, int);
+			void	Add(Resource::ID idx, int v)	{Add(idx.serialIndex,v);}
+			bool	IsZero() const;
+			bool	IsNonZero() const;
+			void	operator=(const NaturalVector&);
+			void	operator+=(const NaturalVector&v);
+
+			void	ImportForeign(const Self&foreignData, const Resource::Table&foreignTable)
 			{
 				Clear();
-				for (index_t i = 0; i < R::N; i++)
+				for (index_t i = 0; i < Resource::table.Count(); i++)
 				{
-					const Resource::Type*t = Resource::table.FindByName(R::Reinterpret(i).ToString());
-					if (t != nullptr)
-						Set(t->serialIndex,source.level[i]);
+					const Resource::Type*ot = foreignTable.FindByName(Resource::table[i].name);
+					if (ot != nullptr)
+						Set(i,foreignData.Get(ot->serialIndex));
 				}
 			}
 
-		friend void	Deserialize(IReadStream&s, Self&v)
-		{
-			Deserialize(s,v.storage);
-		}
-		friend void	Serialize(IWriteStream&s, const Self&v)
-		{
-			Serialize(s,v.storage);
-		}
+			template <typename R>
+				void	ImportDeprecated(const Deprecated::ResourceVectorT<R>&source)
+				{
+					Clear();
+					for (index_t i = 0; i < Resource::N; i++)
+					{
+						const Resource::Type*t = Resource::table.FindByName(Resource::Reinterpret(i).ToString());
+						if (t != nullptr)
+							Set(t->serialIndex,source.level[i]);
+					}
+				}
 
-		bool	operator<(const Self&v) const
-		{
-			for (index_t i = 0; i < Resource::table.Count(); i++)
-				if (Get(i) >= v.Get(i))
-					return false;
-			return true;
-		}
-		bool	operator<=(const Self&v) const
-		{
-			for (index_t i = 0; i < Resource::table.Count(); i++)
-				if (Get(i) > v.Get(i))
-					return false;
-			return true;
-		}
+			friend void	Deserialize(IReadStream&s, Self&v)
+			{
+				Deserialize(s,v.storage);
+			}
+			friend void	Serialize(IWriteStream&s, const Self&v)
+			{
+				Serialize(s,v.storage);
+			}
 
-		void	operator+=(const Self&v);
-		void	operator-=(const Self&v);
-		void	operator*=(int multiplier);
-		bool	operator==(const Self&v) const;
-		bool	operator!=(const Self&v) const;
-		Self	operator-(const Self&v)	const;
-		Self	operator*(int multiplier) const;
-		/**
-		Sums up all levels
-		*/
-		int		Sum() const;
-		/**
-		Sums up only levels below 0.
-		The result is negative or 0
-		*/
-		int		SumNegative() const;
-		/**
-		Sums up only levels above 0
-		*/
-		int		SumPositive() const;
-		/**
-		Separates the local vector into a positive and negative set
-		@param[out] positive Target positive resource vector. Will contain positive or zero values only. Cleared before adding values (if any)
-		@param[out] negative Target negative resource vector. Will contain negative or zero values only. Cleared before adding values (if any)
-		*/
-		void	SeparateBySign(Self&positive, Self&negative) const;
-		/**
-		Assures that no local level can exceed the respective level specified in @a limit.
-		The behavior is undefined if the limit contains negative values
-		*/
-		void	Cap(const Self&limit);
-		/**
-		Sets all local levels to their negative value
-		*/
-		void	Negate();
-		/**
-		Generates a string representation of the local vector in the form "X: 3, Y: -1".
-		Zero-values are not reported. The returned string may be empty
-		*/
-		String	ToString() const;
-		/*
-		{
-			Ctr::Buffer0<String> rs;
-			for (index_t i = 0; i < R::table.GetSize(); i++)
-				if (level[i] != 0)
-					rs << R::ID(i).ToString()+String(": ")+String(level[i]);
-			return implode(',',rs.pointer(),rs.Count());
-		}*/
+			bool	operator<(const Self&v) const
+			{
+				for (index_t i = 0; i < Resource::table.Count(); i++)
+					if (Get(i) >= v.Get(i))
+						return false;
+				return true;
+			}
+			bool	operator<=(const Self&v) const
+			{
+				for (index_t i = 0; i < Resource::table.Count(); i++)
+					if (Get(i) > v.Get(i))
+						return false;
+				return true;
+			}
 
-		/**
-		Checks whether all local levels are 0 or higher
-		*/
-		bool	IsStable() const;
-		/**
-		Checks if any local level of the specified resource flag set is non-0
-		*/
-		bool	AnyIsSet(const ResourceFlagSet&set) const;
+			void	operator+=(const Self&v);
+			void	operator-=(const Self&v);
+			void	operator*=(int multiplier);
+			bool	operator==(const Self&v) const;
+			bool	operator!=(const Self&v) const;
+			Self	operator-(const Self&v)	const;
+			Self	operator*(int multiplier) const;
+			/**
+			Sums up all levels
+			*/
+			int		Sum() const;
+			/**
+			Sums up only levels below 0.
+			The result is negative or 0
+			*/
+			int		SumNegative() const;
+			/**
+			Sums up only levels above 0
+			*/
+			int		SumPositive() const;
+			/**
+			Separates the local vector into a positive and negative set
+			@param[out] positive Target positive resource vector. Will contain positive or zero values only. Cleared before adding values (if any)
+			@param[out] negative Target negative resource vector. Will contain negative or zero values only. Cleared before adding values (if any)
+			*/
+			void	SeparateBySign(Self&positive, Self&negative) const;
+			/**
+			Assures that no local level can exceed the respective level specified in @a limit.
+			The behavior is undefined if the limit contains negative values
+			*/
+			void	Cap(const Self&limit);
+			/**
+			Sets all local levels to their negative value
+			*/
+			void	Negate();
+			/**
+			Generates a string representation of the local vector in the form "X: 3, Y: -1".
+			Zero-values are not reported. The returned string may be empty
+			*/
+			String	ToString() const;
+			/*
+			{
+				Ctr::Buffer0<String> rs;
+				for (index_t i = 0; i < Resource::table.GetSize(); i++)
+					if (level[i] != 0)
+						rs << Resource::ID(i).ToString()+String(": ")+String(level[i]);
+				return implode(',',rs.pointer(),rs.Count());
+			}*/
 
-		/**
-		Maps all resource indexes where the local vector contains a non-0 value
-		*/
-		ResourceFlagSet	IdentifySet() const;
-		int			operator[](index_t resource) const;
-		int			operator[](Resource::ID resource) const	{return operator[](resource.serialIndex);}
-	private:
-		Array<int>	storage;
+			/**
+			Checks whether all local levels are 0 or higher
+			*/
+			bool	IsStable() const;
+			bool	AnyIsNegative() const	{return !IsStable();}
+			bool	AnyIsNonZeroPositive() const;
+			/**
+			Checks if any local level of the specified resource flag set is non-0
+			*/
+			bool	AnyIsSet(const FlagSet&set) const;
 
-		void		CheckEmptiness();
-		void		AllocateEmpty();
-	};
+			/**
+			Maps all resource indexes where the local vector contains a non-0 value
+			*/
+			FlagSet		IdentifySet() const;
+			count_t		GetSize() const {return storage.Count();}
+			int			operator[](index_t resource) const;
+			int			operator[](Resource::ID resource) const	{return operator[](resource.serialIndex);}
+		private:
+			Array<int>	storage;
 
-	class ResourceFlagSet
-	{
-	public:
-		typedef UINT64	flag_t;
-		struct TFlagSet
-		{
-			flag_t	set;
-
-			/**/	TFlagSet(flag_t set):set(set)	{}
+			void		CheckEmptiness();
+			void		AllocateEmpty();
 		};
-		/**/	ResourceFlagSet(TFlagSet set) : isSet(set.set)	{}
-		/**/	ResourceFlagSet()	{}
-		/**/	ResourceFlagSet(index_t resourceIndex)		{Set(resourceIndex);}
-		/**/	ResourceFlagSet(Resource::ID id) {Set(id);}
 
-		void	Set(index_t resourceIndex)	{isSet |= ((flag_t)1 << (flag_t)resourceIndex);}
-		void	Set(Resource::ID resource)	{Set(resource.serialIndex);}
-		flag_t	GetNumeric() const {return isSet;}
-
-		bool	IsEmpty() const {return isSet == 0;}
-		bool	IsNotEmpty() const {return isSet != 0;}
-		
-		void	operator=(Resource::ID resource)	{isSet = ((flag_t)1 << (flag_t)resource.serialIndex);}
-
-		void	operator|=(ResourceFlagSet res)	{isSet |= res.isSet;}
-		void	operator|=(Resource::ID res)	{Set(res);}
-		void	operator|=(index_t res)	{Set(res);}
-		ResourceFlagSet	operator|(ResourceFlagSet res) const	{return TFlagSet(isSet | res.isSet);}
-		bool	operator&(index_t resIndex) const {return (isSet & ((flag_t)1 << (flag_t)resIndex)) != 0;}
-	private:
-		flag_t	isSet = 0;
-	};
-	
-	struct NaturalResourceVector
-	{
-		int		fuel,
-				minerals,
-				uranium;
-
-		/*
-		Minimum stack height is 2. Translation <3 = 2 means that there are only 4 yield on those areas. As a result a fuel mine on such a location cannot pay for itself.
-		*/
-		static const int TranslationFactor = 3;	//!< Translation factor used to scale resource vectors samples from the world
-
-		/**/	NaturalResourceVector():fuel(0),minerals(0),uranium(0)	{}
-
-
-		void	operator=(const ResourceVector&vec)
+		struct NaturalVector
 		{
-			this->fuel = vec.Get(Resource::Fuel);
-			this->minerals = vec.Get(Resource::Minerals);
-			this->uranium = vec.Get(Resource::Uranium);
-		}
+			int		fuel,
+					minerals,
+					uranium;
+
+			/*
+			Minimum stack height is 2. Translation <3 = 2 means that there are only 4 yield on those areas. As a result a fuel mine on such a location cannot pay for itself.
+			*/
+			static const int TranslationFactor = 3;	//!< Translation factor used to scale resource vectors samples from the world
+
+			/**/	NaturalVector():fuel(0),minerals(0),uranium(0)	{}
 
 
-		void	operator*=(float fc)
+			void	operator=(const Vector&vec)
+			{
+				this->fuel = vec.Get(Resource::Fuel);
+				this->minerals = vec.Get(Resource::Minerals);
+				this->uranium = vec.Get(Resource::Uranium);
+			}
+
+
+			void	operator*=(float fc)
+			{
+				fuel *= fc;
+				minerals *= fc;
+				uranium *= fc;
+			}
+			bool	SampleWorld(index_t lowCellID);
+			bool	IsNotEmpty() const {return fuel != 0 || minerals != 0 || uranium != 0;}
+			bool	IsEmpty() const {return fuel == 0 && minerals == 0 && uranium == 0;}
+		};
+
+
+
+		struct FullVector
 		{
-			fuel *= fc;
-			minerals *= fc;
-			uranium *= fc;
-		}
-		bool	SampleWorld(index_t lowCellID);
-		bool	IsNotEmpty() const {return fuel != 0 || minerals != 0 || uranium != 0;}
-		bool	IsEmpty() const {return fuel == 0 && minerals == 0 && uranium == 0;}
-	};
+			Vector	supply, demand, balance, storage, storageMax;
+
+
+			void	Include(const Vector&v, const Vector&storage, const Vector&storageMax)
+			{
+				v.SeparateBySign(supply,demand);
+				demand.Negate();
+				balance += v;
+				balance += storage;
+				this->storage += storage;
+				this->storageMax += storageMax;
+			}
+		};
 
 
 
-	struct FullResourceVector
-	{
-		ResourceVector	supply, demand, balance, storage, storageMax;
-
-
-		void	Include(const ResourceVector&v, const ResourceVector&storage, const ResourceVector&storageMax)
+		class PositiveVector : public Vector
 		{
-			v.SeparateBySign(supply,demand);
-			demand.Negate();
-			balance += v;
-			balance += storage;
-			this->storage += storage;
-			this->storageMax += storageMax;
-		}
-	};
+		public:
+			typedef Vector Super;
+			typedef PositiveVector Self;
+
+			/**/	PositiveVector()	{}
+			/**/	PositiveVector(const Super&v);
+
+			void	swap(Self&other)
+			{
+				std::swap((Super&)*this,(Super&)other);
+			}
 
 
+			friend void	Deserialize(IReadStream&s, Self&v)
+			{
+				Deserialize(s,(Super&)v);
+			}
+			friend void	Serialize(IWriteStream&s, const Self&v)
+			{
+				Serialize(s,(const Super&)v);
+			}
 
-	class PositiveResourceVector : public ResourceVector
-	{
-	public:
-		typedef ResourceVector Super;
-
-		/**/	PositiveResourceVector()	{}
-		/**/	PositiveResourceVector(const Objects::ResourceVector&v);
-
-		void	swap(Objects::ResourceVector&other)
-		{
-			std::swap((Objects::ResourceVector&)*this,other);
-		}
+			static	void					Serialize(IWriteStream&outStream, const Super&vec);
+			static	void					Deserialize(IReadStream&inStream, Super&vec);
 
 
-		friend void	Deserialize(IReadStream&s, PositiveResourceVector&v)
-		{
-			Deserialize(s,v);
-		}
-		friend void	Serialize(IWriteStream&s, const PositiveResourceVector&v)
-		{
-			Serialize(s,v);
-		}
+			bool		operator==(const Super&vec) const
+			{
+				return vec == *this;
+			}
+			bool		operator!=(const Super&vec) const
+			{
+				return vec != *this;
+			}
 
-		static	void					Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec);
-		static	void					Deserialize(IReadStream&inStream, Objects::ResourceVector&vec);
-
-
-		bool		operator==(const Objects::ResourceVector&vec) const
-		{
-			return vec == *this;
-		}
-		bool		operator!=(const Objects::ResourceVector&vec) const
-		{
-			return vec != *this;
-		}
-
-		void		operator=(const Objects::ResourceVector&vec)
-		{
-			((Objects::ResourceVector&)*this) = vec;
-		}
-		void		operator=(const Objects::NaturalResourceVector&vec)
-		{
-			((Objects::ResourceVector&)*this) = vec;
-		}	
-	};
+			void		operator=(const Super&vec)
+			{
+				((Super&)*this) = vec;
+			}
+			void		operator=(const NaturalVector&vec)
+			{
+				((Super&)*this) = vec;
+			}	
+		};
 
 
-
+	}
 
 
 
 
 	//static const char TextoutResourceTagOffset = (char)2;	//global char offset used for mineral output in strings
-	//static_assert((index_t)TextoutResourceTagOffset + R::table.GetSize()+2 < (index_t)'\n',"Relocate tag offset");
+	//static_assert((index_t)TextoutResourceTagOffset + Resource::table.GetSize()+2 < (index_t)'\n',"Relocate tag offset");
 	//static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
 	static inline char TimeResourceTag() {return (char)1;}
 	static inline char TrafficResourceTag() {return (char)2;}

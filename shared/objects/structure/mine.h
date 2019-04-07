@@ -41,7 +41,7 @@ namespace Objects
 
 		#endif
 
-		NaturalResourceVector		naturalResources;
+		Resource::NaturalVector		naturalResources;
 
 		float						GetEfficiency() const {return 1.f;/*location.height <= -8 ? 2.f : 1.f;*/}
 
@@ -49,11 +49,11 @@ namespace Objects
 		virtual bool				WouldLikeToEnable() const override {return true;}
 		virtual bool				CanEnable() const override {return IsLinkedToCore();}
 
-		//void						SetNaturalResourceVector(const NaturalResourceVector&res)	{naturalResources = res;}
+		//void						SetNaturalResourceVector(const Resource::NaturalVector&res)	{naturalResources = res;}
 
 		virtual void				PrototypeSetup()	override;
 
-		virtual void				GetResourceVector(ResourceVector&v,  ResourceVector&storageCurrent, ResourceVector&storageMax) const override
+		virtual void				GetResourceVector(Resource::Vector&v,  Resource::Vector&storageCurrent, Resource::Vector&storageMax) const override
 									{
 										Super::GetResourceVector(v,storageCurrent,storageMax); 
 										v += naturalResources; 

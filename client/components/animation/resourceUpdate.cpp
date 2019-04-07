@@ -7,17 +7,17 @@ namespace Animation
 	ResourceUpdate::ResourceUpdate(Protocol::ResourceUpdate&u):Super(TUniqueID::Empty())
 	{
 		up.cells.adoptData(u.cells);
-		up.resourceName = u.resourceName;
+		up.resourceIndex = u.resourceIndex;
 	}
 
 	/*virtual override*/ void ResourceUpdate::Begin( bool instant )
 	{
-		Grid::UpdateResourceMap(up.resourceName,up.cells,Grid::ResourceDiscovery::client);
+		Grid::UpdateResourceMap(Objects::Resource::ID(up.resourceIndex),up.cells,Grid::ResourceDiscovery::client);
 	}
 
 	/*virtual override*/ D::String		ResourceUpdate::Describe() const
 	{
-		return "ResourceUpdate("+ToString(up.resourceName)+")";
+		return "ResourceUpdate("+Objects::Resource::ID(up.resourceIndex.value).ToString()+")";
 	}
 
 

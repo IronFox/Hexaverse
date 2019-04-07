@@ -111,7 +111,7 @@ namespace Objects
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
 				#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 					if (newVehiclesHaveFullAmmo)
-						ChangeStorage(*this,atTime,R::Munitions,GetMaxStorageCapacity()[R::Munitions] - currentStorage[R::Munitions]);
+						ChangeStorage(*this,atTime,Resource::Munitions,GetMaxStorageCapacity()[Resource::Munitions] - currentStorage[Resource::Munitions]);
 				#endif
 			}
 		}
@@ -125,9 +125,9 @@ namespace Objects
 	
 	#ifndef ONE_COMPOUND_PER_FACTION
 
-	ResourceVector			Vehicle::GetMaxStorageCapacity()	const
+	Resource::Vector			Vehicle::GetMaxStorageCapacity()	const
 	{
-		ResourceVector rs = turret->baseStorageCapacity;
+		Resource::Vector rs = turret->baseStorageCapacity;
 		rs *= base->storageMultiplier;
 		return rs;
 	}
@@ -418,8 +418,8 @@ namespace Objects
 				if (turret->baseStorageCapacity.IsNotEmpty())
 				{
 					outResult << "Effective storage capacity:";
-					ResourceVector vec = this->GetMaxStorageCapacity(owner);
-					for (index_t i = 0; i < R::table.GetSize(); i++)
+					Resource::Vector vec = this->GetMaxStorageCapacity(owner);
+					for (index_t i = 0; i < Resource::table.GetSize(); i++)
 					{
 						if (vec[i])
 						{

@@ -45,6 +45,15 @@ namespace Objects
 			{
 				return TagToIndex(c);
 			}
+
+			bool	IsTag(char c)
+			{
+				if (c < '\n')
+					return c > 0;
+				if (c < '\r')
+					return c > '\n';
+				return c > '\r' && c < ' ';
+			}
 		}
 
 		/*static*/ const ID	ID::Invalid = ID(InvalidIndex);
@@ -89,7 +98,7 @@ namespace Objects
 		{
 			if (tag != 0)
 				return String(tag);
-			return '('+name+')';
+			return '('+name+") ";
 		}
 
 
@@ -189,315 +198,332 @@ namespace Objects
 		}
 
 
-	}
-
-	void	ResourceVector::AllocateEmpty()
-	{
-		storage.SetSize(Resource::table.Count());
-		storage.Fill(0);
-	}
-
-
-	void	ResourceVector::Set(index_t resource, int value)
-	{
-		if (IsZero() && value == 0)
-			return;
-		if (storage.IsEmpty())
+		void	Vector::AllocateEmpty()
 		{
-			AllocateEmpty();
-			storage[resource] = value;
+			storage.SetSize(Resource::table.Count());
+			storage.Fill(0);
 		}
-		else
-		{
-			storage[resource] = value;
-			if (value == 0)
-				CheckEmptiness();
-		}
-	}
-	
-	void	ResourceVector::Add(index_t resource, int value)
-	{
-		if (value == 0)
-			return;
-		if (storage.IsEmpty())
-		{
-			AllocateEmpty();
-			storage[resource] = value;
-		}
-		else
-		{
-			storage[resource] += value;
-			if (storage[resource] == 0)
-				CheckEmptiness();
-		}
-	}
 
 
-	void	ResourceVector::CheckEmptiness()
-	{
-		foreach (storage,v)
-			if ((*v) != 0)
+		void	Vector::Set(index_t resource, int value)
+		{
+			if (IsZero() && value == 0)
 				return;
-		storage.Clear();
-	}
-
-
-	void	ResourceVector::operator=(const NaturalResourceVector&v)
-	{
-		if (v.IsEmpty())
-		{
-			Clear();
-			return;
+			if (storage.IsEmpty())
+			{
+				AllocateEmpty();
+				storage[resource] = value;
+			}
+			else
+			{
+				storage[resource] = value;
+				if (value == 0)
+					CheckEmptiness();
+			}
 		}
-		AllocateEmpty();
-		Set(Resource::Fuel,v.fuel);
-		Set(Resource::Minerals,v.minerals);
-		Set(Resource::Uranium,v.uranium);
-	}
-
-	void	ResourceVector::operator+=(const NaturalResourceVector&v)
-	{
-		if (v.IsEmpty())
-			return;
-		if (IsZero())
+	
+		void	Vector::Add(index_t resource, int value)
 		{
-			operator=(v);
-			return;
+			if (value == 0)
+				return;
+			if (storage.IsEmpty())
+			{
+				AllocateEmpty();
+				storage[resource] = value;
+			}
+			else
+			{
+				storage[resource] += value;
+				if (storage[resource] == 0)
+					CheckEmptiness();
+			}
 		}
-		storage[Resource::Fuel.serialIndex] += v.fuel;
-		storage[Resource::Minerals.serialIndex] += v.minerals;
-		storage[Resource::Uranium.serialIndex] += v.uranium;
-		CheckEmptiness();
-	}
 
 
-	void	ResourceVector::operator+=(const Self&other)
-	{
-		if (other.IsZero())
-			return;
-		if (IsZero())
+		void	Vector::CheckEmptiness()
 		{
-			storage = other.storage;
-			return;
-		}
-		for (index_t i = 0; i < storage.Count(); i++)
-			storage[i] += other.storage[i];
-		CheckEmptiness();
-	}
-
-	void	ResourceVector::operator-=(const Self&other)
-	{
-		if (other.IsZero())
-			return;
-		if (IsZero())
-		{
-			storage = other.storage;
-			Negate();
-			return;
-		}
-		for (index_t i = 0; i < storage.Count(); i++)
-			storage[i] -= other.storage[i];
-		CheckEmptiness();
-	}
-
-	void	ResourceVector::operator*=(int multiplier)
-	{
-		if (multiplier == 0)
+			foreach (storage,v)
+				if ((*v) != 0)
+					return;
 			storage.Clear();
-		else
+		}
+
+
+		void	Vector::operator=(const NaturalVector&v)
+		{
+			if (v.IsEmpty())
+			{
+				Clear();
+				return;
+			}
+			AllocateEmpty();
+			Set(Resource::Fuel,v.fuel);
+			Set(Resource::Minerals,v.minerals);
+			Set(Resource::Uranium,v.uranium);
+		}
+
+		void	Vector::operator+=(const NaturalVector&v)
+		{
+			if (v.IsEmpty())
+				return;
+			if (IsZero())
+			{
+				operator=(v);
+				return;
+			}
+			storage[Resource::Fuel.serialIndex] += v.fuel;
+			storage[Resource::Minerals.serialIndex] += v.minerals;
+			storage[Resource::Uranium.serialIndex] += v.uranium;
+			CheckEmptiness();
+		}
+
+
+		void	Vector::operator+=(const Self&other)
+		{
+			if (other.IsZero())
+				return;
+			if (IsZero())
+			{
+				storage = other.storage;
+				return;
+			}
+			for (index_t i = 0; i < storage.Count(); i++)
+				storage[i] += other.storage[i];
+			CheckEmptiness();
+		}
+
+		void	Vector::operator-=(const Self&other)
+		{
+			if (other.IsZero())
+				return;
+			if (IsZero())
+			{
+				storage = other.storage;
+				Negate();
+				return;
+			}
+			for (index_t i = 0; i < storage.Count(); i++)
+				storage[i] -= other.storage[i];
+			CheckEmptiness();
+		}
+
+		void	Vector::operator*=(int multiplier)
+		{
+			if (multiplier == 0)
+				storage.Clear();
+			else
+			{
+				foreach (storage, v)
+					(*v) *= multiplier;
+			}
+		}
+
+		bool	Vector::operator==(const Self&other) const
+		{
+			return storage == other.storage;
+		}
+
+		bool	Vector::operator!=(const Self&other) const
+		{
+			return storage != other.storage;
+		}
+
+		Vector	Vector::operator-(const Self&other)	const
+		{
+			Vector rs = *this;
+			rs -= other;
+			return rs;
+		}
+
+		Vector	Vector::operator*(int multiplier) const
+		{
+			Vector rs = *this;
+			rs *= multiplier;
+			return rs;
+		}
+
+		int		Vector::Sum() const
+		{
+			int rs = 0;
+			foreach (storage,v)
+				rs += (*v);
+			return rs;
+		}
+
+		int		Vector::SumNegative() const
+		{
+			int rs = 0;
+			foreach (storage,v)
+				if (*v < 0)
+					rs += (*v);
+			return rs;
+		}
+
+		int		Vector::SumPositive() const
+		{
+			int rs = 0;
+			foreach (storage,v)
+				if (*v > 0)
+					rs += (*v);
+			return rs;
+		}
+
+		void	Vector::SeparateBySign(Self&positive, Self&negative) const
+		{
+			positive.Clear();
+			negative.Clear();
+			for (index_t i = 0; i < storage.Length(); i++)
+			{
+				int v = storage[i];
+				if (v > 0)
+					positive.Set(i,v);
+				elif (v < 0)
+					negative.Set(i,v);
+			}
+		}
+
+		void	Vector::Cap(const Self&limit)
+		{
+			for (index_t i = 0; i < storage.Length(); i++)
+				storage[i] = std::min(storage[i],limit[i]);
+		}
+
+		void	Vector::Negate()
 		{
 			foreach (storage, v)
-				(*v) *= multiplier;
+				*v = -*v;
 		}
-	}
 
-	bool	ResourceVector::operator==(const Self&other) const
-	{
-		return storage == other.storage;
-	}
-
-	bool	ResourceVector::operator!=(const Self&other) const
-	{
-		return storage != other.storage;
-	}
-
-	ResourceVector	ResourceVector::operator-(const Self&other)	const
-	{
-		ResourceVector rs = *this;
-		rs -= other;
-		return rs;
-	}
-
-	ResourceVector	ResourceVector::operator*(int multiplier) const
-	{
-		ResourceVector rs = *this;
-		rs *= multiplier;
-		return rs;
-	}
-
-	int		ResourceVector::Sum() const
-	{
-		int rs = 0;
-		foreach (storage,v)
-			rs += (*v);
-		return rs;
-	}
-
-	int		ResourceVector::SumNegative() const
-	{
-		int rs = 0;
-		foreach (storage,v)
-			if (*v < 0)
-				rs += (*v);
-		return rs;
-	}
-
-	int		ResourceVector::SumPositive() const
-	{
-		int rs = 0;
-		foreach (storage,v)
-			if (*v > 0)
-				rs += (*v);
-		return rs;
-	}
-
-	void	ResourceVector::SeparateBySign(Self&positive, Self&negative) const
-	{
-		positive.Clear();
-		negative.Clear();
-		for (index_t i = 0; i < storage.Length(); i++)
+		int		Vector::operator[](index_t resource) const
 		{
-			int v = storage[i];
-			if (v > 0)
-				positive.Set(i,v);
-			elif (v < 0)
-				negative.Set(i,v);
+			return resource < storage.Length() ? storage.at(resource) : 0;
 		}
-	}
-
-	void	ResourceVector::Cap(const Self&limit)
-	{
-		for (index_t i = 0; i < storage.Length(); i++)
-			storage[i] = std::min(storage[i],limit[i]);
-	}
-
-	void	ResourceVector::Negate()
-	{
-		foreach (storage, v)
-			*v = -*v;
-	}
-
-	int		ResourceVector::operator[](index_t resource) const
-	{
-		return resource < storage.Length() ? storage.at(resource) : 0;
-	}
 
 
-	String	ResourceVector::ToString() const
-	{
-		Ctr::Buffer0<String> rs;
-		for (index_t i = 0; i < Resource::table.Count(); i++)
-			if (Get(i) != 0)
-				rs << Resource::table[i].name+": "+String(Get(i));
-		return implode(',',rs.pointer(),rs.Count());
-	}
+		String	Vector::ToString() const
+		{
+			Ctr::Buffer0<String> rs;
+			for (index_t i = 0; i < Resource::table.Count(); i++)
+				if (Get(i) != 0)
+					rs << Resource::table[i].name+": "+String(Get(i));
+			return implode(',',rs.pointer(),rs.Count());
+		}
 
-	bool	ResourceVector::IsZero() const
-	{
-		return storage.IsEmpty();
-	}
+		bool	Vector::IsZero() const
+		{
+			return storage.IsEmpty();
+		}
 
-	bool	ResourceVector::IsNonZero() const
-	{
-		return storage.IsNotEmpty();
-	}
+		bool	Vector::IsNonZero() const
+		{
+			return storage.IsNotEmpty();
+		}
 
-	bool	ResourceVector::IsStable() const
-	{
-		foreach (storage,v)
-			if (*v < 0)
-				return false;
-		return true;
-	}
+		bool	Vector::AnyIsNonZeroPositive() const
+		{
+			foreach (storage,v)
+				if (*v > 0)
+					return true;
+			return false;
+		}
 
-	bool	ResourceVector::AnyIsSet(const ResourceFlagSet&set) const
-	{
-		for (index_t i = 0; i < storage.Length(); i++)
-			if (storage[i] && (set & i))
-				return true;
-		return false;
-	}
 
-	ResourceFlagSet	ResourceVector::IdentifySet() const
-	{
-		ResourceFlagSet rs;
-		for (index_t i = 0; i < storage.Length(); i++)
-			if (storage[i])
-				rs.Set(i);
-		return rs;
-	}
+		bool	Vector::IsStable() const
+		{
+			foreach (storage,v)
+				if (*v < 0)
+					return false;
+			return true;
+		}
+
+		bool	Vector::AnyIsSet(const FlagSet&set) const
+		{
+			for (index_t i = 0; i < storage.Length(); i++)
+				if (storage[i] && (set & i))
+					return true;
+			return false;
+		}
+
+		FlagSet	Vector::IdentifySet() const
+		{
+			FlagSet rs;
+			for (index_t i = 0; i < storage.Length(); i++)
+				if (storage[i])
+					rs.Set(i);
+			return rs;
+		}
 
 
 
-	bool	NaturalResourceVector::SampleWorld(index_t lowCellID)
-	{
-		#ifdef CLIENT
-			if (!Grid::ResourceDiscovery::client.resourcesDiscovered[lowCellID])
-			{
-				*this = NaturalResourceVector();
-				return false;
-			}
-		#endif
-		fuel = Grid::Resource::GetFuel().coverage[lowCellID] *TranslationFactor;
-		minerals = Grid::Resource::GetMinerals().coverage[lowCellID] *TranslationFactor;
-		uranium = Grid::Resource::GetUranium().coverage[lowCellID] *TranslationFactor;
-		return true;
-	}
+		bool	NaturalVector::SampleWorld(index_t lowCellID)
+		{
+			#ifdef CLIENT
+				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[lowCellID])
+				{
+					*this = NaturalVector();
+					return false;
+				}
+			#endif
+			fuel = Grid::Resource::GetFuel().coverage[lowCellID] *TranslationFactor;
+			minerals = Grid::Resource::GetMinerals().coverage[lowCellID] *TranslationFactor;
+			uranium = Grid::Resource::GetUranium().coverage[lowCellID] *TranslationFactor;
+			return true;
+		}
 
 
 
 
 
 
-	/**/	PositiveResourceVector::PositiveResourceVector(const Objects::ResourceVector&v)
-	{
-		((Objects::ResourceVector&)*this) = v;
-		DBG_ASSERT__(IsStable());
-	}
+		/**/	PositiveVector::PositiveVector(const Super&v)
+		{
+			((Super&)*this) = v;
+			DBG_ASSERT__(IsStable());
+		}
 
 		
 
 
 
-	/*static*/	void					PositiveResourceVector::Serialize(IWriteStream&outStream, const Objects::ResourceVector&vec)
-	{
-		auto set = vec.IdentifySet();
-		outStream.WriteSize(set.GetNumeric());
-		for (index_t i = 0; i < Resource::table.Count(); i++)
-			if (vec[i] > 0)
-				outStream.WriteSize((serial_size_t)(vec[i]));
-	}
-		
-	/*static*/	void					PositiveResourceVector::Deserialize(IReadStream&inStream, Objects::ResourceVector&vec)
-	{
-		ResourceFlagSet::flag_t numeric;
-		inStream.ReadSize(numeric);
-		auto flags = ResourceFlagSet(ResourceFlagSet::TFlagSet(numeric));
-		vec.Clear();
-		for (index_t i = 0; i < Resource::table.Count(); i++)
+		/*static*/	void					PositiveVector::Serialize(IWriteStream&outStream, const Super&vec)
 		{
-			bool exists = flags & i;
-			if (!exists)
-			{
-				continue;
-			}
-			UINT32 val;
-			inStream.ReadSize(val);
-			vec.Set(i, val);
+			auto set = vec.IdentifySet();
+			outStream.WriteSize(set.GetNumeric());
+			for (index_t i = 0; i < Resource::table.Count(); i++)
+				if (vec[i] > 0)
+					outStream.WriteSize((serial_size_t)(vec[i]));
 		}
+		
+		/*static*/	void					PositiveVector::Deserialize(IReadStream&inStream, Super&vec)
+		{
+			FlagSet::flag_t numeric;
+			inStream.ReadSize(numeric);
+			auto flags = FlagSet::FromNumeric(numeric);
+			vec.Clear();
+			for (index_t i = 0; i < Resource::table.Count(); i++)
+			{
+				bool exists = flags & i;
+				if (!exists)
+				{
+					continue;
+				}
+				UINT32 val;
+				inStream.ReadSize(val);
+				vec.Set(i, val);
+			}
+		}
+
+
+		count_t FlagSet::Count() const
+		{
+			auto i = isSet;
+			//https://stackoverflow.com/questions/2709430/count-number-of-bits-in-a-64-bit-long-big-integer
+			i = i - ((i >> 1) & 0x5555555555555555);
+			i = (i & 0x3333333333333333) + ((i >> 2) & 0x3333333333333333);
+			return (((i + (i >> 4)) & 0xF0F0F0F0F0F0F0F) * 0x101010101010101) >> 56;
+		}
+
 	}
-
-
 
 
 	String GetTagName(char c)

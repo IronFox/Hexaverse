@@ -133,9 +133,9 @@ namespace Objects
 		}
 
 
-		/*virtual*/ void				WorkingStructure::Tick(ResourceVector&v)
+		/*virtual*/ void				WorkingStructure::Tick(Resource::Vector&v)
 		{
-			ResourceVector v1, s, m;
+			Resource::Vector v1, s, m;
 			GetResourceVector(v1,s,m);
 			v += v1;
 		}
@@ -584,11 +584,11 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
+		/*virtual override*/ void		SkyPort::GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&)	const
 		{
-			v[R::Energy] = -EnergyConsumption;
+			v[Resource::Energy] = -EnergyConsumption;
 			if (MobileEntityProducer::queue.IsNotEmpty())
-				v[R::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+				v[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
 		}
 
 	#endif
@@ -661,7 +661,7 @@ namespace Objects
 			}
 
 
-			/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
+			/*virtual override*/ void				SkyPort::Tick(Resource::Vector&v)
 			{
 				v[Resource::Energy] -= EnergyConsumption;
 				if (MobileEntityProducer::queue.IsNotEmpty())
@@ -856,7 +856,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			NexusPort::Tick(ResourceVector&v)
+		/*virtual override*/ void			NexusPort::Tick(Resource::Vector&v)
 		{
 			if (owner != Faction::nexus && resistance > 0)
 			{
@@ -872,7 +872,7 @@ namespace Objects
 				}
 			}
 
-			ResourceVector v1, s, m;
+			Resource::Vector v1, s, m;
 			GetResourceVector(v1,s,m);
 			v += v1;
 
@@ -1056,7 +1056,7 @@ namespace Objects
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
 
-			ResourceVector balance,discard,maxStorage;
+			Resource::Vector balance,discard,maxStorage;
 
 			GetResourceVector(balance, discard, maxStorage);
 
@@ -1065,29 +1065,29 @@ namespace Objects
 				if (balance.SumNegative())
 				{
 					label << "Consumes:";
-					for (index_t i = 0; i < R::table.Count(); i++)
+					for (index_t i = 0; i < Resource::table.Count(); i++)
 						if (balance[i] < 0)
 						{
-							label.GetLastLine() += " "+R::ID(i).GetTagStr()+String(-balance[i]);
+							label.GetLastLine() += " "+Resource::ID(i).GetTagStr()+String(-balance[i]);
 						}
 				}
 				if (balance.SumPositive())
 				{
 					label << "Produces:";
-					for (index_t i = 0; i < R::table.Count(); i++)
+					for (index_t i = 0; i < Resource::table.Count(); i++)
 						if (balance[i] > 0)
 						{
-							label.GetLastLine() += " "+R::ID(i).GetTagStr()+String(balance[i]);
+							label.GetLastLine() += " "+Resource::ID(i).GetTagStr()+String(balance[i]);
 						}
 				}
 			}
 			if (!maxStorage.IsZero())
 			{
 				label << "Storage capacity:";
-				for (index_t i = 0; i < R::table.Count(); i++)
+				for (index_t i = 0; i < Resource::table.Count(); i++)
 					if (maxStorage[i] > 0)
 					{
-						label.GetLastLine() += " "+R::ID(i).GetTagStr()+String(maxStorage[i]);
+						label.GetLastLine() += " "+Resource::ID(i).GetTagStr()+String(maxStorage[i]);
 					}
 			}
 		
@@ -1145,7 +1145,7 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					ResourceFlagSet missingResources;
+					Resource::FlagSet missingResources;
 					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
 						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable "+GetTypeName()+": Insufficient resource supply in compound ("+outWhy+")");

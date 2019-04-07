@@ -890,8 +890,6 @@ namespace Protocol
 //	static_assert(sizeof(Grid::CellStack::TStructCountDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TStructCountDelta), "Struct alignment out of whack" );
 
 
-
-
 	struct SerialUnsigned
 	{
 		typedef SerialUnsigned Self;
@@ -910,6 +908,11 @@ namespace Protocol
 		friend	void	Deserialize(IReadStream&s, Self&v)
 		{
 			s.ReadSize(v.value);
+		}
+
+		void		operator=(serial_size_t v)
+		{
+			value = v;
 		}
 
 		void		operator=(int v)
@@ -1012,7 +1015,7 @@ namespace Protocol
 	#ifndef ONE_COMPOUND_PER_FACTION
 		NETSTRUCT5(MyMobileEntity
 			, NET(UINT16), constructionRoundCounter
-			, PositiveResourceVector, resourceVector
+			, Resource::PositiveVector, resourceVector
 			, NETA(MobileTask), tasks
 			, Optional<NET(TUniqueID)>, storedIn
 			, Optional<ProducerState>, producerState
@@ -1096,7 +1099,7 @@ namespace Protocol
 	typedef Grid::LCellIdI	AttackTask;
 
 	NETSTRUCT2(MineState
-		, Objects::PositiveResourceVector, naturalResources
+		, Objects::Resource::PositiveVector, naturalResources
 		, NET(bool), linkedToCore
 	)
 	typedef NET(int)	NexusPortState;
@@ -1182,7 +1185,7 @@ namespace Protocol
 
 	NETSTRUCT4(StructureState
 		, EntityState, entityState
-		, Objects::PositiveResourceVector, resourceStorage
+		, Objects::Resource::PositiveVector, resourceStorage
 		, NET(BYTE), flags
 		, SelectiveStructureState, selective
 	)
@@ -1292,7 +1295,7 @@ namespace Protocol
 
 	NETSTRUCT3(ResourceUpdate
 		, Timestamp, timestamp
-		, NET(ConstName), resourceName
+		, SerialUnsigned, resourceIndex
 		, NETA(TResourceCell), cells
 	)
 

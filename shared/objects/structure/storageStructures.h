@@ -7,8 +7,8 @@ namespace Objects
 	{
 		static const int						MaxStorage=500;
 
-		void	HandleStorageDestruction(const Grid::LCellIdI&location,const ResourceVector&storage,float&atTime);
-		float	GetUncontrolledExplosionRadius(const ResourceVector&storage, float*damageOut, bool*doomsdayOut);
+		void	HandleStorageDestruction(const Grid::LCellIdI&location,const Resource::Vector&storage,float&atTime);
+		float	GetUncontrolledExplosionRadius(const Resource::Vector&storage, float*damageOut, bool*doomsdayOut);
 	}
 
 
@@ -22,11 +22,11 @@ namespace Objects
 		/**/						StorageStructure()	{ }	//global prototype
 
 	public:
-		ResourceVector				storage,maxStorage;
+		Resource::Vector				storage,maxStorage;
 		static const int			MaxStorage = StorageCommon::MaxStorage;
 
-		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = maxStorage;}
-		virtual void				SetResourceStorage(const ResourceVector&store)	override
+		virtual void				GetResourceVector(Resource::Vector&, Resource::Vector&storage, Resource::Vector&max) const override	{storage = this->storage; max = maxStorage;}
+		virtual void				SetResourceStorage(const Resource::Vector&store)	override
 		{
 			this->storage = store;
 			this->storage.Cap(maxStorage);
@@ -36,7 +36,7 @@ namespace Objects
 
 		#ifndef CLIENT
 
-			virtual void			ProcessLeftovers( ResourceVector&v, index_t iteration, float&atTime ) override
+			virtual void			ProcessLeftovers( Resource::Vector&v, index_t iteration, float&atTime ) override
 			{
 				if (iteration != LeftoverUpdateIteration && iteration != FinalLeftoverIteration)
 					return;
@@ -164,13 +164,13 @@ namespace Objects
 									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
-				maxStorage[R::Munitions] = MaxStorage;
+				maxStorage[Resource::Munitions] = MaxStorage;
 			#endif
 		}
 		/**/						Self()
 		{
 			#ifndef NO_MUNITION
-				maxStorage[R::Munitions] = MaxStorage; 
+				maxStorage[Resource::Munitions] = MaxStorage; 
 			#endif
 		}	//global prototype
 	public:
@@ -194,7 +194,7 @@ namespace Objects
 									: Super(table,owner,location,atTime)
 		{
 			#ifndef NO_MUNITION
-				maxStorage[R::Munitions] = LocalMunitionStorage;
+				maxStorage[Resource::Munitions] = LocalMunitionStorage;
 			#endif
 			#ifndef CLIENT
 				SetEnabled(false,atTime,false,ForceEnable);
@@ -203,7 +203,7 @@ namespace Objects
 		/**/						Self()
 		{
 			#ifndef NO_MUNITION
-				maxStorage[R::Munitions] = LocalMunitionStorage;
+				maxStorage[Resource::Munitions] = LocalMunitionStorage;
 			#endif
 		}	//global prototype
 	protected:
@@ -215,12 +215,12 @@ namespace Objects
 									MineralConsumption = 10,
 									MunitionOutput = 2;
 
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&storage, ResourceVector&max) const override
+		virtual void				GetResourceVector(Resource::Vector&v,Resource::Vector&storage, Resource::Vector&max) const override
 		{
 			v.Set(Resource::Energy, -EnergyConsumption);
 			v.Set(Resource::Minerals, -MineralConsumption);
 			#ifndef NO_MUNITION
-				v.Set(R::Munitions, MunitionOutput);
+				v.Set(Resource::Munitions, MunitionOutput);
 			#endif
 			Super::GetResourceVector(v,storage,max);
 		}

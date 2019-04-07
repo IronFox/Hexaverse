@@ -625,7 +625,7 @@ namespace Objects
 	#ifndef CLIENT
 		void	ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource::ID res, int change);
 
-		void	ChangeStorage(WorldEntity&e, float&atTime, const ResourceVector&max, ResourceVector&storage, Resource::ID res, int change);
+		void	ChangeStorage(WorldEntity&e, float&atTime, const Resource::Vector&max, Resource::Vector&storage, Resource::ID res, int change);
 		void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource::ID res, int change);
 		void	ChangeStorage(MobileEntity&v, float&atTime, Resource::ID res, int change);
 		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
