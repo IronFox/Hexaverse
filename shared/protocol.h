@@ -1558,6 +1558,8 @@ namespace Protocol
 		, ScriptedAIStateVector, dataVector
 	);
 
+	typedef Objects::Resource::Table ResourceTable;
+
 
 	typedef Package::NetString<32>	SaveAs;
 	typedef TUniqueID	KillFaction;
@@ -1585,6 +1587,7 @@ namespace Protocol
 			BeginEverything,	//s2c: <signal> //indicates that now everything will be (re)sent
 			EndEverything,		//s2c: <signal> //indicates that the server is done sending everything, and normal delta updates will resume
 
+			ResourceTable,		//s2c : ResourceTable
 			WorldDelta,			//s2c : WorldDelta
 
 			Explosion,			//s2c : Explosion

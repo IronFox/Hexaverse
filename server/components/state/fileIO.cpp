@@ -509,7 +509,7 @@ namespace FileIO
 			SerializeToCompactMemory(object,chunk.SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
 	}
 
-	static void Export(Riff::Chunk*parent, const Objects::ResourceVector&v)
+	static void Export(Riff::Chunk*parent, const Objects::Resource::Vector&v)
 	{
 		if (v.IsNonZero())
 		{
@@ -517,7 +517,7 @@ namespace FileIO
 		}
 	}
 
-	static void Import(Riff::Chunk*parent, Objects::ResourceVector&v, const Objects::Resource::Table*foreignTable)
+	static void Import(Riff::Chunk*parent, Objects::Resource::Vector&v, const Objects::Resource::Table*foreignTable)
 	{
 		if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::DynamicResourceTables)
 		{
@@ -526,7 +526,7 @@ namespace FileIO
 			{
 				if (foreignTable != nullptr)
 				{
-					Objects::ResourceVector import;
+					Objects::Resource::Vector import;
 					DeserializeFromMemory(import,source->pointer(),source->size());
 					v.ImportForeign(import,*foreignTable);
 				}
@@ -1068,7 +1068,7 @@ namespace FileIO
 //		state.enabled = !w || w->IsEnabled();
 		if (w)
 		{
-			Objects::ResourceVector dontCare,resources;
+			Objects::Resource::Vector dontCare,resources;
 			w->GetResourceVector(dontCare, resources, dontCare);
 			Export(parent,resources);
 			parent->AppendBlock(RID::structureEnabled)->SetPODData(w->IsEnabled());
@@ -1141,7 +1141,7 @@ namespace FileIO
 //		state.enabled = !w || w->IsEnabled();
 		if (w)
 		{
-			Objects::ResourceVector resources;
+			Objects::Resource::Vector resources;
 			Import(parent,resources,foreignResourceTable);
 			w->SetResourceStorage(resources);
 			Riff::Chunk*enabled = parent->FindFirst(RID::structureEnabled);

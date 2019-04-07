@@ -477,7 +477,7 @@ namespace Test
 		t.turretType = Objects::Component::vehicleTurretComponents[random.NextIndex(Objects::Component::vehicleTurretComponents.Count())]->constName;
 	}
 
-	/*static*/ void		Serialization::RandomFill(Objects::PositiveResourceVector&vec, Random&random)
+	/*static*/ void		Serialization::RandomFill(Objects::Resource::PositiveVector&vec, Random&random)
 	{
 		for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			if (random.NextBool())
@@ -556,7 +556,7 @@ namespace Test
 				VerifySerialization(stream,coords);
 
 
-				Objects::PositiveResourceVector vec;
+				Objects::Resource::PositiveVector vec;
 				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 				{
 					if (random.NextBool())

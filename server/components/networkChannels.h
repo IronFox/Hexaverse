@@ -139,6 +139,7 @@ namespace Channels
 
 	extern TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningAlliance>							winningAlliance;
 
+	DECLARE_OBJECT_SENDER(ResourceTable);
 
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);

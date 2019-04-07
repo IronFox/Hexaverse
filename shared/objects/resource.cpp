@@ -249,7 +249,7 @@ namespace Objects
 		}
 
 
-		void	Vector::operator=(const NaturalVector&v)
+		void	Vector::operator=(const CoreVector&v)
 		{
 			if (v.IsEmpty())
 			{
@@ -262,7 +262,7 @@ namespace Objects
 			Set(Resource::Uranium,v.uranium);
 		}
 
-		void	Vector::operator+=(const NaturalVector&v)
+		void	Vector::operator+=(const CoreVector&v)
 		{
 			if (v.IsEmpty())
 				return;
@@ -455,12 +455,12 @@ namespace Objects
 
 
 
-		bool	NaturalVector::SampleWorld(index_t lowCellID)
+		bool	CoreVector::SampleWorld(index_t lowCellID)
 		{
 			#ifdef CLIENT
 				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[lowCellID])
 				{
-					*this = NaturalVector();
+					*this = CoreVector();
 					return false;
 				}
 			#endif

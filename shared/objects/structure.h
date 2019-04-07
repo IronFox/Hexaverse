@@ -709,7 +709,7 @@ namespace Objects
 			virtual void			OnEnabledChange() override;
 		#endif
 
-		//Resource::NaturalVector		naturalResources;
+		//Resource::CoreVector		naturalResources;
 	public:
 		static const int			EnergyConsumption = 10;
 		int							resistance;

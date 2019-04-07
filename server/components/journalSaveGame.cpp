@@ -275,7 +275,7 @@ namespace Journal
 		{
 			const Objects::WorkingStructure*s = (const Objects::WorkingStructure*)(e.get());
 			{
-				Objects::ResourceVector dummy,storage;
+				Objects::Resource::Vector dummy,storage;
 				s->GetResourceVector(dummy,storage,dummy);
 				return storage[Objects::Resource::Minerals];
 			}

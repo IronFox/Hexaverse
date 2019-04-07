@@ -44,7 +44,7 @@ TwisterRandom		random;
 namespace ApplicationInterface
 {
 
-	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Objects::ResourceFlagSet&resources, float atTime)
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Objects::Resource::FlagSet&resources, float atTime)
 	{
 		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
 		if (!cl && Network::spectators.IsEmpty())

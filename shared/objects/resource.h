@@ -262,7 +262,7 @@ namespace Objects
 
 
 			/**/	Vector(){}
-			/**/	Vector(const NaturalVector&v){operator=(v);}
+			/**/	Vector(const CoreVector&v){operator=(v);}
 			void	Clear()	{storage.Clear();}
 			int		Get(index_t resource) const	{return operator[](resource);}
 			int		Get(Resource::ID resource) const	{return operator[](resource.serialIndex);}
@@ -272,8 +272,8 @@ namespace Objects
 			void	Add(Resource::ID idx, int v)	{Add(idx.serialIndex,v);}
 			bool	IsZero() const;
 			bool	IsNonZero() const;
-			void	operator=(const NaturalVector&);
-			void	operator+=(const NaturalVector&v);
+			void	operator=(const CoreVector&);
+			void	operator+=(const CoreVector&v);
 
 			void	ImportForeign(const Self&foreignData, const Resource::Table&foreignTable)
 			{
@@ -290,9 +290,9 @@ namespace Objects
 				void	ImportDeprecated(const Deprecated::ResourceVectorT<R>&source)
 				{
 					Clear();
-					for (index_t i = 0; i < Resource::N; i++)
+					for (index_t i = 0; i < R::N; i++)
 					{
-						const Resource::Type*t = Resource::table.FindByName(Resource::Reinterpret(i).ToString());
+						const Resource::Type*t = Resource::table.FindByName(R::Reinterpret(i).ToString());
 						if (t != nullptr)
 							Set(t->serialIndex,source.level[i]);
 					}
@@ -396,7 +396,7 @@ namespace Objects
 			void		AllocateEmpty();
 		};
 
-		struct NaturalVector
+		struct CoreVector
 		{
 			int		fuel,
 					minerals,
@@ -407,7 +407,7 @@ namespace Objects
 			*/
 			static const int TranslationFactor = 3;	//!< Translation factor used to scale resource vectors samples from the world
 
-			/**/	NaturalVector():fuel(0),minerals(0),uranium(0)	{}
+			/**/	CoreVector():fuel(0),minerals(0),uranium(0)	{}
 
 
 			void	operator=(const Vector&vec)
@@ -490,7 +490,7 @@ namespace Objects
 			{
 				((Super&)*this) = vec;
 			}
-			void		operator=(const NaturalVector&vec)
+			void		operator=(const CoreVector&vec)
 			{
 				((Super&)*this) = vec;
 			}	

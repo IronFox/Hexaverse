@@ -95,7 +95,7 @@ namespace Objects
 		struct Type;
 		class FlagSet;
 		class Vector;
-		struct NaturalVector;
+		struct CoreVector;
 		class PositiveVector;
 	}
 	

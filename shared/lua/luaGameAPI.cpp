@@ -101,7 +101,7 @@ namespace Lua
 						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 							return -1;
 					#endif
-					return r->coverage[stackID] * Objects::Resource::NaturalVector::TranslationFactor;
+					return r->coverage[stackID] * Objects::Resource::CoreVector::TranslationFactor;
 				}
 			throw Lua::Exception("GetNaturalResourceAt(): Resource '"+resourceName+"' does not exist.");
 		}
@@ -109,7 +109,7 @@ namespace Lua
 		Lua::Table GetNaturalResourcesAt(Lua::Table cellTable)
 		{
 			const auto stackID = LuaCellToStack(cellTable,"GetNaturalResourcesAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
-			Objects::Resource::NaturalVector vec;
+			Objects::Resource::CoreVector vec;
 			if (!vec.SampleWorld(stackID) || vec.IsEmpty())
 				return Lua::nil;
 			Lua::Table rs = cellTable.GetProgram()->CreateTable();

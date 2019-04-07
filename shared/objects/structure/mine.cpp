@@ -16,7 +16,7 @@ namespace Objects
 		#ifdef CLIENT
 			return isLinkedToCore;
 		#else
-			this->naturalResources = Resource::NaturalVector();
+			this->naturalResources = Resource::CoreVector();
 			bool success = true;
 			{
 				#ifdef HYBRID_GRID
