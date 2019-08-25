@@ -233,7 +233,14 @@ namespace Objects
 		Filled by the server and synchronized to clients as needed
 		*/
 		extern Table table;
-		extern const Table standard;
+		/**
+		The minimal configuration using during previous versions of the game.
+		*/
+		extern const Table minimal;
+		/**
+		Locally configured resource table, depending on compiled feature set
+		*/
+		Table CompileLocalTable();
 
 		/**
 		Invariant indices of natural resources.
@@ -242,7 +249,7 @@ namespace Objects
 		static const constexpr index_t FuelID = 0, MineralID = 1, UraniumID = 2;
 
 		/**
-		Non dynamic resources. These are always available:
+		Non dynamic resources. These are always available and contained by minimal (Munitions may be omitted):
 		*/
 		extern const ID	
 			Fuel, 

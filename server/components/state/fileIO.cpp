@@ -1355,8 +1355,9 @@ namespace FileIO
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+FileSystem::PathToString(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 		bool nexusFound = false, worldInfoFound = false;
-		const Objects::Resource::Table*foreignTable = nullptr;
-		Objects::Resource::Table stackTable;
+		const Objects::Resource::Table*foreignTable = &Objects::Resource::minimal;
+
+		Objects::Resource::table = Objects::Resource::local;
 
 		
 		try
@@ -1545,11 +1546,6 @@ namespace FileIO
 
 										if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::DynamicResourceTables)
 										{
-											/*
-											TODO: where do these come from?
-											restore from savegame? generate from system-local script?
-											*/
-											Objects::Resource::table = Objects::Resource::standard;
 											bool fallback = false;
 											Riff::Chunk*chunk = list->FindFirst(RID::resourceTable);
 											if (chunk)
@@ -1557,10 +1553,12 @@ namespace FileIO
 												try
 												{
 													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),Objects::Resource::table);
-													if (stackTable != Objects::Resource::table)
+													if (Objects::Resource::local == Objects::Resource::table)
+														foreignTable = nullptr;
+													else
 													{
-														foreignTable = &stackTable;
-														LogEvent(EventSignificance::Important,"Loading file of different resource table. Some resources may be lost");
+														foreignTable = &Objects::Resource::table;
+														LogEvent(EventSignificance::Important,"Loading file of different resource table. Some resources may be lost, others set to 0");
 													}
 												}
 												catch (const std::exception&ex)

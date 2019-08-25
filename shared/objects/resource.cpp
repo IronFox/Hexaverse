@@ -103,7 +103,7 @@ namespace Objects
 
 
 
-		const Table standard =
+		const Table minimal =
 		{
 			"Fuel",
 			"Minerals",
@@ -113,7 +113,7 @@ namespace Objects
 				"Munitions,
 			#endif
 		};
-		Table table = standard;
+		Table table = minimal;
 
 		const ID	
 			Fuel = FuelID, 
@@ -512,6 +512,15 @@ namespace Objects
 			i = (i & 0x3333333333333333) + ((i >> 2) & 0x3333333333333333);
 			return (((i + (i >> 4)) & 0xF0F0F0F0F0F0F0F) * 0x101010101010101) >> 56;
 		}
+
+
+		Table CompileLocalTable()
+		{
+			Table rs = minimal;
+			
+			return rs;
+		}
+
 
 	}
 
