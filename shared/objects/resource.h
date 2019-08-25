@@ -90,35 +90,67 @@ namespace Objects
 			friend hash_t	Hash(const ID&id) {return (hash_t)id.serialIndex;}
 		};
 
-		struct Type
+		struct TypePrototype
 		{
-			//serialized:
-			String		name, icon;
-			//local/derived:
-			index_t		serialIndex;
-			char		tag;
+			typedef TypePrototype Self;
 
-			void		swap(Type&other)
+			String		name, icon;	//if icon is empty, use name instead
+
+			/**/		TypePrototype()	{}
+			explicit	TypePrototype(String&&name):name(std::move(name))	{}
+
+			void		swap(Self&other)
 			{
 				name.swap(other.name);
 				icon.swap(other.icon);
-				swp(serialIndex,other.serialIndex);
-				swp(tag,other.tag);
 			}
 
-			ID			GetID() const {return ID(serialIndex);}
-			String		GetTagStr() const;
-
-			friend void	Deserialize(IReadStream&s, Type&v)
+			friend void swap(Self&a, Self&b)
+			{
+				a.swap(b);
+			}
+			
+			friend void	Deserialize(IReadStream&s, Self&v)
 			{
 				Deserialize(s,v.name);
 				Deserialize(s,v.icon);
 			}
-			friend void	Serialize(IWriteStream&s, const Type&v)
+			friend void	Serialize(IWriteStream&s, const Self&v)
 			{
 				Serialize(s,v.name);
 				Serialize(s,v.icon);
 			}
+
+		};
+
+		struct Type : public TypePrototype
+		{
+			typedef TypePrototype Super;
+			typedef Type Self;
+
+			//local/derived:
+			index_t		serialIndex = InvalidIndex;
+			char		tag = '\0';
+
+			/**/		Type(){}
+			explicit	Type(Super&&s) : Super(std::move(s))	{}
+			explicit	Type(const Super&s) : Super(s)	{}
+			explicit	Type(String&&name) : Super(std::move(name))	{}
+
+			void		swap(Self&other)
+			{
+				Super::swap(other);
+				swp(serialIndex,other.serialIndex);
+				swp(tag,other.tag);
+			}
+
+			friend void swap(Self&a, Self&b)
+			{
+				a.swap(b);
+			}
+
+			ID			GetID() const {return ID(serialIndex);}
+			String		GetTagStr() const;
 		};
 
 		/**
@@ -145,8 +177,8 @@ namespace Objects
 		public:
 			/**/		Table(){};
 			/**/		Table(const std::initializer_list<const char*>&init);
-			ID			Append(const Type&, bool updateTag);
-			ID			Append(Type&&, bool updateTag);
+			ID			Append(const TypePrototype&);
+			ID			Append(TypePrototype&&);
 			ID			Append(const String&);
 			ID			Append(String&&);
 			ID			Append(const char*);
@@ -190,6 +222,8 @@ namespace Objects
 			Super::Count;
 			Super::GetLength;
 		private:
+			ID			Append(Type&&t);
+
 			bool		changed = false;
 		};
 

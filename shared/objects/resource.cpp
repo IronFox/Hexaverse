@@ -134,25 +134,25 @@ namespace Objects
 				Append(*name);
 		}
 
-		ID		Table::Append(Type&&t, bool updateTag)
+		ID		Table::Append(TypePrototype&&t)
+		{
+			return Append(Type(std::move(t)));
+		}
+
+		ID		Table::Append(const TypePrototype&t)
+		{
+			return Append(Type(t));
+		}
+
+		ID		Table::Append(Type&&t)
 		{
 			const index_t rs = Count();
-			Super::MoveAppend(std::move(t));
+			Super::MoveAppend(t);
 			Super::Last().serialIndex = rs;
-			if (updateTag)
-				Super::Last().tag = rs < TagMap::Count ? TagMap::IndexToTag(rs) : 0;
+			Super::Last().tag = rs < TagMap::Count ? TagMap::IndexToTag(rs) : 0;
 			return rs;
 		}
 
-		ID		Table::Append(const Type&t, bool updateTag)
-		{
-			const index_t rs = Count();
-			Super::Append(t);
-			Super::Last().serialIndex = rs;
-			if (updateTag)
-				Super::Last().tag = rs < TagMap::Count ? TagMap::IndexToTag(rs) : 0;
-			return rs;
-		}
 		
 		ID		Table::Append(const String&name)
 		{
@@ -161,22 +161,12 @@ namespace Objects
 		
 		ID		Table::Append(String&&name)
 		{
-			const index_t rs = Count();
-			Type&t = Super::Append();
-			t.name = std::move(name);
-			t.serialIndex = rs;
-			t.tag = rs < TagMap::Count ? TagMap::IndexToTag(rs) : 0;
-			return rs;
+			return Append(Type(std::move(name)));
 		}
 		
 		ID		Table::Append(const char*name)
 		{
-			const index_t rs = Count();
-			Type&t = Super::Append();
-			t.name = name;
-			t.serialIndex = rs;
-			t.tag = rs < TagMap::Count ? TagMap::IndexToTag(rs) : 0;
-			return rs;
+			return Append(Type(String(name)));
 		}
 
 		const Type*		Table::FindByName(const String&n) const
