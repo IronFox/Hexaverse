@@ -31,16 +31,20 @@ namespace Objects
 					water=0,
 					other=0;
 
+			/**/	TGroundVector(){}
+			/**/	TGroundVector(T road, T air, T water, T other):
+					road(road), air(air), water(water), other(other)
+			{}
+
 			Self	operator*(const Self&that) const
 			{
-				Self rs = 
-				{
+				return Self 
+				(
 					road * that.road, 
 					air * that.air,
 					water * that.water,
 					other * that.other
-				};
-				return rs;
+				);
 			}
 
 			T		Sum() const
