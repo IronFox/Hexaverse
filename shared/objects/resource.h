@@ -433,8 +433,9 @@ namespace Objects
 		private:
 			Array<int>	storage;
 
-			void		CheckEmptiness();
-			void		AllocateEmpty();
+			void		Tidy();
+			void		Require(index_t idx);
+			void		Require(Resource::ID idx) {Require(idx.serialIndex);}
 		};
 
 		struct CoreVector

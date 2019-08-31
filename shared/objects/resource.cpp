@@ -188,54 +188,47 @@ namespace Objects
 		}
 
 
-		void	Vector::AllocateEmpty()
+		void	Vector::Require(index_t idx)
 		{
-			storage.SetSize(Resource::table.Count());
-			storage.Fill(0);
+			if (idx < storage.Count())
+				return;
+			count_t old = storage.Count();
+			storage.ResizePreserveContent(idx+1);
+			for (index_t i = old; i <= idx; i++)
+				storage[i] = 0;
 		}
 
 
 		void	Vector::Set(index_t resource, int value)
 		{
-			if (IsZero() && value == 0)
+			if (resource >= storage.Count() && value == 0)
 				return;
-			if (storage.IsEmpty())
-			{
-				AllocateEmpty();
-				storage[resource] = value;
-			}
-			else
-			{
-				storage[resource] = value;
-				if (value == 0)
-					CheckEmptiness();
-			}
+			Require(resource);
+			storage[resource] = value;
+			if (value == 0)
+				Tidy();
 		}
 	
 		void	Vector::Add(index_t resource, int value)
 		{
 			if (value == 0)
 				return;
-			if (storage.IsEmpty())
-			{
-				AllocateEmpty();
-				storage[resource] = value;
-			}
-			else
-			{
-				storage[resource] += value;
-				if (storage[resource] == 0)
-					CheckEmptiness();
-			}
+			Require(resource);
+			storage[resource] += value;
+			if (storage[resource] == 0)
+				Tidy();
 		}
 
 
-		void	Vector::CheckEmptiness()
+		void	Vector::Tidy()
 		{
-			foreach (storage,v)
-				if ((*v) != 0)
-					return;
-			storage.Clear();
+			if (storage.IsEmpty())
+				return;
+			index_t i = storage.Count()-1;
+			for (; i < storage.Count(); i--)
+				if (storage[i] != 0)
+					break;
+			storage.ResizePreserveContent(i+1);
 		}
 
 
@@ -246,7 +239,6 @@ namespace Objects
 				Clear();
 				return;
 			}
-			AllocateEmpty();
 			Set(Resource::Fuel,v.fuel);
 			Set(Resource::Minerals,v.minerals);
 			Set(Resource::Uranium,v.uranium);
@@ -261,10 +253,9 @@ namespace Objects
 				operator=(v);
 				return;
 			}
-			storage[Resource::Fuel.serialIndex] += v.fuel;
-			storage[Resource::Minerals.serialIndex] += v.minerals;
-			storage[Resource::Uranium.serialIndex] += v.uranium;
-			CheckEmptiness();
+			Add(Resource::Fuel,v.fuel);
+			Add(Resource::Minerals,v.minerals);
+			Add(Resource::Uranium,v.uranium);
 		}
 
 
@@ -277,9 +268,8 @@ namespace Objects
 				storage = other.storage;
 				return;
 			}
-			for (index_t i = 0; i < storage.Count(); i++)
-				storage[i] += other.storage[i];
-			CheckEmptiness();
+			for (index_t i = 0; i < other.storage.Count(); i++)
+				Add(i,other.storage[i]);
 		}
 
 		void	Vector::operator-=(const Self&other)
@@ -292,9 +282,8 @@ namespace Objects
 				Negate();
 				return;
 			}
-			for (index_t i = 0; i < storage.Count(); i++)
-				storage[i] -= other.storage[i];
-			CheckEmptiness();
+			for (index_t i = 0; i < other.storage.Count(); i++)
+				Add(i, -other.storage[i]);
 		}
 
 		void	Vector::operator*=(int multiplier)
