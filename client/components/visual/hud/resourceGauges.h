@@ -73,12 +73,11 @@ namespace HUD
 			}
 
 
+			void	LoadTexture(const Objects::Resource::Type &res);
 			void	LoadTexture(Objects::Resource::ID res)
 			{
-				IconItem::LoadTexture(res.ToString());
-				myTag = res.GetTag();
+				LoadTexture(res.ToType());
 			}
-
 
 			void	Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled);
 

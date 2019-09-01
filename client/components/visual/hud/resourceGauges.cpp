@@ -6,6 +6,7 @@
 #include "../display.h"
 #include "../objectSelection.h"
 #include "../../configurationMode.h"
+#include "iconNameToFileName.h"
 
 #include <image/converter/magic.h>
 #include <general/random.h>
@@ -33,7 +34,7 @@ namespace ResourceGauges
 	void	IconItem::LoadTexture(const String&name)
 	{
 		Image image;
-		Magic::LoadFromFile(image,PathString("resources/icons/"+name+".png"));
+		Magic::LoadFromFile(image,PathString("resources/icons/"+Icons::NameToFileName(name)+".png"));
 		texture.Load(image);
 	}
 		
@@ -45,6 +46,15 @@ namespace ResourceGauges
 	}
 
 
+
+	void	Gauge::LoadTexture(const Objects::Resource::Type &res)
+	{
+		if (res.icon.IsNotEmpty())
+			IconItem::LoadTexture(res.icon);
+		else
+			IconItem::LoadTexture(res.name);
+		myTag = res.tag;
+	}
 
 
 
