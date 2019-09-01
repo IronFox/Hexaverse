@@ -111,6 +111,7 @@ namespace Objects
 
 
 		const Table minimal =
+		Table(
 		{
 			"Fuel",
 			"Minerals",
@@ -119,8 +120,18 @@ namespace Objects
 			#ifndef NO_MUNITION
 				"Munitions,
 			#endif
-		};
-		Table table = minimal;
+		},
+		{
+			float3(0.4,1,0.2),//fuel
+			float3(0.7,0.7,0.7),//minerals
+			float3(1,1,0.1), //uranium
+			float3(0.2,0.4,1),//energy
+			#ifndef NO_MUNITION
+				float3(1,0.4,0.2),//munitions
+			#endif
+		}	
+		);
+		Table table = CompileLocalTable();
 
 		const ID	
 			Fuel = FuelID, 
@@ -135,10 +146,12 @@ namespace Objects
 			_ = ID::Invalid;
 
 
-		Table::Table(const std::initializer_list<const char*>&init)
+		Table::Table(const std::initializer_list<const char*>&init, const std::initializer_list<float3>&colors)
 		{
-			foreach(init, name)
-				Append(*name);
+			for (index_t i = 0; i < init.size(); i++)
+			{
+				Append(*(init.begin() + i), *(colors.begin() + i));
+			}
 		}
 
 		ID		Table::Append(TypePrototype&&t)
@@ -161,19 +174,19 @@ namespace Objects
 		}
 
 		
-		ID		Table::Append(const String&name)
+		ID		Table::Append(const String&name, const float3&color)
 		{
-			return Append(name.c_str());
+			return Append(name.c_str(),color);
 		}
 		
-		ID		Table::Append(String&&name)
+		ID		Table::Append(String&&name, const float3&color)
 		{
-			return Append(Type(std::move(name)));
+			return Append(Type(std::move(name),color));
 		}
 		
-		ID		Table::Append(const char*name)
+		ID		Table::Append(const char*name, const float3&color)
 		{
-			return Append(Type(String(name)));
+			return Append(Type(String(name),color));
 		}
 
 		const Type*		Table::FindByName(const String&n) const

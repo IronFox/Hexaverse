@@ -95,14 +95,17 @@ namespace Objects
 			typedef TypePrototype Self;
 
 			String		name, icon;	//if icon is empty, use name instead
+			byte3		color;
 
 			/**/		TypePrototype()	{}
-			explicit	TypePrototype(String&&name):name(std::move(name))	{}
+			explicit	TypePrototype(String&&name, const float3&color):name(std::move(name)),
+						color(color.r * 255, color.g*255, color.b*255) {}
 
 			void		swap(Self&other)
 			{
 				name.swap(other.name);
 				icon.swap(other.icon);
+				swp(color,other.color);
 			}
 
 			friend void swap(Self&a, Self&b)
@@ -114,11 +117,13 @@ namespace Objects
 			{
 				Deserialize(s,v.name);
 				Deserialize(s,v.icon);
+				Deserialize(s,v.color);
 			}
 			friend void	Serialize(IWriteStream&s, const Self&v)
 			{
 				Serialize(s,v.name);
 				Serialize(s,v.icon);
+				Serialize(s,v.color);
 			}
 
 		};
@@ -135,7 +140,7 @@ namespace Objects
 			/**/		Type(){}
 			explicit	Type(Super&&s) : Super(std::move(s))	{}
 			explicit	Type(const Super&s) : Super(s)	{}
-			explicit	Type(String&&name) : Super(std::move(name))	{}
+			explicit	Type(String&&name, const float3&color) : Super(std::move(name), color)	{}
 
 			void		swap(Self&other)
 			{
@@ -177,12 +182,12 @@ namespace Objects
 			typedef Buffer0<Type,Swap> Super;
 		public:
 			/**/		Table(){};
-			/**/		Table(const std::initializer_list<const char*>&init);
+			/**/		Table(const std::initializer_list<const char*>&names, const std::initializer_list<float3>&colors);
 			ID			Append(const TypePrototype&);
 			ID			Append(TypePrototype&&);
-			ID			Append(const String&);
-			ID			Append(String&&);
-			ID			Append(const char*);
+			ID			Append(const String&, const float3&);
+			ID			Append(String&&, const float3&);
+			ID			Append(const char*, const float3&);
 			bool		operator==(const Table&other) const;
 			bool		operator!=(const Table&other) const {return !operator==(other);}
 			bool		ResetChanged()	{bool old = changed; changed = false; return changed;}

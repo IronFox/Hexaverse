@@ -54,6 +54,7 @@ namespace ResourceGauges
 		else
 			IconItem::LoadTexture(res.name);
 		myTag = res.tag;
+		color = float3(res.color) / 255.f;
 	}
 
 
@@ -484,17 +485,6 @@ namespace ResourceGauges
 			g.color = float3(0.1,1,1);
 		}
 		#endif
-
-
-		gauges[Objects::Resource::Energy.serialIndex].color = float3(0.2,0.4,1);
-		gauges[Objects::Resource::FuelID].color = float3(0.4,1,0.2);
-		gauges[Objects::Resource::MineralID].color = float3(0.7,0.7,0.7);
-		#ifndef NO_MUNITION
-			gauges[Objects::Resource::Munitions.serialIndex].color = float3(1,0.4,0.2);
-		#endif
-		gauges[Objects::Resource::UraniumID].color = float3(1,1,0.1);
-		gauges[Objects::Resource::UraniumID].alternatingColor = float3(0.1,0.1,0.1);
-		gauges[Objects::Resource::UraniumID].usesAlternatingColors = true;
 	}
 
 
