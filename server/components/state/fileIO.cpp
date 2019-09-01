@@ -1355,9 +1355,10 @@ namespace FileIO
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+FileSystem::PathToString(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 		bool nexusFound = false, worldInfoFound = false;
-		const Objects::Resource::Table*foreignTable = &Objects::Resource::minimal;
+		Objects::Resource::Table loadedTable;
+		const Objects::Resource::Table*foreignTable = nullptr;
 
-		Objects::Resource::table = Objects::Resource::local;
+		Objects::Resource::table = Objects::Resource::CompileLocalTable();
 
 		
 		try
@@ -1552,12 +1553,12 @@ namespace FileIO
 											{
 												try
 												{
-													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),Objects::Resource::table);
-													if (Objects::Resource::local == Objects::Resource::table)
+													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),loadedTable);
+													if (loadedTable == Objects::Resource::table)
 														foreignTable = nullptr;
 													else
 													{
-														foreignTable = &Objects::Resource::table;
+														foreignTable = &loadedTable;
 														LogEvent(EventSignificance::Important,"Loading file of different resource table. Some resources may be lost, others set to 0");
 													}
 												}
