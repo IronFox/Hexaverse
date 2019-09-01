@@ -44,14 +44,16 @@ TwisterRandom		random;
 namespace ApplicationInterface
 {
 
-	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Objects::ResourceFlagSet&resources, float atTime)
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime)
 	{
 		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
 		if (!cl && Network::spectators.IsEmpty())
 			return;
 
 		Protocol::OperationLacksResources outRes;
-		outRes.resourceFlagSet = resources.GetNumeric();
+		outRes.resourceIndices.SetSize(resources.Count());
+		for (index_t i = 0; i < resources.Count(); i++)
+			outRes.resourceIndices[i] = (BYTE)resources[i];
 		outRes.timestamp.atTime = atTime;
 		outRes.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 		outRes.entityID = e.id;

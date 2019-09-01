@@ -13,9 +13,9 @@ namespace Objects
 
 		friend class WorkingStructureT<Mine>;
 		/**/						Mine(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Minerals, MineralStorage); isLinkedToCore = LinkToCore(atTime);}
+									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MineralStorage; isLinkedToCore = LinkToCore(atTime);}
 		/**/						Mine()	{
-			maxStorage.Set(Resource::Minerals, MineralStorage);
+			maxStorage.level[Resource::Minerals] = MineralStorage;
 		}	//global prototype
 
 		bool						isLinkedToCore;
@@ -57,7 +57,7 @@ namespace Objects
 									{
 										Super::GetResourceVector(v,storageCurrent,storageMax); 
 										v += naturalResources; 
-										v.Add(Resource::Energy, -EnergyConsumption);
+										v.level[Resource::Energy] += -EnergyConsumption;
 									}
 
 		#ifndef NO_HIBERNATION

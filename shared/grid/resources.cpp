@@ -9,6 +9,15 @@
 
 namespace Grid
 {
+	#ifndef NO_MUNITION
+		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0,0.008f } ;
+		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0,0.02f } ;
+		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,0,6};
+	#else
+		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0.008f } ;
+		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0.02f } ;
+		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,6};
+	#endif
 
 
 	/*static*/ Buffer0<Resource>	Resource::all;
@@ -66,25 +75,25 @@ namespace Grid
 			catch (const Lua::Exception&ex)
 			{
 				LogEvent(EventClass::Preset::configurationError,ex.what());
-				LogEvent(EventClass::Preset::configurationPrint,"Natural resources will be unavailable exept for base starting locations");
+				LogEvent(EventClass::Preset::configurationPrint,"Falling back to internal distribution");
 				foreach (Resource::all,res)
-					res->Clear();
+					res->FillInternal(random);
 			}
 		}
 		else
 		#endif
 		{
-				foreach (Resource::all,res)
-					res->Clear();
+			foreach (Resource::all,res)
+				res->FillInternal(random);
 		}
 	}
 
 
 	void	CreateResources()
 	{
-		Resource::Create("Fuel", ConstName::Resource_Fuel, float3(0.1,1,0.1), Objects::Resource::Fuel.serialIndex);
-		Resource::Create("Minerals", ConstName::Resource_Minerals, float3(0.9,0.9,0.9), Objects::Resource::Minerals.serialIndex);
-		Resource::Create("Uranium", ConstName::Resource_Uranium, float3(1,1,0.1), Objects::Resource::Uranium.serialIndex);
+		Resource::Create("Fuel", ConstName::Resource_Fuel, float3(0.1,1,0.1), Objects::Resource::Fuel);
+		Resource::Create("Minerals", ConstName::Resource_Minerals, float3(0.9,0.9,0.9), Objects::Resource::Minerals);
+		Resource::Create("Uranium", ConstName::Resource_Uranium, float3(1,1,0.1), Objects::Resource::Uranium);
 
 
 		GlobalEvents::terrainFlush << Resource::FlushAll;
@@ -138,10 +147,10 @@ namespace Grid
 	}
 
 
-	///*static*/ void R::Create(const String&name, ConstName cname, const float3&color, const M::TVec3<>&seed,float rarity, float maxYield)
+	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const M::TVec3<>&seed,float rarity, float maxYield)
 	//{
 	//	// low.cells[i].centerVertex.xyz,
-	//	R&rc = R::all.Append();
+	//	Resource&rc = Resource::all.Append();
 	//	rc.Name(name,cname,color);
 	//	for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 	//	{
@@ -206,17 +215,106 @@ namespace Grid
 	}
 
 
-	void Resource::Clear()
+	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color)
+	//{
+	//	// low.cells[i].centerVertex.xyz,
+	//	Resource&rc = Resource::all.Append();
+	//	rc.Name(name,cname,color);
+	//}
+
+	void Resource::FillInternal(TwisterRandom&random)
 	{
+		FillInternal(random,probability[resourceIndex],maximum[resourceIndex], density[resourceIndex]);
+	}
+
+	void Resource::FillInternal(TwisterRandom&random,float p0, coverage_t max, float avgPerCell)
+	{
+		SimplexNoise n(random.MaxNext());
+		//avgPerCell *= UnitScale;
+
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
-			coverage[i] = 0;
+			#ifndef CLIENT
+				coverage[i] = Resource::GetRandomCoverage(n, Grid::low.cells[i].centerVertex.xyz,  p0,max,1.f);
+			#else
+				coverage[i] = 0;
+			#endif
 		}
+
+		#ifndef CLIENT
+			if (p0 <= 0.f || !max)
+				return;
+
+			LogEvent(EventClass::Preset::uncommon,nullptr,"Equalizing resource distribution of "+name);
+			count_t familyTotal[BaseGrid::NumFamilies] = {0}, total = 0;
+
+			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+			{
+				familyTotal[Grid::low.grid.GetCell(i).family] += coverage[i];
+				total += coverage[i];
+			}
+
+			//float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
+			//LogEvent(EventClass::Preset::uncommon,nullptr,"Average per cell estimated at "+String(avgPerCell));
+
+
+//			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
+			for (int k = 0; k < BaseGrid::NumFamilies; k++)
+			{
+				float p = 1.f;
+				LogEvent(EventSignificance::Debug,nullptr,"Processing family "+String(k));
+				const count_t count = Grid::low.grid.CountFamilyMembers(k);
+				const index_t offset = Grid::low.grid.GetFamilyOffset(k);
+				float want = avgPerCell * count;
+				count_t retries = 0;
+				while (want * 1.5f < familyTotal[k] || want * 0.75f > familyTotal[k])
+				{
+					//if (!(retries %3))
+					{
+						float factor = want / float(std::max((count_t)1,familyTotal[k]));
+						float magnitude = log(factor);
+						factor = pow(4.f,float(M::Sign(factor-1.f))/(retries*2 + 1));
+						p *= factor;
+						p = M::Clamp(p,0.0001f,10000.f);
+						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
+					}
+					//else
+					//	LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+					//				+"). Randomizing...");
+	
+					//if (factor > 0)
+					//	p *= 1.1f;
+					//else
+					//	p *= 1.f / 1.1f;
+//					factor = 1.f + M::Clamp(magnitude,-0.5f,2.f);
+					//M::Clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
+	//				p *= factor;
+					familyTotal[k] = 0;
+					for (index_t i = offset; i < offset + count; i++)
+					{
+						coverage[i] = Resource::GetRandomCoverage(n, Grid::low.cells[i].centerVertex.xyz,  p0,max, p);
+						familyTotal[k]+=coverage[i];
+					}
+					if (++retries > 10)
+					{
+						LogEvent(EventSignificance::Debug,nullptr," Max retries reached for this family. Giving up");
+						break;
+					}
+				}
+
+			}
+
+
+		#endif
+
+
+
 	}
 
 	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, index_t resIndex)
 	{
-		ASSERT_LESS__(resIndex, Objects::Resource::table.Count());
+		ASSERT_LESS__(resIndex, Objects::Resource::NumberOfPossibilities);
 		const auto idx = Resource::all.Count();
 		Resource&rc = Resource::all.Append();
 		rc.Name(name,cname,color);
@@ -239,7 +337,7 @@ namespace Grid
 	#ifdef CLIENT
 		void		UpdateResourceMap(ConstName resourceName,const Ctr::ArrayData<TCellResourceCoverage>&data, ResourceDiscovery&setSensor)
 		{
-			foreach (R::all, res)
+			foreach (Resource::all, res)
 				if (res->GetCName() == resourceName)
 				{
 					foreach (data,el)

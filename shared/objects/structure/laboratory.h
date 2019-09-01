@@ -56,10 +56,7 @@ namespace Objects
 
 
 		//WorkingStructure overrides:
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	
-		{
-			v.Set(Resource::Energy, -EnergyConsumption);
-		}
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption;}
 		virtual bool				WouldLikeToEnable() const {return true;}
 		virtual bool				IsLaboratory() const override {return true;}
 		#ifndef CLIENT

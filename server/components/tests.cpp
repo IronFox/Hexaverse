@@ -479,9 +479,9 @@ namespace Test
 
 	/*static*/ void		Serialization::RandomFill(Objects::PositiveResourceVector&vec, Random&random)
 	{
-		for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
+		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
 			if (random.NextBool())
-				vec.Set(i, random.Next(1,1024));
+				vec.level[i] = random.Next(1,1024);
 	}
 
 
@@ -557,12 +557,12 @@ namespace Test
 
 
 				Objects::PositiveResourceVector vec;
-				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
+				for (index_t i = 0; i < Objects::PositiveResourceVector::NumEntries; i++)
 				{
 					if (random.NextBool())
-						vec.Set(i, 0);
+						vec.level[i] = 0;
 					else
-						vec.Set(i, Math::cubic(random.Next(100)));
+						vec.level[i] = Math::cubic(random.Next(100));
 				}
 
 				VerifySerialization(stream,vec);
@@ -664,20 +664,20 @@ namespace Test
 					}
 					while (munitionStoreAt.height == Objects::badHeight);
 
-					switch (turret->ammoType.serialIndex)
+					switch (turret->ammoType)
 					{
 						#ifndef NO_MUNITION
-							case Objects::R::Munitions:
+							case Objects::Resource::Munitions:
 								storage = CreateFilledStorageStructure<Objects::MunitionStorage>(faction1, munitionStoreAt);
 							break;s
 						#endif
-						case 0 /*Objects::R::Fuel*/:
+						case Objects::Resource::Fuel:
 							storage = CreateFilledStorageStructure<Objects::FuelContainer>(faction1, munitionStoreAt);
 						break;
-						case 2 /*Objects::R::Uranium*/:
+						case Objects::Resource::Uranium:
 							storage = CreateFilledStorageStructure<Objects::UraniumStorage>(faction1, munitionStoreAt);
 						break;
-						case 1 /*Objects::R::Minerals*/:
+						case Objects::Resource::Minerals:
 							storage = CreateFilledStorageStructure<Objects::MineralContainer>(faction1, munitionStoreAt);
 						break;
 					}
@@ -702,7 +702,7 @@ namespace Test
 			float t = 0;
 			Objects::InsertConstructed(v,t);
 			#ifndef ONE_COMPOUND_PER_FACTION
-				v->currentStorage[v->turret->ammoType] = v->GetMaxStorageCapacity()[v->turret->ammoType];
+				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
 			#endif
 
 			const bool beyondSensorRange = (Vec::distance(v->GetScanningCenter(),generator->GetWorldPosition()) > v->GetScanningRange());
@@ -987,17 +987,17 @@ namespace Test
 			ASSERT__(mine->IsEnabled());
 			expectedMinerals += mineralsPerRound;
 			expectedFuel += fuelPerRound;
-			ASSERT_EQUAL__(std::min(mineralContainer->maxStorage[Objects::Resource::Minerals], expectedMinerals), mineralContainer->storage[Objects::Resource::Minerals]);
-			if (expectedFuel <= fuelContainer0->maxStorage[Objects::Resource::Fuel])
+			ASSERT_EQUAL__(std::min(mineralContainer->maxStorage.level[Objects::Resource::Minerals], expectedMinerals), mineralContainer->storage.level[Objects::Resource::Minerals]);
+			if (expectedFuel <= fuelContainer0->maxStorage.level[Objects::Resource::Fuel])
 			{
-				ASSERT_EQUAL__(expectedFuel, fuelContainer0->storage[Objects::Resource::Fuel]);
-				ASSERT_EQUAL__(0, fuelContainer1->storage[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(expectedFuel, fuelContainer0->storage.level[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(0, fuelContainer1->storage.level[Objects::Resource::Fuel]);
 			}
 			else
 			{
-				ASSERT_EQUAL__(fuelContainer0->maxStorage[Objects::Resource::Fuel], fuelContainer0->storage[Objects::Resource::Fuel]);
-				int expected1 = std::min(fuelContainer1->maxStorage[Objects::Resource::Fuel], expectedFuel - fuelContainer0->storage[Objects::Resource::Fuel]);
-				ASSERT_EQUAL__(expected1, fuelContainer1->storage[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(fuelContainer0->maxStorage.level[Objects::Resource::Fuel], fuelContainer0->storage.level[Objects::Resource::Fuel]);
+				int expected1 = std::min(fuelContainer1->maxStorage.level[Objects::Resource::Fuel], expectedFuel - fuelContainer0->storage.level[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(expected1, fuelContainer1->storage.level[Objects::Resource::Fuel]);
 			}
 		}
 		GlobalEvents::FlushObjects();

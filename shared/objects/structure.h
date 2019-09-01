@@ -653,8 +653,8 @@ namespace Objects
 					Super::DescribeType(label,descFlags);
 					//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 					label.MarkBriefEnd();
-					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(R::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
-										" Failure to supply the required "+String(ResourceTag(R::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
+					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
+										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
 				}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 				virtual void			OnSelect()	override;
@@ -689,7 +689,7 @@ namespace Objects
 		};
 	#endif
 	/**
-	R supplier, and winning condition, NexusPorts are located on the 12 pentagons around the planet.
+	Resource supplier, and winning condition, NexusPorts are located on the 12 pentagons around the planet.
 	In order to capture a NexusPort, one must build any one structure next to it. If the last structure is lost, the NexusPort
 	will change ownership back to the Nexus faction. Only then can it be captured by another player.
 	When switched on, NexusPorts count down a resistance value until they count as a winning condition.
@@ -757,17 +757,18 @@ namespace Objects
 		{
 			if (BaseGrid::IsIsolatedCorner(location.stackID))
 			{
-				v.Set(Resource::Minerals, 50);
-				v.Set(Resource::Fuel, 55);
-				v.Set(Resource::Uranium, 10);
+				v.level[Resource::Minerals] = 50;	
+				v.level[Resource::Fuel] = 55;	
+				v.level[Resource::Uranium] = 10;
+				v.level[Resource::Energy] = -EnergyConsumption;
 			}
 			else
 			{
-				v.Set(Resource::Minerals, 10);
-				v.Set(Resource::Fuel, 10);
-				v.Set(Resource::Uranium, 5);
+				v.level[Resource::Minerals] = 10;
+				v.level[Resource::Fuel] = 10;	
+				v.level[Resource::Uranium] = 5;
+				v.level[Resource::Energy] = -EnergyConsumption;
 			}
-			v.Set(Resource::Energy, -EnergyConsumption);
 		}
 
 
@@ -816,7 +817,7 @@ namespace Objects
 		virtual String				GetTypeName() const override { return "Generator"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_Generator;}
 
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.Set(Resource::Fuel, -FuelCostPerRound); v.Set(Resource::Energy, GetEnergyProduction()); }
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
 
 		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
@@ -846,7 +847,7 @@ namespace Objects
 		#endif
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.Set(Resource::Uranium, -UraniumCost); v.Set(Resource::Energy, EnergyOutput); }
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Uranium] = -UraniumCost; v.level[Resource::Energy] = EnergyOutput; }
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
@@ -867,7 +868,7 @@ namespace Objects
 
 	
 
-	void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource::ID res, int change);	//defined in faction.h/.cpp
+	void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change);	//defined in faction.h/.cpp
 
 	
 

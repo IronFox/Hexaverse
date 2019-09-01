@@ -128,11 +128,7 @@ namespace Objects
 
 
 		//WorkingStructure overrides:
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	
-		{
-			v.Set(Resource::Energy, -EnergyConsumption);
-			v.Set(Resource::Minerals, -(int)MobileEntityProducer::productionPerRound);
-		}
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption; v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;}
 		virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
 
 	};

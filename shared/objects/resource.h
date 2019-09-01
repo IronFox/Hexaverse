@@ -5,389 +5,51 @@
 #include <container/buffer.h>
 #include "../config.h"
 #include "types.h"
-#include <container/hashtable.h>
 
 namespace Objects
 {
-	struct NaturalResourceVector;
-
-	/**
-	Structures no longer used in contemporary runtime or io-operations.
-	Cannot remove because of older save-games
-	*/
-	namespace Deprecated
-	{
-		CONSTRUCT_ENUMERATION5(ResourceWithMunition, 
-			Fuel, 
-			Minerals, 
-			Energy, 
-			Munitions, 
-			Uranium
-		);
-		CONSTRUCT_ENUMERATION4(ResourceWithoutMunition, 
-			Fuel, 
-			Minerals, 
-			Energy, 
-			Uranium
-		);
+	CONSTRUCT_ENUMERATION5(ResourceWithMunition, 
+		Fuel, 
+		Minerals, 
+		Energy, 
+		Munitions, 
+		Uranium
+	);
+	CONSTRUCT_ENUMERATION4(ResourceWithoutMunition, 
+		Fuel, 
+		Minerals, 
+		Energy, 
+		Uranium
+	);
 
 
-		template <typename Resource>
-			struct ResourceVectorT
-			{
-				int		level[Resource::N];
-				static const count_t NumEntries = Resource::N;
-				typedef	Resource Enum;
 
-				typedef ResourceVectorT<Resource>	Self;
+	template <typename Resource>
+		struct ResourceVectorT;
 
-				/**/	ResourceVectorT()
-				{
-					Clear();
-				}
-
-				/**/ ResourceVectorT(const NaturalResourceVector&v)
-				{
-					operator=(v);
-				}
-
-
-				void	Clear()
-				{
-					memset(level,0,sizeof(level));
-				}
-
-			};
-
-	}
-
-	/**
-	R type declaration.
-	A resource may be natural (e.g. fuel), intermediate (e.g. energy), or complex components (e.g. vehicle components).
-	Natural and intermediate resources are declared automatically.
-	Complex components are declared dynamically.
-	*/
-	namespace Resource
-	{
-		struct Type;
-		class Table;
-
-		struct ID
-		{
-			index_t		serialIndex;
-
-			/**/		ID()	{}
-			/**/		ID(index_t serialIdx):serialIndex(serialIdx)	{}
-
-			bool		operator==(ID other) const {return serialIndex == other.serialIndex;}
-			bool		operator!=(ID other) const {return serialIndex != other.serialIndex;}
-
-			bool		IsValid() const {return serialIndex != InvalidIndex;}
-
-			static const ID	Invalid;
-
-			const Type&		ToType(const Table&) const;
-			const Type&		ToType() const;
-			char			GetTag(const Table&) const;
-			char			GetTag() const;
-			String			GetTagStr(const Table&) const;
-			String			GetTagStr() const;
-			const String&	ToString() const;
-		};
-
-		struct Type
-		{
-			//serialized:
-			String		name, icon;
-			//local/derived:
-			index_t		serialIndex;	//!< Updated when copied into Table
-			char		tag;
-
-			void		swap(Type&other)
-			{
-				name.swap(other.name);
-				icon.swap(other.icon);
-				swp(serialIndex,other.serialIndex);
-				swp(tag,other.tag);
-			}
-
-			ID			GetID() const {return ID(serialIndex);}
-			String		GetTagStr() const;
-
-			friend void	Deserialize(IReadStream&s, Type&v)
-			{
-				Deserialize(s,v.name);
-				Deserialize(s,v.icon);
-			}
-			friend void	Serialize(IWriteStream&s, const Type&v)
-			{
-				Serialize(s,v.name);
-				Serialize(s,v.icon);
-			}
-		};
-
-		/**
-		Maps resource indexes to otherwise not supported utf8-compatible characters
-		*/
-		namespace TagMap
-		{
-			static const count_t Count = 26;
-
-			String		ToString(char tag);
-			char		IDToTag(ID);
-			char		IndexToTag(index_t);
-			ID			TagToID(char);
-			index_t		TagToIndex(char);
-		}
-
-		/**
-		Serializable resource definition.
-		*/
-		class Table : private Buffer0<Type,Swap>
-		{
-			typedef Buffer0<Type,Swap> Super;
-		public:
-			/**/		Table(){};
-			/**/		Table(const std::initializer_list<const char*>&init);
-			ID			Append(const Type&, bool updateTag);
-			ID			Append(Type&&, bool updateTag);
-			ID			Append(const String&);
-			ID			Append(String&&);
-			ID			Append(const char*);
-			bool		operator==(const Table&other) const;
-			bool		operator!=(const Table&other) const {return !operator==(other);}
-			bool		ResetChanged()	{bool old = changed; changed = false; return changed;}
-			const Type*	FindByName(const String&) const;
-			const Type*	GetTypeByTag(char tag) const
-			{
-				index_t at = TagMap::TagToIndex(tag);
-				if (at >= Count())
-					return nullptr;
-				return Super::operator+(at);
-			}
-			template <typename ResourceEnum>
-				void	LoadDeprecated()
-				{
-					Clear();
-					for (index_t i = 0; i < ResourceEnum::N; i++)
-						Append(ResourceEnum::Reinterpret(i).ToString());
-				}
-
-			friend void	Deserialize(IReadStream&s, Table&t)
-			{
-				const count_t cnt = s.ReadSize();
-				t.Clear();
-				for (index_t i = 0; i < cnt; i++)
-					Deserialize(s, t.Super::Append());
-			}
-			friend void	Serialize(IWriteStream&s, const Table&t)
-			{
-				s.WriteSize(t.Count());
-				foreach (t,tp)
-					Serialize(s,*tp);
-			}
-
-			inline count_t GetSize() const {return Super::Count();}
-
-			const Type&	operator[](index_t idx) const {return Super::operator[](idx);}
-			const Type&	operator[](ID idx) const {return Super::operator[](idx.serialIndex);}
-			Super::Count;
-			Super::GetLength;
-		private:
-			bool		changed = false;
-		};
-
-		/**
-		Linearly ordered resources known the system.
-		Each resource index matches its entry in this list.
-		Filled by the server and synchronized to clients as needed
-		*/
-		extern Table table;
-		extern const Table standard;
-
-		/**
-		Non dynamic resources. These are always available:
-		*/
-		extern const ID	
-			Fuel, 
-			Minerals,
-			Uranium,
-			Energy,
-			Munitions,
-			_;	//not a resource, just a terminal symbol so the previous one can end with a comma. do not use
-	}
-
-	class ResourceFlagSet;
-
-	class ResourceVector
-	{
-	public:
-		typedef ResourceVector Self;
-
-
-		/**/	ResourceVector(){}
-		/**/	ResourceVector(const NaturalResourceVector&v){operator=(v);}
-		void	Clear()	{storage.Clear();}
-		int		Get(index_t resource) const	{return operator[](resource);}
-		int		Get(Resource::ID resource) const	{return operator[](resource.serialIndex);}
-		void	Set(index_t, int);
-		void	Set(Resource::ID idx, int v)	{Set(idx.serialIndex,v);}
-		void	Add(index_t, int);
-		void	Add(Resource::ID idx, int v)	{Add(idx.serialIndex,v);}
-		bool	IsZero() const;
-		bool	IsNonZero() const;
-		void	operator=(const NaturalResourceVector&);
-		void	operator+=(const NaturalResourceVector&v);
-
-		void	ImportForeign(const ResourceVector&foreignData, const Resource::Table&foreignTable)
-		{
-			Clear();
-			for (index_t i = 0; i < Resource::table.Count(); i++)
-			{
-				const Resource::Type*ot = foreignTable.FindByName(Resource::table[i].name);
-				if (ot != nullptr)
-					Set(i,foreignData.Get(ot->serialIndex));
-			}
-		}
-
-		template <typename R>
-			void	ImportDeprecated(const Deprecated::ResourceVectorT<R>&source)
-			{
-				Clear();
-				for (index_t i = 0; i < R::N; i++)
-				{
-					const Resource::Type*t = Resource::table.FindByName(R::Reinterpret(i).ToString());
-					if (t != nullptr)
-						Set(t->serialIndex,source.level[i]);
-				}
-			}
-
-		friend void	Deserialize(IReadStream&s, Self&v)
-		{
-			Deserialize(s,v.storage);
-		}
-		friend void	Serialize(IWriteStream&s, const Self&v)
-		{
-			Serialize(s,v.storage);
-		}
-
-		bool	operator<(const Self&v) const
-		{
-			for (index_t i = 0; i < Resource::table.Count(); i++)
-				if (Get(i) >= v.Get(i))
-					return false;
-			return true;
-		}
-		bool	operator<=(const Self&v) const
-		{
-			for (index_t i = 0; i < Resource::table.Count(); i++)
-				if (Get(i) > v.Get(i))
-					return false;
-			return true;
-		}
-
-		void	operator+=(const Self&v);
-		void	operator-=(const Self&v);
-		void	operator*=(int multiplier);
-		bool	operator==(const Self&v) const;
-		bool	operator!=(const Self&v) const;
-		Self	operator-(const Self&v)	const;
-		Self	operator*(int multiplier) const;
-		/**
-		Sums up all levels
-		*/
-		int		Sum() const;
-		/**
-		Sums up only levels below 0.
-		The result is negative or 0
-		*/
-		int		SumNegative() const;
-		/**
-		Sums up only levels above 0
-		*/
-		int		SumPositive() const;
-		/**
-		Separates the local vector into a positive and negative set
-		@param[out] positive Target positive resource vector. Will contain positive or zero values only. Cleared before adding values (if any)
-		@param[out] negative Target negative resource vector. Will contain negative or zero values only. Cleared before adding values (if any)
-		*/
-		void	SeparateBySign(Self&positive, Self&negative) const;
-		/**
-		Assures that no local level can exceed the respective level specified in @a limit.
-		The behavior is undefined if the limit contains negative values
-		*/
-		void	Cap(const Self&limit);
-		/**
-		Sets all local levels to their negative value
-		*/
-		void	Negate();
-		/**
-		Generates a string representation of the local vector in the form "X: 3, Y: -1".
-		Zero-values are not reported. The returned string may be empty
-		*/
-		String	ToString() const;
-		/*
-		{
-			Ctr::Buffer0<String> rs;
-			for (index_t i = 0; i < R::table.GetSize(); i++)
-				if (level[i] != 0)
-					rs << R::ID(i).ToString()+String(": ")+String(level[i]);
-			return implode(',',rs.pointer(),rs.Count());
-		}*/
-
-		/**
-		Checks whether all local levels are 0 or higher
-		*/
-		bool	IsStable() const;
-		/**
-		Checks if any local level of the specified resource flag set is non-0
-		*/
-		bool	AnyIsSet(const ResourceFlagSet&set) const;
-
-		/**
-		Maps all resource indexes where the local vector contains a non-0 value
-		*/
-		ResourceFlagSet	IdentifySet() const;
-		int			operator[](index_t resource) const;
-		int			operator[](Resource::ID resource) const	{return operator[](resource.serialIndex);}
-	private:
-		Array<int>	storage;
-
-		void		CheckEmptiness();
-		void		AllocateEmpty();
-	};
+	typedef ResourceVectorT<Resource>	ResourceVector;
 
 	class ResourceFlagSet
 	{
-	public:
-		typedef UINT64	flag_t;
-		struct TFlagSet
-		{
-			flag_t	set;
-
-			/**/	TFlagSet(flag_t set):set(set)	{}
-		};
-		/**/	ResourceFlagSet(TFlagSet set) : isSet(set.set)	{}
-		/**/	ResourceFlagSet()	{}
-		/**/	ResourceFlagSet(index_t resourceIndex)		{Set(resourceIndex);}
-		/**/	ResourceFlagSet(Resource::ID id) {Set(id);}
-
-		void	Set(index_t resourceIndex)	{isSet |= ((flag_t)1 << (flag_t)resourceIndex);}
-		void	Set(Resource::ID resource)	{Set(resource.serialIndex);}
-		flag_t	GetNumeric() const {return isSet;}
-
-		bool	IsEmpty() const {return isSet == 0;}
-		bool	IsNotEmpty() const {return isSet != 0;}
-		
-		void	operator=(Resource::ID resource)	{isSet = ((flag_t)1 << (flag_t)resource.serialIndex);}
-
-		void	operator|=(ResourceFlagSet res)	{isSet |= res.isSet;}
-		void	operator|=(Resource::ID res)	{Set(res);}
-		void	operator|=(index_t res)	{Set(res);}
-		ResourceFlagSet	operator|(ResourceFlagSet res) const	{return TFlagSet(isSet | res.isSet);}
-		bool	operator&(index_t resIndex) const {return (isSet & ((flag_t)1 << (flag_t)resIndex)) != 0;}
 	private:
-		flag_t	isSet = 0;
+		static_assert(Resource::N<=32,"Need other flag storage");
+		typedef UINT32	flagT;
+		flagT	isSet = 0;
+
+		explicit	ResourceFlagSet(flagT set) : isSet(set)	{}
+	public:
+		/**/	ResourceFlagSet()	{}
+		/**/	ResourceFlagSet(Resource res)	{Set(res);}
+		/**/	ResourceFlagSet(Resource::value_t res)	{Set(res);}
+		/**/	ResourceFlagSet(const ResourceVector&res)	{SetAllNonZero(res);}
+
+		void	Set(Resource res)	{isSet |= ((flagT)1 << (flagT)res);}
+		void	SetAllNonZero(const ResourceVector&res);
+		
+		void	operator|=(ResourceFlagSet res)	{isSet |= res.isSet;}
+		ResourceFlagSet	operator|(ResourceFlagSet res) const	{return ResourceFlagSet(isSet | res.isSet);}
+		bool	operator&(Resource res) const {return (isSet & ((flagT)1 << (flagT)res)) != 0;}
+		bool	operator&(index_t resIndex) const {return (isSet & ((flagT)1 << (flagT)resIndex)) != 0;}
 	};
 	
 	struct NaturalResourceVector
@@ -404,11 +66,12 @@ namespace Objects
 		/**/	NaturalResourceVector():fuel(0),minerals(0),uranium(0)	{}
 
 
-		void	operator=(const ResourceVector&vec)
+		template <typename Resource>
+		void	operator=(const ResourceVectorT<Resource>&vec)
 		{
-			this->fuel = vec.Get(Resource::Fuel);
-			this->minerals = vec.Get(Resource::Minerals);
-			this->uranium = vec.Get(Resource::Uranium);
+			this->fuel = vec.level[Resource::Fuel];
+			this->minerals = vec.level[Resource::Minerals];
+			this->uranium = vec.level[Resource::Uranium];
 		}
 
 
@@ -423,6 +86,179 @@ namespace Objects
 		bool	IsEmpty() const {return fuel == 0 && minerals == 0 && uranium == 0;}
 	};
 
+	template <typename Resource>
+		struct ResourceVectorT
+		{
+			int		level[Resource::NumberOfPossibilities];
+			static const count_t NumEntries = Resource::NumberOfPossibilities;
+
+			typedef ResourceVectorT<Resource>	Self;
+
+			/**/	ResourceVectorT()
+			{
+				Clear();
+			}
+
+			/**/ ResourceVectorT(const NaturalResourceVector&v)
+			{
+				operator=(v);
+			}
+
+			template<typename Resource2>
+				void	LoadCompatible(const ResourceVectorT<Resource2>&other)
+				{
+					Resource2 otherID;
+					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					{
+						const char*str = Resource::Reinterpret(i).ToString();
+						if (otherID.Decode(str))
+						{
+							level[i] = other.level[otherID];
+						}
+						else
+							level[i] = 0;
+					}
+				}
+			template<>
+				void	LoadCompatible<Resource>(const ResourceVectorT<Resource>&other)
+				{
+					operator=(other);
+				}
+
+			void	Clear()
+			{
+				memset(level,0,sizeof(level));
+			}
+
+			void	operator=(const NaturalResourceVector&v)
+			{
+				Clear();
+				level[Resource::Fuel] = v.fuel;
+				level[Resource::Minerals] = v.minerals;
+				level[Resource::Uranium] = v.uranium;
+			}
+
+			bool	operator<(const Self&v) const
+			{
+				return M::VecUnroll<Resource::NumberOfPossibilities>::allLess(level,v.level);
+			}
+			bool	operator<=(const Self&v) const
+			{
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::oneGreater(level,v.level);
+			}
+
+			void	operator+=(const NaturalResourceVector&v)
+			{
+				level[Resource::Fuel] += v.fuel;
+				level[Resource::Minerals] += v.minerals;
+				level[Resource::Uranium] += v.uranium;
+			}
+			void	operator+=(const Self&v)
+			{
+				M::VecUnroll<Resource::NumberOfPossibilities>::add(level,v.level);
+			}
+			void	operator-=(const Self&v)
+			{
+				M::VecUnroll<Resource::NumberOfPossibilities>::sub(level,v.level);
+			}
+			void	operator*=(int multiplier)
+			{	
+				M::VecUnroll<Resource::NumberOfPossibilities>::mul(level,multiplier);
+			}
+			bool	operator==(const Self&v) const
+			{
+				return M::VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
+			}
+			bool	operator!=(const Self&v) const
+			{
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::equal(level,v.level);
+			}
+			Self	operator-(const Self&v)	const
+			{
+				Self rs(*this);
+				rs -= v;
+				return rs;
+			}
+			Self	operator*(int multiplier) const
+			{	
+				Self rs = *this;
+				rs *= multiplier;
+				return rs;
+			}
+
+			int	Sum() const
+			{
+				int rs = 0;
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					rs += level[i];
+				return rs;
+			}
+
+			int	SumNegative() const
+			{
+				int rs = 0;
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if (level[i] < 0)
+						rs += level[i];
+				return rs;
+			}
+
+			int	SumPositive() const
+			{
+				int rs = 0;
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if (level[i] > 0)
+						rs += level[i];
+				return rs;
+			}
+
+			void	SeparateBySign(Self&positive, Self&negative) const
+			{
+				static const Self zero;
+				M::VecUnroll<Resource::NumberOfPossibilities>::max(level,zero.level,positive.level);
+				M::VecUnroll<Resource::NumberOfPossibilities>::min(level,zero.level,negative.level);
+			}
+
+			void	Cap(const Self&cap)
+			{
+				M::VecUnroll<Resource::NumberOfPossibilities>::min(level,cap.level,level);
+			}
+			void	Negate()
+			{
+				M::VecUnroll<Resource::NumberOfPossibilities>::mul(level,-1);
+			}
+			String	ToString() const
+			{
+				Ctr::Buffer0<String> rs;
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if (level[i] != 0)
+						rs << Resource::Reinterpret(i).ToString()+String(": ")+String(level[i]);
+				return implode(',',rs.pointer(),rs.Count());
+			}
+
+			bool	IsEmpty() const
+			{
+				return M::VecUnroll<Resource::NumberOfPossibilities>::zero(level);
+			}
+			bool	IsNotEmpty() const
+			{
+				return !IsEmpty();
+			}
+			bool	IsStable() const
+			{
+				static const int compare0[Resource::NumberOfPossibilities] = {0};
+				return !M::VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
+			}
+
+			bool	AnyIsSet(const ResourceFlagSet&set) const
+			{
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if ((set & i) && level[i] != 0)
+						return true;
+				return false;
+			}
+		};
+
 
 
 	struct FullResourceVector
@@ -432,21 +268,29 @@ namespace Objects
 
 		void	Include(const ResourceVector&v, const ResourceVector&storage, const ResourceVector&storageMax)
 		{
-			v.SeparateBySign(supply,demand);
-			demand.Negate();
+			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+			{
+				int val = v.level[i];
+				if (val > 0)
+					supply.level[i] += val;
+				else
+					demand.level[i] += -val;
+			}
+
 			balance += v;
 			balance += storage;
 			this->storage += storage;
 			this->storageMax += storageMax;
 		}
+	
+	
 	};
 
 
 
-	class PositiveResourceVector : public ResourceVector
+	class PositiveResourceVector : public Objects::ResourceVector
 	{
 	public:
-		typedef ResourceVector Super;
 
 		/**/	PositiveResourceVector()	{}
 		/**/	PositiveResourceVector(const Objects::ResourceVector&v);
@@ -495,12 +339,12 @@ namespace Objects
 
 
 
-	//static const char TextoutResourceTagOffset = (char)2;	//global char offset used for mineral output in strings
-	//static_assert((index_t)TextoutResourceTagOffset + R::table.GetSize()+2 < (index_t)'\n',"Relocate tag offset");
-	//static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
-	static inline char TimeResourceTag() {return (char)1;}
-	static inline char TrafficResourceTag() {return (char)2;}
-	static inline bool IsTag(char c) {return c == TimeResourceTag() || c == TrafficResourceTag() || Resource::table.GetTypeByTag(c) != nullptr;}
+	static const char TextoutResourceTagOffset = (char)2;	//global char offset used for mineral output in strings
+	static_assert((index_t)TextoutResourceTagOffset + Resource::NumberOfPossibilities+2 < (index_t)'\n',"Relocate tag offset");
+	static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
+	static inline char TimeResourceTag() {return ResourceTag(Resource::NumberOfPossibilities);}
+	static inline char TrafficResourceTag() {return ResourceTag(Resource::NumberOfPossibilities+1);}
+	static inline bool IsTag(char c) {return c >= TextoutResourceTagOffset && (index_t)(c-TextoutResourceTagOffset) < Resource::NumberOfPossibilities+2;}
 	String GetTagName(char c);
 }
 

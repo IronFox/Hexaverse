@@ -586,9 +586,9 @@ namespace Objects
 
 		/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
 		{
-			v[R::Energy] = -EnergyConsumption;
+			v.level[Resource::Energy] = -EnergyConsumption;
 			if (MobileEntityProducer::queue.IsNotEmpty())
-				v[R::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+				v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
 		}
 
 	#endif
@@ -663,7 +663,7 @@ namespace Objects
 
 			/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
 			{
-				v[Resource::Energy] -= EnergyConsumption;
+				v.level[Resource::Energy] -= EnergyConsumption;
 				if (MobileEntityProducer::queue.IsNotEmpty())
 				{
 					float t = 0;
@@ -1034,7 +1034,7 @@ namespace Objects
 			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
 			label << "Enabled generators provide energy for the local compound."
-			" Since many structures consume "+R::Energy.GetTagStr()+" when enabled, generators are a crucial component of any active base."
+			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
 			" Combine with reactor cores for increased output."
 			;
 		}
@@ -1060,34 +1060,34 @@ namespace Objects
 
 			GetResourceVector(balance, discard, maxStorage);
 
-			if (!balance.IsZero())
+			if (balance.IsNotEmpty())
 			{
 				if (balance.SumNegative())
 				{
 					label << "Consumes:";
-					for (index_t i = 0; i < R::table.Count(); i++)
-						if (balance[i] < 0)
+					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+						if (balance.level[i] < 0)
 						{
-							label.GetLastLine() += " "+R::ID(i).GetTagStr()+String(-balance[i]);
+							label.GetLastLine() += " "+String(ResourceTag(i))+String(-balance.level[i]);
 						}
 				}
 				if (balance.SumPositive())
 				{
 					label << "Produces:";
-					for (index_t i = 0; i < R::table.Count(); i++)
-						if (balance[i] > 0)
+					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+						if (balance.level[i] > 0)
 						{
-							label.GetLastLine() += " "+R::ID(i).GetTagStr()+String(balance[i]);
+							label.GetLastLine() += " "+String(ResourceTag(i))+String(balance.level[i]);
 						}
 				}
 			}
-			if (!maxStorage.IsZero())
+			if (maxStorage.IsNotEmpty())
 			{
 				label << "Storage capacity:";
-				for (index_t i = 0; i < R::table.Count(); i++)
-					if (maxStorage[i] > 0)
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if (maxStorage.level[i] > 0)
 					{
-						label.GetLastLine() += " "+R::ID(i).GetTagStr()+String(maxStorage[i]);
+						label.GetLastLine() += " "+String(ResourceTag(i))+String(maxStorage.level[i]);
 					}
 			}
 		
@@ -1145,7 +1145,7 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					ResourceFlagSet missingResources;
+					Ctr::Array<Resource> missingResources;
 					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
 						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable "+GetTypeName()+": Insufficient resource supply in compound ("+outWhy+")");
