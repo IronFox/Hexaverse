@@ -151,6 +151,7 @@ namespace Objects
 
 			ID			GetID() const {return ID(serialIndex);}
 			String		GetTagStr() const;
+			void		OnDeserialize(index_t serialIndex);
 		};
 
 		/**
@@ -206,7 +207,10 @@ namespace Objects
 				const count_t cnt = s.ReadSize();
 				t.Clear();
 				for (index_t i = 0; i < cnt; i++)
+				{
 					Deserialize(s, t.Super::Append());
+					t.Last().OnDeserialize(i);
+				}
 			}
 			friend void	Serialize(IWriteStream&s, const Table&t)
 			{

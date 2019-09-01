@@ -94,6 +94,13 @@ namespace Objects
 		}
 
 
+		void		Type::OnDeserialize(index_t serialIndex)
+		{
+			this->serialIndex = serialIndex;
+			this->tag = TagMap::IndexToTag(serialIndex);
+		}
+
+
 		String		Type::GetTagStr() const
 		{
 			if (tag != 0)
