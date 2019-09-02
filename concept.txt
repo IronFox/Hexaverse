@@ -3,11 +3,11 @@ resource model 2.0:
 		+Harvesting turret
 			full/conservative setting
 		+Trees -> organic compounds
-		+Crystal Dendrites -> mineral compounds
+		+Crystal Dendrites -> crystalline compounds
 	Fusion:
-		organic + mineral -> advanced compounds
+		organic + crystalline -> advanced compounds
 		fuel + uranium + energy -> organic compounds
-		minerals + uranium + energy -> mineral compounds
+		minerals + uranium + energy -> crystalline compounds
 
 	Munitions 2.0:
 		advanced compounds + minerals -> enhanced ammo (blast+,damage+)
