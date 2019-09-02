@@ -259,6 +259,7 @@ namespace Objects
 				StoppedBuilding = 0x4000,
 				StoredInChanged = 0x8000,
 				GatheringPointChanged = 0x10000,
+				ResourceAvailabilityChanged = 0x20000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
