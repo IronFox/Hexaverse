@@ -23,9 +23,9 @@ namespace Objects
 			{
 				if (idx >= Count)
 					throw Except::Program::ParameterFault(CLOCATION,"Given parameter index "+String(idx)+" exceeds limit of "+String(Count));
-				if (idx < 6)
+				if (idx < 5)
 					return char(3 + idx);
-				idx -= 6;
+				idx -= 5;
 				if (idx < 2)
 					return char(11+idx);
 				idx -= 2;
@@ -34,11 +34,11 @@ namespace Objects
 
 			index_t		TagToIndex(char c)
 			{
-				if (c < '\n')
+				if (c < '\t') //9
 					return index_t(c)-3;
 				if (c < '\r')
-					return index_t(c-'\n')+5;
-				return index_t(c - '\r') + 7;
+					return index_t(c-'\n')+4;
+				return index_t(c - '\r') + 6;
 			}
 
 			ID		TagToID(char c)
@@ -48,7 +48,7 @@ namespace Objects
 
 			bool	IsTag(char c)
 			{
-				if (c < '\n')
+				if (c < '\t')
 					return c > 0;
 				if (c < '\r')
 					return c > '\n';
