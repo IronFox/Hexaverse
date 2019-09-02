@@ -645,7 +645,7 @@ namespace ResourceGauges
 				const auto bottomRowSpacing = 4;
 				//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
 				M::Rect<> t(-1, lineHeight*bottomRowSpacing-1.f,
-					w*2.f - 1.f, lineHeight*(-0.5f+bottomRowSpacing+numGauges) - 1.f);
+					w*2.f - 1.f, lineHeight*(0.5f+bottomRowSpacing+numGauges) - 1.f);
 				lastUpperEdge = (1 - (1.f - t.y.max) * 0.5f) * display.GetClientHeight();
 				SurfaceRenderer::Rasterize(
 					float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
