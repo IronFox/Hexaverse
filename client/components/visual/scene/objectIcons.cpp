@@ -176,8 +176,12 @@ namespace Objects
 			animatedFloaters.Clear();
 			resourceFamily.SetSize(Objects::Resource::table.GetSize());
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
-				resourceFamily[i].Setup(PathString(::Icons::NameToFileName(Objects::Resource::ID(i).ToString()))+".png",0.75f,float3(0.5f,1.f,10));
-
+			{
+				const auto id = Objects::Resource::ID(i);
+				const auto&type = id.ToType();
+				const String&name = type.icon.IsEmpty() ? type.name : type.icon;
+				resourceFamily[i].Setup(PathString(::Icons::NameToFileName(name))+".png",0.75f,float3(0.5f,1.f,10));
+			}
 		}
 
 		void Create()
