@@ -193,11 +193,15 @@ namespace Grid
 		class CompactCell
 		{
 		public:
-			CONSTRUCT_ENUMERATION13(Content,
+			CONSTRUCT_ENUMERATION17(Content,
 				Unknown,
 				Granite,
 				Earth,
 				Grass,
+				Trees,
+				Forest,
+				Crystals,
+				CrystalForest,
 				Rock,
 				Sand,
 				Snow,
@@ -262,7 +266,7 @@ namespace Grid
 				#endif
 			#endif
 
-			static const count_t TypeCount = 13;
+			static const count_t TypeCount = 17;
 
 			static float3	typeColor[TypeCount];
 			static float	typeStructureFactor[TypeCount];
@@ -319,6 +323,8 @@ namespace Grid
 			bool	SetToIfSolid(BYTE cnt)	{if (IsSolid() && content != cnt) {content = cnt; return true;} return false;}
 			bool	IsWater() const { return content == Content::Water; }
 			bool	IsTechnite() const {return content == Content::Technite; }
+			bool	IsPlant() const {return content == Content::CrystalForest || content == Content::Crystals || content == Content::Trees || content == Content::Forest;}
+			BYTE	GetPlantDeteriorationType() const;
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
 			bool	IsOccupied() const
 			{

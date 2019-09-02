@@ -24,7 +24,6 @@ namespace Grid
 		float4			sunPlaneNormal_Speed = float4(0,0,1,0.5f);	//fourth parameter is rotation speed in radians per second
 		float4			sunColor = float4(1,1,1,1);	//fourth parameter is ignored
 
-
 		friend void		Deserialize(IReadStream&s, Self&v)
 		{
 			using Serialization::Deserialize;
@@ -77,7 +76,8 @@ namespace Grid
 					depressionSeed0,
 					depressionSeed1,
 					depressionSeed2,
-					depressionSeed3;
+					depressionSeed3,
+					plantSeed;
 
 
 			void	Randomize(Random&random)
@@ -89,6 +89,7 @@ namespace Grid
 				depressionSeed2 = random.NextSeed();
 				depressionSeed3 = random.NextSeed();
 				productSeed = random.NextSeed();
+				plantSeed = random.NextSeed();
 			}
 		};
 
@@ -99,7 +100,8 @@ namespace Grid
 							depression0,
 							depression1,
 							depression2,
-							depression3;
+							depression3,
+							plants;
 
 			/**/			NoiseSet(const TSeedSet&set):
 								fractal
@@ -114,7 +116,8 @@ namespace Grid
 								depression0(set.depressionSeed0),
 								depression1(set.depressionSeed1),
 								depression2(set.depressionSeed2),
-								depression3(set.depressionSeed3)
+								depression3(set.depressionSeed3),
+								plants(set.plantSeed)
 			{}
 		};
 
@@ -144,8 +147,13 @@ namespace Grid
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
 					liquidHeight = 0;
-		UINT32		lastSeed = 0,
-					versionCounter = 0;
+		UINT32		lastSeed = 0;
+		float		crystalDensity=0.35f,
+					treeDensity=0.35f;
+
+		static const UINT32 VersionWithPlants = 1;
+
+		static const UINT32 Version = 1;
 
 		/**/		ExtendedPlanetConfig()
 		{
@@ -164,7 +172,9 @@ namespace Grid
 			outStream.WritePrimitive(v.snowHeight);
 			outStream.WritePrimitive(v.liquidHeight);
 			outStream.WritePrimitive(v.lastSeed);
-			outStream.WritePrimitive(v.versionCounter);
+			outStream.WritePrimitive(Version);
+			outStream.WritePrimitive(v.crystalDensity);
+			outStream.WritePrimitive(v.treeDensity);
 		}
 
 		friend	void	Deserialize(IReadStream&inStream, Self&v)
@@ -179,7 +189,18 @@ namespace Grid
 			inStream.ReadPrimitive(v.snowHeight);
 			inStream.ReadPrimitive(v.liquidHeight);
 			inStream.ReadPrimitive(v.lastSeed);
-			inStream.ReadPrimitive(v.versionCounter);
+			UINT32 version;
+			inStream.ReadPrimitive(version);
+			if (version > Version)
+				throw Except::IO::GeneralFault("PlantConfig: Serial version is "+String(version)+". Max supported is "+String(Version));
+			if (version >= VersionWithPlants)
+			{
+				inStream.ReadPrimitive(v.crystalDensity);
+				inStream.ReadPrimitive(v.treeDensity);
+			}
+			else
+				v.crystalDensity = v.treeDensity = 0.25f;
+
 			v.ApplySeed();
 		}
 		
@@ -232,7 +253,7 @@ namespace Grid
 		}
 
 		void	InitUnknown(CellStack&stack, float2 heights) const;
-		void	FillTypes(CellStack&stack) const;
+		void	FillTypes(CellStack&stack, index_t stackID, const SimplexNoise&plantNoise) const;
 
 		void	BuildWorld(World::Data&world) const;
 

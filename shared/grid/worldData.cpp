@@ -665,6 +665,25 @@ namespace World
 	}
 
 
+	bool	Data::PlantGroundHere(const Grid::LCellIdI&cell) const
+	{
+		#ifdef HYBRID_GRID
+			const index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
+			const auto&c = Grid::high.grid.GetCell(finer);
+			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
+			{
+				if (cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).IsPlant())
+					return true;
+			}
+		#else
+			const index_t finer = cell.stackID;
+		#endif
+
+		if (cellStack[finer].GetCellI(cell.height).IsPlant())
+			return true;
+		return false;
+	}
+
 
 	bool	Data::GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest, bool includeUnknown) const
 	{

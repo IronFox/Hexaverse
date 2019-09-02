@@ -66,11 +66,13 @@ namespace PortOffset
 
 
 
+
 #define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION\
 							"["\
 							NAME_APPEND0\
 							NAME_APPEND1\
 							NAME_APPEND_S\
+							"p" /*plants*/\
 							NAME_APPEND_L\
 							"]"
 

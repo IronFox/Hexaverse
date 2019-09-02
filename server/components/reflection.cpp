@@ -1259,7 +1259,20 @@ namespace Reflection
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
 			Variable::SetStringReference("resourceDistribution","ResourceDistribution", Grid::currentCustomResourceDistribution,Variable::Persistence::PlanetConfig);
 
-
+			parser->EnterNewFolder("Plants")->attachment = persistenceAttachment;
+				VAR(grassGrowthProbability,World::Config,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+				parser->EnterNewFolder("Crystals")->attachment = persistenceAttachment;
+					Variable::Set("deathProbability",World::Config::crystals.deathProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("growthProbability",World::Config::crystals.growthProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("spawnProbability",World::Config::crystals.spawnProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+				parser->ExitFolder();
+				parser->EnterNewFolder("Trees")->attachment = persistenceAttachment;
+					Variable::Set("deathProbability",World::Config::trees.deathProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("growthProbability",World::Config::trees.growthProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+					Variable::Set("spawnProbability",World::Config::trees.spawnProbability,0.f,1.f,Variable::Persistence::RestoreFromSavegame);
+				parser->ExitFolder();
+			parser->ExitFolder();
+			
 			parser->EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","PlanetName","LushGreen",Variable::Persistence::PlanetConfig);
 
@@ -1287,6 +1300,11 @@ namespace Reflection
 						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.liquidCoverage,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("level",Grid::currentPlanetConfig.liquidHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::SetMappedEnum<Grid::Content,BYTE>("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::PlanetConfig);
+					parser->ExitFolder();
+
+					parser->EnterNewFolder("Plants")->attachment = persistenceAttachment;
+						Variable::Set("crystalDensity",Grid::currentPlanetConfig.crystalDensity,0.f, 1.f,Variable::Persistence::PlanetConfig);
+						Variable::Set("treeDensity",Grid::currentPlanetConfig.treeDensity,0.f, 1.f,Variable::Persistence::PlanetConfig);
 					parser->ExitFolder();
 
 					MapConfig(Grid::currentPlanetConfig.extendedCore,parser->GetFocus()->CreateOrGetChild("ExtendedCore"));

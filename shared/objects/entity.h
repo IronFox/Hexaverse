@@ -564,6 +564,9 @@ namespace Objects
 		bool				ClearOccupiedTerrain(float atTime) const;
 		bool				ClearOccupiedTerrain(World::Data&world, float atTime) const;
 		bool				ClearOccupiedTerrain(World::Data::ChangeSequence&seq) const;
+		void				ClearPlants(float atTime) const;
+		void				ClearPlants(World::Data&world, float atTime) const;
+		void				ClearPlants(World::Data::ChangeSequence&seq) const;
 
 
 		#ifdef CLIENT
