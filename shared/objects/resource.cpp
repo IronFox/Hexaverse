@@ -29,7 +29,7 @@ namespace Objects
 				if (idx < 2)
 					return char(11+idx);
 				idx -= 2;
-				return char(13+idx);
+				return char(14+idx);
 			}
 
 			index_t		TagToIndex(char c)
@@ -37,8 +37,8 @@ namespace Objects
 				if (c < '\n')
 					return index_t(c)-3;
 				if (c < '\r')
-					return index_t(c-'\n')+6;
-				return index_t(c - '\r') + 8;
+					return index_t(c-'\n')+5;
+				return index_t(c - '\r') + 7;
 			}
 
 			ID		TagToID(char c)
