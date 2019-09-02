@@ -176,7 +176,7 @@ namespace Objects
 		
 		ID		Table::Append(const String&name, const float3&color)
 		{
-			return Append(name.c_str(),color);
+			return Append(name.c_str(),"",color);
 		}
 		
 		ID		Table::Append(String&&name, const float3&color)
@@ -187,6 +187,21 @@ namespace Objects
 		ID		Table::Append(const char*name, const float3&color)
 		{
 			return Append(Type(String(name),color));
+		}
+
+		ID		Table::Append(const String&name, const String&icon, const float3&color)
+		{
+			return Append(name.c_str(),icon.c_str(),color);
+		}
+
+		ID		Table::Append(String&&name, String&&icon, const float3&color)
+		{
+			return Append(Type(std::move(name),std::move(icon),color));
+		}
+
+		ID		Table::Append(const char*name, const char*icon, const float3&color)
+		{
+			return Append(Type(String(name),String(icon),color));
 		}
 
 		const Type*		Table::FindByName(const String&n) const

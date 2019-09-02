@@ -100,6 +100,9 @@ namespace Objects
 			/**/		TypePrototype()	{}
 			explicit	TypePrototype(String&&name, const float3&color):name(std::move(name)),
 						color(color.r * 255, color.g*255, color.b*255) {}
+			explicit	TypePrototype(String&&name, String&&icon, const float3&color):name(std::move(name)),
+						icon(std::move(icon)),
+						color(color.r * 255, color.g*255, color.b*255) {}
 
 			void		swap(Self&other)
 			{
@@ -141,6 +144,7 @@ namespace Objects
 			explicit	Type(Super&&s) : Super(std::move(s))	{}
 			explicit	Type(const Super&s) : Super(s)	{}
 			explicit	Type(String&&name, const float3&color) : Super(std::move(name), color)	{}
+			explicit	Type(String&&name, String&&icon, const float3&color) : Super(std::move(name), std::move(icon), color)	{}
 
 			void		swap(Self&other)
 			{
@@ -188,6 +192,9 @@ namespace Objects
 			ID			Append(const String&, const float3&);
 			ID			Append(String&&, const float3&);
 			ID			Append(const char*, const float3&);
+			ID			Append(const String&, const String&icon, const float3&);
+			ID			Append(String&&, String&&icon, const float3&);
+			ID			Append(const char*, const char*icon, const float3&);
 			bool		operator==(const Table&other) const;
 			bool		operator!=(const Table&other) const {return !operator==(other);}
 			bool		ResetChanged()	{bool old = changed; changed = false; return changed;}
