@@ -140,6 +140,10 @@ namespace HUD
 		*/
 		void	HideExtraGauges();
 
+		/**
+		Extracts the number of pixels occupied by the local resource gauge from the lower window edge to the upper resource visualization
+		*/
+		float	GetUpperEdgeFromBottomInPixels();
 
 		#ifndef NO_HIBERNATION
 			#define HIB(item)	item
