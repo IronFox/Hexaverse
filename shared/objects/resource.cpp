@@ -453,6 +453,18 @@ namespace Objects
 		}
 
 
+		void	FullVector::Include(const Vector&v, const Vector&storage, const Vector&storageMax)
+		{
+			Vector s,d;
+			v.SeparateBySign(s,d);
+			d.Negate();
+			supply += s;
+			demand += d;
+			balance += v;
+			balance += storage;
+			this->storage += storage;
+			this->storageMax += storageMax;
+		}
 
 		bool	CoreVector::SampleWorld(index_t lowCellID)
 		{

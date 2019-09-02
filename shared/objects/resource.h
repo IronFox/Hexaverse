@@ -487,15 +487,7 @@ namespace Objects
 			Vector	supply, demand, balance, storage, storageMax;
 
 
-			void	Include(const Vector&v, const Vector&storage, const Vector&storageMax)
-			{
-				v.SeparateBySign(supply,demand);
-				demand.Negate();
-				balance += v;
-				balance += storage;
-				this->storage += storage;
-				this->storageMax += storageMax;
-			}
+			void	Include(const Vector&v, const Vector&storage, const Vector&storageMax);
 		};
 
 
