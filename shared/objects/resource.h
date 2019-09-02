@@ -276,6 +276,9 @@ namespace Objects
 			Uranium,
 			Energy,
 			Munitions,
+			CrystallineCompounds,
+			OrganicCompounds,
+			AdvancedCompounds,
 			_;	//not a resource, just a terminal symbol so the previous one can end with a comma. do not use
 
 

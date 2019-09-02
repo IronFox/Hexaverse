@@ -140,9 +140,14 @@ namespace Objects
 			Energy = 3,
 			#ifndef NO_MUNITION
 				Munitions = 4,
+				Offset = 5,
 			#else
 				Munitions = ID::Invalid,
+				Offset = 4,
 			#endif
+			CrystallineCompounds = Offset,
+			OrganicCompounds = Offset+1,
+			AdvancedCompounds = Offset+2,
 			_ = ID::Invalid;
 
 
@@ -566,6 +571,11 @@ namespace Objects
 		{
 			Table rs = minimal;
 			
+			
+
+			rs.Set(CrystallineCompounds, "Crystalline Compounds", "Question Mark", float3(0.6,0.6,0.6));
+			rs.Set(OrganicCompounds, "Organic Compounds", "Question Mark", float3(0.6,1,0.3));
+			rs.Set(AdvancedCompounds, "Advanced Compounds", "Question Mark", float3(0.4,0.4,0.4));
 			return rs;
 		}
 

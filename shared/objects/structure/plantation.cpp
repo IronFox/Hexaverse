@@ -1,0 +1,124 @@
+#include <global_root.h>
+#include "plantation.h"
+#include "../gridAndChoices.h"
+
+namespace Objects
+{
+	/*virtual override*/	void			Plantation::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+	}
+
+	
+
+	bool Plantation::LinkToCore(float atTime)
+	{
+		#ifdef CLIENT
+			return isLinkedToCore;
+		#else
+			this->naturalResources = Resource::CoreVector();
+			bool success = true;
+			{
+				#ifdef HYBRID_GRID
+					const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+				#else
+					const UINT32 higher = location.cellID;
+				#endif
+				auto seq = World::actual.BeginChangeSequence(atTime);
+				auto acc = seq.AccessStack(higher);
+				Grid::CellStack&stack = acc.GetStack();
+
+				UINT layer = Grid::CellStack::ToLayer(location.height);
+				UINT i = 0;
+				if (Grid::CellStack::bottom.content == Grid::Content::Clear)
+					while (stack.volumeCell[i].content == Grid::Content::Clear && i < layer)
+						i++;	//skip air if no ground
+				if (i == layer)
+					return false;	//this is REALLY weird, because the foundation would be missing
+
+				for (UINT j = layer-1; j >= i && j < layer; j--)
+				{
+					const int h = Grid::CellStack::ToHeight(j);
+					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetMobileEntity(Grid::LCellIdI(location.stackID,h)))
+						stack.volumeCell[j].content = Grid::Content::Foundation;
+					else
+					{
+						success = false;
+						break;
+					}
+				}
+			}
+
+			if (success)
+			{
+				naturalResources.SampleWorld(location.stackID);
+				naturalResources *= GetEfficiency();
+			}
+			if (success)
+				SignalChangeByExternalCause(WorldEntity::CanEnableChanged,atTime);
+			return success;
+		#endif
+	}
+
+
+
+
+
+
+	
+
+
+	bool	Plantation::IsLinkedToCore()	const
+	{
+		#ifdef CLIENT
+			return isLinkedToCore;
+		#else
+			#ifdef HYBRID_GRID
+				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			#else
+				const UINT32 higher = location.cellID;
+			#endif
+			const Grid::CellStack&stack = World::actual.GetStack(higher);
+			UINT layer = Grid::CellStack::ToLayer(location.height);
+			UINT i = 0;
+			if (Grid::CellStack::bottom.content == Grid::Content::Clear)
+				while (stack.volumeCell[i].content == Grid::Content::Clear && i < layer)
+					i++;	//skip air if no ground
+			if (i == layer)
+				return false;	//this is REALLY weird, because the foundation would be missing
+
+			for (; i < layer; i++)
+			{
+				if (stack.GetCellU(i).content != Grid::Content::Foundation)
+					return false;
+			}
+			return true;
+		#endif
+	}
+
+	#ifdef CLIENT
+		void	Plantation::SetLinkedToCore(bool b, bool controlEnabled)
+		{
+			if (isLinkedToCore == b)
+				return;
+			isLinkedToCore = b;
+		}
+	#endif
+
+
+	#ifdef HAS_WINDOW
+		/*virtual override*/ void			Plantation::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
+		{
+			label.BeginBrief();
+			Super::DescribeType(label,  descFlags, owner);
+			label.MarkBriefEnd();
+			label << "Enabled Plantations extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
+			" Plantations should be build only on known occurrences of natural resources."
+			" They cannot be constructed atop each other, since they require a working link to the planet core in order to operate."
+			//" Plantations constructed on a height level of -8 or lower are twice as effective."
+			" Plantations, like many structures, require "+Resource::Energy.GetTagStr()+" from generators to operate."
+			;
+		}
+	#endif
+
+}
