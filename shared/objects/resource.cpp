@@ -97,7 +97,7 @@ namespace Objects
 		void		Type::OnDeserialize(index_t serialIndex)
 		{
 			this->serialIndex = serialIndex;
-			this->tag = TagMap::IndexToTag(serialIndex);
+			tag = serialIndex < TagMap::Count ? TagMap::IndexToTag(serialIndex) : 0;
 		}
 
 
@@ -167,9 +167,7 @@ namespace Objects
 		ID		Table::Append(Type&&t)
 		{
 			const index_t rs = Count();
-			Super::MoveAppend(t);
-			Super::Last().serialIndex = rs;
-			Super::Last().tag = rs < TagMap::Count ? TagMap::IndexToTag(rs) : 0;
+			Super::MoveAppend(t).OnDeserialize(rs);
 			return rs;
 		}
 
@@ -203,6 +201,20 @@ namespace Objects
 		{
 			return Append(Type(String(name),String(icon),color));
 		}
+
+		void	Table::Set(ID at, const char*name, const char*icon, const float3&color)
+		{
+			while (Count() <= at.serialIndex)
+				Super::Append();
+			Type&t = Super::at(at.serialIndex);
+			if (t.name.IsNotEmpty() && t.name != name)
+				FATAL__("Trying to set resource table entry #"+String(at.serialIndex)+" to '"+String(name)+"' but is already set to '"+t.name+"'");
+			t.name = name;
+			t.icon = icon;
+			t.color = color*255;
+			t.OnDeserialize(at.serialIndex);
+		}
+
 
 		const Type*		Table::FindByName(const String&n) const
 		{

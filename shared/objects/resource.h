@@ -87,6 +87,8 @@ namespace Objects
 			String			GetTagStr() const;
 			const String&	ToString() const;
 
+			ID				operator+(int delta) const {return ID(serialIndex + delta);}
+
 			friend hash_t	Hash(const ID&id) {return (hash_t)id.serialIndex;}
 		};
 
@@ -195,6 +197,7 @@ namespace Objects
 			ID			Append(const String&, const String&icon, const float3&);
 			ID			Append(String&&, String&&icon, const float3&);
 			ID			Append(const char*, const char*icon, const float3&);
+			void		Set(ID at, const char*, const char*icon, const float3&);
 			bool		operator==(const Table&other) const;
 			bool		operator!=(const Table&other) const {return !operator==(other);}
 			bool		ResetChanged()	{bool old = changed; changed = false; return changed;}
