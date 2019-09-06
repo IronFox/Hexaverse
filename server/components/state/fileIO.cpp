@@ -1574,14 +1574,10 @@ namespace FileIO
 										}
 
 
-									}
-									//Grid::TSharedPlanetConfig persistentPlanetInfo;
-									GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
-									GetOptionalPOD(list,RID::snowHeight,Grid::currentPlanetConfig.snowHeight,5);
+										GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+										GetOptionalPOD(list,RID::snowHeight,Grid::currentPlanetConfig.snowHeight,5);
 
-									Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
-
-
+										Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
 									}
 								break;
 								case ChunkName::ObjectGroup:

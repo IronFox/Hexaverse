@@ -34,8 +34,8 @@ namespace Objects
 					other=0;
 
 			/**/	TGroundVector(){}
-			/**/	TGroundVector(T road, T air, T water, T other):
-					road(road), air(air), water(water), other(other)
+			/**/	TGroundVector(T road, T air, T water, T fewPlants, T manyPlants, T other):
+					road(road), air(air), water(water), fewPlants(fewPlants), manyPlants(manyPlants), other(other)
 			{}
 
 			Self	operator*(const Self&that) const
