@@ -131,7 +131,6 @@ namespace Objects
 			#endif
 		}	
 		);
-		Table table = CompileLocalTable();
 
 		const ID	
 			Fuel = FuelID, 
@@ -150,6 +149,7 @@ namespace Objects
 			AdvancedCompounds = Offset+2,
 			_ = ID::Invalid;
 
+		Table table = CompileLocalTable();
 
 		Table::Table(const std::initializer_list<const char*>&init, const std::initializer_list<float3>&colors)
 		{
