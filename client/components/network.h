@@ -315,6 +315,8 @@ namespace Network
 		DECLARE_CHANNEL(ChoiceResponse);
 
 		DECLARE_CHANNEL(ScriptedAIState);
+
+		DECLARE_OBJECT_SENDER(EntityTrigger);
 	}
 
 
