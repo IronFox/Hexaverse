@@ -9,101 +9,120 @@ namespace Objects
 		Super::PrototypeSetup();
 	}
 
-	
 
-	bool Plantation::LinkToCore(float atTime)
+	/*virtual override*/ void				Plantation::Tick(Resource::Vector&v)
 	{
-		#ifdef CLIENT
-			return isLinkedToCore;
-		#else
-			this->naturalResources = Resource::CoreVector();
-			bool success = true;
+		Super::Tick(v);	//get resource vector first, then change landscape
+
+		auto seq = World::actual.BeginChangeSequence(entityTime);
+
+		for (index_t i = 0; i+1 < plantStackIDs.Count(); i++)
+		{
+			index_t j = i+ entityRandom.NextIndex(plantStackIDs.Count()-i);
+			if (i != j)
+				swp(plantStackIDs[i],plantStackIDs[j]);
+		}
+
+		count_t treesHarvested = 0;
+		count_t crystalsHarvested = 0;
+		count_t planted = 0;
+		foreach (plantStackIDs, c)
+		{
+			seq.SelectStack(*c);
+
+			for (int h = std::max(Grid::CellStack::BottomHeight,location.height-3); h <= std::min(Grid::CellStack::TopHeight,location.height+3); h++)
 			{
-				#ifdef HYBRID_GRID
-					const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-				#else
-					const UINT32 higher = location.cellID;
-				#endif
-				auto seq = World::actual.BeginChangeSequence(atTime);
-				auto acc = seq.AccessStack(higher);
-				Grid::CellStack&stack = acc.GetStack();
-
-				UINT layer = Grid::CellStack::ToLayer(location.height);
-				UINT i = 0;
-				if (Grid::CellStack::bottom.content == Grid::Content::Clear)
-					while (stack.volumeCell[i].content == Grid::Content::Clear && i < layer)
-						i++;	//skip air if no ground
-				if (i == layer)
-					return false;	//this is REALLY weird, because the foundation would be missing
-
-				for (UINT j = layer-1; j >= i && j < layer; j--)
+				const auto&cell = seq.GetCellI(h);
+				const auto&upper = seq.GetCellI(h+1);
+				if (upper.content != Grid::Content::Clear)
+					continue;
+				if (upper.structureCounter > 0)
+					continue;
+				switch (cell.content)
 				{
-					const int h = Grid::CellStack::ToHeight(j);
-					if ((j == layer-1 || !stack.GetCellU(j).structureCounter) && !GetMobileEntity(Grid::LCellIdI(location.stackID,h)))
-						stack.volumeCell[j].content = Grid::Content::Foundation;
-					else
-					{
-						success = false;
+					case Grid::Content::CrystalForest:
+						if (crystalsHarvested < MaxHarvestPerRound)
+						{
+							seq.Change(h,Grid::Content::Crystals);
+							crystalsHarvested++;
+						}
 						break;
-					}
+					case Grid::Content::Forest:
+						if (treesHarvested < MaxHarvestPerRound)
+						{
+							seq.Change(h,Grid::Content::Trees);
+							treesHarvested++;
+						}
+						break;
+					case Grid::Content::Granite:
+						if (planted < MaxPlantingPerRound)
+						{
+							seq.Change(h,Grid::Content::Crystals);
+							planted++;
+						}
+						break;
+					case Grid::Content::Grass:
+						if (planted < MaxPlantingPerRound)
+						{
+							seq.Change(h,Grid::Content::Trees);
+							planted++;
+						}
+						break;
+					case Grid::Content::Earth:
+					case Grid::Content::Sand:
+						if (planted < MaxPlantingPerRound)
+						{
+							seq.Change(h,Grid::Content::Grass);
+							planted++;
+						}
+						break;
+					case Grid::Content::Lava:
+						if (planted < MaxPlantingPerRound)
+						{
+							seq.Change(h,Grid::Content::Granite);
+							planted++;
+						}
+						break;
 				}
 			}
-
-			if (success)
-			{
-				naturalResources.SampleWorld(location.stackID);
-				naturalResources *= GetEfficiency();
-			}
-			if (success)
-				SignalChangeByExternalCause(WorldEntity::CanEnableChanged,atTime);
-			return success;
-		#endif
-	}
-
-
-
-
-
-
-	
-
-
-	bool	Plantation::IsLinkedToCore()	const
-	{
-		#ifdef CLIENT
-			return isLinkedToCore;
-		#else
-			#ifdef HYBRID_GRID
-				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			#else
-				const UINT32 higher = location.cellID;
-			#endif
-			const Grid::CellStack&stack = World::actual.GetStack(higher);
-			UINT layer = Grid::CellStack::ToLayer(location.height);
-			UINT i = 0;
-			if (Grid::CellStack::bottom.content == Grid::Content::Clear)
-				while (stack.volumeCell[i].content == Grid::Content::Clear && i < layer)
-					i++;	//skip air if no ground
-			if (i == layer)
-				return false;	//this is REALLY weird, because the foundation would be missing
-
-			for (; i < layer; i++)
-			{
-				if (stack.GetCellU(i).content != Grid::Content::Foundation)
-					return false;
-			}
-			return true;
-		#endif
-	}
-
-	#ifdef CLIENT
-		void	Plantation::SetLinkedToCore(bool b, bool controlEnabled)
-		{
-			if (isLinkedToCore == b)
-				return;
-			isLinkedToCore = b;
 		}
-	#endif
+	}
+
+	void Plantation::CheckPresence(float t)
+	{
+		int d2 = GetPresence(Grid::Content::CrystalForest);
+		int t2 = GetPresence(Grid::Content::Forest);
+		if (d2 != crystalPresence || t2 != treePresence)
+		{
+			crystalPresence = d2;
+			treePresence = t2;
+			SignalChangeByExternalCause(WorldEntity::ResourceAvailabilityChanged,t);
+		}
+	}
+
+	UINT32 Plantation::GetPresence(Grid::Content type) const
+	{
+		UINT32 rs = 0;
+		foreach (plantStackIDs, c)
+		{
+			for (int h = std::max(Grid::CellStack::BottomHeight,location.height-3); h <= std::min(Grid::CellStack::TopHeight,location.height+3); h++)
+			{
+				const auto&cell = World::actual.GetCell(Grid::HCellIdI(*c,h));
+				const auto&upper = World::actual.GetCell(Grid::HCellIdI(*c,h+1));
+				if (upper.content != Grid::Content::Clear)
+					continue;
+				if (upper.structureCounter > 0)
+					continue;
+				if (cell.content == type)
+				{
+					rs ++;
+					if (rs >= MaxHarvestPerRound)
+						return MaxHarvestPerRound;
+				}
+			}
+		}
+		return rs;
+	}
 
 
 	#ifdef HAS_WINDOW
@@ -112,10 +131,8 @@ namespace Objects
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
-			label << "Enabled Plantations extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures of the local compound."
-			" Plantations should be build only on known occurrences of natural resources."
-			" They cannot be constructed atop each other, since they require a working link to the planet core in order to operate."
-			//" Plantations constructed on a height level of -8 or lower are twice as effective."
+			label << "Enabled plantations plant and harvest any growing natural resources on surrounding surfaces."
+			" Plantations should be build near grass, earth, sand, lava, granite, or existing trees/crystals."
 			" Plantations, like many structures, require "+Resource::Energy.GetTagStr()+" from generators to operate."
 			;
 		}

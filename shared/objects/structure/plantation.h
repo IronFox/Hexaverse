@@ -32,6 +32,11 @@ namespace Objects
 	public:
 		static const int			EnergyConsumption = 10;
 		static const int			GrowthMineralCost = 10;
+		static const int			MaxPlantingPerRound = 5;
+		static const int			MaxHarvestPerRound = 5;
+
+		static const int			HarvestToCompoundFactor = 2;
+
 		#ifndef ONE_COMPOUND_PER_FACTION
 			static const int		CompoundStorage = 10;
 		#else
@@ -42,42 +47,50 @@ namespace Objects
 			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
 		#endif
 
-		int							dendritePresence=0,
+		CONSTRUCT_ENUMERATION2(Triggers, 
+			PlantTrees,
+			PlantCrystals);
+		Buffer0<UINT32>				plantStackIDs;
+
+		UINT32						crystalPresence=0,
 									treePresence=0;
+		bool						plantTrees = true,
+									plantCrystals = true;
 
-		enum class Mode
+		virtual void				OnInsert(float&atTime, bool freshConstruction) override
 		{
-			Grow,
-			Maintain,
-			Remove
-		}							mode = Mode::Maintain;
+			static HashSet<UINT32> visited;
+			Grid::high.GetExtendedNeighborhood(Grid::ToHigh(location).stackID,5,plantStackIDs, visited);
+			CheckPresence(atTime);
+		}
 
-
-
-		
+		#ifndef CLIENT
+		virtual void				HandleTrigger(UINT16 triggerIndex) override
+		{
+			switch (triggerIndex)
+			{
+				case Triggers::PlantTrees:
+					plantTrees = !plantTrees;
+					break;
+				case Triggers::PlantCrystals:
+					plantCrystals = !plantCrystals;
+					break;
+			}
+			float t = 0;
+			SignalChangeByExternalCause(TasksChanged,t);
+		};
+		#endif
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
-		virtual bool				CanEnable() const override;
+		virtual bool				CanEnable() const override {return true;}
 
 		virtual void				PrototypeSetup()	override;
 
 		virtual void				GetResourceVector(Resource::Vector&v,  Resource::Vector&storageCurrent, Resource::Vector&storageMax) const override
 		{
 			Super::GetResourceVector(v,storageCurrent,storageMax); 
-			switch (mode)
-			{
-				case Mode::Grow:
-					v.Add(Resource::Minerals, -GrowthMineralCost);
-					break;
-				case Mode::Maintain:
-					v.Add(Resource::CrystallineCompounds, dendritePresence);
-					v.Add(Resource::OrganicCompounds, treePresence);
-					break;
-				case Mode::Remove:
-					v.Add(Resource::CrystallineCompounds, dendritePresence*2);
-					v.Add(Resource::OrganicCompounds, treePresence*2);
-					break;
-			}
+			v.Add(Resource::CrystallineCompounds, crystalPresence * HarvestToCompoundFactor);
+			v.Add(Resource::OrganicCompounds, treePresence * HarvestToCompoundFactor);
 			v.Add(Resource::Energy, -EnergyConsumption);
 		}
 
@@ -94,36 +107,25 @@ namespace Objects
 		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
 		{
 			#ifndef CLIENT
-				int d2 = GetPresence(Grid::Content::
-				bool linked = IsLinkedToCore();
-				if (linked != isLinkedToCore)
-				{
-					if (linked)
-					{
-						this->SetEnabled(false,atTime,false);
-					}
-					else
-						SignalChangeByExternalCause(EnableChanged,atTime);
-					isLinkedToCore = linked;
-				}
+				CheckPresence(atTime);
 			#endif
 			return Super::SignalEnvironmentChange(neighborhood,atTime);
-
 		}
-
-
-		virtual bool				IsMine() const {return true;}
+		virtual void				Tick(Resource::Vector&v) override;
 		virtual Category			GetCategory() const override {return Category::Resources;}
+	private:
+		UINT32						GetPresence(Grid::Content) const;
+		void						CheckPresence(float t);
 	};
 
 
 	
-	inline PMine		ToMine(const PWorldEntity&e)
+	inline PPlantation		ToPlantation(const PWorldEntity&e)
 	{
 		PWorkingStructure ws = ToWorkingStructure(e);
-		if (!ws || !ws->IsMine())
-			return PMine();
-		return To<Mine>::Cast(ws);
+		if (!ws)
+			return PPlantation();
+		return To<Plantation>::DynamicCast(ws);
 	}
 }
 

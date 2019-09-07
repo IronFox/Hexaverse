@@ -10,6 +10,7 @@
 #include "structure/vehiclePlant.h"
 #include "structure/vehicleStore.h"
 #include "structure/laboratory.h"
+#include "structure/plantation.h"
 
 
 namespace Objects
@@ -105,6 +106,7 @@ namespace Objects
 
 			structures	
 				<< Mine::globalPrototype
+				<< Plantation::globalPrototype
 				<< Generator::globalPrototype
 				<< ReactorCore::globalPrototype
 				<< MunitionFactory::globalPrototype

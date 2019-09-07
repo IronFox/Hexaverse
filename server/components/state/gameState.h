@@ -288,6 +288,7 @@ namespace Game
 			MineState			= 0x40,		//includes natural resource vector and core-connection
 			NexusControl		= 0x80,		//resistance and control state of described nexus port
 			StructureStorage	= 0x100,	//resources stored in described structure
+			ResourceAvailability= 0x200,	//natural resources available around the structure (but possibly invisible otherwise)
 		};
 
 		inline constexpr Expose operator|(Expose a, Expose b)

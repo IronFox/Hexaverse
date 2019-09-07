@@ -350,7 +350,14 @@ namespace Protocol
 		, NET(float), attackActionLeft
 	)
 
-	typedef Selective4<MineState,ProducerState,NexusPortState,TowerState>
+	NETSTRUCT4(PlantationState
+		, SerialUnsigned, treeAvailability
+		, SerialUnsigned, crystalAvailability
+		, bool, plantTrees
+		, bool, plantCrystals
+	)
+
+	typedef Selective5<MineState,ProducerState,NexusPortState,TowerState,PlantationState>
 		SelectiveStructureState;
 
 
