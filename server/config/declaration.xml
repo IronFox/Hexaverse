@@ -47,7 +47,7 @@
 				Probability per round that open earth cells change to grass.
 			</variable>
 			<context name="Crystals">
-				Crystal groth configuration. Crystals grow on granite and revert to it on death.
+				Crystal growth configuration. Crystals grow on granite and revert to it on death.
 				<variable name="deathProbability" default="0.05">
 					Probability per round that a crystal forest reverts back
 					to granite.
@@ -60,7 +60,7 @@
 				</variable>
 			</context>
 			<context name="Trees">
-				Tree groth configuration. Trees grow on grass and revert to it on death.
+				Tree growth configuration. Trees grow on grass and revert to it on death.
 				<variable name="deathProbability" default="0.05">
 					Probability per round that a forest reverts back to grass.
 				</variable>
@@ -162,24 +162,6 @@
 						Probability of trees forming on grass.
 						If the local planet has no open grass, then no trees are placed initially.
 					</variable>
-				</context>
-				<context name="Resources">
-					<context name="Fuel">
-						<variable name="density" default="0.04" />
-						<variable name="max" default="12" />
-					</context>
-					<context name="Minerals">
-						<variable name="density" default="0.06" />
-						<variable name="max" default="12" />
-					</context>
-					<context name="Energy">
-						<variable name="density" default="0" />
-						<variable name="max" default="1" />
-					</context>
-					<context name="Uranium">
-						<variable name="density" default="0.02" />
-						<variable name="max" default="6" />
-					</context>
 				</context>
 			</context>
 		</context>
