@@ -459,9 +459,11 @@ namespace Objects
 
 		struct CoreVector
 		{
-			int		fuel,
-					minerals,
-					uranium;
+			typedef CoreVector Self;
+
+			unsigned	fuel,
+						minerals,
+						uranium;
 
 			/*
 			Minimum stack height is 2. Translation <3 = 2 means that there are only 4 yield on those areas. As a result a fuel mine on such a location cannot pay for itself.
@@ -488,6 +490,19 @@ namespace Objects
 			bool	SampleWorld(index_t lowCellID);
 			bool	IsNotEmpty() const {return fuel != 0 || minerals != 0 || uranium != 0;}
 			bool	IsEmpty() const {return fuel == 0 && minerals == 0 && uranium == 0;}
+
+			friend void	Deserialize(IReadStream&s, Self&v)
+			{
+				v.fuel = (unsigned)s.ReadSize();
+				v.minerals = (unsigned)s.ReadSize();
+				v.uranium = (unsigned)s.ReadSize();
+			}
+			friend void	Serialize(IWriteStream&s, const Self&v)
+			{
+				s.WriteSize(v.fuel);
+				s.WriteSize(v.minerals);
+				s.WriteSize(v.uranium);
+			}
 		};
 
 
