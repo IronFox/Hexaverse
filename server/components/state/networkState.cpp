@@ -499,6 +499,8 @@ namespace Network
 
 		server.InstallChannel(Channels::ScriptedAIState);
 
+		server.InstallChannel(Channels::EntityTrigger);
+
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);

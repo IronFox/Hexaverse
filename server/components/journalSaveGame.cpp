@@ -1724,6 +1724,26 @@ namespace Journal
 		e.uuidParameters.Set("MarkerID",markerID);
 	}
 
+
+	/*virtual override*/ void Round::EntityTrigger::Execute(const Objects::PFaction&f) const
+	{
+		auto e = Objects::GetEntity(entityID);
+		e->HandleTrigger(triggerIndex);
+		LogEvent(EventSignificance::Common, GetPeerOfFaction(f), "Trigger #"+String(triggerIndex)
+			+" dispatched to "+e->GetNameAndOwner());
+	}
+
+	/*virtual override*/ void Round::EntityTrigger::Decode(const Entry&e)
+	{
+		entityID = e.uuidParameters.Require(CLOCATION,"EntityID");
+		triggerIndex = e.intParameters.Require(CLOCATION,"TriggerIndex");
+	}
+	/*virtual override*/ void Round::EntityTrigger::Compile(Entry&e)	const
+	{
+		e.uuidParameters.Set("EntityID",entityID);
+		e.intParameters.Set("TriggerIndex",triggerIndex);
+	}
+
 	/*virtual override*/ void Round::QueueResearch::Execute(const Objects::PFaction&f) const
 	{
 		if (drop)
@@ -2280,6 +2300,7 @@ namespace Journal
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
 		MAP_ADD(QueueResearch);
+		MAP_ADD(EntityTrigger);
 	}
 
 	void	Create()
