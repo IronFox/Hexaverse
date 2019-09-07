@@ -418,6 +418,8 @@ namespace Channels
 
 	DECLARE_FACTION_CHANNEL(ScriptedAIState);
 
+	DECLARE_FACTION_CHANNEL(EntityTrigger);
+
 	namespace Statistics
 	{
 		TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>			round;
@@ -1364,6 +1366,15 @@ namespace Receiver
 		Game::tutorialAt = at;
 	}
 
+	void	EntityTrigger(Protocol::EntityTrigger&t, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: EntityTrigger (#"+String(t.triggerIndex)+") entity "+ToString(t.entityID));
+
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(t.entityID,peer);
+		if (!e)
+			return;
+		Journal::currentRound.Register(true,e->owner,new Journal::Round::EntityTrigger(t.entityID, t.triggerIndex));
+	}
 	
 	void	ChangeMyName(Protocol::ClientName&name, TCP::Peer&peer)
 	{

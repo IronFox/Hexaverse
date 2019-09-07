@@ -1550,7 +1550,10 @@ namespace Protocol
 		, bool, factionIsDead
 	)
 
-
+	NETSTRUCT2(EntityTrigger
+		, TUniqueID, entityID
+		, UINT16,	triggerIndex
+	)
 
 
 	typedef NetArray<BYTE,100000>	ScriptedAIStateVector;
@@ -1608,6 +1611,8 @@ namespace Protocol
 			UpdateStructure,		//s2c: StructureState
 
 			DestroyEntity,		//s2c: DestroyEntity
+
+			EntityTrigger,		//c2s: EntityTrigger
 
 			ChoiceIntersection,	//c2s: ChoiceIntersection [->ChoiceResponse, if requestID is set]
 			ChoiceResponse,		//s2c: ChoiceResponse

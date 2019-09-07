@@ -610,6 +610,10 @@ namespace Objects
 		#else
 			virtual void			SignalTerrainChange(float atTime);
 
+			/**
+			Executes a type-specific trigger
+			*/
+			virtual void			HandleTrigger(UINT16 triggerIndex) {};
 
 			bool					HandleEMPDamage(const int newDamage, float&atTime)
 			{
