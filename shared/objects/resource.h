@@ -87,6 +87,8 @@ namespace Objects
 			String			GetTagStr() const;
 			const String&	ToString() const;
 
+			ID				operator+(int delta) const {return ID(serialIndex + delta);}
+
 			friend hash_t	Hash(const ID&id) {return (hash_t)id.serialIndex;}
 		};
 
@@ -95,14 +97,20 @@ namespace Objects
 			typedef TypePrototype Self;
 
 			String		name, icon;	//if icon is empty, use name instead
+			byte3		color;
 
 			/**/		TypePrototype()	{}
-			explicit	TypePrototype(String&&name):name(std::move(name))	{}
+			explicit	TypePrototype(String&&name, const float3&color):name(std::move(name)),
+						color(color.r * 255, color.g*255, color.b*255) {}
+			explicit	TypePrototype(String&&name, String&&icon, const float3&color):name(std::move(name)),
+						icon(std::move(icon)),
+						color(color.r * 255, color.g*255, color.b*255) {}
 
 			void		swap(Self&other)
 			{
 				name.swap(other.name);
 				icon.swap(other.icon);
+				swp(color,other.color);
 			}
 
 			friend void swap(Self&a, Self&b)
@@ -114,11 +122,13 @@ namespace Objects
 			{
 				Deserialize(s,v.name);
 				Deserialize(s,v.icon);
+				Deserialize(s,v.color);
 			}
 			friend void	Serialize(IWriteStream&s, const Self&v)
 			{
 				Serialize(s,v.name);
 				Serialize(s,v.icon);
+				Serialize(s,v.color);
 			}
 
 		};
@@ -135,7 +145,8 @@ namespace Objects
 			/**/		Type(){}
 			explicit	Type(Super&&s) : Super(std::move(s))	{}
 			explicit	Type(const Super&s) : Super(s)	{}
-			explicit	Type(String&&name) : Super(std::move(name))	{}
+			explicit	Type(String&&name, const float3&color) : Super(std::move(name), color)	{}
+			explicit	Type(String&&name, String&&icon, const float3&color) : Super(std::move(name), std::move(icon), color)	{}
 
 			void		swap(Self&other)
 			{
@@ -151,6 +162,7 @@ namespace Objects
 
 			ID			GetID() const {return ID(serialIndex);}
 			String		GetTagStr() const;
+			void		OnDeserialize(index_t serialIndex);
 		};
 
 		/**
@@ -176,12 +188,16 @@ namespace Objects
 			typedef Buffer0<Type,Swap> Super;
 		public:
 			/**/		Table(){};
-			/**/		Table(const std::initializer_list<const char*>&init);
+			/**/		Table(const std::initializer_list<const char*>&names, const std::initializer_list<float3>&colors);
 			ID			Append(const TypePrototype&);
 			ID			Append(TypePrototype&&);
-			ID			Append(const String&);
-			ID			Append(String&&);
-			ID			Append(const char*);
+			ID			Append(const String&, const float3&);
+			ID			Append(String&&, const float3&);
+			ID			Append(const char*, const float3&);
+			ID			Append(const String&, const String&icon, const float3&);
+			ID			Append(String&&, String&&icon, const float3&);
+			ID			Append(const char*, const char*icon, const float3&);
+			void		Set(ID at, const char*, const char*icon, const float3&);
 			bool		operator==(const Table&other) const;
 			bool		operator!=(const Table&other) const {return !operator==(other);}
 			bool		ResetChanged()	{bool old = changed; changed = false; return changed;}
@@ -206,7 +222,10 @@ namespace Objects
 				const count_t cnt = s.ReadSize();
 				t.Clear();
 				for (index_t i = 0; i < cnt; i++)
+				{
 					Deserialize(s, t.Super::Append());
+					t.Last().OnDeserialize(i);
+				}
 			}
 			friend void	Serialize(IWriteStream&s, const Table&t)
 			{
@@ -257,6 +276,9 @@ namespace Objects
 			Uranium,
 			Energy,
 			Munitions,
+			CrystallineCompounds,
+			OrganicCompounds,
+			AdvancedCompounds,
 			_;	//not a resource, just a terminal symbol so the previous one can end with a comma. do not use
 
 
@@ -433,15 +455,18 @@ namespace Objects
 		private:
 			Array<int>	storage;
 
-			void		CheckEmptiness();
-			void		AllocateEmpty();
+			void		Tidy();
+			void		Require(index_t idx);
+			void		Require(Resource::ID idx) {Require(idx.serialIndex);}
 		};
 
 		struct CoreVector
 		{
-			int		fuel,
-					minerals,
-					uranium;
+			typedef CoreVector Self;
+
+			unsigned	fuel,
+						minerals,
+						uranium;
 
 			/*
 			Minimum stack height is 2. Translation <3 = 2 means that there are only 4 yield on those areas. As a result a fuel mine on such a location cannot pay for itself.
@@ -468,6 +493,19 @@ namespace Objects
 			bool	SampleWorld(index_t lowCellID);
 			bool	IsNotEmpty() const {return fuel != 0 || minerals != 0 || uranium != 0;}
 			bool	IsEmpty() const {return fuel == 0 && minerals == 0 && uranium == 0;}
+
+			friend void	Deserialize(IReadStream&s, Self&v)
+			{
+				v.fuel = (unsigned)s.ReadSize();
+				v.minerals = (unsigned)s.ReadSize();
+				v.uranium = (unsigned)s.ReadSize();
+			}
+			friend void	Serialize(IWriteStream&s, const Self&v)
+			{
+				s.WriteSize(v.fuel);
+				s.WriteSize(v.minerals);
+				s.WriteSize(v.uranium);
+			}
 		};
 
 
@@ -477,15 +515,7 @@ namespace Objects
 			Vector	supply, demand, balance, storage, storageMax;
 
 
-			void	Include(const Vector&v, const Vector&storage, const Vector&storageMax)
-			{
-				v.SeparateBySign(supply,demand);
-				demand.Negate();
-				balance += v;
-				balance += storage;
-				this->storage += storage;
-				this->storageMax += storageMax;
-			}
+			void	Include(const Vector&v, const Vector&storage, const Vector&storageMax);
 		};
 
 

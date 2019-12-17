@@ -495,11 +495,14 @@ namespace StatePanel
 				cachedLines << "    (demand/supply)";
 				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 				{
-					PushCurrentColor();
-					if (ownedByMe && network.total.demand[i] > network.total.supply[i])
-						currentColor.rgb &= float3(1, 0.2, 0.2);
-					cachedLines << "   " + Objects::Resource::ID(i).GetTagStr()+ " " +String(network.total.demand[i])+  "/" +String( network.total.supply[i] );
-					PopCurrentColor();
+					if (network.total.demand[i] || network.total.supply[i])
+					{
+						PushCurrentColor();
+						if (ownedByMe && network.total.demand[i] > network.total.supply[i])
+							currentColor.rgb &= float3(1, 0.2, 0.2);
+						cachedLines << "   " + Objects::Resource::ID(i).GetTagStr()+ " " +String(network.total.demand[i])+  "/" +String( network.total.supply[i] );
+						PopCurrentColor();
+					}
 				}
 				cachedLines << "  Resource storage:";
 				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)

@@ -559,6 +559,7 @@ end
 StructureConfig =
 {
 	Mine = DefaultStructure(40),
+	Plantation = DefaultStructure(40),
 	Generator = DefaultStructure(40),
 	ReactorCore = DefaultStructure(120),
 	VehicleStore = DefaultStructure(40),

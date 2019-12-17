@@ -11,6 +11,7 @@
 #include <objects/structure/vehiclePlant.h>
 #include <objects/faction.h>
 #include <objects/structure/tower.h>
+#include <objects/structure/plantation.h>
 #include "../clientRuntimeConfig.h"
 #include "../network.h"
 #include "hud/dialog.h"
@@ -327,6 +328,55 @@ namespace Objects
 					return Objects::CommandFlags::None;
 				PMine mine = ToMine(selectedEntity);
 				return mine && !mine->IsLinkedToCore() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			},
+			NoCosts
+			));
+		}
+
+		void DefinePlantation(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			commands.Add( new Command::IconCommand("Plant Trees",[]()
+			{
+				PPlantation p = ToPlantation(selectedEntity);
+				if (p)
+				{
+					Network::Channels::EntityTrigger.SendTo(Network::client,Protocol::EntityTrigger(p->id,Plantation::Triggers::PlantTrees));
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return Objects::CommandFlags::None;
+				PPlantation p = ToPlantation(selectedEntity);
+				if (!p)
+					return Objects::CommandFlags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+				if (p->plantTrees)
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
+			},
+			NoCosts
+			));
+			commands.Add( new Command::IconCommand("Plant Crystals",[]()
+			{
+				PPlantation p = ToPlantation(selectedEntity);
+				if (p)
+				{
+					Network::Channels::EntityTrigger.SendTo(Network::client,Protocol::EntityTrigger(p->id,Plantation::Triggers::PlantCrystals));
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return Objects::CommandFlags::None;
+				PPlantation p = ToPlantation(selectedEntity);
+				if (!p)
+					return Objects::CommandFlags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+				if (p->plantCrystals)
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
 			},
 			NoCosts
 			));
@@ -1350,6 +1400,7 @@ namespace Objects
 			Research::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
 			DefineMine(Objects::Mine::commands);
+			DefinePlantation(Objects::Plantation::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);

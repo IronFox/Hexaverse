@@ -29,18 +29,26 @@ namespace Objects
 			T		road=0,
 					air=0,
 					water=0,
+					fewPlants=0,
+					manyPlants=0,
 					other=0;
+
+			/**/	TGroundVector(){}
+			/**/	TGroundVector(T road, T air, T water, T fewPlants, T manyPlants, T other):
+					road(road), air(air), water(water), fewPlants(fewPlants), manyPlants(manyPlants), other(other)
+			{}
 
 			Self	operator*(const Self&that) const
 			{
-				Self rs = 
-				{
+				return Self 
+				(
 					road * that.road, 
 					air * that.air,
 					water * that.water,
+					fewPlants * that.fewPlants,
+					manyPlants * that.manyPlants,
 					other * that.other
-				};
-				return rs;
+				);
 			}
 
 			T		Sum() const
@@ -48,6 +56,8 @@ namespace Objects
 				return road 
 					+ air 
 					+ water 
+					+ fewPlants
+					+ manyPlants
 					+ other;
 			}
 		};
@@ -506,6 +516,8 @@ namespace Objects
 				hindrance.air = 2;
 				hindrance.water = 5;
 				hindrance.other = 4;
+				hindrance.fewPlants = 8;
+				hindrance.manyPlants = 16;
 				acceleration.Fill(0);
 			}
 

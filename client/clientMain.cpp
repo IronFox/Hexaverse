@@ -1474,6 +1474,7 @@ bool loop()
 				if (Camera::locked && !TimeLapse::enabled)
 					textout << "Camera locked. Press F4 to unlock" << nl;
 				#ifdef _DEBUG
+					textout << "Plants: "<< World::CountRenderedPlants() << nl;
 					textout << "Server sec: "<<M::RoundToInt(timer.GetSecondsSince(Network::client.GetLastPackageTime()));
 				#endif
 

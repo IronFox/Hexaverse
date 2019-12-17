@@ -803,6 +803,21 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 		
+		class EntityTrigger : public FactionEventT<EntityTrigger>
+		{
+		public:
+			TUniqueID		entityID = TUniqueID::Empty();
+			UINT16			triggerIndex=0;
+			
+			/**/			EntityTrigger() {}
+			/**/			EntityTrigger(const TUniqueID&entityID, UINT16 triggerIndex) : 
+							entityID(entityID),triggerIndex(triggerIndex) {}
+			virtual void	Decode(const Entry&e) override;
+			virtual void	Execute(const Objects::PFaction&) const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
 
 		/**
 		General-purpose storage for round events

@@ -1415,6 +1415,8 @@ namespace Objects
 			component.hindrance.air = 3;
 			component.hindrance.water = 4;
 			component.hindrance.other = 4;
+			component.hindrance.fewPlants = 5;
+			component.hindrance.manyPlants = 6;
 
 			component.acceleration[Operation::AddTerrain] = 2;
 			component.acceleration[Operation::RemoveTerrain] = 2;
@@ -1463,6 +1465,8 @@ namespace Objects
 			component.hindrance.air = 2;
 			component.hindrance.water = 1;
 			component.hindrance.other = 10;
+			component.hindrance.fewPlants = 2;	//water plants
+			component.hindrance.manyPlants = 3;
 
 			component.acceleration[Operation::AddTerrain] = 2;
 			component.acceleration[Operation::RemoveTerrain] = 2;

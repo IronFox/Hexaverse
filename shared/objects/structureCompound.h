@@ -34,7 +34,7 @@ namespace Objects
 		Ctr::Buffer0<WStructure>		allStructures;
 		Resource::FullVector			total;
 
-		bool						stable;
+		bool							stable;
 		//ID							hashIdentifier;
 
 		#ifndef CLIENT

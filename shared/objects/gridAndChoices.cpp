@@ -871,6 +871,7 @@ namespace Objects
 
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
+			e->ClearPlants(atTime);
 			e->SyncTime(atTime);
 
 			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location);

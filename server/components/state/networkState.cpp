@@ -499,6 +499,8 @@ namespace Network
 
 		server.InstallChannel(Channels::ScriptedAIState);
 
+		server.InstallChannel(Channels::EntityTrigger);
+
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
@@ -710,6 +712,11 @@ namespace Network
 	}
 
 
+	void		Describe(const std::function<void(const String&)>&logConfig, const World::Config::TPlantGrowth&g, const String&name)
+	{
+		logConfig(" -"+name+": Growth="+String(g.growthProbability*100)+"%, Spawn="+String(g.spawnProbability*100)+"%, Death="+String(g.deathProbability*100)+"%");
+	}
+
 	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig)
 	{
 		//Logging::WriteEvent(EventSignificance::Important,
@@ -739,6 +746,12 @@ namespace Network
 				logConfig(" -Liquids: Expanding.");
 			else
 				logConfig(" -Liquids: Static.");
+
+			Describe(logConfig,World::Config::trees,"Trees");
+			Describe(logConfig,World::Config::crystals,"Crystals");
+
+
+
 			switch (RuntimeConfig::gameGoal)
 			{
 				case RuntimeConfig::GameGoal::None:

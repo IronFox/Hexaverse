@@ -49,8 +49,8 @@ namespace HUD
 				localCurrent,localChange,
 				top,top0,top1;
 			static const float height;
-			float3	base,alternatingColor,projectedTop, projectedDelta,projectedBottom,projectedMax;
-			bool	changed,enabled,usesAlternatingColors;
+			float3	base,projectedTop, projectedDelta,projectedBottom,projectedMax;
+			bool	changed,enabled;
 			float	ftop,hScale;
 			char	myTag;
 			#ifndef NO_HIBERNATION
@@ -73,12 +73,11 @@ namespace HUD
 			}
 
 
+			void	LoadTexture(const Objects::Resource::Type &res);
 			void	LoadTexture(Objects::Resource::ID res)
 			{
-				IconItem::LoadTexture(res.ToString());
-				myTag = res.GetTag();
+				LoadTexture(res.ToType());
 			}
-
 
 			void	Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled);
 
@@ -88,7 +87,7 @@ namespace HUD
 			static void StaticCreate();
 			static void StaticDestroy();
 
-			/**/	Gauge():changed(true),usesAlternatingColors(false),current(0),max(0),changePerRound(0),localCurrent(0),localChange(0),top(0),ftop(1)
+			/**/	Gauge():changed(true),current(0),max(0),changePerRound(0),localCurrent(0),localChange(0),top(0),ftop(1)
 			{}
 
 			void	UpdateTextProjection(const Engine::Aspect<>&camera);
@@ -141,6 +140,10 @@ namespace HUD
 		*/
 		void	HideExtraGauges();
 
+		/**
+		Extracts the number of pixels occupied by the local resource gauge from the lower window edge to the upper resource visualization
+		*/
+		float	GetUpperEdgeFromBottomInPixels();
 
 		#ifndef NO_HIBERNATION
 			#define HIB(item)	item
