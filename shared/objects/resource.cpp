@@ -113,7 +113,7 @@ namespace Objects
 				"Munitions,
 			#endif
 		};
-		Table table = minimal;
+		Table table = CompileLocalTable();
 
 		const ID	
 			Fuel = FuelID, 
@@ -518,6 +518,9 @@ namespace Objects
 		{
 			Table rs = minimal;
 			
+			rs.Append("Organic Compounds");
+			rs.Append("Mineral Compounds");
+
 			return rs;
 		}
 

@@ -3,11 +3,11 @@ resource model 2.0:
 		+Harvesting turret
 			full/conservative setting
 		+Trees -> organic compounds
-		+Crystal Dendrites -> inorganic compounds
+		+Crystal Dendrites -> mineral compounds
 	Fusion:
-		organic + inorganic -> advanced compounds
+		organic + mineral -> advanced compounds
 		fuel + uranium + energy -> organic compounds
-		minerals + uranium + energy -> inorganic compounds
+		minerals + uranium + energy -> mineral compounds
 
 	Munitions 2.0:
 		advanced compounds + minerals -> enhanced ammo (blast+,damage+)
@@ -19,15 +19,29 @@ resource model 2.0:
 		+second set of properties for all components
 		+selectable enhancement composition (+X% price per additional component):
 			* instant return to next vehicle store
+				+ adds command
+				+ must lookup faction units, find vehicle store, load into
 			* ranged teleportation
+				+ adds cursor mode
+				+ adds cooldown state to vehicle
+				* instant? motion?
 			* gradual self repair
+				+ affects local unit per round
 			* stealth
+				+ requires new visibility model
+				* might cause issues with unit navigation
 			* anti-stealth
+				+ requires new visibility model
 			* emp damage on regular attacks
+				+ add new damage type
+				+ modify damage type of local vehicle
 			* regular damage on emp attacks (may be dangerous due to range)
+				+ same
 			* AA on regular units
+				+ adds non-visual turret in enhancement
 			* self-improving by age/kills/damage taken/repaired
-			
+				+ must receive feedback on effect
+				+ adds xp state to vehicle
 			
 		
 		

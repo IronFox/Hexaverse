@@ -1356,8 +1356,7 @@ namespace FileIO
 		bool wasOpen = ::Network::CloseSession();
 		bool nexusFound = false, worldInfoFound = false;
 		const Objects::Resource::Table*foreignTable = &Objects::Resource::minimal;
-
-		Objects::Resource::table = Objects::Resource::local;
+		Objects::Resource::Table importedTable;
 
 		
 		try
@@ -1552,12 +1551,12 @@ namespace FileIO
 											{
 												try
 												{
-													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),Objects::Resource::table);
-													if (Objects::Resource::local == Objects::Resource::table)
+													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),importedTable);
+													if (Objects::Resource::table == importedTable)
 														foreignTable = nullptr;
 													else
 													{
-														foreignTable = &Objects::Resource::table;
+														foreignTable = &importedTable;
 														LogEvent(EventSignificance::Important,"Loading file of different resource table. Some resources may be lost, others set to 0");
 													}
 												}
