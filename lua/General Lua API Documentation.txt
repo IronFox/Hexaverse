@@ -213,6 +213,34 @@ Table-Type: Unit
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
 		void	SetAutomation(bool);	-- Updates automation
+		[type.turretType.canAddTerrain]
+			--[[
+			BuildBlocks():
+			Schedules construction of Foundation terrain type in the specified cells. 
+			All marked cells must be within 3 TERRAIN block distance from the vehicle's center location, and at most one layer up or down.
+			@param vCells Array of packed terrain volume cells, as returned by Game.Terrain.Pack(). Should not contain the same volume cell twice
+			]]
+			void	BuildBlocks(int[] vCells);
+			void	BuildRoad();				-- Schedules construction of road type beneath the vehicle's last queued location
+			void	BuildWallUp();				-- Schedules construction of a wall at the vehicle's last queued location. The vehicle is pushed up by this operation
+			void	BuildHorizontalWall();		-- Schedules construction of a wall at the vehicle's last queued location. Vehicle will move horizontally when done. Scheduled motion is advised.
+			
+			void	BuildRoadTo(Reachable);		-- Schedules road construction along the specified path
+			void	BuildLowWallTo(Reachable);	-- Schedules one-layer wall construction along the specified path
+			void	BuildHighWallTo(Reachable);	-- Schedules two-layer wall construction along the specified path
+			void	BuildBridgeTo(Cell[]);		-- Schedules horizontal bridge construction along the specified path of cells. Should not contain gaps. Will bridge over anything
+			
+		[type.turretType.canRemoveTerrain]
+			--[[
+			RemoveBlocks():
+			Schedules removal of terrain in the specified cells. 
+			All marked cells must be within 3 TERRAIN block distance from the vehicle's center location, and at most one layer up or down.
+			@param vCells Array of packed terrain volume cells, as returned by Game.Terrain.Pack(). Should not contain the same volume cell twice
+			]]
+			void	RemoveBlocks(int[] vCells);
+			void	DigDown();					-- Schedules vertical digging at the vehicle's last queued location. Terrain will be removed, causing the vehicle to drop at least one level down
+			void	ClearAbove(Loc);			-- Schedules clearing the terrain in the specified location. Must be immediately atop or diagonal above the vehicle's last queued location
+			void	DigHorizontally(Loc);		-- Schedules clearing the terrain in the specified horizontal neighborhood
 		[type.turretType.canConstruct]
 			void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
 			int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified structure type if enough resources are available
@@ -255,8 +283,8 @@ Table-Type: Unit
 		void 	Enable(bool);			-- Change enable state of the local structure
 	[type.isMobileEntityProducer]
 		Prod[]	productionQueue;		-- Table of all production jobs currently enqueued to the local unit. nil if none
-		Loc[]	deploymentOptions;		-- List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production is completed
-		string	productionCompleted;	-- Set to the name of the produced type if production is completed. nil otherwise. Can be used to check if production is completed
+		Loc[]	deploymentOptions;		-- List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production has been completed
+		string	productionCompleted;	-- Set to the name of the produced type if production is completed. nil otherwise. Can be used to check if production has been completed
 		int		roundsToCompletion;		-- Number of rounds until the next production finishes if the local factory is enabled and has enough resources to continue. nil if none are queued
 		
 		void	BuildMobile(UnitType);	-- Schedules the construction of the specified type at the end of the local queue
@@ -284,7 +312,7 @@ Table-Type: Prod (Production)
 {
 	string	id;							-- Unique production ID
 	string	name;						-- Production name
-	void	Abort();					-- Aborts this production. Effect is delayed, item will remain until next incovation
+	void	Abort();					-- Aborts this production. Effect is delayed, item will remain until next invocation
 }
 
 Table-Type: Loc (Location)
@@ -431,10 +459,13 @@ float		Game.Grid.GetDistance(Loc a, Loc b)		-- Retrieves the geometric distance 
 
 Cell		Game.Terrain.TranslateUnitCell(Cell);	-- Maps the specified UNIT cell to the matching (central) TERRAIN cell
 int			Game.Terrain.GetContent(Cell, int);	-- Gets the terrain content at the given TERRAIN cell and height, starting from 0
-string		Game.Terrain.Content.ToString(int);	-- Converts the respective type to string
+int			Game.Terrain.GetContentP(int);		-- Retrieves the terrain content for a packed volume cell as returned by Game.Terrain.Pack()
 int			Game.Terrain.Content.*				-- Constant int used for the respective terrain type: Unknown, Granite, Earth, Grass, Rock, Sand, Snow, Foundation, Road, Lava, Technite, Water, Clear
-Cell[]		Game.Terrain.cells			-- Ordered table of all planar terrain cells in the world. These are smaller than unit cells
-
+string		Game.Terrain.Content.ToString(int);	-- Converts the respective type (see above) to string
+Cell[]		Game.Terrain.cells					-- Ordered table of all planar terrain cells in the world. These are smaller than unit cells
+int			Game.Terrain.Pack(Cell,int);		-- Packs TERRAIN cell and height to a single integer value identifying the volume cell
+int			Game.Terrain.UnpackHeight(int);		-- Unpacks the height component of a packed terrain volume cell
+Cell		Game.Terrain.UnpackCell(int);		-- Unpacks the TERRAIN cell component of a packed terrain volume cell
 
 --[[
 @brief Planar cell type. The cell is replicated up and down to form a stack of locations, or terrain volume cells

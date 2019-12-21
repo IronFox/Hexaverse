@@ -258,14 +258,31 @@ namespace ScriptedAI
 				Network::Channels::entityDirectCommand.SendTo(Network::client, cmd);
 			}
 
-			void	DetailedDirectTo(const TUniqueID&entityID, const ArrayRef<Grid::LCellIdI>&path)
+			void	DetailedDirectTo(const TUniqueID&entityID, const ArrayRef<Grid::LCellIdI>&path, Objects::CursorMode mode = Objects::CursorMode::Idle)
 			{
 				Protocol::EntityDirectCommand cmd;
 				cmd.id = entityID;
-				cmd.mode = (UINT16)Objects::CursorMode::Idle;
+				cmd.mode = (UINT16)mode;
 				cmd.path = path;
-				cmd.directFlags = ObjectHelper::AssembleMotionFlags(true, false, false);
+				cmd.directFlags = ObjectHelper::AssembleMotionFlags(true, mode != Objects::CursorMode::Idle, false);
 				Network::Channels::entityDirectCommand.SendTo(Network::client, cmd);
+			}
+
+			void	SimpleJobStart(const TUniqueID&entityID, ConstName jobName)
+			{
+				Protocol::StandardJob	job;
+				job.ownerID = entityID;
+				job.jobName = jobName;
+				Network::Channels::signalNewJob.SendTo(Network::client,job);
+			}
+
+			void	GridBatchJobStart(const TUniqueID&entityID, Objects::CursorMode m, const ArrayRef<Grid::HCellIdI>&cells)
+			{
+				Protocol::TerrainMod	job;
+				job.id = entityID;
+				job.mode = (UINT16)m;
+				job.cells = cells;
+				Network::Channels::signalTerrainMod.SendTo(Network::client,job);
 			}
 
 			void	DropAllTasks(const TUniqueID&entityID)
@@ -390,24 +407,14 @@ namespace ScriptedAI
 				abort.taskId = tID;
 				Network::Channels::constructionAbort.SendTo(Network::client,abort);
 			}
-
-			void	DeployStored( const TUniqueID&hID, const TUniqueID&mID, const Grid::LCellIdI&loc, const TUniqueID&requestID )
-			{
-				Protocol::ChoiceIntersection ch;
-				ch.id = hID;
-				ch.deployingWhat.Set0() = mID;
-				ch.mode = (UINT16)Objects::CursorMode::Idle;
-				ch.target = loc;
-				if (requestID.IsNotEmpty())
-					ch.requestID.Set0() = requestID;
-				Network::Channels::choiceIntersection.SendTo(Network::client,ch);
-			}
-
-			void	DeployCompletedConstruction( const TUniqueID&eID, const Grid::LCellIdI&loc, const TUniqueID&requestID )
+			
+			void	ChoiceIntersection( const TUniqueID&eID, const TUniqueID&deploying, const Grid::LCellIdI&loc, const TUniqueID&requestID, Objects::CursorMode mode)
 			{
 				Protocol::ChoiceIntersection ch;
 				ch.id = eID;
-				ch.mode = (UINT16)Objects::CursorMode::Idle;
+				if (deploying.IsNotEmpty())
+					ch.deployingWhat.Set0() = deploying;
+				ch.mode = (UINT16)mode;
 				ch.target = loc;
 				if (requestID.IsNotEmpty())
 					ch.requestID.Set0() = requestID;
@@ -922,11 +929,13 @@ namespace ScriptedAI
 		api.onBeginProduction = Callback::BeginConstruction;
 		api.onBeginStructureConstruction = Callback::BeginStructureConstruction;
 		api.onAbortProduction = Callback::AbortConstruction;
-		api.onDeployCompletedProduction = Callback::DeployCompletedConstruction;
-		api.onDeployStored = Callback::DeployStored;
+		api.onChoiceIntersection = Callback::ChoiceIntersection;
 		api.onQueueResearch = Callback::QueueResearch;
 
 		api.onCheckExportValidity = Callback::CheckExportValidity;
+
+		api.onSimpleJobStart = Callback::SimpleJobStart;
+		api.onGridBatchJobStart = Callback::GridBatchJobStart;
 
 
 		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
