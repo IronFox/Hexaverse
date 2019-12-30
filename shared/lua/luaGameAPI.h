@@ -146,7 +146,7 @@ namespace Lua
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
 		std::function<void(const TUniqueID&eId, const TUniqueID&deploymentedID, const Grid::LCellIdI&loc, const TUniqueID&referenceID, Objects::CursorMode mode)> onChoiceIntersection;
 		std::function<void(index_t,bool)>	onQueueResearch;
-		std::function<void(const TUniqueID&, ConstName)>	onSimpleJobStart;
+		std::function<void(const TUniqueID&, ConstName, ConstName)>	onSimpleJobStart;
 		std::function<void(const TUniqueID&, Objects::CursorMode, const ArrayRef<Grid::HCellIdI>&)> onGridBatchJobStart; 
 
 		struct TExportResult
@@ -229,7 +229,7 @@ namespace Lua
 
 		Lua::Table	AddOrGetType(Objects::EntityType type);
 		Lua::Table	AddType(Objects::EntityType t);
-		void		AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName);
+		void		AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName, ConstName parameterCName=ConstName::Empty);
 		void		AddGridBatchJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode);
 		void		AddRoutedTerraformingJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode);
 		void		SetResearchProperties(Lua::Table&t, const Objects::Component::Base*component);

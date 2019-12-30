@@ -219,6 +219,7 @@ Table-Type: Unit
 			void	Obliterate();				-- Schedules doomsday beam-firing at the mobile unit's last queued location
 		[type.turretType.canSelfDetonate]
 			void	SelfDetonate();				-- Schedules self-detonation at the vehicle's last queued location
+			void	Obliterate();				-- Schedules doomsday self-detonation at the vehicle's last queued location
 		[type.turretType.canAddTerrain]
 			--[[
 			BuildBlocks():

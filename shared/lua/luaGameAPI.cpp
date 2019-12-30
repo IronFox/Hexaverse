@@ -1758,7 +1758,10 @@ namespace Lua
 
 
 				if (m->turret->CanDo(Objects::Component::Operation::SelfDetonate))
-					AddSimpleJob(t,id, "SelfDetonate", ConstName::Job_SelfDetonate);
+				{
+					AddSimpleJob(t,id, "SelfDetonate", ConstName::Job_SelfDetonate, ConstName::DetonationSize_Regular);
+					AddSimpleJob(t,id, "Obliterate", ConstName::Job_SelfDetonate, ConstName::DetonationSize_Doomsday);
+				}
 
 				if (m->turret->CanDo(Objects::Component::Operation::FireBeam))
 				{
@@ -2291,12 +2294,12 @@ namespace Lua
 		return t;
 	}
 
-	void	API::AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName)
+	void	API::AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName, ConstName parameterCName)
 	{
-		t.SetFunction(name,[this,id, jobCName, name]()
+		t.SetFunction(name,[this,id, jobCName, name, parameterCName]()
 		{
 			if (onSimpleJobStart)
-				onSimpleJobStart(id,jobCName);
+				onSimpleJobStart(id,jobCName, parameterCName);
 			else
 				throw Lua::Exception(CLOCATION,name+"(): onSimpleJobStart not set");
 		});

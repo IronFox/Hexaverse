@@ -268,11 +268,12 @@ namespace ScriptedAI
 				Network::Channels::entityDirectCommand.SendTo(Network::client, cmd);
 			}
 
-			void	SimpleJobStart(const TUniqueID&entityID, ConstName jobName)
+			void	SimpleJobStart(const TUniqueID&entityID, ConstName jobName, ConstName parameterName)
 			{
 				Protocol::StandardJob	job;
 				job.ownerID = entityID;
 				job.jobName = jobName;
+				job.parameterName = parameterName;
 				Network::Channels::signalNewJob.SendTo(Network::client,job);
 			}
 
