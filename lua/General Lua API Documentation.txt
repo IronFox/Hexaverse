@@ -215,7 +215,7 @@ Table-Type: Unit
 		void	DropLastTask();			-- Drops only the last queued task.
 		void	SetAutomation(bool);	-- Updates automation
 		[type.turretType.canFireBeam]
-			void	FireBeam();					-- Schedules beam-firing at the mobile unit's last queued location
+			-- note: use Attack(Loc[]) on plane's current location to attack ground beneath it
 			void	Obliterate();				-- Schedules doomsday beam-firing at the mobile unit's last queued location
 		[type.turretType.canSelfDetonate]
 			void	SelfDetonate();				-- Schedules self-detonation at the vehicle's last queued location

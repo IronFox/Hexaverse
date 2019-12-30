@@ -1765,17 +1765,7 @@ namespace Lua
 
 				if (m->turret->CanDo(Objects::Component::Operation::FireBeam))
 				{
-					t.SetFunction("FireBeam", [this,id,w]()
-					{
-						auto v = w.lock();
-						if (!v)
-							throw Lua::Exception("FireBeam(): Mobile unit has expired");
-
-						Array<Grid::LCellIdI> loc{1};
-						loc[0] = v->GetLastPointOfOrigin();
-						onAttackTargets(id,loc);
-					});
-					AddSimpleJob(t,id, "Obliterate", ConstName::Job_DoomsdayBeamAttack);
+					AddSimpleJob(t,id, "Obliterate", ConstName::Job_DoomsdayBeamAttack, ConstName::DetonationSize_Doomsday);
 				}
 
 				if (m->turret->CanDo(Objects::Component::Operation::AddTerrain))
