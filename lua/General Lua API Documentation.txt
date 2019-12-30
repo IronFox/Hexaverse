@@ -214,6 +214,9 @@ Table-Type: Unit
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
 		void	SetAutomation(bool);	-- Updates automation
+		[type.turretType.canFireBeam]
+			void	FireBeam();					-- Schedules beam-firing at the mobile unit's last queued location
+			void	Obliterate();				-- Schedules doomsday beam-firing at the mobile unit's last queued location
 		[type.turretType.canSelfDetonate]
 			void	SelfDetonate();				-- Schedules self-detonation at the vehicle's last queued location
 		[type.turretType.canAddTerrain]
