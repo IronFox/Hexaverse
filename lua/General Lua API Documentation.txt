@@ -230,7 +230,7 @@ Table-Type: Unit
 			void	BuildRoadTo(Reachable);		-- Schedules road construction along the specified path
 			void	BuildLowWallTo(Reachable);	-- Schedules one-layer wall construction along the specified path
 			void	BuildHighWallTo(Reachable);	-- Schedules two-layer wall construction along the specified path
-			void	BuildBridgeTo(Cell[]);		-- Schedules horizontal bridge construction along the specified path of cells. Should not contain gaps. Will bridge over anything
+			void	BuildBridge(Cell[] path, int height);		-- Schedules horizontal bridge construction along the specified path of cells. Should not contain gaps. Will bridge over anything
 			
 		[type.turretType.canRemoveTerrain]
 			--[[
