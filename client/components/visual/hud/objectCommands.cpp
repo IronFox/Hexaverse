@@ -17,7 +17,7 @@
 #include <image/converter/magic.h>
 #include "../../network.h"
 #include "../scene/terrain.h"
-
+#include "iconNameToFileName.h"
 
 
 extern Engine::Display<Engine::DirectX11>	display;
@@ -445,25 +445,9 @@ namespace Objects
 			LoadIconByName(name);
 		}
 
-		static bool NotValidFSChar(char c)
-		{
-			if (c >= 'a' && c <= 'z')
-				return false;
-			if (c >= 'A' && c <= 'Z')
-				return false;
-			if (c >= '0' && c <= '9')
-				return false;
-			return c != '_';
-		}
-
 		void			VisualCommand::LoadIconByName(const String&name)
 		{
-			String name2 = name;
-			name2.FindAndReplace(NotValidFSChar,'-');
-			while (name2.EndsWith('-'))
-				name2.EraseRight(1);
-			while (name2.BeginsWith('-'))
-				name2.EraseLeft(1);
+			String name2 = Icons::NameToFileName(name);
 
 			PathString filename = PathString("resources/icons/"+name2+".png");
 			if (!FileSystem::IsFile(filename))

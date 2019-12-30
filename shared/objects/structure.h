@@ -401,7 +401,7 @@ namespace Objects
 	};
 
 	/**
-	Base interface for structures that perform operations per frame, and directly participate in resource production/consumption.
+	Base interface for structures that perform operations per round, and directly participate in resource production/consumption.
 	While all structures connect and implicitly form compounds, only WorkingStructures are stored in compounds and evaluated during the resource
 	cycle.
 	WorkingStructures can/will hibernate. Other structures can not.

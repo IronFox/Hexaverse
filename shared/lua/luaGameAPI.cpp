@@ -16,6 +16,19 @@ namespace Lua
 		{
 			LogEvent(EventClass::Preset::important,programName+"(Lua): "+msg);
 		}
+
+		int Pack(const Grid::HCellIdI&c)
+		{
+			return Grid::HighSetup::GridType::CellCount * Grid::CellStack::ToLayer(c.height) + c.stackID;
+		}
+
+		Grid::HCellIdI Unpack(int packed)
+		{
+			index_t idx = (index_t)packed;
+			index_t stack = idx % Grid::HighSetup::GridType::CellCount;
+			index_t layer = idx / Grid::HighSetup::GridType::CellCount;
+			return Grid::HCellIdI(stack,Grid::CellStack::ToHeight(layer));
+		}
 		
 
 		index_t	LuaCellToStack( const Lua::Table&cellTable, const String&parameterName, const int cellCount )
@@ -44,7 +57,7 @@ namespace Lua
 		{
 			if (loc.IsEmpty())
 				throw Lua::Exception(parameterName+" is nil");
-			Lua::Table luaHeight = loc.GetField("height");
+			Lua::Reference luaHeight = loc.GetField("height");
 			if (!luaHeight)
 				throw Lua::Exception(parameterName+".height is nil");
 			const int h = luaHeight.GetAs<int>();
@@ -55,6 +68,7 @@ namespace Lua
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
+		
 		void UpdateResourceTable(Lua::Table&t,const Objects::ResourceVector&v)
 		{
 			for (index_t i = 0; i < Objects::Resource::N; i++)
@@ -1324,8 +1338,8 @@ namespace Lua
 
 						t.SetFunction("DeployStored",[this,w](const Lua::Table&luaEntity, const Lua::Table&luaLocation, const Lua::Function<void(const Lua::Table&)>&onDeploy)
 						{
-							if (!onDeployStored)
-								throw Lua::Exception(CLOCATION,"DeployStoredAt(): onDeployStored not set");
+							if (!onChoiceIntersection)
+								throw Lua::Exception(CLOCATION,"DeployStoredAt(): onChoiceIntersection not set");
 
 							auto d = LuaUnitToEntity(luaEntity,"DeployStoredAt(): Unit parameter #1");
 							if (!d->IsMobile())
@@ -1368,7 +1382,7 @@ namespace Lua
 								onDeployedCallbacks.Set(depID,onDeploy);
 								lastDeploymentCallbackRegistered = timer.Now();
 							}
-							onDeployStored(e->id,m->id,loc,depID);
+							onChoiceIntersection(e->id,m->id,loc,depID, Objects::CursorMode::Idle);
 						});
 
 					}
@@ -1501,7 +1515,7 @@ namespace Lua
 					{
 						auto loc = Detail::ToLGridCell(luaLoc,"DeployProductionAt(): Location parameter");
 
-						if (onDeployCompletedProduction)
+						if (onChoiceIntersection)
 						{
 							TUniqueID depID = TUniqueID::Empty();
 							if (onDep)
@@ -1510,10 +1524,10 @@ namespace Lua
 								onDeployedCallbacks.Set(depID,onDep);
 								lastDeploymentCallbackRegistered = timer.Now();
 							}
-							onDeployCompletedProduction(id,loc,depID);
+							onChoiceIntersection(id,TUniqueID::Empty(),loc,depID, Objects::CursorMode::Idle);
 						}
 						else
-							throw Lua::Exception(CLOCATION,"DeployProductionAt(): onDeployCompletedProduction not set");
+							throw Lua::Exception(CLOCATION,"DeployProductionAt(): onChoiceIntersection not set");
 					});
 				else
 					t.UnsetField("DeployProductionAt");
@@ -1721,9 +1735,11 @@ namespace Lua
 						throw Lua::Exception(CLOCATION,"DropLastTask(): onDropLastTask not set");
 				});
 
-				auto loc = e->location;
-				t.SetFunction("DirectTo",[id,this,loc](const Lua::Table&luaReachable)
+				t.SetFunction("DirectTo",[id,w,this](const Lua::Table&luaReachable)
 				{
+					auto v = w.lock();
+					if (!v)
+						throw Lua::Exception("DirectTo(): Vehicle has expired");
 					Buffer0<Grid::LCellIdI>	path;
 					Lua::Table at = luaReachable;
 					while (at.IsSet())
@@ -1736,7 +1752,7 @@ namespace Lua
 						LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to nil location. Ignoring");
 						return;
 					}
-					if (path.Last() == loc)
+					if (path.Last() == v->GetLastPointOfOrigin())
 					{
 						path.EraseLast();
 						if (path.IsEmpty())
@@ -1747,9 +1763,69 @@ namespace Lua
 					}
 
 					path.Revert();
-					onDetailedDirectTo(id,path.ToRef());
+					onDetailedDirectTo(id,path.ToRef(), Objects::CursorMode::Idle);
 				});
 
+
+				if (m->turret->CanDo(Objects::Component::Operation::SelfDetonate))
+					AddSimpleJob(t,id, "SelfDetonate", ConstName::Job_SelfDetonate);
+
+				if (m->turret->CanDo(Objects::Component::Operation::AddTerrain))
+				{
+					AddSimpleJob(t,id, "BuildRoad",ConstName::Job_BuildRoad);
+					AddSimpleJob(t,id, "BuildHorizontalWall",ConstName::Job_BuildHorizontalWall);
+					AddSimpleJob(t,id, "BuildWallUp",ConstName::Job_BuildWallUp);
+					
+					AddGridBatchJob(t,id, "BuildBlocks", Objects::CursorMode::BuildBlockMode);
+
+					AddRoutedTerraformingJob(t,id,"BuildRoadTo",Objects::CursorMode::BuildRoadChainMode);
+					AddRoutedTerraformingJob(t,id,"BuildLowWallTo",Objects::CursorMode::BuildLowWallChainMode);
+					AddRoutedTerraformingJob(t,id,"BuildHighWallTo",Objects::CursorMode::BuildHighWallChainMode);
+
+					const Objects::WMobileEntity w = m;
+					t.SetFunction("BuildBridgeTo",[this,id,w](const Lua::Table&luaCells)
+					{
+						auto v = w.lock();
+						if (!v)
+							throw Lua::Exception("BuildBridgeTo(): Vehicle has expired");
+						if (!luaCells || luaCells.GetLength() == 0)
+							throw Lua::Exception("BuildBridgeTo(): Given cell array is nil or empty");
+						Array<Grid::LCellIdI> nodes(luaCells.GetLength());
+						int h = v->GetLastPointOfOrigin().height;
+						for (index_t i = 1; i <= luaCells.GetLength(); i++)
+						{
+							index_t stack = Detail::LuaCellToStack(luaCells.GetElement(i),"BuildBridgeTo(): Cell parameter #"+String(i), Grid::LowSetup::GridType::CellCount);
+							nodes[i-1] = Grid::LCellIdI(stack, h);
+						}
+						if (onDetailedDirectTo)
+							onDetailedDirectTo(id,nodes, Objects::CursorMode::BuildBridgeMode);
+						else
+							throw Lua::Exception(CLOCATION,"BuildBridgeTo(): onDetailedDirectTo not set");
+					});
+
+				}
+				if (m->turret->CanDo(Objects::Component::Operation::RemoveTerrain))
+				{
+					AddSimpleJob(t,id, "DigDown",ConstName::Job_DigDown);
+					AddGridBatchJob(t,id, "RemoveBlocks", Objects::CursorMode::RemoveBlockMode);
+					
+					t.SetFunction("DigHorizontally",[this,id](const Lua::Table&luaLoc)
+					{
+						Grid::LCellIdI loc = Detail::ToLGridCell(luaLoc,"DigHorizontally(): Loc parameter");
+						if (onChoiceIntersection)
+							onChoiceIntersection(id,TUniqueID::Empty(), loc,TUniqueID::Empty(), Objects::CursorMode::DigMode);
+						else
+							throw Lua::Exception(CLOCATION,"DigHorizontally(): onChoiceIntersection not set");
+					});
+					t.SetFunction("ClearAbove",[this,id](const Lua::Table&luaLoc)
+					{
+						Grid::LCellIdI loc = Detail::ToLGridCell(luaLoc,"ClearAbove(): Loc parameter");
+						if (onChoiceIntersection)
+							onChoiceIntersection(id,TUniqueID::Empty(), loc, TUniqueID::Empty(),Objects::CursorMode::ClearAboveMode);
+						else
+							throw Lua::Exception(CLOCATION,"ClearAbove(): onChoiceIntersection not set");
+					});
+				}
 
 				if (m->turret->CanDo(Objects::Component::Operation::Construct))
 				{
@@ -1793,6 +1869,20 @@ namespace Lua
 				t.UnsetField("DirectTo");
 				t.UnsetField("ClearTasks");
 				t.UnsetField("Construct");
+				t.UnsetField("PredictRoundsToCompletion");
+				t.UnsetField("BuildStructure");
+				t.UnsetField("ClearAbove");
+				t.UnsetField("DigHorizontally");
+				t.UnsetField("RemoveBlocks");
+				t.UnsetField("DigDown");
+				t.UnsetField("BuildBridgeTo");
+				t.UnsetField("BuildRoad");
+				t.UnsetField("BuildHorizontalWall");
+				t.UnsetField("BuildWallUp");
+				t.UnsetField("BuildBlocks");
+				t.UnsetField("BuildRoadTo");
+				t.UnsetField("BuildLowWallTo");
+				t.UnsetField("BuildHighWallTo");
 			}
 		}
 		return t;
@@ -1895,6 +1985,28 @@ namespace Lua
 		{
 			auto stack = Detail::LuaCellToStack(cell, "GetContent(): Cell parameter #1",Grid::HighSetup::GridType::CellCount);
 			return int(World::actual.GetCell(Grid::HCellIdI(stack,height)).content);
+		});
+
+		terrainTable.SetFunction("GetContentP",[](int packed)
+		{
+			auto cell = Detail::Unpack(packed);
+			return int(World::actual.GetCell(cell).content);
+		});
+		
+		terrainTable.SetFunction("Pack",[](const Lua::Table&cell, int height)
+		{
+			auto stack = Detail::LuaCellToStack(cell, "Pack(): Cell parameter #1",Grid::HighSetup::GridType::CellCount);
+			return Detail::Pack(Grid::HCellIdI(stack,height));
+		});
+		
+		terrainTable.SetFunction("UnpackHeight",[](int packed)
+		{
+			return Detail::Unpack(packed).height;
+		});
+		
+		terrainTable.SetFunction("UnpackCell",[this](int packed)
+		{
+			return highCellGrid[Detail::Unpack(packed).stackID];
 		});
 
 		terrainContentTable.SetFunction("ToString",[](int content)
@@ -2176,6 +2288,60 @@ namespace Lua
 
 
 		return t;
+	}
+
+	void	API::AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName)
+	{
+		t.SetFunction(name,[this,id, jobCName, name]()
+		{
+			if (onSimpleJobStart)
+				onSimpleJobStart(id,jobCName);
+			else
+				throw Lua::Exception(CLOCATION,name+"(): onSimpleJobStart not set");
+		});
+	}
+
+	void	API::AddGridBatchJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode)
+	{
+		t.SetFunction(name,[this,id,name,cursorMode](const Lua::Table&cellField)
+		{
+
+			Buffer0<Grid::HCellIdI> cells;
+			for (index_t i = 1; i <= cellField.GetLength(); i++)
+			{
+				int packed = cellField.GetElement(i).GetAs<int>();
+				cells.Append(Detail::Unpack(packed));
+			}
+
+			if (onGridBatchJobStart)
+				onGridBatchJobStart(id,cursorMode,cells.ToRef());
+			else
+				throw Lua::Exception(CLOCATION,name+"(): onGridBatchJobStart not set");
+		});
+	}
+
+	void	API::AddRoutedTerraformingJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode)
+	{
+		t.SetFunction(name,[this,id,name,cursorMode](const Lua::Table&luaReachable)
+		{
+			Buffer0<Grid::LCellIdI>	path;
+			Lua::Table at = luaReachable;
+			while (at.IsSet())
+			{
+				path << Detail::ToLGridCell(at.GetField("location"),"DirectTo(): destination.location");
+				at = at.GetField("predecessor");
+			}
+			if (path.IsEmpty())
+			{
+				LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to nil location. Ignoring");
+				return;
+			}
+			path.Revert();
+			if (onDetailedDirectTo)
+				onDetailedDirectTo(id,path.ToRef(), cursorMode);
+			else
+				throw Lua::Exception(CLOCATION,name+"(): onDetailedDirectTo not set");
+		});
 	}
 
 

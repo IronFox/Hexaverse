@@ -8,8 +8,19 @@
 
 namespace Objects
 {
-	CONSTRUCT_ENUMERATION5(ResourceWithMunition, Fuel, Minerals, Energy, Munitions, Uranium);
-	CONSTRUCT_ENUMERATION4(ResourceWithoutMunition, Fuel, Minerals, Energy, Uranium);
+	CONSTRUCT_ENUMERATION5(ResourceWithMunition, 
+		Fuel, 
+		Minerals, 
+		Energy, 
+		Munitions, 
+		Uranium
+	);
+	CONSTRUCT_ENUMERATION4(ResourceWithoutMunition, 
+		Fuel, 
+		Minerals, 
+		Energy, 
+		Uranium
+	);
 
 
 
