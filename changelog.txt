@@ -1,5 +1,6 @@
 v0.9.10
 	+ AI: Added terrain alteration options to mobile unit API
+	+ AI: Added bomb self-detonation operation to mobile unit API
 
 v0.9.9	[Feb 3 2019]
 	> Improved automated surveyor routing.

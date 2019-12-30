@@ -1765,11 +1765,15 @@ namespace Lua
 					onDetailedDirectTo(id,path.ToRef(), Objects::CursorMode::Idle);
 				});
 
+
+				if (m->turret->CanDo(Objects::Component::Operation::SelfDetonate))
+					AddSimpleJob(t,id, "SelfDetonate", ConstName::Job_SelfDetonate);
+
 				if (m->turret->CanDo(Objects::Component::Operation::AddTerrain))
 				{
-					AddTerraformingJob(t,id, "BuildRoad",ConstName::Job_BuildRoad);
-					AddTerraformingJob(t,id, "BuildHorizontalWall",ConstName::Job_BuildHorizontalWall);
-					AddTerraformingJob(t,id, "BuildWallUp",ConstName::Job_BuildWallUp);
+					AddSimpleJob(t,id, "BuildRoad",ConstName::Job_BuildRoad);
+					AddSimpleJob(t,id, "BuildHorizontalWall",ConstName::Job_BuildHorizontalWall);
+					AddSimpleJob(t,id, "BuildWallUp",ConstName::Job_BuildWallUp);
 					
 					AddGridBatchJob(t,id, "BuildBlocks", Objects::CursorMode::BuildBlockMode);
 
@@ -1801,7 +1805,7 @@ namespace Lua
 				}
 				if (m->turret->CanDo(Objects::Component::Operation::RemoveTerrain))
 				{
-					AddTerraformingJob(t,id, "DigDown",ConstName::Job_DigDown);
+					AddSimpleJob(t,id, "DigDown",ConstName::Job_DigDown);
 					AddGridBatchJob(t,id, "RemoveBlocks", Objects::CursorMode::RemoveBlockMode);
 					
 					t.SetFunction("DigHorizontally",[this,id](const Lua::Table&luaLoc)
@@ -2283,7 +2287,7 @@ namespace Lua
 		return t;
 	}
 
-	void	API::AddTerraformingJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName)
+	void	API::AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName)
 	{
 		t.SetFunction(name,[this,id, jobCName, name]()
 		{
