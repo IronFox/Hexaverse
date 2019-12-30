@@ -1752,16 +1752,6 @@ namespace Lua
 						LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to nil location. Ignoring");
 						return;
 					}
-					if (path.Last() == v->GetLastPointOfOrigin())
-					{
-						path.EraseLast();
-						if (path.IsEmpty())
-						{
-							LogEvent(EventClass::Preset::scriptError,"Trying to direct mobile "+id.ToNiceString()+" to own location. Ignoring");
-							return;
-						}
-					}
-
 					path.Revert();
 					onDetailedDirectTo(id,path.ToRef(), Objects::CursorMode::Idle);
 				});
@@ -1798,24 +1788,20 @@ namespace Lua
 					AddRoutedTerraformingJob(t,id,"BuildHighWallTo",Objects::CursorMode::BuildHighWallChainMode);
 
 					const Objects::WMobileEntity w = m;
-					t.SetFunction("BuildBridgeTo",[this,id,w](const Lua::Table&luaCells)
+					t.SetFunction("BuildBridge",[this,id](const Lua::Table&luaCells, int height)
 					{
-						auto v = w.lock();
-						if (!v)
-							throw Lua::Exception("BuildBridgeTo(): Vehicle has expired");
 						if (!luaCells || luaCells.GetLength() == 0)
-							throw Lua::Exception("BuildBridgeTo(): Given cell array is nil or empty");
+							throw Lua::Exception("BuildBridge(): Given cell array is nil or empty");
 						Array<Grid::LCellIdI> nodes(luaCells.GetLength());
-						int h = v->GetLastPointOfOrigin().height;
 						for (index_t i = 1; i <= luaCells.GetLength(); i++)
 						{
 							index_t stack = Detail::LuaCellToStack(luaCells.GetElement(i),"BuildBridgeTo(): Cell parameter #"+String(i), Grid::LowSetup::GridType::CellCount);
-							nodes[i-1] = Grid::LCellIdI(stack, h);
+							nodes[i-1] = Grid::LCellIdI(stack, height);
 						}
 						if (onDetailedDirectTo)
 							onDetailedDirectTo(id,nodes, Objects::CursorMode::BuildBridgeMode);
 						else
-							throw Lua::Exception(CLOCATION,"BuildBridgeTo(): onDetailedDirectTo not set");
+							throw Lua::Exception(CLOCATION,"BuildBridge(): onDetailedDirectTo not set");
 					});
 
 				}
