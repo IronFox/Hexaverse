@@ -10,6 +10,7 @@
 #include <math/SimplexNoise.h>
 #include "types.h"
 #include "../fileVersion.h"
+#include <container/hashtable.h>
 
 
 #ifdef LOWER_RESOLUTION_PLANET
@@ -635,6 +636,30 @@ namespace Grid
 				if (outNeighbors.Contains(current.first))
 					continue;
 				outNeighbors << (UINT32)current.first;
+				if (current.second == maxDistance)
+					continue;
+				const auto&n = grid.GetCell(current.first).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					queue << std::make_pair(n.neighborID[i], current.second + 1);
+			}
+		}
+
+		/**
+		Determines the extended neighborhood around the given center cell
+		*/
+		void						GetExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors, Ctr::HashSet<UINT32>&inOutVisitedCells) const
+		{
+			Ctr::Queue<std::pair<index_t, UINT32> >	queue;
+			queue << std::make_pair(centerCell, 0);
+			std::pair<index_t, UINT32> current;
+			outNeighbors.Clear();
+			inOutVisitedCells.Clear();
+			while (queue >> current)
+			{
+				if (inOutVisitedCells.IsSet(current.first))
+					continue;
+				outNeighbors << (UINT32)current.first;
+				inOutVisitedCells.Set((UINT32)current.first);
 				if (current.second == maxDistance)
 					continue;
 				const auto&n = grid.GetCell(current.first).neighborhood;

@@ -6,6 +6,7 @@
 #include "../display.h"
 #include "../objectSelection.h"
 #include "../../configurationMode.h"
+#include "iconNameToFileName.h"
 
 #include <image/converter/magic.h>
 #include <general/random.h>
@@ -33,7 +34,7 @@ namespace ResourceGauges
 	void	IconItem::LoadTexture(const String&name)
 	{
 		Image image;
-		Magic::LoadFromFile(image,PathString("resources/icons/"+name+".png"));
+		Magic::LoadFromFile(image,PathString("resources/icons/"+Icons::NameToFileName(name)+".png"));
 		texture.Load(image);
 	}
 		
@@ -43,9 +44,6 @@ namespace ResourceGauges
 		iconShader.quickSlots.First() = texture;
 		display.RenderVertices(iconShader,0,1);
 	}
-
-
-
 
 
 	void	Gauge::Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled)

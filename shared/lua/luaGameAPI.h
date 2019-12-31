@@ -141,12 +141,13 @@ namespace Lua
 													onUpdateSleep;
 		std::function<void(const TUniqueID&mID,Objects::MarkerType,const Objects::PWorldEntity&, const Grid::LCellIdI&)> onMarkerCreate;
 		std::function<void(const TUniqueID&, Array<Grid::LCellIdI>&)> onAttackTargets;	//!< Given array is fleeting
-		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&)> onDetailedDirectTo;
+		std::function<void(const TUniqueID&, const ArrayRef<Grid::LCellIdI>&, Objects::CursorMode)> onDetailedDirectTo;
 		std::function<void(const TUniqueID&, const Objects::EntityType&)>	onBeginProduction, onBeginStructureConstruction;
 		std::function<void(const TUniqueID&producer, const TUniqueID&task)>	onAbortProduction;
-		std::function<void(const TUniqueID&producer, const Grid::LCellIdI&, const TUniqueID&deploymentID)>	onDeployCompletedProduction;
-		std::function<void(const TUniqueID&hangar, const TUniqueID&mobile, const Grid::LCellIdI&location, const TUniqueID&deploymentID)> onDeployStored;
+		std::function<void(const TUniqueID&eId, const TUniqueID&deploymentedID, const Grid::LCellIdI&loc, const TUniqueID&referenceID, Objects::CursorMode mode)> onChoiceIntersection;
 		std::function<void(index_t,bool)>	onQueueResearch;
+		std::function<void(const TUniqueID&, ConstName, ConstName)>	onSimpleJobStart;
+		std::function<void(const TUniqueID&, Objects::CursorMode, const ArrayRef<Grid::HCellIdI>&)> onGridBatchJobStart; 
 
 		struct TExportResult
 		{
@@ -228,6 +229,9 @@ namespace Lua
 
 		Lua::Table	AddOrGetType(Objects::EntityType type);
 		Lua::Table	AddType(Objects::EntityType t);
+		void		AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName, ConstName parameterCName=ConstName::Empty);
+		void		AddGridBatchJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode);
+		void		AddRoutedTerraformingJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode);
 		void		SetResearchProperties(Lua::Table&t, const Objects::Component::Base*component);
 
 
