@@ -24,6 +24,7 @@ namespace Objects
 	template <typename T>
 		struct TGroundVector
 		{
+			typedef T ScalarType;
 			typedef TGroundVector<T> Self;
 
 			T		road=0,

@@ -24,9 +24,9 @@ namespace Lua
 
 		Grid::HCellIdI Unpack(int packed)
 		{
-			index_t idx = (index_t)packed;
-			index_t stack = idx % Grid::HighSetup::GridType::CellCount;
-			index_t layer = idx / Grid::HighSetup::GridType::CellCount;
+			UINT idx = (UINT)packed;
+			UINT stack = idx % Grid::HighSetup::GridType::CellCount;
+			UINT layer = idx / Grid::HighSetup::GridType::CellCount;
 			return Grid::HCellIdI(stack,Grid::CellStack::ToHeight(layer));
 		}
 		
