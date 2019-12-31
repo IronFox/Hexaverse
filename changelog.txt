@@ -1,4 +1,4 @@
-v0.9.10
+v0.9.10	[Dec 31 2019]
 	+ AI: Added terrain alteration options to mobile unit API
 	+ AI: Added bomb self-detonation operation to mobile unit API
 	+ AI: Added bomber attack operations to mobile unit API
