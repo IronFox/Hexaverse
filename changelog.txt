@@ -1,4 +1,8 @@
-v1.0.0
+v0.9.10	[Dec 31 2019]
+	+ AI: Added terrain alteration options to mobile unit API
+	+ AI: Added bomb self-detonation operation to mobile unit API
+	+ AI: Added bomber attack operations to mobile unit API
+	> Improved tooltip documentation
 
 v0.9.9	[Feb 3 2019]
 	+ Added experimental tree/crystal growth and rendering.
@@ -36,6 +40,7 @@ v0.9.7	[Dec 23 2018]
 	* AI: Fixed Game.Type.* tables to behave as documented (string mapped, not sequential)
 	* AI: Fixed off-by-one error in Game.RandomIndex()
 	* Fixed server-side check when trying to build unresearched or fully locked types.
+	* Fixed planes refusing to land in max-elevation vehicle stores.
 	* Fixed resource visualization sometimes not updating.
 	* Fixed state panel text overlapping with selected unit icon.
 
@@ -86,6 +91,7 @@ v0.9.3	[Aug 17 2018]
 	> Removed deprecated Rules variables uplinkBandwidth and newVehiclesHaveFullAmmo.
 	> Unified description of attack and sensor ranges.
 	* Fixed/improved correctness of sensor visualization of non-selected units (if enabled).
+	* Fixed plane pathfinding sometimes routing through EMP zones.	
 	* Fixed access violation when repairing/generating configuration files.
 	* Fixed error message when trying to set vehicle plant gathering point.
 	* Fixed display and functionality of unit limits.
@@ -114,13 +120,14 @@ v0.9.1	[Jul 14 2018]
 	* Fixed routing of 'Build Bridge to' command.
 	
 v0.9.0	[Jul 10 2018]
-	+ Bomb detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
+	+ Bomb/bomber detonation cost, doomsday explosion radius, and damage level can now be configured via research script.
 	+ Added checkbox to disable terrain camera clipping.
 	+ Added Privacy Notice link to bug reporter.
 	+ Added menu option to start new client instance using different profile.
 	+ Added support for scriptable AI.
 	> Removed internal emergency program in favor of install-directory factory default.
 	> Horizontal sliders no longer react to the mouse wheel, improving scroll behavior.
+	> Improved anti-aircraft geometry.
 	> Added close-button to game-end statistics (still closeable via Escape).
 	> Reduced default launcher attack range.
 	> Moved AI configuration folder from client/ai to aiClient.
@@ -132,6 +139,7 @@ v0.9.0	[Jul 10 2018]
 	* Fixed random auto-ending of newly generated games.
 	* Fixed random lost unit task updates.
 	* Fixed DPI awareness manifest.
+	* Fixed client warning/mishandling of anti-aircraft attack targets.
 	* Fixed bad fog of war at round beginning.
 	* Fixed missing menu button in configuration mode.
 	* Fixed main menu button while server list is visible.
@@ -143,6 +151,7 @@ v0.8.4	[Apr 22 2018]
 	> Lua research script is now executed server-side only, with research topics, progress, and attribute vectors transferred to clients as needed.
 	> Status panel now wraps long lines.
 	> Now disallowing alliance changes once game has ended.
+	> Increased opacity of plane location marker beams.
 	> Mechanic now keeps trying to repair the designated unit if insufficient minerals are available for full repair.
 	> If auto-spawned player bases are off, new factions receive a single full mineral container so they can build.
 	> Renamed 'Disconnect' to 'Return to Server List' to clarify what happens when in interactive configuration mode.
@@ -155,6 +164,7 @@ v0.8.4	[Apr 22 2018]
 	* Fixed missing tower attack action update.
 	* Fixed attack arrow positioning when mobile unit is selected but attack origin is not current entity location.
 	* Fixed handling and display of winning alliance when game ends.
+	* Fixed placement of plane location marker beams.
 	* Building bridges now correctly lists 'Build bridge here' micro task.
 	* Fixed various ghost ownership issues.
 	* Fixed artillery/cannons sometimes choosing the wrong trajectory server-side and hitting friendly units.
@@ -173,6 +183,7 @@ v0.8.4	[Apr 22 2018]
 	* Fixed health of repaired unit not always updating correctly.
 
 v0.8.3	[Apr 8 2018]
+	+ Home key now toggles sub orbital grid visibility.
 	+ Added hotkey (P for Path) to quickly build roads using terraformers.
 	+ Added new planet type IvoryPillars.
 	> Alliance invite messages are now much larger in the visual client log.
@@ -196,20 +207,27 @@ v0.8.2	[Mar 31 2018]
 	* Fixed doomsday explosions sometimes not being exposed to other factions even though configured such.
 
 v0.8.1	[Mar 30 2018]
+	+ AntiAircraft scanning and attack range is now researchable by default.
+	> Raptors are no longer excluded from stopping when discoverying new anti-aircraft units.
 	> Ctrl can now be used to quickly enqueue unit attacks. Terrain clipping is now toggled using the End key.
 	* Removed 'Leave alliance' button when not member of the respective alliance.
 	* Fixed occasional allied client crash when deploying new units.
 	* Fixed client crash when simultaneously auto-spawning two new vehicles into the same vehicle store.
+	* Fixed client crash when non-empty cargo plane is destroyed mid-motion.
 	* Fixed automated surveyors waiting indefinitely in front of other mobile units.
 	
 v0.8.0	[Mar 25 2018]
+	+ Added bomber plane type.
+	+ Added Anti Aircraft missile turret.
 	+ Added experimental visualization of selected vehicle reach.
 	> Client now extends server pathfinding limitation when building very long roads by processing explicit path for server.
+	> Raptor can no longer fire during movement phase.
 	> Mobile units now scale down as they enter lower areas. Structures scale horizontally.
 	* Fixed stored vehicles not counting towards terraformer statistics.
 	* Fixed path finding when building walls and roads in constrained environments.
 	* Fixed auto-scheduled tower attacks sometimes remaining active.
 	* Fixed rendering of concurrent attack trajectories.
+	* Fixed planes being able to land on lava.
 	* Fixed attack trajectory occlusion.
 	* Fixed general sensor problems.
 
@@ -217,6 +235,8 @@ v0.7.7	[Mar 11 2018]
 	> Bug reporter now presents all found log files, and derives game version from selected log file.
 	> Bug reporter now inserts fatal messages into bug description, and removes previous fatal message if found.
 	> Camera can no longer enter non-clipped terrain.
+	> Planes can now land in vehicle stores.
+	> Planes are now much more expensive to produce.
 	> Vehicle plants can now deploy directly into vehicle stores.
 	> Vehicle plants with a gathering point try to be smarter about where they deploy new vehicles.
 	> Unit redeployment is now restricted to once per round.
@@ -319,6 +339,10 @@ v0.7.3	[Feb 4 2018]
 	> Clipped water is now rendered flat atop underlying solid, non-clipped terrain blocks
 	> Backspace/escape now also clear out any movement option markers.
 	> Removed visual connections between neighboring buildings unless they have meaning.
+	> Increased attack range of raptor planes.
+	> Slightly increased sensor range of sensor drones.
+	> Raptor planes now automatically fire at detected, moving, hostile planes during their motion phase.
+	> Planes now automatically stop before entering the firing range of a previously undetected offensive plane.
 	> Increased the amount of health gained from research.
 	> Added link to online manual to help menu.
 	> Replaced alliance join requests with an invite-based system.
@@ -336,6 +360,9 @@ v0.7.3	[Feb 4 2018]
 	* Fixed friendly/hostile range visualization to work with alliances.
 	* Fixed server panel when manually adding server addresses that cannot be contacted right now.
 	* Fixed center panel of game end statistics.
+	* Fixed routing of planes by right-clicking on the ground.
+	* Fixed plane factories spawning planes through blocking terrain into sub-orbit.
+	* Fixed allied plane sensor loss causing crashes.
 	* Fixed round estimation of terraforming operations.
 	* Fixed client crash when handling exceptionally many sensor changes in one round.
 	* Fixed vehicles ignoring max task count.
@@ -358,6 +385,8 @@ v0.7.1	[Jan 22 2018]
 v0.7.0	[Jan 20 2018]
 	+ Introduced sensor-sharing alliances of multiple factions.
 	+ Implemented rudimentary voting system that controls alliance operations.
+	> Moved plane factory queue commands one row up.
+
 	> Reduced verbosity of faction idle messages.
 	* Fixed messages not being relayed to control console.
 	* Fixed faction renaming.
@@ -435,18 +464,21 @@ v0.6.4	[May 5 2017]
 	> Improved research script. Renamed it to research.v2.lua. Script is no longer copied automatically to user directory.
 	> Unrelated attacks are now visually executed in parallel.
 	> Radar turret is now initially unlocked.
+	> Suborbital plane now suffer a scanning range penalty when landed.
 	> Re-activated EMP turret type.
 	* Target mode is no longer canceled when dragging the camera.
 	* Fixed unit destruction when falling farther than safely possible.
 	* Fixed rounding error in research script.
 	* Fixed certain events still being shown when controls are supposed to be hidden.
 	* Removed 'Progress' string when no game goal is configured.
+	* Fixed smoothness of animated suborbital plane motion.
 	* Fixed destruction events on indestructible units.
 
 v0.6.3	[Feb 26 2017]
 	> All vehicles now fire automatically if they are idle or move independently of attacks.
 	> When target mode is active with any unit selected, pressing the right mouse button will abort the mode.
 	> Vehicle plants no longer require energy to operate.
+	> Plane factories no longer require energy to operate.
 	> Reduced size of Nexus bases.
 	> Configuration mode now automatically uploads local configuration to server. Removed explicit up and download commands.
 	> Added number icons next to changeable values in interactive configuration mode.
@@ -457,6 +489,7 @@ v0.6.3	[Feb 26 2017]
 	> Improved initial faction placement.
 	* Fixed rare fatal client exception when failing to layout menu components.
 	* Fixed rare fatal server exception when Nexus Port changes ownership.
+	* Fixed Raptor not being able to fire at locations straight down.
 	* Fixed towers auto-firing only once per round even if they could fire multiple times.
 	* Fixed some hex-commands not showing their price (e.g. 'Obliterate').
 	* Nexus bases located in residual EMP fields now instantaneously suffer EMP damage.
@@ -520,6 +553,7 @@ v0.3.26	[Jan 1 2017]
 
 v0.3.25 [Nov 4 2016]
 	> Decreased world resultion in an attempt to accelerate the game.
+	> Increased default fuel density.
 	* Fixed GUI image components being incorrectly sized.
 	* Fixed GUI button components not being highlighted in some situations.
 	* Fixed resource distribution.
@@ -535,17 +569,24 @@ v0.3.24 [Oct 16 2016]
 	
 v0.3.23	[Apr 10 2016]
 	+ Added control commands to manage factions.
+	+ Added tutorial messages and images for each plane type.
+	> Increased sensor range of sensor drone.
+	> Plane factories will now favor sub-orbit when auto-deploying produced units.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
 	> Improved sky grid. G can now be used to quickly toggle its appearance.
 	> Vehicles can no longer enter residual EMP zones.
 	> Scheduling a mobile entity task will now wake the local unit if necessary.
+	> Unit sensory is now limited to a fixed height-band. This considerably reduces radar sensory into the ground.
 	> Clipped terrain now visually distinguishes between invisible and visible terrain.
 	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
+	* Fixed airborne sensory.
+	* Fixed plane ghost rendering.
 	* Fixed hostile health visually reverting to full when sensor contact is temporarily lost.
 
 v0.3.22	[Apr 5 2016]
 	> Enabled vertical synchronization by default.
+	> Reduced visual size of cargo plane.
 	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
 	> Some visual commands of vehicle plants now flash if action is expected.
 	> UI now lists unit contents of cargo units that are not vehicle stores.
@@ -560,8 +601,11 @@ v0.3.22	[Apr 5 2016]
 
 v0.3.21	[Mar 31 2016]
 	* Fixed terrain resource visualization.
+	* Fixed units loaded in cargo planes not being properly destroyed when the plane goes down.
 
 v0.3.20	[Mar 30 2016]
+	+ Added plane factory building type.
+	+ Added raptor, cargo plane, and sensor drone.
 	> Resource stacks are now hidden by default, when connecting as spectator.
 	> Improved initial terrain simplification algorithm to produce cleaner terrains.
 	* Fixed server-side random key generation on some systems.

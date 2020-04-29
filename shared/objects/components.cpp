@@ -1485,6 +1485,9 @@ namespace Objects
 				if (!compound)
 				{
 					label <<"Cost: "+String(Resource::table[Resource::Minerals].tag)+productionCosts.Describe(Objects::Component::ResearchStateOf(owner));
+					const auto&st = Objects::Component::ResearchStateOf(owner);
+					if (!isUnlocked.GetValue(st))
+						label <<"Requires more research to unlock";
 					label <<"Initiative: "+String(initiative);
 				}
 			}
@@ -1667,8 +1670,8 @@ namespace Objects
 				}
 
 				if (this == &bomb)
-					outResult << "This "+lowerName+" type can self-detonate in a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
-					"Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+Resource::Uranium.GetTagStr()+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
+					outResult << "This "+lowerName+" type can self-detonate, causing a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
+					" Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+Resource::Uranium.GetTagStr()+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
 				if (mainAttackIsDoomsday)
 				{
 					outResult << ("This "+lowerName+" type is classified as DOOMSDAY WEAPONRY. Careful with this one.");

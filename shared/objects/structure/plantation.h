@@ -79,6 +79,7 @@ namespace Objects
 			float t = 0;
 			SignalChangeByExternalCause(TasksChanged,t);
 		};
+		virtual void				Tick(Resource::Vector&v) override;
 		#endif
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
@@ -111,7 +112,6 @@ namespace Objects
 			#endif
 			return Super::SignalEnvironmentChange(neighborhood,atTime);
 		}
-		virtual void				Tick(Resource::Vector&v) override;
 		virtual Category			GetCategory() const override {return Category::Resources;}
 	private:
 		UINT32						GetPresence(Grid::Content) const;
