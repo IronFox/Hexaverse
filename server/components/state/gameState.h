@@ -6,6 +6,7 @@
 #include <objects/types.h>
 #include <objects/structure/tower.h>
 #include "../evolver.h"
+#include <objects/packable.h>
 
 
 namespace Game
@@ -290,6 +291,7 @@ namespace Game
 			StructureStorage	= 0x100,	//resources stored in described structure
 		};
 
+
 		inline constexpr Expose operator|(Expose a, Expose b)
 		{
 			return (Expose)(((std::underlying_type<Expose>::type)a) | ((std::underlying_type<Expose>::type)b));
@@ -314,6 +316,15 @@ namespace Game
 			return entityOwner->alliance->config.exposeEntityDetails ? ExposeAll : ExposeToAllies;
 		}
 
+		inline Objects::Packable::Target		GetTarget(const Objects::PFaction&entityOwner,const Objects::PFaction&recipientFaction)
+		{
+			if (entityOwner == recipientFaction)
+				return Objects::Packable::Target::Owner;
+			if (!entityOwner->IsAlliedWith(recipientFaction))
+				return Objects::Packable::Target::Hostile;
+			return Objects::Packable::Target::Ally;
+		}
+
 		void		Describe(Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex);
 		void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
 		void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
@@ -330,8 +341,8 @@ namespace Game
 		@param changeFlags Flag bits of information to include in the state description. Should include only changed attributes
 		@param include Flag bits of information that the recipient is allowed to see.
 		*/
-		void		Describe(Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
-		void		Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose);
+		void		Describe(Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags, Objects::Packable::Target target);
+		void		Describe(Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, Objects::Packable::Target target);
 
 		/**
 		Detects resource coverage changes within the specified sphere, and notifies the local faction client, if any

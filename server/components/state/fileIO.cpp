@@ -298,6 +298,7 @@ namespace FileIO
 								nexusAI("NEXA"),	//currently only indicates that nexus ai is active
 								nexusBases("NEXB"),
 								nexusData("NEXD"),
+								packableData("PDAT"),
 								nexusTag("NEXU"),
 								newVehiclesHaveFullAmmo("NVHA"),
 								path("PATH"),
@@ -1078,6 +1079,19 @@ namespace FileIO
 			}
 
 		}
+
+		const Objects::Packable*p = dynamic_cast<const Objects::Packable*>(&s);
+		if (p)
+		{
+			using Serialization::Serialize;
+			SerialSizeScanner scanner;
+			p->ToSavegame(scanner);
+			if (scanner.GetTotalSize())
+			{
+				MemWriteStream writer(parent->AppendBlock(RID::packableData)->SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
+				p->ToSavegame(writer);
+			}
+		}
 		
 	}
 
@@ -1178,6 +1192,18 @@ namespace FileIO
 				n->lastSpawnRound = data[1];
 
 				n->OnLoad();
+			}
+		}
+
+
+		Objects::Packable*p = dynamic_cast<Objects::Packable*>(rs.get());
+		if (p)
+		{
+			Riff::Chunk*chk = parent->FindFirst(RID::packableData);
+			if (chk)
+			{
+				MemReadStream reader(chk->pointer(),chk->size());
+				p->FromSavegame(reader);
 			}
 		}
 

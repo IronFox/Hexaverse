@@ -420,11 +420,12 @@ namespace Protocol
 	)
 
 
-	NETSTRUCT4(StructureState
+	NETSTRUCT5(StructureState
 		, EntityState, entityState
 		, Objects::PositiveResourceVector, resourceStorage
 		, NET(BYTE), flags
 		, SelectiveStructureState, selective
+		, NETA(BYTE), packed
 	)
 
 

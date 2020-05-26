@@ -524,7 +524,7 @@ namespace Receiver
 		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
-			Game::Network::Describe(st,*s,timestamp,Game::Network::ExposeAll);
+			Game::Network::Describe(st,*s,timestamp,Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 			Channels::createStructure.SendTo(peer,st);
 		});
 
@@ -593,15 +593,15 @@ namespace Receiver
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
 
-	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer,const Protocol::Timestamp&timestamp, Game::Network::Expose expose)
+	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer,const Protocol::Timestamp&timestamp, Game::Network::Expose expose, Objects::Packable::Target target)
 	{
-		f->VisitMyStructures([expose,timestamp,&peer](const Objects::PStructure&s)
+		f->VisitMyStructures([expose,timestamp,&peer,target](const Objects::PStructure&s)
 		{
 			ASSERT__(s);
 			if (s)
 			{
 				Protocol::StructureConstruction st;
-				Game::Network::Describe(st,*s,timestamp,expose);
+				Game::Network::Describe(st,*s,timestamp,expose, target);
 				Channels::createStructure.SendTo(peer,st);
 			}
 		});
@@ -1048,7 +1048,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,timestamp,Game::Network::GetExposition(s->owner,client->faction));
+					Game::Network::Describe(st,*s,timestamp,Game::Network::GetExposition(s->owner,client->faction),Game::Network::GetTarget(s->owner,client->faction));
 					Channels::createStructure.SendTo(peer,st);
 				}
 				else
@@ -1066,7 +1066,7 @@ namespace Receiver
 				}
 			});
 
-			SendEntitiesTo(client->faction,peer,timestamp, Game::Network::ExposeAll);
+			SendEntitiesTo(client->faction,peer,timestamp, Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 		}
 
 
