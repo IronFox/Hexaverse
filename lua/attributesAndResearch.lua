@@ -563,6 +563,7 @@ StructureConfig =
 	Generator = DefaultStructure(40),
 	ReactorCore = DefaultStructure(120),
 	VehicleStore = DefaultStructure(40),
+	Plantation = DefaultStructure(40),
 	VehiclePlant = DefaultStructure(80),
 	Laboratory = DefaultStructure(80),
 	MunitionFactory = DefaultStructure(40),
