@@ -23,22 +23,22 @@ namespace Objects
 			{
 				if (idx >= Count)
 					throw Except::Program::ParameterFault(CLOCATION,"Given parameter index "+String(idx)+" exceeds limit of "+String(Count));
-				if (idx < 6)
+				if (idx < 5)
 					return char(3 + idx);
-				idx -= 6;
+				idx -= 5;
 				if (idx < 2)
 					return char(11+idx);
 				idx -= 2;
-				return char(13+idx);
+				return char(14+idx);
 			}
 
 			index_t		TagToIndex(char c)
 			{
-				if (c < '\n')
+				if (c < '\t') //9
 					return index_t(c)-3;
 				if (c < '\r')
-					return index_t(c-'\n')+6;
-				return index_t(c - '\r') + 8;
+					return index_t(c-'\n')+4;
+				return index_t(c - '\r') + 6;
 			}
 
 			ID		TagToID(char c)
@@ -48,7 +48,7 @@ namespace Objects
 
 			bool	IsTag(char c)
 			{
-				if (c < '\n')
+				if (c < '\t')
 					return c > 0;
 				if (c < '\r')
 					return c > '\n';
@@ -94,6 +94,13 @@ namespace Objects
 		}
 
 
+		void		Type::OnDeserialize(index_t serialIndex)
+		{
+			this->serialIndex = serialIndex;
+			tag = serialIndex < TagMap::Count ? TagMap::IndexToTag(serialIndex) : 0;
+		}
+
+
 		String		Type::GetTagStr() const
 		{
 			if (tag != 0)
@@ -104,6 +111,7 @@ namespace Objects
 
 
 		const Table minimal =
+		Table(
 		{
 			"Fuel",
 			"Minerals",
@@ -112,8 +120,17 @@ namespace Objects
 			#ifndef NO_MUNITION
 				"Munitions,
 			#endif
-		};
-		Table table = minimal;
+		},
+		{
+			float3(0.4,1,0.2),//fuel
+			float3(0.7,0.7,0.7),//minerals
+			float3(1,1,0.1), //uranium
+			float3(0.2,0.4,1),//energy
+			#ifndef NO_MUNITION
+				float3(1,0.4,0.2),//munitions
+			#endif
+		}	
+		);
 
 		const ID	
 			Fuel = FuelID, 
@@ -122,16 +139,24 @@ namespace Objects
 			Energy = 3,
 			#ifndef NO_MUNITION
 				Munitions = 4,
+				Offset = 5,
 			#else
 				Munitions = ID::Invalid,
+				Offset = 4,
 			#endif
+			CrystallineCompounds = Offset,
+			OrganicCompounds = Offset+1,
+			AdvancedCompounds = Offset+2,
 			_ = ID::Invalid;
 
+		Table table = CompileLocalTable();
 
-		Table::Table(const std::initializer_list<const char*>&init)
+		Table::Table(const std::initializer_list<const char*>&init, const std::initializer_list<float3>&colors)
 		{
-			foreach(init, name)
-				Append(*name);
+			for (index_t i = 0; i < init.size(); i++)
+			{
+				Append(*(init.begin() + i), *(colors.begin() + i));
+			}
 		}
 
 		ID		Table::Append(TypePrototype&&t)
@@ -147,27 +172,54 @@ namespace Objects
 		ID		Table::Append(Type&&t)
 		{
 			const index_t rs = Count();
-			Super::MoveAppend(t);
-			Super::Last().serialIndex = rs;
-			Super::Last().tag = rs < TagMap::Count ? TagMap::IndexToTag(rs) : 0;
+			Super::MoveAppend(t).OnDeserialize(rs);
 			return rs;
 		}
 
 		
-		ID		Table::Append(const String&name)
+		ID		Table::Append(const String&name, const float3&color)
 		{
-			return Append(name.c_str());
+			return Append(name.c_str(),"",color);
 		}
 		
-		ID		Table::Append(String&&name)
+		ID		Table::Append(String&&name, const float3&color)
 		{
-			return Append(Type(std::move(name)));
+			return Append(Type(std::move(name),color));
 		}
 		
-		ID		Table::Append(const char*name)
+		ID		Table::Append(const char*name, const float3&color)
 		{
-			return Append(Type(String(name)));
+			return Append(Type(String(name),color));
 		}
+
+		ID		Table::Append(const String&name, const String&icon, const float3&color)
+		{
+			return Append(name.c_str(),icon.c_str(),color);
+		}
+
+		ID		Table::Append(String&&name, String&&icon, const float3&color)
+		{
+			return Append(Type(std::move(name),std::move(icon),color));
+		}
+
+		ID		Table::Append(const char*name, const char*icon, const float3&color)
+		{
+			return Append(Type(String(name),String(icon),color));
+		}
+
+		void	Table::Set(ID at, const char*name, const char*icon, const float3&color)
+		{
+			while (Count() <= at.serialIndex)
+				Super::Append();
+			Type&t = Super::at(at.serialIndex);
+			if (t.name.IsNotEmpty() && t.name != name)
+				FATAL__("Trying to set resource table entry #"+String(at.serialIndex)+" to '"+String(name)+"' but is already set to '"+t.name+"'");
+			t.name = name;
+			t.icon = icon;
+			t.color = color*255;
+			t.OnDeserialize(at.serialIndex);
+		}
+
 
 		const Type*		Table::FindByName(const String&n) const
 		{
@@ -188,54 +240,48 @@ namespace Objects
 		}
 
 
-		void	Vector::AllocateEmpty()
+		int&	Vector::Require(index_t idx)
 		{
-			storage.SetSize(Resource::table.Count());
-			storage.Fill(0);
+			if (idx < storage.Count())
+				return storage[idx];
+			count_t old = storage.Count();
+			storage.ResizePreserveContent(idx+1);
+			for (index_t i = old; i <= idx; i++)
+				storage[i] = 0;
+			return storage[idx];
 		}
 
 
 		void	Vector::Set(index_t resource, int value)
 		{
-			if (IsZero() && value == 0)
+			if (resource >= storage.Count() && value == 0)
 				return;
-			if (storage.IsEmpty())
-			{
-				AllocateEmpty();
-				storage[resource] = value;
-			}
-			else
-			{
-				storage[resource] = value;
-				if (value == 0)
-					CheckEmptiness();
-			}
+			int &r = Require(resource);
+			r = value;
+			if (r == 0)
+				Tidy();
 		}
 	
 		void	Vector::Add(index_t resource, int value)
 		{
 			if (value == 0)
 				return;
-			if (storage.IsEmpty())
-			{
-				AllocateEmpty();
-				storage[resource] = value;
-			}
-			else
-			{
-				storage[resource] += value;
-				if (storage[resource] == 0)
-					CheckEmptiness();
-			}
+			int &r = Require(resource);
+			r += value;
+			if (r == 0)
+				Tidy();
 		}
 
 
-		void	Vector::CheckEmptiness()
+		void	Vector::Tidy()
 		{
-			foreach (storage,v)
-				if ((*v) != 0)
-					return;
-			storage.Clear();
+			if (storage.IsEmpty())
+				return;
+			index_t i = storage.Count()-1;
+			for (; i < storage.Count(); i--)
+				if (storage[i] != 0)
+					break;
+			storage.ResizePreserveContent(i+1);
 		}
 
 
@@ -246,7 +292,6 @@ namespace Objects
 				Clear();
 				return;
 			}
-			AllocateEmpty();
 			Set(Resource::Fuel,v.fuel);
 			Set(Resource::Minerals,v.minerals);
 			Set(Resource::Uranium,v.uranium);
@@ -261,10 +306,9 @@ namespace Objects
 				operator=(v);
 				return;
 			}
-			storage[Resource::Fuel.serialIndex] += v.fuel;
-			storage[Resource::Minerals.serialIndex] += v.minerals;
-			storage[Resource::Uranium.serialIndex] += v.uranium;
-			CheckEmptiness();
+			Add(Resource::Fuel,v.fuel);
+			Add(Resource::Minerals,v.minerals);
+			Add(Resource::Uranium,v.uranium);
 		}
 
 
@@ -277,9 +321,8 @@ namespace Objects
 				storage = other.storage;
 				return;
 			}
-			for (index_t i = 0; i < storage.Count(); i++)
-				storage[i] += other.storage[i];
-			CheckEmptiness();
+			for (index_t i = 0; i < other.storage.Count(); i++)
+				Add(i,other.storage[i]);
 		}
 
 		void	Vector::operator-=(const Self&other)
@@ -292,9 +335,8 @@ namespace Objects
 				Negate();
 				return;
 			}
-			for (index_t i = 0; i < storage.Count(); i++)
-				storage[i] -= other.storage[i];
-			CheckEmptiness();
+			for (index_t i = 0; i < other.storage.Count(); i++)
+				Add(i, -other.storage[i]);
 		}
 
 		void	Vector::operator*=(int multiplier)
@@ -444,6 +486,18 @@ namespace Objects
 		}
 
 
+		void	FullVector::Include(const Vector&v, const Vector&storage, const Vector&storageMax)
+		{
+			Vector s,d;
+			v.SeparateBySign(s,d);
+			d.Negate();
+			supply += s;
+			demand += d;
+			balance += v;
+			balance += storage;
+			this->storage += storage;
+			this->storageMax += storageMax;
+		}
 
 		bool	CoreVector::SampleWorld(index_t lowCellID)
 		{
@@ -518,6 +572,11 @@ namespace Objects
 		{
 			Table rs = minimal;
 			
+			
+
+			rs.Set(CrystallineCompounds, "Crystalline Compounds", "Question Mark", float3(0.6,0.6,0.6));
+			rs.Set(OrganicCompounds, "Organic Compounds", "Question Mark", float3(0.6,1,0.3));
+			rs.Set(AdvancedCompounds, "Advanced Compounds", "Question Mark", float3(0.4,0.4,0.4));
 			return rs;
 		}
 
