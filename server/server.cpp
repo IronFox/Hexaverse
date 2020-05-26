@@ -110,7 +110,7 @@ namespace ApplicationInterface
 		LogEvent(EventSignificance::Debug,s.get(),"Signaling new structure to owner at t="+String(atTime));
 		Protocol::StructureConstruction	w;
 		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-		Game::Network::Describe(w,*s,timestamp,Game::Network::ExposeAll);
+		Game::Network::Describe(w,*s,timestamp,Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 		Network::SendToOwner(Channels::createStructure,v,w);
 
 		if (s->IsTower() && To<Objects::Tower>::Cast(s)->turret->detectsResources)
@@ -150,7 +150,7 @@ namespace ApplicationInterface
 			Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
 			ASSERT1__(s,e->GetName());
 			TCP::Serial<Protocol::StructureConstruction>	w;
-			Game::Network::Describe(w.Ref(),*s,timestamp,expose);
+			Game::Network::Describe(w.Ref(),*s,timestamp,expose, Objects::Packable::Target::Hostile);
 			w.Seal();
 			Channels::createStructure.SendTo(client->peer.lock(),w);
 		}
