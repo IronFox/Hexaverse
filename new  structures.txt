@@ -2,7 +2,7 @@ Steps to create new structures:
 
 1) Create structure definition module in shared space.
 Defines name, basic properties server behavior.
-To preserve custom data, inherit class Objects::Packable
+To preserve custom data, inherit class Objects::Packable. Make sure to inherit as public
 
 2) Create geometry (obj, mtl) in sub folder client\objects of name [object name in camelCase].obj
 3) Link geometry loading in client\components\visual\scene\objectComponent.cpp:StructureHull::LoadAll()
