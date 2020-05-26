@@ -22,7 +22,7 @@ namespace Objects
 		/**/						StorageStructure()	{ }	//global prototype
 
 	public:
-		Resource::Vector				storage,maxStorage;
+		Resource::Vector			storage,maxStorage;
 		static const int			MaxStorage = StorageCommon::MaxStorage;
 
 		virtual void				GetResourceVector(Resource::Vector&, Resource::Vector&storage, Resource::Vector&max) const override	{storage = this->storage; max = maxStorage;}
