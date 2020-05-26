@@ -456,8 +456,8 @@ namespace Objects
 			Array<int>	storage;
 
 			void		Tidy();
-			void		Require(index_t idx);
-			void		Require(Resource::ID idx) {Require(idx.serialIndex);}
+			int&		Require(index_t idx);
+			int&		Require(Resource::ID idx) {return Require(idx.serialIndex);}
 		};
 
 		struct CoreVector

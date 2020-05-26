@@ -240,14 +240,15 @@ namespace Objects
 		}
 
 
-		void	Vector::Require(index_t idx)
+		int&	Vector::Require(index_t idx)
 		{
 			if (idx < storage.Count())
-				return;
+				return storage[idx];
 			count_t old = storage.Count();
 			storage.ResizePreserveContent(idx+1);
 			for (index_t i = old; i <= idx; i++)
 				storage[i] = 0;
+			return storage[idx];
 		}
 
 
@@ -255,9 +256,9 @@ namespace Objects
 		{
 			if (resource >= storage.Count() && value == 0)
 				return;
-			Require(resource);
-			storage[resource] = value;
-			if (value == 0)
+			int &r = Require(resource);
+			r = value;
+			if (r == 0)
 				Tidy();
 		}
 	
@@ -265,9 +266,9 @@ namespace Objects
 		{
 			if (value == 0)
 				return;
-			Require(resource);
-			storage[resource] += value;
-			if (storage[resource] == 0)
+			int &r = Require(resource);
+			r += value;
+			if (r == 0)
 				Tidy();
 		}
 
