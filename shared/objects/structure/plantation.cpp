@@ -10,6 +10,7 @@ namespace Objects
 	}
 
 
+	#ifndef CLIENT
 	/*virtual override*/ void				Plantation::Tick(Resource::Vector&v)
 	{
 		Super::Tick(v);	//get resource vector first, then change landscape
@@ -26,11 +27,12 @@ namespace Objects
 		count_t treesHarvested = 0;
 		count_t crystalsHarvested = 0;
 		count_t planted = 0;
+		const int bottom = std::max(Grid::CellStack::BottomHeight,location.height-3);
+		const int top = std::min(Grid::CellStack::TopHeight,location.height+3);
 		foreach (plantStackIDs, c)
 		{
 			seq.SelectStack(*c);
-
-			for (int h = std::max(Grid::CellStack::BottomHeight,location.height-3); h <= std::min(Grid::CellStack::TopHeight,location.height+3); h++)
+			for (int h = bottom; h <= top; h++)
 			{
 				const auto&cell = seq.GetCellI(h);
 				const auto&upper = seq.GetCellI(h+1);
@@ -86,7 +88,9 @@ namespace Objects
 				}
 			}
 		}
+		CheckPresence(0);
 	}
+
 
 	void Plantation::CheckPresence(float t)
 	{
@@ -123,6 +127,41 @@ namespace Objects
 		}
 		return rs;
 	}
+	#endif
+
+	/*virtual override*/ void Plantation::Pack(D::IWriteStream&s,Packable::Target target) const
+	{
+		if (target != Packable::Target::Hostile)
+		{
+			s.WriteSize(crystalPresence);
+			s.WriteSize(treePresence);
+		}
+		else
+		{
+			s.WriteSize(0);
+			s.WriteSize(0);
+		}
+		s.WriteFlagSet8(plantTrees,plantCrystals);
+	}
+
+	/*virtual override*/ void Plantation::Unpack(D::IReadStream&s)
+	{
+		s.ReadSize(crystalPresence);
+		s.ReadSize(treePresence);
+		s.ReadFlagSet8(plantTrees,plantCrystals);
+	}
+
+
+	/*virtual override*/ void Plantation::ToSavegame(D::IWriteStream&s) const
+	{
+		s.WriteFlagSet8(plantTrees,plantCrystals);
+	}
+
+	/*virtual override*/ void Plantation::FromSavegame(D::IReadStream&s)
+	{
+		s.ReadFlagSet8(plantTrees,plantCrystals);
+	}
+
 
 
 	#ifdef HAS_WINDOW

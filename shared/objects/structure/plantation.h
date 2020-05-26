@@ -1,5 +1,6 @@
 #pragma once
 #include "storageStructures.h"
+#include <objects/packable.h>
 
 namespace Objects
 {
@@ -8,7 +9,7 @@ namespace Objects
 	/**
 	Grows, harvests, or removes trees/crystals
 	*/
-	class Plantation : public StorageStructure<Plantation,3>
+	class Plantation : public StorageStructure<Plantation,3>, public Objects::Packable
 	{
 	private:
 		typedef StorageStructure<Plantation,3>			Super;
@@ -61,7 +62,9 @@ namespace Objects
 		{
 			static HashSet<UINT32> visited;
 			Grid::high.GetExtendedNeighborhood(Grid::ToHigh(location).stackID,5,plantStackIDs, visited);
-			CheckPresence(atTime);
+			#ifndef CLIENT
+				CheckPresence(atTime);
+			#endif
 		}
 
 		#ifndef CLIENT
@@ -113,9 +116,17 @@ namespace Objects
 			return Super::SignalEnvironmentChange(neighborhood,atTime);
 		}
 		virtual Category			GetCategory() const override {return Category::Resources;}
+
+		virtual void Pack(D::IWriteStream&s,Packable::Target target) const override;
+		virtual void Unpack(D::IReadStream&s) override;
+		virtual void ToSavegame(D::IWriteStream&s) const override;
+		virtual void FromSavegame(D::IReadStream&s) override;
+
 	private:
-		UINT32						GetPresence(Grid::Content) const;
-		void						CheckPresence(float t);
+		#ifndef CLIENT
+			UINT32					GetPresence(Grid::Content) const;
+			void					CheckPresence(float t);
+		#endif
 	};
 
 
