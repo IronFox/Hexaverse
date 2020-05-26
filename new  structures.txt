@@ -1,0 +1,13 @@
+Steps to create new structures:
+
+1) Create structure definition module in shared space.
+Defines name, basic properties server behavior.
+To preserve custom data, inherit class Objects::Packable
+
+2) Create geometry (obj, mtl) in sub folder client\objects of name [object name in camelCase].obj
+3) Link geometry loading in client\components\visual\scene\objectComponent.cpp:StructureHull::LoadAll()
+4) Define object static commands (typically [object class]::commands) via client\components\visual\commandDefinitions.cpp:DefineAll()
+	For automated working structures this can be as simple as calling DefineWorkingStructure([object class]::commands);
+5) Register prototype(s) in shared\objects\prototypes.cpp:Objects::Prototypes::RegisterAll()
+6) Add new structure entry in lua\attributesAndResearch.lua:StructureConfig of [type name in PascalCase]=... (often DefaultStructure([mineral price to build]))
+7) If not immediately constructible, add entry MakeUnlockResearchable([group], [depencency], StructureConfig, '[type name in PascalCase]', [research cost]);
