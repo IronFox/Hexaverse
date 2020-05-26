@@ -151,6 +151,21 @@ namespace Objects
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_UraniumStorage;}
 	};
+	
+	
+	class CrystalStorage : public StorageStructure<CrystalStorage>
+	{
+		typedef StorageStructure<CrystalStorage>	Super;
+		friend class Super;
+		friend class WorkingStructureT<CrystalStorage>;
+		/**/						CrystalStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::CrystallineCompounds, MaxStorage);}
+		/**/						CrystalStorage()	{maxStorage.Set(Resource::CrystallineCompounds, MaxStorage);}	//global prototype
+	public:
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return "Crystal Storage"; };
+		virtual EntityType			GetType() const override {return ConstName::Type_CrystalStorage;}
+	};
 
 	
 	class MunitionStorage : public StorageStructure<MunitionStorage>

@@ -114,6 +114,7 @@ namespace Objects
 				<< Laboratory::globalPrototype
 				<< Connector::globalPrototype
 				<< FuelContainer::globalPrototype
+				<< CrystalStorage::globalPrototype
 				<< MineralContainer::globalPrototype
 				<< MunitionStorage::globalPrototype //DO NOT COMMENT. Nexus bases feature these
 				<< UraniumStorage::globalPrototype

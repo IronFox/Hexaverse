@@ -72,6 +72,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_Ragnarok,
 	Type_StarPort,
 	Type_Plantation,
+	Type_CrystalStorage,
 
 
 	NumTypes,
