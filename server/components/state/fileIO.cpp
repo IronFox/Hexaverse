@@ -328,7 +328,7 @@ namespace FileIO
 								factionWorldCounterChunk("WCCK"),
 								gamePhase("GAMP"),
 								worldConfig("WCFG"),
-								//worldContentTypeCount("WCTC"),	//deprecated. do not reuse name
+								snowHeight("SNWH"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
 								factionFlags("FFLG"),
@@ -1381,9 +1381,11 @@ namespace FileIO
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+FileSystem::PathToString(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 		bool nexusFound = false, worldInfoFound = false;
-		const Objects::Resource::Table*foreignTable = &Objects::Resource::minimal;
+		Objects::Resource::Table loadedTable;
+		const Objects::Resource::Table*foreignTable = nullptr;
+		Objects::Resource::Table importedTable;
 
-		Objects::Resource::table = Objects::Resource::local;
+		Objects::Resource::table = Objects::Resource::CompileLocalTable();
 
 		
 		try
@@ -1578,12 +1580,12 @@ namespace FileIO
 											{
 												try
 												{
-													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),Objects::Resource::table);
-													if (Objects::Resource::local == Objects::Resource::table)
+													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),loadedTable);
+													if (loadedTable == Objects::Resource::table)
 														foreignTable = nullptr;
 													else
 													{
-														foreignTable = &Objects::Resource::table;
+														foreignTable = &loadedTable;
 														LogEvent(EventSignificance::Important,"Loading file of different resource table. Some resources may be lost, others set to 0");
 													}
 												}
@@ -1599,11 +1601,10 @@ namespace FileIO
 										}
 
 
-										//Grid::TSharedPlanetConfig persistentPlanetInfo;
 										GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+										GetOptionalPOD(list,RID::snowHeight,Grid::currentPlanetConfig.snowHeight,5);
+
 										Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
-
-
 									}
 								break;
 								case ChunkName::ObjectGroup:
@@ -2060,6 +2061,7 @@ namespace FileIO
 		general->AppendBlock(RID::worldID)->SetPODData(World::worldID);
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+		general->AppendBlock(RID::snowHeight)->SetPODData(Grid::currentPlanetConfig.snowHeight);
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
 		general->AppendBlock(RID::mostAlliancesAlive)->SetPODData(Game::mostAlliancesAlive);
 		
