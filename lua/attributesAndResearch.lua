@@ -572,6 +572,7 @@ StructureConfig =
 	MineralContainer = DefaultStructure(10),
 	UraniumStorage = DefaultStructure(10),
 	CrystalStorage = DefaultStructure(10),
+	OrganicStorage = DefaultStructure(10),
 	MunitionStorage = DefaultStructure(10),
 	NexusPort = ExplicitStructure(0,1,2,false),
 	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),

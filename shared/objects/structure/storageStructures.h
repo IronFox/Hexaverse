@@ -167,6 +167,19 @@ namespace Objects
 		virtual EntityType			GetType() const override {return ConstName::Type_CrystalStorage;}
 	};
 
+	class OrganicStorage : public StorageStructure<OrganicStorage>
+	{
+		typedef StorageStructure<OrganicStorage>	Super;
+		friend class Super;
+		friend class WorkingStructureT<OrganicStorage>;
+		/**/						OrganicStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::OrganicCompounds, MaxStorage);}
+		/**/						OrganicStorage()	{maxStorage.Set(Resource::OrganicCompounds, MaxStorage);}	//global prototype
+	public:
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return "Organic Storage"; };
+		virtual EntityType			GetType() const override {return ConstName::Type_OrganicStorage;}
+	};
 	
 	class MunitionStorage : public StorageStructure<MunitionStorage>
 	{

@@ -1403,6 +1403,7 @@ namespace Objects
 			DefinePlantation(Objects::Plantation::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
 			DefineWorkingStructure(Objects::CrystalStorage::commands);
+			DefineWorkingStructure(Objects::OrganicStorage::commands);
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);

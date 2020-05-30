@@ -220,6 +220,7 @@ namespace Objects
 		LoadFor<Objects::NexusPort>();
 		LoadFor<Objects::Plantation>();
 		LoadFor<Objects::CrystalStorage>();
+		LoadFor<Objects::OrganicStorage>();
 
 		LoadFor("tower",1.f,Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
 		foreach (Objects::Tower::globalPrototypes,p)
