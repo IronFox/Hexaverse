@@ -38,11 +38,8 @@ namespace Objects
 
 		static const int			HarvestToCompoundFactor = 2;
 
-		#ifndef ONE_COMPOUND_PER_FACTION
-			static const int		CompoundStorage = 10;
-		#else
-			static const int		CompoundStorage = 0;
-		#endif
+
+		static const int			CompoundStorage = 5;
 
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
