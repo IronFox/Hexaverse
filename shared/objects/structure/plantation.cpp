@@ -13,7 +13,6 @@ namespace Objects
 	#ifndef CLIENT
 	/*virtual override*/ void				Plantation::Tick(Resource::Vector&v)
 	{
-		Super::Tick(v);	//get resource vector first, then change landscape
 
 		auto seq = World::actual.BeginChangeSequence(entityTime);
 
@@ -88,45 +87,16 @@ namespace Objects
 				}
 			}
 		}
-		CheckPresence(0);
+		treePresence = treesHarvested;
+		crystalPresence = crystalsHarvested;
+		Super::Tick(v);
+		v.Add(Resource::CrystallineCompounds, crystalPresence * HarvestToCompoundFactor);
+		v.Add(Resource::OrganicCompounds, treePresence * HarvestToCompoundFactor);
+		float t = 0;
+		SignalChangeByExternalCause(WorldEntity::ResourceAvailabilityChanged,t);
 	}
 
 
-	void Plantation::CheckPresence(float t)
-	{
-		int d2 = GetPresence(Grid::Content::CrystalForest);
-		int t2 = GetPresence(Grid::Content::Forest);
-		if (d2 != crystalPresence || t2 != treePresence)
-		{
-			crystalPresence = d2;
-			treePresence = t2;
-			SignalChangeByExternalCause(WorldEntity::ResourceAvailabilityChanged,t);
-		}
-	}
-
-	UINT32 Plantation::GetPresence(Grid::Content type) const
-	{
-		UINT32 rs = 0;
-		foreach (plantStackIDs, c)
-		{
-			for (int h = std::max(Grid::CellStack::BottomHeight,location.height-3); h <= std::min(Grid::CellStack::TopHeight,location.height+3); h++)
-			{
-				const auto&cell = World::actual.GetCell(Grid::HCellIdI(*c,h));
-				const auto&upper = World::actual.GetCell(Grid::HCellIdI(*c,h+1));
-				if (upper.content != Grid::Content::Clear)
-					continue;
-				if (upper.structureCounter > 0)
-					continue;
-				if (cell.content == type)
-				{
-					rs ++;
-					if (rs >= MaxHarvestPerRound)
-						return MaxHarvestPerRound;
-				}
-			}
-		}
-		return rs;
-	}
 	#endif
 
 	/*virtual override*/ void Plantation::Pack(D::IWriteStream&s,Packable::Target target) const

@@ -62,9 +62,6 @@ namespace Objects
 		{
 			static HashSet<UINT32> visited;
 			Grid::high.GetExtendedNeighborhood(Grid::ToHigh(location).stackID,5,plantStackIDs, visited);
-			#ifndef CLIENT
-				CheckPresence(atTime);
-			#endif
 		}
 
 		#ifndef CLIENT
@@ -92,9 +89,11 @@ namespace Objects
 
 		virtual void				GetResourceVector(Resource::Vector&v,  Resource::Vector&storageCurrent, Resource::Vector&storageMax) const override
 		{
-			Super::GetResourceVector(v,storageCurrent,storageMax); 
-			v.Add(Resource::CrystallineCompounds, crystalPresence * HarvestToCompoundFactor);
-			v.Add(Resource::OrganicCompounds, treePresence * HarvestToCompoundFactor);
+			Super::GetResourceVector(v,storageCurrent,storageMax);
+			#ifdef CLIENT //set zero output on server because unpredictable
+				v.Add(Resource::CrystallineCompounds, crystalPresence * HarvestToCompoundFactor);
+				v.Add(Resource::OrganicCompounds, treePresence * HarvestToCompoundFactor);
+			#endif
 			v.Add(Resource::Energy, -EnergyConsumption);
 		}
 
@@ -110,9 +109,6 @@ namespace Objects
 
 		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
 		{
-			#ifndef CLIENT
-				CheckPresence(atTime);
-			#endif
 			return Super::SignalEnvironmentChange(neighborhood,atTime);
 		}
 		virtual Category			GetCategory() const override {return Category::Resources;}
@@ -123,10 +119,6 @@ namespace Objects
 		virtual void FromSavegame(D::IReadStream&s) override;
 
 	private:
-		#ifndef CLIENT
-			UINT32					GetPresence(Grid::Content) const;
-			void					CheckPresence(float t);
-		#endif
 	};
 
 
