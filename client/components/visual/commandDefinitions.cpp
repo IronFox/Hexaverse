@@ -12,6 +12,7 @@
 #include <objects/faction.h>
 #include <objects/structure/tower.h>
 #include <objects/structure/plantation.h>
+#include <objects/structure/resourceConverters.h>
 #include "../clientRuntimeConfig.h"
 #include "../network.h"
 #include "hud/dialog.h"
@@ -1410,6 +1411,8 @@ namespace Objects
 			DefineWorkingStructure(Objects::Generator::commands);
 			DefineWorkingStructure(Objects::ReactorCore::commands);
 			DefineWorkingStructure(Objects::NexusPort::commands);
+			DefineWorkingStructure(Objects::OrganicCompoundFactory::commands);
+			DefineWorkingStructure(Objects::CrystallineCompoundFactory::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
 			DefineHangar();
 
