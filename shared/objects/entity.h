@@ -82,6 +82,9 @@ namespace Objects
 			id = TUniqueID::Empty();
 		}
 	public:
+
+		virtual						~BaseEntity() {};
+
 		/**
 		Cell location of the local entity. Structures may be destroyed, but they do not move. Vehicles may move.
 		Some entity types may not use this variable (so far all do, even markers)
@@ -606,6 +609,10 @@ namespace Objects
 		#else
 			virtual void			SignalTerrainChange(float atTime);
 
+			/**
+			Executes a type-specific trigger
+			*/
+			virtual void			HandleTrigger(UINT16 triggerIndex) {};
 
 			bool					HandleEMPDamage(const int newDamage, float&atTime)
 			{

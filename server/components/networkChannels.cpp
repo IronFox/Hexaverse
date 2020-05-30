@@ -418,6 +418,8 @@ namespace Channels
 
 	DECLARE_FACTION_CHANNEL(ScriptedAIState);
 
+	DECLARE_FACTION_CHANNEL(EntityTrigger);
+
 	namespace Statistics
 	{
 		TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>			round;
@@ -526,7 +528,7 @@ namespace Receiver
 		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
-			Game::Network::Describe(st,*s,timestamp,Game::Network::ExposeAll);
+			Game::Network::Describe(st,*s,timestamp,Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 			Channels::createStructure.SendTo(peer,st);
 		});
 
@@ -595,15 +597,15 @@ namespace Receiver
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
 
-	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer,const Protocol::Timestamp&timestamp, Game::Network::Expose expose)
+	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer,const Protocol::Timestamp&timestamp, Game::Network::Expose expose, Objects::Packable::Target target)
 	{
-		f->VisitMyStructures([expose,timestamp,&peer](const Objects::PStructure&s)
+		f->VisitMyStructures([expose,timestamp,&peer,target](const Objects::PStructure&s)
 		{
 			ASSERT__(s);
 			if (s)
 			{
 				Protocol::StructureConstruction st;
-				Game::Network::Describe(st,*s,timestamp,expose);
+				Game::Network::Describe(st,*s,timestamp,expose, target);
 				Channels::createStructure.SendTo(peer,st);
 			}
 		});
@@ -1050,7 +1052,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,timestamp,Game::Network::GetExposition(s->owner,client->faction));
+					Game::Network::Describe(st,*s,timestamp,Game::Network::GetExposition(s->owner,client->faction),Game::Network::GetTarget(s->owner,client->faction));
 					Channels::createStructure.SendTo(peer,st);
 				}
 				else
@@ -1068,7 +1070,7 @@ namespace Receiver
 				}
 			});
 
-			SendEntitiesTo(client->faction,peer,timestamp, Game::Network::ExposeAll);
+			SendEntitiesTo(client->faction,peer,timestamp, Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 		}
 
 
@@ -1364,6 +1366,15 @@ namespace Receiver
 		Game::tutorialAt = at;
 	}
 
+	void	EntityTrigger(Protocol::EntityTrigger&t, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: EntityTrigger (#"+String(t.triggerIndex)+") entity "+ToString(t.entityID));
+
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(t.entityID,peer);
+		if (!e)
+			return;
+		Journal::currentRound.Register(true,e->owner,new Journal::Round::EntityTrigger(t.entityID, t.triggerIndex));
+	}
 	
 	void	ChangeMyName(Protocol::ClientName&name, TCP::Peer&peer)
 	{

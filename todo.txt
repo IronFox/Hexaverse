@@ -44,10 +44,9 @@ steam release:
 	store: Short Description, Why Early Access?
 
 should have (eventually):
-	icon floater for insufficient resources to continue job
 	base fog on average terrain height
 	setting for fog density
-	scriptable AI and regression testing (they are related)
+	regression testing via script
 	build high wall or build wall up destroys catformer. there are probably other operations that do the same
 	
 nice to have:
