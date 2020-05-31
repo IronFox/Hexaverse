@@ -109,6 +109,7 @@ namespace Objects
 				<< Plantation::globalPrototype
 				<< OrganicCompoundFactory::globalPrototype
 				<< CrystallineCompoundFactory::globalPrototype
+				<< CompositeMaterialFactory::globalPrototype
 				<< Generator::globalPrototype
 				<< ReactorCore::globalPrototype
 				<< MunitionFactory::globalPrototype

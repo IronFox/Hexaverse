@@ -225,6 +225,7 @@ namespace Objects
 		LoadFor<Objects::CompositeMaterialStorage>();
 		LoadFor<Objects::OrganicCompoundFactory>();
 		LoadFor<Objects::CrystallineCompoundFactory>();
+		LoadFor<Objects::CompositeMaterialFactory>();
 
 		LoadFor("tower",1.f,Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
 		foreach (Objects::Tower::globalPrototypes,p)

@@ -40,7 +40,7 @@ namespace Objects
 			virtual void		Tick(Resource::Vector&v) override;
 		#endif
 		virtual void			GetResourceVector(Resource::Vector&balance, Resource::Vector&storageCurrent, Resource::Vector&storageMax) const override;
-		virtual Category		GetCategory() const override {return Category::Resources;}
+		virtual Category		GetCategory() const override {return Category::Factories;}
 	};
 
 
@@ -80,7 +80,46 @@ namespace Objects
 			virtual void		Tick(Resource::Vector&v) override;
 		#endif
 		virtual void			GetResourceVector(Resource::Vector&balance, Resource::Vector&storageCurrent, Resource::Vector&storageMax) const override;
-		virtual Category		GetCategory() const override {return Category::Resources;}
+		virtual Category		GetCategory() const override {return Category::Factories;}
+	};
+	
+	class CompositeMaterialFactory : public WorkingStructureT<CompositeMaterialFactory>
+	{
+	private:
+		typedef WorkingStructureT<CompositeMaterialFactory>			Super;
+
+		friend class WorkingStructureT<CompositeMaterialFactory>;
+
+		/**/						CompositeMaterialFactory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+									: Super(table,owner,location,atTime)
+		{}
+		/**/						CompositeMaterialFactory()
+		{}	//global prototype
+		
+	public:
+
+		static const int		EnergyDemand = 10,
+								OrganicDemand = 10,
+								CrystallineDemand = 10,
+								CompositeOutput = 10
+								;
+
+
+		//BaseEntity:
+		virtual String			GetTypeName() const override { return "Composite Material Factory"; };
+		virtual EntityType		GetType() const override {return ConstName::Type_CompositeMaterialFactory;}
+
+
+		//WorkingStructure:
+		#ifdef HAS_WINDOW
+			virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+		#endif
+
+		#ifndef CLIENT
+			virtual void		Tick(Resource::Vector&v) override;
+		#endif
+		virtual void			GetResourceVector(Resource::Vector&balance, Resource::Vector&storageCurrent, Resource::Vector&storageMax) const override;
+		virtual Category		GetCategory() const override {return Category::Factories;}
 	};
 }
 

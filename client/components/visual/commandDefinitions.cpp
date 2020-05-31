@@ -1414,6 +1414,7 @@ namespace Objects
 			DefineWorkingStructure(Objects::NexusPort::commands);
 			DefineWorkingStructure(Objects::OrganicCompoundFactory::commands);
 			DefineWorkingStructure(Objects::CrystallineCompoundFactory::commands);
+			DefineWorkingStructure(Objects::CompositeMaterialFactory::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
 			DefineHangar();
 

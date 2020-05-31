@@ -10,9 +10,9 @@ namespace Objects
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
-			label << "Enabled organic compound factories convert "+Resource::Fuel.GetTagStr()+" and "+Resource::CrystallineCompounds.GetTagStr()+" to " +
+			label << "Organic compound factories convert "+Resource::Fuel.GetTagStr()+" and "+Resource::CrystallineCompounds.GetTagStr()+" to " +
 				Resource::OrganicCompounds.GetTagStr()+"."
-			" Organic compound factories, like many structures, require "+Resource::Energy.GetTagStr()+" from generators to operate."
+			" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
 			;
 		}
 	#endif
@@ -54,9 +54,9 @@ namespace Objects
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
 			label.MarkBriefEnd();
-			label << "Enabled crystalline compound factories convert "+Resource::Minerals.GetTagStr()+" and "+Resource::OrganicCompounds.GetTagStr()+" to " +
+			label << "Crystalline compound factories convert "+Resource::Minerals.GetTagStr()+" and "+Resource::OrganicCompounds.GetTagStr()+" to " +
 				Resource::CrystallineCompounds.GetTagStr()+"."
-			" Crystalline compound factories, like many structures, require "+Resource::Energy.GetTagStr()+" from generators to operate."
+			" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
 			;
 		}
 	#endif
@@ -78,6 +78,44 @@ namespace Objects
 		balance.Add(Objects::Resource::Minerals,-MineralDemand);
 		balance.Add(Objects::Resource::CrystallineCompounds,CrystallineOutput);
 	}
+
+
+
+	
+
+	
+
+	#ifdef HAS_WINDOW
+		/*virtual override*/ void		CompositeMaterialFactory::DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner)
+		{
+			label.BeginBrief();
+			Super::DescribeType(label,  descFlags, owner);
+			label.MarkBriefEnd();
+			label << "Composite material factories convert "+Resource::CrystallineCompounds.GetTagStr()+" and "+Resource::OrganicCompounds.GetTagStr()+" to " +
+				Resource::CompositeMaterials.GetTagStr()+"."
+			" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
+			;
+		}
+	#endif
+
+	#ifndef CLIENT
+		/*virtual override*/ void		CompositeMaterialFactory::Tick(Resource::Vector&v)
+		{
+			v.Add(Objects::Resource::Energy,-EnergyDemand);
+			v.Add(Objects::Resource::OrganicCompounds,-OrganicDemand);
+			v.Add(Objects::Resource::CrystallineCompounds,-CrystallineDemand);
+			v.Add(Objects::Resource::CompositeMaterials,CompositeOutput);
+		}
+	#endif
+
+	/*virtual override*/  void		CompositeMaterialFactory::GetResourceVector(Resource::Vector&v, Resource::Vector&storageCurrent, Resource::Vector&storageMax) const
+	{
+		v.Add(Objects::Resource::Energy,-EnergyDemand);
+		v.Add(Objects::Resource::OrganicCompounds,-OrganicDemand);
+		v.Add(Objects::Resource::CrystallineCompounds,-CrystallineDemand);
+		v.Add(Objects::Resource::CompositeMaterials,CompositeOutput);
+	}
+
 
 
 }

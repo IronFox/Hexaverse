@@ -577,6 +577,7 @@ StructureConfig =
 	MunitionStorage = DefaultStructure(10),
 	OrganicCompoundFactory = DefaultStructure(80),
 	CrystallineCompoundFactory = DefaultStructure(80),
+	CompositeMaterialFactory = DefaultStructure(80),
 	NexusPort = ExplicitStructure(0,1,2,false),
 	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),
 	RocketLauncherTower = Tower(TurretConfig.RocketLauncher),
