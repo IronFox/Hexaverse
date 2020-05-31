@@ -222,6 +222,7 @@ namespace Objects
 		LoadFor<Objects::Plantation>();
 		LoadFor<Objects::CrystalStorage>();
 		LoadFor<Objects::OrganicStorage>();
+		LoadFor<Objects::CompositeMaterialStorage>();
 		LoadFor<Objects::OrganicCompoundFactory>();
 		LoadFor<Objects::CrystallineCompoundFactory>();
 

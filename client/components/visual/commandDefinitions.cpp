@@ -1408,6 +1408,7 @@ namespace Objects
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
+			DefineWorkingStructure(Objects::CompositeMaterialStorage::commands);
 			DefineWorkingStructure(Objects::Generator::commands);
 			DefineWorkingStructure(Objects::ReactorCore::commands);
 			DefineWorkingStructure(Objects::NexusPort::commands);

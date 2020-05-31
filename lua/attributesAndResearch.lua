@@ -573,6 +573,7 @@ StructureConfig =
 	UraniumStorage = DefaultStructure(10),
 	CrystalStorage = DefaultStructure(10),
 	OrganicStorage = DefaultStructure(10),
+	CompositeMaterialStorage = DefaultStructure(10),
 	MunitionStorage = DefaultStructure(10),
 	OrganicCompoundFactory = DefaultStructure(80),
 	CrystallineCompoundFactory = DefaultStructure(80),
