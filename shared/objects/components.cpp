@@ -947,8 +947,6 @@ namespace Objects
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
-
-			component.initiative = 80;
 		}
 
 
@@ -970,8 +968,6 @@ namespace Objects
 			#endif
 
 			component.trajectoryType = TrajectoryType::Missile;
-
-			component.initiative = 70;
 		}
 
 		void			Rockets::Configure(Turret&component)
@@ -1033,7 +1029,6 @@ namespace Objects
 			#endif
 		
 			component.dealsEMPDamage = true;
-			component.initiative = 30;
 			component.ammoType = Resource::Uranium;
 		}
 
@@ -1483,7 +1478,7 @@ namespace Objects
 					if (!isUnlocked.GetValue(st))
 						label <<"Requires more research to unlock";
 					label <<"Cost: "+String(ResourceTag(Resource::Minerals))+productionCosts.Describe(st);
-					label <<"Initiative: "+String(initiative);
+					label <<"Initiative: "+String(initiative.GetValue(st));
 				}
 			}
 

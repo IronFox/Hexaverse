@@ -168,7 +168,7 @@ namespace Objects
 		class Base 
 		{
 		protected:
-			/**/							Base():initiative(100)	{}
+			/**/							Base()	{}
 
 			struct Detail
 			{
@@ -198,7 +198,7 @@ namespace Objects
 			
 			String							typeName,shortName;
 			ConstName						constName;
-			int								initiative;
+			AttributeWithDefault<int,100>	initiative;
 			Research::Attribute<int>		productionCosts /*=1*/;
 			AttributeWithDefault<bool,true>	isUnlocked;
 											

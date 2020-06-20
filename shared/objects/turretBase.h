@@ -86,7 +86,7 @@ namespace Objects
 		int						GetAttacksPerRound() const;
 		int						GetDamagePotentialPerRound() const;
 		int						GetDamagePotentialPerRound(const OwnerParameter&) const;
-		float					GetAttackInitiative() const	{return turret->initiative * GetAttackActionLeft();}
+		float					GetAttackInitiative() const;
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		int						CountPossibleAttacks(const OwnerParameter&owner) const {return GetAttacksPerRound(owner) * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;

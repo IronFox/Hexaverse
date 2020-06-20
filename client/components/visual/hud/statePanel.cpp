@@ -286,7 +286,7 @@ namespace StatePanel
 				}
 			#endif
 			if (m->turret->CanAttack())
-				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative);
+				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative.GetValue(researchState));
 			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound(e.owner);
 			if (m->turret->CanAttack())
 			{
@@ -387,7 +387,7 @@ namespace StatePanel
 			const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
 			if (t)
 			{
-				cachedLines << " Attack Initiative: "+String((int)t->turret->initiative);
+				cachedLines << " Attack Initiative: "+String((int)t->turret->initiative.GetValue(researchState));
 				if (t->turret->CanAttack())
 				{
 					const Objects::Tower*v = t;	//rename

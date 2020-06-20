@@ -193,6 +193,7 @@ namespace Objects
 			InitAttrib(myTable,path,"MovementSpeed",b.movementSpeed);
 			InitAttrib(myTable,path,"CarryingCapacity",b.carryingCapacity);
 			InitAttrib(myTable,path,"Health",b.health);
+			InitAttrib(myTable,path,"Initiative",b.initiative);
 		}
 
 		static void InitTurret(Component::Turret&t)
@@ -228,6 +229,7 @@ namespace Objects
 			InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange, OnAttributeNotFound::Ignore);
 			InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius, OnAttributeNotFound::Ignore);	//can be independent
 			InitAttrib(myTable,path,"DamageLevel",t.damageLevel, OnAttributeNotFound::Ignore);
+			InitAttrib(myTable,path,"Initiative",t.initiative);
 		}
 
 		static void RemapAttributes( PathString filename )

@@ -156,6 +156,11 @@ namespace Objects
 				1.f));
 	}
 
+	/*virtual override*/ float			Vehicle::GetBaseMovementInitiative() const
+	{
+		return base->initiative.GetValue(GetResearchState(owner));
+	}
+
 	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound(const OwnerParameter&owner)	const
 	{
 		return String(GetMovementStepsPerRound(owner));

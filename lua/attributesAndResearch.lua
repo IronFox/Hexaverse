@@ -216,6 +216,7 @@ TurretConfig =
 		ExplosionRadius = 1,
 		HorizontalAttackRange = 7,
 		IsUnlocked = true,
+		Initiative = 70,
 	},
 	RocketLauncher = 
 	{
@@ -281,6 +282,7 @@ TurretConfig =
 		HorizontalAttackRange = 15,
 		AmmoConsumption = 50,
 		IsUnlocked = true,
+		Initiative = 30,
 	},
 	Artillery =
 	{
@@ -293,6 +295,7 @@ TurretConfig =
 		ExplosionRadius = 2,
 		HorizontalAttackRange = 7,
 		IsUnlocked = false,
+		Initiative = 80,
 	},
 	Terraformer =
 	{
@@ -304,6 +307,7 @@ TurretConfig =
 		Op_RemoveTerrain = 10,
 		Op_AddTerrain = 10,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	Mechanic =
 	{
@@ -313,6 +317,7 @@ TurretConfig =
 		ScanningRange = 3,
 		Op_Repair = 20,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 }
 
@@ -328,6 +333,7 @@ VehicleBaseConfig =
 		OperationSpeedMultiplier = 1,
 		TurretRangeModifier = 0,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	HeavyBase = 
 	{
@@ -338,6 +344,7 @@ VehicleBaseConfig =
 		OperationSpeedMultiplier = 2,
 		TurretRangeModifier = 0,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	CatamaranBase = 
 	{
@@ -348,6 +355,7 @@ VehicleBaseConfig =
 		OperationSpeedMultiplier = 2,
 		TurretRangeModifier = 1,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 }
 

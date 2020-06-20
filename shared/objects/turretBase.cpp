@@ -107,6 +107,11 @@ namespace Objects
 	}
 
 
+	float					TurretBase::GetAttackInitiative() const
+	{
+		return turret->initiative.GetValue(ToEntity().GetResearchState()) * GetAttackActionLeft();
+	}
+
 	int						TurretBase::GetAttacksPerRound() const
 	{
 		return turret->GetAttacksPerRound(ToEntity().GetResearchState());

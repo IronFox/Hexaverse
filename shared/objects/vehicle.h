@@ -117,7 +117,7 @@ namespace Objects
 		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const override;
 		using					MobileEntity::GetMovementStepsPerRound;
 		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner) const override;
-		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
+		virtual float			GetBaseMovementInitiative() const override;
 		virtual int				GetMaxClimbingHeight() const override {return base->maxClimbUp;}
 		virtual int				GetMaxFallingHeight() const override {return -base->minClimbDown;}
 		virtual bool			IsAffectedByGravity() const override {return true;}
