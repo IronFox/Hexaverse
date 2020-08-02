@@ -340,6 +340,7 @@ namespace FileIO
 								aiScriptName("AISN"),
 								aiScriptState("AISS"),
 								terrainTypeMap("TTMP"),
+								t2("  T2"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -405,6 +406,31 @@ namespace FileIO
 			return false;
 		}
 
+
+
+	void PackableToChunk(const Objects::Packable&p, Riff::Chunk*parent, const Riff::TID&blockId)
+	{
+		using Serialization::Serialize;
+		SerialSizeScanner scanner;
+		p.ToSavegame(scanner);
+		if (scanner.GetTotalSize())
+		{
+			MemWriteStream writer(parent->AppendBlock(blockId)->SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
+			p.ToSavegame(writer);
+		}
+	}
+
+	void ChunkToPackable(const Riff::Chunk*chunk, Objects::Packable&p)
+	{
+		if (chunk)
+		{
+			MemReadStream reader(chunk->pointer(),chunk->size());
+			p.FromSavegame(reader);
+		}
+	}
+
+
+
 	namespace EntityFlag
 	{
 		enum EntityFlag : UINT8
@@ -437,6 +463,8 @@ namespace FileIO
 		parent->AppendBlock(RID::location)->SetPODData(e.location);
 		if (e.empDamageLevel)
 			parent->AppendBlock(RID::empDamageLevel)->SetPODData(e.empDamageLevel);
+		if (e.t2)
+			PackableToChunk(*e.t2, parent, RID::t2);
 	}
 
 
@@ -490,6 +518,13 @@ namespace FileIO
 
 		GetOptionalPOD(parent,RID::empDamageLevel,e.empDamageLevel,0);
 
+
+		Riff::Chunk*t2 = parent->FindFirst(RID::t2);
+		if (t2)
+		{
+			e.t2.reset(new Objects::T2::Properties());
+			ChunkToPackable(t2,*e.t2);
+		}
 
 		//e.SetupSystem();
 	}
@@ -851,6 +886,7 @@ namespace FileIO
 	};
 
 
+
 	void	Deserialize(IReadStream&s, MobileEntityFlag&v)
 	{
 		s.ReadPrimitive((UINT16&)v);
@@ -1082,16 +1118,7 @@ namespace FileIO
 
 		const Objects::Packable*p = dynamic_cast<const Objects::Packable*>(&s);
 		if (p)
-		{
-			using Serialization::Serialize;
-			SerialSizeScanner scanner;
-			p->ToSavegame(scanner);
-			if (scanner.GetTotalSize())
-			{
-				MemWriteStream writer(parent->AppendBlock(RID::packableData)->SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
-				p->ToSavegame(writer);
-			}
-		}
+			PackableToChunk(*p,parent,RID::packableData);
 		
 	}
 
@@ -1198,14 +1225,7 @@ namespace FileIO
 
 		Objects::Packable*p = dynamic_cast<Objects::Packable*>(rs.get());
 		if (p)
-		{
-			Riff::Chunk*chk = parent->FindFirst(RID::packableData);
-			if (chk)
-			{
-				MemReadStream reader(chk->pointer(),chk->size());
-				p->FromSavegame(reader);
-			}
-		}
+			ChunkToPackable(parent->FindFirst(RID::packableData),*p);
 
 
 		return rs;
@@ -1875,6 +1895,8 @@ namespace FileIO
 			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&w)
 			{
 				w->ResetAllChange();
+				if (w->t2)
+					Objects::Research::Recompute(*w->t2);
 			});
 
 

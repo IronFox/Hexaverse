@@ -772,6 +772,7 @@ namespace Lua
 		The result may be empty if the specified field was not found
 		*/
 		NamedReference	GetField(const String&name)	const;
+		NamedReference	GetField(const char*name)	const;
 		/**
 		Fetches a reference for the specified index (usually in the range [1,GetLength()]).
 		The result may be empty if the specified index was not found

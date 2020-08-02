@@ -9,6 +9,7 @@
 #include "../runtimeConfig.h"
 #include "structure/tower.h"
 #include "pathfinding.h"
+#include "t2.h"
 
 
 namespace Objects
@@ -78,11 +79,11 @@ namespace Objects
 	}
 
 
-	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadius(const OwnerParameter&owner) const
+	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadius(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return turret->explosionRadius.GetValue(GetResearchState(owner));
+		return t2.Apply(turret->explosionRadius.GetValue(GetResearchState(owner)));
 	}
 
 
@@ -91,7 +92,7 @@ namespace Objects
 		if (turret->detectsResources)
 		{
 			const auto center = GetScanningCenter(loc);
-			float range = GetScanningRange(owner);
+			float range = GetScanningRange(owner, t2 ? t2->horizontalAttackRange : T2::TModifier());
 
 			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
 			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
@@ -101,14 +102,14 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float		MobileEntity::GetScanningRange( const OwnerParameter&owner ) const
+	/*virtual override*/ float		MobileEntity::GetScanningRange( const OwnerParameter&owner, const T2::TModifier&m ) const
 	{
-		return EMPModify(turret->scanningRange.GetValue(GetResearchState(owner)),2);
+		return EMPModify(m.Apply(turret->scanningRange.GetValue(GetResearchState(owner))),2);
 	}
 
-	/*virtual override*/ String		MobileEntity::DescribeScanningRange(const OwnerParameter&owner) const
+	/*virtual override*/ String		MobileEntity::DescribeScanningRange(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
-		return turret->scanningRange.Describe(GetResearchState(owner));
+		return turret->scanningRange.Describe(GetResearchState(owner)) + m.Describe();
 	}
 
 

@@ -75,7 +75,7 @@ namespace Objects
 
 			UINT64					operator[](Metric metric) const;
 			void					Inc(Metric);
-			void					Add(Metric, int delta);
+			void					Add(Metric, count_t delta);
 			void					Set(Metric, count_t value);
 
 			bool					operator==(const Self&other) const;
@@ -137,10 +137,10 @@ namespace Objects
 		/**/			Statistics(const Faction*owner);
 
 		#ifndef CLIENT
-			void		SignalDamageReceivedFrom(const PFaction&source, int level);
-			void		SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level);
-			void		SignalEMPDamageReceivedFrom(const PFaction&source, int level);
-			void		SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level);
+			void		SignalDamageReceivedFrom(const PWorldEntity&dealtTo, const PFaction&source, UINT32 level);
+			void		SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, UINT32 level);
+			void		SignalEMPDamageReceivedFrom(const PWorldEntity&dealtTo, const PFaction&source, UINT32 level);
+			void		SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, UINT32 level);
 			void		SignalDestructionOfHostile(const PWorldEntity&causedBy, const PWorldEntity&);
 			void		SignalLossOf(const PWorldEntity&, const PFaction&causedBy, bool stolen);
 			void		SignalUnitAcquired(const PWorldEntity&, const PFaction&previousOwner);

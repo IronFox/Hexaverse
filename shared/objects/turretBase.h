@@ -82,19 +82,19 @@ namespace Objects
 
 		virtual float			GetAttackActionLeft() const=0;
 
-		int						GetAttacksPerRound(const OwnerParameter&) const;
+		int						GetAttacksPerRound(const OwnerParameter&, const T2::TModifier&p) const;
 		int						GetAttacksPerRound() const;
 		int						GetDamagePotentialPerRound() const;
-		int						GetDamagePotentialPerRound(const OwnerParameter&) const;
+		int						GetDamagePotentialPerRound(const OwnerParameter&, const T2::PConstProperties&p) const;
 		float					GetAttackInitiative() const;
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
-		int						CountPossibleAttacks(const OwnerParameter&owner) const {return GetAttacksPerRound(owner) * GetAttackActionLeft();}
+		int						CountPossibleAttacks(const OwnerParameter&owner, const T2::TModifier&p) const {return GetAttacksPerRound(owner,p) * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
-		virtual float			GetFlatAttackRange(const OwnerParameter&) const = 0;
+		virtual float			GetFlatAttackRange(const OwnerParameter&, const T2::TModifier&p) const = 0;
 		float					GetFlatAttackRange() const;
-		virtual float			GetAttackExplosionRadius(const OwnerParameter&) const = 0;
+		virtual float			GetAttackExplosionRadius(const OwnerParameter&, const T2::TModifier&p) const = 0;
 		float					GetAttackExplosionRadius() const;
-		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const = 0;
+		virtual String			DescribeFlatAttackRange(const OwnerParameter&, const T2::TModifier&p) const = 0;
 		String					DescribeFlatAttackRange() const;
 		virtual WorldEntity&	ToEntity() = 0;
 		virtual const WorldEntity&	ToEntity() const = 0;

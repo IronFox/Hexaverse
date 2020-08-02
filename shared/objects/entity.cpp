@@ -2,6 +2,7 @@
 #include "entity.h"
 #include "turretBase.h"
 #include "../grid/worldData.h"
+#include "t2.h"
 
 #include "../runtimeConfig.h"
 
@@ -299,10 +300,18 @@ namespace Objects
 		return StaticEMPModify(raw,min,empDamageLevel);
 	}
 
-	/*virtual*/ float		WorldEntity::GetScanningRange(const OwnerParameter&owner) const
+	/*virtual*/ float		WorldEntity::GetScanningRange(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
-		return EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState(owner)),2);
+		float r = EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState(owner)),2);
+		r = t2.Apply(r);
+		return r;
 	}
+
+	float					WorldEntity::GetScanningRange() const
+	{
+		return GetScanningRange(owner,t2 ? t2->scanningRange : T2::TModifier());
+	}
+
 
 	/*virtual*/ float3		WorldEntity::GetScanningCenter(const Grid::LCellIdI&loc) const
 	{
@@ -320,14 +329,30 @@ namespace Objects
 		return GetTable()->constructionCost.GetValue(state);
 	}
 
-	/*virtual*/ int			WorldEntity::GetMaxHealth(const OwnerParameter&owner) const
+	int						WorldEntity::GetMaxHealth() const
 	{
-		return std::max(1,GetTable()->maxHealth.GetValue(GetResearchState(owner)));
+		return GetMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
 	}
 
-	/*virtual*/ String		WorldEntity::DescribeMaxHealth(const OwnerParameter&owner) const
+	String					WorldEntity::DescribeMaxHealth() const
 	{
-		return GetTable()->maxHealth.Describe(GetResearchState(owner));
+		return DescribeMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
+	}
+
+
+	/*virtual*/ int			WorldEntity::GetMaxHealth(const OwnerParameter&owner, const T2::TModifier&t2) const
+	{
+		int h = std::max(1,GetTable()->maxHealth.GetValue(GetResearchState(owner)));
+		h = t2.Apply(h);
+		return h;
+	}
+
+
+	/*virtual*/ String		WorldEntity::DescribeMaxHealth(const OwnerParameter&owner, const T2::TModifier&t2) const
+	{
+		String rs = GetTable()->maxHealth.Describe(GetResearchState(owner));
+		rs += t2.Describe();
+		return rs;
 	}
 
 
@@ -342,10 +367,18 @@ namespace Objects
 	}
 
 
-	/*virtual*/ String		WorldEntity::DescribeScanningRange(const OwnerParameter&owner) const
+	/*virtual*/ String		WorldEntity::DescribeScanningRange(const OwnerParameter&owner, const T2::TModifier&t2 ) const
 	{
-		return GetTable()->maxScanningRange.Describe(GetResearchState(owner));
+		String rs = GetTable()->maxScanningRange.Describe(GetResearchState(owner));
+		rs += t2.Describe();
+		return rs;
 	}
+
+	String					WorldEntity::DescribeScanningRange() const
+	{
+		return DescribeScanningRange(owner,t2 ? t2->scanningRange : T2::TModifier());
+	}
+
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
 	//{

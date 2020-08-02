@@ -97,13 +97,13 @@ namespace Objects
 		#endif
 		virtual bool			IsUnlockedAtState(const Research::Attributes::Table&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual bool			CanBeUnlocked() const {return base->isUnlocked.IsFunctionOrConstNonZero() && turret->isUnlocked.IsFunctionOrConstNonZero();}
-		virtual int				GetMaxHealth(const OwnerParameter&) const override;
+		virtual int				GetMaxHealth(const OwnerParameter&, const T2::TModifier&) const override;
 		using					WorldEntity::GetMaxHealth;
-		virtual String			DescribeMaxHealth(const OwnerParameter&) const override;
+		virtual String			DescribeMaxHealth(const OwnerParameter&, const T2::TModifier&) const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return std::make_shared<Vehicle>(owner,location,base,turret);};
-		virtual float			GetScanningRange(const OwnerParameter&) const override;
+		virtual float			GetScanningRange(const OwnerParameter&, const T2::TModifier&m) const override;
 		using					WorldEntity::GetScanningRange;
-		virtual String			DescribeScanningRange(const OwnerParameter&) const override;
+		virtual String			DescribeScanningRange(const OwnerParameter&, const T2::TModifier&m) const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
 		virtual bool			IsVehicle() const override {return true;}
@@ -130,8 +130,8 @@ namespace Objects
 
 
 		//TurretBase overrides:
-		virtual float			GetFlatAttackRange(const OwnerParameter&) const override;
-		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const override;
+		virtual float			GetFlatAttackRange(const OwnerParameter&, const T2::TModifier&) const override;
+		virtual String			DescribeFlatAttackRange(const OwnerParameter&, const T2::TModifier&) const override;
 		virtual float			GetZOffset() const override {return base->height;}
 		virtual int				GetOperationSpeed(Component::Operation, const OwnerParameter&) const override;
 		virtual int				GetOperationAccelerationExponent(Component::Operation) const override;

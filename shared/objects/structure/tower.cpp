@@ -3,6 +3,7 @@
 #include "../structureCompound.h"
 #include "../gridAndChoices.h"
 #include "../faction.h"
+#include "../t2.h"
 
 namespace Objects
 {
@@ -330,11 +331,11 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float			Tower::GetAttackExplosionRadius(const OwnerParameter&owner) const
+	/*virtual override*/ float			Tower::GetAttackExplosionRadius(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return turret->explosionRadius.GetValue(GetResearchState(owner));
+		return  t2.Apply(turret->explosionRadius.GetValue(GetResearchState(owner)));
 	}
 
 	/*virtual override*/ int			Tower::GetOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
@@ -348,21 +349,21 @@ namespace Objects
 	}
 	
 
-	/*virtual override*/ float			Tower::GetFlatAttackRange(const OwnerParameter&owner) const
+	/*virtual override*/ float			Tower::GetFlatAttackRange(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState(owner))+2.f,2.f);
+		return EMPModify(t2.Apply(turret->horizontalAttackRange.GetValue(GetResearchState(owner))+2.f),2.f);
 	}
 
-	/*virtual override*/ String			Tower::DescribeFlatAttackRange(const OwnerParameter&owner) const
+	/*virtual override*/ String			Tower::DescribeFlatAttackRange(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
 		const auto&state = GetResearchState(owner);
 		const String rs = turret->horizontalAttackRange.Describe(state);
 		const auto final = turret->horizontalAttackRange.GetValue(state)+2.f;
-		return String(M::Round(final*10.f)/10.f)+" [="+rs+"+2 (tower modifier)]";
+		return String(M::Round(final*10.f)/10.f)+" [="+rs+"+2 (tower modifier)]" + t2.Describe();
 	}
 
 

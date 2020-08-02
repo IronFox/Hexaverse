@@ -3,6 +3,7 @@
 
 #include "gridAndChoices.h"
 #include "faction.h"
+#include "t2.h"
 
 
 #ifdef HAS_WINDOW
@@ -100,7 +101,7 @@ namespace Objects
 		return true;
 	
 	}
-
+	
 	int						TurretBase::GetOperationSpeed(Component::Operation op) const
 	{
 		return GetOperationSpeed(op,ToEntity().owner);
@@ -109,16 +110,20 @@ namespace Objects
 
 	float					TurretBase::GetAttackInitiative() const
 	{
-		return turret->initiative.GetValue(ToEntity().GetResearchState()) * GetAttackActionLeft();
+		float ini = turret->initiative.GetValue(ToEntity().GetResearchState()) * GetAttackActionLeft();
+		const auto&e = ToEntity();
+		if (e.t2)
+			ini = e.t2->initiative.Apply(ini);
+		return ini;
 	}
 
 	int						TurretBase::GetAttacksPerRound() const
 	{
 		return turret->GetAttacksPerRound(ToEntity().GetResearchState());
 	}
-	int						TurretBase::GetAttacksPerRound(const OwnerParameter&owner) const
+	int						TurretBase::GetAttacksPerRound(const OwnerParameter&owner, const T2::TModifier&p) const
 	{
-		return turret->GetAttacksPerRound(WorldEntity::GetResearchState(owner));
+		return p.Apply(turret->GetAttacksPerRound(WorldEntity::GetResearchState(owner)));
 	}
 
 
@@ -128,15 +133,31 @@ namespace Objects
 		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
 	}
 
-	int						TurretBase::GetDamagePotentialPerRound(const OwnerParameter&owner) const
+	int						TurretBase::GetDamagePotentialPerRound(const OwnerParameter&owner, const T2::PConstProperties&p) const
 	{
 		const auto&state = WorldEntity::GetResearchState(owner); 
+		if (p)
+			return std::max(1,p->attacksPerRound.Apply(turret->GetAttacksPerRound(state))) * p->damageLevel.Apply(turret->GetDamageLevel(state));
 		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
 	}
 
-	float					TurretBase::GetFlatAttackRange() const {return GetFlatAttackRange(ToEntity().owner);}
-	float					TurretBase::GetAttackExplosionRadius() const {return GetAttackExplosionRadius(ToEntity().owner);}
-	String					TurretBase::DescribeFlatAttackRange() const {return DescribeFlatAttackRange(ToEntity().owner);}
+	float					TurretBase::GetFlatAttackRange() const
+	{
+		const auto&e = ToEntity();
+		return GetFlatAttackRange(e.owner,e.t2 ? e.t2->horizontalAttackRange : T2::TModifier());
+	}
+
+	float					TurretBase::GetAttackExplosionRadius() const
+	{
+		const auto&e = ToEntity();
+		return GetAttackExplosionRadius(e.owner, e.t2 ? e.t2->explosionRadius : T2::TModifier());
+	}
+
+	String					TurretBase::DescribeFlatAttackRange() const
+	{
+		const auto&e = ToEntity();
+		return DescribeFlatAttackRange(e.owner, e.t2 ? e.t2->horizontalAttackRange : T2::TModifier());
+	}
 
 
 

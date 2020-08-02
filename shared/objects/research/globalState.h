@@ -190,10 +190,110 @@ namespace Objects
 
 		};
 
+		struct T2Attribute
+		{
+
+			Lua::Function<float(int)>	factorFunction;
+
+
+			void						Init(const Lua::Table&table, const String&attribName);
+
+
+		};
+
+		#ifndef CLIENT
+			struct T2Functions
+			{
+				typedef Lua::Function<float(int)>	TModFunc;
+
+				TModFunc	initiative,
+							speed,
+							maxHealth,
+							scanningRange,
+							attacksPerRound,
+							damageLevel,
+							explosionRadius,
+							horizontalAttackRange,
+							healthRegeneration;
+				Lua::Function<int(int)>				deriveLevel;
+
+
+
+				static void Load(const Lua::Table&t, TModFunc&f, String name)
+				{
+					name.Set(0,D::CharFunctions::toupper(name.GetChar(0)));
+					f = t.GetField(name);
+					if (!f)
+						throw new Lua::Exception("Unable to find function '"+String(name)+"' in T2 table");
+				}
+
+				void				Load(const Lua::Table&t)
+				{
+					#undef LOAD
+					#define LOAD(X) Load(t,this->X,#X);
+
+					LOAD(initiative);
+					LOAD(speed);
+					LOAD(maxHealth);
+					LOAD(scanningRange);
+					LOAD(attacksPerRound);
+					LOAD(damageLevel);
+					LOAD(explosionRadius);
+					LOAD(horizontalAttackRange);
+					LOAD(healthRegeneration);
+
+					deriveLevel = t.GetField("DeriveLevel");
+					if (!deriveLevel)
+						throw Lua::Exception("Unable to find function 'DeriveLevel' in T2 table");
+				}
+
+				bool				Recompute(T2::TModifier&mod, int lvl, const TModFunc&f, const char*name) const
+				{
+ 					return mod.Update(f(lvl));
+				}
+
+				bool				Recompute(T2::Properties&p) const
+				{
+					bool rs = false;
+					if (p.xpChanged)
+					{
+						p.xpChanged = false;
+
+						UINT32 newMax = deriveLevel(p.experience);
+						if (newMax != p.maxLevelAtXP)
+						{
+							p.maxLevelAtXP = newMax;
+							rs = true;
+						}
+					}
+
+					if (p.lvlChanged)
+					{
+						p.lvlChanged = false;
+
+						#undef COMP
+						#define COMP(X) rs |= Recompute(p.X, p.level,this->X, #X);
+
+						COMP(initiative);
+						COMP(speed);
+						COMP(maxHealth);
+						COMP(scanningRange);
+						COMP(attacksPerRound);
+						COMP(damageLevel);
+						COMP(explosionRadius);
+						COMP(horizontalAttackRange);
+						COMP(healthRegeneration);
+					}
+					return rs;
+				}
+			};
+		#endif
+
 
 		struct GlobalState
 		{
 			Attributes::Table	zeroTable;
+			
 
 			#ifndef CLIENT
 				/**
@@ -202,6 +302,7 @@ namespace Objects
 				Lua::Reference			zeroState;
 				ScriptCache::PScript	script,	//currently loaded program
 										factoryDefault;	//program defined in install directory. Must load or server execution fails
+				T2Functions				t2;
 			#endif
 			Buffer0<PTopic>		allTopics;
 			TopicGroup			rootResearch;
@@ -229,6 +330,7 @@ namespace Objects
 		#ifndef CLIENT
 			void				ActivateProgram(const ScriptCache::PScript&script);
 			void				LoadDefaultProgram();
+			bool				Recompute(T2::Properties&);
 		#endif
 	}
 }

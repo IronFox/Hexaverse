@@ -185,13 +185,14 @@ namespace Protocol
 
 
 
-	NETSTRUCT6(EntityState
+	NETSTRUCT7(EntityState
 		, Timestamp, timestamp
 		, TUniqueID, id
 		, Grid::LCellIdI, location
 		, SerialUnsigned, health
 		, SerialUnsigned, empDamageLevel
 		, BYTE, entityStateFlags
+		, NETA(BYTE), t2State
 	)
 
 	namespace TaskFlags

@@ -360,6 +360,46 @@ VehicleBaseConfig =
 }
 
 
+
+T2 =
+{
+	DefaultFactor = function(lvl)
+		return 1.1 ^ lvl;
+	end,
+	Initiative = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	Speed = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	MaxHealth = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	ScanningRange = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	AttacksPerRound = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	DamageLevel = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	ExplosionRadius = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	HorizontalAttackRange = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	
+	HealthRegeneration = function(lvl)
+		return 1 - (1 / (1+lvl*0.2));
+	end,
+	
+	DeriveLevel = function(lvl)
+		return math.sqrt(lvl)*0.65;
+	end,
+}
+
 --[[
 Declares an item as unlock-researchable.
 Manipulates the IsUnlocked attribute of the specified item.

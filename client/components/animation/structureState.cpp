@@ -108,6 +108,16 @@ namespace Animation
 		s->health = vs.entityState.health;
 		s->UpdateEMPDamage(vs.entityState.empDamageLevel);
 
+
+		if (vs.entityState.t2State.IsNotEmpty())
+		{
+			if (!s->t2)
+				s->t2.reset(new Objects::T2::Properties());
+			s->t2->Packable::Unpack(vs.entityState.t2State);
+		}
+		else
+			s->t2.reset();
+
 		if (vs.entityState.location != Grid::LCellIdI::Invalid && vs.entityState.location != s->location)
 		{
 			s->location = vs.entityState.location;	//very unusual

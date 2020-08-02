@@ -186,9 +186,9 @@ namespace Objects
 
 					if (attack.attackFrom)
 					{
-						int d = M::Min(damageLevel,e->health);
+						UINT32 d = M::Min(damageLevel,e->health);
 						attack.attackFrom->owner->statistics.SignalDamageDealtTo(attack.attackFrom,e->owner,d);
-						e->owner->statistics.SignalDamageReceivedFrom(attack.attackFrom->owner,d);
+						e->owner->statistics.SignalDamageReceivedFrom(e,attack.attackFrom->owner,d);
 					}
 
 
@@ -300,10 +300,10 @@ namespace Objects
 				{
 					if (attack.attackFrom)
 					{
-						int newDamage = std::max(e->empDamageLevel,damageLevel);
-						int dealt = newDamage - e->empDamageLevel;
+						UINT32 newDamage = std::max(e->empDamageLevel,damageLevel);
+						UINT32 dealt = newDamage - e->empDamageLevel;
 						attack.attackFrom->owner->statistics.SignalEMPDamageDealtTo(attack.attackFrom,e->owner,dealt);
-						e->owner->statistics.SignalEMPDamageReceivedFrom(attack.attackFrom->owner,dealt);
+						e->owner->statistics.SignalEMPDamageReceivedFrom(e,attack.attackFrom->owner,dealt);
 					}
 
 

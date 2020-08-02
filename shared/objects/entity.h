@@ -231,6 +231,12 @@ namespace Objects
 		#endif
 
 		int							health;
+		/**
+		@brief T2 properties.
+
+		If null, this unit is a T1 unit, otherwise it provides the unit's T2 state and modifiers
+		*/
+		T2::PProperties				t2;
 		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extent of damage
 
 		/**
@@ -262,6 +268,7 @@ namespace Objects
 				StoppedBuilding = 0x4000,
 				StoredInChanged = 0x8000,
 				GatheringPointChanged = 0x10000,
+				T2Changed = 0x20000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
@@ -401,21 +408,21 @@ namespace Objects
 
 		String						GetNameAndOwner() const;
 
-		virtual int					GetMaxHealth(const OwnerParameter&) const;
-		virtual String				DescribeMaxHealth(const OwnerParameter&) const;
-		int							GetMaxHealth() const	{return GetMaxHealth(owner);}
-		String						DescribeMaxHealth() const	{return DescribeMaxHealth(owner);}
+		virtual int					GetMaxHealth(const OwnerParameter&, const T2::TModifier&) const;
+		virtual String				DescribeMaxHealth(const OwnerParameter&, const T2::TModifier&) const;
+		int							GetMaxHealth() const;
+		String						DescribeMaxHealth() const;
 		/**
 		Queries the current scanning radius of the local entity, including research and EMP effects.
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
-		virtual float				GetScanningRange(const OwnerParameter&) const;
-		float						GetScanningRange() const	{return GetScanningRange(owner);}
+		virtual float				GetScanningRange(const OwnerParameter&, const T2::TModifier&) const;
+		float						GetScanningRange() const;
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		float3						GetScanningCenter() const {return GetScanningCenter(location);}
 		/**
 		Retrieves the maximum possible uncontrolled explosion radius of the local entity (type)
-		*/		
+		*/
 		virtual float				GetMaxUncontrolledExplosionRadius() const {return 0;}
 		/**
 		Retrieves the current uncontrolled explosion radius, assuming the local entity suffered uncontrolled destruction now
@@ -424,8 +431,8 @@ namespace Objects
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
-		virtual String				DescribeScanningRange(const OwnerParameter&) const;
-		String						DescribeScanningRange() const	{return DescribeScanningRange(owner);}
+		virtual String				DescribeScanningRange(const OwnerParameter&, const T2::TModifier&) const;
+		String						DescribeScanningRange() const;
 		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;
 		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2.f);}

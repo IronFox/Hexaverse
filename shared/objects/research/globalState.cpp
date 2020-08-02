@@ -115,6 +115,14 @@ namespace Objects
 
 		
 
+		void T2Attribute::Init(const Lua::Table&table, const String&attribName)
+		{
+			
+
+			factorFunction = table.GetField("
+		}
+
+
 
 
 		static void InitStructureTable(String baseName, BaseAttributeTable&t)
@@ -303,6 +311,19 @@ namespace Objects
 
 
 	#ifndef CLIENT
+
+
+		
+
+
+		/*static*/ bool			Research::Recompute(T2::Properties&p)
+		{
+			return globalState.t2.Recompute(p);
+		}
+
+
+
+
 		/*static*/ void			Research::LoadDefaultProgram()
 		{
 			#define RESEARCH_SCRIPT_NAME "attributesAndResearch.lua"
@@ -423,6 +444,15 @@ namespace Objects
 			globalState.researchProgram->Execute(script->content,String(script->filename));
 
 		
+			{
+				Lua::Table t2Table = globalState.researchProgram->FindGlobal("T2");
+				if (!t2Table)
+					throw Lua::Exception("Table 'T2' is not defined");
+
+				globalState.t2.Load(t2Table);
+			}
+
+
 
 			Lua::Table researchTable = globalState.researchProgram->FindGlobal("ResearchState");
 			if (researchTable.IsEmpty())
@@ -491,4 +521,7 @@ namespace Objects
 			return maxProgress > 0 && researchState[serialIndex] >= maxProgress;
 		}
 	}
+
+
+
 }

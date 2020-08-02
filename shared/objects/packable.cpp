@@ -4,7 +4,7 @@ using namespace DeltaWorks;
 
 namespace Objects
 {
-	void Packable::Pack(D::Array<BYTE>&a,Target target) const
+	void Packable::PackToArray(D::Array<BYTE>&a,Target target) const
 	{
 		using Serialization::Serialize;
 		SerialSizeScanner scanner;

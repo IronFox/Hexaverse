@@ -376,7 +376,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Connector"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_Connector;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_Connector, t2 != nullptr);}
 
 
 		#ifndef NO_HIBERNATION
@@ -750,7 +750,7 @@ namespace Objects
 		//virtual int					GetMaxHealth() const override {return 1;}
 
 		virtual String				GetTypeName() const override { return "Nexus Port"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_NexusPort;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_NexusPort,t2 != nullptr);}
 
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
@@ -815,7 +815,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Generator"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_Generator;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_Generator, t2 != nullptr);}
 
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
 
@@ -851,7 +851,7 @@ namespace Objects
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_ReactorCore;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_ReactorCore, t2 != nullptr);}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		#ifdef HAS_WINDOW
