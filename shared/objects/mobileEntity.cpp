@@ -1395,6 +1395,14 @@ namespace Objects
 		}
 		
 
+		void				MobileEntity::SetMovementActionLeft(float actionLeft)
+		{
+			if (movementActionLeft != actionLeft)
+			{
+				movementActionLeft = actionLeft;
+				RegisterChange(ActionChanged);
+			}
+		}
 	
 		void				MobileEntity::BeginMotionPhase(float timeOffset)
 		{
@@ -1407,24 +1415,22 @@ namespace Objects
 
 			hasMoved = false;
 			numTriedPlottingOnMoveAutoMotion = 0;
-			if (MotionIgnoresAttack())
-			{
-				if (movementActionLeft < 1.f)
+
+			if (IsUpgrading())
+				SetMovementActionLeft(0);
+			else
+				if (MotionIgnoresAttack())
 				{
-					movementActionLeft = 1.f;
-					RegisterChange(ActionChanged);
+					SetMovementActionLeft(1);
 				}
-			}
 		}
 		void				MobileEntity::BeginAttackPhase()	//executed before BeginMotionPhase this round
 		{
 			constructionActionLeft=MaxConstructionActionLeft;
-			if (movementActionLeft < 1.f)
-			{
-				movementActionLeft = 1.f;
-				RegisterChange(ActionChanged);
-			}
-
+			if (IsUpgrading())
+				SetMovementActionLeft(0);
+			else
+				SetMovementActionLeft(1);
 			if (AttackAndMotionAreIndependent())
 			{
 				if (attackActionLeft < 1.f)

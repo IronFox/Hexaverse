@@ -143,11 +143,10 @@ namespace Objects
 		{
 			cachedNiceName = 
 				#ifdef _DEBUG
-					GetTypeName() + " '" + id.ToNiceString()+"' @"+String((void*)this);
+					GetTypeName() + GetTypeNameAppendix() + " '" + id.ToNiceString()+"' @"+String((void*)this);
 				#else
-					GetTypeName() + " '" + id.ToNiceString()+'\'';
+					GetTypeName() + GetTypeNameAppendix() + " '" + id.ToNiceString()+'\'';
 				#endif
-			
 		}
 	#endif
 
@@ -300,12 +299,21 @@ namespace Objects
 		return StaticEMPModify(raw,min,empDamageLevel);
 	}
 
+	/*virtual override*/ String			WorldEntity::GetTypeNameAppendix() const
+	{
+		if (t2)
+			return " Mk "+String(t2->level);
+		return "";
+	}
+
+
 	/*virtual*/ float		WorldEntity::GetScanningRange(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		float r = EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState(owner)),2);
 		r = t2.Apply(r);
 		return r;
 	}
+
 
 	float					WorldEntity::GetScanningRange() const
 	{
@@ -455,9 +463,9 @@ namespace Objects
 				if (descFlags & DescIncludeMaxHealth)
 				{
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth(owner);
+						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
 					else
-						outResult << "Health: " + this->DescribeMaxHealth(owner);
+						outResult << "Health: " + this->DescribeMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
@@ -479,7 +487,7 @@ namespace Objects
 			{
 				AppendDeploymentCount(outResult,owner);
 			}
-			outResult << "Scanning range: "+DescribeScanningRange(owner);
+			outResult << "Scanning range: "+DescribeScanningRange(owner,t2 ? t2->scanningRange : T2::TModifier());
 			#ifndef NO_HIBERNATION
 					outResult << " "+String(TrafficResourceTag()) +String(GetUplinkTraffic());
 
@@ -493,7 +501,7 @@ namespace Objects
 			{
 				if (b->turret->CanAttack())
 				{
-					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange(owner)+" ("+b->turret->trajectoryType.ToString()+")";
+					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange(owner,t2 ? t2->horizontalAttackRange : T2::TModifier())+" ("+b->turret->trajectoryType.ToString()+")";
 				}
 				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}

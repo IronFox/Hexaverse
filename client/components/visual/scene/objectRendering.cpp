@@ -1271,7 +1271,7 @@ namespace Objects
 			const float light = GetLowLighting(v->location);
 
 			bool isBuilding = v->IsBuilding();
-			if (isBuilding)
+			if (isBuilding || v->IsUpgrading())
 			{
 				if (v->isInsertedIntoGrid)
 					display.SetObjectMatrix(v->system);

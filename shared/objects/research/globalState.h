@@ -190,17 +190,6 @@ namespace Objects
 
 		};
 
-		struct T2Attribute
-		{
-
-			Lua::Function<float(int)>	factorFunction;
-
-
-			void						Init(const Lua::Table&table, const String&attribName);
-
-
-		};
-
 		#ifndef CLIENT
 			struct T2Functions
 			{
@@ -215,7 +204,10 @@ namespace Objects
 							explosionRadius,
 							horizontalAttackRange,
 							healthRegeneration;
-				Lua::Function<int(int)>				deriveLevel;
+				Lua::Function<int(int)>				xpToLevel,levelToXP;
+				int			upgradeCostQuantity=1;
+				Resource	upgradeCostType;
+
 
 
 
@@ -224,69 +216,19 @@ namespace Objects
 					name.Set(0,D::CharFunctions::toupper(name.GetChar(0)));
 					f = t.GetField(name);
 					if (!f)
-						throw new Lua::Exception("Unable to find function '"+String(name)+"' in T2 table");
+						throw new Lua::Exception(CLOCATION,"Unable to find function '"+String(name)+"' in T2 table");
 				}
 
-				void				Load(const Lua::Table&t)
-				{
-					#undef LOAD
-					#define LOAD(X) Load(t,this->X,#X);
-
-					LOAD(initiative);
-					LOAD(speed);
-					LOAD(maxHealth);
-					LOAD(scanningRange);
-					LOAD(attacksPerRound);
-					LOAD(damageLevel);
-					LOAD(explosionRadius);
-					LOAD(horizontalAttackRange);
-					LOAD(healthRegeneration);
-
-					deriveLevel = t.GetField("DeriveLevel");
-					if (!deriveLevel)
-						throw Lua::Exception("Unable to find function 'DeriveLevel' in T2 table");
-				}
+				void				Load(const Lua::Table&t);
 
 				bool				Recompute(T2::TModifier&mod, int lvl, const TModFunc&f, const char*name) const
 				{
  					return mod.Update(f(lvl));
 				}
 
-				bool				Recompute(T2::Properties&p) const
-				{
-					bool rs = false;
-					if (p.xpChanged)
-					{
-						p.xpChanged = false;
-
-						UINT32 newMax = deriveLevel(p.experience);
-						if (newMax != p.maxLevelAtXP)
-						{
-							p.maxLevelAtXP = newMax;
-							rs = true;
-						}
-					}
-
-					if (p.lvlChanged)
-					{
-						p.lvlChanged = false;
-
-						#undef COMP
-						#define COMP(X) rs |= Recompute(p.X, p.level,this->X, #X);
-
-						COMP(initiative);
-						COMP(speed);
-						COMP(maxHealth);
-						COMP(scanningRange);
-						COMP(attacksPerRound);
-						COMP(damageLevel);
-						COMP(explosionRadius);
-						COMP(horizontalAttackRange);
-						COMP(healthRegeneration);
-					}
-					return rs;
-				}
+				bool				Recompute(T2::Properties&p) const;
 			};
+
 		#endif
 
 

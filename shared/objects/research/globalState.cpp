@@ -112,16 +112,84 @@ namespace Objects
 		static Array<BaseAttributeTable>	structureTables;
 	
 
+		#ifndef CLIENT
+
 
 		
+			void				T2Functions::Load(const Lua::Table&t)
+			{
+				#undef LOAD
+				#define LOAD(X) Load(t,this->X,#X);
 
-		void T2Attribute::Init(const Lua::Table&table, const String&attribName)
-		{
-			
+				LOAD(initiative);
+				LOAD(speed);
+				LOAD(maxHealth);
+				LOAD(scanningRange);
+				LOAD(attacksPerRound);
+				LOAD(damageLevel);
+				LOAD(explosionRadius);
+				LOAD(horizontalAttackRange);
+				LOAD(healthRegeneration);
 
-			factorFunction = table.GetField("
-		}
+				xpToLevel = t.GetField("XpToLevel");
+				if (!xpToLevel)
+					throw Lua::Exception(CLOCATION,"Unable to find function 'XpToLevel' in T2 table");
+				levelToXP = t.GetField("LevelToXp");
+				if (!levelToXP)
+					throw Lua::Exception(CLOCATION,"Unable to find function 'LevelToXp' in T2 table");
 
+				upgradeCostQuantity = t.GetField("UpgradeCostQuantity").GetAs<int>();
+
+				String type = t.GetField("UpgradeCostType").GetAs<String>();
+				if (!upgradeCostType.Decode(type.c_str()))
+					throw Lua::Exception(CLOCATION,"Unable to decode UpgradeCostType '"+type+"'");
+
+			}
+
+
+			template <typename T0, typename T1>
+			static bool Update(T0&v, T1 nv)
+			{
+				if (v == nv)
+					return false;
+				v = nv;
+				return true;
+
+			}
+
+		
+			bool				T2Functions::Recompute(T2::Properties&p) const
+			{
+				bool rs = false;
+				if (p.xpChanged)
+				{
+					p.xpChanged = false;
+				}
+
+				if (p.lvlChanged)
+				{
+					p.lvlChanged = false;
+
+					rs |= Update(p.currentLevelAtXp,levelToXP(p.level));
+					rs |= Update(p.nextLevelAtXP,levelToXP(p.level+1));
+
+					#undef COMP
+					#define COMP(X) rs |= Recompute(p.X, p.level,this->X, #X);
+
+					COMP(initiative);
+					COMP(speed);
+					COMP(maxHealth);
+					COMP(scanningRange);
+					COMP(attacksPerRound);
+					COMP(damageLevel);
+					COMP(explosionRadius);
+					COMP(horizontalAttackRange);
+					COMP(healthRegeneration);
+				}
+				return rs;
+			}
+
+		#endif
 
 
 
@@ -237,7 +305,7 @@ namespace Objects
 			InitAttrib(myTable,path,"HorizontalAttackRange",t.horizontalAttackRange, OnAttributeNotFound::Ignore);
 			InitAttrib(myTable,path,"ExplosionRadius",t.explosionRadius, OnAttributeNotFound::Ignore);	//can be independent
 			InitAttrib(myTable,path,"DamageLevel",t.damageLevel, OnAttributeNotFound::Ignore);
-			InitAttrib(myTable,path,"Initiative",t.initiative);
+			InitAttrib(myTable,path,"Initiative",t.initiative, OnAttributeNotFound::Ignore);
 		}
 
 		static void RemapAttributes( PathString filename )

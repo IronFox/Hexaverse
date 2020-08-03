@@ -428,6 +428,7 @@ namespace Objects
 			TaskResult			HandleNormalTask();
 			TaskResult			AutoMoveComplete();
 
+			void				SetMovementActionLeft(float actionLeft);
 		public:
 
 		#endif
@@ -451,6 +452,7 @@ namespace Objects
 		float					GetAttackExplosionRadius(const OwnerParameter&, const T2::TModifier&) const override;
 		using					TurretBase::GetAttackExplosionRadius;
 		bool					CanRepair() const {return turret->CanRepair();}
+		bool					CanUpgrade() const {return turret->CanUpgrade();}
 
 		int						GetCurrentMineralConsumption() const;
 

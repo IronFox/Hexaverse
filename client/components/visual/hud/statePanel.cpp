@@ -188,6 +188,8 @@ namespace StatePanel
 		#endif
 
 		const bool ownedByMe = e.owner == Objects::Faction::mine;	//ghosts set isOwnedByMe true if they are actually owned by the alliance, so it cannot be used here
+		if (e.t2)
+			cachedLines << " T2 Experience: "+String(e.t2->experience - e.t2->currentLevelAtXp)+"/"+String(e.t2->nextLevelAtXP);
 		cachedLines << " Owner: "+e.owner->GetName()+(ownedByMe ? " (me)":"");
 		if (e.isOwnedByMe)
 		{
@@ -287,7 +289,7 @@ namespace StatePanel
 			#endif
 			if (m->turret->CanAttack())
 				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative.GetValue(researchState));
-			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound(e.owner);
+			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound(e.owner,m->t2 ? m->t2->speed : Objects::T2::TModifier());
 			if (m->turret->CanAttack())
 			{
 				if (m->turret->independentAttackAndMotion)
@@ -391,7 +393,7 @@ namespace StatePanel
 				if (t->turret->CanAttack())
 				{
 					const Objects::Tower*v = t;	//rename
-					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(e.owner);
+					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(e.owner,m->t2 ? m->t2->horizontalAttackRange : Objects::T2::TModifier());
 					cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
 					cachedLines << " "+String((char)(tagOffset+v->turret->ammoType))+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 				}

@@ -437,7 +437,7 @@ namespace FileIO
 		{
 			IsUnstable = 0x1,
 			IsSleeping = 0x2,
-
+			IsUpgrading = 0x4,
 		};
 	}
 
@@ -457,6 +457,8 @@ namespace FileIO
 			flags |= EntityFlag::IsUnstable;
 		if (e.IsSleeping())
 			flags |= EntityFlag::IsSleeping;
+		if (e.IsUpgrading())
+			flags |= EntityFlag::IsUpgrading;
 		stream.Append(flags);
 		
 		parent->AppendBlock(RID::entity,stream);
@@ -513,6 +515,7 @@ namespace FileIO
 			e.unstable = (flags & EntityFlag::IsUnstable) != 0;
 			float t = 0;
 			e.OverrideSetSleeping((flags&EntityFlag::IsSleeping) !=0);
+			e.OverrideSetUpgrading((flags&EntityFlag::IsUpgrading) !=0);
 		}
 		ASSERT__(source->CloseStream());
 

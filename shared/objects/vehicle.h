@@ -114,9 +114,9 @@ namespace Objects
 
 		//MobileEntity overrides:
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
-		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const override;
+		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner, const T2::TModifier&m) const override;
 		using					MobileEntity::GetMovementStepsPerRound;
-		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner) const override;
+		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner, const T2::TModifier&m) const override;
 		virtual float			GetBaseMovementInitiative() const override;
 		virtual int				GetMaxClimbingHeight() const override {return base->maxClimbUp;}
 		virtual int				GetMaxFallingHeight() const override {return -base->minClimbDown;}

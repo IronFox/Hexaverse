@@ -23,31 +23,30 @@ namespace Objects
 			experience += xp;
 			xpChanged = true;
 			changed = true;
-			packChanged = true;
 		}
 
 		void		Properties::SetLevel(UINT32 level)
 		{
 			if (level == this->level)
 				return;
-			if (level > this->maxLevelAtXP)
-			{
-				if (this->changed)
-					throw Except::Program::DataConsistencyFault(CLOCATION,"Cannot invoke SetLevel() while local state is outdated");
-				throw Except::Program::UnsupportedRequest(CLOCATION,"Intended level "+String(level)+ " exceeds maximum possible level "+String(maxLevelAtXP)+" at XP "+String(experience));
-			}
 			this->level = level;
 			lvlChanged = true;
 			changed = true;
-			packChanged = true;
 		}
+
+		void		Properties::LevelUp()
+		{
+			if (!CanLevelUp())
+				throw Except::Program::UnsupportedRequest(CLOCATION,"Insufficient experience to achieve next level");
+			SetLevel(level + 1);
+		}
+
+
 
 
 		/*virtual override*/ void Properties::Pack(IWriteStream&s,Target target) const
 		{
-			s.WritePrimitive(experience);
 			s.WritePrimitive(level);
-			s.WritePrimitive(maxLevelAtXP);
 			if (target == Target::Hostile)
 			{
 				s.WritePrimitive(false);
@@ -55,6 +54,10 @@ namespace Objects
 			else
 			{
 				s.WritePrimitive(true);
+
+				s.WritePrimitive(experience);
+				s.WritePrimitive(currentLevelAtXp);
+				s.WritePrimitive(nextLevelAtXP);
 
 				s.WritePrimitive(initiative);
 				s.WritePrimitive(speed);
@@ -71,13 +74,15 @@ namespace Objects
 
 		/*virtual override*/ void Properties::Unpack(IReadStream&s)
 		{
-			s.ReadPrimitive(experience);
 			s.ReadPrimitive(level);
-			s.ReadPrimitive(maxLevelAtXP);
 			bool detailed;
 			s.ReadPrimitive(detailed);
 			if (detailed)
 			{
+				s.ReadPrimitive(experience);
+				s.ReadPrimitive(currentLevelAtXp);
+				s.ReadPrimitive(nextLevelAtXP);
+
 				s.ReadPrimitive(initiative);
 				s.ReadPrimitive(speed);
 				s.ReadPrimitive(maxHealth);
@@ -90,6 +95,8 @@ namespace Objects
 			}
 			else
 			{
+				experience = currentLevelAtXp = nextLevelAtXP = 0;
+
 				initiative.Reset();
 				speed.Reset();
 				maxHealth.Reset();

@@ -179,6 +179,7 @@ namespace Protocol
 		{
 			IsUnstable = 0x1,
 			IsSleeping = 0x2,
+			IsUpgrading = 0x4,
 		};
 	}
 

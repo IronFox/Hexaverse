@@ -83,6 +83,7 @@ namespace Objects
 				ECASE(Construct)
 				ECASE(SelfDetonate)
 				ECASE(Repair)
+				ECASE(Upgrade)
 				ECASE(AddTerrain)
 				ECASE(RemoveTerrain)
 			}

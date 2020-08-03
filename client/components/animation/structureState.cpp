@@ -103,6 +103,7 @@ namespace Animation
 		}
 		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
 		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
+		s->ApplyUpgradingChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUpgrading) != 0 );
 
 
 		s->health = vs.entityState.health;
@@ -117,6 +118,7 @@ namespace Animation
 		}
 		else
 			s->t2.reset();
+		s->UpdateNiceName();
 
 		if (vs.entityState.location != Grid::LCellIdI::Invalid && vs.entityState.location != s->location)
 		{

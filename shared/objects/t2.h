@@ -45,13 +45,14 @@ namespace Objects
 		{
 		public:
 			static const UINT8 SerialVersion = 2;
-			bool		xpChanged = false,
-						lvlChanged = false,
-						changed = false;
+			bool		xpChanged = true,
+						lvlChanged = true,
+						changed = true;
 
 			UINT32		experience=0,
 						level=1,
-						maxLevelAtXP=1;
+						currentLevelAtXp=0,
+						nextLevelAtXP=100000;
 			TModifier	initiative,
 						speed,
 						maxHealth,
@@ -65,6 +66,8 @@ namespace Objects
 
 			void		GainXP(UINT32 xp);
 			void		SetLevel(UINT32 newLevel);
+			void		LevelUp();
+			bool		CanLevelUp() const {return experience >= nextLevelAtXP;}
 
 			virtual void Pack(D::IWriteStream&s,Target target) const override;
 			virtual void Unpack(D::IReadStream&s) override;

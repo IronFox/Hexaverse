@@ -397,7 +397,7 @@ namespace Objects
 				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(0,v,GetOperationAffinity());}
 				virtual Component::Operation	GetOperationAffinity() const override {return Component::Operation::Repair;}
 
-				virtual String			GetName() const override {return "Repair complex/vehicle";}
+				virtual String			GetName() const override {return "Repair unit";}
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
 				virtual Riff::TID		GetDataKey() const override {return "REPA";};
@@ -406,6 +406,33 @@ namespace Objects
 
 				virtual	void			Serialize(IWriteStream&outStream) const override	{}
 				virtual	void			Deserialize(IReadStream&inStream) override {}
+			};
+			
+			class UpgradeJob : public BaseJob
+			{
+			public:
+				typedef BaseJob			Super;
+
+				static const UINT32		SerialVersion = 1;
+
+				TUniqueID				upgradingTarget;
+
+				/**/					UpgradeJob():Super(Autocomplete::Always,false)	{}
+				/**/					UpgradeJob(const MobileEntity&v, const Grid::LCellIdI&loc);
+				virtual void			UpdateEstimations(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(0,v,GetOperationAffinity());}
+				virtual Component::Operation	GetOperationAffinity() const override {return Component::Operation::Upgrade;}
+
+				virtual String			GetName() const override {return "Upgrade unit";}
+				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&, bool hasToMoveFirst) override;
+				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
+				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
+				virtual Riff::TID		GetDataKey() const override {return "UPGD";};
+				virtual ConstName		GetCTypeName() const override {return ConstName::Job_Upgrade;}
+				virtual PJob			Instantiate() const override {return PJob(new UpgradeJob());}
+				virtual Resource		GetConsumedResourceType() const;
+
+				virtual	void			Serialize(IWriteStream&outStream) const override;
+				virtual	void			Deserialize(IReadStream&inStream) override;
 			};
 
 			class ClearAbove : public BaseJob

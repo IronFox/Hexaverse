@@ -128,6 +128,7 @@ namespace Objects
 			Construct,
 			SelfDetonate,
 			Repair,
+			Upgrade,
 			AddTerrain,
 			RemoveTerrain,
 
@@ -404,6 +405,7 @@ namespace Objects
 			bool							CanDealDamage() const {return damageLevel.IsFunctionOrConstNonZero();}
 			bool							CanDo(Operation op) const {return operationSpeed[op].IsFunctionOrConstNonZero();}
 			bool							CanRepair() const {return CanDo(Operation::Repair);}
+			bool							CanUpgrade() const {return CanDo(Operation::Upgrade);}
 			bool							CanConstruct() const {return CanDo(Operation::Construct);}
 			//bool							IsStandardOffensive() const
 			//{

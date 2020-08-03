@@ -1002,6 +1002,14 @@ namespace Objects
 		{
 			DefineResourceTransfer(component,Resource::Minerals);
 			component.commands.Add( new Command::IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
+			component.commands.Add( new Command::IconCommand("Upgrade",&CommonCmd::ToggleMode<CursorMode::UpgradeMode>, &CommonCmd::ModeCheck<CursorMode::UpgradeMode>,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+			{
+				costTypeOut = Resource::Minerals;
+				mineralCostOut = 200;
+				ASSERT__(selectedMobileEntity);
+				//PVehicle v = To<Vehicle>::Cast(e);
+				timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(200,Component::Operation::Upgrade);
+			}));
 		}
 
 		void DefineAutomatable(Component::Turret&component)

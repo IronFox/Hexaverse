@@ -129,6 +129,10 @@ namespace Objects
 		*/
 		virtual String				GetTypeName() const = 0;
 		/**
+		Retrieves a string to append to the type name, possibly independent of the type itself
+		*/
+		virtual String				GetTypeNameAppendix() const {return "";}
+		/**
 		Retrieves the ConstName-based type of the local instance
 		Remember that these name indices may change during version updates and can therefore
 		NOT be used for disk IO.
@@ -174,7 +178,7 @@ namespace Objects
 
 	private:
 		bool						sleeping = false;	//!< Use SetSleep() instead. Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
-
+		bool						upgrading = false;
 
 	public:
 		typedef Buffer0<World::Sensor>		RegisteredSensorStorage;
@@ -305,6 +309,16 @@ namespace Objects
 				if (UpdateSleepState(doSleep,t))
 					OnSleepChange(t);
 			}
+
+			void					SetUpgrading( bool upgrading, float&t )
+			{
+				if (this->upgrading == upgrading)
+					return;
+				LogEvent(EventSignificance::Common,this,"Upgrading changed to "+String(upgrading)+" at t="+String(t));
+
+				this->upgrading = upgrading;
+				SignalChangeByExternalCause(T2Changed,t);
+			}
 			
 			/**
 			Direct set method called by IO state deserialization.
@@ -316,6 +330,12 @@ namespace Objects
 			{
 				sleeping = doSleep;
 			}
+
+			void					OverrideSetUpgrading( bool upgrading )
+			{
+				this->upgrading = upgrading;
+			}
+
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
@@ -329,10 +349,19 @@ namespace Objects
 					ambientSound.SetGain(GetSoundLevel());
 				#endif
 			}
+			void					ApplyUpgradingChangeFromServer(bool isUpgrading)
+			{
+				this->upgrading = isUpgrading;
+			}
 		#endif
 		//virtual bool				CanSee(const PWorldEntity&other)	const;
 		//virtual bool				CanSee(const M::TVec3<>&center, float radius)	const;
 
+
+		bool						IsUpgrading() const
+		{
+			return upgrading;
+		}
 
 		/**
 		Used for visualization: active entities have bright, pulsing key colors, dull dark colors otherwise.
@@ -343,6 +372,7 @@ namespace Objects
 			virtual float			GetSoundLevel() const {return GetActivityLevel()*0.35f;}
 		#endif
 
+		virtual String				GetTypeNameAppendix() const override;
 
 
 		int							GetConstructionCost() const;	//!< Retrieves the minerals required to construct a new instance of this structure

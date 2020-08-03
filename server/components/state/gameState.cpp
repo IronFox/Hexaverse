@@ -867,6 +867,8 @@ namespace Game
 			if (expose & Expose::SleepState)
 				if (e.IsSleeping())
 					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
+			if (e.IsUpgrading())
+				state.entityStateFlags |= Protocol::EntityStateFlags::IsUpgrading;
 			if (e.t2)
 			{
 				e.t2->PackToArray(state.t2State,target);

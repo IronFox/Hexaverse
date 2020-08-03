@@ -504,6 +504,7 @@ namespace Animation
 		v->health = vs.entityState.health;
 		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
 		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
+		v->ApplyUpgradingChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUpgrading) != 0 );
 
 		v->UpdateEMPDamage(vs.entityState.empDamageLevel, !isNewForEMP);	//must remove visible sensory, must be linked to destructor
 
@@ -516,6 +517,7 @@ namespace Animation
 		}
 		else
 			v->t2.reset();
+		v->UpdateNiceName();
 
 		//v->roundsDisabled = vs.entityState.disabledRounds;
 

@@ -316,6 +316,7 @@ TurretConfig =
 		HealthMultiplier = 1,
 		ScanningRange = 3,
 		Op_Repair = 20,
+		Op_Upgrade = 100,
 		IsUnlocked = true,
 		Initiative = 100,
 	},
@@ -363,6 +364,10 @@ VehicleBaseConfig =
 
 T2 =
 {
+	UpgradeCostQuantity = 200,
+	UpgradeCostType = 'Minerals',
+
+
 	DefaultFactor = function(lvl)
 		return 1.1 ^ lvl;
 	end,
@@ -395,9 +400,16 @@ T2 =
 		return 1 - (1 / (1+lvl*0.2));
 	end,
 	
-	DeriveLevel = function(lvl)
-		return math.sqrt(lvl)*0.65;
+	
+	XpToLevel = function(xp)
+		return 1+math.floor(math.sqrt(xp)/3);
 	end,
+	
+	LevelToXp = function(lvl)
+		local v = (math.floor(lvl)-1)*3;
+		return v * v;
+	end,
+	
 }
 
 --[[

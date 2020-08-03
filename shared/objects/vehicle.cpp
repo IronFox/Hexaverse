@@ -149,11 +149,13 @@ namespace Objects
 
 
 
-	/*virtual override*/int			Vehicle::GetMovementStepsPerRound(const OwnerParameter&owner)	const
+	/*virtual override*/int			Vehicle::GetMovementStepsPerRound(const OwnerParameter&owner, const T2::TModifier&m)	const
 	{
 		return (int)ceil(EMPModify(
-				base->GetBaseMovementSpeed(GetResearchState(owner)) 
-				* GetTurretOverweightFactor(),
+				m.Apply(
+					base->GetBaseMovementSpeed(GetResearchState(owner)) 
+					* GetTurretOverweightFactor()
+				),
 				1.f));
 	}
 
@@ -162,9 +164,10 @@ namespace Objects
 		return base->initiative.GetValue(GetResearchState(owner));
 	}
 
-	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound(const OwnerParameter&owner)	const
+	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound(const OwnerParameter&owner, const T2::TModifier&m)	const
 	{
-		return String(GetMovementStepsPerRound(owner));
+		
+		return String(GetMovementStepsPerRound(owner,m));
 	}
 
 	/*virtual override*/ String			Vehicle::DescribeFlatAttackRange(const OwnerParameter&owner, const T2::TModifier&m) const
@@ -400,7 +403,7 @@ namespace Objects
 			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(state));
 			if (baseMovement > 0)
 			{
-				const auto move = this->GetMovementStepsPerRound(owner);
+				const auto move = this->GetMovementStepsPerRound(owner,t2 ? t2->speed : T2::TModifier());
 				String speed = "Effective speed: "+String(move);
 				if (move != baseMovement)
 					speed += " /"+String(baseMovement);

@@ -43,6 +43,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Job_AlterTerrain,
 	Job_Transfer,
 	Job_Repair,
+	Job_Upgrade,
 	Job_ClearAbove,
 	Job_Sequence,
 	Job_SelfDetonate,

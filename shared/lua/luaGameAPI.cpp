@@ -1207,6 +1207,7 @@ namespace Lua
 		t.SetField("type",AddOrGetType(e->GetType()));
 		t.SetField("location",ToTable(e->location));
 		t.SetField("isSleeping",e->IsSleeping());
+		t.SetField("isUpgrading",e->IsUpgrading());
 		t.SetField("health",e->health);
 		t.SetField("maxHealth",e->GetMaxHealth());
 		t.SetField("empDamageLevel",e->empDamageLevel);
