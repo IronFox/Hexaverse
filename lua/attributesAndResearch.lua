@@ -517,10 +517,12 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 			end
 			local progress = ResearchState.GetProgress(state,key);
 			if (progress == 0) then
-				return original;
+				--return original;
+				return '';
 			end
 			local factor = GetResearchImprovementFactor(progress,speed);
-			return Round(original * factor,2)..' [='.. original..'*'..Round(factor,2)..']';
+			--return Round(original * factor,2)..' [='.. original..'*'..Round(factor,2)..']';
+			return ' [='.. original..'*'..Round(factor,2)..']';
 		end
 	}
 	
@@ -571,9 +573,11 @@ function Tower(turret--[[Table]]) --Table
 					local multiplier = Describe(turret.HealthMultiplier,state);
 					local health = DefaultHealthAtCost(cost());
 					if (multiplier == 1) then
-						return Round(health);
+						--return Round(health);
+						return '';
 					end
-					return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
+					--return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
+					return ' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
 				end,
 		},
 		ScanningRange =
@@ -585,14 +589,18 @@ function Tower(turret--[[Table]]) --Table
 			Describe = 
 				function(state) 
 					local modifier =  TowerScanningModifier(turret);
-					local base = Describe(turret.ScanningRange,state);
+					--local base = Describe(turret.ScanningRange,state);
+					local base = Get(turret.ScanningRange,state);
 					if (modifier == 0) then
-						return base;
+						--return base;
+						return '';
 					end
 					if (modifier > 0) then
-						return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
+						--return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
+						return ' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
 					end
-					return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
+					--return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
+					return ' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
 				end,
 		},
 		IsUnlocked = 

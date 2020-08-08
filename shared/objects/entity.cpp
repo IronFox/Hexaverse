@@ -358,7 +358,7 @@ namespace Objects
 
 	/*virtual*/ String		WorldEntity::DescribeMaxHealth(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
-		String rs = GetTable()->maxHealth.Describe(GetResearchState(owner));
+		String rs = String(GetMaxHealth())+GetTable()->maxHealth.Describe(GetResearchState(owner));
 		rs += t2.Describe();
 		return rs;
 	}
@@ -377,7 +377,7 @@ namespace Objects
 
 	/*virtual*/ String		WorldEntity::DescribeScanningRange(const OwnerParameter&owner, const T2::TModifier&t2 ) const
 	{
-		String rs = GetTable()->maxScanningRange.Describe(GetResearchState(owner));
+		String rs = String(GetScanningRange())+ GetTable()->maxScanningRange.Describe(GetResearchState(owner));
 		rs += t2.Describe();
 		return rs;
 	}

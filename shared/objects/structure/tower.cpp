@@ -361,8 +361,8 @@ namespace Objects
 		if (!turret->CanAttack())
 			return 0.f;
 		const auto&state = GetResearchState(owner);
-		const String rs = turret->horizontalAttackRange.Describe(state);
-		const auto final = turret->horizontalAttackRange.GetValue(state)+2.f;
+		const String rs = String(turret->GetHorizontalAttackRange(state))+ turret->horizontalAttackRange.Describe(state);
+		const auto final = t2.Apply(turret->horizontalAttackRange.GetValue(state)+2.f);
 		return String(M::Round(final*10.f)/10.f)+" [="+rs+"+2 (tower modifier)]" + t2.Describe();
 	}
 

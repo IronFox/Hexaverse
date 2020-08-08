@@ -396,11 +396,11 @@ namespace StatePanel
 			const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
 			if (t)
 			{
-				cachedLines << " Attack Initiative: "+String((int)t->turret->initiative.GetValue(researchState));
+				cachedLines << " Attack Initiative: "+String((int)t->GetAttackInitiative());
 				if (t->turret->CanAttack())
 				{
 					const Objects::Tower*v = t;	//rename
-					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(e.owner,m->t2 ? m->t2->horizontalAttackRange : Objects::T2::TModifier());
+					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(e.owner,t->t2 ? t->t2->horizontalAttackRange : Objects::T2::TModifier());
 					cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
 					cachedLines << " "+String((char)(tagOffset+v->turret->ammoType))+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 				}
