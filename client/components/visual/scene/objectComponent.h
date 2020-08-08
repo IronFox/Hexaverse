@@ -65,8 +65,9 @@ namespace Objects
 	public:
 		/**
 		Temporary structure-specific rendering instruction. Updated by Recompile(). Can be used to render the local structure.
+		First entry is normal, second is T2
 		*/
-		ShadedInstructionBlock32	constShape;
+		ShadedInstructionBlock32	shape[2];
 
 
 

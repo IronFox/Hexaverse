@@ -58,12 +58,15 @@ float4 psMain(V2P input) : SV_TARGET
 	//float specular = pow(max(0.0, dot(reflected, normalize((float3)1))),4);
 	//color = ;
 	float keyMatch = smoothstep(0.9,1.0,input.color.r - input.color.g - input.color.b);
-	float3 color = (1-input.color.rgb) * (diffuse*0.65 + ambient*0.35) * SunColor.rgb/* * Color.a * input.color.a*/ * float3(0.5,0.2,0.2);
+	
+	//float3 c = input.color.rgb * 0.2 + (1-input.color.rgb)*float3(0.5,0.2,0.2);
+	float3 c = input.color.rgb *float3(0.5,0.2,0.2);
+	float3 color = c * (diffuse*0.65 + ambient*0.35) * SunColor.rgb/* * Color.a * input.color.a*/;
 
 	float fresnel = (((1.0 - abs(dot(WorldCamera[2].xyz,input.normal)))));
 
 	color = lerp(color,Tint.rgb*input.color.rgb,(0.25 + 0.75 * fresnel) * Tint.a);
-	color = lerp(color,KeyColor.rgb,fresnel * fresnel*fresnel*2);
+	color = lerp(color,KeyColor.rgb,fresnel * fresnel*fresnel);
 
 //	color.rgb = CalculatePositionFog(input.world, color.rgb);
 

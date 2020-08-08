@@ -39,7 +39,8 @@ namespace Objects
 	//extern DX11::Texture				hexGrid;
 
 
-	extern ShadedInstruction			standardCompiledShader, standardLocalizableShader;
+	extern ShadedInstruction			standardCompiledShader, standardLocalizableShader,
+										t2LocalizableShader;
 
 	inline	int DetermineLODInstruction(float distance, float radius)
 	{

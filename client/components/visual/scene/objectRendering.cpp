@@ -64,7 +64,8 @@ namespace Objects
 	
 
 
-	ShadedInstruction			standardCompiledShader, standardLocalizableShader;
+	ShadedInstruction			standardCompiledShader, standardLocalizableShader,
+								t2LocalizableShader;
 
 	DX11::InstructionBlock32	attackRing;
 	ShadedInstructionBlock32	cordon,
@@ -481,6 +482,7 @@ namespace Objects
 		t2VehicleShader.Clear();
 		standardCompiledShader.Clear();
 		standardLocalizableShader.Clear();
+		t2LocalizableShader.Clear();
 		pathShader.Clear();
 		jobShader.Clear();
 		attackRingShader.Clear();
@@ -643,6 +645,9 @@ namespace Objects
 		standardLocalizableShader.binding = stdVehicleShader.binding;
 		standardLocalizableShader.LoadQualitiesFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		standardLocalizableShader.UpdateLayout();
+		t2LocalizableShader.binding = stdVehicleShader.binding;
+		t2LocalizableShader.LoadQualitiesFromFile("shaders/t2StructureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		t2LocalizableShader.UpdateLayout();
 
 		{
 			Image smoke;
@@ -831,7 +836,7 @@ namespace Objects
 
 	static void _RenderSimpleLocated(Structure&s, const M::TMatrix4<>&system)
 	{
-		const auto&shape = StructureHull::Of(s).constShape;
+		const auto&shape = StructureHull::Of(s).shape[s.t2 != nullptr];
 		display.Render(shape, true);
 		DBG_ASSERT__(shape.ibo.IsSet());
 
@@ -2319,7 +2324,7 @@ namespace Objects
 	{
 		display.SetObjectMatrix(s.system);
 		const auto&vis = Objects::StructureHull::Of(s);
-		_RenderShadow(vis.constShape);	
+		_RenderShadow(vis.shape[s.t2 != nullptr]);	
 		if (s.HasFoundation())
 			_RenderShadow(foundation);
 	}
@@ -2498,7 +2503,7 @@ namespace Objects
 					const Structure&s = *_s;
 					display.SetObjectMatrix(s.system);
 					const auto&vis = Objects::StructureHull::Of(s);
-					_RenderShadow(vis.constShape);
+					_RenderShadow(vis.shape[s.t2 != nullptr]);
 				});
 				display.SetObjectMatrix(M::Matrix<>::eye4);
 				display.UnlockShader();
