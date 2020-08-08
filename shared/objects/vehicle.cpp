@@ -96,7 +96,7 @@ namespace Objects
 		String multiplier = turret->healthMultiplier.Describe(state);
 		if (multiplier == "1" || multiplier == "1.0")
 			return base->health.Describe(state) + m.Describe();
-		return String(base->health.GetValue(state))+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]" + m.Describe();
+		return String(base->health.GetValue(state)*turret->healthMultiplier.GetValue(state))+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]" + m.Describe();
 	}
 
 	
