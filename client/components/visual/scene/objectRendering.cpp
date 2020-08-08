@@ -50,7 +50,8 @@ namespace Objects
 								beamBottomColor,
 								beamTopColor;
 	
-	ShadedInstruction			stdVehicleShader;
+	ShadedInstruction			stdVehicleShader, 
+								t2VehicleShader;
 								
 	DX11::BaseInstructionBlock	seeThroughShader,
 								pathShader,
@@ -477,6 +478,7 @@ namespace Objects
 
 		seeThroughShader.Clear();
 		stdVehicleShader.Clear();
+		t2VehicleShader.Clear();
 		standardCompiledShader.Clear();
 		standardLocalizableShader.Clear();
 		pathShader.Clear();
@@ -556,6 +558,7 @@ namespace Objects
 			binding.color.Set(6, 4);
 			binding.floats_per_vertex = 10;
 			stdVehicleShader.binding = binding;
+			t2VehicleShader.binding = binding;
 			seeThroughShader.binding = binding;
 		}
 		DX11::Shader::Binding bindings[] =
@@ -578,6 +581,8 @@ namespace Objects
 		};
 		stdVehicleShader.LoadQualitiesFromFile("shaders/vehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		stdVehicleShader.UpdateLayout();
+		t2VehicleShader.LoadQualitiesFromFile("shaders/t2VehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		t2VehicleShader.UpdateLayout();
 
 
 		{
@@ -792,7 +797,7 @@ namespace Objects
 
 
 		
-	void Renderer::RenderScaledComponent(M::TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
+	void Renderer::RenderScaledComponent(M::TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y, bool isT2)
 	{
 		system.w.xyz += system.z.xyz * h;
 		system.x.xyz *= scale;
@@ -806,7 +811,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(attachment.partInstruction[0],true);
+			display.Render(attachment.GetInstruction(isT2,0),true);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -814,7 +819,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(attachment.partInstruction[1],true);
+			display.Render(attachment.GetInstruction(isT2,1),true);
 		}
 
 	}
@@ -834,7 +839,7 @@ namespace Objects
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY,s.t2 != nullptr);
 			//display.SetObjectMatrix(system);
 		}
 	}
@@ -849,8 +854,8 @@ namespace Objects
 
 	static void _RenderSimpleLocated(Vehicle&v, const M::TMatrix4<>&system)
 	{
-		Renderer::RenderComponent(system,0,*v.base,0,0);
-		Renderer::RenderComponent(system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
+		Renderer::RenderComponent(system,0,*v.base,0,0,v.t2 != nullptr);
+		Renderer::RenderComponent(system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY,v.t2 != nullptr);
 	}
 
 
@@ -1077,7 +1082,7 @@ namespace Objects
 	}
 
 
-	void	Renderer::RenderComponent(M::TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
+	void	Renderer::RenderComponent(M::TMatrix4<> system, float h, const Component::Base&comp, float x, float y, bool isT2)
 	{
 		M::TMatrix4<> sub;
 		const auto&attachment = Objects::VisualComponent::Of(comp);
@@ -1089,8 +1094,9 @@ namespace Objects
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
+			float len = Vec::length(system.x.xyz);
 			display.SetObjectMatrix(system);
-			display.Render(attachment.partInstruction[0],true);
+			display.Render(attachment.GetInstruction(isT2,0),false);
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -1098,7 +1104,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			display.Render(attachment.partInstruction[1],true);
+			display.Render(attachment.GetInstruction(isT2,1),false);
 		}
 
 	}
@@ -1108,8 +1114,8 @@ namespace Objects
 
 	void Renderer::RenderSimple(const Vehicle&v)
 	{
-		RenderComponent(v.system,0,*v.base,0,0);
-		RenderComponent(v.system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
+		RenderComponent(v.system,0,*v.base,0,0, v.t2 != nullptr);
+		RenderComponent(v.system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY, v.t2 != nullptr);
 	}
 
 	void Renderer::Render(const Vehicle&v, float light)
@@ -2330,7 +2336,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual.partInstruction[0]);
+			_RenderShadow(visual.GetInstruction(false,0));
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -2338,7 +2344,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual.partInstruction[1]);
+			_RenderShadow(visual.GetInstruction(false,1));
 		}
 
 	}
@@ -2359,7 +2365,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual.partInstruction[0]);
+			_RenderShadow(visual.GetInstruction(false,0));
 		}
 		if (comp.parts.Count() > 1)
 		{
@@ -2367,7 +2373,7 @@ namespace Objects
 			Mat::transformSystem(system,sub);
 			system = sub;
 			display.SetObjectMatrix(system);
-			_RenderShadow(visual.partInstruction[1]);
+			_RenderShadow(visual.GetInstruction(false,1));
 		}
 
 	}

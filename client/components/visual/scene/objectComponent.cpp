@@ -359,18 +359,35 @@ namespace Objects
 	}
 
 
-	void			VisualComponent::FinishCreation(Objects::Component::Base&base, bool scaleToVehicleSize/*=true*/)
+	void				VisualComponent::FinishCreation(Objects::Component::Base&base, bool scaleToVehicleSize/*=true*/)
 	{
-		partInstruction.SetSize(base.parts.Count());
+
+		for (index_t i = 0; i < ARRAYSIZE(parts); i++)
+			parts[i].SetSize(base.parts.Count());
+
 		for (index_t i = 0; i < base.parts.Count(); i++)
 		{
 			auto&part = base.parts[i];
-			auto&inst = partInstruction[i];
 			if (scaleToVehicleSize)
 				part.Scale(vehicleScale);
-			inst = stdVehicleShader;
-			inst.vbo.CreateFromStructs(part.GetLOD(0).vertices);
-			inst.ibo.Create(part.GetLOD(0).indices);
+
+			DX11::VBO vbo;
+			DX11::IBO32 ibo;
+			vbo.CreateFromStructs(part.GetLOD(0).vertices);
+			ibo.Create(part.GetLOD(0).indices);
+
+			{
+				auto&inst = parts[0][i];
+				inst = stdVehicleShader;
+				inst.vbo = vbo;
+				inst.ibo = ibo;
+			}
+			{
+				auto&inst = parts[1][i];
+				inst = t2VehicleShader;
+				inst.vbo = vbo;
+				inst.ibo = ibo;
+			}
 		}
 	}
 

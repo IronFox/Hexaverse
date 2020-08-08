@@ -45,12 +45,16 @@ namespace Objects
 	class VisualComponent : public ClientAttachment
 	{
 		void				FinishCreation(Objects::Component::Base&base, bool scaleToVehicleSize=true);
+		Array<ShadedInstructionBlock32>				parts[2];
 	public:
 
-		Array<ShadedInstructionBlock32>				partInstruction;
 		static VisualComponent&		Allocate(Objects::Component::Base&);
 		static VisualComponent&		Of(const Objects::Component::Base&);
 
+		const ShadedInstructionBlock32&	GetInstruction(bool isT2, index_t partIndex) const
+		{
+			return parts[isT2][partIndex];
+		}
 
 		static void					FinalizeAll();
 	};

@@ -23,7 +23,8 @@ namespace Objects
 
 
 	extern DX11::ObjectBuffer<float4>	keyColor, overallTint;
-	extern ShadedInstruction			stdVehicleShader;
+	extern ShadedInstruction			stdVehicleShader,
+										t2VehicleShader;
 	extern DX11::BaseInstructionBlock	seeThroughShader,
 										pathShader,
 										jobShader,
@@ -164,8 +165,8 @@ namespace Objects
 		@param system Vehicle system
 		@param comp Component to render
 		*/
-		void	RenderComponent(M::TMatrix4<> system, float h, const Component::Base&comp, float x, float y);
-		void	RenderScaledComponent(M::TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y);
+		void	RenderComponent(M::TMatrix4<> system, float h, const Component::Base&comp, float x, float y, bool isT2);
+		void	RenderScaledComponent(M::TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y, bool isT2);
 
 		/**
 		Renders both components (base/turret) of a vehicle. No extra calls beyond RenderComnponent()

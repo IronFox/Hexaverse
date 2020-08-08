@@ -254,9 +254,9 @@ namespace Objects
 			
 			display.SetObjectMatrix(sys);
 			if (base)
-				Renderer::RenderComponent(sys,0,*base,0,0);
+				Renderer::RenderComponent(sys,0,*base,0,0,false);
 			if (turret)
-				Renderer::RenderComponent(sys,base ? base->height : 0,*turret,0,0);
+				Renderer::RenderComponent(sys,base ? base->height : 0,*turret,0,0,false);
 
 
 			target.texture = GeometryImage::EndRendering();
