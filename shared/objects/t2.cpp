@@ -1,12 +1,61 @@
 #include "t2.h"
 #include <global_string.h>
-
+#include "mobileEntity.h"
+#include "faction.h"
+#include "interface.h"
 
 namespace Objects
 {
 	namespace T2
 	{
 		using namespace DeltaWorks;
+
+
+		#ifndef CLIENT
+		void Upgrade(MobileEntity&v, const PWorldEntity&target)
+		{
+			if (!v.CanUpgrade())
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,v.GetName()+ " can not upgrade other units");
+				return;
+			}
+			if (!target || !v.owner->CanSee(target,v.entityTime) || target.get() == &v)
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,"Upgrade: Nothing here");
+				return;
+			}
+			if (target->t2 && !target->t2->CanLevelUp())
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,"Upgrade: '"+target->GetNiceName()+"' is not ready for upgrade");
+				return;
+			}
+
+
+
+			const auto storage = GetStorage(v,Research::globalState.t2.upgradeCostType);
+
+
+			if (Research::globalState.t2.upgradeCostQuantity > storage)
+			{
+				LogEvent(EventClass::Preset::important,&v,"Upgrade: Insufficient "+String(Research::globalState.t2.upgradeCostType.ToString())+" in storage to upgrade '"+target->GetNiceName()+"'. Needs "+String(Research::globalState.t2.upgradeCostQuantity - storage)+" more");
+				ApplicationInterface::SignalOperationLacksResources(v,Research::globalState.t2.upgradeCostType,v.entityTime);
+				return;
+			}
+
+			ChangeStorage(v,v.entityTime, Research::globalState.t2.upgradeCostType,-Research::globalState.t2.upgradeCostQuantity);
+
+			if (!target->t2)
+				target->t2.reset(new Objects::T2::Properties());
+			else
+				target->t2->LevelUp();
+			Objects::Research::Recompute(*target->t2);
+
+			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,"'"+target->GetNiceName()+"' upgraded to "+target->GetTypeNameAppendix());
+
+			target->SignalChangeByExternalCause(WorldEntity::T2Changed,v.entityTime);
+		}
+		#endif
+
 
 		String	TModifier::Describe() const
 		{

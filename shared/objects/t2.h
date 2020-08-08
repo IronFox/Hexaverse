@@ -3,11 +3,17 @@
 #include "../typeDecl.h"
 #include "packable.h"
 #include <global_string.h>
+#include "types.h"
 
 namespace Objects
 {
 	namespace T2
 	{
+
+		#ifndef CLIENT
+			void		Upgrade(MobileEntity&actor, const PWorldEntity&target);
+		#endif
+
 
 		struct TModifier
 		{
