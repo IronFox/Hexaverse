@@ -299,8 +299,15 @@ namespace StatePanel
 				//cachedLines << " Ammo-Usage: "<<m->turret->ammoNeedPerShot<<nl;
 				if (m->turret->horizontalAttackRange.IsFunctionOrConstNonZero())
 				{
-					cachedLines << " Hrz. Range: "+m->turret->horizontalAttackRange.Describe(researchState)
-									+'+'+m->turret->explosionRadius.Describe(researchState);
+					String srange = m->turret->horizontalAttackRange.Describe(researchState);
+					String sexp = m->turret->explosionRadius.Describe(researchState);
+					if (m->t2)
+					{
+						srange += m->t2->horizontalAttackRange.Describe();
+						sexp += m->t2->explosionRadius.Describe();
+					}
+					cachedLines << " Hrz. Range: "+srange
+									+'+'+sexp;
 				}
 				elif (m->turret->explosionRadius.IsFunctionOrConstNonZero())
 					cachedLines << " Explosion Radius: "+m->turret->explosionRadius.Describe(researchState);
