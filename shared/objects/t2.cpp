@@ -52,11 +52,21 @@ namespace Objects
 
 			ChangeStorage(v,v.entityTime, Research::globalState.t2.upgradeCostType,-Research::globalState.t2.upgradeCostQuantity);
 
+			float relativeHealth = float(v.health) / v.GetMaxHealth();
+
 			if (!target->t2)
 				target->t2.reset(new Objects::T2::Properties());
 			else
 				target->t2->LevelUp();
 			Objects::Research::Recompute(*target->t2);
+
+			int newHealth = ceil(relativeHealth * target->GetMaxHealth());
+			if (newHealth != target->health)
+			{
+				target->health = newHealth;
+				target->SignalChangeByExternalCause(WorldEntity::HealthChanged,v.entityTime);
+			}
+
 
 			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,"'"+target->GetNiceName()+"' upgraded to "+target->GetTypeNameAppendix());
 
