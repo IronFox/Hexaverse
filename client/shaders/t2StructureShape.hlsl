@@ -4,6 +4,7 @@ Shader used to render the normal surfaces of structures (buildings)
 
 #include "common.inc.hlsl"
 #include "shadow.hlsli"
+#include "t2.hlsli"
 
 
 cbuffer KeyColor
@@ -57,14 +58,13 @@ float4 psMain(V2P input) : SV_TARGET
 	ambient *= (1.0 - toneDown*0.5);
 	float keyMatch = smoothstep(0.9,1.0,input.color.r - input.color.g - input.color.b);
 
-	float3 c = input.color.rgb *float3(0.5,0.2,0.2);
-	float3 color = c * (diffuse*0.65 + ambient*0.35) * SunColor.rgb/* * Color.a * input.color.a*/;
+	float3 color = t2Color(input.color,diffuse,ambient);
 
 
 	float fresnel = (((1.0 - abs(dot(WorldCamera[2].xyz,input.normal)))));
 
 	color = lerp(color,Tint.rgb*input.color.rgb,(0.25 + 0.75 * fresnel) * Tint.a);
-	color = lerp(color,KeyColor.rgb,fresnel * fresnel*fresnel);
+	color = t2Fresnel(color,KeyColor,fresnel);
 
 	color.rgb *= 1.0 - keyMatch;
 
@@ -72,8 +72,7 @@ float4 psMain(V2P input) : SV_TARGET
 
 
 	//color.rgb = lerp(color.rgb, KeyColor.rgb, keyMatch);
-
-	color.rgb += KeyColor.rgb * keyMatch;
+	color = t2KeyColor(color,KeyColor,keyMatch);
 
 
 	return float4(color, 1.0);
