@@ -10,6 +10,14 @@ namespace Objects
 	{
 		using namespace DeltaWorks;
 
+		Properties::Properties()
+		{
+			#ifdef _DEBUG
+				experience = 1000;
+			#endif
+		}
+
+
 
 		#ifndef CLIENT
 		void Upgrade(MobileEntity&v, const PWorldEntity&target)

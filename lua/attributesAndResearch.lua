@@ -513,7 +513,8 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 		
 		Describe = function(state)
 			if state == nil then
-				return original;
+				--return original;
+				return '';
 			end
 			local progress = ResearchState.GetProgress(state,key);
 			if (progress == 0) then

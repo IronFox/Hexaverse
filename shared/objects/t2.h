@@ -34,6 +34,11 @@ namespace Objects
 				multiplier = 1;
 			}
 
+			bool		HasEffect() const
+			{
+				return multiplier != 1;
+			}
+
 			bool		Update(float mult)
 			{
 				bool rs = this->multiplier != mult;
@@ -69,7 +74,7 @@ namespace Objects
 						horizontalAttackRange,
 						healthRegeneration;	//relative to max health, rounded up
 
-
+			/**/		Properties();
 			void		GainXP(UINT32 xp);
 			void		SetLevel(UINT32 newLevel);
 			void		LevelUp();

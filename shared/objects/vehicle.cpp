@@ -87,16 +87,21 @@ namespace Objects
 	/*virtual override*/ int				Vehicle::GetMaxHealth(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
-		return base->health.GetValue(state) * turret->healthMultiplier.GetValue(state);
+		return m.Apply(base->health.GetValue(state) * turret->healthMultiplier.GetValue(state));
 	}
 
 	/*virtual override*/ String				Vehicle::DescribeMaxHealth(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
 		String multiplier = turret->healthMultiplier.Describe(state);
+		auto h0 = base->health.GetValue(state)*turret->healthMultiplier.GetValue(state);
+		auto h1 = m.Apply(h0);
 		if (multiplier == "1" || multiplier == "1.0")
-			return base->health.Describe(state) + m.Describe();
-		return String(base->health.GetValue(state)*turret->healthMultiplier.GetValue(state))+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]" + m.Describe();
+			if (!m.HasEffect())
+				return String(h1);
+			else
+				return String(h1)+"[="+ String(h0) + base->health.Describe(state) + m.Describe()+"]";
+		return String(h1)+"[="+ String(base->health.GetValue(state)) + base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state) + m.Describe()+"]";
 	}
 
 	
