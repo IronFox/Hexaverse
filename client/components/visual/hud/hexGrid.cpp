@@ -1421,6 +1421,8 @@ namespace HexGrid
 			{
 				PGroup group (new Group());
 				group->name = e->GetTypeName();
+				if (e->t2)
+					group->name += "(T2)";
 				group->entries.adoptData(entries);
 				group->UpdateSignificance();
 
@@ -1472,6 +1474,8 @@ namespace HexGrid
 					key += e->owner->id.ToFullString();
 				if (e->IsDeadOrGhost())
 					key += "|ghost";
+				if (e->t2)
+					key += "|t2";
 				#ifndef NO_HIBERNATION
 					if (e->ToHibernating()->IsHibernating())
 						key += "|hibernating";
