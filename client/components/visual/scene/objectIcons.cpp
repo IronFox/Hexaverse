@@ -196,7 +196,7 @@ namespace Objects
 			sleepIcon.Setup("Sleep.png",1.f,float3(0.8f,1.f,1.f));
 			automationIcon.Setup("Automate.png",0.5f,float3(1));
 			questionIcon.Setup("Question-Mark.png",1.f / 1.5f,float3(0.5,1.5f,3));
-			t2LevelUp.Setup("Upgrade.png",0.5,float3(0,0,1),-0.1);
+			t2LevelUp.Setup("Upgrade.png",0.5,float3(1.1,1.5,1),-0.1);
 
 			for (index_t i = 0; i < Objects::Resource::N; i++)
 				resourceFamily[i].Setup(PathString(Objects::Resource::Reinterpret(i).ToString())+".png",0.75f,float3(0.5f,1.f,10));
