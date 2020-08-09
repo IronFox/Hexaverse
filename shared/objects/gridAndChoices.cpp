@@ -771,10 +771,10 @@ namespace Objects
 							{
 								const Grid::LCellIdI candidate(n.neighborID[j],h);
 								PWorldEntity other = GetEntity(candidate);
-								if (!other || other.get() == v)	//no owner-check (for now)
+								if (!other || other.get() == v || other->location != candidate)	//no owner-check (for now)
 									continue;
 								if (!other->t2 || other->t2->CanLevelUp())
-									movementChoices << Choice(candidate,1);
+									movementChoices << Choice(candidate+other->GetHeight()-1,1);
 							}
 						}
 					}
