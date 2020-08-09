@@ -61,7 +61,7 @@ float4 psMain(V2P input) : SV_TARGET
 	float keyMatch = smoothstep(0.9,1.0,input.color.r - input.color.g - input.color.b);
 	
 	//float3 c = input.color.rgb * 0.2 + (1-input.color.rgb)*float3(0.5,0.2,0.2);
-	float3 color = t2Color(input.color,diffuse,ambient);
+	float3 color = t2Color(input.color,KeyColor,diffuse,ambient);
 	
 
 	float fresnel = (((1.0 - abs(dot(WorldCamera[2].xyz,input.normal)))));
