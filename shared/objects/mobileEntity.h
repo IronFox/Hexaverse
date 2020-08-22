@@ -449,8 +449,9 @@ namespace Objects
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackAndMotionAreIndependent() const {return turret->independentAttackAndMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
-		float					GetAttackExplosionRadius(const OwnerParameter&, const T2::TModifier&) const override;
-		using					TurretBase::GetAttackExplosionRadius;
+		float					GetAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&) const override;
+		String					DescribeAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&) const override;
+
 		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanUpgrade() const {return turret->CanUpgrade();}
 
@@ -492,9 +493,9 @@ namespace Objects
 
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
-		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner,const T2::TModifier&t2) const =0;
-		int						GetMovementStepsPerRound() const {return GetMovementStepsPerRound(owner,t2 ? t2->speed : T2::TModifier());}
-		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner, const T2::TModifier&t2) const =0;
+		virtual int				GetMovementStepsPerRoundExt(const OwnerParameter&owner,const T2::TModifier&t2) const =0;
+		int						GetMovementStepsPerRound() const {return GetMovementStepsPerRoundExt(owner,t2 ? t2->speed : T2::TModifier());}
+		virtual String			DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&t2) const =0;
 		virtual float			GetBaseMovementInitiative() const {return 100;}
 		/**
 		Retrieves the visual breath of compiled paths. Purely cosmetic.
@@ -577,9 +578,8 @@ namespace Objects
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
 		virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
-		virtual float			GetScanningRange(const OwnerParameter&, const T2::TModifier&m) const override;
-		using					WorldEntity::GetScanningRange;
-		virtual String			DescribeScanningRange(const OwnerParameter&, const T2::TModifier&m) const override;
+		virtual float			GetScanningRangeExt(const OwnerParameter&, const T2::TModifier&m) const override;
+		virtual String			DescribeScanningRangeExt(const OwnerParameter&, const T2::TModifier&m) const override;
 		#ifndef CLIENT
 			virtual void		OnDestroy(RemovalType, float&atTime) override;	
 			virtual void		SignalTerrainChange(float atTime) override;

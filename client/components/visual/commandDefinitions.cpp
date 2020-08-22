@@ -1004,11 +1004,9 @@ namespace Objects
 			component.commands.Add( new Command::IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 			component.commands.Add( new Command::IconCommand("Upgrade",&CommonCmd::ToggleMode<CursorMode::UpgradeMode>, &CommonCmd::ModeCheck<CursorMode::UpgradeMode>,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 			{
-				costTypeOut = Resource::Minerals;
-				mineralCostOut = 200;
-				ASSERT__(selectedMobileEntity);
-				//PVehicle v = To<Vehicle>::Cast(e);
-				timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(200,Component::Operation::Upgrade);
+				costTypeOut = Objects::Research::globalState.t2.upgradeCostType;
+				mineralCostOut = Objects::Research::globalState.t2.upgradeCostQuantity;
+				timeCostOut = 0;
 			}));
 		}
 

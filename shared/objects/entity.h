@@ -438,15 +438,15 @@ namespace Objects
 
 		String						GetNameAndOwner() const;
 
-		virtual int					GetMaxHealth(const OwnerParameter&, const T2::TModifier&) const;
-		virtual String				DescribeMaxHealth(const OwnerParameter&, const T2::TModifier&) const;
+		virtual int					GetMaxHealthExt(const OwnerParameter&, const T2::TModifier&) const;
+		virtual String				DescribeMaxHealthExt(const OwnerParameter&, const T2::TModifier&) const;
 		int							GetMaxHealth() const;
 		String						DescribeMaxHealth() const;
 		/**
 		Queries the current scanning radius of the local entity, including research and EMP effects.
 		Currently this is overridden by MobileEntity, Vehicle, and Tower
 		*/
-		virtual float				GetScanningRange(const OwnerParameter&, const T2::TModifier&) const;
+		virtual float				GetScanningRangeExt(const OwnerParameter&, const T2::TModifier&) const;
 		float						GetScanningRange() const;
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		float3						GetScanningCenter() const {return GetScanningCenter(location);}
@@ -461,7 +461,7 @@ namespace Objects
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
-		virtual String				DescribeScanningRange(const OwnerParameter&, const T2::TModifier&) const;
+		virtual String				DescribeScanningRangeExt(const OwnerParameter&, const T2::TModifier&) const;
 		String						DescribeScanningRange() const;
 		static float				StaticEMPModify(float raw, float min, int empDamageLevel);
 		float						EMPModify(float raw, float min) const;

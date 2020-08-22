@@ -241,7 +241,7 @@ namespace HexGrid
 			//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 			Objects::PTurretBase base = target->GetTurretBase();
 			if (base && base->turret->CanAttack())
-				outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->GetResearchState()))+")";
+				outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->GetDamageLevel())+")";
 			if (target->empDamageLevel)
 				outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
@@ -331,7 +331,7 @@ namespace HexGrid
 			//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 			Objects::PTurretBase b = proto->GetTurretBase();
 			if (b && b->turret->CanAttack())
-				outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->GetResearchState()))+")";
+				outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->GetDamageLevel())+")";
 //					if (target->empDamageLevel)
 //					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 

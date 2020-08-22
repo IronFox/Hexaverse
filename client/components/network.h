@@ -308,6 +308,7 @@ namespace Network
 		DECLARE_CHANNEL(ResearchFactionState);
 		DECLARE_CHANNEL(ResearchQueue);
 		DECLARE_OBJECT_SENDER(QueueResearch);
+		DECLARE_CHANNEL(T2Globals);
 		DECLARE_CHANNEL(ResearchAttributeVector);
 		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
 

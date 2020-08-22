@@ -423,13 +423,13 @@ namespace Objects
 			Resource resourceType;
 			GetCosts(resourceCost,resourceType,timeCost);
 
+			outResult << name;
 			if (timeCost == 0)
 			{
-				outResult << name;
+				if (resourceCost > 0)
+					outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost);
 				return;
 			}
-
-			outResult << name;
 			if (resourceCost > 0)
 			{
 				outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost) + "  ";

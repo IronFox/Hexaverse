@@ -190,9 +190,9 @@ namespace Objects
 
 		};
 
-		#ifndef CLIENT
-			struct T2Functions
-			{
+		struct T2Globals
+		{
+			#ifndef CLIENT
 				typedef Lua::Function<float(int)>	TModFunc;
 
 				TModFunc	initiative,
@@ -205,11 +205,13 @@ namespace Objects
 							horizontalAttackRange,
 							healthRegeneration;
 				Lua::Function<int(int)>				xpToLevel,levelToXP;
+			#endif
 				int			upgradeCostQuantity=1;
 				Resource	upgradeCostType;
 
 
 
+			#ifndef CLIENT
 
 				static void Load(const Lua::Table&t, TModFunc&f, String name)
 				{
@@ -227,9 +229,9 @@ namespace Objects
 				}
 
 				bool				Recompute(T2::Properties&p) const;
-			};
+			#endif
+		};
 
-		#endif
 
 
 		struct GlobalState
@@ -244,8 +246,8 @@ namespace Objects
 				Lua::Reference			zeroState;
 				ScriptCache::PScript	script,	//currently loaded program
 										factoryDefault;	//program defined in install directory. Must load or server execution fails
-				T2Functions				t2;
 			#endif
+			T2Globals			t2;
 			Buffer0<PTopic>		allTopics;
 			TopicGroup			rootResearch;
 			#ifndef CLIENT

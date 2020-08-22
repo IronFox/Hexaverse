@@ -119,7 +119,7 @@ namespace Objects
 
 				
 				entityTime += flightTime;
-				const int damageLevel = (int)floor(turret->GetDamageLevel(state));
+				const int damageLevel = (int)floor(GetDamageLevel());
 				const float explosionRadius = GetAttackExplosionRadius();
 
 				if (turret->dealsEMPDamage)
@@ -331,12 +331,20 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float			Tower::GetAttackExplosionRadius(const OwnerParameter&owner, const T2::TModifier&t2) const
+	/*virtual override*/ float			Tower::GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
 		return  t2.Apply(turret->explosionRadius.GetValue(GetResearchState(owner)));
 	}
+	
+	/*virtual overrride*/ String		Tower::DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&m) const
+	{
+		if (!turret->CanAttack())
+			return "";
+		return turret->explosionRadius.Describe(GetResearchState(owner)) + m.Describe();
+	}
+
 
 	/*virtual override*/ int			Tower::GetOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
@@ -349,14 +357,14 @@ namespace Objects
 	}
 	
 
-	/*virtual override*/ float			Tower::GetFlatAttackRange(const OwnerParameter&owner, const T2::TModifier&t2) const
+	/*virtual override*/ float			Tower::GetFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
 		return EMPModify(t2.Apply(turret->horizontalAttackRange.GetValue(GetResearchState(owner))+2.f),2.f);
 	}
 
-	/*virtual override*/ String			Tower::DescribeFlatAttackRange(const OwnerParameter&owner, const T2::TModifier&t2) const
+	/*virtual override*/ String			Tower::DescribeFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;

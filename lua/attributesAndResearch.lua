@@ -364,8 +364,8 @@ VehicleBaseConfig =
 
 T2 =
 {
-	UpgradeCostQuantity = 200,
-	UpgradeCostType = 'Minerals',
+	UpgradeCostQuantity = 30,
+	UpgradeCostType = 'Uranium',
 
 
 	DefaultFactor = function(lvl)

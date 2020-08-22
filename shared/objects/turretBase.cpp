@@ -129,8 +129,8 @@ namespace Objects
 
 	int						TurretBase::GetDamagePotentialPerRound() const
 	{
-		const auto&state = ToEntity().GetResearchState(); 
-		return std::max(1,turret->GetAttacksPerRound(state)) * turret->GetDamageLevel(state);
+		const auto&e = ToEntity();
+		return GetDamagePotentialPerRound(e.owner,e.t2);
 	}
 
 	int						TurretBase::GetDamagePotentialPerRound(const OwnerParameter&owner, const T2::PConstProperties&p) const
@@ -144,22 +144,60 @@ namespace Objects
 	float					TurretBase::GetFlatAttackRange() const
 	{
 		const auto&e = ToEntity();
-		return GetFlatAttackRange(e.owner,e.t2 ? e.t2->horizontalAttackRange : T2::TModifier());
+		return GetFlatAttackRangeExt(e.owner,e.t2 ? e.t2->horizontalAttackRange : T2::TModifier());
 	}
 
 	float					TurretBase::GetAttackExplosionRadius() const
 	{
 		const auto&e = ToEntity();
-		return GetAttackExplosionRadius(e.owner, e.t2 ? e.t2->explosionRadius : T2::TModifier());
+		return GetAttackExplosionRadiusExt(e.owner, e.t2 ? e.t2->explosionRadius : T2::TModifier());
 	}
+
+	String					TurretBase::DescribeAttackExplosionRadius() const
+	{
+		const auto&e = ToEntity();
+		return DescribeAttackExplosionRadiusExt(e.owner, e.t2 ? e.t2->explosionRadius : T2::TModifier());
+	}
+
 
 	String					TurretBase::DescribeFlatAttackRange() const
 	{
 		const auto&e = ToEntity();
-		return DescribeFlatAttackRange(e.owner, e.t2 ? e.t2->horizontalAttackRange : T2::TModifier());
+		return DescribeFlatAttackRangeExt(e.owner, e.t2 ? e.t2->horizontalAttackRange : T2::TModifier());
 	}
 
 
+	int						TurretBase::GetDamageLevel() const
+	{
+		const auto&e = ToEntity();
+		return GetDamageLevel(e.owner,e.t2);
+	}
+
+	int						TurretBase::GetDamageLevel(const OwnerParameter&owner, const T2::PConstProperties&p) const
+	{
+		const auto&state = WorldEntity::GetResearchState(owner); 
+		if (p)
+			return p->damageLevel.Apply(turret->GetDamageLevel(state));
+		return turret->GetDamageLevel(state);
+	}
+
+	String					TurretBase::DescribeDamageLevel() const
+	{
+		const auto&e = ToEntity();
+		return DescribeDamageLevel(e.owner,e.t2);
+	}
+
+
+	String					TurretBase::DescribeDamageLevel(const OwnerParameter&owner, const T2::PConstProperties&p) const
+	{
+		
+		const auto&state = WorldEntity::GetResearchState(owner); 
+
+		String rs = String(GetDamageLevel(owner,p)) + turret->damageLevel.Describe(state);
+		if (p)
+			rs += p->damageLevel.Describe();
+		return rs;
+	}
 
 
 	/*static*/ bool TurretBase::IsSafeHit( const PFaction&myFaction, TrajectoryType t, float range,const World::Data&visibleWorld, const World::Data&actualWorld,const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, float explosionRadius, TargetChoice&outExtResult )

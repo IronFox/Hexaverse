@@ -307,7 +307,7 @@ namespace Objects
 	}
 
 
-	/*virtual*/ float		WorldEntity::GetScanningRange(const OwnerParameter&owner, const T2::TModifier&t2) const
+	/*virtual*/ float		WorldEntity::GetScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		float r = EMPModify(GetTable()->maxScanningRange.GetValue(GetResearchState(owner)),2);
 		r = t2.Apply(r);
@@ -317,7 +317,7 @@ namespace Objects
 
 	float					WorldEntity::GetScanningRange() const
 	{
-		return GetScanningRange(owner,t2 ? t2->scanningRange : T2::TModifier());
+		return GetScanningRangeExt(owner,t2 ? t2->scanningRange : T2::TModifier());
 	}
 
 
@@ -339,16 +339,16 @@ namespace Objects
 
 	int						WorldEntity::GetMaxHealth() const
 	{
-		return GetMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
+		return GetMaxHealthExt(owner,t2 ? t2->maxHealth : T2::TModifier());
 	}
 
 	String					WorldEntity::DescribeMaxHealth() const
 	{
-		return DescribeMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
+		return DescribeMaxHealthExt(owner,t2 ? t2->maxHealth : T2::TModifier());
 	}
 
 
-	/*virtual*/ int			WorldEntity::GetMaxHealth(const OwnerParameter&owner, const T2::TModifier&t2) const
+	/*virtual*/ int			WorldEntity::GetMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		int h = std::max(1,GetTable()->maxHealth.GetValue(GetResearchState(owner)));
 		h = t2.Apply(h);
@@ -356,7 +356,7 @@ namespace Objects
 	}
 
 
-	/*virtual*/ String		WorldEntity::DescribeMaxHealth(const OwnerParameter&owner, const T2::TModifier&t2) const
+	/*virtual*/ String		WorldEntity::DescribeMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		String rs = String(GetMaxHealth())+GetTable()->maxHealth.Describe(GetResearchState(owner));
 		rs += t2.Describe();
@@ -375,7 +375,7 @@ namespace Objects
 	}
 
 
-	/*virtual*/ String		WorldEntity::DescribeScanningRange(const OwnerParameter&owner, const T2::TModifier&t2 ) const
+	/*virtual*/ String		WorldEntity::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&t2 ) const
 	{
 		String rs = String(GetScanningRange())+ GetTable()->maxScanningRange.Describe(GetResearchState(owner));
 		rs += t2.Describe();
@@ -384,7 +384,7 @@ namespace Objects
 
 	String					WorldEntity::DescribeScanningRange() const
 	{
-		return DescribeScanningRange(owner,t2 ? t2->scanningRange : T2::TModifier());
+		return DescribeScanningRangeExt(owner,t2 ? t2->scanningRange : T2::TModifier());
 	}
 
 
@@ -463,9 +463,9 @@ namespace Objects
 				if (descFlags & DescIncludeMaxHealth)
 				{
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
+						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealthExt(owner,t2 ? t2->maxHealth : T2::TModifier());
 					else
-						outResult << "Health: " + this->DescribeMaxHealth(owner,t2 ? t2->maxHealth : T2::TModifier());
+						outResult << "Health: " + this->DescribeMaxHealthExt(owner,t2 ? t2->maxHealth : T2::TModifier());
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
@@ -487,7 +487,7 @@ namespace Objects
 			{
 				AppendDeploymentCount(outResult,owner);
 			}
-			outResult << "Scanning range: "+DescribeScanningRange(owner,t2 ? t2->scanningRange : T2::TModifier());
+			outResult << "Scanning range: "+DescribeScanningRangeExt(owner,t2 ? t2->scanningRange : T2::TModifier());
 			#ifndef NO_HIBERNATION
 					outResult << " "+String(TrafficResourceTag()) +String(GetUplinkTraffic());
 
@@ -501,7 +501,7 @@ namespace Objects
 			{
 				if (b->turret->CanAttack())
 				{
-					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRange(owner,t2 ? t2->horizontalAttackRange : T2::TModifier())+" ("+b->turret->trajectoryType.ToString()+")";
+					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRangeExt(owner,t2 ? t2->horizontalAttackRange : T2::TModifier())+" ("+b->turret->trajectoryType.ToString()+")";
 				}
 				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}

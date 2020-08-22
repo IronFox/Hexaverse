@@ -752,6 +752,12 @@ namespace Protocol
 		, ResearchAttributeDeltaArray<bool>, boolAttributes
 	);
 
+	NETSTRUCT2( T2Globals
+		, INT32, upgradeCostQuantity
+		, UINT32, upgradeCostTypeResourceIndex
+	);
+
+
 
 	//NETSTRUCT2(ResourceData
 	//	, ResourceID, id
@@ -892,6 +898,7 @@ namespace Protocol
 			ResearchFactionState,	// s2c : ResearchFactionState
 			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
 			ResearchQueue,		// s2c : ResearchQueue
+			T2Globals,					// s2c : T2Globals
 			ResearchAttributeVector,	// s2c : ResearchAttributeVector
 			ResearchAttributeDeltaVector,	//s2c : ResearchAttributeDeltaVector
 

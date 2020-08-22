@@ -79,12 +79,20 @@ namespace Objects
 	}
 
 
-	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadius(const OwnerParameter&owner, const T2::TModifier&t2) const
+	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
 		return t2.Apply(turret->explosionRadius.GetValue(GetResearchState(owner)));
 	}
+
+	/*virtual overrride*/ String				MobileEntity::DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&m) const
+	{
+		if (!turret->CanAttack())
+			return "";
+		return turret->explosionRadius.Describe(GetResearchState(owner)) + m.Describe();
+	}
+
 
 
 	/*virtual override*/ void			MobileEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
@@ -92,7 +100,7 @@ namespace Objects
 		if (turret->detectsResources)
 		{
 			const auto center = GetScanningCenter(loc);
-			float range = GetScanningRange(owner, t2 ? t2->horizontalAttackRange : T2::TModifier());
+			float range = GetScanningRangeExt(owner, t2 ? t2->horizontalAttackRange : T2::TModifier());
 
 			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
 			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
@@ -102,12 +110,12 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float		MobileEntity::GetScanningRange( const OwnerParameter&owner, const T2::TModifier&m ) const
+	/*virtual override*/ float		MobileEntity::GetScanningRangeExt( const OwnerParameter&owner, const T2::TModifier&m ) const
 	{
 		return EMPModify(m.Apply(turret->scanningRange.GetValue(GetResearchState(owner))),2);
 	}
 
-	/*virtual override*/ String		MobileEntity::DescribeScanningRange(const OwnerParameter&owner, const T2::TModifier&m) const
+	/*virtual override*/ String		MobileEntity::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		return turret->scanningRange.Describe(GetResearchState(owner)) + m.Describe();
 	}
@@ -1612,7 +1620,7 @@ namespace Objects
 
 			Task&task = LockedPeekTask();
 
-			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(GetResearchState())),turret->dealsEMPDamage, turret->mainAttackIsDoomsday, attackTime);
+			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(GetDamageLevel()),turret->dealsEMPDamage, turret->mainAttackIsDoomsday, attackTime);
 
 			if (task.foci.IsEmpty())
 			{

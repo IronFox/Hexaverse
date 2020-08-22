@@ -265,7 +265,7 @@ namespace Lua
 			t.SetField("attacksPerRound",b.GetAttacksPerRound());
 			t.SetField("flatAttackRange",b.GetFlatAttackRange());
 			t.SetField("explosionRadius",b.GetAttackExplosionRadius());
-			t.SetField("damageLevel",b.turret->GetDamageLevel(researchState));
+			t.SetField("damageLevel",b.GetDamageLevel());
 			t.SetField("dealsEMPDamage",b.turret->dealsEMPDamage);
 			
 			const float flatAttackRange = b.GetFlatAttackRange();

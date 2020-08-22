@@ -116,7 +116,7 @@ namespace Objects
 
 
 		
-			void				T2Functions::Load(const Lua::Table&t)
+			void				T2Globals::Load(const Lua::Table&t)
 			{
 				#undef LOAD
 				#define LOAD(X) Load(t,this->X,#X);
@@ -158,7 +158,7 @@ namespace Objects
 			}
 
 		
-			bool				T2Functions::Recompute(T2::Properties&p) const
+			bool				T2Globals::Recompute(T2::Properties&p) const
 			{
 				bool rs = false;
 				if (p.xpChanged)
