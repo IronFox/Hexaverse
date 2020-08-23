@@ -1382,6 +1382,7 @@ namespace Network
 
 		void	ResourceTable(Protocol::ResourceTable&table)
 		{
+			Objects::Resource::lastTable = std::move(Objects::Resource::table);
 			Objects::Resource::table = std::move(table);
 			GlobalEvents::resourceTableUpdated();
 		}
