@@ -5,6 +5,13 @@
 #include <container/buffer.h>
 #include "../../clientEvents.h"
 #include <logEvent.h>
+#include "../../cameraControl.h"
+#include <al/openal.h>
+
+
+
+namespace AL = Engine::OpenAL;
+
 
 namespace HUD
 {
@@ -20,6 +27,10 @@ namespace HUD
 
 		namespace Detail
 		{
+
+			AL::Wave buttonDown;
+			//AL::Wave buttonUp;
+
 			struct TWindowEntry
 			{
 				PWindow	window;
@@ -146,10 +157,30 @@ namespace HUD
 		}
 
 
+
+		void				PlayButtonDownSound(const M::TVec2<>&center)
+		{
+			AL::PlayOnce(float3(center.x*2-1,center.y*2-1,1),Detail::buttonDown,0.5,1,true);
+		}
+
+		void				PlayButtonUpSound(const M::TVec2<>&center)
+		{
+			//AL::PlayOnce(float3(center.x*2-1,center.y*2-1,1),Detail::buttonUp,0.5,1,true);
+		}
+
+
 		void		Create()
 		{
 			Component::Image::StaticCreate();
 			Component::Decoration::StaticCreate();
+
+			Detail::buttonDown = AL::Load("resources/audio/buttonDown.wav");
+			//Detail::buttonUp = AL::Load("resources/audio/buttonUp.wav");
+
+
+
+
+
 
 			GlobalEvents::uiScaleChanged += []()
 			{

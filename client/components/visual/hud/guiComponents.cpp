@@ -10,6 +10,7 @@
 #include "../../clientEvents.h"
 #include "componentDetails.h"
 #include <math/graph.h>
+#include "windowStack.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -4175,6 +4176,27 @@ namespace Component
 		Super::SetVerticalPadding(0.5f);
 		Super::SetAlign(TextField::VAlign::Center);
 	}
+
+	/*virtual override*/ void Button::OnMouseDown()
+	{
+		WindowStack::PlayButtonDownSound(this->GetRect().center());
+	}
+
+	/*virtual override*/ void Button::OnMouseUp()
+	{
+		if (ContainsMouse())
+		{
+			DetectEnabledState();
+			if (IsEnabled() && onPress)
+			{
+				onPress();
+			}
+		}
+		WindowStack::PlayButtonUpSound(this->GetRect().center());
+	}
+
+
+
 
 	void Label::Setup()
 	{
