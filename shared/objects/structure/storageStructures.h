@@ -37,11 +37,12 @@ namespace Objects
 			GlobalEvents::resourceTableUpdated.Unregister(tableRegId);
 		}
 
-		virtual void				OnResourceTableUpdate() {};
 
 	public:
 		Resource::Vector			storage,maxStorage;
 		static const int			MaxStorage = StorageCommon::MaxStorage;
+
+		virtual void				OnResourceTableUpdate() {};
 
 		virtual void				GetResourceVector(Resource::Vector&, Resource::Vector&storage, Resource::Vector&max) const override	{storage = this->storage; max = maxStorage;}
 		virtual void				SetResourceStorage(const Resource::Vector&store)	override
@@ -138,6 +139,12 @@ namespace Objects
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_FuelContainer;}
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			maxStorage.Set(Resource::Fuel, MaxStorage);
+		};
 	};
 
 
@@ -153,6 +160,12 @@ namespace Objects
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_MineralContainer;}
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			maxStorage.Set(Resource::Minerals, MaxStorage);
+		};
 	};
 
 
@@ -168,6 +181,12 @@ namespace Objects
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_UraniumStorage;}
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			maxStorage.Set(Resource::Uranium, MaxStorage);
+		};
 	};
 	
 	
@@ -183,6 +202,12 @@ namespace Objects
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Crystal Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_CrystalStorage;}
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			maxStorage.Set(Resource::CrystallineCompounds, MaxStorage);
+		};
 	};
 
 	class OrganicStorage : public StorageStructure<OrganicStorage>
@@ -197,6 +222,12 @@ namespace Objects
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Organic Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_OrganicStorage;}
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			maxStorage.Set(Resource::OrganicCompounds, MaxStorage);
+		};
 	};
 	
 	class CompositeMaterialStorage : public StorageStructure<CompositeMaterialStorage>
@@ -211,6 +242,12 @@ namespace Objects
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Composite Material Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_CompositeMaterialStorage;}
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			maxStorage.Set(Resource::CompositeMaterials, MaxStorage);
+		};
 	};
 	
 	class MunitionStorage : public StorageStructure<MunitionStorage>
@@ -237,6 +274,14 @@ namespace Objects
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Munition Storage"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_MunitionStorage;}
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			#ifndef NO_MUNITION
+				maxStorage[Resource::Munitions] = MaxStorage;
+			#endif
+		};
 	};
 
 	
@@ -310,6 +355,14 @@ namespace Objects
 				;
 			}
 		#endif
+
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			#ifndef NO_MUNITION
+				maxStorage[Resource::Munitions] = LocalMunitionStorage;
+			#endif
+		};
 	};
 
 }
