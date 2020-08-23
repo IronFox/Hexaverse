@@ -1,5 +1,9 @@
 v0.9.11
 	+ Added button sounds
+	+ Added new resources: organic,cystal/composite compounds
+	+ Added plantation (organic/crystal harvesting)
+	+ Added organic/crystal/composite factory structures
+	+ Added organic/crystal/composite storage structures
 
 v0.9.10	[Dec 31 2019]
 	+ AI: Added terrain alteration options to mobile unit API
