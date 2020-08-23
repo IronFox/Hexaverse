@@ -1,4 +1,5 @@
 v0.9.11
+	+ Implemented Tier 2 unit improvement. Use mechanic to upgrade units
 	> Initiative is now a user-configurable unit property
 
 v0.9.10	[Dec 31 2019]
