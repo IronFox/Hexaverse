@@ -149,7 +149,7 @@ namespace Objects
 			CompositeMaterials = Offset+2,
 			_ = ID::Invalid;
 
-		Table table = CompileLocalTable();
+		Table lastTable, table = CompileLocalTable();
 
 		Table::Table(const std::initializer_list<const char*>&init, const std::initializer_list<float3>&colors)
 		{

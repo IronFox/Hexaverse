@@ -1,5 +1,6 @@
 #pragma once
 #include "../structure.h"
+#include "../../globalEvents.h"
 
 namespace Objects
 {
@@ -15,11 +16,28 @@ namespace Objects
 	template <class Derivative, index_t LeftoverUpdateIteration=2>
 	class StorageStructure : public WorkingStructureT<Derivative>
 	{
+	private:
+		index_t						tableRegId;
 	protected:
 		typedef WorkingStructureT<Derivative>			Super;
 		friend class Super;
-		/**/						StorageStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location,atTime)	{}
-		/**/						StorageStructure()	{ }	//global prototype
+		/**/						StorageStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+									: Super(table,owner,location,atTime)
+		{
+			tableRegId = GlobalEvents::resourceTableUpdated.Register([this](){this->OnResourceTableUpdate();});
+		}
+		/**/						StorageStructure()
+		{
+			//global prototype
+			tableRegId = GlobalEvents::resourceTableUpdated.Register([this](){this->OnResourceTableUpdate();});
+		}
+
+		virtual						~StorageStructure()
+		{
+			GlobalEvents::resourceTableUpdated.Unregister(tableRegId);
+		}
+
+		virtual void				OnResourceTableUpdate() {};
 
 	public:
 		Resource::Vector			storage,maxStorage;

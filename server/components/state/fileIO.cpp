@@ -1385,6 +1385,7 @@ namespace FileIO
 		const Objects::Resource::Table*foreignTable = nullptr;
 		Objects::Resource::Table importedTable;
 
+		Objects::Resource::lastTable = std::move(Objects::Resource::table);
 		Objects::Resource::table = Objects::Resource::CompileLocalTable();
 
 		

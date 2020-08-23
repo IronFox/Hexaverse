@@ -251,7 +251,7 @@ namespace Objects
 		Each resource index matches its entry in this list.
 		Filled by the server and synchronized to clients as needed
 		*/
-		extern Table table;
+		extern Table lastTable, table;
 		/**
 		The minimal configuration using during previous versions of the game.
 		*/
