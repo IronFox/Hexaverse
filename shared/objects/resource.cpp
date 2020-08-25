@@ -574,7 +574,7 @@ namespace Objects
 			
 			
 
-			rs.Set(CrystallineCompounds, "Crystalline Compounds", "Question Mark", float3(0.4,0.3,0.7));
+			rs.Set(CrystallineCompounds, "Crystalline Compounds", "Crystalline Compounds", float3(0.4,0.3,0.7));
 			rs.Set(OrganicCompounds, "Organic Compounds", "Question Mark", float3(0.6,1,0.3));
 			rs.Set(CompositeMaterials, "Composite Materials", "Question Mark", float3(0.4,0.4,0.4));
 			return rs;
