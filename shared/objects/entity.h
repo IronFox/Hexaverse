@@ -619,6 +619,7 @@ namespace Objects
 					DescIncludeMaxHealth = 0x8,
 					DescIncludeFuelDemandModifier = 0x10,	//!< effective only for satellites
 					DescIncludeUnitCount = 0x20,
+					DescExcludeExtended = 0x40,
 				};
 				//old: includeName, includePrice
 
