@@ -1015,15 +1015,18 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Nexus Ports are indestructible structures of unknown origin."
-			" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
-			" Nexus Ports will shift ownership to the respective owner of the first connected player building."
-			" They must be enabled for a number of rounds in order to count towards winning the game."
-			" Disabling a Nexus Port will make it stop counting as such."
-			" A Nexus Port that loses all connections to other player-owned structures will shift back to"
-			" the Nexus faction."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Nexus Ports are indestructible structures of unknown origin."
+				" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
+				" Nexus Ports will shift ownership to the respective owner of the first connected player building."
+				" They must be enabled for a number of rounds in order to count towards winning the game."
+				" Disabling a Nexus Port will make it stop counting as such."
+				" A Nexus Port that loses all connections to other player-owned structures will shift back to"
+				" the Nexus faction."
+				;
+			}
 		}
 
 
@@ -1032,22 +1035,28 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Enabled generators provide energy for the local compound."
-			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
-			" Combine with reactor cores for increased output."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Enabled generators provide energy for the local compound."
+				" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
+				" Combine with reactor cores for increased output."
+				;
+			}
 		}
 
 		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags,owner);
-			label.MarkBriefEnd();
-			label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
-			" but multiple generators may be connected to the same reactor core."
-			" Must be placed on the same height level as the generator(s) to connect to."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
+				" but multiple generators may be connected to the same reactor core."
+				" Must be placed on the same height level as the generator(s) to connect to."
+				;
+			}
 		}
 
 

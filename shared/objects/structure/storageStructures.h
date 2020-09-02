@@ -81,7 +81,7 @@ namespace Objects
 				virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
 				{
 					Super::DescribeType(label,descFlags,owner);
-					if (maxStorage.IsNotEmpty())
+					if (maxStorage.IsNotEmpty() && (descFlags & DescExcludeExtended) == 0)
 					{
 						label.MarkBriefEnd();
 						label << "Storage structures accumulate excess production of the respective resources from the local compound until they are full."
@@ -241,13 +241,16 @@ namespace Objects
 			{
 				label.BeginBrief();
 				Super::DescribeType(label,descFlags,owner);
-				label.MarkBriefEnd();
-				#ifdef NO_MUNITION
-					label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
-				#else
-					label << "Enabled munition factories continuiously produce "+String(ResourceTag(Resource::Munitions))+" to supply connected offensive turrets."
-				#endif
-				;
+				if ((descFlags & DescExcludeExtended) == 0)
+				{
+					label.MarkBriefEnd();
+					#ifdef NO_MUNITION
+						label << "Enabled munition factories continuiously produce munition to supply connected offensive turrets. This is a deprecated building type."
+					#else
+						label << "Enabled munition factories continuiously produce "+String(ResourceTag(Resource::Munitions))+" to supply connected offensive turrets."
+					#endif
+					;
+				}
 			}
 		#endif
 	};

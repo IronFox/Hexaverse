@@ -388,9 +388,12 @@ namespace Objects
 			{
 				label.BeginBrief();
 				Super::DescribeType(label,descFlags,owner);
-				label.MarkBriefEnd();
-				label << "Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
-				;
+				if ((descFlags & DescExcludeExtended) == 0)
+				{
+					label.MarkBriefEnd();
+					label << "Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
+					;
+				}
 			}
 		#endif
 
@@ -652,9 +655,12 @@ namespace Objects
 					label.BeginBrief();
 					Super::DescribeType(label,descFlags);
 					//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
-					label.MarkBriefEnd();
-					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
-										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
+					if ((descFlags & DescExcludeExtended) == 0)
+					{
+						label.MarkBriefEnd();
+						label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
+											" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
+					}
 				}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 				virtual void			OnSelect()	override;
