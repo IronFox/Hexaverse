@@ -9,11 +9,14 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Organic compound factories convert "+Resource::Fuel.GetTagStr()+" and "+Resource::CrystallineCompounds.GetTagStr()+" to " +
-				Resource::OrganicCompounds.GetTagStr()+"."
-			" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Organic compound factories convert "+Resource::Fuel.GetTagStr()+" and "+Resource::CrystallineCompounds.GetTagStr()+" to " +
+					Resource::OrganicCompounds.GetTagStr()+"."
+				" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
+				;
+			}
 		}
 	#endif
 
@@ -53,11 +56,14 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Crystalline compound factories convert "+Resource::Minerals.GetTagStr()+" and "+Resource::OrganicCompounds.GetTagStr()+" to " +
-				Resource::CrystallineCompounds.GetTagStr()+"."
-			" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Crystalline compound factories convert "+Resource::Minerals.GetTagStr()+" and "+Resource::OrganicCompounds.GetTagStr()+" to " +
+					Resource::CrystallineCompounds.GetTagStr()+"."
+				" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
+				;
+			}
 		}
 	#endif
 
@@ -90,11 +96,14 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Composite material factories convert "+Resource::CrystallineCompounds.GetTagStr()+" and "+Resource::OrganicCompounds.GetTagStr()+" to " +
-				Resource::CompositeMaterials.GetTagStr()+"."
-			" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Composite material factories convert "+Resource::CrystallineCompounds.GetTagStr()+" and "+Resource::OrganicCompounds.GetTagStr()+" to " +
+					Resource::CompositeMaterials.GetTagStr()+"."
+				" Requires "+Resource::Energy.GetTagStr()+" from generators to operate."
+				;
+			}
 		}
 	#endif
 
