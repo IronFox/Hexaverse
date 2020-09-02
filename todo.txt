@@ -1,3 +1,12 @@
+plants:
+	recompile on clip
+	recompile on reconnect to server
+	clear out by vehicles and buildings
+	grow
+	probabilities (serialize)
+	adaptive planet loading of different type configuration
+
+
 terrain manipulation via ai script
 
 blending in and out of blurred gui background is rather harsh, somehow. maybe preserve both blurred and sharp copy and blend on the fly in shader?

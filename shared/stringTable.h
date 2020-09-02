@@ -72,12 +72,13 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_SkyGuardian,
 	Type_Ragnarok,
 	Type_StarPort,
-
-	Resource_Fuel,
-	Resource_Minerals,
-	Resource_Uranium,
-		
-
+	Type_Plantation,
+	Type_CrystalStorage,
+	Type_OrganicStorage,
+	Type_CompositeMaterialStorage,
+	Type_OrganicCompoundFactory,
+	Type_CrystallineCompoundFactory,
+	Type_CompositeMaterialFactory,
 
 	NumTypes,
 };

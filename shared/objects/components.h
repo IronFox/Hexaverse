@@ -18,7 +18,7 @@
 namespace Objects
 {
 	static const constexpr float			vehicleScale = 0.4f;
-	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
+	inline void NoCosts(int&mineralCostOut, Resource::ID&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
 	template <typename T>
@@ -30,11 +30,13 @@ namespace Objects
 			T		road=0,
 					air=0,
 					water=0,
+					fewPlants=0,
+					manyPlants=0,
 					other=0;
 
 			/**/	TGroundVector(){}
-			/**/	TGroundVector(T road, T air, T water, T other):
-					road(road), air(air), water(water), other(other)
+			/**/	TGroundVector(T road, T air, T water, T fewPlants, T manyPlants, T other):
+					road(road), air(air), water(water), fewPlants(fewPlants), manyPlants(manyPlants), other(other)
 			{}
 
 			Self	operator*(const Self&that) const
@@ -44,6 +46,8 @@ namespace Objects
 					road * that.road, 
 					air * that.air,
 					water * that.water,
+					fewPlants * that.fewPlants,
+					manyPlants * that.manyPlants,
 					other * that.other
 				);
 			}
@@ -53,6 +57,8 @@ namespace Objects
 				return road 
 					+ air 
 					+ water 
+					+ fewPlants
+					+ manyPlants
 					+ other;
 			}
 		};
@@ -239,7 +245,7 @@ namespace Objects
 
 
 			IFunc							healthMultiplier;
-			Resource						ammoType;
+			Resource::ID					ammoType;
 			OperationArray<IFunc>			operationSpeed;
 			FFunc							weight	/*=1*/,					//turret weight
 											damageLevel;
@@ -247,7 +253,7 @@ namespace Objects
 											ammoNeedPerShot;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
-				ResourceVector				baseStorageCapacity;
+				Resource::Vector				baseStorageCapacity;
 			#endif
 			bool							attacksMovingHostilesDuringMotionPhase = false,	//indicates that mobiles using this turret behave like towers
 											independentAttackAndMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round, with neither action slowing the other
@@ -435,7 +441,7 @@ namespace Objects
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources(ResourceFlagSet&res, const Research::Attributes::Table&researchState) const;
+			bool							ConsumesResources(Resource::FlagSet&res, const Research::Attributes::Table&researchState) const;
 
 		};
 
@@ -513,6 +519,8 @@ namespace Objects
 				hindrance.air = 2;
 				hindrance.water = 5;
 				hindrance.other = 4;
+				hindrance.fewPlants = 8;
+				hindrance.manyPlants = 16;
 				acceleration.Fill(0);
 			}
 

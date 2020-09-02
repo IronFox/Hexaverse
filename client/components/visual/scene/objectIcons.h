@@ -16,7 +16,7 @@ namespace Objects
 		void	Refresh();
 
 
-		void	AddAnimatedFloater(const Objects::PWorldEntity&, const DeltaWorks::ArrayRef<BYTE>&resourceIndexes);
+		void	AddAnimatedFloater(const Objects::PWorldEntity&, const Resource::FlagSet&resourceIndexes);
 	}
 }
 

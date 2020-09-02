@@ -46,6 +46,7 @@ namespace Objects
 					DECLARE_POINTER_CLASS(VehiclePlant)
 					DECLARE_POINTER_CLASS(VehicleStore)
 					DECLARE_POINTER_CLASS(Mine)
+					DECLARE_POINTER_CLASS(Plantation)
 					DECLARE_POINTER_CLASS(NexusPort)
 					DECLARE_POINTER_CLASS(Generator)
 					DECLARE_POINTER_CLASS(Laboratory)
@@ -95,17 +96,16 @@ namespace Objects
 	struct TChoiceVisualization;
 
 
-	struct ResourceWithMunition;	//enum container
-	struct ResourceWithoutMunition;	//enum container
-
-
-	#ifdef NO_MUNITION
-		typedef ResourceWithoutMunition	Resource;
-	#else
-		typedef ResourceWithMunition	Resource;
-	#endif
-
-
+	namespace Resource
+	{
+		class Table;
+		struct ID;
+		struct Type;
+		class FlagSet;
+		class Vector;
+		struct CoreVector;
+		class PositiveVector;
+	}
 	
 
 

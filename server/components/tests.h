@@ -100,7 +100,7 @@ namespace Test
 		static void		RandomFill(Objects::Statistics::EntityType&,Random&random);
 		static void		RandomFill(Objects::Statistics::Round&,Random&random);
 		static void		RandomFill(Objects::Statistics::MetricTable&table, Random&random);
-		static void		RandomFill(Objects::PositiveResourceVector&, Random&random);
+		static void		RandomFill(Objects::Resource::PositiveVector&, Random&random);
 	};
 
 	class StorageUnits : public Test

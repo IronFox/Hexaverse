@@ -14,11 +14,12 @@
 namespace World
 {
 	bool allowRecompilation = true;
-
+	count_t numPlants = 0;
 
 	void		Render(const Engine::Frustum<>&frustum)
 	{
 		VisualTerrain::RenderOpaqueTerrain(frustum);
+		numPlants = VisualTerrain::RenderPlants(frustum);
 	}
 
 	void		RenderWater(const Engine::Frustum<>&frustum)
@@ -161,6 +162,11 @@ namespace World
 
 		LineRenderer::Flush();
 
+	}
+
+	count_t		CountRenderedPlants()
+	{
+		return numPlants;
 	}
 
 

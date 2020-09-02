@@ -122,7 +122,7 @@ namespace Objects
 		virtual bool			CanStandOn(const World::Data&world, const Grid::LCellIdI&cell, Component::GroundFlags flags=Component::GroundFlags::None) const override {return base->CanStandOn(world,cell,flags);}
 		virtual THindranceVector	GetGroundHindrance() const override {return base->hindrance;}
 		#ifndef ONE_COMPOUND_PER_FACTION
-			virtual ResourceVector		GetMaxStorageCapacity()	const override;
+			virtual Resource::Vector		GetMaxStorageCapacity()	const override;
 		#endif
 
 

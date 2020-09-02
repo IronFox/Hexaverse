@@ -35,7 +35,7 @@ namespace VisualTerrain
 		void	Setup(	const Grid::CellStack *stacks,const Grid::ResourceDiscovery*visibility,
 						const BaseGrid::TCell*lowGridCells, const BaseGrid::TCell*highGridCells,  
 						const BaseGrid::TNetCell*lowNetCells,Grid::FClipHeight clipHeight,
-						const Grid::Resource*resources, count_t numResources)
+						const ArrayRef<Grid::Resource>&resources)
 		{
 			mesh.Reset();
 			this->stacks = stacks;
@@ -43,8 +43,8 @@ namespace VisualTerrain
 			this->highGridCells = highGridCells;
 			this->lowGridCells = lowGridCells;
 			this->clipHeight = clipHeight;
-			this->resources = resources;
-			this->numResources = numResources;
+			this->resources = resources.GetPointer();
+			this->numResources = resources.Count();
 			this->visibility = visibility;
 		}
 
@@ -269,15 +269,15 @@ namespace VisualTerrain
 	}
 
 
-	void CompileResources(THull<ResourceVertex>&cover, Grid::ResourceDiscovery&visibility, index_t offset, count_t count, Grid::FClipHeight clipHeight, const Grid::Resource*resources, count_t numResources)
+	void CompileResources(THull<ResourceVertex>&cover, Grid::ResourceDiscovery&visibility, index_t offset, count_t count, Grid::FClipHeight clipHeight, const ArrayRef<Grid::Resource>&resources)
 	{
 		const index_t end = offset + count;
 		Sys::SpinLock lock;
-		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock,&visibility, &cover, clipHeight,resources, numResources](index_t i)	//looks good - at least in release
+		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock,&visibility, &cover, clipHeight,resources](index_t i)	//looks good - at least in release
 		{
 			BYTE data[sizeof(ResourceCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 			ResourceCompiler&compiler = *(ResourceCompiler*)data;
-			compiler.Setup(World::actual.GetStacks().pointer(),&visibility,Grid::low.grid.GetCells(),Grid::high.grid.GetCells(), Grid::low.cells.pointer(),clipHeight,resources, numResources);
+			compiler.Setup(World::actual.GetStacks().pointer(),&visibility,Grid::low.grid.GetCells(),Grid::high.grid.GetCells(), Grid::low.cells.pointer(),clipHeight,resources);
 			compiler.Compile(i,end,cover,lock);
 		});
 	}

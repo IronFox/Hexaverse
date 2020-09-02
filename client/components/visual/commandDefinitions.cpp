@@ -11,6 +11,8 @@
 #include <objects/structure/vehiclePlant.h>
 #include <objects/faction.h>
 #include <objects/structure/tower.h>
+#include <objects/structure/plantation.h>
+#include <objects/structure/resourceConverters.h>
 #include "../clientRuntimeConfig.h"
 #include "../network.h"
 #include "hud/dialog.h"
@@ -28,7 +30,7 @@ namespace Objects
 {
 	namespace Commands
 	{
-		void DefineResourceTransfer(Component::Turret&component, Resource res);
+		void DefineResourceTransfer(Component::Turret&component, Resource::ID res);
 		void DefineOffensive(Command::Container&commands,Objects::TrajectoryType t);
 		void DefineOffensive(Component::Turret&component);
 
@@ -245,7 +247,7 @@ namespace Objects
 					}
 					else return Objects::CommandFlags::None;
 				},
-				[c](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				[c](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
@@ -327,6 +329,55 @@ namespace Objects
 					return Objects::CommandFlags::None;
 				PMine mine = ToMine(selectedEntity);
 				return mine && !mine->IsLinkedToCore() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			},
+			NoCosts
+			));
+		}
+
+		void DefinePlantation(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			commands.Add( new Command::IconCommand("Plant Trees",[]()
+			{
+				PPlantation p = ToPlantation(selectedEntity);
+				if (p)
+				{
+					Network::Channels::EntityTrigger.SendTo(Network::client,Protocol::EntityTrigger(p->id,Plantation::Triggers::PlantTrees));
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return Objects::CommandFlags::None;
+				PPlantation p = ToPlantation(selectedEntity);
+				if (!p)
+					return Objects::CommandFlags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+				if (p->plantTrees)
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
+			},
+			NoCosts
+			));
+			commands.Add( new Command::IconCommand("Plant Crystals",[]()
+			{
+				PPlantation p = ToPlantation(selectedEntity);
+				if (p)
+				{
+					Network::Channels::EntityTrigger.SendTo(Network::client,Protocol::EntityTrigger(p->id,Plantation::Triggers::PlantCrystals));
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return Objects::CommandFlags::None;
+				PPlantation p = ToPlantation(selectedEntity);
+				if (!p)
+					return Objects::CommandFlags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+				if (p->plantCrystals)
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
 			},
 			NoCosts
 			));
@@ -789,7 +840,7 @@ namespace Objects
 
 			terraformRemoveGround->Add( new Command::IconCommand("Dig Horizontally", &CommonCmd::ToggleMode<CursorMode::DigMode>
 				, &CommonCmd::ModeCheck<CursorMode::DigMode>
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = 0;
@@ -800,7 +851,7 @@ namespace Objects
 				));
 			terraformRemoveGround->Add( new Command::IconCommand("Dig Down", &Detail::TerraformerDigDown, 
 				&CommonCmd::IdleCheck
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = 0;
@@ -811,7 +862,7 @@ namespace Objects
 			));
 			terraformRemoveGround->Add( new Command::IconCommand("Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
 				, &CommonCmd::ModeCheck<CursorMode::ClearAboveMode>
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = 0;
@@ -823,7 +874,7 @@ namespace Objects
 
 			terraformAddGround->Add( new Command::IconCommand("Build Wall Up", &Detail::IssueCommand<ConstName::Job_BuildWallUp>
 				,&CommonCmd::IdleCheck
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = 0;//NoCosts;//VehicleJob::MinBuildWallMineralCosts;
@@ -834,7 +885,7 @@ namespace Objects
 			));
 			terraformAddGround->Add( new Command::IconCommand("Build Horizontal Wall", &Detail::IssueCommand<ConstName::Job_BuildHorizontalWall>
 				,&CommonCmd::IdleCheck
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = VehicleJob::MinBuildWallMineralCosts;
@@ -846,7 +897,7 @@ namespace Objects
 
 			Command::PBase buildRoad(new Command::IconCommand("Build Road", &Detail::TerraformerBuildRoad
 				,&CommonCmd::IdleCheck
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = VehicleJob::MinBuildRoadMineralCosts;
@@ -888,7 +939,7 @@ namespace Objects
 
 			terraformAddGround->Add( new Command::IconCommand("Build Blocks", &Detail::TerraformerBuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
 			terraformAddGround->Add( new Command::IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = (int)cellSelection.Count();
@@ -902,7 +953,7 @@ namespace Objects
 			));
 			terraformRemoveGround->Add( new Command::IconCommand("Remove Blocks", &Detail::TerraformerRemoveBlock, &CommonCmd::ModeCheck<CursorMode::RemoveBlockMode>,NoCosts));
 			terraformRemoveGround->Add( new Command::IconCommand("Commit", &Detail::TerraformerCommitOperation, &Detail::TerraformerCommitCheck
-				,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					costTypeOut = Resource::Minerals;
 					mineralCostOut = (int)cellSelection.Count();
@@ -960,7 +1011,7 @@ namespace Objects
 		{
 			component.commands.Add(new Command::IconCommand("Self Detonate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Regular>
 				, &CommonCmd::IdleCheck
-				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&resourceCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					ASSERT__(selectedMobileEntity);
 					resourceCostOut = Component::Bomb::regularUraniumCost.GetValue(selectedMobileEntity->GetResearchState());
@@ -972,7 +1023,7 @@ namespace Objects
 
 			component.commands.Add(new Command::IconCommand("Obliterate", &Detail::IssueDetonationCommand<ConstName::DetonationSize_Doomsday>
 				, &CommonCmd::IdleCheck
-				,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+				,[](int&resourceCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					ASSERT__(selectedMobileEntity);
 					resourceCostOut = Component::Bomb::doomsdayUraniumCost.GetValue(selectedMobileEntity->GetResearchState());
@@ -988,7 +1039,7 @@ namespace Objects
 			#endif
 		}
 
-		void DefineResourceTransfer(Component::Turret&component, Resource res)
+		void DefineResourceTransfer(Component::Turret&component, Resource::ID res)
 		{
 			#ifndef ONE_COMPOUND_PER_FACTION
 				String resource = component.ammoType.ToString();
@@ -1002,7 +1053,7 @@ namespace Objects
 		{
 			DefineResourceTransfer(component,Resource::Minerals);
 			component.commands.Add( new Command::IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
-			component.commands.Add( new Command::IconCommand("Upgrade",&CommonCmd::ToggleMode<CursorMode::UpgradeMode>, &CommonCmd::ModeCheck<CursorMode::UpgradeMode>,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+			component.commands.Add( new Command::IconCommand("Upgrade",&CommonCmd::ToggleMode<CursorMode::UpgradeMode>, &CommonCmd::ModeCheck<CursorMode::UpgradeMode>,[](int&mineralCostOut, Resource::ID&costTypeOut, int&timeCostOut)
 			{
 				costTypeOut = Objects::Research::globalState.t2.upgradeCostType;
 				mineralCostOut = Objects::Research::globalState.t2.upgradeCostQuantity;
@@ -1356,13 +1407,20 @@ namespace Objects
 			Research::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
 			DefineMine(Objects::Mine::commands);
+			DefinePlantation(Objects::Plantation::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
+			DefineWorkingStructure(Objects::CrystalStorage::commands);
+			DefineWorkingStructure(Objects::OrganicStorage::commands);
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
+			DefineWorkingStructure(Objects::CompositeMaterialStorage::commands);
 			DefineWorkingStructure(Objects::Generator::commands);
 			DefineWorkingStructure(Objects::ReactorCore::commands);
 			DefineWorkingStructure(Objects::NexusPort::commands);
+			DefineWorkingStructure(Objects::OrganicCompoundFactory::commands);
+			DefineWorkingStructure(Objects::CrystallineCompoundFactory::commands);
+			DefineWorkingStructure(Objects::CompositeMaterialFactory::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
 			DefineHangar();
 

@@ -74,6 +74,19 @@ namespace ResourceGauges
 	}
 
 
+
+	void	Gauge::LoadTexture(const Objects::Resource::Type &res)
+	{
+		if (res.icon.IsNotEmpty())
+			IconItem::LoadTexture(res.icon);
+		else
+			IconItem::LoadTexture(res.name);
+		myTag = res.tag;
+		color = float3(res.color) / 255.f;
+	}
+
+
+
 	void	Gauge::Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled)
 	{
 
@@ -505,6 +518,41 @@ namespace ResourceGauges
 	bool			resourcesAsList = false;
 
 
+	void UpdateGauges()
+	{
+		static const float stepX = (0.5f + 1.f) * 2.2f * 1.2f HIB(/1.2f);
+		static const float stepY = 0.86602540378443864676372317075294f * 2.2f;
+//			const float3 base(-38,0,-36);
+		const float3 base(-33,0,-36);
+		Random random(1024);
+
+		gauges.SetSize(Objects::Resource::table.GetSize());
+		#ifndef NO_HIBERNATION
+			trafficGauge.isTraffic = true;
+		#endif
+
+		for (index_t i = 0; i < gauges.Count(); i++)
+		{
+			Gauge&g = gauges[i];
+			g.base.x = float(i HIB(+2)) * (stepX );
+			g.base.y = (1.f - float(i%2)) * stepY;
+			g.base += base;
+			g.LoadTexture(Objects::Resource::ID(i));
+			//test.Construct();
+		}
+		#ifndef NO_HIBERNATION
+		{
+			Gauge&g = trafficGauge;
+			g.base.x = 0;
+			g.base.y = stepY;
+			g.base += base;
+
+			g.IconItem::LoadTexture("Traffic");
+			g.myTag = Objects::TrafficResourceTag();
+			g.color = float3(0.1,1,1);
+		}
+		#endif
+	}
 
 
 
@@ -529,57 +577,22 @@ namespace ResourceGauges
 
 
 
-		static const float stepX = (0.5f + 1.f) * 2.2f * 1.2f HIB(/1.2f);
-		static const float stepY = 0.86602540378443864676372317075294f * 2.2f;
-//			const float3 base(-38,0,-36);
-		const float3 base(-33,0,-36);
-		Random random(1024);
 
-		gauges.SetSize(Objects::ResourceVector::NumEntries);
-		#ifndef NO_HIBERNATION
-			trafficGauge.isTraffic = true;
-		#endif
-
-		for (index_t i = 0; i < gauges.Count(); i++)
-		{
-			Gauge&g = gauges[i];
-			g.base.x = float(i HIB(+2)) * (stepX );
-			g.base.y = (1.f - float(i%2)) * stepY;
-			g.base += base;
-			g.LoadTexture(Objects::Resource::Reinterpret(i));
-			//test.Construct();
-		}
-		#ifndef NO_HIBERNATION
-		{
-			Gauge&g = trafficGauge;
-			g.base.x = 0;
-			g.base.y = stepY;
-			g.base += base;
-
-			g.IconItem::LoadTexture("Traffic");
-			g.myTag = Objects::TrafficResourceTag();
-			g.color = float3(0.1,1,1);
-		}
-		#endif
-
-
+		UpdateGauges();
+		GlobalEvents::resourceTableUpdated << UpdateGauges;
+		
 		timeResource.color = float3(1);
 		timeResource.LoadTexture("time");
-
-
-
-		gauges[Objects::Resource::Energy].color = float3(0.2,0.4,1);
-		gauges[Objects::Resource::Fuel].color = float3(0.4,1,0.2);
-		gauges[Objects::Resource::Minerals].color = float3(0.7,0.7,0.7);
-		#ifndef NO_MUNITION
-			gauges[Objects::Resource::Munitions].color = float3(1,0.4,0.2);
-		#endif
-		gauges[Objects::Resource::Uranium].color = float3(1,1,0.1);
-		gauges[Objects::Resource::Uranium].alternatingColor = float3(0.1,0.1,0.1);
-		gauges[Objects::Resource::Uranium].usesAlternatingColors = true;
 	}
 
 
+
+	static float lastUpperEdge = 1.f;
+
+	float GetUpperEdgeFromBottomInPixels()
+	{
+		return lastUpperEdge;
+	}
 
 	#ifndef NO_HIBERNATION
 
@@ -629,41 +642,41 @@ namespace ResourceGauges
 		#endif
 	}
 
-	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change)
+	void	Update( TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change)
 	{
 		#ifndef NO_HIBERNATION
 			UpdateTraffic(traffic);
 		#else
 			showExtraGauges = true;
 		#endif
-		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			gauges[i].Set(current.level[i],max.level[i],change.level[i],0,0,true);
+		for (index_t i = 0; i < gauges.Count(); i++)
+			gauges[i].Set(current[i],max[i],change[i],0,0,true);
 
 	}
 
-	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max)
+	void	Update( TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max)
 	{
 		#ifndef NO_HIBERNATION
 			UpdateTraffic(traffic);
 		#else
 			showExtraGauges = true;
 		#endif
-		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-			gauges[i].Set(current.level[i],max.level[i],0,0,0,true);
+		for (index_t i = 0; i < gauges.Count(); i++)
+			gauges[i].Set(current[i],max[i],0,0,0,true);
 
 	}
 
-	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-					const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/)
+	void	Update( TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change,
+					const Objects::Resource::Vector&localCurrent/*, const Objects::Resource::Vector&localChange, bool isEnabled*/)
 	{
 		#ifndef NO_HIBERNATION
 			UpdateTraffic(traffic);
 		#else
 			showExtraGauges = true;
 		#endif
-		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+		for (index_t i = 0; i < gauges.Count(); i++)
 //			resources[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],localChange.level[i],isEnabled);
-			gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
+			gauges[i].Set(current[i],max[i],change[i],localCurrent[i],0,true);
 	}
 
 	void	Render()
@@ -689,8 +702,17 @@ namespace ResourceGauges
 				float lineHeight = textout.GetScaledHeight()*1.2f;
 				SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 				float w = 0.15f / display.GetPixelAspect();
+
+				count_t numGauges = 0;
+				#ifndef NO_HIBERNATION
+					numGauges = 2;
+				#endif
+				numGauges += gauges.Count();
+				const auto bottomRowSpacing = 4;
 				//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
-				M::Rect<> t(-1,lineHeight*5.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
+				M::Rect<> t(-1, lineHeight*bottomRowSpacing-1.f,
+					w*2.f - 1.f, lineHeight*(0.5f+bottomRowSpacing+numGauges) - 1.f);
+				lastUpperEdge = (1 - (1.f - t.y.max) * 0.5f) * display.GetClientHeight();
 				SurfaceRenderer::Rasterize(
 					float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 					float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
@@ -706,7 +728,11 @@ namespace ResourceGauges
 				#endif
 				if (showExtraGauges)
 				{
-					index_t at = 2;
+					#ifndef NO_HIBERNATION
+						index_t at = 2;
+					#else
+						index_t at = 0;
+					#endif
 					foreach (gauges,res)
 					{
 						res->RenderListText((int)(at++));

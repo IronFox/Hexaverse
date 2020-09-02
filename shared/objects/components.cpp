@@ -169,7 +169,7 @@ namespace Objects
 		}
 
 
-		bool							Turret::ConsumesResources(ResourceFlagSet&res, const Research::Attributes::Table&researchState) const
+		bool							Turret::ConsumesResources(Resource::FlagSet&res, const Research::Attributes::Table&researchState) const
 		{
 			bool rs = false;
 			if (this->mountType == Component::Turret::MountType::Satellite)
@@ -863,7 +863,7 @@ namespace Objects
 
 			//component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Minerals] = 200;
+				component.baseStorageCapacity[Resource::Minerals] = 200;
 			#endif
 		}
 
@@ -922,7 +922,7 @@ namespace Objects
 
 			//component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
+				component.baseStorageCapacity[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
 			#endif
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 0.125f;
@@ -946,7 +946,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Artillery;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
-				component.baseStorageCapacity.level[Resource::Munitions] = 24;
+				component.baseStorageCapacity[Resource::Munitions] = 24;
 			#endif
 		}
 
@@ -965,7 +965,7 @@ namespace Objects
 			component.attacksMovingHostilesDuringMotionPhase = true;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
-				component.baseStorageCapacity.level[Resource::Munitions] = 24;
+				component.baseStorageCapacity[Resource::Munitions] = 24;
 			#endif
 
 			component.trajectoryType = TrajectoryType::Missile;
@@ -985,7 +985,7 @@ namespace Objects
 			component.attacksMovingHostilesDuringMotionPhase = true;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
-				component.baseStorageCapacity.level[Resource::Munitions] = 20;
+				component.baseStorageCapacity[Resource::Munitions] = 20;
 			#endif
 
 			component.trajectoryType = TrajectoryType::Missile;
@@ -1005,7 +1005,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Cannon;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
-				component.baseStorageCapacity.level[Resource::Munitions] = 20;
+				component.baseStorageCapacity[Resource::Munitions] = 20;
 			#endif
 
 			component.independentAttackAndMotion = true;
@@ -1026,7 +1026,7 @@ namespace Objects
 			component.constName = ConstName::Turret_EMP;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Uranium] = 150;
+				component.baseStorageCapacity[Resource::Uranium] = 150;
 			#endif
 		
 			component.dealsEMPDamage = true;
@@ -1095,7 +1095,7 @@ namespace Objects
 					component.baseAmmoNeedPerShot = 2000;
 				#endif
 				#ifndef ONE_COMPOUND_PER_FACTION
-					component.baseStorageCapacity.level[Resource::Uranium] = component.baseAmmoNeedPerShot;
+					component.baseStorageCapacity[Resource::Uranium] = component.baseAmmoNeedPerShot;
 				#endif
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = true;
@@ -1273,7 +1273,7 @@ namespace Objects
 			component.constName = ConstName::Turret_MunitionTransporter;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
-				component.baseStorageCapacity.level[Resource::Munitions] = 100;
+				component.baseStorageCapacity[Resource::Munitions] = 100;
 			#endif
 		}
 
@@ -1290,7 +1290,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Mechanic;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Minerals] = 100;
+				component.baseStorageCapacity[Resource::Minerals] = 100;
 			#endif
 		}
 
@@ -1411,6 +1411,8 @@ namespace Objects
 			component.hindrance.air = 3;
 			component.hindrance.water = 4;
 			component.hindrance.other = 4;
+			component.hindrance.fewPlants = 5;
+			component.hindrance.manyPlants = 6;
 
 			component.acceleration[Operation::AddTerrain] = 2;
 			component.acceleration[Operation::RemoveTerrain] = 2;
@@ -1459,6 +1461,8 @@ namespace Objects
 			component.hindrance.air = 2;
 			component.hindrance.water = 1;
 			component.hindrance.other = 10;
+			component.hindrance.fewPlants = 2;	//water plants
+			component.hindrance.manyPlants = 3;
 
 			component.acceleration[Operation::AddTerrain] = 2;
 			component.acceleration[Operation::RemoveTerrain] = 2;
@@ -1470,15 +1474,16 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-		
+			namespace R = Objects::Resource;
+
 			void			Base::DescribeType(Command::Base::Label&label, bool compound, const OwnerParameter&owner)
 			{
 				if (!compound)
 				{
+					label <<"Cost: "+String(Resource::table[Resource::Minerals].tag)+productionCosts.Describe(Objects::Component::ResearchStateOf(owner));
 					const auto&st = Objects::Component::ResearchStateOf(owner);
 					if (!isUnlocked.GetValue(st))
 						label <<"Requires more research to unlock";
-					label <<"Cost: "+String(ResourceTag(Resource::Minerals))+productionCosts.Describe(st);
 					label <<"Initiative: "+String(initiative.GetValue(st));
 				}
 			}
@@ -1584,7 +1589,7 @@ namespace Objects
 					if (need == 0)
 						outResult <<"Does not require ammunition";
 					else
-						outResult <<"Consumes "+String(ResourceTag(ammoType))+ammoNeedPerShot.Describe(researchState)+" per shot";
+						outResult <<"Consumes "+ammoType.GetTagStr()+ammoNeedPerShot.Describe(researchState)+" per shot";
 					int count = attacksPerRound.GetValue(researchState);
 					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
 				}
@@ -1592,7 +1597,7 @@ namespace Objects
 				{
 					outResult <<"Explosion radius: "+explosionRadius.Describe(researchState);
 					if (this == &bomb)
-						outResult.GetLastLine() +=" ("+String(ResourceTag(Resource::Uranium))+": *2)";
+						outResult.GetLastLine() +=" ("+Resource::Uranium.GetTagStr()+": *2)";
 						//bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
 				}
 				if (damageLevel.IsFunctionOrConstNonZero())
@@ -1602,11 +1607,11 @@ namespace Objects
 					else
 						outResult <<"Damage: "+damageLevel.Describe(researchState);
 					if (this == &bomb)
-						outResult.GetLastLine() +=" ("+String(ResourceTag(Resource::Uranium))+": *5)";
+						outResult.GetLastLine() +=" ("+Resource::Uranium.GetTagStr()+": *5)";
 				}
 
 				if (CanConstruct() && !compound)
-					outResult <<"Construction: Converts "+String(ResourceTag(Resource::Minerals))+operationSpeed[Operation::Construct].Describe(researchState)+" per round";
+					outResult <<"Construction: Converts "+Resource::Minerals.GetTagStr()+operationSpeed[Operation::Construct].Describe(researchState)+" per round";
 				if ((CanDo(Operation::RemoveTerrain) || CanDo(Operation::AddTerrain)) && !compound)
 					outResult <<"Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
@@ -1617,20 +1622,20 @@ namespace Objects
 					if (!compound && baseStorageCapacity.IsNotEmpty())
 					{
 						outResult <<"Base storage capacity:";
-						for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+						for (index_t i = 0; i < Resource::table.GetSize(); i++)
 						{
-							if (baseStorageCapacity.level[i])
+							if (baseStorageCapacity[i])
 							{
-								outResult <<" "+String(ResourceTag(i))+String(baseStorageCapacity.level[i]);
+								outResult <<" "+String(ResourceTag(i))+String(baseStorageCapacity[i]);
 							}
 						}
 					}
 				#endif
 				outResult.MarkBriefEnd();
 				if (CanConstruct())
-					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate construction.");
+					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+Resource::Minerals.GetTagStr()+" to initiate construction.");
 				if (CanRepair())
-					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
+					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+Resource::Minerals.GetTagStr()+" to initiate repair.");
 				if (detectsResources)
 					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())
@@ -1662,7 +1667,7 @@ namespace Objects
 
 				if (this == &bomb)
 					outResult << "This "+lowerName+" type can self-detonate, causing a large explosion. The vehicle is lost in the process. The explosion can be caused explicitly or by sufficient external damage."
-					" Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+String(ResourceTag(Resource::Uranium))+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
+					" Bombs are very powerful and can trigger the explosion of neighboring bombs. An optional "+Resource::Uranium.GetTagStr()+"-driven DOOMSDAY explosion provides an extended explosion radius but will notify hostile factions of the explosion.";
 				if (mainAttackIsDoomsday)
 				{
 					outResult << ("This "+lowerName+" type is classified as DOOMSDAY WEAPONRY. Careful with this one.");

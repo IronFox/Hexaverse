@@ -275,9 +275,9 @@ namespace Journal
 		{
 			const Objects::WorkingStructure*s = (const Objects::WorkingStructure*)(e.get());
 			{
-				Objects::ResourceVector dummy,storage;
+				Objects::Resource::Vector dummy,storage;
 				s->GetResourceVector(dummy,storage,dummy);
-				return storage.level[Objects::Resource::Minerals];
+				return storage[Objects::Resource::Minerals];
 			}
 		}
 		return 0;
@@ -1121,7 +1121,7 @@ namespace Journal
 
 
 
-	void	Round::RegisterResourceCoverageChange(bool execute, UINT32 stackID, Objects::Resource res, Grid::Resource::coverage_t newCoverage)
+	void	Round::RegisterResourceCoverageChange(bool execute, UINT32 stackID, Objects::Resource::ID res, Grid::Resource::coverage_t newCoverage)
 	{
 		PGlobalEvent ev(new ResourceCoverageChange(stackID,res,newCoverage));
 		globalEvents.Append(ev);
@@ -1153,8 +1153,10 @@ namespace Journal
 	{
 		this->stackID = (UINT32)e.intParameters.Require(CLOCATION,"StackID");
 		const String&resName = e.stringParameters.Require(CLOCATION,"Resource");
-		if (!this->resource.Decode(resName.c_str()))
+		auto r = Objects::Resource::table.FindByName(resName);
+		if (r == nullptr)
 			throw Except::Program::DataConsistencyFault( CLOCATION,"Unknown resource '"+resName+"'");
+		resource = r->GetID();
 		this->newCoverage = (Grid::Resource::coverage_t)e.intParameters.Require(CLOCATION,"NewCoverage");
 		if (this->stackID >= Grid::LowSetup::GridType::CellCount)
 		{

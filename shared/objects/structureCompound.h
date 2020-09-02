@@ -18,8 +18,8 @@ namespace Objects
 	
 	class Compound 
 	{
-		static int					GetEnableChangeBalance(const ResourceVector&local);
-		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, count_t&bestDepth, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const;
+		static int					GetEnableChangeBalance(const Resource::Vector&local);
+		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, count_t&bestDepth, Resource::Vector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const;
 		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const;
 
 		static void					TempSetEnabled(WorkingStructure*,bool);
@@ -31,10 +31,10 @@ namespace Objects
 		#endif
 
 		Ctr::Buffer0<WWorkingStructure>	workingStructures;
-		Ctr::Buffer0<WStructure>			allStructures;
-		FullResourceVector			total;
+		Ctr::Buffer0<WStructure>		allStructures;
+		Resource::FullVector			total;
 
-		bool						stable;
+		bool							stable;
 		//ID							hashIdentifier;
 
 		#ifndef CLIENT
@@ -44,16 +44,16 @@ namespace Objects
 		count_t						CountWorkingStructures() const;
 
 		#ifndef CLIENT
-			ResourceVector	GetOverproduction() const;
-			int				GetOverproduction(Resource) const;
-			void			DistributeOverproduction(const ResourceVector&v);
-			void			ForceWithdrawOverproduction(Resource res ,int positiveAmount);
-			void			TryWithdrawOverproduction(ResourceVector&positiveVector);
+			Resource::Vector	GetOverproduction() const;
+			int				GetOverproduction(Resource::ID) const;
+			void			DistributeOverproduction(const Resource::Vector&v);
+			void			ForceWithdrawOverproduction(Resource::ID res ,int positiveAmount);
+			void			TryWithdrawOverproduction(Resource::Vector&positiveVector);
 		#endif
 
 		void				Clear()
 		{
-			total = FullResourceVector();
+			total = Resource::FullVector();
 			workingStructures.Clear();
 			allStructures.Clear();
 		}
@@ -76,16 +76,16 @@ namespace Objects
 			void			TickBegin();
 			void			TickEnd(float&atTime);
 
-			void			FeedLeftovers(ResourceVector&vector, float&atTime);
+			void			FeedLeftovers(Resource::Vector&vector, float&atTime);
 
 
-			void			ChangeStorage(ResourceVector&supply, float&atTime);
-			FullResourceVector	GetVector(const Ctr::Array<bool>&virtualEnabled) const;
+			void			ChangeStorage(Resource::Vector&supply, float&atTime);
+			Resource::FullVector	GetVector(const Ctr::Array<bool>&virtualEnabled) const;
 		#endif
-		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Ctr::Array<Resource>*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
+		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Resource::FlagSet*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
 		void				RefreshState(float atTime);
-		FullResourceVector	GetVector() const;
-		FullResourceVector	GetAllEnabledVector() const;
+		Resource::FullVector	GetVector() const;
+		Resource::FullVector	GetAllEnabledVector() const;
 
 
 

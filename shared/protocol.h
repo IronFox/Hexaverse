@@ -67,11 +67,13 @@ namespace PortOffset
 
 
 
+
 #define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION\
 							"["\
 							NAME_APPEND0\
 							NAME_APPEND1\
 							NAME_APPEND_S\
+							"p" /*plants*/\
 							NAME_APPEND_L\
 							"]"
 
@@ -130,8 +132,6 @@ namespace Protocol
 //	static_assert(sizeof(Grid::CellStack::TStructCountDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TStructCountDelta), "Struct alignment out of whack" );
 
 
-
-
 	struct SerialUnsigned
 	{
 		typedef SerialUnsigned Self;
@@ -150,6 +150,11 @@ namespace Protocol
 		friend	void	Deserialize(IReadStream&s, Self&v)
 		{
 			s.ReadSize(v.value);
+		}
+
+		void		operator=(serial_size_t v)
+		{
+			value = v;
 		}
 
 		void		operator=(int v)
@@ -254,7 +259,7 @@ namespace Protocol
 	#ifndef ONE_COMPOUND_PER_FACTION
 		NETSTRUCT5(MyMobileEntity
 			, NET(UINT16), constructionRoundCounter
-			, PositiveResourceVector, resourceVector
+			, Resource::PositiveVector, resourceVector
 			, NETA(MobileTask), tasks
 			, Optional<NET(TUniqueID)>, storedIn
 			, Optional<ProducerState>, producerState
@@ -338,7 +343,7 @@ namespace Protocol
 	typedef Grid::LCellIdI	AttackTask;
 
 	NETSTRUCT2(MineState
-		, Objects::PositiveResourceVector, naturalResources
+		, Objects::Resource::PositiveVector, naturalResources
 		, NET(bool), linkedToCore
 	)
 	typedef NET(int)	NexusPortState;
@@ -347,7 +352,14 @@ namespace Protocol
 		, NET(float), attackActionLeft
 	)
 
-	typedef Selective4<MineState,ProducerState,NexusPortState,TowerState>
+	NETSTRUCT4(PlantationState
+		, SerialUnsigned, treeAvailability
+		, SerialUnsigned, crystalAvailability
+		, bool, plantTrees
+		, bool, plantCrystals
+	)
+
+	typedef Selective5<MineState,ProducerState,NexusPortState,TowerState,PlantationState>
 		SelectiveStructureState;
 
 
@@ -424,7 +436,7 @@ namespace Protocol
 
 	NETSTRUCT5(StructureState
 		, EntityState, entityState
-		, Objects::PositiveResourceVector, resourceStorage
+		, Objects::Resource::PositiveVector, resourceStorage
 		, NET(BYTE), flags
 		, SelectiveStructureState, selective
 		, NETA(BYTE), packed
@@ -535,7 +547,7 @@ namespace Protocol
 
 	NETSTRUCT3(ResourceUpdate
 		, Timestamp, timestamp
-		, NET(ConstName), resourceName
+		, SerialUnsigned, resourceIndex
 		, NETA(TResourceCell), cells
 	)
 
@@ -649,11 +661,10 @@ namespace Protocol
 	typedef NETA(TUnitLimit)	UnitLimits;
 
 
-	static_assert(Objects::Resource::N<0x100,"Resource type limit exceeded: Must change storage type of OperationLacksResources array");
 	NETSTRUCT3(OperationLacksResources
 		, Timestamp, timestamp
 		, NET(TUniqueID), entityID
-		, NETA(BYTE), resourceIndices
+		, UINT64,	resourceFlagSet
 	)
 
 	NETSTRUCT2(ResearchFactionState
@@ -808,6 +819,8 @@ namespace Protocol
 		, ScriptedAIStateVector, dataVector
 	);
 
+	typedef Objects::Resource::Table ResourceTable;
+
 
 	typedef Package::NetString<32>	SaveAs;
 	typedef TUniqueID	KillFaction;
@@ -835,6 +848,7 @@ namespace Protocol
 			BeginEverything,	//s2c: <signal> //indicates that now everything will be (re)sent
 			EndEverything,		//s2c: <signal> //indicates that the server is done sending everything, and normal delta updates will resume
 
+			ResourceTable,		//s2c : ResourceTable
 			WorldDelta,			//s2c : WorldDelta
 
 			Explosion,			//s2c : Explosion

@@ -293,6 +293,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		
+		DECLARE_CHANNEL(ResourceTable);
 
 		DECLARE_CHANNEL(MyFaction);
 		DECLARE_CHANNEL(AllianceConfigChange);

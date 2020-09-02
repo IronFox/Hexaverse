@@ -42,6 +42,11 @@ namespace Grid
 		float3(0.25f),	//Granite
 		float3(94.f / 255.f, 69.f / 255.f, 28.f / 255.f)*2.f,	//earth
 		float3(0.5f, 1.f, 0.5f),	//grass
+		//float3(0.5f, 0.9f, 0.45f),	//Shrubs
+		float3(0.5f, 0.8f, 0.4f),	//Trees
+		float3(0.4f, 0.5f, 0.1f),	//Forest
+		float3(0.2f, 0.2f, 0.2f),	//Crystals
+		float3(0.15f, 0.15f, 0.15f),	//CrystalForest
 		float3(0.8f),	//rock
 		float3(1.f,1.f,0.6f)*1.2f,	//sand
 		float3(1.2f),	//Snow,
@@ -61,6 +66,11 @@ namespace Grid
 		9,	//granite
 		4,	//earth
 		4,	//grass
+		//4,	//Shrubs
+		4,	//Trees
+		4,	//Forest
+		9,	//Crystals
+		9,	//CrystalForest
 		5,	//rock
 		3,	//sand
 		3,	//Snow,
@@ -78,6 +88,11 @@ namespace Grid
 		true,	//granite
 		true,	//earth
 		true,	//grass
+		//true,	//Shrubs
+		true,	//Trees
+		true,	//Forest
+		true,	//Crystals
+		true,	//CrystalForest
 		true,	//rock
 		true,	//sand
 		true,	//Snow,
@@ -97,6 +112,11 @@ namespace Grid
 		1,	//granite
 		1,	//earth
 		1,	//grass
+		//1,	//Shrubs
+		1,	//Trees
+		1,	//Forest
+		1,	//Crystals
+		1,	//CrystalForest
 		1,	//rock
 		1,	//sand
 		1,	//Snow,
@@ -108,6 +128,22 @@ namespace Grid
 		1	//clear
 	};
 			
+
+
+	BYTE			CellStack::Cell::GetPlantDeteriorationType() const
+	{
+		switch (content)
+		{
+			case Content::CrystalForest:
+			case Content::Crystals:
+				return Content::Granite;
+			case Content::Trees:
+			case Content::Forest:
+				return Content::Grass;
+		}
+		return content;
+	}
+
 
 	void			CellStack::ChangeStructureCounterI(int height, int by)
 	{

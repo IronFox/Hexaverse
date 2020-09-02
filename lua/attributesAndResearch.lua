@@ -365,7 +365,7 @@ VehicleBaseConfig =
 T2 =
 {
 	UpgradeCostQuantity = 30,
-	UpgradeCostType = 'Uranium',
+	UpgradeCostType = 'Composite Materials',
 
 
 	DefaultFactor = function(lvl)
@@ -628,9 +628,11 @@ end
 StructureConfig =
 {
 	Mine = DefaultStructure(40),
+	Plantation = DefaultStructure(40),
 	Generator = DefaultStructure(40),
 	ReactorCore = DefaultStructure(120),
 	VehicleStore = DefaultStructure(40),
+	Plantation = DefaultStructure(40),
 	VehiclePlant = DefaultStructure(80),
 	Laboratory = DefaultStructure(80),
 	MunitionFactory = DefaultStructure(40),
@@ -638,7 +640,13 @@ StructureConfig =
 	FuelContainer = DefaultStructure(10),
 	MineralContainer = DefaultStructure(10),
 	UraniumStorage = DefaultStructure(10),
+	CrystalStorage = DefaultStructure(10),
+	OrganicStorage = DefaultStructure(10),
+	CompositeMaterialStorage = DefaultStructure(10),
 	MunitionStorage = DefaultStructure(10),
+	OrganicCompoundFactory = DefaultStructure(80),
+	CrystallineCompoundFactory = DefaultStructure(80),
+	CompositeMaterialFactory = DefaultStructure(80),
 	NexusPort = ExplicitStructure(0,1,2,false),
 	MissileLauncherTower = Tower(TurretConfig.MissileLauncher),
 	RocketLauncherTower = Tower(TurretConfig.RocketLauncher),

@@ -6,7 +6,7 @@
 #include "../../cameraControl.h"
 #include "../../objectNetworkHelper.h"
 #include <globalEvents.h>
-
+#include "../hud/iconNameToFileName.h"
 
 
 namespace Objects
@@ -158,7 +158,7 @@ namespace Objects
 								,questionIcon
 								,t2LevelUp
 								;
-		static FixedArray<SpriteFamily,Objects::Resource::N>
+		static Array<SpriteFamily>
 								resourceFamily;
 
 		static Queue<TAnimatedFloater>	animatedFloaters;
@@ -190,6 +190,19 @@ namespace Objects
 				float3(1,0.3,0.3));
 		}
 
+		void RebuildResourceFamilies()
+		{
+			animatedFloaters.Clear();
+			resourceFamily.SetSize(Objects::Resource::table.GetSize());
+			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
+			{
+				const auto id = Objects::Resource::ID(i);
+				const auto&type = id.ToType();
+				const String&name = type.icon.IsEmpty() ? type.name : type.icon;
+				resourceFamily[i].Setup(PathString(::Icons::NameToFileName(name))+".png",0.75f,float3(0.5f,1.f,10));
+			}
+		}
+
 		void Create()
 		{
 			SpriteRenderer::StaticCreate();
@@ -198,11 +211,10 @@ namespace Objects
 			questionIcon.Setup("Question-Mark.png",1.f / 1.5f,float3(0.5,1.5f,3));
 			t2LevelUp.Setup("Upgrade.png",0.5,float3(1.1,1.5,1),-0.1);
 
-			for (index_t i = 0; i < Objects::Resource::N; i++)
-				resourceFamily[i].Setup(PathString(Objects::Resource::Reinterpret(i).ToString())+".png",0.75f,float3(0.5f,1.f,10));
+			RebuildResourceFamilies();
 
 			GlobalEvents::invalidateObjectCache << Refresh;
-
+			GlobalEvents::resourceTableUpdated << RebuildResourceFamilies;
 		}
 
 		void	Render()
@@ -280,21 +292,22 @@ namespace Objects
 		}
 
 
-		void	AddAnimatedFloater( const Objects::PWorldEntity&e, const ArrayRef<BYTE>&resources )
+		void	AddAnimatedFloater( const Objects::PWorldEntity&e, const Resource::FlagSet&resourceIndexes )
 		{
 			index_t at = 1;
-			foreach (resources,r)
-			{
-				auto&a = animatedFloaters.Push();
-				a.created = timer.Now();
-				a.entity = e;
-				a.family = resourceFamily+(index_t)*r;
-				a.locationHeightDelta = at;
+			for (index_t i = 0; i < Resource::table.GetSize(); i++)
+				if (resourceIndexes & i)
+				{
+					auto&a = animatedFloaters.Push();
+					a.created = timer.Now();
+					a.entity = e;
+					a.family = resourceFamily+i;
+					a.locationHeightDelta = at;
 			
-				a.Begin();
-				a.Insert();
-				at++;
-			}
+					a.Begin();
+					a.Insert();
+					at++;
+				}
 		}
 
 

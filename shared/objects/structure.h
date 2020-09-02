@@ -415,7 +415,7 @@ namespace Objects
 		bool						isEnabled;
 
 		#ifndef CLIENT
-			ResourceVector			overproduction;
+			Resource::Vector			overproduction;
 			friend class Compound;
 		#endif
 
@@ -499,12 +499,12 @@ namespace Objects
 			@param v Resources to store. If any are stored this vector must be updated accordingly
 			@param iteration Update iteration (0 to @a FinalLeftoverIteration ), indicates the storage iteration. High significance demand should be filled at iteration=0 or 1, other at 2 or 3. iteration=4 should always be consumed
 			*/
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)	{}
+			virtual void			ProcessLeftovers(Resource::Vector&v, index_t iteration, float&atTime)	{}
 			/**
 			Signals that a new round has started and production should commence. Tick() is not executed if the local structure is disabled or unstable
 			@param v Current resource balance vector. Supply should be added, demand subraced. No checks to the current values should be performed
 			*/
-			virtual void			Tick(ResourceVector&v);
+			virtual void			Tick(Resource::Vector&v);
 
 			virtual void			OnSleepChange(float&t) override;
 		#else
@@ -520,14 +520,14 @@ namespace Objects
 		@param[out] storageCurrent Current storage state of the local structure. Values must be non-negative. The specified vector must be set to all 0 when passed to this method.
 		@param[out] storageMax Maximum storage capacity of the local structure. Values must be non-negative. The specified vector must be set to all 0 when passed to this method.
 		*/
-		virtual void				GetResourceVector(ResourceVector&balance, ResourceVector&storageCurrent, ResourceVector&storageMax) const = 0;
+		virtual void				GetResourceVector(Resource::Vector&balance, Resource::Vector&storageCurrent, Resource::Vector&storageMax) const = 0;
 		/**
-		Applies the given ResourceVector as storage state to the local instance.
+		Applies the given Resource::Vector as storage state to the local instance.
 		Storage is not standardized. This method expects the overriding instance to completely flush its current storage and apply
 		the given vector. It may cap to its local maximum though.
 		@param vec Storage vector to apply. All values must be non-negative
 		*/
-		virtual void				SetResourceStorage(const ResourceVector&vec)	{};
+		virtual void				SetResourceStorage(const Resource::Vector&vec)	{};
 		virtual bool				IsNexusPort() const {return false;}
 		virtual bool				IsLaboratory() const {return false;}
 
@@ -625,7 +625,7 @@ namespace Objects
 			virtual ConstName			GetCTypeName() const override {return ConstName::Type_SkyPort;}
 
 			//WorkingStructure overrides:
-			virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;
+			virtual void				GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&) const override;
 
 			//WorldEntity overrides:
 			virtual int					GetHeight() const override {return 2;}
@@ -642,7 +642,7 @@ namespace Objects
 
 				//virtual void			OnInsert(float atTime) override;	//has to register with owner	//some day
 				//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
-				virtual void			Tick(ResourceVector&) override;
+				virtual void			Tick(Resource::Vector&) override;
 
 			#endif
 			#ifdef HAS_WINDOW
@@ -653,8 +653,8 @@ namespace Objects
 					Super::DescribeType(label,descFlags);
 					//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
 					label.MarkBriefEnd();
-					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
-										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
+					label << "Sky ports provide a foundation for each one sky hub. Periodically, "+Resource::Fuel.GetTagStr()+"fuel is transferred up, to supply the hub and its satellites."
+										" Failure to supply the required "+Resource::Fuel.GetTagStr()+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection";
 				}
 				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 				virtual void			OnSelect()	override;
@@ -689,7 +689,7 @@ namespace Objects
 		};
 	#endif
 	/**
-	Resource supplier, and winning condition, NexusPorts are located on the 12 pentagons around the planet.
+	R supplier, and winning condition, NexusPorts are located on the 12 pentagons around the planet.
 	In order to capture a NexusPort, one must build any one structure next to it. If the last structure is lost, the NexusPort
 	will change ownership back to the Nexus faction. Only then can it be captured by another player.
 	When switched on, NexusPorts count down a resistance value until they count as a winning condition.
@@ -709,7 +709,7 @@ namespace Objects
 			virtual void			OnEnabledChange() override;
 		#endif
 
-		//NaturalResourceVector		naturalResources;
+		//Resource::CoreVector		naturalResources;
 	public:
 		static const int			EnergyConsumption = 10;
 		int							resistance;
@@ -729,7 +729,7 @@ namespace Objects
 			virtual bool			ConnectsToDifferentOwnership() const override;
 			void					OnLoad();
 
-			virtual void			Tick(ResourceVector&) override;
+			virtual void			Tick(Resource::Vector&) override;
 			virtual void			OnInsert( float&atTime, bool freshConstruction )	{Super::OnInsert(atTime,freshConstruction); if (freshConstruction) SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
@@ -753,22 +753,21 @@ namespace Objects
 		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_NexusPort,t2 != nullptr);}
 
 		virtual bool				IsIndestructible() const	override {return true;};
-		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
+		virtual void				GetResourceVector(Resource::Vector&v, Resource::Vector&, Resource::Vector&) const override
 		{
 			if (BaseGrid::IsIsolatedCorner(location.stackID))
 			{
-				v.level[Resource::Minerals] = 50;	
-				v.level[Resource::Fuel] = 55;	
-				v.level[Resource::Uranium] = 10;
-				v.level[Resource::Energy] = -EnergyConsumption;
+				v.Set(Resource::Minerals, 50);
+				v.Set(Resource::Fuel, 55);
+				v.Set(Resource::Uranium, 10);
 			}
 			else
 			{
-				v.level[Resource::Minerals] = 10;
-				v.level[Resource::Fuel] = 10;	
-				v.level[Resource::Uranium] = 5;
-				v.level[Resource::Energy] = -EnergyConsumption;
+				v.Set(Resource::Minerals, 10);
+				v.Set(Resource::Fuel, 10);
+				v.Set(Resource::Uranium, 5);
 			}
+			v.Set(Resource::Energy, -EnergyConsumption);
 		}
 
 
@@ -817,7 +816,7 @@ namespace Objects
 		virtual String				GetTypeName() const override { return "Generator"; };
 		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_Generator, t2 != nullptr);}
 
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
+		virtual void				GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&) const override	{v.Set(Resource::Fuel, -FuelCostPerRound); v.Set(Resource::Energy, GetEnergyProduction()); }
 
 		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
@@ -847,7 +846,7 @@ namespace Objects
 		#endif
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Uranium] = -UraniumCost; v.level[Resource::Energy] = EnergyOutput; }
+		virtual void				GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&) const override	{v.Set(Resource::Uranium, -UraniumCost); v.Set(Resource::Energy, EnergyOutput); }
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
@@ -868,7 +867,7 @@ namespace Objects
 
 	
 
-	void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change);	//defined in faction.h/.cpp
+	void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource::ID res, int change);	//defined in faction.h/.cpp
 
 	
 

@@ -750,23 +750,6 @@ namespace ConfigurationMode
 				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Liquid'");
 				
 
-			if (const Config::Context*sub = cfg.GetContext("Resources"))
-			{
-				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-				{
-					Objects::Resource res = Objects::Resource::Reinterpret(i);
-					if (const Config::Context*sub2 = sub->GetContext(res.ToString()))
-					{
-						Query(*sub2,"density",Grid::Resource::density[i]);
-						Query(*sub2,"max",Grid::Resource::maximum[i]);
-					}
-					else
-						LogEvent(EventClass::Preset::configurationError,"Unable to fetch '"+sub->name+"/"+res.ToString()+"'");
-				}
-			}
-			else
-				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Resources'");
-
 			//if (warnings.IsNotEmpty())
 			//{
 			//	HUD::Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
@@ -806,18 +789,6 @@ namespace ConfigurationMode
 				sub.Define("type",Grid::Content::Reinterpret(config.liquidCoverage).ToString());
 				sub.Define("level",config.liquidHeight);
 				sub.Define("outline",Grid::Content::Reinterpret(config.liquidOutline).ToString());
-			}
-				
-
-			{
-				Config::Context&sub = cfg.DefineContext("Resources");
-				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-				{
-					Objects::Resource res = Objects::Resource::Reinterpret(i);
-					Config::Context&sub2 = sub.DefineContext(res.ToString());
-						sub2.Define("density",Grid::Resource::density[i]);
-						sub2.Define("max",Grid::Resource::maximum[i]);
-				}
 			}
 		}
 

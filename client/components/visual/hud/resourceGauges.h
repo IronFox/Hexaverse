@@ -50,8 +50,8 @@ namespace HUD
 				localCurrent,localChange,
 				top,top0,top1;
 			static const float height;
-			float3	base,alternatingColor,projectedTop, projectedDelta,projectedBottom,projectedMax;
-			bool	changed,enabled,usesAlternatingColors;
+			float3	base,projectedTop, projectedDelta,projectedBottom,projectedMax;
+			bool	changed,enabled;
 			float	ftop,hScale;
 			char	myTag;
 			M::TFloatRect	lastPosition;
@@ -63,7 +63,7 @@ namespace HUD
 
 			Objects::Geometry			geo[2];
 			DX11::InstructionBlock32	instruction[2];
-			Objects::Resource			myResource;
+			Objects::Resource::ID		myResource;
 
 			static DX11::BaseInstructionBlock	shader;
 
@@ -77,13 +77,12 @@ namespace HUD
 			}
 
 
-			void	LoadTexture(Objects::Resource res)
+			void	LoadTexture(const Objects::Resource::Type &res);
+			void	LoadTexture(Objects::Resource::ID res)
 			{
-				IconItem::LoadTexture(res.ToString());
-				myTag = Objects::ResourceTag(res);
+				LoadTexture(res.ToType());
 				myResource = res;
 			}
-
 
 			void	Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled);
 
@@ -93,7 +92,7 @@ namespace HUD
 			static void StaticCreate();
 			static void StaticDestroy();
 
-			/**/	Gauge():changed(true),usesAlternatingColors(false),current(0),max(0),changePerRound(0),localCurrent(0),localChange(0),top(0),ftop(1)
+			/**/	Gauge():changed(true),current(0),max(0),changePerRound(0),localCurrent(0),localChange(0),top(0),ftop(1)
 			{}
 
 			void	UpdateTextProjection(const Engine::Aspect<>&camera);
@@ -148,6 +147,10 @@ namespace HUD
 		*/
 		void	HideExtraGauges();
 
+		/**
+		Extracts the number of pixels occupied by the local resource gauge from the lower window edge to the upper resource visualization
+		*/
+		float	GetUpperEdgeFromBottomInPixels();
 
 		#ifndef NO_HIBERNATION
 			#define HIB(item)	item
@@ -167,10 +170,10 @@ namespace HUD
 				or orange portions of the storage (if negative)
 		@param localCurrent Storage of the selected entity within its compound
 		*/
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change);
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max);
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/);
+		void	Update(TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change);
+		void	Update(TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max);
+		void	Update(TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change,
+						const Objects::Resource::Vector&localCurrent/*, const Objects::Resource::Vector&localChange, bool isEnabled*/);
 		void	Destroy();
 		void	Render();
 

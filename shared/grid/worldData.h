@@ -240,6 +240,7 @@ namespace World
 		@return true if any Content::Unknown blocks were encountered, false otherwise
 		*/
 		bool					GetStrengthRange(const Grid::LCellIdI&cell, Grid::Content&outWeakest, Grid::Content&outStrongest, bool includeUnknown) const;
+		bool					PlantGroundHere(const Grid::LCellIdI&cell) const;
 
 		bool					IsRoad(const Grid::LCellIdI&, bool ignoreClearCellsOnEdge) const;
 
