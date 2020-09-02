@@ -274,11 +274,14 @@ namespace Objects
 				label.BeginBrief();
 				Super::DescribeType(label,descFlags,owner);
 				label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
-				label.MarkBriefEnd();
-				label << "Vehicle stores can be used to store a number of mobile units."
-					" Storage capacity increases with each additional vehicle store."
-					" Stored mobile units may be deployed in the surrounding area of any vehicle store of the same faction,"
-					" allowing instant relocation across any distance.";
+				if ((descFlags & DescExcludeExtended) == 0)
+				{
+					label.MarkBriefEnd();
+					label << "Vehicle stores can be used to store a number of mobile units."
+						" Storage capacity increases with each additional vehicle store."
+						" Stored mobile units may be deployed in the surrounding area of any vehicle store of the same faction,"
+						" allowing instant relocation across any distance.";
+				}
 			}
 		#endif
 	#else

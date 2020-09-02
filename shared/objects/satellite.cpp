@@ -290,10 +290,13 @@ namespace Objects
 
 
 
-			outResult.MarkBriefEnd();
-			outResult<<"";
-			outResult<< "Satellites hover high above the surface on a singular residual height level. They constantly consume "+fuel+"fuel to preserve their height."
-				"Short term failure to supply the required amount of "+fuel+" will result in height decline. Extended periods of starvation will result in satellite loss.";
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				outResult.MarkBriefEnd();
+				outResult<<"";
+				outResult<< "Satellites hover high above the surface on a singular residual height level. They constantly consume "+fuel+"fuel to preserve their height."
+					"Short term failure to supply the required amount of "+fuel+" will result in height decline. Extended periods of starvation will result in satellite loss.";
+			}
 		}
 		
 
