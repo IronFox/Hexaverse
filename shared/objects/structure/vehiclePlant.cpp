@@ -116,12 +116,15 @@ namespace Objects
 			{
 				label.BeginBrief();
 				Super::DescribeType(label,  descFlags, owner);
-				label.MarkBriefEnd();
-				label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
-				+Resource::Minerals.GetTagStr()+" and "+String(TimeResourceTag())+"."
-				" A vehicle plant that does not have access to the necessary resources switches off immediately."
-				" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
-				;
+				if ((descFlags & DescExcludeExtended) == 0)
+				{
+					label.MarkBriefEnd();
+					label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
+					+Resource::Minerals.GetTagStr()+" and "+String(TimeResourceTag())+"."
+					" A vehicle plant that does not have access to the necessary resources switches off immediately."
+					" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
+					;
+				}
 			}
 
 		#endif

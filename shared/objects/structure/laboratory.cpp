@@ -12,14 +12,17 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Laboratories research new components and buildings, or improve their attributes."
-			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
-			" For each two enabled neighbor laboratories this output is further increased by one."
-			" Research aimed at unlocking new components requires a number of research points to be accumulated."
-			" Research aimed at improvement will continuously improve the selected property but typically become increasingly less efficient the further research has progressed."
-			" As a result, research facilities are usually a continuous construction effort and you will most likely never have enough."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Laboratories research new components and buildings, or improve their attributes."
+				" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
+				" For each two enabled neighbor laboratories this output is further increased by one."
+				" Research aimed at unlocking new components requires a number of research points to be accumulated."
+				" Research aimed at improvement will continuously improve the selected property but typically become increasingly less efficient the further research has progressed."
+				" As a result, research facilities are usually a continuous construction effort and you will most likely never have enough."
+				;
+			}
 		}
 	#endif
 
