@@ -88,10 +88,6 @@ namespace HUD
 		Renders visible modal windows/dialogs following the first encountered modal window/dialog, bottom up
 		*/
 		void				RenderModal();
-
-
-		void				PlayButtonDownSound(const M::TVec2<>&center);
-		void				PlayButtonUpSound(const M::TVec2<>&center);
 	}
 
 
