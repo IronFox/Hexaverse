@@ -1611,6 +1611,8 @@ namespace Objects
 					outResult <<"Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
 					outResult <<"Can repair other vehicles/structures";
+				if (CanUpgrade())
+					outResult <<"Can upgrade other vehicles/structures";
 				if (detectsResources)
 					outResult <<"Scans into the ground, and detects natural resources";
 				#ifndef ONE_COMPOUND_PER_FACTION
@@ -1630,7 +1632,14 @@ namespace Objects
 				if (CanConstruct())
 					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate construction.");
 				if (CanRepair())
-					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
+				{
+					outResult << ("This "+lowerName+" type can repair other structures and vehicles. Repair requires "+String(ResourceTag(Resource::Minerals))+" to initiate.");
+					if (CanUpgrade())
+						outResult << ("Utilizing "+String(ResourceTag(Objects::Research::globalState.t2.upgradeCostType))+", it can also upgrade other structures and vehicles.");
+				}
+				else
+					if (CanUpgrade())
+						outResult << ("This "+lowerName+" type can upgrade other structures and vehicles. It requires "+String(ResourceTag(Objects::Research::globalState.t2.upgradeCostType))+" to initiate upgrade.");
 				if (detectsResources)
 					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())
