@@ -65,6 +65,7 @@
 #include "components/visual/commandDefinitions.h"
 #include "components/visual/hud/menu.h"
 #include "components/visual/hud/uiScale.h"
+#include "components/audio/hudAudio.h"
 #include "components/audio/music.h"
 #include "components/audio/newRoundSound.h"
 #include "components/visual/hud/eventLog.h"
@@ -2052,6 +2053,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("Progress Bars",ProgressBar::Create);
 			Loading::Stage("Visual Event Log",HUD::VisualEventLog::Create);
 			Loading::Stage("Window Stack",HUD::WindowStack::Create);
+			Loading::Stage("HUD Audio",HUD::Audio::Create);
 			Loading::Stage("Dialogs",HUD::Dialog::Create);
 			Loading::Stage("HostList",HUD::HostList::Create);
 			Loading::Stage("Voting",Vote::StaticCreate);

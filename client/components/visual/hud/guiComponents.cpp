@@ -11,6 +11,7 @@
 #include "componentDetails.h"
 #include <math/graph.h>
 #include "windowStack.h"
+#include "../../audio/hudAudio.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -4179,7 +4180,7 @@ namespace Component
 
 	/*virtual override*/ void Button::OnMouseDown()
 	{
-		WindowStack::PlayButtonDownSound(this->GetRect().center());
+		Audio::PlayButtonDownSound(this->GetRect().center());
 	}
 
 	/*virtual override*/ void Button::OnMouseUp()
@@ -4192,8 +4193,27 @@ namespace Component
 				onPress();
 			}
 		}
-		WindowStack::PlayButtonUpSound(this->GetRect().center());
+		Audio::PlayButtonUpSound(this->GetRect().center());
 	}
+
+	/*virtual override*/ void ButtonPanel::OnMouseDown()
+	{
+		Super::OnMouseDown();
+		Audio::PlayButtonDownSound(this->GetRect().center());
+	}
+
+	/*virtual override*/	void			ButtonPanel::OnMouseUp()
+	{
+		if (ContainsMouse())
+		{
+			DetectEnabledState();
+			if (IsEnabled() && onPress)
+			{
+				onPress();
+			}
+		}
+	}
+
 
 
 

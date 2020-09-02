@@ -1925,20 +1925,9 @@ namespace Component
 			return PComponent();
 		}
 
-		virtual	void			OnMouseUp() override
-		{
-			if (ContainsMouse())
-			{
-				DetectEnabledState();
-				if (IsEnabled() && onPress)
-				{
-					onPress();
-				}
-			}
-		}
-
-
-
+		
+		virtual	void			OnMouseDown() override;
+		virtual	void			OnMouseUp() override;
 	};
 
 
