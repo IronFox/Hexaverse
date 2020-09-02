@@ -14,6 +14,7 @@
 #include <objects/geometry.h>
 #include <objects/resource.h>
 #include <engine/aspect.h>
+#include "tooltip.h"
 
 namespace HUD
 {
@@ -42,7 +43,7 @@ namespace HUD
 
 		};
 
-		class Gauge : public IconItem
+		class Gauge : public IconItem, public Tooltip::IProvider
 		{
 		public:
 			int	current,max,changePerRound,
@@ -53,6 +54,8 @@ namespace HUD
 			bool	changed,enabled;
 			float	ftop,hScale;
 			char	myTag;
+			M::TFloatRect	lastPosition;
+			mutable String	tooltip;
 			#ifndef NO_HIBERNATION
 				bool	isTraffic = false;	//!< Various visual modifications
 			#endif
@@ -60,6 +63,7 @@ namespace HUD
 
 			Objects::Geometry			geo[2];
 			DX11::InstructionBlock32	instruction[2];
+			Objects::Resource::ID		myResource;
 
 			static DX11::BaseInstructionBlock	shader;
 
@@ -77,6 +81,7 @@ namespace HUD
 			void	LoadTexture(Objects::Resource::ID res)
 			{
 				LoadTexture(res.ToType());
+				myResource = res;
 			}
 
 			void	Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled);
@@ -95,6 +100,7 @@ namespace HUD
 			void	Render(BYTE target);
 			void	RenderText();
 			void	RenderListText(int y);
+			bool	ListTextContainsMouse(const M::TVec2<>&mousePos) const;
 			void	ConstructPart(float radius, float lower, float upper, const float4&color, Objects::Geometry&geo)
 			{
 				ConstructPart(radius,lower,upper,color,color,geo);
@@ -102,6 +108,7 @@ namespace HUD
 
 			void	ConstructPart(float radius, float lower, float upper, const float4&lowerColor, const float4&upperColor, Objects::Geometry&geo);
 			void	Construct();
+			Tooltip::Info	ResolveTooltip(float hoverSeconds, float lastCall) const override;
 
 		};
 

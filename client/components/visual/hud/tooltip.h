@@ -25,6 +25,7 @@ namespace HUD
 			Once any non-null return value was detected, subsequent null values merely preserve the current value.
 			@param hoverSeconds Seconds since cursor remained stationary. Always >= 0.25
 			@param lastCall Last time this provider was called since the cursor became stationary. 0 if this is the first call
+			@return Object-managed string pointer, containing the tooltip text
 			*/
 			virtual Info	ResolveTooltip(float hoverSeconds, float lastCall) const=0;
 		};
