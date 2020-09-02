@@ -18,7 +18,7 @@ namespace ResourceGauges
 
 	namespace DX11 = Engine::DX11; //!< Shortcut
 
-
+	static bool showExtraGauges = false;
 
 	//#ifdef HAS_WINDOW
 	//	/*static*/ index_t			Hangar::storeOffset;
@@ -28,6 +28,34 @@ namespace ResourceGauges
 	//								Hangar::cmdRightCoords;
 
 	//#endif
+
+
+	
+
+	const Gauge*	FindResourceBeneathMouse()
+	{
+		if (resourcesAsList)
+		{
+			float2 m = Engine::mouse.location.windowRelative * 2.f - 1.f;
+				
+			#ifndef NO_HIBERNATION
+				if (trafficGauge.ListTextContainsMouse(m))
+					return *trafficGauge;
+			#endif
+				
+			if (showExtraGauges)
+			{
+				index_t at = 2;
+				foreach (gauges,res)
+				{
+					if (res->ListTextContainsMouse(m))
+						return res;
+				}
+			}
+		}
+
+		return nullptr;
+	}
 
 
 
@@ -116,6 +144,8 @@ namespace ResourceGauges
 		iconShader.UpdateLayout();
 		iconShader.SetPoints();
 
+
+		Tooltip::tooltipQuery << FindResourceBeneathMouse;
 	}
 
 	/*static*/ void Gauge::StaticDestroy()
@@ -210,6 +240,10 @@ namespace ResourceGauges
 		//textout.locate(projectedTop);
 		textout.MoveTo(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+5));
 
+		lastPosition.x.min = textout.state.left;
+		lastPosition.y.max = textout.state.top;
+		lastPosition.y.min = lastPosition.y.max - textout.GetScaledHeight();
+
 		//textout.SetLine(-1);
 		textout << myTag;
 			
@@ -238,10 +272,18 @@ namespace ResourceGauges
 			Write(max);
 			textout.Scale(1.f/0.6f,1.f/0.6f);
 		}
+		lastPosition.x.max = lastPosition.x.min + 0.15f;
+			//textout.state.scale_x * textout.GetActiveFont()->GetLinePixelProgress();
 		//textout << max;
 		textout.PopState();
 
 
+	}
+
+
+	bool	Gauge::ListTextContainsMouse(const M::TVec2<>&mousePos) const
+	{
+		return lastPosition.Contains(mousePos);
 	}
 
 	void	Gauge::RenderText()
@@ -296,6 +338,31 @@ namespace ResourceGauges
 		}
 			
 		//RenderIcon(projectedTop);
+	}
+
+
+	/*virtual override*/ Tooltip::Info	Gauge::ResolveTooltip(float hoverSeconds, float lastCall) const
+	{
+		if (lastCall == 0)
+		{
+			tooltip = "";
+			if (max > 0)
+				tooltip += "Storage: "+String(current)+"/"+String(max);
+			if (changePerRound != 0)
+			{
+				if (max > 0)
+					tooltip += " ";
+
+				if (changePerRound > 0)
+					tooltip += "+";
+				
+				tooltip += String(changePerRound);
+				tooltip += String(myTag)+ myResource.ToString()+" per round";
+			}
+			else
+				tooltip += " "+String(myTag)+ myResource.ToString();
+		}
+		return tooltip.c_str();
 	}
 
 
@@ -513,7 +580,6 @@ namespace ResourceGauges
 	}
 
 
-	static bool showExtraGauges = false;
 
 	#ifndef NO_HIBERNATION
 

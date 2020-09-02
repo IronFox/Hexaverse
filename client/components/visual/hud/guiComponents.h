@@ -1342,7 +1342,8 @@ namespace Component
 				onPress();
 		}
 
-
+		void			OnMouseDown() override;
+		void			OnMouseUp()	override;
 
 		void			SetCheck(const std::function<bool()>&check)
 		{
@@ -1382,17 +1383,6 @@ namespace Component
 			return PComponent();
 		}
 
-		virtual	void			OnMouseUp() override
-		{
-			if (ContainsMouse())
-			{
-				DetectEnabledState();
-				if (IsEnabled() && onPress)
-				{
-					onPress();
-				}
-			}
-		}
 	};
 
 	class Checkbox : public TextField
@@ -1935,20 +1925,9 @@ namespace Component
 			return PComponent();
 		}
 
-		virtual	void			OnMouseUp() override
-		{
-			if (ContainsMouse())
-			{
-				DetectEnabledState();
-				if (IsEnabled() && onPress)
-				{
-					onPress();
-				}
-			}
-		}
-
-
-
+		
+		virtual	void			OnMouseDown() override;
+		virtual	void			OnMouseUp() override;
 	};
 
 
