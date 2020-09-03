@@ -477,11 +477,11 @@ namespace Test
 		t.turretType = Objects::Component::vehicleTurretComponents[random.NextIndex(Objects::Component::vehicleTurretComponents.Count())]->constName;
 	}
 
-	/*static*/ void		Serialization::RandomFill(Objects::PositiveResourceVector&vec, Random&random)
+	/*static*/ void		Serialization::RandomFill(Objects::Resource::PositiveVector&vec, Random&random)
 	{
-		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+		for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			if (random.NextBool())
-				vec.level[i] = random.Next(1,1024);
+				vec.Set(i, random.Next(1,1024));
 	}
 
 
@@ -556,13 +556,13 @@ namespace Test
 				VerifySerialization(stream,coords);
 
 
-				Objects::PositiveResourceVector vec;
-				for (index_t i = 0; i < Objects::PositiveResourceVector::NumEntries; i++)
+				Objects::Resource::PositiveVector vec;
+				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 				{
 					if (random.NextBool())
-						vec.level[i] = 0;
+						vec.Set(i, 0);
 					else
-						vec.level[i] = Math::cubic(random.Next(100));
+						vec.Set(i, Math::cubic(random.Next(100)));
 				}
 
 				VerifySerialization(stream,vec);
@@ -664,20 +664,20 @@ namespace Test
 					}
 					while (munitionStoreAt.height == Objects::badHeight);
 
-					switch (turret->ammoType)
+					switch (turret->ammoType.serialIndex)
 					{
 						#ifndef NO_MUNITION
-							case Objects::Resource::Munitions:
+							case Objects::R::Munitions:
 								storage = CreateFilledStorageStructure<Objects::MunitionStorage>(faction1, munitionStoreAt);
 							break;s
 						#endif
-						case Objects::Resource::Fuel:
+						case 0 /*Objects::R::Fuel*/:
 							storage = CreateFilledStorageStructure<Objects::FuelContainer>(faction1, munitionStoreAt);
 						break;
-						case Objects::Resource::Uranium:
+						case 2 /*Objects::R::Uranium*/:
 							storage = CreateFilledStorageStructure<Objects::UraniumStorage>(faction1, munitionStoreAt);
 						break;
-						case Objects::Resource::Minerals:
+						case 1 /*Objects::R::Minerals*/:
 							storage = CreateFilledStorageStructure<Objects::MineralContainer>(faction1, munitionStoreAt);
 						break;
 					}
@@ -702,7 +702,7 @@ namespace Test
 			float t = 0;
 			Objects::InsertConstructed(v,t);
 			#ifndef ONE_COMPOUND_PER_FACTION
-				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
+				v->currentStorage[v->turret->ammoType] = v->GetMaxStorageCapacity()[v->turret->ammoType];
 			#endif
 
 			const bool beyondSensorRange = (Vec::distance(v->GetScanningCenter(),generator->GetWorldPosition()) > v->GetScanningRange());
@@ -987,17 +987,17 @@ namespace Test
 			ASSERT__(mine->IsEnabled());
 			expectedMinerals += mineralsPerRound;
 			expectedFuel += fuelPerRound;
-			ASSERT_EQUAL__(std::min(mineralContainer->maxStorage.level[Objects::Resource::Minerals], expectedMinerals), mineralContainer->storage.level[Objects::Resource::Minerals]);
-			if (expectedFuel <= fuelContainer0->maxStorage.level[Objects::Resource::Fuel])
+			ASSERT_EQUAL__(std::min(mineralContainer->maxStorage[Objects::Resource::Minerals], expectedMinerals), mineralContainer->storage[Objects::Resource::Minerals]);
+			if (expectedFuel <= fuelContainer0->maxStorage[Objects::Resource::Fuel])
 			{
-				ASSERT_EQUAL__(expectedFuel, fuelContainer0->storage.level[Objects::Resource::Fuel]);
-				ASSERT_EQUAL__(0, fuelContainer1->storage.level[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(expectedFuel, fuelContainer0->storage[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(0, fuelContainer1->storage[Objects::Resource::Fuel]);
 			}
 			else
 			{
-				ASSERT_EQUAL__(fuelContainer0->maxStorage.level[Objects::Resource::Fuel], fuelContainer0->storage.level[Objects::Resource::Fuel]);
-				int expected1 = std::min(fuelContainer1->maxStorage.level[Objects::Resource::Fuel], expectedFuel - fuelContainer0->storage.level[Objects::Resource::Fuel]);
-				ASSERT_EQUAL__(expected1, fuelContainer1->storage.level[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(fuelContainer0->maxStorage[Objects::Resource::Fuel], fuelContainer0->storage[Objects::Resource::Fuel]);
+				int expected1 = std::min(fuelContainer1->maxStorage[Objects::Resource::Fuel], expectedFuel - fuelContainer0->storage[Objects::Resource::Fuel]);
+				ASSERT_EQUAL__(expected1, fuelContainer1->storage[Objects::Resource::Fuel]);
 			}
 		}
 		GlobalEvents::FlushObjects();

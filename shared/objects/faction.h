@@ -628,11 +628,11 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		void	ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource res, int change);
+		void	ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource::ID res, int change);
 
-		void	ChangeStorage(WorldEntity&e, float&atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change);
-		void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change);
-		void	ChangeStorage(MobileEntity&v, float&atTime, Resource res, int change);
+		void	ChangeStorage(WorldEntity&e, float&atTime, const Resource::Vector&max, Resource::Vector&storage, Resource::ID res, int change);
+		void	ChangeStorage(WorkingStructure&ws, float&atTime, Resource::ID res, int change);
+		void	ChangeStorage(MobileEntity&v, float&atTime, Resource::ID res, int change);
 		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
 		void	ChangeOwnership( const PWorldEntity&e, const PFaction&newOwner, float&atTime);
 
@@ -643,8 +643,8 @@ namespace Objects
 		Verification failure leads to program termination.
 		*/
 //		void	VerifyVisibilityNetwork();
-		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
-		int		GetStorage(const MobileEntity&v, Resource res);
+		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource::ID res, int demand);
+		int		GetStorage(const MobileEntity&v, Resource::ID res);
 	#endif
 
 	CONSTRUCT_ENUMERATION3(IncludeGhosts

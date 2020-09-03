@@ -44,16 +44,14 @@ TwisterRandom		random;
 namespace ApplicationInterface
 {
 
-	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Ctr::ArrayRef<Objects::Resource>&resources, float atTime)
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const Objects::Resource::FlagSet&resources, float atTime)
 	{
 		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
 		if (!cl && Network::spectators.IsEmpty())
 			return;
 
 		Protocol::OperationLacksResources outRes;
-		outRes.resourceIndices.SetSize(resources.Count());
-		for (index_t i = 0; i < resources.Count(); i++)
-			outRes.resourceIndices[i] = (BYTE)resources[i];
+		outRes.resourceFlagSet = resources.GetNumeric();
 		outRes.timestamp.atTime = atTime;
 		outRes.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 		outRes.entityID = e.id;
@@ -112,7 +110,7 @@ namespace ApplicationInterface
 		LogEvent(EventSignificance::Debug,s.get(),"Signaling new structure to owner at t="+String(atTime));
 		Protocol::StructureConstruction	w;
 		Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-		Game::Network::Describe(w,*s,timestamp,Game::Network::ExposeAll);
+		Game::Network::Describe(w,*s,timestamp,Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 		Network::SendToOwner(Channels::createStructure,v,w);
 
 		if (s->IsTower() && To<Objects::Tower>::Cast(s)->turret->detectsResources)
@@ -152,7 +150,7 @@ namespace ApplicationInterface
 			Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
 			ASSERT1__(s,e->GetName());
 			TCP::Serial<Protocol::StructureConstruction>	w;
-			Game::Network::Describe(w.Ref(),*s,timestamp,expose);
+			Game::Network::Describe(w.Ref(),*s,timestamp,expose, Objects::Packable::Target::Hostile);
 			w.Seal();
 			Channels::createStructure.SendTo(client->peer.lock(),w);
 		}

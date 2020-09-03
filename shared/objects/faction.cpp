@@ -402,18 +402,18 @@ namespace Objects
 			ApplicationInterface::SignalFactionsChanged();
 		}
 
-		int		GetStorage(const MobileEntity&v, Resource res)
+		int		GetStorage(const MobileEntity&v, Resource::ID res)
 		{
 			#ifndef ONE_COMPOUND_PER_FACTION
-				return v.currentStorage.level[res];
+				return v.currentStorage[res];
 			#else
 				const Compound&compound = v.owner->compound;
-				return compound.total.storage.level[res] + compound.GetOverproduction(res);
+				return compound.total.storage[res] + compound.GetOverproduction(res);
 			#endif
 
 		}
 
-		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand)
+		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource::ID res, int demand)
 		{
 			if (demand == 0)
 				return true;
@@ -421,50 +421,50 @@ namespace Objects
 		}
 
 
-		void ChangeStorage(WorldEntity&e, float&atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change)
+		void ChangeStorage(WorldEntity&e, float&atTime, const Resource::Vector&max, Resource::Vector&storage, Resource::ID res, int change)
 		{
 			if (change == 0)
 				return;
-			storage.level[res] += change;
-			LogEvent(EventSignificance::Common,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
+			storage.Add(res, change);
+			LogEvent(EventSignificance::Common,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage[res])+"/"+String(max[res]));
 			e.SignalChangeByExternalCause(WorldEntity::StorageChanged,atTime);
-			ASSERT_IS_CONSTRAINED__(storage.level[res] , 0, max.level[res]);
+			ASSERT_IS_CONSTRAINED__(storage[res] , 0, max[res]);
 		}
 
-		void ChangeStorage(WorkingStructure&ws, float&atTime, Resource res, int change)
+		void ChangeStorage(WorkingStructure&ws, float&atTime, Resource::ID res, int change)
 		{
 			if (change == 0)
 				return;
-			ResourceVector dummy,current,max;
+			Resource::Vector dummy,current,max;
 			ws.GetResourceVector(dummy,current,max);
 			ChangeStorage(ws,atTime,max,current,res,change);
 			ws.SetResourceStorage(current);
 			#ifdef _DEBUG
-				ResourceVector testCurrent;
+				Resource::Vector testCurrent;
 				ws.GetResourceVector(dummy,testCurrent,max);
 				ASSERT2__(current == testCurrent,current.ToString(),testCurrent.ToString());
 			#endif
 		}
 
-		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource res, int change)
+		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float&atTime, Resource::ID res, int change)
 		{
-			ResourceVector demand;
+			Resource::Vector demand;
 
 			if (change < 0 )
 			{
-				ResourceVector withdraw;
-				withdraw.level[res] = -change;
+				Resource::Vector withdraw;
+				withdraw.Set(res, -change);
 				compound.TryWithdrawOverproduction(withdraw);
-				change = -withdraw.level[res];
+				change = -withdraw[res];
 				if (change == 0)
 					return;
 			}
-			demand.level[res] = change;
+			demand.Set(res, change);
 			compound.ChangeStorage(demand,atTime);
 		}
 
 
-		void ChangeStorage(MobileEntity&v, float&atTime, Resource res, int change)
+		void ChangeStorage(MobileEntity&v, float&atTime, Resource::ID res, int change)
 		{
 			if (change == 0)
 				return;

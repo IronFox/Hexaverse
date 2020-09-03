@@ -397,9 +397,9 @@ namespace Journal
 		{
 		public:
 			UINT32			stackID;
-			Objects::Resource	resource;
+			Objects::Resource::ID	resource;
 			Grid::Resource::coverage_t	newCoverage;
-			/**/			ResourceCoverageChange(UINT32 stackID=0, Objects::Resource res=Objects::Resource(),  Grid::Resource::coverage_t	newCoverage=0)
+			/**/			ResourceCoverageChange(UINT32 stackID=0, Objects::Resource::ID res=Objects::Resource::Fuel,  Grid::Resource::coverage_t	newCoverage=0)
 							:stackID(stackID),resource(res),newCoverage(newCoverage)	{}
 
 			Event*			Instantiate() const override {return new ResourceCoverageChange();}
@@ -938,7 +938,7 @@ namespace Journal
 		void	RegisterAutomationChange(bool execute, const Objects::PMobileEntity&, bool isNowAutomated);
 		void	RegisterSleepChange(bool execute, const Objects::PWorldEntity&, bool isNowSleeping);
 		void	RegisterPersistentVariableChange(bool execute, const Reflection::Variable::PBase&);
-		void	RegisterResourceCoverageChange(bool execute, UINT32 stackID, Objects::Resource res, Grid::Resource::coverage_t newCoverage);
+		void	RegisterResourceCoverageChange(bool execute, UINT32 stackID, Objects::Resource::ID res, Grid::Resource::coverage_t newCoverage);
 		void	RegisterResourceCoverageKnowledgeLoss(bool execute, const Objects::PFaction&, UINT32 stackID);
 
 

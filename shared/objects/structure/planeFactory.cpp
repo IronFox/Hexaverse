@@ -8,11 +8,11 @@ namespace Objects
 	Buffer0<EntityType>			PlaneFactory::prototypes;
 
 
-	/*virtual override*/ void		PlaneFactory::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
+	/*virtual override*/ void		PlaneFactory::GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&)	const
 	{
-		v.level[Resource::Energy] = -EnergyConsumption;
-		v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
-		v.level[Resource::Fuel] = -FuelDemand;
+		v.Set(Resource::Energy,-EnergyConsumption);
+		v.Set(Resource::Minerals,-(int)MobileEntityProducer::productionPerRound);
+		v.Set(Resource::Fuel, -FuelDemand);
 	}
 	
 	/*virtual override*/ bool				PlaneFactory::AwaitsUserInteraction() const 
@@ -51,10 +51,10 @@ namespace Objects
 			}
 		}	
 
-		/*virtual override*/ void				PlaneFactory::Tick(ResourceVector&v)
+		/*virtual override*/ void				PlaneFactory::Tick(Resource::Vector&v)
 		{
-			v.level[Resource::Energy] -= EnergyConsumption;
-			v.level[Resource::Fuel] -= FuelDemand;
+			v.Add(Resource::Energy,-EnergyConsumption);
+			v.Add(Resource::Fuel,-FuelDemand);
 
 			float t = 0.f;	//buildings always come at the beginning
 			MobileEntityProducer::Tick(v,t,true);

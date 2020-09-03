@@ -10,6 +10,7 @@
 
 #include <objects/structure/tower.h>
 #include <objects/structure/mine.h>
+#include <objects/packable.h>
 
 namespace Animation
 {
@@ -93,6 +94,13 @@ namespace Animation
 					}
 				}
 			
+			}
+		}
+		{
+			Objects::Packable*se = dynamic_cast<Objects::Packable*>(s.get());
+			if (se)
+			{
+				se->Unpack(vs.packed);
 			}
 		}
 		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;

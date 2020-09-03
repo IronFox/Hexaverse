@@ -14,6 +14,7 @@
 #include <objects/geometry.h>
 #include <objects/resource.h>
 #include <engine/aspect.h>
+#include "tooltip.h"
 
 namespace HUD
 {
@@ -42,7 +43,7 @@ namespace HUD
 
 		};
 
-		class Gauge : public IconItem
+		class Gauge : public IconItem, public Tooltip::IProvider
 		{
 		public:
 			int	current,max,changePerRound,
@@ -53,6 +54,8 @@ namespace HUD
 			bool	changed,enabled,usesAlternatingColors;
 			float	ftop,hScale;
 			char	myTag;
+			M::TFloatRect	lastPosition;
+			mutable String	tooltip;
 			#ifndef NO_HIBERNATION
 				bool	isTraffic = false;	//!< Various visual modifications
 			#endif
@@ -60,6 +63,7 @@ namespace HUD
 
 			Objects::Geometry			geo[2];
 			DX11::InstructionBlock32	instruction[2];
+			Objects::Resource::ID		myResource;
 
 			static DX11::BaseInstructionBlock	shader;
 
@@ -73,10 +77,11 @@ namespace HUD
 			}
 
 
-			void	LoadTexture(Objects::Resource res)
+			void	LoadTexture(Objects::Resource::ID res)
 			{
 				IconItem::LoadTexture(res.ToString());
-				myTag = Objects::ResourceTag(res);
+				myTag = res.GetTag();
+				myResource = res;
 			}
 
 
@@ -96,6 +101,7 @@ namespace HUD
 			void	Render(BYTE target);
 			void	RenderText();
 			void	RenderListText(int y);
+			bool	ListTextContainsMouse(const M::TVec2<>&mousePos) const;
 			void	ConstructPart(float radius, float lower, float upper, const float4&color, Objects::Geometry&geo)
 			{
 				ConstructPart(radius,lower,upper,color,color,geo);
@@ -103,6 +109,7 @@ namespace HUD
 
 			void	ConstructPart(float radius, float lower, float upper, const float4&lowerColor, const float4&upperColor, Objects::Geometry&geo);
 			void	Construct();
+			Tooltip::Info	ResolveTooltip(float hoverSeconds, float lastCall) const override;
 
 		};
 
@@ -160,10 +167,10 @@ namespace HUD
 				or orange portions of the storage (if negative)
 		@param localCurrent Storage of the selected entity within its compound
 		*/
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change);
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max);
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/);
+		void	Update(TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change);
+		void	Update(TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max);
+		void	Update(TRAFFIC const Objects::Resource::Vector&current, const Objects::Resource::Vector&max, const Objects::Resource::Vector&change,
+						const Objects::Resource::Vector&localCurrent/*, const Objects::Resource::Vector&localChange, bool isEnabled*/);
 		void	Destroy();
 		void	Render();
 

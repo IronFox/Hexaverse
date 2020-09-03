@@ -392,7 +392,7 @@ namespace Objects{ namespace Pathfinding
 
 	
 
-	void AccumulateCellMovementCosts(const World::Data&world, THindranceVector&outCount, const Grid::HCellIdI&cell,count_t multiplier=1)
+	void AccumulateCellMovementCosts(const World::Data&world, THindranceVector&outCount, const Grid::HCellIdI&cell,THindranceVector::ScalarType multiplier=1)
 	{
 		const Grid::CellStack::Cell&c = world.GetStack(cell.stackID).GetCellI(cell.height);
 		switch (c.content)

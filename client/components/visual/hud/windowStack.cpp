@@ -5,6 +5,10 @@
 #include <container/buffer.h>
 #include "../../clientEvents.h"
 #include <logEvent.h>
+#include "../../cameraControl.h"
+
+
+
 
 namespace HUD
 {
@@ -20,6 +24,8 @@ namespace HUD
 
 		namespace Detail
 		{
+
+
 			struct TWindowEntry
 			{
 				PWindow	window;
@@ -146,10 +152,16 @@ namespace HUD
 		}
 
 
+
 		void		Create()
 		{
 			Component::Image::StaticCreate();
 			Component::Decoration::StaticCreate();
+
+
+
+
+
 
 			GlobalEvents::uiScaleChanged += []()
 			{

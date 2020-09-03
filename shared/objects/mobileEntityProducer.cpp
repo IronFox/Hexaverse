@@ -284,7 +284,7 @@ namespace Objects
 		}
 
 
-		void MobileEntityProducer::Tick( ResourceVector&v, float&t, bool forceAutoSpawn )
+		void MobileEntityProducer::Tick( Resource::Vector&v, float&t, bool forceAutoSpawn )
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
@@ -324,10 +324,10 @@ namespace Objects
 			{
 				int delta = (queue.First().producing->GetConstructionCost() - productionDone);
 				ASSERT_IS_CONSTRAINED__(delta, 0, (int)productionPerRound);
-				v.level[Resource::Minerals] -= delta;
+				v.Add(Resource::Minerals, -delta);
 			}
 			else
-				v.level[Resource::Minerals] -= productionPerRound;
+				v.Add(Resource::Minerals, -(int)productionPerRound);
 
 			productionDone += productionPerRound;
 			productionRoundsLeft = ProductionRounds(queue.First().producing,true);

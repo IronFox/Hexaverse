@@ -39,7 +39,7 @@ namespace VisualTerrain
 
 
 
-	void CompileResources(THull<ResourceVertex>&cover, Grid::ResourceDiscovery&visibility, index_t offset, count_t count, Grid::FClipHeight clipHeight, const Grid::Resource*resources, count_t numResources);
+	void CompileResources(THull<ResourceVertex>&cover, Grid::ResourceDiscovery&visibility, index_t offset, count_t count, Grid::FClipHeight clipHeight, const ArrayRef<Grid::Resource>&resources);
 
 }
 

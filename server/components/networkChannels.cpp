@@ -393,6 +393,8 @@ namespace Channels
 
 	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningAlliance>								winningAlliance;
 
+	DECLARE_OBJECT_SENDER(ResourceTable);
+
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
 	DECLARE_FACTION_CHANNEL(ClientVote);
@@ -521,10 +523,12 @@ namespace Receiver
 
 		peer.SendSignal(Protocol::ChannelID::BeginEverything);
 
+		Channels::ResourceTable.SendTo(peer,Objects::Resource::table);
+
 		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
-			Game::Network::Describe(st,*s,timestamp,Game::Network::ExposeAll);
+			Game::Network::Describe(st,*s,timestamp,Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 			Channels::createStructure.SendTo(peer,st);
 		});
 
@@ -544,7 +548,7 @@ namespace Receiver
 				package.cells[i].cellIndex = (UINT32)i;
 			foreach (Grid::Resource::all,res)
 			{
-				package.resourceName = res->GetCName();
+				package.resourceIndex = res->resourceIndex;
 				for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 				{
 					BYTE sourceCov = res->coverage[i];
@@ -593,15 +597,15 @@ namespace Receiver
 		peer.SendSignal(Protocol::ChannelID::EndEverything);
 	}
 
-	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer,const Protocol::Timestamp&timestamp, Game::Network::Expose expose)
+	void	SendEntitiesTo(const Objects::PFaction&f, TCP::Peer&peer,const Protocol::Timestamp&timestamp, Game::Network::Expose expose, Objects::Packable::Target target)
 	{
-		f->VisitMyStructures([expose,timestamp,&peer](const Objects::PStructure&s)
+		f->VisitMyStructures([expose,timestamp,&peer,target](const Objects::PStructure&s)
 		{
 			ASSERT__(s);
 			if (s)
 			{
 				Protocol::StructureConstruction st;
-				Game::Network::Describe(st,*s,timestamp,expose);
+				Game::Network::Describe(st,*s,timestamp,expose, target);
 				Channels::createStructure.SendTo(peer,st);
 			}
 		});
@@ -942,7 +946,7 @@ namespace Receiver
 
 		#endif
 	
-
+		Channels::ResourceTable.SendTo(peer,Objects::Resource::table);
 
 		foreach(client->faction->markers, m)
 		{
@@ -992,7 +996,7 @@ namespace Receiver
 					package.cells[i].cellIndex = final[i];
 				foreach (Grid::Resource::all,res)
 				{
-					package.resourceName = res->GetCName();
+					package.resourceIndex = res->resourceIndex;
 					for (index_t i = 0; i < final.Count(); i++)
 					{
 						BYTE sourceCov = res->coverage[final[i]];
@@ -1048,7 +1052,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					Game::Network::Describe(st,*s,timestamp,Game::Network::GetExposition(s->owner,client->faction));
+					Game::Network::Describe(st,*s,timestamp,Game::Network::GetExposition(s->owner,client->faction),Game::Network::GetTarget(s->owner,client->faction));
 					Channels::createStructure.SendTo(peer,st);
 				}
 				else
@@ -1066,7 +1070,7 @@ namespace Receiver
 				}
 			});
 
-			SendEntitiesTo(client->faction,peer,timestamp, Game::Network::ExposeAll);
+			SendEntitiesTo(client->faction,peer,timestamp, Game::Network::ExposeAll, Objects::Packable::Target::Owner);
 		}
 
 

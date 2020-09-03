@@ -11,6 +11,7 @@
 #include "menu.h"
 #include "../../scriptedAI.h"
 #include "tooltip.h"
+#include "../../audio/hudAudio.h"
 
 namespace HUD
 {
@@ -1244,6 +1245,8 @@ namespace HexGrid
 
 					if (c->command->state & Objects::CommandFlags::IsEnabled)
 					{
+						Audio::PlayButtonDownSound(c->projectedRect.center());
+
 						String name = c->command->name;
 						c->command->Execute();
 						//c is not guaranteed to be valid past this point

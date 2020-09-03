@@ -46,7 +46,7 @@ namespace Objects
 			/**
 			Queries any subsequent costs of an execution of the local command
 			*/
-			virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut)	{costOut = 0; costTypeOut = Resource::Minerals; timeCostOut = 0;}
+			virtual void	GetCosts(int&costOut, Resource::ID&costTypeOut, int&timeCostOut)	{costOut = 0; costTypeOut = Resource::Minerals; timeCostOut = 0;}
 			virtual void	CompileLabel(Label&outResult);
 		};
 
@@ -91,7 +91,7 @@ namespace Objects
 		public:
 			typedef std::function<void()>		FOnExecute;
 			typedef std::function<Flags(bool)>	FCheck;
-			typedef std::function<void(int&costOut, Resource&costTypeOut, int&timeCostOut)>	FGetCosts;
+			typedef std::function<void(int&costOut, Resource::ID&costTypeOut, int&timeCostOut)>	FGetCosts;
 
 			FGetCosts		getCosts;
 			FOnExecute		execute;
@@ -103,7 +103,7 @@ namespace Objects
 
 			virtual void	Execute() override												{execute();}
 			virtual	void	Refresh(bool controlEnabled) override							{if (check) state = check(controlEnabled);}
-			virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut) override	{if (getCosts) getCosts(costOut,costTypeOut,timeCostOut); else Super::GetCosts(costOut,costTypeOut,timeCostOut);}
+			virtual void	GetCosts(int&costOut, Resource::ID&costTypeOut, int&timeCostOut) override	{if (getCosts) getCosts(costOut,costTypeOut,timeCostOut); else Super::GetCosts(costOut,costTypeOut,timeCostOut);}
 		};
 
 
@@ -317,7 +317,7 @@ namespace Objects
 					UpdateTexture(base,turret);
 			}
 
-			virtual void		GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut) override;
+			virtual void		GetCosts(int&costOut, Resource::ID&costTypeOut, int&timeCostOut) override;
 			static void			UpdateTexture(VisualCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 			void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 		};

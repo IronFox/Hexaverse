@@ -340,9 +340,9 @@ namespace Objects
 		}
 
 
-		void			Statistics::SignalStructureResourceDelta(const PWorldEntity&, const ResourceVector&d)
+		void			Statistics::SignalStructureResourceDelta(const PWorldEntity&, const Resource::Vector&d)
 		{
-			ResourceVector pos,neg;
+			Resource::Vector pos,neg;
 			d.SeparateBySign(pos,neg);
 			roundProduction += pos;
 			roundConsumption -= neg;

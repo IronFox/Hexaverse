@@ -160,7 +160,7 @@ namespace Engine
 
 		float TextureFont::CharWidth(char c)
 		{
-			if (tagMode && tagRange.Contains(c))
+			if (isTag && isTag(c))
 			{
 				return tagWidth(c);
 			}
@@ -238,7 +238,7 @@ namespace Engine
 					written = 0;
 				}
 
-				if (tagMode && tagRange.Contains(*c))
+				if (isTag && isTag(*c))
 				{
 					if (written)
 					{

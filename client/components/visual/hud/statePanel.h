@@ -13,7 +13,6 @@ namespace HUD
 	*/
 	namespace StatePanel
 	{
-		static const char tagOffset = Objects::TextoutResourceTagOffset;
 		static const float tagIconSize = 50.f;
 		//0.0135f;
 

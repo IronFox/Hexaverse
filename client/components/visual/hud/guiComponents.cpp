@@ -10,6 +10,8 @@
 #include "../../clientEvents.h"
 #include "componentDetails.h"
 #include <math/graph.h>
+#include "windowStack.h"
+#include "../../audio/hudAudio.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -2354,7 +2356,7 @@ namespace Component
 
 	static float CharWidth(char c)
 	{
-		if ((index_t)c >= Objects::TextoutResourceTagOffset && (index_t)c <= (index_t)Objects::TextoutResourceTagOffset + Objects::Resource::NumberOfPossibilities)
+		if (Objects::Resource::TagMap::IsTag(c))
 		{
 			return textout.GetFont().GetHeight() * textout.state.scale_x;
 		}
@@ -4175,6 +4177,46 @@ namespace Component
 		Super::SetVerticalPadding(0.5f);
 		Super::SetAlign(TextField::VAlign::Center);
 	}
+
+	/*virtual override*/ void Button::OnMouseDown()
+	{
+		Audio::PlayButtonDownSound(this->GetRect().center());
+	}
+
+	/*virtual override*/ void Button::OnMouseUp()
+	{
+		if (ContainsMouse())
+		{
+			DetectEnabledState();
+			if (IsEnabled() && onPress)
+			{
+				onPress();
+			}
+		}
+		Audio::PlayButtonUpSound(this->GetRect().center());
+	}
+
+	/*virtual override*/ void ButtonPanel::OnMouseDown()
+	{
+		Super::OnMouseDown();
+		Audio::PlayButtonDownSound(this->GetRect().center());
+	}
+
+	/*virtual override*/	void			ButtonPanel::OnMouseUp()
+	{
+		if (ContainsMouse())
+		{
+			DetectEnabledState();
+			if (IsEnabled() && onPress)
+			{
+				onPress();
+			}
+		}
+	}
+
+
+
+
 
 	void Label::Setup()
 	{

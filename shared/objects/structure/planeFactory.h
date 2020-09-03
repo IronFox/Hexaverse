@@ -27,7 +27,7 @@ namespace Objects
 		virtual EntityType			GetType() const override {return ConstName::Type_PlaneFactory;}
 
 		//WorkingStructure overrides:
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;
+		virtual void				GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&) const override;
 
 		//WorldEntity overrides:
 		virtual int					GetHeight() const override {return 2;}
@@ -43,7 +43,7 @@ namespace Objects
 
 			//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
 			//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
-			virtual void			Tick(ResourceVector&) override;
+			virtual void			Tick(Resource::Vector&) override;
 			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
 
 		#endif

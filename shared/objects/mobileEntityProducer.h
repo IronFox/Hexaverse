@@ -141,7 +141,7 @@ namespace Objects
 				WorkItem*			EnqueueProductionOfSatellite(ConstName typeName);
 			#endif
 
-			void					Tick(ResourceVector&v, float&t, bool forceAutoSpawn);
+			void					Tick(Resource::Vector&v, float&t, bool forceAutoSpawn);
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.producing,isActive);}
 
 			PMobileEntity			SpawnFinishedProductionAnywhere(float&t);

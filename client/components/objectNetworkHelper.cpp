@@ -122,7 +122,7 @@ namespace ObjectHelper
 
 			if (jobName == ConstName::Job_Construct && parameterName != ConstName::Type_Connector)
 			{
-				Objects::NaturalResourceVector	res;
+				Objects::Resource::CoreVector	res;
 				if (res.SampleWorld(targetLocation.stackID))
 				{
 					const auto& proto = Objects::Prototypes::structures.Find(parameterName);

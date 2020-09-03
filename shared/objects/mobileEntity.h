@@ -211,7 +211,7 @@ namespace Objects
 		WHangar					storedIn;
 
 		#ifndef ONE_COMPOUND_PER_FACTION
-			ResourceVector		currentStorage;
+			Resource::Vector		currentStorage;
 		#endif
 
 		/**
@@ -308,7 +308,7 @@ namespace Objects
 			/**
 			Calculates the maximum storage vector based on the local components
 			*/
-			virtual ResourceVector		GetMaxStorageCapacity()	const = 0;
+			virtual Resource::Vector		GetMaxStorageCapacity()	const = 0;
 		#endif
 
 

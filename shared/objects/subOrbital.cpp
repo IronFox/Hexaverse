@@ -78,23 +78,22 @@ namespace Objects
 
 				outResult << speed;
 				if (turret->CanDo(Component::Operation::Construct))
-					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+DescribeOperationSpeed(Component::Operation::Construct,owner)+" per round";
+					outResult << "Effective construction speed: "+Resource::Minerals.GetTagStr()+DescribeOperationSpeed(Component::Operation::Construct,owner)+" per round";
 
 
 				int demand = 0;
 				if (demand)
+					outResult << "Consumes"+Resource::Fuel.GetTagStr()+String(demand)+" per round";
+
+
+				if ((descFlags & DescExcludeExtended) == 0)
 				{
-					static const String fuel(ResourceTag(Resource::Fuel));
-					outResult << "Consumes"+fuel+String(demand)+" per round";
+					outResult.MarkBriefEnd();
+					outResult<< "Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.";
+
+					if (IsHangar())
+						outResult<< "This plane can quickly transport other mobile entities to remote locations. Land atop mobile units, or have them move on the same location as the plane to load.";
 				}
-
-
-
-				outResult.MarkBriefEnd();
-				outResult<< "Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.";
-
-				if (IsHangar())
-					outResult<< "This plane can quickly transport other mobile entities to remote locations. Land atop mobile units, or have them move on the same location as the plane to load.";
 			}
 		
 
