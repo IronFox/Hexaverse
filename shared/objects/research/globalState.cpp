@@ -141,10 +141,11 @@ namespace Objects
 				upgradeCostQuantity = t.GetField("UpgradeCostQuantity").GetAs<int>();
 
 				String type = t.GetField("UpgradeCostType").GetAs<String>();
-				auto decoded = Resource::table.FindByName(type);
-				if (!decoded)
+				auto ptype = Resource::table.FindByName(type);
+				if (!ptype)
 					throw Lua::Exception(CLOCATION,"Unable to decode UpgradeCostType '"+type+"'");
-				upgradeCostType = decoded->GetID();
+				upgradeCostType = ptype->GetID();
+
 			}
 
 
