@@ -216,6 +216,8 @@ Table-Type: Unit
 		[type.turretType.canSelfDetonate]
 			void	SelfDetonate();				-- Schedules self-detonation at the vehicle's last queued location
 			void	Obliterate();				-- Schedules doomsday self-detonation at the vehicle's last queued location
+		[type.turretType.canRepair]
+			void	Repair(Loc);				-- Schedules repair of any unit found at the given location. Most be neighboring the last scheduled location
 		[type.turretType.canAddTerrain]
 			--[[
 			BuildBlocks():
