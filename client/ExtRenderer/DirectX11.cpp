@@ -1809,7 +1809,7 @@ namespace Engine
 			devcon->SOSetTargets(1,block.streamOutTarget.GetHandle().Reference(),&offset);
 		}
 		BindIndices(block.prototype.ibo);
-		devcon->DrawIndexedInstanced(block.prototype.ibo.GetEntryCount(),instanceCount,0,0,0);
+		devcon->DrawIndexedInstanced(UINT32(block.prototype.ibo.GetEntryCount()),instanceCount,0,0,0);
 		if (block.streamOutTarget.IsSet())
 			devcon->SOSetTargets(0,NULL,NULL);
 	}
