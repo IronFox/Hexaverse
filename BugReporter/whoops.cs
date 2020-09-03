@@ -24,6 +24,7 @@ namespace BugReporter
 			this.problem = problem;
 			theProblem.Text = problem;
 			theProblem.Select(0, 0);
+			this.TopMost = true;
 			this.ShowDialog();
 		}
 

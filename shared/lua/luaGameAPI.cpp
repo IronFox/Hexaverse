@@ -74,6 +74,7 @@ namespace Lua
 			{
 				String name = Objects::Resource::ID(i).ToString();
 				name.Set(0,CharFunctions::tolower(name.GetFirstChar()));
+				name.EraseCharacter(' ');
 				t.SetField(name,v[i]);
 			}
 		}
