@@ -56,9 +56,9 @@ namespace NexusPresence
 		}
 		#endif
 
-		Grid::Resource::Require(ConstName::Resource_Fuel).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Minerals).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Uranium).coverage[pole] = 0;
+		Grid::Resource::Require(Objects::Resource::Fuel).coverage[pole] = 0;
+		Grid::Resource::Require(Objects::Resource::Minerals).coverage[pole] = 0;
+		Grid::Resource::Require(Objects::Resource::Uranium).coverage[pole] = 0;
 	}
 
 
@@ -344,9 +344,9 @@ namespace NexusPresence
 
 		location.height = h;
 
-		Grid::Resource::Require(ConstName::Resource_Fuel).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Minerals).coverage[pole] = 0;
-		Grid::Resource::Require(ConstName::Resource_Uranium).coverage[pole] = 0;
+		Grid::Resource::Require(Objects::Resource::Fuel).coverage[pole] = 0;
+		Grid::Resource::Require(Objects::Resource::Minerals).coverage[pole] = 0;
+		Grid::Resource::Require(Objects::Resource::Uranium).coverage[pole] = 0;
 
 
 

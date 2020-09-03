@@ -50,9 +50,9 @@ namespace Objects
 
 		WorkingStructure*	Compound::lastDisabled = nullptr;
 
-		ResourceVector		Compound::GetOverproduction() const
+		Resource::Vector		Compound::GetOverproduction() const
 		{
-			ResourceVector result;
+			Resource::Vector result;
 			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
@@ -62,31 +62,31 @@ namespace Objects
 			return result;
 		}
 
-		int					Compound::GetOverproduction(Resource res) const
+		int					Compound::GetOverproduction(Resource::ID res) const
 		{
 			int result = 0;
 			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
 				if (s)
-					result += s->overproduction.level[res];
+					result += s->overproduction[res];
 			}
 			return result;
 		}
 
 
-		void				Compound::DistributeOverproduction(const ResourceVector&v)
+		void				Compound::DistributeOverproduction(const Resource::Vector&v)
 		{
-			if (v.IsEmpty())
+			if (v.IsZero())
 				return;
 			int active = (int)CountWorkingStructures();
 			if (!active)
 				return;
-			ResourceVector perStructure,remainder;
-			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+			Resource::Vector perStructure,remainder;
+			for (index_t i = 0; i < Resource::table.GetSize(); i++)
 			{
-				perStructure.level[i] = v.level[i] / active;
-				remainder.level[i] = v.level[i] % active;
+				perStructure.Set(i,v[i] / active);
+				remainder.Set(i,v[i] % active);
 			}
 			bool first = true;
 			foreach (workingStructures,_s)
@@ -103,29 +103,29 @@ namespace Objects
 			}
 		}
 
-		void			Compound::TryWithdrawOverproduction(ResourceVector&positiveVector)
+		void			Compound::TryWithdrawOverproduction(Resource::Vector&positiveVector)
 		{
 			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
 				if (s)
 				{
-					for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
+					for (index_t r = 0; r < Resource::table.GetSize(); r++)
 					{
-						if (s->overproduction.level[r] > 0)
+						if (s->overproduction[r] > 0)
 						{
-							int transfer = std::min(s->overproduction.level[r],positiveVector.level[r]);
-							positiveVector.level[r] -= transfer;
-							s->overproduction.level[r] -= transfer;
+							int transfer = std::min(s->overproduction[r],positiveVector[r]);
+							positiveVector.Add(r, -transfer);
+							s->overproduction.Add(r, -transfer);
 						}
 					}
-					if (positiveVector.IsEmpty())
+					if (positiveVector.IsZero())
 						return;
 				}
 			}
 		}
 
-		void			Compound::ForceWithdrawOverproduction(Resource res ,int positiveAmount)
+		void			Compound::ForceWithdrawOverproduction(Resource::ID res ,int positiveAmount)
 		{
 			if (positiveAmount <= 0)
 				return;
@@ -134,11 +134,11 @@ namespace Objects
 				PWorkingStructure s = Reference(*_s);
 				if (s)
 				{
-					if (s->overproduction.level[res] > 0)
+					if (s->overproduction[res] > 0)
 					{
-						int transfer = std::min(s->overproduction.level[res],positiveAmount);
+						int transfer = std::min(s->overproduction[res],positiveAmount);
 						positiveAmount -= transfer;
-						s->overproduction.level[res] -= transfer;
+						s->overproduction.Add(res, -transfer);
 						if (!positiveAmount)
 							return;
 					}
@@ -148,13 +148,13 @@ namespace Objects
 		}
 
 
-		void				Compound::FeedLeftovers( ResourceVector&vector, float&atTime )
+		void				Compound::FeedLeftovers( Resource::Vector&vector, float&atTime )
 		{
-			if (vector.IsNotEmpty())
+			if (vector.IsNonZero())
 			{
-				ResourceVector supply,demand;
+				Resource::Vector supply,demand;
 				vector.SeparateBySign(supply,demand);
-				if (supply.IsNotEmpty())
+				if (supply.IsNonZero())
 				{
 					bool done = false;
 					for (index_t i = 0; i <= WorkingStructure::FinalLeftoverIteration && !done; i++)
@@ -166,7 +166,7 @@ namespace Objects
 							if (s->IsEnabled() || i == WorkingStructure::FinalLeftoverIteration/*&& !s->AwaitsUserInteraction()*/)
 							{
 								s->ProcessLeftovers(supply,i,atTime);
-								if (supply.IsEmpty())
+								if (supply.IsZero())
 								{
 									done = true;
 									break;
@@ -174,7 +174,7 @@ namespace Objects
 							}
 						}
 				}
-				if (demand.IsNotEmpty())
+				if (demand.IsNonZero())
 				{
 					bool done = false;
 					for (index_t i = WorkingStructure::FinalLeftoverIteration-1; i <= WorkingStructure::FinalLeftoverIteration && !done; i--)
@@ -186,7 +186,7 @@ namespace Objects
 							if (s->IsEnabled())
 							{
 								s->ProcessLeftovers(demand,i,atTime);
-								if (demand.IsEmpty())
+								if (demand.IsZero())
 								{
 									done = true;
 									break;
@@ -201,7 +201,7 @@ namespace Objects
 								continue;
 							{
 								s->ProcessLeftovers(demand,WorkingStructure::FinalLeftoverIteration,atTime);
-								if (demand.IsEmpty())
+								if (demand.IsZero())
 								{
 									done = true;
 									break;
@@ -232,11 +232,11 @@ namespace Objects
 			if (stable)
 			{
 				#ifdef _DEBUG
-					typedef std::pair<PStructure, ResourceVector>	EventResult;
+					typedef std::pair<PStructure, Resource::Vector>	EventResult;
 					static Ctr::Buffer0<EventResult>	events;
 					events.Clear();
 				#endif
-				ResourceVector vector;
+				Resource::Vector vector;
 				#ifdef _DEBUG
 					events << std::make_pair(PStructure(), vector);
 				#endif
@@ -248,7 +248,7 @@ namespace Objects
 						continue;
 					if (s->IsEnabled() && !s->AwaitsUserInteraction())
 					{
-						ResourceVector local;
+						Resource::Vector local;
 						s->Tick(local);
 						vector += local;
 
@@ -264,7 +264,7 @@ namespace Objects
 				#endif
 
 				
-				ResourceVector localDemand,overproduction;
+				Resource::Vector localDemand,overproduction;
 				vector.SeparateBySign(overproduction,localDemand);
 				float t0 = 0;
 				FeedLeftovers(localDemand,t0);
@@ -289,13 +289,13 @@ namespace Objects
 
 
 		}
-		void			Compound::ChangeStorage( ResourceVector&change, float&atTime )
+		void			Compound::ChangeStorage( Resource::Vector&change, float&atTime )
 		{
 			ASSERT__(total.balance.IsStable());
 
-			ResourceVector original = change;
+			Resource::Vector original = change;
 			FeedLeftovers(change, atTime);
-			ResourceVector added = original - change;
+			Resource::Vector added = original - change;
 
 			total.storage += added;
 			total.balance += added;
@@ -309,18 +309,18 @@ namespace Objects
 		}
 
 
-		//void			Compound::Collect(ResourceVector&change, float atTime)
+		//void			Compound::Collect(Resource::Vector&change, float atTime)
 		//{
 		//	change.Negate();
 		//	Distribute(change,atTime);
 		//	change.Negate();
 		//}
 
-		FullResourceVector Compound::GetVector(const Ctr::Array<bool>&virtualEnabled) const
+		Resource::FullVector Compound::GetVector(const Ctr::Array<bool>&virtualEnabled) const
 		{
 			ASSERT_EQUAL__(virtualEnabled.Count(),workingStructures.Count());
 
-			FullResourceVector result;
+			Resource::FullVector result;
 			for (index_t i = 0; i < workingStructures.Count(); i++)
 			{
 				PWorkingStructure s= workingStructures[i].lock();
@@ -332,7 +332,7 @@ namespace Objects
 					//continue;
 				if (s->AwaitsUserInteraction())
 					enabled = false;
-				ResourceVector local,storage,storageMax;
+				Resource::Vector local,storage,storageMax;
 				s->GetResourceVector(local,storage,storageMax);
 				if (!enabled)
 					local.Clear();
@@ -358,7 +358,7 @@ namespace Objects
 	Temporarily changes the structure's state to enabled without signalling the change or registering change.
 	This method must be kept in sync with RefreshState() auto-balancing strategy!
 	*/
-	bool				Compound::CanEnable( WorkingStructure*toEnable, String*outWhy/*=nullptr*/, Ctr::Array<Resource>*outMissedResources/*=nullptr*/, bool ignoreCanEnable/*=false*/) const
+	bool				Compound::CanEnable( WorkingStructure*toEnable, String*outWhy/*=nullptr*/, Resource::FlagSet*outMissedResources/*=nullptr*/, bool ignoreCanEnable/*=false*/) const
 	{
 		DBG_ASSERT_NOT_NULL__(toEnable);
 		if (toEnable->IsHibernating() || (!ignoreCanEnable && !toEnable->CanEnable()))
@@ -377,7 +377,7 @@ namespace Objects
 		count_t depth = 0;
 		PWorkingStructure bestEnable[2];
 		TempSetEnabled(toEnable,true);
-			FullResourceVector total = GetVector();
+			Resource::FullVector total = GetVector();
 			if (total.balance.IsStable())
 			{
 				TempSetEnabled(toEnable,false);
@@ -390,50 +390,40 @@ namespace Objects
 			}
 		TempSetEnabled(toEnable,false);
 
-		bool lacking[Resource::NumberOfPossibilities]	= {false};
+		Resource::FlagSet lacking;
 		count_t currentlyLacking = 0;
-		for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-			if (total.balance.level[r] < 0)
+		for (index_t r = 0; r < Resource::table.Count(); r++)
+			if (total.balance[r] < 0)
 			{
 				currentlyLacking ++;
-				lacking[r] = true;
+				lacking |= r;
 			}
 
-		if (!outWhy &&!outMissedResources)
+		if (!outWhy && !outMissedResources)
 			return false;
 
 		if (outWhy)
 			(*outWhy) = "lacking";
 		count_t cnt = 0;
-		for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-			if (lacking[r])
+		for (index_t r = 0; r < Resource::table.Count(); r++)
+			if (lacking & r)
 			{
 				if (outWhy)
 				{
 					if (cnt!=0)
 						(*outWhy) += ',';
-					*outWhy += ' '+String(Resource::Reinterpret(r).ToString());
+					*outWhy += ' '+Resource::ID(r).ToType().name;
 				}
 				cnt++;
 			}
 		if (outMissedResources)
-		{
-			outMissedResources->SetSize(cnt);
-			auto*ptr = outMissedResources->pointer();
-			for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-				if (lacking[r])
-				{
-					ptr->Load(r);
-					ptr++;
-				}
-			ASSERT_CONCLUSION(*outMissedResources,ptr);
-		}
+			*outMissedResources = lacking;
 		return false;
 	}
 
-	FullResourceVector Compound::GetVector() const
+	Resource::FullVector Compound::GetVector() const
 	{
-		FullResourceVector result;
+		Resource::FullVector result;
 
 		foreach (workingStructures,s0)
 		{
@@ -454,7 +444,7 @@ namespace Objects
 			#endif
 			if (s->AwaitsUserInteraction())
 				enabled = false;
-			ResourceVector local,storage,storageMax;
+			Resource::Vector local,storage,storageMax;
 			s->GetResourceVector(local,storage,storageMax);
 			if (!enabled)
 				local.Clear();
@@ -463,9 +453,9 @@ namespace Objects
 		return result;
 	}
 
-	FullResourceVector Compound::GetAllEnabledVector() const
+	Resource::FullVector Compound::GetAllEnabledVector() const
 	{
-		FullResourceVector result;
+		Resource::FullVector result;
 
 		foreach (workingStructures,s0)
 		{
@@ -473,7 +463,7 @@ namespace Objects
 			DBG_ASSERT__(s);
 			if (!s || s->IsHibernating())
 				continue;
-			ResourceVector local,storage,storageMax;
+			Resource::Vector local,storage,storageMax;
 			s->GetResourceVector(local,storage,storageMax);
 			result.Include(local,storage,storageMax);
 		}
@@ -482,21 +472,21 @@ namespace Objects
 
 	bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const
 	{
-		ResourceVector balance = total.balance;
+		Resource::Vector balance = total.balance;
 		int bestBalance = -1000;
 		count_t bestDepth = 0;
 		return FindBestEnableCandidates(bestOut, bestBalance, bestDepth, balance,  bestOutCount-1, 0,nullptr);
 	}
 
-	/*static*/ int Compound::GetEnableChangeBalance(const ResourceVector&local)
+	/*static*/ int Compound::GetEnableChangeBalance(const Resource::Vector&local)
 	{
 		return local.SumNegative() + local.SumPositive()/10;
 	}
 
-	bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, count_t&bestDepth, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const
+	bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, count_t&bestDepth, Resource::Vector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const
 	{
 		bool rs = false;
-		ResourceVector dummy;
+		Resource::Vector dummy;
 		const WWorkingStructure*_s = parent;
 		if (!_s)
 			_s = workingStructures.begin();
@@ -515,7 +505,7 @@ namespace Objects
 					continue;
 			#endif
 
-			ResourceVector local,storage;
+			Resource::Vector local,storage;
 			s->GetResourceVector(local,storage,dummy);
 			local -= storage;
 			
@@ -588,7 +578,7 @@ namespace Objects
 			//	
 			//		s->SetEnabled(false,atTime,false);
 
-			//		FullResourceVector v2 = GetVector();
+			//		Resource::FullVector v2 = GetVector();
 			//		if (v2.balance.IsStable())
 			//		{
 			//			LogEvent(EventType::NetworkProcess,s.get(), "Auto-balance: Structure disabled");
@@ -614,13 +604,13 @@ namespace Objects
 					if (!s->IsEnabled())
 						continue;
 
-					Objects::ResourceVector vec, storageCurrent,storageMax;
+					Objects::Resource::Vector vec, storageCurrent,storageMax;
 					s->GetResourceVector(vec,storageCurrent,storageMax);
 
 					bool isAtFault = false;
-					for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+					for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 					{
-						if (total.balance.level[i] < 0 && vec.level[i] < 0)
+						if (total.balance[i] < 0 && vec[i] < 0)
 						{
 							isAtFault = true;
 							break;
@@ -631,7 +621,7 @@ namespace Objects
 
 					
 					s->SetEnabled(false,atTime,false);
-					FullResourceVector v2 = GetVector();
+					Resource::FullVector v2 = GetVector();
 							
 
 					int dl = -v2.balance.SumNegative();

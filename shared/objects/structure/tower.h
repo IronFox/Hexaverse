@@ -41,7 +41,7 @@ namespace Objects
 		
 		const Prototype*const		prototype;
 
-		ResourceVector				storage;
+		Resource::Vector				storage;
 
 
 		struct AttackTask
@@ -97,20 +97,20 @@ namespace Objects
 
 
 		#ifndef ONE_COMPOUND_PER_FACTION
-			ResourceVector			GetMaxStorageCapacity()	const	{return turret->baseStorageCapacity * 2;};
+			Resource::Vector			GetMaxStorageCapacity()	const	{return turret->baseStorageCapacity * 2;};
 		#else
-			ResourceVector			GetMaxStorageCapacity()	const	{return ResourceVector();};
+			Resource::Vector			GetMaxStorageCapacity()	const	{return Resource::Vector();};
 		#endif
 
 
 
 
 		//WorkingStructure overrides:
-		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = GetMaxStorageCapacity();}
+		virtual void				GetResourceVector(Resource::Vector&, Resource::Vector&storage, Resource::Vector&max) const override	{storage = this->storage; max = GetMaxStorageCapacity();}
 		#ifndef CLIENT
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime) override;
+			virtual void			ProcessLeftovers(Resource::Vector&v, index_t iteration, float&atTime) override;
 		#endif
-		virtual void				SetResourceStorage(const ResourceVector&storage)override
+		virtual void				SetResourceStorage(const Resource::Vector&storage)override
 		{
 			this->storage = storage;
 			this->storage.Cap(this->GetMaxStorageCapacity());

@@ -282,6 +282,22 @@ namespace Objects
 			LogEvent(EventSignificance::Uncommon, "Reconverting " + String(filename)+"...");
 			Converter::obj_converter.positionObjects = false;
 			ASSERT1__(Converter::obj_converter.LoadFromFile(geo, filename),filename);
+			ASSERT1__(geo.material_field.Length() > 0,filename);
+			count_t numIndexes = 0;
+			count_t numVertexes = 0;
+			count_t numObjects = 0;
+			foreach (geo.material_field,m)
+			{
+				numObjects += m->data.object_field.Length();
+				foreach (m->data.object_field, obj)
+				{
+					numIndexes += obj->countIndices();
+					numVertexes += obj->vpool.vcnt;
+				}
+			}
+			ASSERT1__(numObjects > 0,filename);
+			ASSERT1__(numVertexes > 0,filename);
+			ASSERT1__(numIndexes > 0,filename);
 			geo.SaveToFile(cgsName);
 		}
 		bool generateNormals = false;

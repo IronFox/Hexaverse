@@ -133,9 +133,9 @@ namespace Objects
 		}
 
 
-		/*virtual*/ void				WorkingStructure::Tick(ResourceVector&v)
+		/*virtual*/ void				WorkingStructure::Tick(Resource::Vector&v)
 		{
-			ResourceVector v1, s, m;
+			Resource::Vector v1, s, m;
 			GetResourceVector(v1,s,m);
 			v += v1;
 		}
@@ -584,11 +584,11 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
+		/*virtual override*/ void		SkyPort::GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&)	const
 		{
-			v.level[Resource::Energy] = -EnergyConsumption;
+			v[Resource::Energy] = -EnergyConsumption;
 			if (MobileEntityProducer::queue.IsNotEmpty())
-				v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+				v[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
 		}
 
 	#endif
@@ -661,9 +661,9 @@ namespace Objects
 			}
 
 
-			/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
+			/*virtual override*/ void				SkyPort::Tick(Resource::Vector&v)
 			{
-				v.level[Resource::Energy] -= EnergyConsumption;
+				v[Resource::Energy] -= EnergyConsumption;
 				if (MobileEntityProducer::queue.IsNotEmpty())
 				{
 					float t = 0;
@@ -856,7 +856,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			NexusPort::Tick(ResourceVector&v)
+		/*virtual override*/ void			NexusPort::Tick(Resource::Vector&v)
 		{
 			if (owner != Faction::nexus && resistance > 0)
 			{
@@ -872,7 +872,7 @@ namespace Objects
 				}
 			}
 
-			ResourceVector v1, s, m;
+			Resource::Vector v1, s, m;
 			GetResourceVector(v1,s,m);
 			v += v1;
 
@@ -1015,15 +1015,18 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Nexus Ports are indestructible structures of unknown origin."
-			" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
-			" Nexus Ports will shift ownership to the respective owner of the first connected player building."
-			" They must be enabled for a number of rounds in order to count towards winning the game."
-			" Disabling a Nexus Port will make it stop counting as such."
-			" A Nexus Port that loses all connections to other player-owned structures will shift back to"
-			" the Nexus faction."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Nexus Ports are indestructible structures of unknown origin."
+				" Depending on game-settings, non-player Nexus Ports serve as spawning-beakons for Nexus units."
+				" Nexus Ports will shift ownership to the respective owner of the first connected player building."
+				" They must be enabled for a number of rounds in order to count towards winning the game."
+				" Disabling a Nexus Port will make it stop counting as such."
+				" A Nexus Port that loses all connections to other player-owned structures will shift back to"
+				" the Nexus faction."
+				;
+			}
 		}
 
 
@@ -1032,22 +1035,28 @@ namespace Objects
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
-			label.MarkBriefEnd();
-			label << "Enabled generators provide energy for the local compound."
-			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
-			" Combine with reactor cores for increased output."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label << "Enabled generators provide energy for the local compound."
+				" Since many structures consume "+Resource::Energy.GetTagStr()+" when enabled, generators are a crucial component of any active base."
+				" Combine with reactor cores for increased output."
+				;
+			}
 		}
 
 		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags,owner);
-			label.MarkBriefEnd();
-			label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
-			" but multiple generators may be connected to the same reactor core."
-			" Must be placed on the same height level as the generator(s) to connect to."
-			;
+			if ((descFlags & DescExcludeExtended) == 0)
+			{
+				label.MarkBriefEnd();
+				label  << "Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
+				" but multiple generators may be connected to the same reactor core."
+				" Must be placed on the same height level as the generator(s) to connect to."
+				;
+			}
 		}
 
 
@@ -1056,38 +1065,38 @@ namespace Objects
 			label.BeginBrief();
 			Super::DescribeType(label,  descFlags, owner);
 
-			ResourceVector balance,discard,maxStorage;
+			Resource::Vector balance,discard,maxStorage;
 
 			GetResourceVector(balance, discard, maxStorage);
 
-			if (balance.IsNotEmpty())
+			if (!balance.IsZero())
 			{
 				if (balance.SumNegative())
 				{
 					label << "Consumes:";
-					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
-						if (balance.level[i] < 0)
+					for (index_t i = 0; i < Resource::table.Count(); i++)
+						if (balance[i] < 0)
 						{
-							label.GetLastLine() += " "+String(ResourceTag(i))+String(-balance.level[i]);
+							label.GetLastLine() += " "+Resource::ID(i).GetTagStr()+String(-balance[i]);
 						}
 				}
 				if (balance.SumPositive())
 				{
 					label << "Produces:";
-					for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
-						if (balance.level[i] > 0)
+					for (index_t i = 0; i < Resource::table.Count(); i++)
+						if (balance[i] > 0)
 						{
-							label.GetLastLine() += " "+String(ResourceTag(i))+String(balance.level[i]);
+							label.GetLastLine() += " "+Resource::ID(i).GetTagStr()+String(balance[i]);
 						}
 				}
 			}
-			if (maxStorage.IsNotEmpty())
+			if (!maxStorage.IsZero())
 			{
 				label << "Storage capacity:";
-				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
-					if (maxStorage.level[i] > 0)
+				for (index_t i = 0; i < Resource::table.Count(); i++)
+					if (maxStorage[i] > 0)
 					{
-						label.GetLastLine() += " "+String(ResourceTag(i))+String(maxStorage.level[i]);
+						label.GetLastLine() += " "+Resource::ID(i).GetTagStr()+String(maxStorage[i]);
 					}
 			}
 		
@@ -1145,7 +1154,7 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					Ctr::Array<Resource> missingResources;
+					Resource::FlagSet missingResources;
 					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
 						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable "+GetTypeName()+": Insufficient resource supply in compound ("+outWhy+")");

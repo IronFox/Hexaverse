@@ -784,7 +784,7 @@ namespace VisualTerrain
 
 
 
-	void		BakeResourceInstruction(BYTE family, ResourceDiscovery&vis, FClipHeight clipHeight,const Resource*resources, count_t numResources)
+	void		BakeResourceInstruction(BYTE family, ResourceDiscovery&vis, FClipHeight clipHeight,const ArrayRef<Resource>&resources)
 	{
 	//	return;
 		TFamily &fam = VisualTerrain::family[family];
@@ -793,7 +793,7 @@ namespace VisualTerrain
 		const auto&grid = Grid::low.grid;
 
 		dat.resources.Clear();
-		CompileResources(dat.resources,  vis,grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources, numResources);
+		CompileResources(dat.resources,  vis,grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources);
 
 		M::Box<> box = M::Box<>::Invalid();
 
@@ -1263,11 +1263,11 @@ namespace VisualTerrain
 					dat.resourceOutdated = false;
 					if (SeeThrough::IsEnabled())
 					{
-						BakeResourceInstruction(k, Grid::ResourceDiscovery::client, SeeThrough::ClipHeight,Grid::Resource::all.pointer(),Grid::Resource::all.Count());
+						BakeResourceInstruction(k, Grid::ResourceDiscovery::client, SeeThrough::ClipHeight,Grid::Resource::all.ToRef());
 					}
 					else
 					{
-						BakeResourceInstruction(k, Grid::ResourceDiscovery::client, Grid::Clip::NoClip,Grid::Resource::all.pointer(),Grid::Resource::all.Count());
+						BakeResourceInstruction(k, Grid::ResourceDiscovery::client, Grid::Clip::NoClip,Grid::Resource::all.ToRef());
 					}
 				}
 			}

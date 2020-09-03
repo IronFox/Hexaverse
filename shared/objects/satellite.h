@@ -236,7 +236,7 @@ namespace Objects
 				location.height = DeclinedResidenceHeight;
 		}
 		#ifndef ONE_COMPOUND_PER_FACTION
-			virtual ResourceVector		GetMaxStorageCapacity()	const override
+			virtual Resource::Vector		GetMaxStorageCapacity()	const override
 			{
 				return turret->baseStorageCapacity;
 			}

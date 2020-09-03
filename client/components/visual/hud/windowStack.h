@@ -12,6 +12,8 @@ namespace HUD
 
 	namespace WindowStack
 	{
+
+		namespace M = DeltaWorks::Math;
 	
 		/**
 		Checks that the top-most window is active (if any), and all others are inactive (if any).

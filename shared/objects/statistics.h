@@ -124,7 +124,7 @@ namespace Objects
 
 		struct Round : public ISerializable
 		{
-			PositiveResourceVector	production,consumption;
+			Resource::PositiveVector	production,consumption;
 			MetricTable				metrics;
 			UINT32					mainRound;
 			
@@ -147,7 +147,7 @@ namespace Objects
 			/**
 			Invoked for each structure that generates or consumes resources during compound processing
 			*/
-			void		SignalStructureResourceDelta(const PWorldEntity&, const ResourceVector&);
+			void		SignalStructureResourceDelta(const PWorldEntity&, const Resource::Vector&);
 			/**
 			Invoked once at the end of compound processing
 			*/
@@ -239,7 +239,7 @@ namespace Objects
 
 	private:
 		//temporary data:
-		ResourceVector				roundProduction,
+		Resource::Vector				roundProduction,
 									roundConsumption;
 		count_t						totalEntities=0,
 									totalEntityMineralValue=0;

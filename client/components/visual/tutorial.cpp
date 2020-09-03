@@ -207,8 +207,8 @@ namespace Tutorial
 
 			void ReplaceTags(String&msg)
 			{
-				for (index_t i = 0; i < Objects::Resource::N; i++)
-					msg.FindAndReplace('%'+String(Objects::Resource::Reinterpret(i).ToString())+'%',Objects::ResourceTag(i));
+				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
+					msg.FindAndReplaceIgnoreCase('%'+String(Objects::Resource::ID(i).ToString())+'%',Objects::Resource::ID(i).GetTagStr());
 				msg.FindAndReplace("%Time%",Objects::TimeResourceTag());
 			}
 
@@ -531,11 +531,7 @@ namespace Tutorial
 				{
 					line.TrimThis();
 					line.FindAndReplace("%PRODUCT_NAME%",PRODUCT_NAME);
-					line.FindAndReplace("%FUEL%",Objects::ResourceTag(Objects::Resource::Fuel));
-					line.FindAndReplace("%MINERALS%",Objects::ResourceTag(Objects::Resource::Minerals));
-					line.FindAndReplace("%URANIUM%",Objects::ResourceTag(Objects::Resource::Uranium));
-					line.FindAndReplace("%ENERGY%",Objects::ResourceTag(Objects::Resource::Energy));
-					
+					Interactive::API::ReplaceTags(line);
 				}
 			}
 			else

@@ -3,5 +3,10 @@
 
 namespace GlobalEvents
 {
-	DeltaWorks::Observable<>	terrainFlush,objectFlush,applicationTerminate, invalidateObjectCache,phaseChange;
+	DeltaWorks::Observable<>	terrainFlush,
+								objectFlush,
+								applicationTerminate, 
+								invalidateObjectCache,
+								phaseChange,
+								resourceTableUpdated;
 }

@@ -82,6 +82,9 @@ namespace Objects
 			id = TUniqueID::Empty();
 		}
 	public:
+
+		virtual						~BaseEntity() {};
+
 		/**
 		Cell location of the local entity. Structures may be destroyed, but they do not move. Vehicles may move.
 		Some entity types may not use this variable (so far all do, even markers)
@@ -578,6 +581,7 @@ namespace Objects
 					DescIncludeMaxHealth = 0x8,
 					DescIncludeFuelDemandModifier = 0x10,	//!< effective only for satellites
 					DescIncludeUnitCount = 0x20,
+					DescExcludeExtended = 0x40,
 				};
 				//old: includeName, includePrice
 

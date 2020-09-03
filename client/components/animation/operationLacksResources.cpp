@@ -12,7 +12,7 @@ namespace Animation
 
 	/*virtual override*/ String			OperationLacksResources::Describe() const
 	{
-		return "OperationLacksResources("+ToString(op.entityID)+","+String(op.resourceIndices.Count())+")";
+		return "OperationLacksResources("+ToString(op.entityID)+","+String(Objects::Resource::FlagSet::FromNumeric(op.resourceFlagSet).Count())+")";
 	}
 
 
@@ -21,7 +21,7 @@ namespace Animation
 		auto lockedTarget = Objects::GetEntity(targetEntityID);
 		EXPECT1(lockedTarget,targetEntityID);
 		
-		Objects::Icons::AddAnimatedFloater(lockedTarget,op.resourceIndices);
+		Objects::Icons::AddAnimatedFloater(lockedTarget,Objects::Resource::FlagSet::FromNumeric(op.resourceFlagSet));
 	}
 
 

@@ -1309,18 +1309,6 @@ namespace Reflection
 
 					MapConfig(Grid::currentPlanetConfig.extendedCore,parser->GetFocus()->CreateOrGetChild("ExtendedCore"));
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
-
-					parser->EnterNewFolder("Resources")->attachment = persistenceAttachment;
-						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-						{
-							Objects::Resource res = Objects::Resource::Reinterpret(i);
-							parser->EnterNewFolder(res.ToString())->attachment = persistenceAttachment;
-								Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::PlanetConfig);
-								//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
-								Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::PlanetConfig);
-							parser->ExitFolder();
-						}
-					parser->ExitFolder();
 				}
 				parser->ExitFolder();
 			parser->ExitFolder();

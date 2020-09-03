@@ -7,6 +7,7 @@
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
 #include <objects/faction.h>
+#include <objects/packable.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -510,7 +511,7 @@ namespace Game
 				package.cells[i].cellIndex = changed[i];
 			foreach (Grid::Resource::all,res)
 			{
-				package.resourceName = res->GetCName();
+				package.resourceIndex = res->resourceIndex;
 				for (index_t i = 0; i < changed.Count(); i++)
 				{
 					BYTE sourceCov = res->coverage[changed[i]];
@@ -963,7 +964,7 @@ namespace Game
 			task = element.target;
 		}
 
-		void	Describe( Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
+		void	Describe( Protocol::StructureState&state, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags, Objects::Packable::Target target)
 		{
 			const Objects::WorkingStructure*w = dynamic_cast<const Objects::WorkingStructure*>(&s);
 			//state.productionDone = 0;
@@ -975,7 +976,7 @@ namespace Game
 
 			if (w)
 			{
-				Objects::ResourceVector dontCare;
+				Objects::Resource::Vector dontCare;
 				if (expose & Expose::StructureStorage) 
 					w->GetResourceVector(dontCare, state.resourceStorage, dontCare);
 
@@ -1049,16 +1050,23 @@ namespace Game
 						subState = n->resistance;
 					}
 				}
+				{
+					const Objects::Packable*se = dynamic_cast<const Objects::Packable*>(&s);
+					if (se)
+					{
+						se->Pack(state.packed,target);
+					}
+				}
 			}
 		
 			Describe(state.entityState,s,timestamp,expose, changeFlags);
 		}
 
-		void	Describe( Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose)
+		void	Describe( Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, Objects::Packable::Target target)
 		{
 			cnst.type = s.GetType();
 			cnst.owner = s.owner->id;
-			Describe(cnst.state,s,timestamp,expose,0xFFFFFFFF);
+			Describe(cnst.state,s,timestamp,expose,0xFFFFFFFF,target);
 
 		}
 
@@ -1198,9 +1206,9 @@ namespace Game
 				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
 				TCP::Serial<Protocol::StructureState>	foreign,allied,owned;
-				Network::Describe(foreign.Ref(),s,timestamp,Network::ExposeToForeigners,s.changeFlags);
-				Network::Describe(allied.Ref(),s,timestamp,Network::ExposeToAllies,s.changeFlags);
-				Network::Describe(owned.Ref(),s,timestamp,Network::ExposeAll,s.changeFlags);
+				Network::Describe(foreign.Ref(),s,timestamp,Network::ExposeToForeigners,s.changeFlags,Objects::Packable::Target::Hostile);
+				Network::Describe(allied.Ref(),s,timestamp,Network::ExposeToAllies,s.changeFlags,Objects::Packable::Target::Ally);
+				Network::Describe(owned.Ref(),s,timestamp,Network::ExposeAll,s.changeFlags,Objects::Packable::Target::Owner);
 				foreign.Seal();
 				allied.Seal();
 				owned.Seal();
@@ -1442,7 +1450,7 @@ namespace Game
 				#ifdef ONE_COMPOUND_PER_FACTION
 					uc |= UC::MineralContainer;	//don't need
 				#endif
-				Objects::ResourceVector dummy,storage;
+				Objects::Resource::Vector dummy,storage;
 				Objects::OwnerParameter o;
 				foreach (c.workingStructures,_s)
 				{
@@ -1468,7 +1476,7 @@ namespace Game
 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						s->GetResourceVector(dummy,dummy,storage);
-						if (storage.level[Objects::Resource::Minerals] > 0)
+						if (storage[Objects::Resource::Minerals] > 0)
 							hasMineralContainer = true;
 					#endif
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
@@ -1631,7 +1639,7 @@ namespace Game
 			int h = Objects::FindApplicableGround(location,true,true);
 			location.height = h;
 			static const int want = 10;
-			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
+			static const int stackHeight = want / Objects::Resource::CoreVector::TranslationFactor + (want % Objects::Resource::CoreVector::TranslationFactor ? 1 : 0);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Fuel,stackHeight);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Minerals,stackHeight);
 			Objects::ForeachFaction([location](const Objects::PFaction&f)

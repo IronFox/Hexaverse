@@ -30,7 +30,7 @@ namespace Objects
 		{
 			Super::OnInsert(atTime,freshConstruction);
 			if (freshConstruction)
-				ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
+				ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity()[turret->ammoType] - storage[turret->ammoType]);
 		}
 
 		
@@ -104,13 +104,13 @@ namespace Objects
 
 				const auto&state = GetResearchState();
 				const int ammoNeed = turret->GetAmmoNeedPerShot(state);
-				if (storage.level[turret->ammoType] >= ammoNeed)
+				if (storage[turret->ammoType] >= ammoNeed)
 					ChangeStorage(*this,attackTime, turret->ammoType,-ammoNeed);
 				else
 				{
 					RefreshCompoundCoverageIfNeeded(entityTime);
-					ResourceVector change;
-					change.level[turret->ammoType] = -ammoNeed;
+					Resource::Vector change;
+					change.Set(turret->ammoType, -ammoNeed);
 					GetCompound().ChangeStorage(change,entityTime);
 					//ASSERT__(change.IsEmpty());
 				}
@@ -147,46 +147,46 @@ namespace Objects
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
-				return  GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,lastChoice) 
+				return  GetSentryTarget(*this,this->storage[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,lastChoice) 
 						&& AttackNext(lastChoice.cellTarget,true);
 			}
 			return false;
 		}
 
-		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float&atTime)
+		/*virtual override*/ void			Tower::ProcessLeftovers(Resource::Vector&v, index_t iteration, float&atTime)
 		{
-			ResourceVector maxStorage = GetMaxStorageCapacity();
+			Resource::Vector maxStorage = GetMaxStorageCapacity();
 			index_t targetIteration = 1;
 			#ifndef NO_MUNITION
-				if (storage.level[Resource::Munitions] < maxStorage.level[Resource::Munitions] / 4)
+				if (storage[Resource::Munitions] < maxStorage[Resource::Munitions] / 4)
 					targetIteration = 0;
 			#endif
 			if (iteration != targetIteration && iteration != FinalLeftoverIteration)
 				return;
-			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+			for (index_t i = 0; i < Resource::table.GetSize(); i++)
 			{
-				if (v.level[i] == 0)
+				if (v[i] == 0)
 					continue;
-				if (v.level[i] < 0 )
+				if (v[i] < 0 )
 				{
-					if (storage.level[i] > 0)
+					if (storage[i] > 0)
 					{
-						int delta = std::min(-v.level[i], storage.level[i]);
+						int delta = std::min(-v[i], storage[i]);
 
-						ChangeStorage(*this,atTime,Resource::Reinterpret(i),-delta);
+						ChangeStorage(*this,atTime,Resource::ID(i),-delta);
 
-						v.level[i] += delta;
+						v.Add(i, delta);
 					}
 				}
 				else
 				{
-					int capacity = maxStorage.level[i] - storage.level[i];
+					int capacity = maxStorage[i] - storage[i];
 					if (capacity > 0)
 					{
-						int delta = std::min(v.level[i], capacity);
-						v.level[i] -= delta;
+						int delta = std::min(v[i], capacity);
+						v.Add(i, -delta);
 
-						ChangeStorage(*this,atTime,Resource::Reinterpret(i),delta);
+						ChangeStorage(*this,atTime,Resource::ID(i),delta);
 					}	
 				}
 			}
@@ -368,8 +368,8 @@ namespace Objects
 
 	bool	Tower::HasAmmoForShot()
 	{
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(GetResearchState());
-		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return GetCompound().total.storage[turret->ammoType] >= turret->GetAmmoNeedPerShot(GetResearchState());
+		//compoundID < compounds.Count() && compounds[compoundID].total.storage[turret->ammoType] >= turret->ammoNeedPerShot;
 	}
 
 }
