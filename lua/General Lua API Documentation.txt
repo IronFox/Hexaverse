@@ -120,7 +120,13 @@ Table-Type: TurretType extends Type
 	string	mountType;					-- 'Vehicle', 'TowerOnly'
 	bool	canAttack;					-- True if offensive, false otherwise
 	bool	detectsResources;			-- True if this turret can detect resources and look vertically into the ground
-	bool	can[Operation];				-- True if the respective operation can be performed by this turret, where [Operation] may be: Construct, SelfDetonate, Repair, AddTerrain, RemoveTerrain (e.g. canConstruct)
+	bool	can[Operation];				-- True if the respective operation can be performed by this turret, where [Operation] may be: 
+			-- Construct
+			-- SelfDetonate
+			-- Repair
+			-- AddTerrain
+			-- RemoveTerrain 
+			-- (e.g. canConstruct)
 	[canAttack]
 		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
 		string	ammoType;				-- String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
@@ -348,11 +354,11 @@ Table-Type: Turret
 		Hit		TraceTrajectory(Loc);				-- Traces a trajectory to the given location and determines the outcome. Returns nil if no trajectory could be found
 		Hit		TraceTrajectoryFrom(Loc src, Loc);	-- Traces a trajectory from a given location to the specified location and determines the outcome. Returns nil if no trajectory could be found
 	int		speedOf[Operation];					-- Speed of the local turret at performing the specified operation, where [Operation] may be: 
-			-- Construct, 
-			-- SelfDetonate, 
-			-- Repair, 
-			-- AddTerrain, 
-			-- RemoveTerrain 
+			-- Construct
+			-- SelfDetonate
+			-- Repair
+			-- AddTerrain
+			-- RemoveTerrain
 			-- (e.g. speedOfConstruct)
 	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minimum 1, maximum 256. Typical numbers are 1,2, or 4
 }
