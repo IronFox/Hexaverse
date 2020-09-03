@@ -1762,6 +1762,18 @@ namespace Lua
 					AddSimpleJob(t,id, "Obliterate", ConstName::Job_SelfDetonate, ConstName::DetonationSize_Doomsday);
 				}
 
+				if (m->turret->CanDo(Objects::Component::Operation::Repair))
+				{
+					t.SetFunction("Repair",[this,id](const Lua::Table&luaLoc)
+					{
+						Grid::LCellIdI loc = Detail::ToLGridCell(luaLoc,"Repair(): Loc parameter");
+						if (onChoiceIntersection)
+							onChoiceIntersection(id,TUniqueID::Empty(), loc, TUniqueID::Empty(),Objects::CursorMode::RepairMode);
+						else
+							throw Lua::Exception(CLOCATION,"Repair(): onChoiceIntersection not set");
+					});
+				}
+
 				if (m->turret->CanDo(Objects::Component::Operation::FireBeam))
 				{
 					AddSimpleJob(t,id, "Obliterate", ConstName::Job_DoomsdayBeamAttack, ConstName::DetonationSize_Doomsday);
