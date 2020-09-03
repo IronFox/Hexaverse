@@ -1401,6 +1401,20 @@ namespace Lua
 		return rs;
 	}
 
+	NamedReference Table::GetField(const char* name) const
+	{
+		NamedReference	rs(name);
+		lua_State*st = GetState();
+		if (!st)
+			return rs;
+		Detail::StackChecker chk(st);
+		if (!PushField(name))
+			return rs;
+		rs.ResetFromStack(GetProgram(),-1);
+		lua_pop(st,2);
+		return rs;
+	}
+
 
 	/*virtual override*/ void BaseFunction::SignalChange(const String&name)
 	{

@@ -5,6 +5,7 @@
 #include "prototypes.h"
 #include "../cast.h"
 #include "mobileEntity.h"
+#include "t2.h"
 
 namespace Objects
 {
@@ -43,13 +44,10 @@ namespace Objects
 	{
 		FetchOptional(m)++;
 	}
-	void					Statistics::MetricTable::Add(Metric m, int delta)
+	void					Statistics::MetricTable::Add(Metric m, count_t delta)
 	{
-		if (delta <= 0)
-		{
-			DBG_ASSERT_EQUAL__(delta,0);
+		if (delta == 0)
 			return;
-		}
 		FetchOptional(m) += delta;
 	}
 	void					Statistics::MetricTable::Set(Metric m, count_t value)
@@ -229,27 +227,39 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		void			Statistics::SignalDamageReceivedFrom(const PFaction&source, int level)
+		void			Statistics::SignalDamageReceivedFrom(const PWorldEntity&dealtTo, const PFaction&source, UINT32 level)
 		{
+			if (dealtTo->t2)
+				dealtTo->t2->GainXP(level);
+
 			Get(source).metrics.Add(Metric::DamageReceived, level);
 			history.Last().metrics.Add(Metric::DamageReceived,level);
 		}
 
-		void			Statistics::SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
+		void			Statistics::SignalDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, UINT32 level)
 		{
+			if (causedBy->t2)
+				causedBy->t2->GainXP(level);
+
 			Get(receiver).metrics.Add(Metric::DamageDealt,level);
 			GetTypeOf(causedBy).metrics.Add(Metric::DamageDealt,level);
 			history.Last().metrics.Add(Metric::DamageDealt,level);
 		}
 
-		void			Statistics::SignalEMPDamageReceivedFrom(const PFaction&source, int level)
+		void			Statistics::SignalEMPDamageReceivedFrom(const PWorldEntity&dealtTo, const PFaction&source, UINT32 level)
 		{
+			if (dealtTo->t2)
+				dealtTo->t2->GainXP(level);
+
 			Get(source).metrics.Add(Metric::EMPDamageReceived,level);
 			history.Last().metrics.Add(Metric::EMPDamageReceived,level);
 		}
 
-		void			Statistics::SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, int level)
+		void			Statistics::SignalEMPDamageDealtTo(const PWorldEntity&causedBy, const PFaction&receiver, UINT32 level)
 		{
+			if (causedBy->t2)
+				causedBy->t2->GainXP(level);
+
 			Get(receiver).metrics.Add(Metric::EMPDamageDealt,level);
 			GetTypeOf(causedBy).metrics.Add(Metric::EMPDamageDealt,level);
 			history.Last().metrics.Add(Metric::EMPDamageDealt,level);
@@ -264,7 +274,6 @@ namespace Objects
 					res += To<MobileEntity>::Cast(destroyed)->currentStorage.Sum();
 				}
 			#endif
-
 			auto&in = Get(destroyed->owner);
 			in.metrics.Inc(Metric::UnitsKilled);
 			in.metrics.Add(Metric::ResourcesDestroyed,res);

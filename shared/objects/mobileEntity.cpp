@@ -9,6 +9,7 @@
 #include "../runtimeConfig.h"
 #include "structure/tower.h"
 #include "pathfinding.h"
+#include "t2.h"
 
 
 namespace Objects
@@ -78,12 +79,20 @@ namespace Objects
 	}
 
 
-	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadius(const OwnerParameter&owner) const
+	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
 			return 0.f;
-		return turret->explosionRadius.GetValue(GetResearchState(owner));
+		return t2.Apply(turret->explosionRadius.GetValue(GetResearchState(owner)));
 	}
+
+	/*virtual overrride*/ String				MobileEntity::DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&m) const
+	{
+		if (!turret->CanAttack())
+			return "";
+		return turret->explosionRadius.Describe(GetResearchState(owner)) + m.Describe();
+	}
+
 
 
 	/*virtual override*/ void			MobileEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
@@ -97,7 +106,7 @@ namespace Objects
 		if (turret->detectsResources)
 		{
 			const auto center = GetScanningCenter(loc);
-			float range = GetScanningRange(owner);
+			float range = GetScanningRangeExt(owner, t2 ? t2->horizontalAttackRange : T2::TModifier());
 
 			visitor(World::Sensor(center, range, World::Sensor::UpperHalfSolidSphere));
 			visitor(World::Sensor(center, range, World::Sensor::ShadedCylinder,20));
@@ -107,14 +116,14 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float		MobileEntity::GetScanningRange( const OwnerParameter&owner ) const
+	/*virtual override*/ float		MobileEntity::GetScanningRangeExt( const OwnerParameter&owner, const T2::TModifier&m ) const
 	{
-		return EMPModify(turret->scanningRange.GetValue(GetResearchState(owner)),2);
+		return EMPModify(m.Apply(turret->scanningRange.GetValue(GetResearchState(owner))),2);
 	}
 
-	/*virtual override*/ String		MobileEntity::DescribeScanningRange(const OwnerParameter&owner) const
+	/*virtual override*/ String		MobileEntity::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
-		return turret->scanningRange.Describe(GetResearchState(owner));
+		return turret->scanningRange.Describe(GetResearchState(owner)) + m.Describe();
 	}
 
 
@@ -1400,6 +1409,14 @@ namespace Objects
 		}
 		
 
+		void				MobileEntity::SetMovementActionLeft(float actionLeft)
+		{
+			if (movementActionLeft != actionLeft)
+			{
+				movementActionLeft = actionLeft;
+				RegisterChange(ActionChanged);
+			}
+		}
 	
 		void				MobileEntity::BeginMotionPhase(float timeOffset)
 		{
@@ -1412,24 +1429,22 @@ namespace Objects
 
 			hasMoved = false;
 			numTriedPlottingOnMoveAutoMotion = 0;
-			if (MotionIgnoresAttack())
-			{
-				if (movementActionLeft < 1.f)
+
+			if (IsUpgrading())
+				SetMovementActionLeft(0);
+			else
+				if (MotionIgnoresAttack())
 				{
-					movementActionLeft = 1.f;
-					RegisterChange(ActionChanged);
+					SetMovementActionLeft(1);
 				}
-			}
 		}
 		void				MobileEntity::BeginAttackPhase()	//executed before BeginMotionPhase this round
 		{
 			constructionActionLeft=MaxConstructionActionLeft;
-			if (movementActionLeft < 1.f)
-			{
-				movementActionLeft = 1.f;
-				RegisterChange(ActionChanged);
-			}
-
+			if (IsUpgrading())
+				SetMovementActionLeft(0);
+			else
+				SetMovementActionLeft(1);
 			if (AttackAndMotionAreIndependent())
 			{
 				if (attackActionLeft < 1.f)
@@ -1611,7 +1626,7 @@ namespace Objects
 
 			Task&task = LockedPeekTask();
 
-			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(turret->GetDamageLevel(GetResearchState())),turret->dealsEMPDamage, turret->mainAttackIsDoomsday, attackTime);
+			OverrideExecuteAttackNow(task.foci.Pop().target, GetAttackExplosionRadius(), (int)floor(GetDamageLevel()),turret->dealsEMPDamage, turret->mainAttackIsDoomsday, attackTime);
 
 			if (task.foci.IsEmpty())
 			{

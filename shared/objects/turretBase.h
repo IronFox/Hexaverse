@@ -82,20 +82,26 @@ namespace Objects
 
 		virtual float			GetAttackActionLeft() const=0;
 
-		int						GetAttacksPerRound(const OwnerParameter&) const;
+		int						GetAttacksPerRound(const OwnerParameter&, const T2::TModifier&p) const;
 		int						GetAttacksPerRound() const;
 		int						GetDamagePotentialPerRound() const;
-		int						GetDamagePotentialPerRound(const OwnerParameter&) const;
-		float					GetAttackInitiative() const	{return turret->initiative * GetAttackActionLeft();}
+		int						GetDamagePotentialPerRound(const OwnerParameter&, const T2::PConstProperties&p) const;
+		int						GetDamageLevel() const;
+		int						GetDamageLevel(const OwnerParameter&, const T2::PConstProperties&p) const;
+		String					DescribeDamageLevel() const;
+		String					DescribeDamageLevel(const OwnerParameter&, const T2::PConstProperties&p) const;
+		float					GetAttackInitiative() const;
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
-		int						CountPossibleAttacks(const OwnerParameter&owner) const {return GetAttacksPerRound(owner) * GetAttackActionLeft();}
+		int						CountPossibleAttacks(const OwnerParameter&owner, const T2::TModifier&p) const {return GetAttacksPerRound(owner,p) * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
-		virtual float			GetFlatAttackRange(const OwnerParameter&) const = 0;
+		virtual float			GetFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&p) const = 0;
 		float					GetFlatAttackRange() const;
-		virtual float			GetAttackExplosionRadius(const OwnerParameter&) const = 0;
-		float					GetAttackExplosionRadius() const;
-		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const = 0;
+		virtual String			DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&p) const = 0;
 		String					DescribeFlatAttackRange() const;
+		virtual float			GetAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&p) const = 0;
+		float					GetAttackExplosionRadius() const;
+		virtual String			DescribeAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&p) const = 0;
+		String					DescribeAttackExplosionRadius() const;
 		virtual WorldEntity&	ToEntity() = 0;
 		virtual const WorldEntity&	ToEntity() const = 0;
 		virtual float			GetZOffset() const = 0;

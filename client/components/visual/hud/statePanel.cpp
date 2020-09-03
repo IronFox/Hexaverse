@@ -181,6 +181,8 @@ namespace StatePanel
 		#endif
 
 		const bool ownedByMe = e.owner == Objects::Faction::mine;	//ghosts set isOwnedByMe true if they are actually owned by the alliance, so it cannot be used here
+		if (e.t2)
+			cachedLines << " T2 Experience: "+String(e.t2->experience - e.t2->currentLevelAtXp)+"/"+String(e.t2->nextLevelAtXP);
 		cachedLines << " Owner: "+e.owner->GetName()+(ownedByMe ? " (me)":"");
 		if (e.isOwnedByMe)
 		{
@@ -281,8 +283,8 @@ namespace StatePanel
 				}
 			#endif
 			if (m->turret->CanAttack())
-				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative);
-			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound(e.owner);
+				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative.GetValue(researchState));
+			cachedLines << " Speed: " + m->DescribeMovementStepsPerRoundExt(e.owner,m->t2 ? m->t2->speed : Objects::T2::TModifier());
 			if (m->turret->CanAttack())
 			{
 				if (m->turret->independentAttackAndMotion)
@@ -292,12 +294,19 @@ namespace StatePanel
 				//cachedLines << " Ammo-Usage: "<<m->turret->ammoNeedPerShot<<nl;
 				if (m->turret->horizontalAttackRange.IsFunctionOrConstNonZero())
 				{
-					cachedLines << " Hrz. Range: "+m->turret->horizontalAttackRange.Describe(researchState)
-									+'+'+m->turret->explosionRadius.Describe(researchState);
+					String srange = m->turret->horizontalAttackRange.Describe(researchState);
+					String sexp = m->turret->explosionRadius.Describe(researchState);
+					if (m->t2)
+					{
+						srange += m->t2->horizontalAttackRange.Describe();
+						sexp += m->t2->explosionRadius.Describe();
+					}
+					cachedLines << " Hrz. Range: "+srange
+									+'+'+sexp;
 				}
 				elif (m->turret->explosionRadius.IsFunctionOrConstNonZero())
-					cachedLines << " Explosion Radius: "+m->turret->explosionRadius.Describe(researchState);
-				cachedLines << " Damage: "+String(m->turret->GetDamageLevel(researchState));
+					cachedLines << " Explosion Radius: "+m->DescribeAttackExplosionRadius();
+				cachedLines << " Damage: "+String(m->DescribeDamageLevel());
 				int ammoNeed = m->turret->GetAmmoNeedPerShot(researchState);
 				if (ammoNeed > 0)
 					cachedLines << " "+m->turret->ammoType.GetTagStr()+"Ammo-Usage: "+String(ammoNeed);
@@ -382,11 +391,11 @@ namespace StatePanel
 			const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
 			if (t)
 			{
-				cachedLines << " Attack Initiative: "+String((int)t->turret->initiative);
+				cachedLines << " Attack Initiative: "+String((int)t->GetAttackInitiative());
 				if (t->turret->CanAttack())
 				{
 					const Objects::Tower*v = t;	//rename
-					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(e.owner);
+					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRangeExt(e.owner,t->t2 ? t->t2->horizontalAttackRange : Objects::T2::TModifier());
 					cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
 					cachedLines << " "+v->turret->ammoType.GetTagStr()+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 				}

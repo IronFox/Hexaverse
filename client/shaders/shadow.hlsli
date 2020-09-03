@@ -1,3 +1,6 @@
+#ifndef shadowHLSLI
+#define shadowHLSLI
+
 #include "light.hlsli"
 
 #define CASCADING_SHADOW
@@ -263,3 +266,4 @@ float ShadeUnfiltered(float3 world)
 //}
 
 
+#endif

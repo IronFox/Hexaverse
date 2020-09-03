@@ -216,6 +216,7 @@ TurretConfig =
 		ExplosionRadius = 1,
 		HorizontalAttackRange = 7,
 		IsUnlocked = true,
+		Initiative = 70,
 	},
 	RocketLauncher = 
 	{
@@ -294,6 +295,7 @@ TurretConfig =
 		HorizontalAttackRange = 15,
 		AmmoConsumption = 50,
 		IsUnlocked = true,
+		Initiative = 30,
 	},
 	Artillery =
 	{
@@ -306,6 +308,7 @@ TurretConfig =
 		ExplosionRadius = 2,
 		HorizontalAttackRange = 7,
 		IsUnlocked = false,
+		Initiative = 80,
 	},
 	Terraformer =
 	{
@@ -317,6 +320,7 @@ TurretConfig =
 		Op_RemoveTerrain = 10,
 		Op_AddTerrain = 10,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	Mechanic =
 	{
@@ -325,7 +329,9 @@ TurretConfig =
 		HealthMultiplier = 1,
 		ScanningRange = 3,
 		Op_Repair = 20,
+		Op_Upgrade = 100,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	
 	--Planes:
@@ -391,6 +397,7 @@ VehicleBaseConfig =
 		OperationSpeedMultiplier = 1,
 		TurretRangeModifier = 0,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	HeavyBase = 
 	{
@@ -401,6 +408,7 @@ VehicleBaseConfig =
 		OperationSpeedMultiplier = 2,
 		TurretRangeModifier = 0,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	CatamaranBase = 
 	{
@@ -411,9 +419,61 @@ VehicleBaseConfig =
 		OperationSpeedMultiplier = 2,
 		TurretRangeModifier = 1,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 }
 
+
+
+T2 =
+{
+	UpgradeCostQuantity = 30,
+	UpgradeCostType = 'Uranium',
+
+
+	DefaultFactor = function(lvl)
+		return 1.1 ^ lvl;
+	end,
+	Initiative = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	Speed = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	MaxHealth = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	ScanningRange = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	AttacksPerRound = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	DamageLevel = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	ExplosionRadius = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	HorizontalAttackRange = function(lvl)
+		return T2.DefaultFactor(lvl);
+	end,
+	
+	HealthRegeneration = function(lvl)
+		return 1 - (1 / (1+lvl*0.2));
+	end,
+	
+	
+	XpToLevel = function(xp)
+		return 1+math.floor(math.sqrt(xp)/3);
+	end,
+	
+	LevelToXp = function(lvl)
+		local v = (math.floor(lvl)-1)*3;
+		return v * v;
+	end,
+	
+}
 
 --[[
 Declares an item as unlock-researchable.
@@ -516,14 +576,17 @@ function MakeImproveResearchable(researchGroup, researchDependency, typeTable, t
 		
 		Describe = function(state)
 			if state == nil then
-				return original;
+				--return original;
+				return '';
 			end
 			local progress = ResearchState.GetProgress(state,key);
 			if (progress == 0) then
-				return original;
+				--return original;
+				return '';
 			end
 			local factor = GetResearchImprovementFactor(progress,speed);
-			return Round(original * factor,2)..' [='.. original..'*'..Round(factor,2)..']';
+			--return Round(original * factor,2)..' [='.. original..'*'..Round(factor,2)..']';
+			return ' [='.. original..'*'..Round(factor,2)..']';
 		end
 	}
 	
@@ -574,9 +637,11 @@ function Tower(turret--[[Table]]) --Table
 					local multiplier = Describe(turret.HealthMultiplier,state);
 					local health = DefaultHealthAtCost(cost());
 					if (multiplier == 1) then
-						return Round(health);
+						--return Round(health);
+						return '';
 					end
-					return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
+					--return Round(health * Get(turret.HealthMultiplier,state),2)..' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
+					return ' [='.. Round(health)..'*'.. multiplier..' (turret health multiplier)]';
 				end,
 		},
 		ScanningRange =
@@ -588,14 +653,18 @@ function Tower(turret--[[Table]]) --Table
 			Describe = 
 				function(state) 
 					local modifier =  TowerScanningModifier(turret);
-					local base = Describe(turret.ScanningRange,state);
+					--local base = Describe(turret.ScanningRange,state);
+					local base = Get(turret.ScanningRange,state);
 					if (modifier == 0) then
-						return base;
+						--return base;
+						return '';
 					end
 					if (modifier > 0) then
-						return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
+						--return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
+						return ' [='..  base ..'+'..Round(modifier,2)..' (tower modifier)]';
 					end
-					return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
+					--return Round(Get(turret.ScanningRange,state)+modifier,2)..' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
+					return ' [='..  base ..'-'..Round(-modifier,2)..' (tower modifier)]';
 				end,
 		},
 		IsUnlocked = 

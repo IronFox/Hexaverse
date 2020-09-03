@@ -93,6 +93,7 @@ namespace Objects
 				ECASE(Construct)
 				ECASE(SelfDetonate)
 				ECASE(Repair)
+				ECASE(Upgrade)
 				ECASE(AddTerrain)
 				ECASE(RemoveTerrain)
 				ECASE(FireBeam)
@@ -969,8 +970,6 @@ namespace Objects
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity[Resource::Munitions] = 24;
 			#endif
-
-			component.initiative = 80;
 		}
 
 
@@ -992,8 +991,6 @@ namespace Objects
 			#endif
 
 			component.trajectoryType = TrajectoryType::Missile;
-
-			component.initiative = 70;
 		}
 
 		void			Rockets::Configure(Turret&component)
@@ -1077,7 +1074,6 @@ namespace Objects
 			#endif
 		
 			component.dealsEMPDamage = true;
-			component.initiative = 30;
 			component.ammoType = Resource::Uranium;
 		}
 
@@ -1640,7 +1636,7 @@ namespace Objects
 					if (!isUnlocked.GetValue(st))
 						label <<"Requires more research to unlock";
 					label <<"Cost: "+Resource::table[Resource::Minerals].GetTagStr()+productionCosts.Describe(st);
-					label <<"Initiative: "+String(initiative);
+					label <<"Initiative: "+String(initiative.GetValue(st));
 				}
 			}
 
@@ -1774,6 +1770,8 @@ namespace Objects
 					outResult <<"Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
 					outResult <<"Can repair other vehicles/structures";
+				if (CanUpgrade())
+					outResult <<"Can upgrade other vehicles/structures";
 				if (detectsResources)
 					outResult <<"Scans into the ground, and detects natural resources";
 				#ifndef ONE_COMPOUND_PER_FACTION
@@ -1793,7 +1791,14 @@ namespace Objects
 				if (CanConstruct())
 					outResult << ("This "+lowerName+" type can build structures in valid locations. It requires "+Resource::Minerals.GetTagStr()+" to initiate construction.");
 				if (CanRepair())
-					outResult << ("This "+lowerName+" type can repair other structures and vehicles. It requires "+Resource::Minerals.GetTagStr()+" to initiate repair.");
+				{
+					outResult << ("This "+lowerName+" type can repair other structures and vehicles. Repair requires "+Resource::Minerals.GetTagStr()+" to initiate.");
+					if (CanUpgrade())
+						outResult << ("Utilizing "+Objects::Research::globalState.t2.upgradeCostType.GetTagStr()+", it can also upgrade other structures and vehicles.");
+				}
+				else
+					if (CanUpgrade())
+						outResult << ("This "+lowerName+" type can upgrade other structures and vehicles. It requires "+Objects::Research::globalState.t2.upgradeCostType.GetTagStr()+" to initiate upgrade.");
 				if (detectsResources)
 					outResult << ("This "+lowerName+" type scans deep into the ground, and detects all naturally occuring resources within its scanning range. It can be automated if mobile.");
 				if (CanAttack())

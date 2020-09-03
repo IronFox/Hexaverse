@@ -127,6 +127,7 @@ namespace Objects
 			Construct,
 			SelfDetonate,
 			Repair,
+			Upgrade,
 			AddTerrain,
 			RemoveTerrain,
 			FireBeam,
@@ -168,7 +169,7 @@ namespace Objects
 		class Base 
 		{
 		protected:
-			/**/							Base():initiative(100)	{}
+			/**/							Base()	{}
 
 			struct Detail
 			{
@@ -198,7 +199,7 @@ namespace Objects
 			
 			String							typeName,shortName;
 			ConstName						constName;
-			int								initiative;
+			AttributeWithDefault<int,100>	initiative;
 			Research::Attribute<int>		productionCosts /*=1*/;
 			AttributeWithDefault<bool,true>	isUnlocked;
 											
@@ -407,6 +408,7 @@ namespace Objects
 			bool							CanDealDamage() const {return damageLevel.IsFunctionOrConstNonZero();}
 			bool							CanDo(Operation op) const {return operationSpeed[op].IsFunctionOrConstNonZero();}
 			bool							CanRepair() const {return CanDo(Operation::Repair);}
+			bool							CanUpgrade() const {return CanDo(Operation::Upgrade);}
 			bool							CanConstruct() const {return CanDo(Operation::Construct);}
 			//bool							IsStandardOffensive() const
 			//{

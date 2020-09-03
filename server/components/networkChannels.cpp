@@ -38,6 +38,16 @@ namespace ResearchSerialization
 		Channels::ResearchAttributeVector.SendTo(peer,vec,(UINT32)::Network::UserLevel::CommonFaction);
 	}
 
+
+	void	SendT2GlobalsTo(TCP::Destination&peer)
+	{
+		Protocol::T2Globals globals;
+		globals.upgradeCostQuantity = Objects::Research::globalState.t2.upgradeCostQuantity;
+		globals.upgradeCostTypeResourceIndex = Objects::Research::globalState.t2.upgradeCostType.serialIndex;
+		Channels::T2Globals.SendTo(peer,globals,(UINT32)::Network::UserLevel::CommonFaction);
+	}
+
+
 	void	SendResearchProgramTo(TCP::Destination&peer)
 	{
 		static Protocol::ResearchProgram outProg;
@@ -76,6 +86,7 @@ namespace ResearchSerialization
 	{
 		SendResearchProgramTo(dest);
 		SendAttributeVectorTo(dest,Objects::Research::globalState.zeroTable,TUniqueID::Empty());
+		SendT2GlobalsTo(dest);
 		Objects::ForeachFaction([&dest](const Objects::PFaction&f)
 		{
 			SendTopicProgressVectorTo(dest,f);
@@ -412,6 +423,7 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(ResearchFactionState);
 	DECLARE_OBJECT_SENDER(ResearchProgram);
 	DECLARE_OBJECT_SENDER(ResearchQueue);
+	DECLARE_OBJECT_SENDER(T2Globals);
 	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
 	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
 	DECLARE_FACTION_CHANNEL(QueueResearch);
@@ -908,7 +920,7 @@ namespace Receiver
 
 			ResearchSerialization::SendTopicProgressVectorTo(Network::server,faction);	//since the user level hasn't been updated yet, this is not sent to the local client
 			ResearchSerialization::SendAttributeVectorTo(Network::server,faction->researchState.attributeTable,faction->id);
-
+			ResearchSerialization::SendT2GlobalsTo(Network::server);
 		}
 		else
 		{

@@ -81,7 +81,7 @@ namespace AI
 		if (e.CanHit(reference))
 		{
 			Objects::PTurretBase b = e.GetTurretBase();
-			current.damageThreat += b->turret->GetDamageLevel(state) * b->GetAttacksPerRound();
+			current.damageThreat += b->GetDamagePotentialPerRound();
 		}
 	}
 
@@ -210,7 +210,7 @@ namespace AI
 
 			{
 				LogEvent(EventSignificance::Debug,&source,"Trajectory checks out");
-				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->GetDamageLevel(state));
+				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.GetDamageLevel());
 				if (rs != Objects::TraceResult::ReachesTarget)
 					needAttacks ++;
 				//if (rs == Objects::Turret::ReachesTarget)

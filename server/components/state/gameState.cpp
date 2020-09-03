@@ -8,6 +8,7 @@
 #include <objects/structure/vehiclePlant.h>
 #include <objects/faction.h>
 #include <objects/packable.h>
+#include <objects/t2.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -861,7 +862,7 @@ namespace Game
 			}
 		}
 
-		void	Describe( Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
+		void	Describe( Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags, Objects::Packable::Target target )
 		{
 			state.health = e.health;
 			state.id = e.id;
@@ -875,10 +876,16 @@ namespace Game
 			if (expose & Expose::SleepState)
 				if (e.IsSleeping())
 					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
+			if (e.IsUpgrading())
+				state.entityStateFlags |= Protocol::EntityStateFlags::IsUpgrading;
+			if (e.t2)
+			{
+				e.t2->PackToArray(state.t2State,target);
+			}
 			ASSERT2__(state.health > 0, e.id, e.health);	//we don't describe ghosts
 		}
 
-		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags)
+		void	Describe( Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags, Objects::Packable::Target target )
 		{
 			DBG_ASSERT1__(v.storedIn.expired() || v.myTasks.IsEmpty(),v.GetName());
 			if (v.IsAboveTerrain())
@@ -948,7 +955,7 @@ namespace Game
 			if (v.IsBuilding())
 				state.flags |= Protocol::VehicleFlags::Building;
 
-			Describe(state.entityState,v,timestamp,expose, changeFlags);
+			Describe(state.entityState,v,timestamp,expose, changeFlags,target);
 			if (expose & Expose::Stability)
 			{
 				if ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction())
@@ -961,7 +968,7 @@ namespace Game
 		{
 			cnst.type = v.GetType();
 			cnst.owner = v.owner->id;
-			Describe(cnst.state,v,timestamp,expose,0xFFFFFFFF);
+			Describe(cnst.state,v,timestamp,expose,0xFFFFFFFF, Objects::Packable::Target::Owner);
 		}
 
 
@@ -1063,12 +1070,12 @@ namespace Game
 					const Objects::Packable*se = dynamic_cast<const Objects::Packable*>(&s);
 					if (se)
 					{
-						se->Pack(state.packed,target);
+						se->PackToArray(state.packed,target);
 					}
 				}
 			}
 		
-			Describe(state.entityState,s,timestamp,expose, changeFlags);
+			Describe(state.entityState,s,timestamp,expose, changeFlags,target);
 		}
 
 		void	Describe( Protocol::StructureConstruction&cnst, const Objects::Structure&s, const Protocol::Timestamp&timestamp, Expose expose, Objects::Packable::Target target)
@@ -1176,9 +1183,9 @@ namespace Game
 
 
 				TCP::Serial<Protocol::MobileState>	foreign,allied,owned;
-				Network::Describe(foreign.Ref(),v,timestamp,Network::ExposeToForeigners,v.changeFlags);
-				Network::Describe(allied.Ref(),v,timestamp,Network::ExposeToAllies,v.changeFlags);
-				Network::Describe(owned.Ref(),v,timestamp,Network::ExposeAll,v.changeFlags);
+				Network::Describe(foreign.Ref(),v,timestamp,Network::ExposeToForeigners,v.changeFlags, Objects::Packable::Target::Hostile);
+				Network::Describe(allied.Ref(),v,timestamp,Network::ExposeToAllies,v.changeFlags, Objects::Packable::Target::Ally);
+				Network::Describe(owned.Ref(),v,timestamp,Network::ExposeAll,v.changeFlags, Objects::Packable::Target::Owner);
 				foreign.Seal();
 				allied.Seal();
 				owned.Seal();

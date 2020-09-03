@@ -5,6 +5,7 @@
 #include <objects/faction.h>
 #include <objects/subOrbital.h>
 #include "../state.h"
+#include <objects/t2.h>
 
 namespace Evolver
 {
@@ -466,6 +467,16 @@ namespace Evolver
 
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
+		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+		{
+			if (e->t2 && e->t2->changed)
+			{
+				if (Objects::Research::Recompute(*e->t2))
+					e->SignalChangeByExternalCause(Objects::WorldEntity::T2Changed,e->entityTime);
+			}
+		});
+
+
 		Objects::ForeachFaction([](const Objects::PFaction&f)
 		{
 			f->DropPerRoundData();

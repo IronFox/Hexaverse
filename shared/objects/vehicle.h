@@ -97,13 +97,11 @@ namespace Objects
 		#endif
 		virtual bool			IsUnlockedAtState(const Research::Attributes::Table&researchState) const	override {return base->isUnlocked.GetValue(researchState) && turret->isUnlocked.GetValue(researchState);}
 		virtual bool			CanBeUnlocked() const {return base->isUnlocked.IsFunctionOrConstNonZero() && turret->isUnlocked.IsFunctionOrConstNonZero();}
-		virtual int				GetMaxHealth(const OwnerParameter&) const override;
-		using					WorldEntity::GetMaxHealth;
-		virtual String			DescribeMaxHealth(const OwnerParameter&) const override;
+		virtual int				GetMaxHealthExt(const OwnerParameter&, const T2::TModifier&) const override;
+		virtual String			DescribeMaxHealthExt(const OwnerParameter&, const T2::TModifier&) const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return std::make_shared<Vehicle>(owner,location,base,turret);};
-		virtual float			GetScanningRange(const OwnerParameter&) const override;
-		using					WorldEntity::GetScanningRange;
-		virtual String			DescribeScanningRange(const OwnerParameter&) const override;
+		virtual float			GetScanningRangeExt(const OwnerParameter&, const T2::TModifier&m) const override;
+		virtual String			DescribeScanningRangeExt(const OwnerParameter&, const T2::TModifier&m) const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
 		virtual bool			IsGroundBoundVehicle() const override {return true;}
@@ -116,10 +114,9 @@ namespace Objects
 
 		//MobileEntity overrides:
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
-		virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const override;
-		using					MobileEntity::GetMovementStepsPerRound;
-		virtual String			DescribeMovementStepsPerRound(const OwnerParameter&owner) const override;
-		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
+		virtual int				GetMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m) const override;
+		virtual String			DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m) const override;
+		virtual float			GetBaseMovementInitiative() const override;
 		virtual int				GetMaxClimbingHeight() const override {return base->maxClimbUp;}
 		virtual int				GetMaxFallingHeight() const override {return -base->minClimbDown;}
 		virtual bool			IsAffectedByGravity() const override {return true;}
@@ -132,8 +129,8 @@ namespace Objects
 
 
 		//TurretBase overrides:
-		virtual float			GetFlatAttackRange(const OwnerParameter&) const override;
-		virtual String			DescribeFlatAttackRange(const OwnerParameter&) const override;
+		virtual float			GetFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
+		virtual String			DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
 		virtual float			GetZOffset() const override {return base->height;}
 		virtual int				GetOperationSpeed(Component::Operation, const OwnerParameter&) const override;
 		virtual int				GetOperationAccelerationExponent(Component::Operation) const override;

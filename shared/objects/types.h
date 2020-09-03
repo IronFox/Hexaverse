@@ -10,6 +10,13 @@ using namespace DeltaWorks;
 
 namespace Objects
 {
+	namespace T2
+	{
+		struct TModifier;
+
+		DECLARE_POINTER_CLASS(Properties);
+	}
+
 	namespace Command
 	{
 		DECLARE_POINTER_CLASS(Base)

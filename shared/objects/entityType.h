@@ -24,8 +24,14 @@ namespace Objects
 		*/
 		ConstName	turretType=ConstName::Empty;
 
+		bool		isT2 = false;
+
 		/**/		EntityType(){}
-		/**/		EntityType(ConstName base, ConstName turret=ConstName::Empty):baseType(base),turretType(turret)
+		/**/		EntityType(ConstName base, ConstName turret=ConstName::Empty, bool t2=false):baseType(base),turretType(turret),isT2(t2)
+		{
+			DBG_ASSERT__(IsValid());
+		}
+		/**/		EntityType(ConstName base, bool t2):baseType(base),isT2(t2)
 		{
 			DBG_ASSERT__(IsValid());
 		}

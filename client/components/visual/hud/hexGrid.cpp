@@ -242,7 +242,7 @@ namespace HexGrid
 			//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 			Objects::PTurretBase base = target->GetTurretBase();
 			if (base && base->turret->CanAttack())
-				outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->GetResearchState()))+")";
+				outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->GetDamageLevel())+")";
 			if (target->empDamageLevel)
 				outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
@@ -332,7 +332,7 @@ namespace HexGrid
 			//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 			Objects::PTurretBase b = proto->GetTurretBase();
 			if (b && b->turret->CanAttack())
-				outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->GetResearchState()))+")";
+				outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->GetDamageLevel())+")";
 //					if (target->empDamageLevel)
 //					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
@@ -1424,6 +1424,8 @@ namespace HexGrid
 			{
 				PGroup group (new Group());
 				group->name = e->GetTypeName();
+				if (e->t2)
+					group->name += "(T2)";
 				group->entries.adoptData(entries);
 				group->UpdateSignificance();
 
@@ -1475,6 +1477,8 @@ namespace HexGrid
 					key += e->owner->id.ToFullString();
 				if (e->IsDeadOrGhost())
 					key += "|ghost";
+				if (e->t2)
+					key += "|t2";
 				#ifndef NO_HIBERNATION
 					if (e->ToHibernating()->IsHibernating())
 						key += "|hibernating";

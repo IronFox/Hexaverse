@@ -160,10 +160,11 @@ namespace Objects
 		//TurretBase overrides:
 		virtual bool				NextTaskIsAttack() const override {return IsAlive() && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
-		virtual float				GetFlatAttackRange(const OwnerParameter&owner) const override;
-		virtual String				DescribeFlatAttackRange(const OwnerParameter&) const override;
+		virtual float				GetFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&) const override;
+		virtual String				DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
 		virtual bool				HasAmmoForShot() override;
-		virtual float				GetAttackExplosionRadius(const OwnerParameter&owner) const override;
+		virtual float				GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&) const override;
+		virtual String				DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&) const override;
 		using						TurretBase::GetAttackExplosionRadius;
 		virtual WorldEntity&		ToEntity() override {return *this;}
 		virtual const WorldEntity&	ToEntity() const override {return *this;}

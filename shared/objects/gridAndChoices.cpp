@@ -187,9 +187,9 @@ namespace Objects
 
 					if (attack.attackFrom)
 					{
-						int d = M::Min(damageLevel,e->health);
+						UINT32 d = M::Min(damageLevel,e->health);
 						attack.attackFrom->owner->statistics.SignalDamageDealtTo(attack.attackFrom,e->owner,d);
-						e->owner->statistics.SignalDamageReceivedFrom(attack.attackFrom->owner,d);
+						e->owner->statistics.SignalDamageReceivedFrom(e,attack.attackFrom->owner,d);
 					}
 
 
@@ -302,10 +302,10 @@ namespace Objects
 				{
 					if (attack.attackFrom)
 					{
-						int newDamage = std::max(e->empDamageLevel,damageLevel);
-						int dealt = newDamage - e->empDamageLevel;
+						UINT32 newDamage = std::max(e->empDamageLevel,damageLevel);
+						UINT32 dealt = newDamage - e->empDamageLevel;
 						attack.attackFrom->owner->statistics.SignalEMPDamageDealtTo(attack.attackFrom,e->owner,dealt);
-						e->owner->statistics.SignalEMPDamageReceivedFrom(attack.attackFrom->owner,dealt);
+						e->owner->statistics.SignalEMPDamageReceivedFrom(e,attack.attackFrom->owner,dealt);
 					}
 
 
@@ -755,7 +755,6 @@ namespace Objects
 					break;
 				#endif
 				case CursorMode::RepairMode:
-				//case CursorMode::TransferMode:
 				{
 					for (int h = location.height -1; h <= location.height+1; h++)
 					{
@@ -766,12 +765,32 @@ namespace Objects
 								const Grid::LCellIdI candidate(n.neighborID[j],h);
 								PWorldEntity other = GetEntity(candidate);
 								if (!other || other.get() == v 
+									|| other->location != candidate
 									#ifndef _DEBUG
 									|| other->health == other->GetMaxHealth()
 									#endif
 									)	//no owner-check (for now)
 									continue;
-								movementChoices << Choice(candidate,1);
+								movementChoices << Choice(candidate+other->GetHeight()-1,1);
+							}
+						}
+					}
+				}
+				break;
+				case CursorMode::UpgradeMode:
+				{
+					for (int h = location.height -1; h <= location.height+1; h++)
+					{
+						if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange-1)
+						{
+							for (int j = 0; j < n.numNeighbors; j++)
+							{
+								const Grid::LCellIdI candidate(n.neighborID[j],h);
+								PWorldEntity other = GetEntity(candidate);
+								if (!other || other.get() == v || other->location != candidate)	//no owner-check (for now)
+									continue;
+								if (!other->t2 || other->t2->CanLevelUp())
+									movementChoices << Choice(candidate+other->GetHeight()-1,1);
 							}
 						}
 					}
@@ -1616,6 +1635,20 @@ namespace Objects
 							{
 								PVehicleJob job(new VehicleJob::RepairJob(*v,c));
 								v->RegisterNewJob("", job,&c);
+							}
+						}
+						break;
+						case CursorMode::UpgradeMode:
+						{
+							//PWorldEntity target = GetEntity(c);
+							//if (target && target->health < target->GetMaxHealth() && target != v && v->CanRepair())
+							//for consistency reasons with journal-saves no check here. just put it in there, and have the job figure out if it's good to execute
+							{
+								T2::Upgrade(*v,GetEntity(c));
+
+
+								//PVehicleJob job(new VehicleJob::UpgradeJob(*v,c));
+								//v->RegisterNewJob("", job,&c);
 							}
 						}
 						break;

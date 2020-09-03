@@ -159,6 +159,7 @@ namespace Channels
 	DECLARE_OBJECT_SENDER(ResearchFactionState);
 	DECLARE_OBJECT_SENDER(ResearchProgram);
 	DECLARE_OBJECT_SENDER(ResearchQueue);
+	DECLARE_OBJECT_SENDER(T2Globals);
 	DECLARE_OBJECT_SENDER(ResearchAttributeVector);
 	DECLARE_OBJECT_SENDER(ResearchAttributeDeltaVector);
 	DECLARE_FACTION_CHANNEL(QueueResearch);

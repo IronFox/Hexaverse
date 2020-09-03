@@ -254,9 +254,9 @@ namespace Objects
 			
 			display.SetObjectMatrix(sys);
 			if (base)
-				Renderer::RenderComponent(sys,0,*base,0,0);
+				Renderer::RenderComponent(sys,0,*base,0,0,false);
 			if (turret)
-				Renderer::RenderComponent(sys,base ? base->height : 0,*turret,0,0);
+				Renderer::RenderComponent(sys,base ? base->height : 0,*turret,0,0,false);
 
 
 			target.texture = GeometryImage::EndRendering();
@@ -423,13 +423,13 @@ namespace Objects
 			Resource::ID resourceType;
 			GetCosts(resourceCost,resourceType,timeCost);
 
+			outResult << name;
 			if (timeCost == 0)
 			{
-				outResult << name;
+				if (resourceCost > 0)
+					outResult << " "+resourceType.GetTagStr()+ " "+String(resourceCost);
 				return;
 			}
-
-			outResult << name;
 			if (resourceCost > 0)
 			{
 				outResult << " "+resourceType.GetTagStr()+ " "+String(resourceCost) + "  ";

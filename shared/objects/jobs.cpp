@@ -893,6 +893,121 @@ namespace Objects
 
 		}
 
+
+
+		UpgradeJob::UpgradeJob(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(Objects::Research::globalState.t2.upgradeCostQuantity,v,loc,GetOperationAffinity(),Autocomplete::Always,false)
+		{}
+
+		/*virtual override*/ BaseJob::begin_t			UpgradeJob::BeginHere(MobileEntity&v, const Grid::LCellIdI&focus, bool hasToMoveFirst)
+		{
+			PWorldEntity e = GetEntity(focus);
+			if (!e || !v.owner->CanSee(e,v.entityTime) || e.get() == &v)
+				return BaseJob::CannotStartAbort;
+			if (e->IsUpgrading())
+				return BaseJob::CannotStartAbort;
+			upgradingTarget = e->id;
+			e->SetUpgrading(true,v.entityTime);
+			return Super::BeginHere(v,focus,hasToMoveFirst);
+		}
+
+
+		/*virtual override*/ Resource::ID		UpgradeJob::GetConsumedResourceType() const
+		{
+			return Objects::Research::globalState.t2.upgradeCostType;
+		}
+
+
+
+		/*virtual override*/ bool	UpgradeJob::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
+		{
+			if (!v.CanUpgrade())
+			{
+				outError = v.GetNiceName()+" cannot upgrade";
+				PWorldEntity original = Objects::GetEntity(upgradingTarget);
+				if (original)
+					original->SetUpgrading(false,v.entityTime);
+
+				return false;
+			}
+			PWorldEntity e = GetEntity(focus);
+			
+			if (!e || !v.owner->CanSee(e,v.entityTime) || e.get() == &v)
+			{
+				outError = "Nothing in focus cell "+ToString(focus);
+				PWorldEntity original = Objects::GetEntity(upgradingTarget);
+				if (original)
+					original->SetUpgrading(false,v.entityTime);
+
+				return false;
+			}
+			if (e->id != upgradingTarget)
+			{
+				PWorldEntity original = Objects::GetEntity(upgradingTarget);
+				if (original)
+					original->SetUpgrading(false,v.entityTime);
+				outError = "Target no longer available";
+				return false;
+			}
+			if (e->t2 && !e->t2->CanLevelUp())
+			{
+				outError = "'"+e->GetNiceName()+"' is not ready for upgrade";
+				PWorldEntity original = Objects::GetEntity(upgradingTarget);
+				e->SetUpgrading(false,v.entityTime);
+
+				return false;
+			}
+			return true;
+		}
+
+		/*virtual override*/	void			UpgradeJob::Serialize(IWriteStream&outStream) const
+		{
+			outStream.WriteSize(SerialVersion);
+			outStream.WritePrimitive(upgradingTarget);
+		}
+
+		/*virtual override*/	void			UpgradeJob::Deserialize(IReadStream&inStream)
+		{
+			UINT32 v = (UINT32)inStream.ReadSize();
+			if (v != SerialVersion)
+				throw Except::IO::DriveAccess::FileFormatFault(CLOCATION,"UpgradeJob expected version v"+String(SerialVersion)+" but got v"+String(v));
+			inStream.ReadPrimitive(upgradingTarget);
+		}
+
+
+
+		/*virtual override*/ BaseJob::continue_t	UpgradeJob::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
+		{
+			if (!v.CanUpgrade())
+				return JobDone;
+			PWorldEntity target = GetEntity(focus);
+			if (!target || !v.owner->CanSee(target,v.entityTime) || target.get() == &v)
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Nothing in focus cell "+ToString(focus));
+				return JobDone;
+			}
+			if (target->t2 && !target->t2->CanLevelUp())
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' is not ready for upgrade");
+				return JobDone;
+			}
+			if (target->id != upgradingTarget)
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' is no longer available");
+				return JobDone;
+			}
+
+			if (!target->t2)
+				target->t2.reset(new Objects::T2::Properties());
+			else
+				target->t2->LevelUp();
+
+			target->SignalChangeByExternalCause(WorldEntity::T2Changed,v.entityTime);
+
+			return JobDone;
+		}
+
+
+
 		/*virtual override*/ bool	DigDown::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
 		{
 			if (focus.height +1 != v.location.height)

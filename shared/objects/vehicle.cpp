@@ -6,6 +6,7 @@
 #include "gridAndChoices.h"
 #include "faction.h"
 #include "pathfinding.h"
+#include "t2.h"
 
 namespace Objects
 {
@@ -66,13 +67,13 @@ namespace Objects
 
 
 
-	/*virtual override*/ float		Vehicle::GetScanningRange(const OwnerParameter&owner) const
+	/*virtual override*/ float		Vehicle::GetScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
-		return EMPModify(turret->scanningRange.GetValue(state) + (turret->CanAttack() ? 0.f : base->turretRangeModifier.GetValue(state)),2.f);
+		return EMPModify(m.Apply(turret->scanningRange.GetValue(state) + (turret->CanAttack() ? 0.f : base->turretRangeModifier.GetValue(state))),2.f);
 	}
 
-	/*virtual override*/ String		Vehicle::DescribeScanningRange(const OwnerParameter&owner) const
+	/*virtual override*/ String		Vehicle::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
 		String rs = turret->scanningRange.Describe(state);
@@ -80,22 +81,27 @@ namespace Objects
 		{
 			rs += "+"+base->turretRangeModifier.Describe(state);
 		}
-		return rs;
+		return rs + m.Describe();
 	}
 
-	/*virtual override*/ int				Vehicle::GetMaxHealth(const OwnerParameter&owner) const
+	/*virtual override*/ int				Vehicle::GetMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
-		return base->health.GetValue(state) * turret->healthMultiplier.GetValue(state);
+		return m.Apply(base->health.GetValue(state) * turret->healthMultiplier.GetValue(state));
 	}
 
-	/*virtual override*/ String				Vehicle::DescribeMaxHealth(const OwnerParameter&owner) const
+	/*virtual override*/ String				Vehicle::DescribeMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
 		String multiplier = turret->healthMultiplier.Describe(state);
+		auto h0 = base->health.GetValue(state)*turret->healthMultiplier.GetValue(state);
+		auto h1 = m.Apply(h0);
 		if (multiplier == "1" || multiplier == "1.0")
-			return base->health.Describe(state);
-		return String(base->health.GetValue(state))+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+"]";
+			if (!m.HasEffect())
+				return String(h1);
+			else
+				return String(h1)+"[="+ String(h0) + base->health.Describe(state) + m.Describe()+"]";
+		return String(h1)+"[="+ String(base->health.GetValue(state)) + base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state) + m.Describe()+"]";
 	}
 
 	
@@ -148,20 +154,27 @@ namespace Objects
 
 
 
-	/*virtual override*/int			Vehicle::GetMovementStepsPerRound(const OwnerParameter&owner)	const
+	/*virtual override*/int			Vehicle::GetMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m)	const
 	{
 		return (int)ceil(EMPModify(
-				base->GetBaseMovementSpeed(GetResearchState(owner)) 
-				* GetTurretOverweightFactor(),
+				m.Apply(
+					base->GetBaseMovementSpeed(GetResearchState(owner)) 
+					* GetTurretOverweightFactor()
+				),
 				1.f));
 	}
 
-	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound(const OwnerParameter&owner)	const
+	/*virtual override*/ float			Vehicle::GetBaseMovementInitiative() const
 	{
-		return String(GetMovementStepsPerRound(owner));
+		return base->initiative.GetValue(GetResearchState(owner));
 	}
 
-	/*virtual override*/ String			Vehicle::DescribeFlatAttackRange(const OwnerParameter&owner) const
+	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m)	const
+	{
+		return base->movementSpeed.Describe(GetResearchState(owner))+m.Describe();
+	}
+
+	/*virtual override*/ String			Vehicle::DescribeFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
 		String rs = turret->horizontalAttackRange.Describe(state);
@@ -170,14 +183,14 @@ namespace Objects
 			if (mod != '0')
 				rs += "+"+mod;
 		}
-		return rs;
+		return rs + m.Describe();
 	}
 
 	
-	/*virtual override*/ float			Vehicle::GetFlatAttackRange(const OwnerParameter&owner) const
+	/*virtual override*/ float			Vehicle::GetFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
-		return EMPModify(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state),2.f);
+		return EMPModify(m.Apply(turret->horizontalAttackRange.GetValue(state) + base->turretRangeModifier.GetValue(state)),2.f);
 	}
 
 	/*virtual override*/ int			Vehicle::GetOperationAccelerationExponent(Component::Operation op) const
@@ -394,7 +407,7 @@ namespace Objects
 			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(state));
 			if (baseMovement > 0)
 			{
-				const auto move = this->GetMovementStepsPerRound(owner);
+				const auto move = this->GetMovementStepsPerRoundExt(owner,t2 ? t2->speed : T2::TModifier());
 				String speed = "Effective speed: "+String(move);
 				if (move != baseMovement)
 					speed += " /"+String(baseMovement);
