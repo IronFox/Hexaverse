@@ -568,7 +568,7 @@ namespace Objects
 					Compound &n = compounds[target->compoundID];
 					if (mode == CursorMode::RestockMode)
 					{
-						ResourceVector demand = v.GetMaxStorageCapacity();
+						Resource::Vector demand = v.GetMaxStorageCapacity();
 						demand -= v.currentStorage;
 						if (demand.IsEmpty())
 						{
@@ -590,8 +590,8 @@ namespace Objects
 					}
 					else
 					{
-						ResourceVector supply = v.currentStorage;
-						ResourceVector networkCapacity = n.total.storageMax;
+						Resource::Vector supply = v.currentStorage;
+						Resource::Vector networkCapacity = n.total.storageMax;
 						networkCapacity -= n.total.storage;
 						if (supply.IsEmpty())
 						{
@@ -629,7 +629,7 @@ namespace Objects
 					}
 					if (mode == CursorMode::RestockMode)
 					{
-						ResourceVector demand = v.GetMaxStorageCapacity();
+						Resource::Vector demand = v.GetMaxStorageCapacity();
 						demand -= v.currentStorage;
 						if (demand.IsEmpty())
 						{
@@ -652,8 +652,8 @@ namespace Objects
 					}
 					else
 					{
-						ResourceVector supply = v.currentStorage;
-						ResourceVector remoteCapacity = vTarget->GetMaxStorageCapacity();
+						Resource::Vector supply = v.currentStorage;
+						Resource::Vector remoteCapacity = vTarget->GetMaxStorageCapacity();
 						remoteCapacity -= vTarget->currentStorage;
 						if (supply.IsEmpty())
 						{
@@ -874,7 +874,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ Resource		UpgradeJob::GetConsumedResourceType() const
+		/*virtual override*/ Resource::ID		UpgradeJob::GetConsumedResourceType() const
 		{
 			return Objects::Research::globalState.t2.upgradeCostType;
 		}

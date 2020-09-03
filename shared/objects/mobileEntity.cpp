@@ -1036,7 +1036,7 @@ namespace Objects
 			{
 				Grid::LCellIdI target;
 
-				const ResourceVector&storage = 
+				const Resource::Vector&storage = 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else
@@ -1048,7 +1048,7 @@ namespace Objects
 				{
 					auto&oldest = myTasks.GetOldest();
 					if ((int)oldest.foci.Count() < CountPossibleAttacks()
-						&& GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location, GetZOffset() ),*this, outChoice))
+						&& GetSentryTarget(*this, storage[turret->ammoType], TrajectoryEndPoint( location, GetZOffset() ),*this, outChoice))
 					{
 						oldest.foci.Push().target = outChoice.cellTarget;
 						oldest.Replot(location,this,FocusChangeType::FocusAppended,true);
@@ -1056,7 +1056,7 @@ namespace Objects
 						return true;
 					}
 				}
-				elif (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,GetZOffset() ),*this, outChoice))
+				elif (GetSentryTarget(*this, storage[turret->ammoType], TrajectoryEndPoint( location,GetZOffset() ),*this, outChoice))
 				{
 					return FrontEnqueueAttack(outChoice.cellTarget);
 				}
@@ -1138,7 +1138,7 @@ namespace Objects
 		void					MobileEntity::RegisterNewJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const Grid::LCellIdI*destination)
 		{
 			/*{
-				if (job->resourceCostLeft > this->currentStorage.level[Resource::Minerals])
+				if (job->resourceCostLeft > this->currentStorage[Resource::Minerals])
 				{
 					LogEvent(GetName()+": Unable to comply. Insufficient minerals left in storage.");
 					return;
@@ -1942,9 +1942,9 @@ namespace Objects
 
 		#ifdef ONE_COMPOUND_PER_FACTION
 			const Compound&compound = owner->compound;
-			return compound.total.storage.level[turret->ammoType] >= ammoNeed;
+			return compound.total.storage[turret->ammoType] >= ammoNeed;
 		#else
-			return currentStorage.level[turret->ammoType] >= ammoNeed;
+			return currentStorage[turret->ammoType] >= ammoNeed;
 		#endif
 	}
 

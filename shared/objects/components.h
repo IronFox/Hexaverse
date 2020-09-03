@@ -18,7 +18,7 @@
 namespace Objects
 {
 	static const constexpr float			vehicleScale = 0.4f;
-	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
+	inline void NoCosts(int&mineralCostOut, Resource::ID&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
 	template <typename T>
@@ -239,7 +239,7 @@ namespace Objects
 
 
 			IFunc							healthMultiplier;
-			Resource						ammoType;
+			Resource::ID					ammoType;
 			OperationArray<IFunc>			operationSpeed;
 			FFunc							weight	/*=1*/,					//turret weight
 											damageLevel;
@@ -247,7 +247,7 @@ namespace Objects
 											ammoNeedPerShot;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
-				ResourceVector				baseStorageCapacity;
+				Resource::Vector				baseStorageCapacity;
 			#endif
 			bool							attacksMovingHostilesDuringMotionPhase = false,	//indicates that mobiles using this turret behave like towers
 											independentAttackAndMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round, with neither action slowing the other
@@ -435,7 +435,7 @@ namespace Objects
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources(ResourceFlagSet&res, const Research::Attributes::Table&researchState) const;
+			bool							ConsumesResources(Resource::FlagSet&res, const Research::Attributes::Table&researchState) const;
 
 		};
 

@@ -307,9 +307,9 @@ namespace FileIO
 								resourcesDiscoveredCompressed("RSDC"),
 								resourcesDiscoveredFull("RSDF"),
 								resourceName("RSNM"),
-								resources("RSRC"),
-								noMunitionResources("RSRM"),
 								structureEnabled("SENA"),
+								dynamicResources("RSRD"),
+								resourceTable("RSTB"),
 								towerActionLeft("STAL"),
 								startBases("STBS"),
 								towerItem("STOI"),
@@ -328,7 +328,7 @@ namespace FileIO
 								factionWorldCounterChunk("WCCK"),
 								gamePhase("GAMP"),
 								worldConfig("WCFG"),
-								//worldContentTypeCount("WCTC"),	//deprecated. do not reuse name
+								snowHeight("SNWH"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
 								factionFlags("FFLG"),
@@ -341,6 +341,11 @@ namespace FileIO
 								aiScriptState("AISS"),
 								terrainTypeMap("TTMP"),
 								t2("  T2"),
+
+								//deprecated:
+								resources("RSRC"),
+								noMunitionResources("RSRM"),
+
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -533,40 +538,66 @@ namespace FileIO
 	}
 
 
-	static void Export(Riff::Chunk*parent, const Objects::ResourceVector&v)
+	template <typename T>
+	void SetSerialData(Riff::Chunk&chunk,const T&object)
 	{
-		if (v.IsNotEmpty())
+		using Serialization::Serialize;
+		SerialSizeScanner scanner;
+		Serialize(scanner,object);
+		if (scanner.GetTotalSize())
+			SerializeToCompactMemory(object,chunk.SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
+	}
+
+	static void Export(Riff::Chunk*parent, const Objects::Resource::Vector&v)
+	{
+		if (v.IsNonZero())
 		{
-			#ifdef NO_MUNITION
-				parent->AppendBlock(RID::noMunitionResources,v.level,sizeof(v.level));
-			#else
-				parent->AppendBlock(RID::resources,v.level,sizeof(v.level));
-			#endif
+			SetSerialData(*parent->AppendBlock(RID::dynamicResources),v);
 		}
 	}
 
-	static void Import(Riff::Chunk*parent, Objects::ResourceVector&v)
+	static void Import(Riff::Chunk*parent, Objects::Resource::Vector&v, const Objects::Resource::Table*foreignTable)
 	{
-		Riff::Chunk*source = parent->FindFirst(RID::resources);
-		if (source)
+		if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::DynamicResourceTables)
 		{
-			Objects::ResourceVectorT<Objects::ResourceWithMunition> v2;
-			ASSERT_EQUAL__(source->size(),sizeof(v2.level));
-			memcpy(v2.level,source->pointer(),sizeof(v2.level));
-			v.LoadCompatible(v2);
-		}
-		else
-		{
-			source = parent->FindFirst(RID::noMunitionResources);
+			Riff::Chunk*source = parent->FindFirst(RID::dynamicResources);
 			if (source)
 			{
-				Objects::ResourceVectorT<Objects::ResourceWithoutMunition> v2;
-				ASSERT_EQUAL__(source->size(),sizeof(v2.level));
-				memcpy(v2.level,source->pointer(),sizeof(v2.level));
-				v.LoadCompatible(v2);
+				if (foreignTable != nullptr)
+				{
+					Objects::Resource::Vector import;
+					DeserializeFromMemory(import,source->pointer(),source->size());
+					v.ImportForeign(import,*foreignTable);
+				}
+				else
+					DeserializeFromMemory(v,source->pointer(),source->size());
 			}
 			else
 				v.Clear();
+		}
+		else
+		{
+			Riff::Chunk*source = parent->FindFirst(RID::resources);
+			if (source)
+			{
+				Objects::Deprecated::ResourceVectorT<Objects::Deprecated::ResourceWithMunition> v2;
+				ASSERT_EQUAL__(source->size(),sizeof(v2.level));
+				memcpy(v2.level,source->pointer(),sizeof(v2.level));
+				v.ImportDeprecated(v2);
+			}
+			else
+			{
+				source = parent->FindFirst(RID::noMunitionResources);
+				if (source)
+				{
+					Objects::Deprecated::ResourceVectorT<Objects::Deprecated::ResourceWithoutMunition> v2;
+					ASSERT_EQUAL__(source->size(),sizeof(v2.level));
+					memcpy(v2.level,source->pointer(),sizeof(v2.level));
+					v.ImportDeprecated(v2);
+				}
+				else
+					v.Clear();
+			}
 		}
 	}
 
@@ -644,16 +675,6 @@ namespace FileIO
 		}
 	}
 
-
-	template <typename T>
-	void SetSerialData(Riff::Chunk&chunk,const T&object)
-	{
-		using Serialization::Serialize;
-		SerialSizeScanner scanner;
-		Serialize(scanner,object);
-		if (scanner.GetTotalSize())
-			SerializeToCompactMemory(object,chunk.SetData(scanner.GetTotalSize()),scanner.GetTotalSize());
-	}
 
 	template <typename T>
 	void Attach(Riff::Chunk*parent, const Riff::TID&chunkID, const T&object)
@@ -986,7 +1007,7 @@ namespace FileIO
 
 		Import(parent,(Objects::WorldEntity&)*v,factions);
 		#ifndef ONE_COMPOUND_PER_FACTION
-			Import(parent,v->currentStorage);
+			ImportStructure(parent,v->currentStorage);
 			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
 		ImportJob(parent,v->completeOnMove);
@@ -1087,7 +1108,7 @@ namespace FileIO
 //		state.enabled = !w || w->IsEnabled();
 		if (w)
 		{
-			Objects::ResourceVector dontCare,resources;
+			Objects::Resource::Vector dontCare,resources;
 			w->GetResourceVector(dontCare, resources, dontCare);
 			Export(parent,resources);
 			parent->AppendBlock(RID::structureEnabled)->SetPODData(w->IsEnabled());
@@ -1126,7 +1147,7 @@ namespace FileIO
 	}
 
 	
-	static Objects::PStructure Import( Riff::Chunk*parent, FactionMap&factions)
+	static Objects::PStructure ImportStructure( Riff::Chunk*parent, FactionMap&factions, const Objects::Resource::Table*foreignResourceTable )
 	{
 		using namespace ApplicationInterface;
 		String typeName;
@@ -1164,8 +1185,8 @@ namespace FileIO
 //		state.enabled = !w || w->IsEnabled();
 		if (w)
 		{
-			Objects::ResourceVector resources;
-			Import(parent,resources);
+			Objects::Resource::Vector resources;
+			Import(parent,resources,foreignResourceTable);
 			w->SetResourceStorage(resources);
 			Riff::Chunk*enabled = parent->FindFirst(RID::structureEnabled);
 			if (enabled)
@@ -1383,8 +1404,14 @@ namespace FileIO
 		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+FileSystem::PathToString(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 		bool nexusFound = false, worldInfoFound = false;
+		Objects::Resource::Table loadedTable;
+		const Objects::Resource::Table*foreignTable = nullptr;
+		Objects::Resource::Table importedTable;
 
+		Objects::Resource::lastTable = std::move(Objects::Resource::table);
+		Objects::Resource::table = Objects::Resource::CompileLocalTable();
 
+		
 		try
 		{
 			Riff::Chunk*chunk = file.FindFirst(RID::researchScript);
@@ -1410,7 +1437,6 @@ namespace FileIO
 		catch (const std::exception&ex)
 		{
 			LogEvent(EventClass::Preset::error,String("Exception while loading research script of ")+FileSystem::PathToString(filename)+": "+ex.what());
-			failed = true;
 		}
 
 		{
@@ -1569,11 +1595,40 @@ namespace FileIO
 
 
 										}
-										//Grid::TSharedPlanetConfig persistentPlanetInfo;
+
+										if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::DynamicResourceTables)
+										{
+											bool fallback = false;
+											Riff::Chunk*chunk = list->FindFirst(RID::resourceTable);
+											if (chunk)
+											{
+												try
+												{
+													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),loadedTable);
+													if (loadedTable == Objects::Resource::table)
+														foreignTable = nullptr;
+													else
+													{
+														foreignTable = &loadedTable;
+														LogEvent(EventSignificance::Important,"Loading file of different resource table. Some resources may be lost, others set to 0");
+													}
+												}
+												catch (const std::exception&ex)
+												{
+													LogEvent(EventClass::Preset::error,String("Exception while loading resource table of ")+FileSystem::PathToString(filename)+": "+ex.what());
+												}
+											}
+											else
+											{
+												LogEvent(EventClass::Preset::error,String("Save game lacks resource declaration: ")+FileSystem::PathToString(filename));
+											}
+										}
+
+
 										GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+										GetOptionalPOD(list,RID::snowHeight,Grid::currentPlanetConfig.snowHeight,5);
+
 										Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
-
-
 									}
 								break;
 								case ChunkName::ObjectGroup:
@@ -1621,7 +1676,7 @@ namespace FileIO
 													else
 													{
 														//child->FindFirst(RID::vehiclePlant),child->FindFirst(RID::towerActionLeft)
-														Objects::PStructure s = Import(child,factionMap);
+														Objects::PStructure s = ImportStructure(child,factionMap,foreignTable);
 														if (s)
 														{
 															float t =0;
@@ -2032,6 +2087,7 @@ namespace FileIO
 		general->AppendBlock(RID::worldID)->SetPODData(World::worldID);
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+		general->AppendBlock(RID::snowHeight)->SetPODData(Grid::currentPlanetConfig.snowHeight);
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
 		general->AppendBlock(RID::mostAlliancesAlive)->SetPODData(Game::mostAlliancesAlive);
 		
@@ -2068,6 +2124,8 @@ namespace FileIO
 			});
 			general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
 		}
+		
+		SetSerialData(*general->AppendBlock(RID::resourceTable),Objects::Resource::table);
 
 		if (Objects::Research::globalState.script)
 			general->AppendBlock(RID::researchScript)->SetData(Objects::Research::globalState.script->compressed);

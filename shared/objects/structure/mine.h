@@ -13,9 +13,9 @@ namespace Objects
 
 		friend class WorkingStructureT<Mine>;
 		/**/						Mine(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
-									: Super(table,owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MineralStorage; isLinkedToCore = LinkToCore(atTime);}
+									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Minerals, MineralStorage); isLinkedToCore = LinkToCore(atTime);}
 		/**/						Mine()	{
-			maxStorage.level[Resource::Minerals] = MineralStorage;
+			maxStorage.Set(Resource::Minerals, MineralStorage);
 		}	//global prototype
 
 		bool						isLinkedToCore;
@@ -41,7 +41,7 @@ namespace Objects
 
 		#endif
 
-		NaturalResourceVector		naturalResources;
+		Resource::CoreVector		naturalResources;
 
 		float						GetEfficiency() const {return 1.f;/*location.height <= -8 ? 2.f : 1.f;*/}
 
@@ -49,15 +49,15 @@ namespace Objects
 		virtual bool				WouldLikeToEnable() const override {return true;}
 		virtual bool				CanEnable() const override {return IsLinkedToCore();}
 
-		//void						SetNaturalResourceVector(const NaturalResourceVector&res)	{naturalResources = res;}
+		//void						SetNaturalResourceVector(const Resource::CoreVector&res)	{naturalResources = res;}
 
 		virtual void				PrototypeSetup()	override;
 
-		virtual void				GetResourceVector(ResourceVector&v,  ResourceVector&storageCurrent, ResourceVector&storageMax) const override
+		virtual void				GetResourceVector(Resource::Vector&v,  Resource::Vector&storageCurrent, Resource::Vector&storageMax) const override
 									{
 										Super::GetResourceVector(v,storageCurrent,storageMax); 
 										v += naturalResources; 
-										v.level[Resource::Energy] += -EnergyConsumption;
+										v.Add(Resource::Energy, -EnergyConsumption);
 									}
 
 		#ifndef NO_HIBERNATION

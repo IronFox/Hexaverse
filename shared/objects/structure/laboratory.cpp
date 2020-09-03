@@ -92,7 +92,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
-		/*virtual override*/ void			Laboratory::Tick(ResourceVector&vec)
+		/*virtual override*/ void			Laboratory::Tick(Resource::Vector&vec)
 		{
 			Super::Tick(vec);
 

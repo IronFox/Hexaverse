@@ -2356,7 +2356,7 @@ namespace Component
 
 	static float CharWidth(char c)
 	{
-		if ((index_t)c >= Objects::TextoutResourceTagOffset && (index_t)c <= (index_t)Objects::TextoutResourceTagOffset + Objects::Resource::NumberOfPossibilities)
+		if (Objects::Resource::TagMap::IsTag(c))
 		{
 			return textout.GetFont().GetHeight() * textout.state.scale_x;
 		}

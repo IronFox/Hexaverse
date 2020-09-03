@@ -206,8 +206,8 @@ namespace Objects
 							healthRegeneration;
 				Lua::Function<int(int)>				xpToLevel,levelToXP;
 			#endif
-				int			upgradeCostQuantity=1;
-				Resource	upgradeCostType;
+				int				upgradeCostQuantity=1;
+				Resource::ID	upgradeCostType;
 
 
 

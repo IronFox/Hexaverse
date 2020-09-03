@@ -43,7 +43,7 @@ namespace ResearchSerialization
 	{
 		Protocol::T2Globals globals;
 		globals.upgradeCostQuantity = Objects::Research::globalState.t2.upgradeCostQuantity;
-		globals.upgradeCostTypeResourceIndex = Objects::Research::globalState.t2.upgradeCostType;
+		globals.upgradeCostTypeResourceIndex = Objects::Research::globalState.t2.upgradeCostType.serialIndex;
 		Channels::T2Globals.SendTo(peer,globals,(UINT32)::Network::UserLevel::CommonFaction);
 	}
 
@@ -404,6 +404,8 @@ namespace Channels
 
 	TCP::ObjectSender<TUniqueID, Protocol::ChannelID::WinningAlliance>								winningAlliance;
 
+	DECLARE_OBJECT_SENDER(ResourceTable);
+
 	DECLARE_OBJECT_SENDER(VoteCreation);
 	DECLARE_OBJECT_SENDER(VoteResult);
 	DECLARE_FACTION_CHANNEL(ClientVote);
@@ -533,6 +535,8 @@ namespace Receiver
 
 		peer.SendSignal(Protocol::ChannelID::BeginEverything);
 
+		Channels::ResourceTable.SendTo(peer,Objects::Resource::table);
+
 		Objects::structures.Foreach([timestamp,&peer](const Objects::PStructure&s)
 		{
 			Protocol::StructureConstruction st;
@@ -556,7 +560,7 @@ namespace Receiver
 				package.cells[i].cellIndex = (UINT32)i;
 			foreach (Grid::Resource::all,res)
 			{
-				package.resourceName = res->GetCName();
+				package.resourceIndex = res->resourceIndex;
 				for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 				{
 					BYTE sourceCov = res->coverage[i];
@@ -954,7 +958,7 @@ namespace Receiver
 
 		#endif
 	
-
+		Channels::ResourceTable.SendTo(peer,Objects::Resource::table);
 
 		foreach(client->faction->markers, m)
 		{
@@ -1004,7 +1008,7 @@ namespace Receiver
 					package.cells[i].cellIndex = final[i];
 				foreach (Grid::Resource::all,res)
 				{
-					package.resourceName = res->GetCName();
+					package.resourceIndex = res->resourceIndex;
 					for (index_t i = 0; i < final.Count(); i++)
 					{
 						BYTE sourceCov = res->coverage[final[i]];

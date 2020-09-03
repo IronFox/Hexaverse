@@ -1098,7 +1098,7 @@ namespace Network
 		void	T2Globals( Protocol::T2Globals&globals )
 		{
 			Objects::Research::globalState.t2.upgradeCostQuantity = globals.upgradeCostQuantity;
-			Objects::Research::globalState.t2.upgradeCostType.Load(globals.upgradeCostTypeResourceIndex);
+			Objects::Research::globalState.t2.upgradeCostType = Objects::Resource::ID(globals.upgradeCostTypeResourceIndex);
 		}
 
 		void	ResearchAttributeVector( Protocol::ResearchAttributeVector&attributes )
@@ -1387,6 +1387,13 @@ namespace Network
 			ScriptedAI::Resume(state.scriptName,state.dataVector);
 		}
 
+		void	ResourceTable(Protocol::ResourceTable&table)
+		{
+			Objects::Resource::lastTable = std::move(Objects::Resource::table);
+			Objects::Resource::table = std::move(table);
+			GlobalEvents::resourceTableUpdated();
+		}
+
 	}
 
 
@@ -1462,6 +1469,8 @@ namespace Network
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
+
+		DECLARE_CHANNEL(ResourceTable);
 
 		DECLARE_CHANNEL(MyFaction);
 		DECLARE_CHANNEL(AllianceConfigChange);
@@ -1717,6 +1726,7 @@ namespace Network
 		client.InstallChannel(Channels::KillFaction);
 		client.InstallChannel(Channels::AllianceConfigChange);
 		client.InstallChannel(Channels::AllianceInvite);
+		client.InstallChannel(Channels::ResourceTable);
 		client.InstallChannel(Channels::VoteCreation);
 		client.InstallChannel(Channels::VoteResult);
 

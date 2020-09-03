@@ -68,14 +68,13 @@ namespace Lua
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
-		
-		void UpdateResourceTable(Lua::Table&t,const Objects::ResourceVector&v)
+		void UpdateResourceTable(Lua::Table&t,const Objects::Resource::Vector&v)
 		{
-			for (index_t i = 0; i < Objects::Resource::N; i++)
+			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			{
-				String name = Objects::Resource::Reinterpret(i).ToString();
+				String name = Objects::Resource::ID(i).ToString();
 				name.Set(0,CharFunctions::tolower(name.GetFirstChar()));
-				t.SetField(name,v.level[i]);
+				t.SetField(name,v[i]);
 			}
 		}
 
@@ -115,7 +114,7 @@ namespace Lua
 						if (!Grid::ResourceDiscovery::client.resourcesDiscovered[stackID])
 							return -1;
 					#endif
-					return r->coverage[stackID] * Objects::NaturalResourceVector::TranslationFactor;
+					return r->coverage[stackID] * Objects::Resource::CoreVector::TranslationFactor;
 				}
 			throw Lua::Exception("GetNaturalResourceAt(): Resource '"+resourceName+"' does not exist.");
 		}
@@ -123,7 +122,7 @@ namespace Lua
 		Lua::Table GetNaturalResourcesAt(Lua::Table cellTable)
 		{
 			const auto stackID = LuaCellToStack(cellTable,"GetNaturalResourcesAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
-			Objects::NaturalResourceVector vec;
+			Objects::Resource::CoreVector vec;
 			if (!vec.SampleWorld(stackID) || vec.IsEmpty())
 				return Lua::nil;
 			Lua::Table rs = cellTable.GetProgram()->CreateTable();
@@ -254,9 +253,9 @@ namespace Lua
 			t.SetField("ammoDemandPerShot",b.turret->ammoNeedPerShot.GetValue(researchState));
 			#ifdef ONE_COMPOUND_PER_FACTION
 				const auto&compound = b.ToEntity().owner->compound;
-				const int ammo = compound.total.storage.level[b.turret->ammoType];
+				const int ammo = compound.total.storage[b.turret->ammoType];
 			#else
-				const int ammo = b.ToEntity().currentStorage.level[b.turret->ammoType];
+				const int ammo = b.ToEntity().currentStorage[b.turret->ammoType];
 			#endif
 			t.SetField("ammoAvailability",ammo);
 			t.SetField("possibleAttacks",b.CountPossibleAttacks());
@@ -1437,7 +1436,7 @@ namespace Lua
 		if (e->IsWorkingStructure())
 		{
 			const auto ws = To<Objects::WorkingStructure>::Cast(e);
-			Objects::ResourceVector balance,storage,storageMax;
+			Objects::Resource::Vector balance,storage,storageMax;
 			ws->GetResourceVector(balance,storage,storageMax);
 
 			Detail::UpdateResourceTable(t.SetSubTable("resourceStorage"),storage);
@@ -1761,6 +1760,18 @@ namespace Lua
 				{
 					AddSimpleJob(t,id, "SelfDetonate", ConstName::Job_SelfDetonate, ConstName::DetonationSize_Regular);
 					AddSimpleJob(t,id, "Obliterate", ConstName::Job_SelfDetonate, ConstName::DetonationSize_Doomsday);
+				}
+
+				if (m->turret->CanDo(Objects::Component::Operation::Repair))
+				{
+					t.SetFunction("Repair",[this,id](const Lua::Table&luaLoc)
+					{
+						Grid::LCellIdI loc = Detail::ToLGridCell(luaLoc,"Repair(): Loc parameter");
+						if (onChoiceIntersection)
+							onChoiceIntersection(id,TUniqueID::Empty(), loc, TUniqueID::Empty(),Objects::CursorMode::RepairMode);
+						else
+							throw Lua::Exception(CLOCATION,"Repair(): onChoiceIntersection not set");
+					});
 				}
 
 				if (m->turret->CanDo(Objects::Component::Operation::AddTerrain))
@@ -2217,7 +2228,7 @@ namespace Lua
 			if (e->IsWorkingStructure())
 			{
 				const auto ws = To<Objects::WorkingStructure>::Cast(e);
-				Objects::ResourceVector balance,storage,storageMax;
+				Objects::Resource::Vector balance,storage,storageMax;
 				ws->GetResourceVector(balance,storage,storageMax);
 
 				Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);

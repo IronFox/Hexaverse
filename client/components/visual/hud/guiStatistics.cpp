@@ -456,9 +456,9 @@ namespace HUD
 			return button;
 		}
 
-		static PButton AddProduction(const String&name, const Objects::Resource res)
+		static PButton AddProduction(const String&name, const Objects::Resource::ID res)
 		{
-			return AddStackFilter(name, [res](const Objects::Statistics::Round&r){return r.production.level[res];},false);
+			return AddStackFilter(name, [res](const Objects::Statistics::Round&r){return r.production[res];},false);
 		}
 
 		static PButton AddMetric(const String&name, const Objects::Statistics::Metric m, bool trigger = false, bool integrate=false)

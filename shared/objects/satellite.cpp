@@ -272,7 +272,7 @@ namespace Objects
 			outResult << speed;
 			int opSpeed = GetOperationSpeed(Component::Construct);
 			if (opSpeed)
-				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
+				outResult << "Effective construction speed: "+Resource::Minerals.GetTagStr()+String(opSpeed)+" per round";
 
 			const String fuel (ResourceTag(Resource::Fuel));
 
@@ -668,7 +668,7 @@ namespace Objects
 						demand *= 2;
 
 					Compound&compound = port->CastToStructure()->GetCompound();
-					int available = compound.total.storage.level[Resource::Fuel];
+					int available = compound.total.storage[Resource::Fuel];
 					//#ifdef ONE_COMPOUND_PER_FACTION
 					available += compound.GetOverproduction(Resource::Fuel);
 					//#endif
@@ -704,7 +704,7 @@ namespace Objects
 			if (MobileEntityProducer::queue.IsNotEmpty())
 			{
 				Compound&cmp = port->CastToStructure()->GetCompound();
-				if (cmp.total.balance.level[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
+				if (cmp.total.balance[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
 				{
 					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
@@ -943,7 +943,7 @@ namespace Objects
 			{
 				Grid::LCellIdI target;
 
-				const ResourceVector&storage = 
+				const Resource::Vector&storage = 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else
@@ -951,7 +951,7 @@ namespace Objects
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, lastChoice))
+				if (GetSentryTarget(*this, storage[turret->ammoType], location,0.f,*this, lastChoice))
 				{
 					AttackNext(lastChoice.cellTarget,true);
 					return true;

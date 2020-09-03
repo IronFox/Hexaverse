@@ -79,7 +79,7 @@ namespace Objects
 			void					UpdateLocationAndEstimations(const MobileEntity&v, const Grid::LCellIdI&loc) {location = loc; UpdateEstimations(v);}
 
 			virtual Component::Operation	GetOperationAffinity() const = 0;
-			virtual Resource		GetConsumedResourceType() const {return Resource::Minerals;}
+			virtual Resource::ID	GetConsumedResourceType() const {return Resource::Minerals;}
 			virtual bool			DelayedBySleep() const {return true;}
 
 			#ifndef CLIENT
@@ -429,7 +429,7 @@ namespace Objects
 				virtual Riff::TID		GetDataKey() const override {return "UPGD";};
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_Upgrade;}
 				virtual PJob			Instantiate() const override {return PJob(new UpgradeJob());}
-				virtual Resource		GetConsumedResourceType() const;
+				virtual Resource::ID	GetConsumedResourceType() const;
 
 				virtual	void			Serialize(IWriteStream&outStream) const override;
 				virtual	void			Deserialize(IReadStream&inStream) override;
@@ -620,7 +620,7 @@ namespace Objects
 
 				virtual void			UpdateEstimations(const MobileEntity&v) override;
 				virtual Component::Operation	GetOperationAffinity() const override {return Component::Operation::SelfDetonate;}
-				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
+				virtual Resource::ID	GetConsumedResourceType() const override {return Resource::Uranium;}
 			
 				virtual	void			Serialize(IWriteStream&outStream) const override;
 				virtual	void			Deserialize(IReadStream&inStream) override;

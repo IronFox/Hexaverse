@@ -835,9 +835,9 @@ namespace ApplicationInterface
 		if (Objects::selectedVehicle)
 		{
 			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
-			Objects::ResourceVector change;
-			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
-			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
+			Objects::Resource::Vector change;
+			const Objects::Resource::Vector&current = Objects::selectedVehicle->currentStorage;
+			const Objects::Resource::Vector max = Objects::selectedVehicle->GetMaxStorageCapacity();
 			int sum = 0;
 			foreach(Objects::selectedVehicle->myTasks, t)
 				if (t->job)
@@ -870,7 +870,7 @@ namespace ApplicationInterface
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
 				if (ws)
 				{
-					Objects::ResourceVector change, storage, max;
+					Objects::Resource::Vector change, storage, max;
 					ws->GetResourceVector(change, storage, max);
 					HUD::ResourceGauges::Update(
 					#ifndef NO_HIBERNATION
@@ -917,9 +917,9 @@ namespace ApplicationInterface
 		if (f)
 		{
 			const Objects::Compound&compound = f->compound;
-			const Objects::ResourceVector&current = compound.total.storage;
-			const Objects::ResourceVector&max = compound.total.storageMax;
-			Objects::ResourceVector change = compound.total.supply - compound.total.demand;
+			const Objects::Resource::Vector&current = compound.total.storage;
+			const Objects::Resource::Vector&max = compound.total.storageMax;
+			Objects::Resource::Vector change = compound.total.supply - compound.total.demand;
 			Objects::ForeachMobileWorldEntity([f, &change](const Objects::PMobileEntity&v)
 			{
 				if (v->owner != f)
@@ -931,7 +931,7 @@ namespace ApplicationInterface
 				int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
 				if (!opSpeed)
 					return;
-				change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
+				change.Add(Objects::Resource::Minerals, -std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft));
 
 			}, Objects::IncludeGhosts::None);
 
@@ -948,7 +948,7 @@ namespace ApplicationInterface
 			Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
 			if (ws)
 			{
-				Objects::ResourceVector _change, storage, _max, zero;
+				Objects::Resource::Vector _change, storage, _max, zero;
 				ws->GetResourceVector(_change, storage, _max);
 				HUD::ResourceGauges::Update(
 				#ifndef NO_HIBERNATION
@@ -1956,8 +1956,7 @@ int main( int argc, const char* argv[])
 			display.ScanShaderHeader("shaders");
 			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
 			UpdateFontScale();
-			textout.GetActiveFont()->BeginTagMode(HUD::StatePanel::OnTag,HUD::StatePanel::TagWidth,
-					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
+			textout.GetActiveFont()->BeginTagMode(Objects::Resource::TagMap::IsTag, HUD::StatePanel::OnTag,HUD::StatePanel::TagWidth);
 			GlobalEvents::uiScaleChanged += UpdateFontScale;
 
 			Loading::SetupText(textout);

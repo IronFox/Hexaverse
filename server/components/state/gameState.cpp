@@ -512,7 +512,7 @@ namespace Game
 				package.cells[i].cellIndex = changed[i];
 			foreach (Grid::Resource::all,res)
 			{
-				package.resourceName = res->GetCName();
+				package.resourceIndex = res->resourceIndex;
 				for (index_t i = 0; i < changed.Count(); i++)
 				{
 					BYTE sourceCov = res->coverage[changed[i]];
@@ -983,7 +983,7 @@ namespace Game
 
 			if (w)
 			{
-				Objects::ResourceVector dontCare;
+				Objects::Resource::Vector dontCare;
 				if (expose & Expose::StructureStorage) 
 					w->GetResourceVector(dontCare, state.resourceStorage, dontCare);
 
@@ -1457,7 +1457,7 @@ namespace Game
 				#ifdef ONE_COMPOUND_PER_FACTION
 					uc |= UC::MineralContainer;	//don't need
 				#endif
-				Objects::ResourceVector dummy,storage;
+				Objects::Resource::Vector dummy,storage;
 				Objects::OwnerParameter o;
 				foreach (c.workingStructures,_s)
 				{
@@ -1483,7 +1483,7 @@ namespace Game
 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						s->GetResourceVector(dummy,dummy,storage);
-						if (storage.level[Objects::Resource::Minerals] > 0)
+						if (storage[Objects::Resource::Minerals] > 0)
 							hasMineralContainer = true;
 					#endif
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
@@ -1646,7 +1646,7 @@ namespace Game
 			int h = Objects::FindApplicableGround(location,true,true);
 			location.height = h;
 			static const int want = 10;
-			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
+			static const int stackHeight = want / Objects::Resource::CoreVector::TranslationFactor + (want % Objects::Resource::CoreVector::TranslationFactor ? 1 : 0);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Fuel,stackHeight);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Minerals,stackHeight);
 			Objects::ForeachFaction([location](const Objects::PFaction&f)

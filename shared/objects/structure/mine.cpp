@@ -16,7 +16,7 @@ namespace Objects
 		#ifdef CLIENT
 			return isLinkedToCore;
 		#else
-			this->naturalResources = NaturalResourceVector();
+			this->naturalResources = Resource::CoreVector();
 			bool success = true;
 			{
 				#ifdef HYBRID_GRID
@@ -118,7 +118,7 @@ namespace Objects
 				" Mines should be build only on known occurrences of natural resources."
 				" They cannot be constructed atop each other, since they require a working link to the planet core in order to operate."
 				//" Mines constructed on a height level of -8 or lower are twice as effective."
-				" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
+				" Mines, like many structures, require "+Resource::Energy.GetTagStr()+" from generators to operate."
 				;
 			}
 		}

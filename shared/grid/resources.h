@@ -54,7 +54,6 @@ namespace Grid
 	class Resource
 	{
 		String					name;
-		ConstName				cname;
 		float3					color;
 
 	public:
@@ -69,37 +68,31 @@ namespace Grid
 		*/
 		static coverage_t		GetRandomCoverage(const SimplexNoise&n, const float3&direction, float p, coverage_t max, float scale);
 
-		static float			probability[],density[];
-		static coverage_t		maximum[];
+		static FixedArray<Resource,3>	all;
 
-		static Buffer0<Resource>all;
-		static index_t			fuelAt,mineralsAt,uraniumAt;
-
-		static Resource&		GetFuel()		{return all[fuelAt];}
-		static Resource&		GetMinerals()	{return all[mineralsAt];}
-		static Resource&		GetUranium()	{return all[uraniumAt];}
+		static Resource&		GetFuel();
+		static Resource&		GetMinerals();
+		static Resource&		GetUranium();
 
 
-		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
+		static void				Create(Objects::Resource::ID, const float3&color);
 		static Resource&		Require(const String&name);
-		static Resource&		Require(ConstName name);
+		static Resource&		Require(Objects::Resource::ID id);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
-		static coverage_t		Sample(ConstName resourceName, index_t cellID);
+		static coverage_t		Sample(Objects::Resource::ID id, index_t cellID);
 		static void				FlushAll();
 
 		index_t					resourceIndex;
 
 		/**/					Resource()
 		{}
-		void					Name(const String&name, ConstName cname, const float3&color)	{this->name = name; this->cname = cname; this->color = color;}
+		void					Name(Objects::Resource::ID id, const float3&color);
 		
-		void					FillInternal(TwisterRandom&random, float p, coverage_t, float density);
-		void					FillInternal(TwisterRandom&random);
+		void					Clear();
 
 		static void				FillAll(TwisterRandom&random, const String&distribution);
 
 		const String&			GetName() const {return name;}
-		ConstName				GetCName() const {return cname;}
 		const float3&			GetColor() const {return color;}
 	};
 
@@ -108,7 +101,7 @@ namespace Grid
 
 	void					CreateResources();
 	#ifdef CLIENT
-		void				UpdateResourceMap(ConstName resourceName,const Ctr::ArrayData<TCellResourceCoverage>&, ResourceDiscovery&setKnown);
+		void				UpdateResourceMap(Objects::Resource::ID,const Ctr::ArrayData<TCellResourceCoverage>&, ResourceDiscovery&setKnown);
 	#endif
 }
 

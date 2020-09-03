@@ -23,17 +23,14 @@ namespace StatePanel
 
 	float		OnTag(const float3&at, char tagChar, float scaleX, float scaleY)
 	{
-//		float2 at = float2(textout.state.left+0.015,textout.state.top - textout.GetScaledHeight() * (float(textout.state.line)-0.5f));
-
-		index_t i = tagChar - tagOffset;
-//		float2 p = at.xy;
-		if (i < Objects::Resource::NumberOfPossibilities/* UI::gauges.Count()*/)
+		auto type = Objects::Resource::table.GetTypeByTag(tagChar);
+		if (type)
 		{
-			ResourceGauges::gauges[i].RenderIcon(tagIconSize /** scaleX*/);
+			ResourceGauges::gauges[type->serialIndex].RenderIcon(tagIconSize /** scaleX*/);
 		}
 		else
 		{
-			if (i - Objects::Resource::NumberOfPossibilities == 0)
+			if (tagChar == Objects::TimeResourceTag())
 				ResourceGauges::timeResource.RenderIcon(tagIconSize);
 			#ifndef NO_HIBERNATION
 				else
@@ -41,7 +38,6 @@ namespace StatePanel
 			#endif
 		}
 		return tagIconSize * scaleX;
-		//;*2.f/display.GetPixelAspect();
 	}
 
 
@@ -314,7 +310,7 @@ namespace StatePanel
 				cachedLines << " Damage: "+String(m->DescribeDamageLevel());
 				int ammoNeed = m->turret->GetAmmoNeedPerShot(researchState);
 				if (ammoNeed > 0)
-					cachedLines << " "+String((char)(tagOffset+m->turret->ammoType))+"Ammo-Usage: "+String(ammoNeed);
+					cachedLines << " "+m->turret->ammoType.GetTagStr()+"Ammo-Usage: "+String(ammoNeed);
 	
 			}
 			if (m->turret->CanAttack())
@@ -326,12 +322,12 @@ namespace StatePanel
 			if (m->turret->CanDo(Objects::Component::Operation::Construct))
 			{
 				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Operation::Construct, e.owner);
-				cachedLines << " Converts "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
+				cachedLines << " Converts "+Objects::Resource::Minerals.GetTagStr()+opSpeed+" per round";
 			}
 			if (m->turret->CanDo(Objects::Component::Operation::Repair))
 			{
 				String opSpeed = m->DescribeOperationSpeed(Objects::Component::Operation::Repair, e.owner);
-				cachedLines << " Repairs "+String(Objects::ResourceTag(Objects::Resource::Minerals))+opSpeed+" per round";
+				cachedLines << " Repairs "+Objects::Resource::Minerals.GetTagStr()+opSpeed+" per round";
 			}
 	
 			cachedLines << " Tasks:";
@@ -360,16 +356,16 @@ namespace StatePanel
 				PopCurrentColor();
 			}
 			#ifndef ONE_COMPOUND_PER_FACTION
-				const Objects::ResourceVector max = m->GetMaxStorageCapacity();
+				const Objects::Resource::Vector max = m->GetMaxStorageCapacity();
 				bool any = false;
-				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 					if (max.level[i] > 0)
 						any = true;
 				if (any)
 				{
 	
 					cachedLines << "Resources in storage:";
-					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+					for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 						if (max.level[i] > 0)
 						{
 	
@@ -402,15 +398,15 @@ namespace StatePanel
 					const Objects::Tower*v = t;	//rename
 					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRangeExt(e.owner,t->t2 ? t->t2->horizontalAttackRange : Objects::T2::TModifier());
 					cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
-					cachedLines << " "+String((char)(tagOffset+v->turret->ammoType))+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
+					cachedLines << " "+v->turret->ammoType.GetTagStr()+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 				}
 				if (t->turret->CanAttack())
 					cachedLines << " Attacks left: "+String(int(t->CountPossibleAttacks()))+"/"+String(t->turret->attacksPerRound.Describe(e.GetResearchState()));
 				//cachedLines << " Tasks:" << nl;
 	
 				//cachedLines << "Resources in storage:" << nl;
-				//const Objects::ResourceVector max = t->GetMaxStorageCapacity();
-				//for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				//const Objects::Resource::Vector max = t->GetMaxStorageCapacity();
+				//for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 				//	if (max.level[i] > 0)
 				//		cachedLines << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<t->storage.level[i]<<"/"<<max.level[i]<<nl;
 			
@@ -506,19 +502,19 @@ namespace StatePanel
 				}
 				cachedLines << "  Resource consumption:";
 				cachedLines << "    (demand/supply)";
-				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 				{
 					PushCurrentColor();
-					if (ownedByMe && network.total.demand.level[i] > network.total.supply.level[i])
+					if (ownedByMe && network.total.demand[i] > network.total.supply[i])
 						currentColor.rgb &= float3(1, 0.2, 0.2);
-					cachedLines << "   " + String((char)(tagOffset+i))+ " " +String(network.total.demand.level[i])+  "/" +String( network.total.supply.level[i] );
+					cachedLines << "   " + Objects::Resource::ID(i).GetTagStr()+ " " +String(network.total.demand[i])+  "/" +String( network.total.supply[i] );
 					PopCurrentColor();
 				}
 				cachedLines << "  Resource storage:";
-				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 				{
-					if (network.total.storageMax.level[i] > 0)
-						cachedLines << "   " +String( (char)(tagOffset+i) ) + " " + String(network.total.storage.level[i]) + "/" + String( network.total.storageMax.level[i]);
+					if (network.total.storageMax[i] > 0)
+						cachedLines << "   " +Objects::Resource::ID(i).GetTagStr() + " " + String(network.total.storage[i]) + "/" + String( network.total.storageMax[i]);
 				}
 			}
 			else
@@ -625,15 +621,11 @@ namespace StatePanel
 						}
 					}
 				}
-				Objects::ResourceVector	delta,storage,storageMax;
+				Objects::Resource::Vector	delta,storage,storageMax;
 				ws->GetResourceVector(delta,storage,storageMax);
 	
-				bool any = false;
-				for (index_t i = 0; i < delta.NumEntries; i++)
-					if (delta.level[i] < 0)
-						any = true;
 				const bool isEnabled = ws->IsEnabled();
-				if (any)
+				if (delta.AnyIsNegative())
 				{
 					cachedLines << " Consumes";
 					if (!isEnabled)
@@ -643,38 +635,37 @@ namespace StatePanel
 						cachedLines << "    (demand/compound supply)";
 						
 	
-					for (index_t i = 0; i < delta.NumEntries; i++)
-						if (delta.level[i] < 0)
+					for (index_t i = 0; i < delta.GetSize(); i++)
+					{
+						const Objects::Resource::ID r{i};
+						if (delta[i] < 0)
 						{
 							//cachedLines << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<-delta.level[i];
 							if (isEnabled)
-								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(-delta.level[i]);
+								cachedLines << "  "+r.GetTagStr()+" "+String(-delta[i]);
 							else
 							{
 								PushCurrentColor();
-								if (net && delta.level[i] + net->total.balance.level[i] < 0)
+								if (net && delta[i] + net->total.balance[i] < 0)
 									currentColor.rgb &= float3(1,0.6,0.5);
-								cachedLines << "  "+String((char)(tagOffset+i))+" "+String(-delta.level[i]);
+								cachedLines << "  "+r.GetTagStr()+" "+String(-delta[i]);
 									
 								if (net)
 								{
-									cachedLines.Last() += " / " + String( net->total.balance.level[i] );
-									if (net->total.storage.level[i])
-										cachedLines.Last() += " (" + String(net->total.storage.level[i])+ " stored)";
+									cachedLines.Last() += " / " + String( net->total.balance[i] );
+									if (net->total.storage[i])
+										cachedLines.Last() += " (" + String(net->total.storage[i])+ " stored)";
 								}
 								//cachedLines << nl;
 								PopCurrentColor();
-	
 							}
 						}
+					}
 				}
-				any = false;
-				for (index_t i = 0; i < delta.NumEntries; i++)
-					if (delta.level[i] > 0)
-						any = true;
+				const bool anyPositive = delta.AnyIsNonZeroPositive();
 				const Objects::Laboratory*lab = dynamic_cast<const Objects::Laboratory*>(ws);
 
-				if (any || lab)
+				if (anyPositive || lab)
 				{
 					cachedLines << " Produces";
 					bool isEnabled = ws->IsEnabled();
@@ -684,28 +675,21 @@ namespace StatePanel
 					if (lab)
 						cachedLines << "  Research: "+String(lab->GetTotalResearchOutput());
 				}
-				if (any)
+				if (anyPositive)
 				{
 					//cachedLines << " Produces:"<<nl;
-					for (index_t i = 0; i < delta.NumEntries; i++)
-						if (delta.level[i] > 0)
-							cachedLines << "  "+String((char)(tagOffset+i))+" "+String(delta.level[i]);
+					for (index_t i = 0; i < delta.GetSize(); i++)
+						if (delta[i] > 0)
+							cachedLines << "  "+Objects::Resource::ID(i).GetTagStr()+" "+String(delta[i]);
 				}
-				any = false;
-				for (index_t i = 0; i < delta.NumEntries; i++)
-					if (storageMax.level[i] > 0)
-						any = true;
-				if (any)
+				if (storageMax.AnyIsNonZeroPositive())
 				{
 					cachedLines << " Storage:";
-					for (index_t i = 0; i < delta.NumEntries; i++)
-						if (storageMax.level[i] > 0)
-							cachedLines << "  "+String((char)(tagOffset+i))+" "+String(storage.level[i])+"/"+String(storageMax.level[i]);
+					for (index_t i = 0; i < storageMax.GetSize(); i++)
+						if (storageMax[i] > 0)
+							cachedLines << "  "+Objects::Resource::ID(i).GetTagStr()+" "+String(storage[i])+"/"+String(storageMax[i]);
 				}
 			}
-	
-	
-		
 		}
 	
 	
@@ -771,6 +755,7 @@ namespace StatePanel
 	void		Create()
 	{
 		GlobalEvents::uiScaleChanged << [](){doRewrap = true;};
+		GlobalEvents::resourceTableUpdated << SignalChange;
 	}
 
 }

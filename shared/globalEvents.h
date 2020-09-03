@@ -8,8 +8,8 @@ namespace GlobalEvents
 						objectFlush,	//erases objects only. 
 						applicationTerminate,
 						phaseChange,	//indicates that the server phase has just changed
-						invalidateObjectCache;	//indicates that something changed in the status of units such that the client must invalidate the render cache of any selected units
-
+						invalidateObjectCache,	//indicates that something changed in the status of units such that the client must invalidate the render cache of any selected units
+						resourceTableUpdated;	//server has loaded/sent a new resource table (Objects::Resource::table)
 
 
 	inline void			FlushObjects()	{objectFlush();}
