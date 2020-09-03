@@ -99,7 +99,12 @@ namespace BugReporter
 
 			X509Certificate cert1 = request.ServicePoint.Certificate;
 			X509Certificate2 serverCertificate = new X509Certificate2(cert1);
-			if (serverCertificate.Subject != "CN=" + ServerUri.Host)
+
+			string host2 = ServerUri.Host;
+			if (host2.StartsWith("www."))
+				host2 = host2.Substring(4);
+
+			if (serverCertificate.Subject != "CN=" + ServerUri.Host && serverCertificate.Subject != "CN=" + host2)
 				throw new Exception("Server certificate mismatch");
 			if (validateCertificate)
 				await ValidateSslCertificateAsync(serverCertificate);
