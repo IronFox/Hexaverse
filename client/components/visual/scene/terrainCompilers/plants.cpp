@@ -146,9 +146,9 @@ namespace VisualTerrain
 			vertices << Index(v0);
 			vertices << Index(v1);
 			vertices << Index(v2);
-			indices << offset + 0;
-			indices << offset + 1;
-			indices << offset + 2;
+			indices << UINT32(offset + 0);
+			indices << UINT32(offset + 1);
+			indices << UINT32(offset + 2);
 		}
 
 		void			TriangleInv(index_t v0, index_t v1, index_t v2)
@@ -163,12 +163,12 @@ namespace VisualTerrain
 			vertices << Index(v1);
 			vertices << Index(v2);
 			vertices << Index(v3);
-			indices << offset + 0;
-			indices << offset + 1;
-			indices << offset + 2;
-			indices << offset + 0;
-			indices << offset + 2;
-			indices << offset + 3;
+			indices << UINT32(offset + 0);
+			indices << UINT32(offset + 1);
+			indices << UINT32(offset + 2);
+			indices << UINT32(offset + 0);
+			indices << UINT32(offset + 2);
+			indices << UINT32(offset + 3);
 		}
 
 		void			QuadInv(index_t v0, index_t v1, index_t v2, index_t v3)
