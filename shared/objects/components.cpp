@@ -1484,10 +1484,10 @@ namespace Objects
 			{
 				if (!compound)
 				{
-					label <<"Cost: "+String(Resource::table[Resource::Minerals].tag)+productionCosts.Describe(Objects::Component::ResearchStateOf(owner));
 					const auto&st = Objects::Component::ResearchStateOf(owner);
 					if (!isUnlocked.GetValue(st))
 						label <<"Requires more research to unlock";
+					label <<"Cost: "+Resource::table[Resource::Minerals].GetTagStr()+productionCosts.Describe(st);
 					label <<"Initiative: "+String(initiative);
 				}
 			}
