@@ -101,6 +101,9 @@ Table-Type: ResVec
 	int			fuel;
 	int			uranium;
 	int 		energy;
+	int			crystallineCompounds;
+	int			organicCompounds;
+	int			compositeMaterials;
 }
 	
 	
