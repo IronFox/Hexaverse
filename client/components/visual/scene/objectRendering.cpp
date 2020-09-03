@@ -878,17 +878,19 @@ namespace Objects
 
 	static void _RenderSimpleLocated(SubOrbital::Plane&p, const M::TMatrix4<>&system)
 	{
-		const auto&shape = StructureHull::Of(p).constShape;
+		const auto t2 = p.t2 != nullptr;
+		const auto&shape = StructureHull::Of(p).shape[t2];
 		display.Render(shape, true);
-		Renderer::RenderComponent(system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY);
+		Renderer::RenderComponent(system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY, t2);
 	}
 
 	void	Renderer::RenderSimple(const SubOrbital::Plane&p)
 	{
 		_Locate(p);
-		const auto&shape = StructureHull::Of(p).constShape;
+		const auto t2 = p.t2 != nullptr;
+		const auto&shape = StructureHull::Of(p).shape[t2];
 		display.Render(shape, true);
-		Renderer::RenderComponent(p.system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY);
+		Renderer::RenderComponent(p.system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY, t2);
 	}
 
 
@@ -2517,7 +2519,8 @@ namespace Objects
 		{
 			_RenderShadow(cordon);	//not sure if a cordon is appropriate here, but whatever
 		}
-		const auto&shape = StructureHull::Of(s).constShape;
+		const auto t2 = s.t2 != nullptr;
+		const auto&shape = StructureHull::Of(s).shape[t2];
 		_RenderShadow(shape);
 		_RenderShadow(s.system,0.f,*s.turret,s.turretAngleX,s.turretAngleY);
 	}

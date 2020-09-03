@@ -74,7 +74,7 @@ namespace Objects
 			/*virtual override*/ void Plane::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner)
 			{
 				Super::DescribeType(outResult,descFlags,owner);
-				String speed = "Speed: "+this->DescribeMovementStepsPerRound(owner) + " (aerial)";
+				String speed = "Speed: "+this->DescribeMovementStepsPerRoundExt(owner,t2 ? t2->speed : Objects::T2::TModifier()) + " (aerial)";
 
 				outResult << speed;
 				if (turret->CanDo(Component::Operation::Construct))
@@ -100,7 +100,11 @@ namespace Objects
 
 		#endif
 
-
+		/*virtual override*/ float				Plane::GetBaseMovementInitiative() const 
+		{
+			return turret->initiative.GetValue(GetResearchState());
+		}
+		
 
 
 		/*static*/ Plane::Detail::Result		Plane::Detail::WalkStack(const Grid::CellStack&stack, bool stopOnStructure, int&outHeight)
@@ -390,16 +394,33 @@ namespace Objects
 			Hangar::OnDestroy(t);
 		}
 
-		/*virtual override*/ String	Plane::DescribeFlatAttackRange(const OwnerParameter&owner) const
+		/*virtual override*/ String	Plane::DescribeFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 		{
-			return turret->horizontalAttackRange.Describe(GetResearchState(owner));
+			const auto& state = GetResearchState(owner);
+			String rs = turret->horizontalAttackRange.Describe(state);
+			return rs + m.Describe();
 		}
 
 	
-		/*virtual override*/ float	Plane::GetFlatAttackRange(const OwnerParameter&owner) const
+		/*virtual override*/ float	Plane::GetFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 		{
-			return EMPModify(turret->horizontalAttackRange.GetValue(GetResearchState(owner)),1);
+			return EMPModify(m.Apply(turret->horizontalAttackRange.GetValue(GetResearchState(owner))),1);
 		}
+
+		/*virtual override*/ int	Plane::GetMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const
+		{
+			return m.Apply(turret->healthMultiplier.GetValue(GetResearchState(owner)));
+		}
+
+		/*virtual override*/ String		Plane::DescribeMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const
+		{
+			const auto& state = GetResearchState(owner);
+			String multiplier = turret->healthMultiplier.Describe(state);
+			auto h0 = turret->healthMultiplier.GetValue(state);
+			auto h1 = m.Apply(h0);
+			return String(h1)+"[="+ multiplier + m.Describe()+"]";
+		}
+
 
 
 		#ifndef CLIENT

@@ -1050,7 +1050,6 @@ namespace Objects
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
-			component.initiative = 80;
 			component.independentAttackAndMotion = false;
 			component.requiresStationaryVehicle = true;
 			component.attacksMovingHostilesDuringMotionPhase = true;
@@ -1416,7 +1415,6 @@ namespace Objects
 
 		
 				component.dealsEMPDamage = false;
-				component.initiative = 100;
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
 				component.independentAttackAndMotion = true;
@@ -1456,7 +1454,6 @@ namespace Objects
 
 		
 				component.dealsEMPDamage = false;
-				component.initiative = 90;
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
 				component.independentAttackAndMotion = true;
@@ -1471,7 +1468,6 @@ namespace Objects
 				component.constName = ConstName::Turret_SensorDrone;
 
 				component.mountType = Turret::MountType::Plane;
-				component.initiative = 110;
 			}
 
 
@@ -1484,7 +1480,6 @@ namespace Objects
 				component.constName = ConstName::Turret_CargoPlane;
 
 				component.mountType = Turret::MountType::Plane;
-				component.initiative = 60;
 			}
 
 

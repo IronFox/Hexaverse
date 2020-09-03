@@ -270,6 +270,7 @@ TurretConfig =
 		AttacksPerRound = 1,
 		DamageLevel = 10,
 		IsUnlocked = true,
+		Initiative = 80,
 	},
 	Bomb =
 	{
@@ -348,6 +349,7 @@ TurretConfig =
 		DamageLevel = 5,
 		AttacksPerRound = 2,
 		IsUnlocked = true,
+		Initiative = 100,
 	},
 	Bomber =
 	{
@@ -363,6 +365,7 @@ TurretConfig =
 		DamageLevel = 7,
 		AttacksPerRound = 1,
 		IsUnlocked = true,
+		Initiative = 90,
 	},
 	CargoPlane = 
 	{
@@ -373,6 +376,7 @@ TurretConfig =
 		GroundScanningRange = 2,
 		GroundScannerPenetration = 0,
 		IsUnlocked = true,
+		Initiative = 60,
 	},
 	SensorDrone = 
 	{
@@ -383,6 +387,7 @@ TurretConfig =
 		GroundScanningRange = 11,
 		GroundScannerPenetration = 2,
 		IsUnlocked = true,
+		Initiative = 110,
 	},}
 
 

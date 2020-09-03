@@ -66,12 +66,12 @@ namespace Objects
 			float					GetMaxAirSpeed(const OwnerParameter&owner) const {return 100.f / turret->weight.GetValue(GetResearchState(owner));};
 
 			//TurretBase overrides:
-			virtual float			GetFlatAttackRange(const OwnerParameter&) const override;
-			virtual String			DescribeFlatAttackRange(const OwnerParameter&) const override;
+			virtual float			GetFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
+			virtual String			DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
 
 			//WorldEntity overrides:
-			virtual int				GetMaxHealth(const OwnerParameter&owner) const override {return turret->healthMultiplier.GetValue(GetResearchState(owner));}
-			virtual String			DescribeMaxHealth(const OwnerParameter&owner) const override {return turret->healthMultiplier.Describe(GetResearchState(owner));}
+			virtual int				GetMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const override;
+			virtual String			DescribeMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const override;
 			virtual int				GetConstructionCost(const Objects::PFaction&owner) const override;
 			virtual bool			IsGroundBoundVehicle() const {return !IsAboveTerrain(location);}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
@@ -92,12 +92,12 @@ namespace Objects
 			
 
 			//MobileEntity overrides:
-			virtual float			GetBaseMovementInitiative() const override {return turret->initiative;}	//reuse turret initiative for motion
+			virtual float			GetBaseMovementInitiative() const override;	//reuse turret initiative for motion
 			virtual bool			IsAffectedByGravity() const override {return !IsAboveTerrain(location);}
 			virtual bool			IsAffectedByGravity(const Grid::LCellIdI&loc) const override {return !IsAboveTerrain(loc);}
-			virtual int				GetMovementStepsPerRound(const OwnerParameter&owner) const override
+			virtual int				GetMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m) const override
 			{
-				return (int)ceil(EMPModify(GetMaxAirSpeed(owner),1.f));
+				return (int)ceil(EMPModify(m.Apply(GetMaxAirSpeed(owner)),1.f));
 			}
 			#ifndef ONE_COMPOUND_PER_FACTION
 				virtual ResourceVector		GetMaxStorageCapacity()	const override
