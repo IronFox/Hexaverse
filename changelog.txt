@@ -1,4 +1,4 @@
-v0.9.11
+v0.9.11 [Sep 3 2020]
 	+ Implemented Tier 2 unit improvement. Use mechanic to upgrade units
 	+ Added button sounds
 	+ Added resource list tooltips
