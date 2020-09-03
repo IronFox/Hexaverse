@@ -2,8 +2,8 @@
 #include "tower.h"
 #include "../structureCompound.h"
 #include "../gridAndChoices.h"
-#include "../faction.h"
 #include "../subOrbital.h"
+#include "../faction.h"
 
 namespace Objects
 {

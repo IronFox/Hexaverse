@@ -3,8 +3,8 @@
 #include <objects/gridAndChoices.h>
 #include <objects/mobileEntity.h>
 #include <objects/faction.h>
-#include "../state.h"
 #include <objects/subOrbital.h>
+#include "../state.h"
 
 namespace Evolver
 {

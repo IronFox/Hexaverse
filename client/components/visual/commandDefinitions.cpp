@@ -1516,9 +1516,9 @@ namespace Objects
 			Research::globalState.onScriptChange << ReconfigureResearchButtons << RebuildTerraformerButtons;
 			Research::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
+			DefinePlaneFactory(Objects::PlaneFactory::commands);
 			DefineMine(Objects::Mine::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
-			DefinePlaneFactory(Objects::PlaneFactory::commands);
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);

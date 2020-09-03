@@ -401,7 +401,6 @@ namespace Objects
 
 		String						GetNameAndOwner() const;
 
-		virtual M::TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return M::FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		virtual int					GetMaxHealth(const OwnerParameter&) const;
 		virtual String				DescribeMaxHealth(const OwnerParameter&) const;
 		int							GetMaxHealth() const	{return GetMaxHealth(owner);}
@@ -422,6 +421,7 @@ namespace Objects
 		Retrieves the current uncontrolled explosion radius, assuming the local entity suffered uncontrolled destruction now
 		*/
 		virtual float				GetUncontrolledExplosionRadius() const {return 0;}
+		virtual M::TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return M::FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/

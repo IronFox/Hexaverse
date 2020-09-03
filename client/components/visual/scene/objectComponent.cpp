@@ -6,8 +6,8 @@
 #include <objects/structure/planeFactory.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/laboratory.h>
-#include <objects/subOrbital.h>
 #include <objects/systems.h>
+#include <objects/subOrbital.h>
 #include "../display.h"
 
 #include <objects/prototypes.h>
