@@ -7,6 +7,7 @@ v0.9.11
 	+ Added organic/crystal/composite storage structures
 	+ Added resource list tooltips
 	+ AI: Added missing repair command
+	+ AI: Added T2 upgrade command
 	> Initiative is now a user-configurable unit property
 
 v0.9.10	[Dec 31 2019]

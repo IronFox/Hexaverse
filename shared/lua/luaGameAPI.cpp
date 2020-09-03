@@ -1763,6 +1763,31 @@ namespace Lua
 					AddSimpleJob(t,id, "SelfDetonate", ConstName::Job_SelfDetonate, ConstName::DetonationSize_Regular);
 					AddSimpleJob(t,id, "Obliterate", ConstName::Job_SelfDetonate, ConstName::DetonationSize_Doomsday);
 				}
+				
+				if (m->turret->CanDo(Objects::Component::Operation::Upgrade))
+				{
+					t.SetFunction("Upgrade",[this,id](const Lua::Table&luaLoc)
+					{
+						Grid::LCellIdI loc = Detail::ToLGridCell(luaLoc,"Upgrade(): Loc parameter");
+						if (onChoiceIntersection)
+							onChoiceIntersection(id,TUniqueID::Empty(), loc, TUniqueID::Empty(),Objects::CursorMode::UpgradeMode);
+						else
+							throw Lua::Exception(CLOCATION,"Upgrade(): onChoiceIntersection not set");
+					});
+
+					t.SetFunction("GetUpgradeCost",[this,id](const Lua::Table&luaUnit)->Lua::Table
+					{
+						auto e = LuaUnitToEntity(luaUnit, "GetUpgradeCost(): Unit parameter #1");	//just to check. no variance for now
+
+
+						Objects::Resource::Vector vec;
+						vec.Set(Objects::Research::globalState.t2.upgradeCostType,Objects::Research::globalState.t2.upgradeCostQuantity);
+						auto rs = program->CreateTable();
+						Detail::UpdateResourceTable(rs,vec);
+						return rs;
+					});
+					
+				}
 
 				if (m->turret->CanDo(Objects::Component::Operation::Repair))
 				{
