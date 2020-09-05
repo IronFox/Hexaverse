@@ -138,10 +138,10 @@ namespace Objects
 		/*virtual override*/ void			Plantation::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags, owner);
+			Super::DescribeType(label,  descFlags | DescExcludeExtended, owner);
 			label.MarkBriefEnd();
-			label << "Enabled plantations plant and harvest any growing natural resources on surrounding surfaces."
-			" Plantations should be build near grass, earth, sand, lava, granite, or existing trees/crystals."
+			label << "Enabled plantations grow and harvest any trees and/or crystals from surrounding compatible surfaces."
+			" Plantations should be build near grass, earth, or sand to grow trees, and lava or granite for crystals."
 			" Plantations, like many structures, require "+Resource::Energy.GetTagStr()+" from generators to operate."
 			;
 		}
