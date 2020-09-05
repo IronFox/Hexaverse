@@ -316,7 +316,7 @@ TurretConfig =
 		HealthMultiplier = 1,
 		ScanningRange = 3,
 		Op_Repair = 20,
-		Op_Upgrade = 100,
+		Op_Upgrade = 1,
 		IsUnlocked = true,
 		Initiative = 100,
 	},

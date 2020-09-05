@@ -1610,12 +1610,12 @@ namespace Objects
 							//PWorldEntity target = GetEntity(c);
 							//if (target && target->health < target->GetMaxHealth() && target != v && v->CanRepair())
 							//for consistency reasons with journal-saves no check here. just put it in there, and have the job figure out if it's good to execute
-							{
+							if (v->GetLastPointOfOrigin() == v->location)
 								T2::Upgrade(*v,GetEntity(c));
-
-
-								//PVehicleJob job(new VehicleJob::UpgradeJob(*v,c));
-								//v->RegisterNewJob("", job,&c);
+							else
+							{
+								PVehicleJob job(new VehicleJob::UpgradeJob(*v,c));
+								v->RegisterNewJob("", job,&c);
 							}
 						}
 						break;
