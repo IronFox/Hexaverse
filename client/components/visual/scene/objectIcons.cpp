@@ -177,9 +177,7 @@ namespace Objects
 			resourceFamily.SetSize(Objects::Resource::table.GetSize());
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			{
-				const auto id = Objects::Resource::ID(i);
-				const auto&type = id.ToType();
-				const String&name = type.icon.IsEmpty() ? type.name : type.icon;
+				const String&name = Objects::Resource::ID(i).GetIcon();
 				resourceFamily[i].Setup(PathString(::Icons::NameToFileName(name))+".png",0.75f,float3(0.5f,1.f,10));
 			}
 		}

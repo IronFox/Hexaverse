@@ -86,6 +86,7 @@ namespace Objects
 			String			GetTagStr(const Table&) const;
 			String			GetTagStr() const;
 			const String&	ToString() const;
+			const String&	GetIcon() const;
 
 			ID				operator+(int delta) const {return ID(serialIndex + delta);}
 

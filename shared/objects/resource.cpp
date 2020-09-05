@@ -93,6 +93,13 @@ namespace Objects
 			return table[serialIndex].name;
 		}
 
+		const String&	ID::GetIcon() const
+		{
+			const auto&t = table[serialIndex];
+			if (t.icon.IsNotEmpty())
+				return t.icon;
+			return t.name;
+		}
 
 		void		Type::OnDeserialize(index_t serialIndex)
 		{

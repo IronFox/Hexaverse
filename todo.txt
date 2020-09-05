@@ -1,3 +1,9 @@
+missing-resource-floaters no longer working
+t2 upgrade works if vehicle targets location next to target but hasn't arrived yet
+plantation button icons missing
+
+
+
 plants:
 	recompile on clip
 	recompile on reconnect to server

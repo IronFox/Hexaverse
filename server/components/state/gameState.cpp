@@ -512,7 +512,7 @@ namespace Game
 				package.cells[i].cellIndex = changed[i];
 			foreach (Grid::Resource::all,res)
 			{
-				package.resourceIndex = res->resourceIndex;
+				package.resourceIndex = UINT32(res->resourceIndex);
 				for (index_t i = 0; i < changed.Count(); i++)
 				{
 					BYTE sourceCov = res->coverage[changed[i]];
