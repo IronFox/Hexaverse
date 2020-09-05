@@ -176,7 +176,7 @@ namespace Objects
 			animatedFloaters.Clear();
 			resourceFamily.SetSize(Objects::Resource::table.GetSize());
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
-				resourceFamily[i].Setup(PathString(Objects::Resource::ID(i).ToString())+".png",0.75f,float3(0.5f,1.f,10));
+				resourceFamily[i].Setup(PathString(Objects::Resource::ID(i).GetIcon())+".png",0.75f,float3(0.5f,1.f,10));
 
 		}
 
