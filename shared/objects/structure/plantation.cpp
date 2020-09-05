@@ -87,8 +87,8 @@ namespace Objects
 				}
 			}
 		}
-		treePresence = treesHarvested;
-		crystalPresence = crystalsHarvested;
+		treePresence = (UINT32)treesHarvested;
+		crystalPresence = (UINT32)crystalsHarvested;
 		Super::Tick(v);
 		v.Add(Resource::CrystallineCompounds, crystalPresence * HarvestToCompoundFactor);
 		v.Add(Resource::OrganicCompounds, treePresence * HarvestToCompoundFactor);
