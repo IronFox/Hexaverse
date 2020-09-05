@@ -217,8 +217,20 @@ namespace Objects
 			else
 				UpdateAttributeTable();
 		}
+
+		resourceTableEntry = globalState.onScriptChange.Register([this]()
+		{
+			UpdateAttributeTable();
+		});
+
 		#endif
 	}
+
+	/*virtual*/			Research::FactionState::~FactionState()
+	{
+		globalState.onScriptChange.Unregister(resourceTableEntry);
+	}
+
 	
 	bool					Research::TopicGroup::Insert(const Research::PTopic&t)
 	{
