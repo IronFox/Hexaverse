@@ -6,7 +6,7 @@
 #include "../../cameraControl.h"
 #include "../../objectNetworkHelper.h"
 #include <globalEvents.h>
-
+#include "../hud/iconNameToFileName.h"
 
 
 namespace Objects
@@ -176,8 +176,10 @@ namespace Objects
 			animatedFloaters.Clear();
 			resourceFamily.SetSize(Objects::Resource::table.GetSize());
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
-				resourceFamily[i].Setup(PathString(Objects::Resource::ID(i).GetIcon())+".png",0.75f,float3(0.5f,1.f,10));
-
+			{
+				const String&name = Objects::Resource::ID(i).GetIcon();
+				resourceFamily[i].Setup(PathString(::Icons::NameToFileName(name))+".png",0.75f,float3(0.5f,1.f,10));
+			}
 		}
 
 		void Create()
