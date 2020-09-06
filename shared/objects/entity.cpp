@@ -363,9 +363,9 @@ namespace Objects
 
 	/*virtual*/ String		WorldEntity::DescribeMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
-		String rs = String(GetMaxHealth())+GetTable()->maxHealth.Describe(GetResearchState(owner));
-		rs += t2.Describe();
-		return rs;
+		if (!t2.HasEffect())
+			return GetTable()->maxHealth.Describe(GetResearchState(owner));
+		return String(GetMaxHealth())+" [="+GetTable()->maxHealth.Describe(GetResearchState(owner)) + t2.Describe() +"]";
 	}
 
 
@@ -382,9 +382,11 @@ namespace Objects
 
 	/*virtual*/ String		WorldEntity::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&t2 ) const
 	{
-		String rs = String(GetScanningRange())+ GetTable()->maxScanningRange.Describe(GetResearchState(owner));
-		rs += t2.Describe();
-		return rs;
+		const auto& state = GetResearchState(owner);
+		const String desc = GetTable()->maxScanningRange.Describe(GetResearchState(owner));
+		if (!t2.HasEffect())
+			return desc;
+		return String(GetScanningRangeExt(owner,t2))+ " [="+desc +t2.Describe() + "]";
 	}
 
 	String					WorldEntity::DescribeScanningRange() const
@@ -457,7 +459,7 @@ namespace Objects
 			}
 		}
 
-		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner)
+		void WorldEntity::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 		{
 			if (descFlags & DescIncludeName)
 				outResult << GetTypeName();
@@ -506,9 +508,19 @@ namespace Objects
 			{
 				if (b->turret->CanAttack())
 				{
-					outResult << "Hrz. Attack range: "+b-> DescribeFlatAttackRangeExt(owner,t2 ? t2->horizontalAttackRange : T2::TModifier())+" ("+b->turret->trajectoryType.ToString()+")";
+					outResult << "Hrz. Attack range: "+b->DescribeFlatAttackRangeExt(owner,t2 ? t2->horizontalAttackRange : T2::TModifier())+" ("+b->turret->trajectoryType.ToString()+")";
+					outResult << "Explosion radius: "+b->DescribeAttackExplosionRadiusExt(owner,t2 ? t2->explosionRadius : T2::TModifier());
+					if (b->turret == &Component::bomb)
+						outResult.GetLastLine() +=" ("+Resource::Uranium.GetTagStr()+": *2)";
+
+					if (b->turret->dealsEMPDamage)
+						outResult <<"EMP damage: "+b->DescribeDamageLevel(owner,t2);
+					else
+						outResult <<"Damage: "+b->DescribeDamageLevel(owner,t2);
+					if (b->turret == &Component::bomb)
+						outResult.GetLastLine() +=" ("+Resource::Uranium.GetTagStr()+": *5)";
 				}
-				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
+				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner, t2);
 			}
 		}
 	#endif

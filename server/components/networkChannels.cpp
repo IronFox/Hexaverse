@@ -43,7 +43,7 @@ namespace ResearchSerialization
 	{
 		Protocol::T2Globals globals;
 		globals.upgradeCostQuantity = Objects::Research::globalState.t2.upgradeCostQuantity;
-		globals.upgradeCostTypeResourceIndex = Objects::Research::globalState.t2.upgradeCostType.serialIndex;
+		globals.upgradeCostTypeResourceIndex = UINT32(Objects::Research::globalState.t2.upgradeCostType.serialIndex);
 		Channels::T2Globals.SendTo(peer,globals,(UINT32)::Network::UserLevel::CommonFaction);
 	}
 

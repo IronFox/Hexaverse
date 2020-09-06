@@ -184,7 +184,7 @@ namespace Objects
 		void TAnimatedFloater::Insert()
 		{
 			float h = locationHeightDelta;
-			family->IncludeExt(entity,created,0,1,
+			family->IncludeExt(entity,0,1,created,
 				SizeFunction,
 				[h](float t){return h + LocationFunction(t);},
 				float3(1,0.3,0.3));

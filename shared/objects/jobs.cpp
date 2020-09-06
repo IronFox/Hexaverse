@@ -859,7 +859,9 @@ namespace Objects
 
 
 		UpgradeJob::UpgradeJob(const MobileEntity&v, const Grid::LCellIdI&loc) : BaseJob(Objects::Research::globalState.t2.upgradeCostQuantity,v,loc,GetOperationAffinity(),Autocomplete::Always,false)
-		{}
+		{
+			continuationsToJobCompletion = 1;
+		}
 
 		/*virtual override*/ BaseJob::begin_t			UpgradeJob::BeginHere(MobileEntity&v, const Grid::LCellIdI&focus, bool hasToMoveFirst)
 		{
@@ -869,7 +871,7 @@ namespace Objects
 			if (e->IsUpgrading())
 				return BaseJob::CannotStartAbort;
 			upgradingTarget = e->id;
-			e->SetUpgrading(true,v.entityTime);
+			//e->SetUpgrading(true,v.entityTime);
 			return Super::BeginHere(v,focus,hasToMoveFirst);
 		}
 
@@ -887,8 +889,8 @@ namespace Objects
 			{
 				outError = v.GetNiceName()+" cannot upgrade";
 				PWorldEntity original = Objects::GetEntity(upgradingTarget);
-				if (original)
-					original->SetUpgrading(false,v.entityTime);
+				//if (original)
+				//	original->SetUpgrading(false,v.entityTime);
 
 				return false;
 			}
@@ -898,16 +900,16 @@ namespace Objects
 			{
 				outError = "Nothing in focus cell "+ToString(focus);
 				PWorldEntity original = Objects::GetEntity(upgradingTarget);
-				if (original)
-					original->SetUpgrading(false,v.entityTime);
+				//if (original)
+				//	original->SetUpgrading(false,v.entityTime);
 
 				return false;
 			}
 			if (e->id != upgradingTarget)
 			{
 				PWorldEntity original = Objects::GetEntity(upgradingTarget);
-				if (original)
-					original->SetUpgrading(false,v.entityTime);
+				//if (original)
+				//	original->SetUpgrading(false,v.entityTime);
 				outError = "Target no longer available";
 				return false;
 			}
@@ -915,7 +917,7 @@ namespace Objects
 			{
 				outError = "'"+e->GetNiceName()+"' is not ready for upgrade";
 				PWorldEntity original = Objects::GetEntity(upgradingTarget);
-				e->SetUpgrading(false,v.entityTime);
+				//e->SetUpgrading(false,v.entityTime);
 
 				return false;
 			}
@@ -959,10 +961,31 @@ namespace Objects
 				return JobDone;
 			}
 
+			const auto storage = GetStorage(v,Research::globalState.t2.upgradeCostType);
+
+
+			if (Research::globalState.t2.upgradeCostQuantity > storage)
+			{
+				LogEvent(EventClass::Preset::important,&v,"Upgrade: Insufficient "+String(Research::globalState.t2.upgradeCostType.ToString())+" in storage to upgrade '"+target->GetNiceName()+"'. Needs "+String(Research::globalState.t2.upgradeCostQuantity - storage)+" more");
+				ApplicationInterface::SignalOperationLacksResources(v,Research::globalState.t2.upgradeCostType,v.entityTime);
+				return JobDelayed;
+			}
+
+			float relativeHealth = float(v.health) / v.GetMaxHealth();
+
 			if (!target->t2)
 				target->t2.reset(new Objects::T2::Properties());
 			else
 				target->t2->LevelUp();
+
+			Objects::Research::Recompute(*target->t2);
+			int newHealth = ceil(relativeHealth * target->GetMaxHealth());
+			if (newHealth != target->health)
+			{
+				target->health = newHealth;
+				target->SignalChangeByExternalCause(WorldEntity::HealthChanged,v.entityTime);
+			}
+			ChangeStorage(v,v.entityTime, Research::globalState.t2.upgradeCostType,-Research::globalState.t2.upgradeCostQuantity);
 
 			target->SignalChangeByExternalCause(WorldEntity::T2Changed,v.entityTime);
 

@@ -449,8 +449,6 @@ namespace Objects
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackAndMotionAreIndependent() const {return turret->independentAttackAndMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
-		float					GetAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&) const override;
-		String					DescribeAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&) const override;
 
 		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanUpgrade() const {return turret->CanUpgrade();}
