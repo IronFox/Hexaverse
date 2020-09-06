@@ -183,7 +183,7 @@ namespace StatePanel
 
 		const bool ownedByMe = e.owner == Objects::Faction::mine;	//ghosts set isOwnedByMe true if they are actually owned by the alliance, so it cannot be used here
 		if (e.t2)
-			cachedLines << " T2 Experience: "+String(e.t2->experience - e.t2->currentLevelAtXp)+"/"+String(e.t2->nextLevelAtXP);
+			cachedLines << " T2 Experience: "+String(e.t2->experience - e.t2->currentLevelAtXp)+"/"+String(e.t2->nextLevelAtXP - e.t2->currentLevelAtXp);
 		cachedLines << " Owner: "+e.owner->GetName()+(ownedByMe ? " (me)":"");
 		if (e.isOwnedByMe)
 		{
