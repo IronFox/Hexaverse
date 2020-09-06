@@ -972,7 +972,7 @@ namespace Objects
 				return JobDelayed;
 			}
 
-			float relativeHealth = float(v.health) / v.GetMaxHealth();
+			float relativeHealth = float(target->health) / target->GetMaxHealth();
 
 			if (!target->t2)
 				target->t2.reset(new Objects::T2::Properties());
