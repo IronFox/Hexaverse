@@ -67,6 +67,18 @@ namespace Objects
 
 
 		
+		/*virtual override*/String			Plane::DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m)	const
+		{
+			const auto&state = GetResearchState(owner);
+			const auto sv = GetMaxAirSpeed(owner);
+			String speed = String(ceil(sv));
+			if (m.HasEffect())
+				return String(ceil(m.Apply(sv)))+" [="+ speed+m.Describe()+"]";
+			return speed;
+		}
+
+
+		
 		#ifdef HAS_WINDOW
 
 

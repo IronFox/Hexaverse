@@ -99,6 +99,8 @@ namespace Objects
 			{
 				return (int)ceil(EMPModify(m.Apply(GetMaxAirSpeed(owner)),1.f));
 			}
+			virtual String			DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m)	const override;
+
 			#ifndef ONE_COMPOUND_PER_FACTION
 				virtual ResourceVector		GetMaxStorageCapacity()	const override
 				{
