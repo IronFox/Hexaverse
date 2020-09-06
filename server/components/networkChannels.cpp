@@ -560,7 +560,7 @@ namespace Receiver
 				package.cells[i].cellIndex = (UINT32)i;
 			foreach (Grid::Resource::all,res)
 			{
-				package.resourceIndex = res->resourceIndex;
+				package.resourceIndex = UINT32(res->resourceIndex);
 				for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
 				{
 					BYTE sourceCov = res->coverage[i];
@@ -1008,7 +1008,7 @@ namespace Receiver
 					package.cells[i].cellIndex = final[i];
 				foreach (Grid::Resource::all,res)
 				{
-					package.resourceIndex = res->resourceIndex;
+					package.resourceIndex = UINT32(res->resourceIndex);
 					for (index_t i = 0; i < final.Count(); i++)
 					{
 						BYTE sourceCov = res->coverage[final[i]];
