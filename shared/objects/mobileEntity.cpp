@@ -79,22 +79,6 @@ namespace Objects
 	}
 
 
-	/*virtual overrride*/ float					MobileEntity::GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&t2) const
-	{
-		if (!turret->CanAttack())
-			return 0.f;
-		return t2.Apply(turret->explosionRadius.GetValue(GetResearchState(owner)));
-	}
-
-	/*virtual overrride*/ String				MobileEntity::DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&m) const
-	{
-		if (!turret->CanAttack())
-			return "";
-		return turret->explosionRadius.Describe(GetResearchState(owner)) + m.Describe();
-	}
-
-
-
 	/*virtual override*/ void			MobileEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
 	{
 		if (turret->detectsResources)

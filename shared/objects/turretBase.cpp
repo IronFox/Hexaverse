@@ -153,6 +153,24 @@ namespace Objects
 		return GetAttackExplosionRadiusExt(e.owner, e.t2 ? e.t2->explosionRadius : T2::TModifier());
 	}
 
+	/*virtual*/ float		TurretBase::GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&t2) const
+	{
+		if (!turret->CanAttack())
+			return 0.f;
+		return t2.Apply(turret->explosionRadius.GetValue(ToEntity().GetResearchState(owner)));
+	}
+
+	/*virtual*/ String		TurretBase::DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&m) const
+	{
+		if (!turret->CanAttack())
+			return "";
+		const auto&state = ToEntity().GetResearchState(owner);
+		if (m.HasEffect())
+			return String(m.Apply(turret->explosionRadius.GetValue(state)))+" [="+turret->explosionRadius.Describe(state) + m.Describe()+"]";
+		return turret->explosionRadius.Describe(state) + m.Describe();
+	}
+
+
 	String					TurretBase::DescribeAttackExplosionRadius() const
 	{
 		const auto&e = ToEntity();
@@ -193,9 +211,9 @@ namespace Objects
 		
 		const auto&state = WorldEntity::GetResearchState(owner); 
 
-		String rs = String(GetDamageLevel(owner,p)) + turret->damageLevel.Describe(state);
+		String rs = turret->damageLevel.Describe(state);
 		if (p)
-			rs += p->damageLevel.Describe();
+			rs = DescNumeric(GetDamageLevel(owner,p))+" [="+rs+   p->damageLevel.Describe()+"]";
 		return rs;
 	}
 

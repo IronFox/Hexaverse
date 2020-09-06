@@ -384,10 +384,10 @@ namespace Objects
 		#endif
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags,owner);
+				Super::DescribeType(label,descFlags,owner,t2);
 				if ((descFlags & DescExcludeExtended) == 0)
 				{
 					label.MarkBriefEnd();
@@ -512,7 +512,7 @@ namespace Objects
 			virtual void			OnSleepChange(float&t) override;
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 			#endif
 
 		#endif
@@ -739,7 +739,7 @@ namespace Objects
 			virtual void			OnInsert( float&atTime, bool freshConstruction )	{Super::OnInsert(atTime,freshConstruction); if (freshConstruction) SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 			#endif
 		#endif
 
@@ -830,7 +830,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 
 	};
@@ -861,7 +861,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override;
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 
 		//WorldEntity overrides:

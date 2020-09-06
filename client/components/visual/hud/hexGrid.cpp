@@ -337,7 +337,7 @@ namespace HexGrid
 //					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
 			outResult.MarkBriefEnd(true);
-			proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/,instance->owner);
+			proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/,instance->owner,instance->t2);
 
 			//if (e->IsVehicle())
 			//{

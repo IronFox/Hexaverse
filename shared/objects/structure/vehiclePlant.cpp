@@ -112,10 +112,10 @@ namespace Objects
 				return &dynamicStorage;
 			}
 
-			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
+			/*virtual override*/ void			VehiclePlant::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,  descFlags, owner);
+				Super::DescribeType(label,  descFlags, owner, t2);
 				if ((descFlags & DescExcludeExtended) == 0)
 				{
 					label.MarkBriefEnd();

@@ -137,7 +137,7 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual const CC*		GetCommands(CC&dynamicStorage) const override {return &prototype->commands;}
 			virtual bool			TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
-			virtual void			DescribeType(Description&, UINT32 descFlags, const OwnerParameter&owner) override;
+			virtual void			DescribeType(Description&, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 		#ifndef CLIENT
 			virtual void			OnInsert(float&atTime, bool freshConstruction) override;
@@ -163,8 +163,6 @@ namespace Objects
 		virtual float				GetFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&) const override;
 		virtual String				DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
 		virtual bool				HasAmmoForShot() override;
-		virtual float				GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&) const override;
-		virtual String				DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&) const override;
 		using						TurretBase::GetAttackExplosionRadius;
 		virtual WorldEntity&		ToEntity() override {return *this;}
 		virtual const WorldEntity&	ToEntity() const override {return *this;}

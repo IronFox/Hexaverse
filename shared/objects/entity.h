@@ -592,8 +592,8 @@ namespace Objects
 			@param deskFlags Combination of descFlag_t to fine-tune the generation process
 			@param overrideOwner Owner to use
 			*/
-			virtual void	DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&);
-			void			DescribeTypeOfThis(Description&label, UINT32 descFlags)	{DescribeType(label,descFlags,owner);}
+			virtual void	DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&, const T2::PConstProperties&);
+			void			DescribeTypeOfThis(Description&label, UINT32 descFlags)	{DescribeType(label,descFlags,owner,t2);}
 		#endif
 		void				AppendDeploymentCount(Description&outResult, const OwnerParameter&overrideOwner)	const;
 
