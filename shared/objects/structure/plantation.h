@@ -42,7 +42,7 @@ namespace Objects
 		static const int			CompoundStorage = 5;
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 
 		CONSTRUCT_ENUMERATION2(Triggers, 
