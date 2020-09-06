@@ -59,6 +59,7 @@ namespace Objects
 		{
 			static HashSet<UINT32> visited;
 			Grid::high.GetExtendedNeighborhood(Grid::ToHigh(location).stackID,5,plantStackIDs, visited);
+			Super::OnInsert(atTime,freshConstruction);
 		}
 
 		#ifndef CLIENT

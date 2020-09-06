@@ -170,6 +170,13 @@ namespace Objects
 						return (T)EmptyDefault;
 					return Super::GetValue(researchState);
 				}
+
+				D::String	Describe(const Research::Attributes::Table&researchState)	const
+				{
+					if (this->IsEmpty())
+						return String(EmptyDefault);
+					return Super::Describe(researchState);
+				}
 			};
 
 		class Base 

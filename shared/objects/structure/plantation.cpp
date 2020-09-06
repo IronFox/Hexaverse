@@ -87,8 +87,8 @@ namespace Objects
 				}
 			}
 		}
-		treePresence = treesHarvested;
-		crystalPresence = crystalsHarvested;
+		treePresence = (UINT32)treesHarvested;
+		crystalPresence = (UINT32)crystalsHarvested;
 		Super::Tick(v);
 		v.Add(Resource::CrystallineCompounds, crystalPresence * HarvestToCompoundFactor);
 		v.Add(Resource::OrganicCompounds, treePresence * HarvestToCompoundFactor);
@@ -142,8 +142,8 @@ namespace Objects
 			if ((descFlags & DescExcludeExtended) == 0)
 			{
 				label.MarkBriefEnd();
-				label << "Enabled plantations plant and harvest any growing natural resources on surrounding surfaces."
-				" Plantations should be build near grass, earth, sand, lava, granite, or existing trees/crystals."
+				label << "Enabled plantations grow and harvest any trees and/or crystals from surrounding compatible surfaces."
+				" Plantations should be build near grass, earth, or sand to grow trees, and lava or granite for crystals."
 				" Plantations, like many structures, require "+Resource::Energy.GetTagStr()+" from generators to operate."
 				;
 			}
