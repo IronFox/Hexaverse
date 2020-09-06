@@ -1623,7 +1623,7 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			namespace R = Objects::Resource;
 
-			void			Base::DescribeType(Command::Base::Label&label, bool compound, const OwnerParameter&owner)
+			void			Base::DescribeType(Command::Base::Label&label, bool compound, const OwnerParameter&owner, const T2::PConstProperties&t2)
 			{
 				if (!compound)
 				{
@@ -1631,19 +1631,25 @@ namespace Objects
 					if (!isUnlocked.GetValue(st))
 						label <<"Requires more research to unlock";
 					label <<"Cost: "+Resource::table[Resource::Minerals].GetTagStr()+productionCosts.Describe(st);
-					label <<"Initiative: "+String(initiative.GetValue(st));
+					const auto v = initiative.GetValue(st);
+					if (t2 && t2->initiative.HasEffect())
+					{
+						label <<"Initiative: "+ String(t2->initiative.Apply(initiative.GetValue(st)))+" [="+String(v)+t2->initiative.Describe()+"]";
+					}
+					else
+						label <<"Initiative: "+String(v);
 				}
 			}
 
 
 
-			void VehicleBase::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner)
+			void VehicleBase::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const OwnerParameter&owner, const T2::PConstProperties&t2)
 			{
 				outResult.BeginBrief();
 				const auto& researchState = ResearchStateOf(owner);
 				if (includeName && typeName.IsNotEmpty())
 					outResult << typeName + " (Base)";
-				Base::DescribeType(outResult,compound,owner);
+				Base::DescribeType(outResult,compound,owner,t2);
 				outResult.BeginBrief();
 				if (movementSpeed.GetValue(researchState) > 0)
 					outResult << "Can climb "+String(maxClimbUp)+" height level"+(maxClimbUp==1?"":"s")+" up";
@@ -1678,7 +1684,7 @@ namespace Objects
 
 
 
-			void Turret::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner)
+			void Turret::DescribeType(Command::Base::Label&outResult, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner, const T2::PConstProperties&t2)
 			{
 				outResult.BeginBrief();
 				const String upperName = parentType.IsNotEmpty() ? parentType+"-Turret" : "Turret";
@@ -1704,7 +1710,7 @@ namespace Objects
 
 				const auto& researchState = ResearchStateOf(owner);
 
-				Base::DescribeType(outResult,compound,owner);
+				Base::DescribeType(outResult,compound,owner,t2);
 				outResult.BeginBrief();
 				if (!compound)
 				{
@@ -1742,14 +1748,14 @@ namespace Objects
 					int count = attacksPerRound.GetValue(researchState);
 					outResult <<""+attacksPerRound.Describe(researchState)+" attack"+(count == 1 ? "" : "s")+" per round";
 				}
-				if (explosionRadius.IsFunctionOrConstNonZero())
+				if (explosionRadius.IsFunctionOrConstNonZero() && !compound)
 				{
 					outResult <<"Explosion radius: "+explosionRadius.Describe(researchState);
 					if (this == &bomb)
 						outResult.GetLastLine() +=" ("+Resource::Uranium.GetTagStr()+": *2)";
 						//bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
 				}
-				if (damageLevel.IsFunctionOrConstNonZero())
+				if (damageLevel.IsFunctionOrConstNonZero() && !compound)
 				{
 					if (dealsEMPDamage)
 						outResult <<"EMP damage: "+damageLevel.Describe(researchState);

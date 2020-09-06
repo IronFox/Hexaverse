@@ -108,7 +108,7 @@ namespace Objects
 		virtual bool			IsPureVehicle() const override {return true;}
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
-			virtual void		DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&) override;
+			virtual void		DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&, const T2::PConstProperties&) override;
 			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion
 		#endif
 

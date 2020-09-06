@@ -98,9 +98,9 @@ namespace Objects
 		float					GetFlatAttackRange() const;
 		virtual String			DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&p) const = 0;
 		String					DescribeFlatAttackRange() const;
-		virtual float			GetAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&p) const = 0;
+		virtual float			GetAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&p) const;
 		float					GetAttackExplosionRadius() const;
-		virtual String			DescribeAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&p) const = 0;
+		virtual String			DescribeAttackExplosionRadiusExt(const OwnerParameter&, const T2::TModifier&p) const;
 		String					DescribeAttackExplosionRadius() const;
 		virtual WorldEntity&	ToEntity() = 0;
 		virtual const WorldEntity&	ToEntity() const = 0;

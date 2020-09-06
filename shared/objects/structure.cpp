@@ -1003,10 +1003,10 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
+		/*virtual override*/ void			NexusPort::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags, owner);
+			Super::DescribeType(label,  descFlags, owner,t2);
 			if ((descFlags & DescExcludeExtended) == 0)
 			{
 				label.MarkBriefEnd();
@@ -1023,10 +1023,10 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
+		/*virtual override*/ void			Generator::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags, owner);
+			Super::DescribeType(label,  descFlags, owner,t2);
 			if ((descFlags & DescExcludeExtended) == 0)
 			{
 				label.MarkBriefEnd();
@@ -1037,10 +1037,10 @@ namespace Objects
 			}
 		}
 
-		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
+		/*virtual override*/ void			ReactorCore::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags,owner);
+			Super::DescribeType(label,  descFlags,owner,t2);
 			if ((descFlags & DescExcludeExtended) == 0)
 			{
 				label.MarkBriefEnd();
@@ -1052,10 +1052,10 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner)
+		/*virtual override*/ void			WorkingStructure::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 		{
 			label.BeginBrief();
-			Super::DescribeType(label,  descFlags, owner);
+			Super::DescribeType(label,  descFlags, owner,t2);
 
 			Resource::Vector balance,discard,maxStorage;
 

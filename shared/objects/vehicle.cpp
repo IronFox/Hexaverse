@@ -76,12 +76,12 @@ namespace Objects
 	/*virtual override*/ String		Vehicle::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
 	{
 		const auto& state = GetResearchState(owner);
-		String rs = turret->scanningRange.Describe(state);
+		String desc = turret->scanningRange.Describe(state);
 		if (!turret->CanAttack() && base->turretRangeModifier.GetValue(state) != 0)
-		{
-			rs += "+"+base->turretRangeModifier.Describe(state);
-		}
-		return rs + m.Describe();
+			desc = String(GetScanningRangeExt(owner,T2::TModifier()))+" [="+desc + "+"+base->turretRangeModifier.Describe(state)+"]";
+		if (m.HasEffect())
+			desc = String(GetScanningRangeExt(owner,m))+" [="+desc+m.Describe()+"]";
+		return desc;
 	}
 
 	/*virtual override*/ int				Vehicle::GetMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const
@@ -100,8 +100,8 @@ namespace Objects
 			if (!m.HasEffect())
 				return String(h1);
 			else
-				return String(h1)+"[="+ String(h0) + base->health.Describe(state) + m.Describe()+"]";
-		return String(h1)+"[="+ String(base->health.GetValue(state)) + base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state) + m.Describe()+"]";
+				return String(h1)+"[="+ base->health.Describe(state) + m.Describe()+"]";
+		return String(h1)+"[="+ base->health.Describe(state)+"*" + turret->healthMultiplier.Describe(state)+" (turret health multiplier)" + m.Describe()+"]";
 	}
 
 	
@@ -171,19 +171,31 @@ namespace Objects
 
 	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m)	const
 	{
-		return base->movementSpeed.Describe(GetResearchState(owner))+m.Describe();
+		const auto&state = GetResearchState(owner);
+		if (m.HasEffect())
+			return String(m.Apply(base->movementSpeed.GetValue(state)))+" [="+ base->movementSpeed.Describe(state)+m.Describe()+"]";
+		return base->movementSpeed.Describe(GetResearchState(owner));
 	}
 
-	/*virtual override*/ String			Vehicle::DescribeFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
+	/*virtual override*/ String			Vehicle::DescribeFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
-		const auto& state = GetResearchState(owner);
-		String rs = turret->horizontalAttackRange.Describe(state);
+		if (!turret->CanAttack())
+			return "";
+		const auto&state = GetResearchState(owner);
+		const String rs = turret->horizontalAttackRange.Describe(state);
+		const auto baseModV = base->turretRangeModifier.GetValue(state);
+		const auto preMod = turret->horizontalAttackRange.GetValue(state)+baseModV;
+		const auto final = t2.Apply(preMod);
+		String baseModS = baseModV ? "+"+base->turretRangeModifier.Describe(state)+" (base modifier)" : "";
+		if (t2.HasEffect())
 		{
-			String mod = base->turretRangeModifier.Describe(state);
-			if (mod != '0')
-				rs += "+"+mod;
+			if (baseModV)
+				return DescNumeric(final) + " [="+ DescNumeric(preMod)+" [="+ rs+ baseModS+"]" + t2.Describe()+"]";
+			return DescNumeric(final) + " [="+ DescNumeric(preMod)+ t2.Describe()+"]";
 		}
-		return rs + m.Describe();
+		if (baseModV)
+			return DescNumeric(final)+" [="+rs+baseModS+"]";
+		return DescNumeric(final);
 	}
 
 	
@@ -391,11 +403,11 @@ namespace Objects
 		}
 
 
-		void Vehicle::DescribeType(Command::Base::Label&outResult, UINT32 descFlags, const OwnerParameter&owner)
+		void Vehicle::DescribeType(Command::Base::Label&outResult, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 		{
 			outResult.BeginBrief();
-			Super::DescribeType(outResult,descFlags, owner);
-			base->DescribeType(outResult,true,true,owner);
+			Super::DescribeType(outResult,descFlags, owner,t2);
+			base->DescribeType(outResult,true,true,owner,t2);
 			outResult.BeginBrief();
 
 			const auto&state = GetResearchState(owner);
@@ -404,10 +416,11 @@ namespace Objects
 			const float weight = turret->weight.GetValue(state);
 			if (weight > capacity)
 				outResult << "Overweight: "+String(weight - capacity);
-			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(state));
+			const auto&speedMod = t2 ? t2->speed : T2::TModifier();
+			const int baseMovement = (int)ceil(speedMod.Apply(base->GetBaseMovementSpeed(state)));
 			if (baseMovement > 0)
 			{
-				const auto move = this->GetMovementStepsPerRoundExt(owner,t2 ? t2->speed : T2::TModifier());
+				const auto move = this->GetMovementStepsPerRoundExt(owner,speedMod);
 				String speed = "Effective speed: "+String(move);
 				if (move != baseMovement)
 					speed += " /"+String(baseMovement);

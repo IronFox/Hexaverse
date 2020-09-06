@@ -21,7 +21,7 @@ namespace Objects
 		static const int			EnergyConsumption = 10;
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 
 		count_t						GetTotalResearchOutput() const;

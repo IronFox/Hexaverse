@@ -185,7 +185,7 @@ namespace AutoDocumentation
 				foreach (Objects::Prototypes::structures,s)
 				{
 					Objects::Command::Base::Label label;
-					(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth,nullptr);
+					(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth,nullptr,nullptr);
 					String pretext;
 					auto tb = (*s)->GetTurretBase();
 					if (tb)
@@ -202,7 +202,7 @@ namespace AutoDocumentation
 					if ((*c)->mountType == Objects::Component::Turret::MountType::Plane)
 						continue;
 					Objects::Command::Base::Label label;
-					(*c)->DescribeType(label,false,false,"",Objects::OwnerParameter());
+					(*c)->DescribeType(label,false,false,"",nullptr,nullptr);
 					WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
 				}
 
@@ -210,7 +210,7 @@ namespace AutoDocumentation
 				foreach (Objects::Component::baseComponents,c)
 				{
 					Objects::Command::Base::Label label;
-					(*c)->DescribeType(label,false,false,Objects::OwnerParameter());
+					(*c)->DescribeType(label,false,false,nullptr,nullptr);
 					WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
 				}
 
@@ -218,7 +218,7 @@ namespace AutoDocumentation
 				foreach (Objects::Prototypes::planes,s)
 				{
 					Objects::Description label;
-					(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth,nullptr);
+					(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth,nullptr,nullptr);
 					WriteDocumentation(rootFolder, planeFolder,unitList, (*s)->GetTypeName(), label);
 				}
 			}

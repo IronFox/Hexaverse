@@ -58,8 +58,6 @@ namespace StatePanel
 		currentColor = pushedColors.Pop();
 	}
 
-
-
 	struct TCachedLine
 	{
 		float4		color;
@@ -283,7 +281,20 @@ namespace StatePanel
 				}
 			#endif
 			if (m->turret->CanAttack())
-				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative.GetValue(researchState));
+			{
+				auto maxIni = m->turret->initiative.GetValue(researchState);
+
+				String maxIniS;
+				if (m->t2 && m->t2->initiative.HasEffect())
+				{
+					auto maxIni2 = m->t2->initiative.Apply(maxIni);
+					maxIniS = String(maxIni2)+" [="+m->turret->initiative.Describe(researchState)+m->t2->initiative.Describe()+"]";
+				}
+				else
+					maxIniS = m->turret->initiative.Describe(researchState);
+
+				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+maxIniS;
+			}
 			cachedLines << " Speed: " + m->DescribeMovementStepsPerRoundExt(e.owner,m->t2 ? m->t2->speed : Objects::T2::TModifier());
 			if (m->turret->CanAttack())
 			{
@@ -294,15 +305,8 @@ namespace StatePanel
 				//cachedLines << " Ammo-Usage: "<<m->turret->ammoNeedPerShot<<nl;
 				if (m->turret->horizontalAttackRange.IsFunctionOrConstNonZero())
 				{
-					String srange = m->turret->horizontalAttackRange.Describe(researchState);
-					String sexp = m->turret->explosionRadius.Describe(researchState);
-					if (m->t2)
-					{
-						srange += m->t2->horizontalAttackRange.Describe();
-						sexp += m->t2->explosionRadius.Describe();
-					}
-					cachedLines << " Hrz. Range: "+srange
-									+'+'+sexp;
+					cachedLines << " Hrz. Range: "+ m->DescribeFlatAttackRange();
+					cachedLines << " Exp. Range: "+ m->DescribeAttackExplosionRadius();
 				}
 				elif (m->turret->explosionRadius.IsFunctionOrConstNonZero())
 					cachedLines << " Explosion Radius: "+m->DescribeAttackExplosionRadius();
@@ -395,7 +399,9 @@ namespace StatePanel
 				if (t->turret->CanAttack())
 				{
 					const Objects::Tower*v = t;	//rename
-					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRangeExt(e.owner,t->t2 ? t->t2->horizontalAttackRange : Objects::T2::TModifier());
+					cachedLines << " Hrz. Range: "+ t->DescribeFlatAttackRange();
+					cachedLines << " Exp. Range: "+ t->DescribeAttackExplosionRadius();
+
 					cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
 					cachedLines << " "+v->turret->ammoType.GetTagStr()+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 				}

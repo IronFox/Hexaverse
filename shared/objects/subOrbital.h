@@ -82,7 +82,7 @@ namespace Objects
 			virtual bool			CanBeUnlocked() const override {return turret->isUnlocked.IsFunctionOrConstNonZero();}
 
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&outResult, UINT32 descFlags,const OwnerParameter&) override;
+				virtual void		DescribeType(Description&outResult, UINT32 descFlags,const OwnerParameter&, const T2::PConstProperties&t2) override;
 				virtual float		GetSoundLevel() const {return IsGroundBoundVehicle() ? 0.f : GetActivityLevel()*0.25f;}	//save 75% for motion
 			#endif
 

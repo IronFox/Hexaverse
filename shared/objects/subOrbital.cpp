@@ -71,9 +71,9 @@ namespace Objects
 
 
 
-			/*virtual override*/ void Plane::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner)
+			/*virtual override*/ void Plane::DescribeType(Description&outResult, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 			{
-				Super::DescribeType(outResult,descFlags,owner);
+				Super::DescribeType(outResult,descFlags,owner,t2);
 				String speed = "Speed: "+this->DescribeMovementStepsPerRoundExt(owner,t2 ? t2->speed : Objects::T2::TModifier()) + " (aerial)";
 
 				outResult << speed;

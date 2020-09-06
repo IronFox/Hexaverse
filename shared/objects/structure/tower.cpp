@@ -282,10 +282,10 @@ namespace Objects
 				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
 
-			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner) 
+			/*virtual override*/ void			Tower::DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags, owner);
+				Super::DescribeType(label,descFlags, owner, t2);
 				label.MarkBriefEnd();
 			}
 
@@ -338,19 +338,8 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float			Tower::GetAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&t2) const
-	{
-		if (!turret->CanAttack())
-			return 0.f;
-		return  t2.Apply(turret->explosionRadius.GetValue(GetResearchState(owner)));
-	}
-	
-	/*virtual overrride*/ String		Tower::DescribeAttackExplosionRadiusExt(const OwnerParameter&owner, const T2::TModifier&m) const
-	{
-		if (!turret->CanAttack())
-			return "";
-		return turret->explosionRadius.Describe(GetResearchState(owner)) + m.Describe();
-	}
+
+
 
 
 	/*virtual override*/ int			Tower::GetOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
@@ -387,11 +376,14 @@ namespace Objects
 	/*virtual override*/ String			Tower::DescribeFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
 		if (!turret->CanAttack())
-			return 0.f;
+			return "";
 		const auto&state = GetResearchState(owner);
-		const String rs = String(turret->GetHorizontalAttackRange(state))+ turret->horizontalAttackRange.Describe(state);
-		const auto final = t2.Apply(turret->horizontalAttackRange.GetValue(state)+2.f);
-		return String(M::Round(final*10.f)/10.f)+" [="+rs+"+2 (tower modifier)]" + t2.Describe();
+		const String rs = turret->horizontalAttackRange.Describe(state);
+		const auto preMod = turret->horizontalAttackRange.GetValue(state)+2.f;
+		const auto final = t2.Apply(preMod);
+		if (t2.HasEffect())
+			return DescNumeric(final) + " [="+ DescNumeric(preMod)+" [="+ rs+"+2 (tower modifier)]" + t2.Describe()+"]";
+		return DescNumeric(final)+" [="+rs+"+2 (tower modifier)]";
 	}
 
 
