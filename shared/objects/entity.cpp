@@ -26,6 +26,11 @@ namespace Objects
 	HashTable<TUniqueID,PWorldEntity>	idMap;
 
 
+	String DescNumeric(float v)
+	{
+		return String(M::Round(v*10.f)/10.f);
+	}
+
 
 
 	#ifdef HAS_WINDOW
