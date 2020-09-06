@@ -1,3 +1,9 @@
+missing-resource-floaters no longer working
+t2 upgrade works if vehicle targets location next to target but hasn't arrived yet
+plantation button icons missing
+
+
+
 terrain manipulation via ai script
 
 blending in and out of blurred gui background is rather harsh, somehow. maybe preserve both blurred and sharp copy and blend on the fly in shader?

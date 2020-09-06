@@ -44,6 +44,12 @@ namespace Objects
 
 	#endif
 
+	/**
+	Converts a numeric value to string for description
+	*/
+	String DescNumeric(float v);
+
+
 
 
 	/**

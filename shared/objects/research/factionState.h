@@ -29,6 +29,7 @@ namespace Objects
 			int						totalContribution = 0,	lastSpeed = 0;
 			Buffer0<PTopic>			researchQueue;
 			bool					factionIsNexus;
+			index_t					resourceTableEntry;
 			static void				LogLua(const String&msg);
 
 		public:
@@ -56,6 +57,7 @@ namespace Objects
 
 			/**/					FactionState(Faction*owner, bool isNexus);
 			/**/					FactionState(const FactionState&)=delete;
+			virtual					~FactionState();
 			void					operator=(const FactionState&)=delete;
 
 			/**
