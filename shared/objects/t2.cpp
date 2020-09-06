@@ -79,7 +79,7 @@ namespace Objects
 		{
 			if (multiplier == 1)
 				return "";
-			String rs = "*"+String(multiplier);
+			String rs = "*"+DescNumeric(multiplier);
 			return rs + "(T2)";
 		}
 
