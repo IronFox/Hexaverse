@@ -386,7 +386,7 @@ namespace Objects
 		const String desc = GetTable()->maxScanningRange.Describe(GetResearchState(owner));
 		if (!t2.HasEffect())
 			return desc;
-		return String(GetScanningRangeExt(owner,t2))+ " [="+desc +t2.Describe() + "]";
+		return DescNumeric(GetScanningRangeExt(owner,t2))+ " [="+desc +t2.Describe() + "]";
 	}
 
 	String					WorldEntity::DescribeScanningRange() const

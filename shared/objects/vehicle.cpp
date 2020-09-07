@@ -78,9 +78,9 @@ namespace Objects
 		const auto& state = GetResearchState(owner);
 		String desc = turret->scanningRange.Describe(state);
 		if (!turret->CanAttack() && base->turretRangeModifier.GetValue(state) != 0)
-			desc = String(GetScanningRangeExt(owner,T2::TModifier()))+" [="+desc + "+"+base->turretRangeModifier.Describe(state)+"]";
+			desc = DescNumeric(GetScanningRangeExt(owner,T2::TModifier()))+" [="+desc + "+"+base->turretRangeModifier.Describe(state)+"]";
 		if (m.HasEffect())
-			desc = String(GetScanningRangeExt(owner,m))+" [="+desc+m.Describe()+"]";
+			desc = DescNumeric(GetScanningRangeExt(owner,m))+" [="+desc+m.Describe()+"]";
 		return desc;
 	}
 
