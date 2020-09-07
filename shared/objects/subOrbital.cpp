@@ -48,6 +48,8 @@ namespace Objects
 			if (loc.height > Grid::CellStack::TopHeight)
 			{
 				float range = turret->groundScanningRange.GetValue(GetResearchState());
+				if (t2)
+					range = t2->scanningRange.Apply(range);
 				if (range > 0)
 				{
 					range = EMPModify(range, 2);
