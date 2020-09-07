@@ -489,6 +489,15 @@ namespace FileIO
 		ASSERT__(source->Stream(ownerID));
 		ASSERT__(ownerMap.Query(ownerID,e.owner));
 
+
+		Riff::Chunk*t2 = parent->FindFirst(RID::t2);
+		if (t2)
+		{
+			e.t2.reset(new Objects::T2::Properties());
+			ChunkToPackable(t2,*e.t2);
+			Objects::Research::Recompute(*e.t2);
+		}
+
 		const auto maxHealth = e.GetMaxHealth();
 		ASSERT__(maxHealth > 0);
 
@@ -527,12 +536,6 @@ namespace FileIO
 		GetOptionalPOD(parent,RID::empDamageLevel,e.empDamageLevel,0);
 
 
-		Riff::Chunk*t2 = parent->FindFirst(RID::t2);
-		if (t2)
-		{
-			e.t2.reset(new Objects::T2::Properties());
-			ChunkToPackable(t2,*e.t2);
-		}
 
 		//e.SetupSystem();
 	}

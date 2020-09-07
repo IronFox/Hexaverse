@@ -166,7 +166,7 @@ namespace Objects
 			return "";
 		const auto&state = ToEntity().GetResearchState(owner);
 		if (m.HasEffect())
-			return String(m.Apply(turret->explosionRadius.GetValue(state)))+" [="+turret->explosionRadius.Describe(state) + m.Describe()+"]";
+			return DescNumeric(m.Apply(turret->explosionRadius.GetValue(state)))+" [="+turret->explosionRadius.Describe(state) + m.Describe()+"]";
 		return turret->explosionRadius.Describe(state) + m.Describe();
 	}
 

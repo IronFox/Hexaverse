@@ -105,9 +105,13 @@ namespace Objects
 		return EMPModify(m.Apply(turret->scanningRange.GetValue(GetResearchState(owner))),2);
 	}
 
-	/*virtual override*/ String		MobileEntity::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&m) const
+	/*virtual override*/ String		MobileEntity::DescribeScanningRangeExt(const OwnerParameter&owner, const T2::TModifier&t2) const
 	{
-		return turret->scanningRange.Describe(GetResearchState(owner)) + m.Describe();
+		const auto& state = GetResearchState(owner);
+		const String desc = turret->scanningRange.Describe(GetResearchState(owner));
+		if (!t2.HasEffect())
+			return desc;
+		return DescNumeric(GetScanningRangeExt(owner,t2))+ " [="+desc +t2.Describe() + "]";
 	}
 
 
