@@ -845,9 +845,10 @@ namespace Objects
 			if (speed < storage)
 				LogEvent(EventClass::Preset::important,&v,this->GetName()+ ": Partially repairing '"+target->GetNiceName()+"': +"+String(canRepair)+" health...");
 			else
+			{
 				LogEvent(EventClass::Preset::important,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
-
-			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
+				ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.entityTime);
+			}
 
 			target->SignalChangeByExternalCause(WorldEntity::HealthChanged,v.entityTime);
 			target->health += canRepair;
