@@ -470,10 +470,20 @@ namespace Evolver
 	{
 		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 		{
-			if (e->t2 && e->t2->changed)
+			if (e->t2)
 			{
-				if (Objects::Research::Recompute(*e->t2))
-					e->SignalChangeByExternalCause(Objects::WorldEntity::T2Changed,e->entityTime);
+				int maxHealth = e->GetMaxHealth();
+				if (e->health < maxHealth && e->t2->healthRegeneration.HasEffect())
+				{
+					LogEvent(EventSignificance::Common,"Regenerating "+e->GetNameAndOwner());
+					int heal = ceil(e->t2->healthRegeneration.multiplier * maxHealth);
+					e->health = std::min(maxHealth,e->health + heal);
+					e->SignalChangeByExternalCause(Objects::WorldEntity::HealthChanged,e->entityTime);
+				}
+
+				if (e->t2->changed)
+					if (Objects::Research::Recompute(*e->t2))
+						e->SignalChangeByExternalCause(Objects::WorldEntity::T2Changed,e->entityTime);
 			}
 		});
 

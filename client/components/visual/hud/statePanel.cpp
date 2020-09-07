@@ -221,15 +221,20 @@ namespace StatePanel
 				cachedLines << " Indestructible";
 			else
 			{
-				int maxHealth = e.GetMaxHealth();
-				if (e.health < maxHealth/4)
-					currentColor.rgb &= float3(1,0.2,0.2);
-				elif (e.health < maxHealth/2)
-					currentColor.rgb &= float3(1,1,0.2);
-				elif (e.health < maxHealth)
-					currentColor.rgb &= float3(0.2,1,0.2);
+				PushCurrentColor();
+					int maxHealth = e.GetMaxHealth();
+					if (e.health < maxHealth/4)
+						currentColor.rgb &= float3(1,0.2,0.2);
+					elif (e.health < maxHealth/2)
+						currentColor.rgb &= float3(1,1,0.2);
+					elif (e.health < maxHealth)
+						currentColor.rgb &= float3(0.2,1,0.2);
 	
-				cachedLines << " Health: " + String(e.health) + "/" + e.DescribeMaxHealth();
+					cachedLines << " Health: " + String(e.health) + "/" + e.DescribeMaxHealth();
+				PopCurrentColor();
+				if (e.t2 && e.t2->healthRegeneration.HasEffect())
+					cachedLines << " T2 Health Regeneration: "+Objects::DescNumeric(e.t2->healthRegeneration.multiplier*100)+"% per round";
+
 			}
 		}
 		else

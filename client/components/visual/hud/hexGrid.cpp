@@ -230,7 +230,12 @@ namespace HexGrid
 				if (target->IsIndestructible())
 					outResult << " Indestructible";
 				else
+				{
 					outResult << String(" Health: " +String( target->health) + "/" + target->DescribeMaxHealth());
+					if (target->t2 && target->t2->healthRegeneration.HasEffect())
+						outResult.GetLastLine() += " Regen "+Objects::DescNumeric(target->t2->healthRegeneration.multiplier*100)+"%/round";
+
+				}
 				if (target->IsHibernating())
 					outResult << " Hibernating";
 			}

@@ -473,6 +473,8 @@ namespace Objects
 						outResult << "Health: " +String(this->health)+"/"+this->DescribeMaxHealthExt(owner,t2 ? t2->maxHealth : T2::TModifier());
 					else
 						outResult << "Health: " + this->DescribeMaxHealthExt(owner,t2 ? t2->maxHealth : T2::TModifier());
+					if (t2 && t2->healthRegeneration.HasEffect())
+						outResult.GetLastLine() += " Regen "+DescNumeric(t2->healthRegeneration.multiplier*100)+"%/round";
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
