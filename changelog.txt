@@ -1,4 +1,4 @@
-v0.9.11 [Sep 7 2020]
+v0.9.11 [Sep 13 2020]
 	+ Added button sounds
 	+ Added resource list tooltips
 	+ AI: Added missing repair command
