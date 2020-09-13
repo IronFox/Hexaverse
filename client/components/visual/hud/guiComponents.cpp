@@ -1297,14 +1297,20 @@ namespace Component
 
 
 
-	Decoration::Decoration()
+	Decoration::Decoration(bool initInstructions)
 	{
 		using namespace DecorationDetails;
-		lineInstruction = lineShader;
-		((DX11::BaseInstructionBlock&)backgroundInstruction) = shader;
-		((DX11::BaseInstructionBlock&)shadowInstruction) = shader;
-		((DX11::BaseInstructionBlock&)edgeInstruction) = shader;
-		((DX11::BaseInstructionBlock&)blurInstruction) = shader;
+		if (initInstructions)
+		{
+			if (shader.shader.IsEmpty())
+				FATAL__("Trying to create GUI decorations from uninitialized data");
+
+			lineInstruction = lineShader;
+			((DX11::BaseInstructionBlock&)backgroundInstruction) = shader;
+			((DX11::BaseInstructionBlock&)shadowInstruction) = shader;
+			((DX11::BaseInstructionBlock&)edgeInstruction) = shader;
+			((DX11::BaseInstructionBlock&)blurInstruction) = shader;
+		}
 	}
 
 
