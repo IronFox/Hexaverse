@@ -14,7 +14,7 @@ namespace HUD
 		{
 			
 			const IProvider*	hoveringOver = nullptr;	//!< Components that can display tooltips
-			HUD::Component::Decoration decoration;
+			HUD::Component::Decoration decoration = HUD::Component::Decoration(false);
 			HUD::Component::BlurredBackground background;
 
 			

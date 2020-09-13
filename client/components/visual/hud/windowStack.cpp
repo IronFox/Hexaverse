@@ -24,7 +24,7 @@ namespace HUD
 
 		namespace Detail
 		{
-
+			bool created = false;
 
 			struct TWindowEntry
 			{
@@ -155,6 +155,9 @@ namespace HUD
 
 		void		Create()
 		{
+			if (Detail::created)
+				FATAL__("Trying to iniate GUI window stack multiple times");
+			Detail::created = true;
 			Component::Image::StaticCreate();
 			Component::Decoration::StaticCreate();
 
@@ -563,6 +566,9 @@ namespace HUD
 
 		void	RenderNonModal()
 		{
+			if (!Detail::created)
+				FATAL__("Trying to render uninitialized GUI window stack");
+
 			if (Detail::visibleWindows.IsNotEmpty())
 			{
 				CheckMouseMotion();
@@ -592,6 +598,8 @@ namespace HUD
 
 		void	RenderModal()
 		{
+			if (!Detail::created)
+				FATAL__("Trying to render uninitialized GUI window stack");
 			if (Detail::visibleWindows.IsNotEmpty())
 			{
 				CheckMouseMotion();

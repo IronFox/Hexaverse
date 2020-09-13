@@ -533,7 +533,7 @@ namespace Component
 			Context		Recurse() const {return Context(opacity,background);}
 		};
 
-		/**/			Decoration();
+		explicit		Decoration(bool initInstructions=true);
 		/**
 		Updates the shape location of this decoration.
 		*/
