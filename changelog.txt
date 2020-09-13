@@ -2,6 +2,7 @@ v0.9.11 [Sep 13 2020]
 	+ Added button sounds
 	+ Added resource list tooltips
 	+ AI: Added missing repair command
+	* Fixed explosion radius always rounded down to int numbers
 
 v0.9.10	[Dec 31 2019]
 	+ AI: Added terrain alteration options to mobile unit API
