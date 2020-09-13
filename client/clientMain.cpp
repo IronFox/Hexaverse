@@ -2200,6 +2200,7 @@ int main( int argc, const char* argv[])
 			storageThread.Terminate();
 			display.Destroy();
 		#endif
+		LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral ), nullptr, "Client shutting down regularly");
 		Logging::End();
 
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate
