@@ -3,6 +3,7 @@ v0.9.11 [Sep 13 2020]
 	+ Added resource list tooltips
 	+ AI: Added missing repair command
 	> Artillery range visualization now reaches further down
+	* Fixed artillery range calculation
 	* Fixed explosion radius always rounded down to int numbers
 
 v0.9.10	[Dec 31 2019]
