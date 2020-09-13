@@ -105,7 +105,7 @@ namespace Objects
 
 		
 		void Explode( const ApplicationInterface::TAttack& attack, 
-					  const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
+					  const Grid::HCellIdI&targetCell, const M::TVec3<>&center, float explosionRadius, int damageLevel, bool doomsday,
 					  float&atTime)
 		{
 			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling regular explosion at "+ToString(center)+", radius="+String(explosionRadius));
@@ -133,7 +133,7 @@ namespace Objects
 
 			atTime += ExplosionTime(explosionRadius) * 0.25f;
 
-			int core = std::max(0,explosionRadius-3);
+			float core = std::max(0.f,explosionRadius-3);
 			DBG_ASSERT__(explosionRadius >= 1);
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
@@ -273,7 +273,7 @@ namespace Objects
 		}
 	
 		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
-						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
+						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, float explosionRadius, int damageLevel, float&atTime)
 		{
 			LogEvent(EventSignificance::Common, attack.attackFrom.get(),"Handling EMP explosion at "+ToString(center)+", radius="+String(explosionRadius));
 			ApplicationInterface::SignalExplosion(
