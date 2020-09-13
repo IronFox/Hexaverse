@@ -270,11 +270,11 @@ namespace Objects
 		extern const ApplicationInterface::TAttack*	currentExplosionAttack;
 
 		void		Explode(const ApplicationInterface::TAttack& attack, 
-						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
+						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, float explosionRadius, int damageLevel, bool doomsday,
 						float&atTime
 						);
 		void		ExplodeEMP(const ApplicationInterface::TAttack& attack,
-						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, int explosionRadius, int damageLevel, float&atTime);
+						const Grid::HCellIdI&targetCell, const M::TVec3<>&center, float explosionRadius, int damageLevel, float&atTime);
 
 
 		/**

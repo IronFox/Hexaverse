@@ -9,6 +9,7 @@ v0.9.11 [Sep 13 2020]
 	+ AI: Added missing repair command
 	+ AI: Added T2 upgrade command
 	> Initiative is now a user-configurable unit property
+	* Fixed explosion radius always rounded down to int numbers
 
 v0.9.10	[Dec 31 2019]
 	+ AI: Added terrain alteration options to mobile unit API
