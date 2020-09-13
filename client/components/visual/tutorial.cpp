@@ -116,7 +116,15 @@ namespace Tutorial
 			}
 			catch (...)
 			{
-				memory.Create(filename);
+				try
+				{
+					memory.Create(filename);
+				}
+				catch (const std::exception&ex)
+				{
+					LogEvent(EventClass::Preset::fileError,ex.what());
+				}
+
 			}
 
 		}
