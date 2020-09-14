@@ -1198,12 +1198,9 @@ namespace Objects
 	}
 
 
-
-	void					UpdateSeeThroughColor(bool isOwnedByMe, bool isSelected)
+	void					UpdateSeeThroughColor(const M::TVec3<>&factionColor, bool isSelected)
 	{
-		static const float4 mySeeThroughColor(0.6,0.7,1,1);
-		static const float4 hostileSeeThroughColor(1,0.7,0.6,1);
-		float4 color = isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor;
+		float4 color = float4(factionColor,1);
 		if (isSelected)
 			color.rgb *= Renderer::GetActiveColor(Renderer::now*5.0);
 		overallTint.Update(color);
@@ -1233,7 +1230,7 @@ namespace Objects
 
 			vehicles.Foreach([](const Objects::PVehicle&v)
 			{
-				UpdateSeeThroughColor(v->owner->IsAlliedWithMe(), v==selectedEntity);
+				UpdateSeeThroughColor(v->owner->color, v==selectedEntity);
 				//overallTint.Update(v->isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor);
 				Renderer::RenderSimple(*v);
 			});
