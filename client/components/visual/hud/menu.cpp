@@ -529,6 +529,24 @@ namespace Menu
 			;
 			//static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
 
+			try
+			{
+				StringFile info;
+				info.Open("../info.txt");
+
+				String line;
+				StringBuffer str;
+				str << text << nl;
+				while (info >> line)
+					str << line << nl;
+				text = str.ToStringRef();
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::fileError,ex.what());
+			}
+
+
 
 			Dialog::ShowImageMessage("about.png",text);
 
