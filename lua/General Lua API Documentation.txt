@@ -150,7 +150,7 @@ Table-Type: VBaseType extends Type
 	bool		motionIgnoresAttack;	-- True if the local base can move regardless of whether an active turret has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	int			maxClimbUp;				-- Maximum climbing height difference. Typically 1
 	int			minClimbDown;			-- Minimum down-climbing height difference. Negative. Typically -1 or less
-	int			movementSpeed;			-- Theoretical upper movement steps per round, EXcluding possible turret overweight and EMP damage. The effective speed depends on the encountered terrain. (Unresearched)
+	int			movementSpeed;			-- Theoretical upper movement steps per round, Excluding possible turret overweight and EMP damage. The effective speed depends on the encountered terrain. (Unresearched)
 }
 
 	
