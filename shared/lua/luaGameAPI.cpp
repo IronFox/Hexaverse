@@ -881,6 +881,10 @@ namespace Lua
 		{
 			return random.Next(max-1) + 1;
 		});
+		gameTable.SetFunction("Seconds",[]()
+		{
+			return timer.ToSecondsD(timer.Now());
+		});
 
 		gameTable.SetFunction("GetRound",[]()
 		{
