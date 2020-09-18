@@ -1,4 +1,5 @@
 v0.9.12
+	+ AI: Added --#require <...>/--#require "..." statements to include other Lua files
 	> Flipped setting for music during gameplay (misleading tooltip text)
 
 v0.9.11 [Sep 13 2020]

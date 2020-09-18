@@ -3,6 +3,12 @@ All functions and global constants are located in the Game table (e.g. Game.unit
 Array-like tables are denoted X[], whereas maps are denotes {Key->Value}
 Although Lua does not actually support types as such, they are used here to clarify what content
 can be expected.
+
+
+In addition to the regular Lua API, import statements may be used to include other script files:
+--#require <filepath relative to script directory>
+--#require "filepath relative to this file"
+
 ]]
 
 

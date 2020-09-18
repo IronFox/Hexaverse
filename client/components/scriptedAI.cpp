@@ -64,6 +64,36 @@ namespace ScriptedAI
 		}
 
 
+		class Import
+		{
+			Lua::PProgram	program;
+			HashSet<PathString> imported;
+
+		public:
+			/**/			Import(const Lua::PProgram&program):program(program)
+			{}
+
+			void	operator()(const PathString&path, bool isGlobal)
+			{
+				const FileSystem::File*f;
+				FileSystem::Folder folder;
+				if (isGlobal)
+					folder = GetScriptFolder();
+			
+				f = folder.FindFile(path);
+				if (!f)
+					throw Lua::Exception(CLOCATION,"Required Lua sub script not found: "+FileSystem::PathToString(path));
+
+				if (!f->GetFolder().BeginsWith(GetScriptFolder().GetLocation()))
+					throw Lua::Exception(CLOCATION,"Required Lua sub script file "+FileSystem::PathToString(path)+" is located outside permitted script folder "+FileSystem::PathToString(GetScriptFolder().GetLocation()));
+
+				if (!imported.SetNew(f->GetLocation()))
+					return;
+				program->ExecuteFile(f->GetLocation(),*this);
+			}
+		};
+
+
 		class Thread : public Sys::ThreadObject
 		{
 			typedef Sys::ThreadObject Super;
@@ -1019,7 +1049,7 @@ namespace ScriptedAI
 
 					Details::reloadScript = false;
 
-					api.program->ExecuteFile(Details::scriptPath);
+					api.program->ExecuteFile(Details::scriptPath, Details::Import(api.program));
 					thread.exportState = api.program->RequireGlobal("ExportState");
 					thread.init = api.program->RequireGlobal("Init");
 					thread.execute = api.program->RequireGlobal("Execute");
