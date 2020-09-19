@@ -431,6 +431,7 @@ bool		Game.Grid.AffectedByEMP(Cell);		-- Returns true if EMP zones affect the gi
 Loc			Game.Grid.ToLocation(Cell, int);	-- Constructs a location at the given cell and height
 int			Game.Grid.bottomHeight;		-- Minimum grid height (also applies to terrain)
 int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
+int			Game.Grid.suborbitalHeight;		-- Grid height planes travel on. Generally above Game.Grid.topHeight
 bool		Game.Grid.IsClear(Loc);												-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:
