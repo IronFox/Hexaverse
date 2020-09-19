@@ -1,6 +1,7 @@
 v0.9.12
 	+ AI: Added --#require <...>/--#require "..." statements to include other Lua files
 	+ AI: Added Game.Seconds() to measure time
+	+ AI: Added grid radius<->height conversions
 	+ AI: Added Game.Grid.suborbitalHeight
 	> AI: Game.Grid.ToLocation() now accepts Game.Grid.flightHeight as height
 	> Flipped setting for music during gameplay (misleading tooltip text)

@@ -429,10 +429,12 @@ bool		Game.Grid.lowerResolutionPlanet		-- Set to true if the planet has reduced 
 
 bool		Game.Grid.AffectedByEMP(Cell);		-- Returns true if EMP zones affect the given cell
 Loc			Game.Grid.ToLocation(Cell, int);	-- Constructs a location at the given cell and height
+float		Game.Grid.HeightToRadius(int/float);	-- Converts a height value to the absolute distance from the planet's center. Supports fractions
+int			Game.Grid.RadiusToHeight(float);	-- Converts a distance from planet center to height value. Result is rounded down
 int			Game.Grid.bottomHeight;		-- Minimum grid height (also applies to terrain)
 int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
 int			Game.Grid.suborbitalHeight;		-- Grid height planes travel on. Generally above Game.Grid.topHeight
-bool		Game.Grid.IsClear(Loc);												-- Checks if all terrain cells affecting the specified location are clear
+bool		Game.Grid.IsClear(Loc);		-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:
 Identifies the first height level from the top down where the specified unit (vehicle) can stand
