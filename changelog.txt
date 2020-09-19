@@ -3,7 +3,7 @@ v0.9.12
 	+ AI: Added Game.Seconds() to measure time
 	+ AI: Added grid radius<->height conversions
 	+ AI: Added Game.Grid.suborbitalHeight
-	> AI: Game.Grid.ToLocation() now accepts Game.Grid.flightHeight as height
+	> AI: Game.Grid.ToLocation() now accepts Game.Grid.suborbitalHeight as height
 	> Flipped setting for music during gameplay (misleading tooltip text)
 
 v0.9.11 [Sep 13 2020]
