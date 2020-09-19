@@ -231,10 +231,6 @@ namespace Menu
 		AddOption(panel,name,c);
 		return c;
 	}
-	static Component::PCheckbox AddNegatedCheckBox(const Component::PPanel&panel, const String&name, const String&configKey, const std::function<bool()>&getValue, const std::function<void(bool)>&setValue)
-	{	
-		return AddCheckBox(panel,name,configKey,[getValue](){return !getValue();},[setValue](bool b){setValue(!b);});
-	}
 	static Component::PCheckbox AddNonCFGCheckBox(const Component::PPanel&panel, const String&name, const Component::TooltipDeclaration&tooltip, bool initial, const std::function<void(bool)>&onChange)
 	{	
 		Component::PCheckbox c(new Component::Checkbox("",tooltip,initial,[onChange,name](bool b)
@@ -415,7 +411,7 @@ namespace Menu
 			}
 			)->SetupMarkers(0.25f,false);
 			
-			AddNegatedCheckBox(audio,"Mute music during gameplay","runtime/musicDuringGameplay",Music::PlayMusicDuringGameplay,Music::SetPlayMusicDuringGameplay);
+			AddCheckBox(audio,"Mute music during gameplay","runtime/muteMusicDuringGameplay",Music::PlayMusicDuringGameplay,Music::SetPlayMusicDuringGameplay);
 
 
 		}
@@ -532,6 +528,24 @@ namespace Menu
 				"www.hexaverse.net"
 			;
 			//static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
+
+			try
+			{
+				StringFile info;
+				info.Open("../info.txt");
+
+				String line;
+				StringBuffer str;
+				str << text << nl;
+				while (info >> line)
+					str << line << nl;
+				text = str.ToStringRef();
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventClass::Preset::fileError,ex.what());
+			}
+
 
 
 			Dialog::ShowImageMessage("about.png",text);

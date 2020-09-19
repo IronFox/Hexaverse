@@ -1,7 +1,15 @@
+v0.9.12
+	+ AI: Added --#require <...>/--#require "..." statements to include other Lua files
+	+ AI: Added Game.Seconds() to measure time
+	> Flipped setting for music during gameplay (misleading tooltip text)
+
 v0.9.11 [Sep 13 2020]
 	+ Added button sounds
 	+ Added resource list tooltips
 	+ AI: Added missing repair command
+	> Artillery range visualization now reaches further down
+	> Now using faction color to highlight submerged or occluded units
+	* Fixed artillery range calculation
 	* Fixed explosion radius always rounded down to int numbers
 
 v0.9.10	[Dec 31 2019]

@@ -882,6 +882,14 @@ namespace Lua
 		{
 			return random.Next(max-1) + 1;
 		});
+		gameTable.SetFunction("MeasureSecondsFromNow",[this]()
+		{
+			auto start = timer.Now();
+			return Lua::WrapResultFunction(program, [start]()
+			{
+				return timer.GetSecondsSinceD(start);
+			});
+		});
 
 		gameTable.SetFunction("GetRound",[]()
 		{

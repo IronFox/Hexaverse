@@ -90,6 +90,27 @@ namespace Lua
 	static const Nil	nil;
 
 
+	template <typename T>
+		class WrappedCppFunction
+		{
+		public:
+			const T		func;
+			const WProgram	prog;
+
+			explicit WrappedCppFunction(const PProgram&prog, const T&func):func(func),prog(prog)
+			{}
+		};
+
+	/**
+	@brief Wraps a Cpp (possibly lambda) function such that it can be returned by another Cpp function
+	*/
+	template <typename T>
+		WrappedCppFunction<T>	WrapResultFunction(const PProgram&prog, const T&func)
+		{
+			return WrappedCppFunction<T>(prog,func);
+		}
+
+
 	namespace Detail
 	{
 		template <typename T>
@@ -174,6 +195,16 @@ namespace Lua
 					new (dat)ST(p);
 				}
 			};
+
+		template <typename F>
+			struct ParameterT<WrappedCppFunction<F> >
+			{
+				static void Push(lua_State *state, const WrappedCppFunction<F>&f)
+				{
+					Detail::LibFunction<F>::Push(f.prog.lock(),f.func);
+				}
+			};
+
 
 		void PopStacked(lua_State*);
 
@@ -544,7 +575,7 @@ namespace Lua
 		Attempts to exdecute a script file from disk.
 		Throws file open faults or Lua::Exception in case of errors
 		*/
-		void			ExecuteFile(const PathString&filename);
+		void			ExecuteFile(const PathString&filename, const std::function<void(const PathString&, bool isGlobal)>&importHandler);
 		/**
 		Deserializes binary host data to a new lua reference
 		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())

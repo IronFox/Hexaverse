@@ -446,7 +446,7 @@ namespace Tutorial
 				scriptAPI.gameTable.SetFunction("ClearAllDelayed",API::ClearDelayed);
 				scriptAPI.gameTable.SetFunction("FocusCameraAt",API::FocusCameraAt);
 				scriptAPI.gameTable.SetFunction("SignalTaskStart",API::SignalTaskStart);
-				scriptAPI.program->ExecuteFile("../lua/tutorial.lua");
+				scriptAPI.program->ExecuteFile("../lua/tutorial.lua",nullptr);
 
 				Trigger::begin = scriptAPI.program->RequireGlobal("OnBegin");
 				Trigger::checkTaskConditions = scriptAPI.program->RequireGlobal("CheckTaskConditions");

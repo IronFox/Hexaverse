@@ -340,9 +340,9 @@ namespace Objects
 				{
 					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity...");
 					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere(t);
-					if (v->storedIn.expired())
+					if (v)
 					{
-						if (v)
+						if (v->storedIn.expired())
 						{
 							LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
 							if (gatheringPoint.current != Grid::LCellIdI::Invalid && v->IsPureVehicle())
@@ -351,9 +351,9 @@ namespace Objects
 								v->PlotCourse(gatheringPoint.current,false);
 							}
 						}
-						else
-							LogEvent(EventClass( EventSignificance::Common, EventFlavor::Loss ),parent,"Failed to automatically spawn finished entity");
 					}
+					else
+						LogEvent(EventClass( EventSignificance::Common, EventFlavor::Loss ),parent,"Failed to automatically spawn finished entity");
 				}
 			}
 
