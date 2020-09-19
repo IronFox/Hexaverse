@@ -809,6 +809,8 @@ namespace Lua
 
 		void* RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*))
 		{
+			if (!prog)
+				throw Lua::Exception(CLOCATION,"Program reference not set or expired");
 			lua_State*st = prog->GetState();
 
 			void*fdata = lua_newuserdata(st,fsize);		//stack now: ... userdata(f)

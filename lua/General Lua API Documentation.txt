@@ -19,7 +19,7 @@ string		Game.GetPhase()					-- Fetches the current phase. Typically the result w
 bool		Game.CanIssueUnitCommands()		-- Checks whether the current phase is valid for command execution. Typically the result will be true, so there is usually no need to check this
 float		Game.Random()					-- Fetches the next uniformly distributed random value in [0,1]
 int			Game.RandomIndex(int max)		-- Fetches the next uniformly distributed random integer in [1,max]
-double		Game.Seconds()					-- Fetches a nano-precision timestamp in seconds. Use difference between two results to measure seconds spent
+double()	Game.MeasureSecondsFromNow()	-- Creates a new function to query the seconds from when this function was called
 
 [client only]
 	{id->Unit}	Game.myUnits				-- Table of all player-owned units currently known to the client, mapped by id (string) to unit
