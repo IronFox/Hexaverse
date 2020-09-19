@@ -2054,6 +2054,14 @@ namespace Lua
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") exceeds maximum grid height ("+String(Grid::CellStack::TopHeight)+")");
 			return this->ToTable(Grid::LCellIdI(stack,height));
 		});
+		gridTable.SetFunction("HeightToRadius",[](float height)
+		{
+			return Grid::ToRadiusf(height);
+		});
+		gridTable.SetFunction("RadiusToHeight",[](float radius)
+		{
+			return Grid::HeightFloorFromRadius(radius);
+		});
 		gridTable.SetFunction("AffectedByEMP",[](const Lua::Table&loc)
 		{
 			auto cell = Detail::ToLGridCell(loc,"AffectedByEMP(): Location parameter");
