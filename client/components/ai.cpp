@@ -93,16 +93,12 @@ namespace AI
 			Objects::ForeachWorldEntity([reference,canIgnoreThreat,&threat](const Objects::PWorldEntity&e)
 			{
 				EstimateLivingThreatLevelFrom(*e,reference,canIgnoreThreat,threat);
-			},Objects::IncludeGhosts::Living);
+			},Objects::IncludeGhosts::HostileContacts);
 
-		Objects::Marker::deadMobileGhosts.Foreach([reference,&threat](const Objects::PWorldEntity&e)
+		Objects::MarkerStore::client.GetArtifacts().ForeachGhost([reference,&threat](const Objects::PWorldEntity&e)
 		{
 			EstimateDeadThreatLevelFrom(*e,reference,threat);
-		});
-		Objects::Marker::deadStructureGhosts.Foreach([reference,&threat](const Objects::PWorldEntity&e)
-		{
-			EstimateDeadThreatLevelFrom(*e,reference,threat);
-		});
+		},Objects::IncludeGhosts::EntityDeaths);
 	}
 
 
@@ -218,7 +214,7 @@ namespace AI
 				Objects::ForeachWorldEntity([&priority,explosionRadius,rs](const Objects::PWorldEntity&e)
 				{
 					priority += ProcessAttackPriority(*e,rs.impactAt,explosionRadius);
-				},Objects::IncludeGhosts::Living);
+				},Objects::IncludeGhosts::HostileContacts);
 				LogEvent(EventSignificance::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
@@ -270,19 +266,17 @@ namespace AI
 
 
 		bool haveMarker = false;
-		foreach (Objects::Marker::all,_m)
-		{
-			if (_m->type == Objects::Marker::Type::Visited)
+		Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
+			[v,&haveMarker](const Objects::PMarker&m)
 			{
-				float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),v->system.w.xyz);
+				float distance = Vec::quadraticDistance(Grid::ToWorld(m->location),v->system.w.xyz);
 				if (distance < 25.f)
 				{
-					ObjectHelper::SignalMarkerTouch(*_m);
+					ObjectHelper::SignalMarkerTouch(*m);
 					haveMarker = true;
-//					break;
 				}
 			}
-		}
+		);
 		if (!haveMarker)
 			foreach (tempMarkers,_m)
 			{
@@ -296,12 +290,15 @@ namespace AI
 
 		if (!haveMarker)
 		{
+			Objects::VisitedMarker vm;
+			vm.id.Generate();
+			vm.location = v->location;
+			
 			Protocol::Marker marker;
-			marker.id.Generate();
-			marker.location = v->location;
+			marker.markerType = vm.type;
+			vm.PackToArray(marker.state, Objects::Packable::Target::Owner);
+
 			tempMarkers << v->system.w.xyz;
-			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
-			marker.data.Set2();
 			ObjectHelper::SignalMarkerCreation(marker);
 		}
 
@@ -316,7 +313,7 @@ namespace AI
 			Objects::ForeachWorldEntity([v](const Objects::PWorldEntity&e)
 			{
 				ProcessAttackTarget(*v,*e,attackTarget);
-			},Objects::IncludeGhosts::Living);
+			},Objects::IncludeGhosts::HostileContacts);
 
 			for(index_t at = 0; at < attackTarget.Count(); at++)
 			{
@@ -423,19 +420,17 @@ namespace AI
 						badWeight += 20 / (1.f + distance);
 					else
 						goodWeight += fc / (1.f + distance);
-				},Objects::IncludeGhosts::Living);
+				},Objects::IncludeGhosts::HostileContacts);
 				//if (badWeight < 0.1f && goodWeight < 0.05f)
 				{
-					foreach (Objects::Marker::all,_m)
-					{
-						if (_m->type == Objects::Marker::Type::Visited)
+					Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
+						[reference, minMotion, n, &badWeight](const Objects::PMarker&m)
 						{
-							float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),reference);
+							float distance = Vec::quadraticDistance(Grid::ToWorld(m->location),reference);
 							if (distance < 49.f || (n->movementCostsFromRoot >= minMotion && distance < 16.f))
-								badWeight += 10.f / (1.f + float(_m->age));
-								//0.1f / (1.f + distance);
+								badWeight += 10.f / (1.f + float(m->age));
 						}
-					}
+					);
 					foreach (tempMarkers,_m)
 					{
 						float distance = Vec::quadraticDistance(*_m,reference);
@@ -526,39 +521,34 @@ namespace AI
 
 		done = false;
 
-		for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-		{
-			const Objects::Marker&m = Objects::Marker::all[i];
-			switch (m.type)
+		Objects::MarkerStore::client.Foreach(Objects::Marker::Type::HostileContact,
+			[](const Objects::PMarker&m0)
 			{
-				case Objects::Marker::Type::HostileContact:
-					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
-					{
-						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
-						ObjectHelper::SignalMarkerDeletion(m.id);
-						i--;
-					}
-				break;
-				case Objects::Marker::Type::EntityDeath:
+				Objects::PEntityMarker m = To<Objects::EntityMarker>::Cast(m0);
+				if (m->age >= 10 && m->visualization && m->visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 				{
-					TThreatEstimation estimation;
-					EstimateThreatFromAll(Grid::ToWorld(m.location),false,false,estimation);
-					if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
-					{
-						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
-						ObjectHelper::SignalMarkerDeletion(m.id);
-						i--;
-					}
+					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m->GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m->age)+")");
+					ObjectHelper::SignalMarkerDeletion(m->id);
 				}
-				break;
-			}
-		}
+			});
 
+		Objects::MarkerStore::client.Foreach(Objects::MarkerType::EntityDeath,
+			[](const Objects::PMarker&m0)
+			{
+				Objects::PEntityMarker m = To<Objects::EntityMarker>::Cast(m0);
+				TThreatEstimation estimation;
+				EstimateThreatFromAll(Grid::ToWorld(m->location),false,false,estimation);
+				if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
+				{
+					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m->GetName()+" because cause of destruction is considered known");
+					ObjectHelper::SignalMarkerDeletion(m->id);
+				}
+			});
 
 		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 		{
 			ProcessIgnorance(*e);
-		},Objects::IncludeGhosts::Living);
+		},Objects::IncludeGhosts::HostileContacts);
 
 
 	}
@@ -607,17 +597,19 @@ namespace AI
 			}
 
 			done = true;
-			for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-			{
-				const Objects::Marker&m = Objects::Marker::all[i];
-				if (m.type == Objects::Marker::Type::Visited && m.age > 100)
+			Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
+				[](const Objects::PMarker&m)
 				{
-					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
+					if (m->age > 100)
+					{
+						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m->GetName()+". Reached end-of-life after 100 rounds");
 
-					ObjectHelper::SignalMarkerDeletion(m.id);
-					i--;
+						ObjectHelper::SignalMarkerDeletion(m->id);
+					}
 				}
-			}
+			);
+
+
 			PlayerControlBegin::CheckAutoNextRound();
 		}
 

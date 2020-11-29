@@ -315,7 +315,7 @@ namespace Animation
 				if (d < 2.f)
 					canDo = false;
 			}
-		},Objects::IncludeGhosts::Living);
+		},Objects::IncludeGhosts::HostileContacts);
 		return canDo;
 	}
 

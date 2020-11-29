@@ -116,6 +116,8 @@ namespace ApplicationInterface
 	*/
 	void	SignalAllianceInvite(const Objects::PAlliance&, const Objects::PFaction&,BYTE type);
 
+	void	SignalMarkerCreationToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const Objects::PMarker&marker);
+	void	SignalMarkerDestructionToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const TUniqueID&markerID);
 
 #endif
 }

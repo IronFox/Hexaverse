@@ -439,32 +439,20 @@ namespace Channels
 
 namespace Receiver
 {
-
+	/*
 	static void ConvertReferenceEntity(const Objects::Marker&source, Protocol::MarkerReferenceEntity&e)
 	{
 		e.id = source.referenceEntity;
 		e.owner = source.referenceEntityOwner;
 		e.type = source.referencedType;
 	}
+	*/
 
 
-	static void ConvertMarker(const Objects::Marker&source, Protocol::Marker&dest)
+	static void ConvertMarker(const Objects::PMarker&source, Protocol::Marker&dest, Objects::Packable::Target t)
 	{
-		switch (source.type)
-		{
-			case 0:
-				ConvertReferenceEntity(source, dest.data.Set0());
-			break;
-			case 1:
-				ConvertReferenceEntity(source, dest.data.Set1());
-			break;
-			case 2:
-				dest.data.Set2();
-			break;
-		}
-		dest.createdInRound = source.createdInRound;
-		dest.id = source.id;
-		dest.location = source.location;
+		dest.markerType = source->type;
+		source->PackToArray(dest.state,t);
 	}
 
 
@@ -581,6 +569,24 @@ namespace Receiver
 		Objects::ForeachFaction([&peer](const Objects::PFaction&f)
 		{
 			Game::Network::SendStatisticsTo(peer,f);
+
+
+			
+			for (index_t i = 0; i < Objects::MarkerType::N; i++)
+			{
+				Objects::MarkerType t = Objects::MarkerType::Reinterpret(i);
+				if (!Objects::Marker::TypeIsPrivate(t))
+				{
+					f->markers.Foreach(t, [&peer](const Objects::PMarker&m)
+					{
+						Protocol::Marker	outMarker;
+						ConvertMarker(m, outMarker, Objects::Packable::Target::Owner);
+						Channels::createMarker.SendTo(peer, outMarker);
+					});
+				}
+			}
+
+
 		},true);
 
 		Objects::Alliance::Foreach([&peer](const Objects::PAlliance&a)
@@ -948,11 +954,30 @@ namespace Receiver
 	
 		Channels::ResourceTable.SendTo(peer,Objects::Resource::table);
 
-		foreach(client->faction->markers, m)
+		client->faction->markers.Foreach([&peer](const Objects::PMarker&m)
 		{
 			Protocol::Marker	outMarker;
-			ConvertMarker(*m, outMarker);
+			ConvertMarker(m, outMarker, Objects::Packable::Target::Owner);
 			Channels::createMarker.SendTo(peer, outMarker);
+		});
+		for (index_t i = 0; i < Objects::MarkerType::N; i++)
+		{
+			Objects::MarkerType t = Objects::MarkerType::Reinterpret(i);
+			if (!Objects::Marker::TypeIsPrivate(t))
+			{
+				client->faction->alliance->ForeachMember([&peer,client,t](const Objects::PFaction&f)
+				{
+					if (f != client->faction)
+					{
+						f->markers.Foreach(t,[&peer](const Objects::PMarker&m)
+						{
+							Protocol::Marker	outMarker;
+							ConvertMarker(m, outMarker, Objects::Packable::Target::Ally);
+							Channels::createMarker.SendTo(peer, outMarker);
+						});
+					}
+				});
+			}
 		}
 
 		ResearchSerialization::SendResearchTo(peer);
@@ -1149,7 +1174,7 @@ namespace Receiver
 			//LogEvent(EventClass::Preset::commandRejected ,peer,"Tried to access non-existent entity");
 			for (auto f : Objects::Faction::all)
 			{
-				if (f->FindMarker(eid))
+				if (f->markers.FindByID(eid))
 				{
 					LogEvent(EventClass::Preset::commandRejected, peer, "Access denied (this is a marker/ghost/contact)");
 					//LogEvent(EventSignificance::Debug, peer, "(because it doesn't exist)");
@@ -1202,53 +1227,21 @@ namespace Receiver
 		}
 		if (!f->CanCreateMarker(f == Objects::Faction::nexus))
 		{
+			//LogEvent(EventClass::Preset::commandRejected, peer, "Marker creation denied. Limit reached");
 			LogEvent(EventSignificance::Debug, peer, "Marker creation denied. Limit reached");
 			Channels::markerCreationFailedLimitReached.SendTo(peer, m);
 			return;
 		}
-		bool failed = false;
-		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
-		const Protocol::MarkerReferenceEntity*e = m.data.Get0();
-		Objects::Marker::Type type;
-		if (e)
-		{
-			type = Objects::Marker::Type::Reinterpret(0);
-		}
-		else
-		{
-			e = m.data.Get1();
-			if (e)
-			{
-				type = Objects::Marker::Type::Reinterpret(1);
-			}
-			else
-			{
-				if (m.data.Get2())
-					type = Objects::Marker::Type::Reinterpret(2);
-				else
-				{
-					failed = true;
-				}
-			}
 
-		}
-		Protocol::MarkerReferenceEntity ref;
-		if (e)
-			ref = *e;
-		else
-		{
-			ref.id = TUniqueID::Empty();
-			ref.type = Objects::EntityType();
-			ref.owner = TUniqueID::Empty();
-		}
 
-		if (failed)
+		Objects::MarkerType type;
+		if (!type.Load(m.markerType))
 		{
-			LogEvent(EventClass::Preset::commandRejected, peer, "Marker creation rejected. Invalid marker configuration");
+			LogEvent(EventClass::Preset::commandRejected, peer, "Marker creation denied. Type is not supported: "+String(m.markerType));
 			return;
 		}
 
-		Journal::currentRound.Register(true,f,new Journal::Round::CreateMarker(m.id,type,m.createdInRound,m.location,ref));
+		Journal::currentRound.Register(true,f,new Journal::Round::CreateMarker(type,std::move(m.state)));
 		//Channels::createdMarker.SendTo(peer, outMarker);
 	}
 
@@ -1414,7 +1407,7 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected, peer, "Marker touch denied. Player has no faction");
 			return;
 		}
-		Objects::Marker *marker = f->FindMarker(m.id);
+		Objects::PMarker marker = f->markers.FindByID(m.id);
 		if (marker)
 		{
 			LogEvent(EventSignificance::Common, peer, "Touching " + marker->GetName()+" to round number "+m.newRoundNumber.ToString());

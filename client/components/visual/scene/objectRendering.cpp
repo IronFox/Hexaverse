@@ -334,7 +334,7 @@ namespace Objects
 							AddSensorsOf(e);
 					}
 				}
-				,Objects::IncludeGhosts::Living
+				,Objects::IncludeGhosts::HostileContacts
 			);
 		}
 	}
@@ -1309,17 +1309,18 @@ namespace Objects
 			}
 		#endif
 
-		if (Marker::visitedSystems.IsNotEmpty())
+
+		if (MarkerStore::client.HasAnyOfType(Objects::MarkerType::Visited))
 		{
 			display.SetObjectMatrix(M::Matrix<>::eye4);
 			keyColor.Update(float4(0,1,1,1.f));
-			foreach (Marker::visitedSystems,_sys)
+			MarkerStore::client.Foreach(Objects::MarkerType::Visited,[](const Objects::PMarker&m)
 			{
-				float in = 1.f / (1.f + float(_sys->age)*0.1f);
+				float in = 1.f / (1.f + float(m->age)*0.1f);
 				keyColor.Update(float4(0,in,in,1.f));
-				display.SetObjectMatrix(_sys->system);
+				display.SetObjectMatrix(m->system);
 				display.Render(userInteractionNotifier,true);
-			}
+			});
 		}
 		display.SetObjectMatrix(M::Matrix<>::eye4);
 
@@ -1605,7 +1606,7 @@ namespace Objects
 						}
 					}
 				}
-				,Objects::IncludeGhosts::Living
+				,Objects::IncludeGhosts::HostileContacts
 			);
 		}
 
@@ -1629,18 +1630,16 @@ namespace Objects
 
 	static void ForeachMobileGhost(const std::function<void(const Objects::PMobileEntity&)>&f)
 	{
-		Marker::livingMobileGhosts.Foreach(f);
-		Marker::deadMobileGhosts.Foreach(f);
+		MarkerStore::client.GetArtifacts().ForeachMobileGhost(f,IncludeGhosts::All);
 	}
 
 	static void ForeachStructureGhost(const std::function<void(const Objects::PStructure&)>&f)
 	{
-		Marker::livingStructureGhosts.Foreach(f);
-		Marker::deadStructureGhosts.Foreach(f);
+		MarkerStore::client.GetArtifacts().ForeachStructureGhost(f,IncludeGhosts::All);
 	}
 
 
-	static void RenderGhosts(SharedContainer<MobileEntity>&mobileGhosts, SharedContainer<Structure>&structureGhosts, bool orbital)
+	static void RenderGhosts(const SharedContainer<MobileEntity>&mobileGhosts, const SharedContainer<Structure>&structureGhosts, bool orbital)
 	{
 		mobileGhosts.Foreach([orbital](const Objects::PMobileEntity&m)
 		{
@@ -1723,11 +1722,14 @@ namespace Objects
 			Renderer::RenderSimple(*s,s->HasFoundation());
 		});
 
-		overallTint.Update(float4(0.2, 0.2, 0.2, 1));
-		RenderGhosts(Marker::deadMobileGhosts,Marker::deadStructureGhosts,orbital);
+		{
+			const auto&a =  MarkerStore::client.GetArtifacts();
+			overallTint.Update(float4(0.2, 0.2, 0.2, 1));
+			RenderGhosts(a.deadMobileGhosts,a.deadStructureGhosts,orbital);
 
-		overallTint.Update(float4(1, 0, 0, 1));
-		RenderGhosts(Marker::livingMobileGhosts,Marker::livingStructureGhosts,orbital);
+			overallTint.Update(float4(1, 0, 0, 1));
+			RenderGhosts(a.livingMobileGhosts,a.livingStructureGhosts,orbital);
+		}
 
 
 		display.UnlockShader();

@@ -51,6 +51,56 @@ namespace ApplicationInterface
 		});
 	}
 
+	void	SignalMarkerCreationToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const Objects::PMarker&marker)
+	{
+		if (alliance->CountLivingMembers() <= 1)
+			return;
+
+		Protocol::Marker serialMarker;
+		serialMarker.markerType = marker->type;
+		marker->PackToArray(serialMarker.state, Objects::Packable::Target::Ally);
+
+		alliance->ForeachMember([&serialMarker,owner](const Objects::PFaction&f)
+		{
+			if (f == owner)
+				return;
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::createMarker.SendTo(client->peer.lock(),serialMarker);
+			}
+		});
+	}
+
+	void	SignalMarkerDestructionToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const TUniqueID&markerID)
+	{
+		if (alliance->CountLivingMembers() <= 1)
+			return;
+		
+		alliance->ForeachMember([markerID,owner](const Objects::PFaction&f)
+		{
+			if (f == owner)
+				return;
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::destroyMarker.SendTo(client->peer.lock(),markerID);
+			}
+		});
+	}
+
+
+	void	SignalMarkerCreationToAlliedFaction(const Objects::PFaction&target,const Objects::PMarker&marker)
+	{
+
+	}
+
+	void	SignalMarkerDestructionToAlliedFaction(const Objects::PFaction&target,const TUniqueID&markerID)
+	{
+
+
+	}
+
 
 }
 

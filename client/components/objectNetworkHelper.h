@@ -10,7 +10,8 @@ using namespace DeltaWorks;
 
 namespace ObjectHelper
 {
-	void	FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE);
+	void	FillMarker(Objects::Marker&marker, const Grid::LCellIdI&loc);
+	void	FillMarker(Objects::EntityMarker&marker, const Objects::PWorldEntity&e);
 	void	SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 	void	SignalMarkerCreation(Protocol::Marker&marker);
 	void	SignalMarkerTouch(Objects::Marker&marker);

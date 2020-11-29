@@ -19,12 +19,20 @@
 
 namespace ObjectHelper
 {
-	void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE)
+	void	FillMarker(Objects::Marker&marker, const Grid::LCellIdI&loc)
 	{
-		marker.location = e->location;
-		outE.id = e->id;
-		outE.owner = e->owner->id;
-		outE.type = e->GetType();
+		marker.id.Generate();
+		//marker.createdInRound = RuntimeConfig::roundNumber;	//done in constructor
+		marker.location = loc;
+	}
+
+	void FillMarker(Objects::EntityMarker&marker, const Objects::PWorldEntity&e)
+	{
+		FillMarker(marker,e->location);
+
+		marker.refEntityID = e->id;
+		marker.refEntityOwnerID = e->owner->id;
+		marker.refEntityType = e->GetType();
 	}
 
 
@@ -34,17 +42,17 @@ namespace ObjectHelper
 	
 		bool HandleOutdatedMarkers()
 		{
-			static Buffer0<Objects::Marker> outdated;
+			static Buffer0<Objects::PMarker> outdated;
 			ClientGrid::CheckSensory();
-			if (!Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10))
+			Objects::EntityDeathMarker::outdatedAboveAge = RuntimeConfig::aiMode ? 100 : 10;
+			if (!Objects::MarkerStore::client.GetOutdated(outdated,RuntimeConfig::roundNumber))
 				return false;
 			LogEvent(EventSignificance::Common,"Successfully got "+String(outdated.Count())+" outdated markers. Cleaning up");
 			foreach(outdated, o)
 			{
-			
-				LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
-				ObjectHelper::SignalMarkerDeletion(o->id);
-				//Network::Channels::destroyMarker.SendTo(Network::client, *o);
+				auto m = *o;
+				LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+m->GetName()+" since it's outdated (at age "+String(m->age)+")");
+				ObjectHelper::SignalMarkerDeletion(m->id);
 			}
 			outdated.Clear();
 			lastProcessedRoundNumber = RuntimeConfig::roundNumber;
@@ -188,13 +196,15 @@ namespace ObjectHelper
 
 	void							SignalMarkerDeletion(TUniqueID markerID)	//must be copy to prevent weird shit
 	{
-		Network::Channels::destroyMarker.SendTo(Network::client, markerID);
-		Objects::Marker::Destroy(markerID,Network::ControlEnabled());
+		if (Objects::MarkerStore::client.Destroy(markerID))
+			Network::Channels::destroyMarker.SendTo(Network::client, markerID);
+		else
+			LogEvent(EventClass::Preset::error,nullptr,"Trying to delete non-existent marker ID "+ToString(markerID));
+
 	}
 
 	void	SignalMarkerCreation(Protocol::Marker&marker)
 	{
-		marker.createdInRound = RuntimeConfig::roundNumber;
 		Network::Channels::createMarker.SendTo(Network::client, marker);
 		Network::Receiver::CreateMarker(marker);	//one-way
 	}

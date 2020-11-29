@@ -357,7 +357,7 @@ namespace Objects
 
 	void			Geometry::UpdateBoundingBox()
 	{
-		boundingBox = M::Box<>::Invalid();
+		boundingBox = M::Box<>::Invalid;
 
 		if (!CountLODs())
 			return;

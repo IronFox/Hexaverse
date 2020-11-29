@@ -494,22 +494,28 @@ namespace Lua
 
 		void		API::AddMyMarkers()
 		{
-			foreach(Objects::Marker::all, m)
-				AddMyMarker(*m);
+			Objects::MarkerStore::client.Foreach([this](const Objects::PMarker&m)
+			{
+				AddMyMarker(m);
+			});
 		}
 
-		void		API::AddMyMarker(const Objects::Marker&m)
+		void		API::AddMyMarker(const Objects::PMarker&m)
 		{
 			Lua::Table t = program->CreateTable();
-			myMarkerIDMap.SetField(m.id.ToFullString(), t);
-			t.SetField("location",ToTable(m.location));
-			t.SetField("type",m.type.ToString());
+			myMarkerIDMap.SetField(m->id.ToFullString(), t);
+			t.SetField("location",ToTable(m->location));
+			t.SetField("type",m->type.ToString());
 			t.SetField("confirmed", true);
-			t.SetField("age",m.age);
-			t.SetField("id",m.id.ToFullString());
-			if (m.visualization)
-				t.SetField("unitReference",MapEntity(m.visualization,false,false));
-			auto id = m.id;
+			t.SetField("age",m->age);
+			t.SetField("id",m->id.ToFullString());
+			if (m->IsEntityMarker())
+			{
+				Objects::PEntityMarker em = To<Objects::EntityMarker>::Cast(m);
+				if (em->visualization)
+					t.SetField("unitReference",MapEntity(em->visualization,false,false));
+			}
+			auto id = m->id;
 			index_t at = t.GetLength();
 			t.SetFunction("Touch",[id,this,at]()
 			{

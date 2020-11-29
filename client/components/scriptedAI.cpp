@@ -370,7 +370,7 @@ namespace ScriptedAI
 				destroyedMarkers.Clear();
 				foreach (touchedMarkers,m)
 				{
-					auto marker = Objects::Marker::Find(*m);
+					auto marker = Objects::MarkerStore::client.FindByID(*m);
 					if (marker)
 						ObjectHelper::SignalMarkerTouch(*marker);
 				}
@@ -379,25 +379,19 @@ namespace ScriptedAI
 
 			void	MarkerCreate( const TUniqueID&mID, Objects::MarkerType t, const Objects::PWorldEntity&e, const Grid::LCellIdI&loc )
 			{
-				Protocol::Marker&marker = createdMarkers.Append();
-				marker.id = mID;
-				marker.createdInRound = RuntimeConfig::roundNumber;
-				static_assert(Objects::MarkerType::EntityDeath==0, "MarkerTyp expectation violation");
-				static_assert(Objects::MarkerType::HostileContact==1, "MarkerTyp expectation violation");
-				static_assert(Objects::MarkerType::Visited == 2, "MarkerTyp expectation violation");
-				switch (t)
+				Objects::PMarker om = Objects::Marker::Instantiate(t);
+				if (om->IsEntityMarker())
 				{
-					case Objects::MarkerType::EntityDeath:
-						ObjectHelper::FillMarker(marker, e, marker.data.Set0());
-					break;
-					case Objects::MarkerType::HostileContact:
-						ObjectHelper::FillMarker(marker, e, marker.data.Set1());
-						break;
-					case Objects::MarkerType::Visited:
-						marker.data.Set2();
-						break;
+					ObjectHelper::FillMarker((Objects::EntityMarker&)*om, e);
+					om->location = loc;
 				}
-				marker.location = loc;
+				else
+					ObjectHelper::FillMarker(*om, loc);
+
+
+				Protocol::Marker&marker = createdMarkers.Append();
+				marker.markerType = om->type;
+				om->PackToArray(marker.state, Objects::Packable::Target::Owner);
 			}
 
 			void	MarkerDestroy( const TUniqueID&mID )

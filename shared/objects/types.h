@@ -30,6 +30,10 @@ namespace Objects
 	DECLARE_POINTER_CLASS(MobilePark)
 
 	DECLARE_POINTER_CLASS(BaseEntity)
+		DECLARE_POINTER_CLASS(Marker)
+			DECLARE_POINTER_CLASS(EntityMarker)
+				DECLARE_POINTER_CLASS(EntityDeathMarker)
+			DECLARE_POINTER_CLASS(VisitedMarker)
 		DECLARE_POINTER_CLASS(WorldEntity)
 			DECLARE_POINTER_CLASS(Structure)
 				DECLARE_POINTER_CLASS(Connector)
@@ -82,11 +86,11 @@ namespace Objects
 	);
 
 	class Compound;
-	class Marker;
+	class MarkerStore;
 	struct MarkerType;
 	struct TrajectoryEndPoint;
 	struct TChoiceVisualization;
-
+	struct TMarkerArtifacts;
 
 	namespace Resource
 	{

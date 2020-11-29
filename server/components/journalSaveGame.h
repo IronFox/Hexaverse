@@ -756,14 +756,11 @@ namespace Journal
 		class CreateMarker : public FactionEventT<CreateMarker>
 		{
 		public:
-			TUniqueID		markerID;
-			Objects::Marker::Type	type;
-			RoundNumber		createdInRound;
-			Grid::LCellIdI	location;
-			Protocol::MarkerReferenceEntity	referenceEntity;
+			Objects::MarkerType	type;
+			Array<BYTE>		state;
 
-			/**/			CreateMarker(const TUniqueID&markerID, Objects::Marker::Type t, const RoundNumber&createdInRound, const Grid::LCellIdI&location, const Protocol::MarkerReferenceEntity&referenceEntity)
-							:markerID(markerID),type(t),createdInRound(createdInRound),location(location),referenceEntity(referenceEntity)	{}
+			/**/			CreateMarker(Objects::MarkerType t, ArrayData<BYTE>&&state)
+							:type(t),state(std::move(state))	{}
 			/**/			CreateMarker()	{};
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;

@@ -1592,7 +1592,7 @@ namespace Journal
 			Objects::RefreshCompoundCoverageIfNeeded(t);
 
 	}
-
+	/*
 	static bool ConvertReferenceEntity(const Protocol::MarkerReferenceEntity&source, Objects::Marker&dest )
 	{
 		dest.referenceEntity = source.id;
@@ -1632,15 +1632,15 @@ namespace Journal
 			return;
 		result.stringParameters.Set("ReferenceType",ToString(source.type));
 	}
-
+	*/
 
 	template <typename T> static T Require(T value)
 	{
 		if (!value)
-			throw Round::RoundException(CLOCATION,"Required element is null");
+			throw Round::RoundException(CLOCATION,"Required element resolves to false");
 		return value;
 	}
-
+	/*
 	static void ImportReferenceEntity(Protocol::MarkerReferenceEntity&ref, const Entry&e )
 	{
 		e.uuidParameters.Require(CLOCATION,"ReferenceID",ref.id);
@@ -1649,7 +1649,7 @@ namespace Journal
 			ref.type = Objects::DecodeType(type);
 		else
 			ref.type = Objects::EntityType();
-	}
+	}*/
 
 
 
@@ -1666,46 +1666,25 @@ namespace Journal
 
 	/*virtual override*/ void Round::CreateMarker::Compile(Entry&e)	const
 	{
-		e.uuidParameters.Set("MarkerID",markerID);
+		//e.uuidParameters.Set("MarkerID",markerID);
 		e.intParameters.Set("Type",(int)type);
-		e.Set("CreatedInRound", createdInRound);
-		e.locationParameters.Set("Location",location);
-		ExportReferenceEntity(referenceEntity,e);
+		e.binaryParameters.Set("State",state);
 	}
 
 	/*virtual override*/ void Round::CreateMarker::Decode(const Entry&e)
 	{
-		e.uuidParameters.Require(CLOCATION,"MarkerID",markerID);
 		e.intParameters.RequireEnum(CLOCATION,"Type",type);
-		e.Require(CLOCATION,"CreatedInRound", createdInRound);
-		e.locationParameters.Require(CLOCATION,"Location",location);
-		ImportReferenceEntity(referenceEntity,e);
+		e.binaryParameters.Require(CLOCATION,"State",state);
 	}
 
 	/*virtual override*/ void Round::CreateMarker::Execute(const Objects::PFaction&f) const
 	{
 
-		Objects::Marker&marker = f->CreateMarker(markerID,f == Objects::Faction::nexus,type,referenceEntity.id,referenceEntity.owner);
-
-		marker.createdInRound = createdInRound;
-		marker.location = location;
-		bool failed = false;
-		if (marker.UtilizesReferenceEntity())
-			failed = !ConvertReferenceEntity(referenceEntity, marker);
+		ASSERT1__(f->CanCreateMarker(f == Objects::Faction::nexus),f->GetLogName());
+		Objects::PMarker marker = f->CreateMarker(type,state,false);
 
 		TCP::PPeer peer = GetPeerOfFaction(f);
-		if (failed)
-		{
-			f->DestroyMarker(marker.id);
-			throw RoundException(CLOCATION,"Marker creation rejected. Invalid marker configuration");
-			return;
-		}
-		//Protocol::Marker outMarker;
-		//ConvertMarker(marker, outMarker);
-		String ref;
-		if (marker.UtilizesReferenceEntity())
-			ref = ", referencing #"+String(int(marker.referencedType.baseType))+"-#"+String(int(marker.referencedType.turretType));
-		LogEvent(EventSignificance::Common, peer, marker.GetName()+" created"+ref);
+		LogEvent(EventSignificance::Common, peer, marker->GetName()+" created");
 	}
 
 
