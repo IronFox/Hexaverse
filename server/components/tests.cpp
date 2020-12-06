@@ -25,7 +25,7 @@ namespace Objects
 namespace Test
 {
 
-	void Run(Test&test)
+	void Run(Test &test)
 	{
 		std::cout << "Running test '" << test.name << "'..." << std::endl;
 		//std::cout << "Running test '" << typeid(test).name() << "'..." << std::endl;
@@ -72,7 +72,8 @@ namespace Test
 		
 
 		Serializable copy;
-		Deserialize(ByteReadStream(testContainer.GetWrittenData()),copy);
+		auto s = ByteReadStream(testContainer.GetWrittenData());
+		Deserialize(s,copy);
 		if (serializable != copy)
 			throw Except::Memory::SerializationFault(CLOCATION,"Serialization/deserialization of type "+String(typeid(serializable).name())+" failed. Deserialized data does not match original data");
 	}

@@ -1081,12 +1081,11 @@ namespace ScriptedAI
 
 					if (thread.nonCompressedExportedState.IsNotEmpty())
 					{
-						auto state = api.program->DeserializeToReference(
-							MemReadStream(
-								thread.nonCompressedExportedState.GetPointer(),
-								(serial_size_t)thread.nonCompressedExportedState.GetContentSize()
-							)
+						MemReadStream s(
+							thread.nonCompressedExportedState.GetPointer(),
+							(serial_size_t)thread.nonCompressedExportedState.GetContentSize()
 						);
+						auto state = api.program->DeserializeToReference(s);
 						thread.init(state);
 					}
 					else

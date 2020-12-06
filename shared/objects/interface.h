@@ -3,7 +3,7 @@
 
 #include "types.h"
 #include "cursorMode.h"
-#include "../grid/stack.h"
+#include "../grid/setup.h"
 #include "../uniqueID.h"
 #include "../fileVersion.h"
 

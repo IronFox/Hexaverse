@@ -1595,7 +1595,8 @@ namespace Objects
 
 		PMarker		Faction::CreateMarker(MarkerType type, const ArrayRef<BYTE>&data, bool fromSaveGame)
 		{
-			return CreateMarker(type,MemReadStream(data.GetPointer(),data.GetContentSize()),fromSaveGame);
+			auto s = MemReadStream(data.GetPointer(), data.GetContentSize());
+			return CreateMarker(type,s,fromSaveGame);
 		}
 
 		PMarker		Faction::CreateMarker(MarkerType type, IReadStream&data, bool fromSaveGame)

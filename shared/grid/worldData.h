@@ -3,6 +3,7 @@
 #include "stack.h"
 #include <structure/observable.h>
 #include <container/array2d.h>
+#include "setup.h"
 
 namespace World
 {

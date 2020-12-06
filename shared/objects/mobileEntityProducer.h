@@ -1,7 +1,7 @@
 #ifndef objectMobileEntityProducerH
 #define objectMobileEntityProducerH
 
-#include "../grid/stack.h"
+#include "../grid/setup.h"
 #include "types.h"
 #include "../uniqueID.h"
 #ifndef CLIENT

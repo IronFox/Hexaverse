@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <limits>
+#include <global_string.h>
 
 /**
 Container for shared objects (effectively stores std::shared_ptr<T>).

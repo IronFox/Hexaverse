@@ -1,7 +1,7 @@
 #pragma once
 #ifdef HAS_WINDOW
 #include <global_string.h>
-#include <grid/stack.h>
+#include <grid/setup.h>
 #include <math/vector.h>
 
 namespace Objects

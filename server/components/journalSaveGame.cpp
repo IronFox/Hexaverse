@@ -852,7 +852,7 @@ namespace Journal
 			item->id = taskID;
 			if (e->IsWorkingStructure())
 			{
-				Objects::PWorkingStructure&ws = To<Objects::WorkingStructure>::Cast(e);
+				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(e);
 				if (!ws->IsEnabled())
 				{
 					ws->SetEnabled(true,t);
@@ -1501,7 +1501,7 @@ namespace Journal
 	{
 		if (e->IsMobile())
 		{
-			Objects::PMobileEntity&me = To<Objects::MobileEntity>::Cast(e);
+			Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(e);
 			switch (dropMode)
 			{
 				case Protocol::DropMode::AllTasks:
@@ -1523,7 +1523,7 @@ namespace Journal
 		}
 		if (e->IsStructure())
 		{
-			Objects::PTower&te = To<Objects::Tower>::DynamicCast(e);
+			Objects::PTower te = To<Objects::Tower>::DynamicCast(e);
 			if (te)
 			{
 				if (dropMode == Protocol::DropMode::LastTask)
@@ -1875,7 +1875,7 @@ namespace Journal
 		PFactionEvent ev(newEvent);
 		if (execute)
 		{ 
-			Objects::PFaction&f = Objects::Faction::FindByID(fID);
+			Objects::PFaction f = Objects::Faction::FindByID(fID);
 			if (!f)
 			{
 				LogEvent(EventClass::Preset::commandRejected,"Faction "+ToString(fID)+" not found for event execution "+String(typeid(newEvent).name()));

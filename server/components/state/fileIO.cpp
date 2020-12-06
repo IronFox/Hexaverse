@@ -127,7 +127,7 @@ namespace FileIO
 		}
 
 
-		bool operator==(const GridContentMap&other)
+		bool operator==(const GridContentMap&other)	const
 		{
 			if (Count() != other.Count())
 				return false;
@@ -137,7 +137,7 @@ namespace FileIO
 			return true;
 		}
 
-		bool	operator!=(const GridContentMap&other)
+		bool	operator!=(const GridContentMap&other)	const
 		{
 			return !operator==(other);
 		}
@@ -1488,7 +1488,8 @@ namespace FileIO
 											auto t = list->FindFirst(RID::terrainTypeMap);
 											if (t)
 											{
-												Deserialize(MemReadStream(t->pointer(),t->size()),fileMap);
+												auto s = MemReadStream(t->pointer(), t->size());
+												Deserialize(s,fileMap);
 											}
 											else
 											{
@@ -1583,7 +1584,8 @@ namespace FileIO
 											{
 												try
 												{
-													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),loadedTable);
+													auto s = MemReadStream(chunk->pointer(), chunk->size());
+													Deserialize(s,loadedTable);
 													if (loadedTable == Objects::Resource::table)
 														foreignTable = nullptr;
 													else

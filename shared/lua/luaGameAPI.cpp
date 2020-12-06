@@ -68,7 +68,7 @@ namespace Lua
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
-		void UpdateResourceTable(Lua::Table&t,const Objects::Resource::Vector&v)
+		void UpdateResourceTable(Lua::Table t,const Objects::Resource::Vector&v)
 		{
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			{

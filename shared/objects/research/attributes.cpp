@@ -2,7 +2,6 @@
 #include <global_string.h>
 #include <general/enumeration.h>
 #include "../../lua/luaInterface.h"
-#include "../../expectedBehavior.h"
 #include "attributeDetails.h"
 #ifdef CLIENT
 	#include "globalState.h"

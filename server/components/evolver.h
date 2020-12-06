@@ -1,7 +1,7 @@
 #pragma once
 
 #include <global_string.h>
-#include <grid/stack.h>
+#include <grid/setup.h>
 
 namespace Evolver
 {
