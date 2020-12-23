@@ -708,11 +708,8 @@ namespace ApplicationInterface
 				{
 					Objects::HostileContactMarker hm;
 					ObjectHelper::FillMarker(hm, e);
-					Protocol::Marker marker;
-					marker.markerType = hm.type;
-					hm.PackToArray(marker.state,Objects::Packable::Target::Owner);
-					
-					ObjectHelper::SignalMarkerCreation(marker);
+
+					ObjectHelper::SignalMarkerCreation(hm);
 					LogEvent(EventSignificance::Debug,e.get(),"Created hostile contact marker for "+e->GetName()+" since original disappeared");
 				}
 			}

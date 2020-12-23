@@ -14,6 +14,7 @@ namespace ObjectHelper
 	void	FillMarker(Objects::EntityMarker&marker, const Objects::PWorldEntity&e);
 	void	SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 	void	SignalMarkerCreation(Protocol::Marker&marker);
+	void	SignalMarkerCreation(const Objects::Marker&marker);
 	void	SignalMarkerTouch(Objects::Marker&marker);
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<const Grid::LCellIdI>&targets, UINT8 flags, Objects::Vehicle::mode_t mode, bool interactive);
 	UINT8	AssembleMotionFlags(bool detailedPath, bool leftClick, bool clearSafeTasks);

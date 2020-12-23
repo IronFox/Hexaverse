@@ -210,6 +210,14 @@ namespace ObjectHelper
 		Network::Receiver::CreateMarker(marker);	//one-way
 	}
 
+	void	SignalMarkerCreation(const Objects::Marker&om)
+	{
+		Protocol::Marker marker;
+		marker.markerType = om.type;
+		om.PackToArray(marker.state,Objects::Packable::Target::Owner);
+		SignalMarkerCreation(marker);
+	}
+
 
 
 	void	SignalMarkerTouch(Objects::Marker&marker)
