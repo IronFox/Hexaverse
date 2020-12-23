@@ -8,6 +8,7 @@
 #include "../roundNumber.h"
 #include "../stringTable.h"
 #include <general/enumeration.h>
+#include <net/containers.h>
 
 
 namespace Objects
