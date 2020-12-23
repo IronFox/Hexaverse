@@ -1,8 +1,7 @@
 #include "inputControl.h"
-#include <objects/faction.h>
 #include "network.h"
-#include "cameraControl.h"
 #include "visual/objectChoices.h"
+#include "cameraControl.h"
 #include "timelapse.h"
 #include "visual/scene/terrain.h"
 #include "visual/tutorial.h"

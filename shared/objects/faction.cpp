@@ -1,7 +1,6 @@
 #include <global_root.h>
 #include "faction.h"
 #include "../cast.h"
-//#include "vehicle.h"
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "prototypes.h"
@@ -11,8 +10,8 @@
 #include "../runtimeConfig.h"
 #include "prototypes.h"
 #include "structure/tower.h"
-#include "../protocol.h"
 #include "structure/vehicleStore.h"
+#include "../protocol.h"
 
 namespace Objects
 {

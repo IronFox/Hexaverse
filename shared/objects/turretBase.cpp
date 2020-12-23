@@ -5,11 +5,6 @@
 #include "faction.h"
 
 
-#ifdef HAS_WINDOW
-	#include <engine/display.h>
-	extern Engine::Display<Engine::DirectX11>	display;
-#endif
-
 namespace Objects
 {
 

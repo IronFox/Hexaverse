@@ -7,13 +7,14 @@
 #include "../uniqueID.h"
 #include "../fileVersion.h"
 
-
+/*
 #ifdef HAS_WINDOW
 	#include <engine/display.h>
 	#include "../../client/ExtRenderer/DirectX11.h"
 	extern Engine::Display<Engine::DirectX11>	display;
 
 #endif
+*/
 
 /**
 Functions that send events to the non-shared components of the application.

@@ -11,7 +11,6 @@
 #include "research/factionState.h"
 #include "../grid/resources.h"
 #include "statistics.h"
-#include <map>
 #include "markers.h"
 
 

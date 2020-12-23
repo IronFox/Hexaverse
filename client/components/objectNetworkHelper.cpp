@@ -16,6 +16,7 @@
 #include "gridControl.h"
 #include "clientEvents.h"
 #include "playerControlBegin.h"
+#include "visual/hud/dialog.h"
 
 namespace ObjectHelper
 {
