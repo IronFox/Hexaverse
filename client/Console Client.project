@@ -1,4 +1,4 @@
-<project type="Application:Console" stackSize="4000000">
+<project type="Application:Console" stackSize="4000000" extraProjectOptions="/std:c++latest /Zc:__cplusplus">
 	<source path="../shared" include="true" />
 	<source path="../clientConsoleShared" include="true" />
 	<source path="./">
@@ -9,6 +9,7 @@
 	</source>
 	<macro name="CLIENT"/>
 	<macro name="_SCL_SECURE_NO_WARNINGS" />
+	<disableWarning>26439 <!-- noexcept --></disableWarning>
 	<referenceProject name="DeltaWorksCore" />
 	<referenceProject name="lua" />
 </project>
