@@ -617,6 +617,27 @@ namespace InputControl
 				return;
 			}
 
+
+			if (Engine::input.pressed[Key::F1])
+			{
+				Grid::LCellIdI	target;
+				bool includeWater = true;
+				if (InputControl::GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
+				{
+					HUD::Dialog::Query("Enter marker text:", "", Network::allowedChatCharacters, nullptr, [target](const String&text)
+					{
+						Objects::AllianceMarker marker;
+						marker.id.Generate();
+						marker.createdInRound = RuntimeConfig::roundNumber;
+						marker.location = target;
+						marker.text = text;
+						ObjectHelper::SignalMarkerCreation(marker);
+					});
+				}
+			}
+
+
+
 			//int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
 			//if (Objects::selectedEntity)
 			//	oldVehicleHeight = Objects::selectedEntity->location.height;

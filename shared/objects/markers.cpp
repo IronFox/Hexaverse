@@ -69,7 +69,7 @@ namespace Objects
 	/*static*/ PMarker Marker::Instantiate(MarkerType type)
 	{
 		PMarker m;
-		static_assert(MarkerType::N == 3, "Expand switch in Marker::Instantiate");
+		static_assert(MarkerType::N == 4, "Expand switch in Marker::Instantiate");
 		switch (type)
 		{
 			case MarkerType::EntityDeath:
@@ -81,6 +81,9 @@ namespace Objects
 			case MarkerType::Visited:
 				m.reset(new VisitedMarker());
 				break;
+			case MarkerType::Alliance:
+				m.reset(new AllianceMarker());
+				break;
 		}
 		ASSERT_EQUAL1__(m->IsPrivate(), TypeIsPrivate(type),"Marker privacy consistency violation");
 		return m;
@@ -88,13 +91,15 @@ namespace Objects
 
 	/*static*/ bool		Marker::TypeIsPrivate(MarkerType type)
 	{
-		static_assert(MarkerType::N == 3, "Expand switch in Marker::TypeIsPrivate");
+		static_assert(MarkerType::N == 4, "Expand switch in Marker::TypeIsPrivate");
 		switch (type)
 		{
 			case MarkerType::EntityDeath:
 			case MarkerType::HostileContact:
 			case MarkerType::Visited:
 				return true;
+			case MarkerType::Alliance:
+				return false;
 		}
 		FATAL__("Unexpected marker type "+String(type.ToString())+" ("+String(type)+")");
 		return true;
@@ -429,6 +434,36 @@ namespace Objects
 		Deserialize(inStream,t0);
 		this->refEntityType = DecodeType(t0);
 		//this->referenceEntityType.Deserialize(inStream, fixedSize);
+	}
+
+
+			
+	/*virtual override*/	void				AllianceMarker::Pack(D::IWriteStream&s,Target target) const
+	{
+		Super::Pack(s,target);
+		using Serialization::Serialize;
+		Serialize(s,text);
+	}
+
+	/*virtual override*/	void				AllianceMarker::Unpack(D::IReadStream&s)
+	{
+		Super::Unpack(s);
+		using Serialization::Deserialize;
+		Deserialize(s,text);
+	}
+
+	/*virtual override*/	void				AllianceMarker::ToSavegame(D::IWriteStream&s) const
+	{
+		Super::ToSavegame(s);
+		using Serialization::Serialize;
+		Serialize(s,text);
+	}
+
+	/*virtual override*/	void				AllianceMarker::FromSavegame(D::IReadStream&s)
+	{
+		Super::FromSavegame(s);
+		using Serialization::Deserialize;
+		Deserialize(s,text);
 	}
 
 

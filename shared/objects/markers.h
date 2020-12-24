@@ -55,10 +55,11 @@ namespace Objects
 	};
 
 
-	CONSTRUCT_ENUMERATION3(MarkerType, 
+	CONSTRUCT_ENUMERATION4(MarkerType, 
 		EntityDeath,		//friendly entity has died here. usually preserved for 2-5 rounds. AI may preserve them longer to establish statistics 
 		HostileContact,		//hostile entity was detected here when radar contact was lost. Usually preserved until radar contact is re-established
-		Visited				//marker used by AI to remember previously visited area. refEntityID is either empty of the mobile that was memorized here
+		Visited,			//marker used by AI to remember previously visited area. refEntityID is either empty of the mobile that was memorized here
+		Alliance			//created by users and shared among the respective alliance, server managed and preserved
 		);	
 
 
@@ -218,6 +219,26 @@ namespace Objects
 			virtual void			Unregister(TMarkerArtifacts&) const override;
 		#endif
 
+	};
+
+
+	class AllianceMarker : public Marker
+	{
+		typedef Marker				Super;
+	public:
+		/**/						AllianceMarker():Super(MarkerType::Alliance)
+		{}
+
+		Package::NetString<64>		text;
+
+
+		virtual bool				IsPrivate() const override {return false;}
+
+		
+		virtual void				Pack(D::IWriteStream&s,Target target) const override;
+		virtual void				Unpack(D::IReadStream&s) override;
+		virtual void				ToSavegame(D::IWriteStream&s) const override;
+		virtual void				FromSavegame(D::IReadStream&s) override;
 	};
 
 
