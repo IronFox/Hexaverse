@@ -60,6 +60,8 @@ namespace Grid
 
 	static const constexpr float SingleMeanLayerHeight = RadiusDeltaRatio * WorldScale;
 
+	static const constexpr float MobileBaseScale = Grid::SingleMeanLayerHeight * 1.5f;
+
 	inline float ToRadiusf(float height)
 	{
 		//ASSERT__(layer < 1000.f);
