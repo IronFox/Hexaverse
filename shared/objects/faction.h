@@ -12,6 +12,7 @@
 #include "../grid/resources.h"
 #include "statistics.h"
 #include "markers.h"
+#include <map>
 
 
 namespace Objects
