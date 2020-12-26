@@ -70,15 +70,18 @@ namespace Objects
 		#endif
 	}
 
-	const String&			MobileEntityProducer::WorkItem::GetName() const
-	{
-		#ifdef CLIENT
+	#ifdef CLIENT
+		const String& MobileEntityProducer::WorkItem::GetName() const
+		{
 			return name;
-		#else
+		}
+	#else
+		String MobileEntityProducer::WorkItem::GetName() const
+		{
 			return producing->GetTypeName();
-		#endif
-	}
-
+		}
+	#endif
+	
 
 	Component::VehicleBase*	MobileEntityProducer::WorkItem::GetVehicleBase() const
 	{
