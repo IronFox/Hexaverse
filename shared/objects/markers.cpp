@@ -5,6 +5,7 @@
 #include "vehicle.h"
 #include "structure.h"
 #include "faction.h"
+#include "systems.h"
 
 namespace Objects
 {
@@ -286,9 +287,8 @@ namespace Objects
 			referenceIDMap.Set(m->GetReferencedEntityID(),m);
 		idMap.Set(m->id,m);
 		m->UpdateAge(RuntimeConfig::roundNumber);
+		Objects::BuildStructureSystem(m->location,m->system);
 
-		M::TMatrix4<> system;
-		Mat::makeAxisSystem(Grid::ToWorld(m->location),Grid::low.cells[m->location.stackID].centerVertex.xyz,2,m->system);
 
 		return m;
 	}
