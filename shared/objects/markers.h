@@ -263,6 +263,7 @@ namespace Objects
 		PMarker						FindByID(const TUniqueID&referenceID)	const;
 		PMarker						FindByLocation(const Grid::LCellIdI&)	const;
 		PMarker						FindByLocation(MarkerType type, const Grid::LCellIdI&)	const;
+		PMarker						FindByLocation(MarkerType type, const TUniqueID& ownerFactionID, const Grid::LCellIdI&)	const;
 		void						GetDeletionCandidates(BasicBuffer<TCandidate>&candidates) const;
 		void						Clear();
 		count_t						Count() const {return all.Count();}

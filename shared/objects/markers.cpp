@@ -330,6 +330,18 @@ namespace Objects
 		});
 	}
 
+	PMarker			MarkerStore::FindByLocation(MarkerType type, const TUniqueID& ownerFactionID, const Grid::LCellIdI&loc)	const
+	{
+		auto list = typed.QueryPointer(type);
+		if (!list)
+			return nullptr;
+		return list->Scan([loc, ownerFactionID](const PMarker&m)
+		{
+			return m->GetLocation() == loc && m->ownerFactionID == ownerFactionID;
+		});
+	}
+
+
 	PMarker			MarkerStore::FindByReference(const TUniqueID&referenceID)	const
 	{
 		PMarker m;
