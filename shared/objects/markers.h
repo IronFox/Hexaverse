@@ -107,8 +107,8 @@ namespace Objects
 		virtual bool				IsPrivate() const {return true;}
 
 		#ifdef CLIENT
-			virtual void			Register(TMarkerArtifacts&) const {};
-			virtual void			Unregister(TMarkerArtifacts&) const {};
+			virtual void			Register(TMarkerArtifacts&) {};
+			virtual void			Unregister(TMarkerArtifacts&) {};
 		#endif
 		virtual void				Destroy() {};
 
@@ -198,8 +198,8 @@ namespace Objects
 		virtual bool				CanOutdateInTime() const override {return true;}
 		virtual Outdated			CheckOutdated() const override;
 		#ifdef CLIENT
-			virtual void			Register(TMarkerArtifacts&) const override;
-			virtual void			Unregister(TMarkerArtifacts&) const override;
+			virtual void			Register(TMarkerArtifacts&) override;
+			virtual void			Unregister(TMarkerArtifacts&) override;
 		#endif
 
 	};
@@ -215,8 +215,8 @@ namespace Objects
 
 		virtual bool				CanOutdateInTime() const override {return true;}
 		#ifdef CLIENT
-			virtual void			Register(TMarkerArtifacts&) const override;
-			virtual void			Unregister(TMarkerArtifacts&) const override;
+			virtual void			Register(TMarkerArtifacts&) override;
+			virtual void			Unregister(TMarkerArtifacts&) override;
 		#endif
 
 	};
@@ -284,6 +284,7 @@ namespace Objects
 		PMarker						FindByID(const TUniqueID&referenceID)	const;
 		PMarker						FindByLocation(const Grid::LCellIdI&)	const;
 		PMarker						FindByLocation(MarkerType type, const Grid::LCellIdI&)	const;
+		PMarker						FindByLocation(MarkerType type, const TUniqueID& ownerFactionID, const Grid::LCellIdI&)	const;
 		void						GetDeletionCandidates(BasicBuffer<TCandidate>&candidates) const;
 		void						Clear();
 		count_t						Count() const {return all.Count();}

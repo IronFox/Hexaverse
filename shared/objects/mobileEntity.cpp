@@ -139,8 +139,8 @@ namespace Objects
 		if (outInverse)
 			Mat::invertSystem(inOutSys, *outInverse);
 
-		float hScale = GetScaleAtHeight(location.height) * Grid::MobileBaseScale;
-		if (hScale != 1)
+		float hScale = GetScaleAtHeight(location.height);
+		if (hScale < 1)
 		{
 			inOutSys.x.xyz *= hScale;
 			inOutSys.y.xyz *= hScale;

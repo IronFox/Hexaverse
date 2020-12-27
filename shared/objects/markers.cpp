@@ -5,6 +5,7 @@
 #include "vehicle.h"
 #include "structure.h"
 #include "faction.h"
+#include "systems.h"
 
 namespace Objects
 {
@@ -145,7 +146,7 @@ namespace Objects
 
 
 	#ifdef CLIENT
-		/*virtual override*/ void				EntityDeathMarker::Register(TMarkerArtifacts&a) const
+		/*virtual override*/ void				EntityDeathMarker::Register(TMarkerArtifacts&a)
 		{
 			Super::Register(a);
 
@@ -157,7 +158,7 @@ namespace Objects
 				LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
 		}
 
-		/*virtual override*/ void				EntityDeathMarker::Unregister(TMarkerArtifacts&a) const
+		/*virtual override*/ void				EntityDeathMarker::Unregister(TMarkerArtifacts&a)
 		{
 			if (visualization->IsMobile())
 				a.deadMobileGhosts.FindAndErase(visualization);
@@ -170,7 +171,7 @@ namespace Objects
 			Super::Unregister(a);
 		}
 
-		/*virtual override*/ void				HostileContactMarker::Register(TMarkerArtifacts&a) const
+		/*virtual override*/ void				HostileContactMarker::Register(TMarkerArtifacts&a)
 		{
 			Super::Register(a);
 
@@ -182,7 +183,7 @@ namespace Objects
 				LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
 		}
 
-		/*virtual override*/ void				HostileContactMarker::Unregister(TMarkerArtifacts&a) const
+		/*virtual override*/ void				HostileContactMarker::Unregister(TMarkerArtifacts&a)
 		{
 			if (visualization->IsMobile())
 				a.livingMobileGhosts.FindAndErase(visualization);
@@ -291,9 +292,8 @@ namespace Objects
 			referenceIDMap.Set(m->GetReferencedEntityID(),m);
 		idMap.Set(m->id,m);
 		m->UpdateAge(RuntimeConfig::roundNumber);
+		Objects::BuildStructureSystem(m->location,m->system);
 
-		M::TMatrix4<> system;
-		Mat::makeAxisSystem(Grid::ToWorld(m->location),Grid::low.cells[m->location.stackID].centerVertex.xyz,2,m->system);
 
 		return m;
 	}
@@ -334,6 +334,18 @@ namespace Objects
 			return m->GetLocation() == loc;
 		});
 	}
+
+	PMarker			MarkerStore::FindByLocation(MarkerType type, const TUniqueID& ownerFactionID, const Grid::LCellIdI&loc)	const
+	{
+		auto list = typed.QueryPointer(type);
+		if (!list)
+			return nullptr;
+		return list->Scan([loc, ownerFactionID](const PMarker&m)
+		{
+			return m->GetLocation() == loc && m->ownerFactionID == ownerFactionID;
+		});
+	}
+
 
 	PMarker			MarkerStore::FindByReference(const TUniqueID&referenceID)	const
 	{

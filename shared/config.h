@@ -93,4 +93,11 @@ If defined, activates visual controls on hostile entities and ghosts. Server mus
 Define in the project settings, not here.
 */
 
+
+/**
+Define to reduce the world grid resolution exponent by one (reduce to around 1/4 of the cells)
+*/
+#define LOWER_RESOLUTION_PLANET
+
+
 #endif

@@ -136,7 +136,7 @@ namespace Animation
 			target->system.w.xyz = p;
 			Mat::resetBottomRow(target->system);
 
-			const float scale = Objects::WorldEntity::GetScaleAtRadius(Vec::length(target->system.w.xyz)) * Grid::MobileBaseScale;
+			const float scale = Objects::WorldEntity::GetScaleAtRadius(Vec::length(target->system.w.xyz));
 
 			Mat::invertSystem(target->system, target->inverse);
 			target->system.x.xyz *= scale;
