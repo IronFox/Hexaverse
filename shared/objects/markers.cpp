@@ -140,7 +140,7 @@ namespace Objects
 
 
 	#ifdef CLIENT
-		/*virtual override*/ void				EntityDeathMarker::Register(TMarkerArtifacts&a) const
+		/*virtual override*/ void				EntityDeathMarker::Register(TMarkerArtifacts&a)
 		{
 			Super::Register(a);
 
@@ -152,7 +152,7 @@ namespace Objects
 				LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
 		}
 
-		/*virtual override*/ void				EntityDeathMarker::Unregister(TMarkerArtifacts&a) const
+		/*virtual override*/ void				EntityDeathMarker::Unregister(TMarkerArtifacts&a)
 		{
 			if (visualization->IsMobile())
 				a.deadMobileGhosts.FindAndErase(visualization);
@@ -165,7 +165,7 @@ namespace Objects
 			Super::Unregister(a);
 		}
 
-		/*virtual override*/ void				HostileContactMarker::Register(TMarkerArtifacts&a) const
+		/*virtual override*/ void				HostileContactMarker::Register(TMarkerArtifacts&a)
 		{
 			Super::Register(a);
 
@@ -177,7 +177,7 @@ namespace Objects
 				LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
 		}
 
-		/*virtual override*/ void				HostileContactMarker::Unregister(TMarkerArtifacts&a) const
+		/*virtual override*/ void				HostileContactMarker::Unregister(TMarkerArtifacts&a)
 		{
 			if (visualization->IsMobile())
 				a.livingMobileGhosts.FindAndErase(visualization);
