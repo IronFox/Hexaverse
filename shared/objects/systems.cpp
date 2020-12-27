@@ -33,13 +33,11 @@ namespace Objects
 	void		BuildStructureSystem(const Grid::LCellIdI&location, M::TMatrix4<>&system)
 	{
 		const auto&cell = Grid::low.cells[location.stackID];
-		float hscale = Grid::SingleMeanLayerHeight * 0.75f;
-			//0.55f;
+		float hscale = 0.55f;
 		float r = Grid::ToRadius(location.height);
 		float vscale = Grid::ToRadius(location.height+1) -  r;
 
-		auto scale = WorldEntity::GetScaleAtHeight(location.height);
-		hscale *= scale;
+		hscale *= WorldEntity::GetScaleAtHeight(location.height);
 		BuildSystem(location,hscale,vscale,system);
 	}
 

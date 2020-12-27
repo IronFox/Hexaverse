@@ -9,11 +9,6 @@ using namespace DeltaWorks;
 #include "config.h"
 #include "stack.h"
 
-/**
-Define to reduce the world grid resolution exponent by one (reduce to around 1/4 of the cells)
-*/
-#define LOWER_RESOLUTION_PLANET
-
 
 class BaseGrid
 {
