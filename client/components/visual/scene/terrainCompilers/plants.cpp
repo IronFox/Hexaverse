@@ -1,4 +1,6 @@
 #include "plants.h"
+#include <grid/base.h>
+#include <grid/setup.h>
 
 namespace VisualTerrain
 {
