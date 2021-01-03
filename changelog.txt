@@ -1,10 +1,21 @@
+v0.9.12
+	+ AI: Added --#require <...>/--#require "..." statements to include other Lua files
+	+ AI: Added Game.MeasureSecondsFromNow() to measure time
+	+ AI: Added grid radius<->height conversions
+	+ Added alliance-shared visual markers (via shift+click)
+	> HUD: Flipped setting for music during gameplay (misleading tooltip text)
+	> Server: Relative -l/--load parameter now auto-converted to absolute path
+
 v0.9.11 [Sep 13 2020]
 	+ Implemented Tier 2 unit improvement. Use mechanic to upgrade units
 	+ Added button sounds
 	+ Added resource list tooltips
-	+ AI: Added missing repair command
 	+ AI: Added T2 upgrade command
 	> Initiative is now a user-configurable unit property
+	+ AI: Added missing repair command
+	> Artillery range visualization now reaches further down
+	> Now using faction color to highlight submerged or occluded units
+	* Fixed artillery range calculation
 	* Fixed explosion radius always rounded down to int numbers
 
 v0.9.10	[Dec 31 2019]

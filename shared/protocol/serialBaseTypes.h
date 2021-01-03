@@ -555,6 +555,9 @@ namespace Protocol
 			typedef Optional<T0>	Super;
 			typedef Selective2<T0,T1>	Self;
 
+			using Super::active;
+			using Super::option0;
+
 			T1		option1;
 		public:
 			void				swap(Selective2&other)
@@ -622,6 +625,11 @@ namespace Protocol
 		protected:
 			typedef Selective2<T0,T1>	Super;
 			typedef Selective3<T0,T1,T2>	Self;
+
+			using Super::active;
+			using Super::option0;
+			using Super::option1;
+
 			T2		option2;
 
 		public:
@@ -695,6 +703,12 @@ namespace Protocol
 		protected:
 			typedef Selective3<T0,T1,T2>	Super;
 			typedef Selective4<T0,T1,T2,T3>	Self;
+
+			using Super::active;
+			using Super::option0;
+			using Super::option1;
+			using Super::option2;
+
 			T3		option3;
 
 		public:
@@ -771,6 +785,13 @@ namespace Protocol
 		protected:
 			typedef Selective4<T0,T1,T2,T3>	Super;
 			typedef Selective5<T0,T1,T2,T3,T4>	Self;
+
+			using Super::active;
+			using Super::option0;
+			using Super::option1;
+			using Super::option2;
+			using Super::option3;
+
 			T4		option4;
 
 		public:

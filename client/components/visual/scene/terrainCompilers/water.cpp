@@ -1,4 +1,5 @@
 #include "water.h"
+#include <grid/setup.h>
 
 namespace VisualTerrain
 {

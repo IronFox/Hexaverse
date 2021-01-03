@@ -168,9 +168,9 @@ namespace HexGrid
 				Objects::PWorldEntity e = Objects::GetEntity(focusTarget);
 				if (e)
 					return e;
-				auto marker = Objects::Marker::FindByReference(focusTarget);
-				if (marker)
-					return marker->visualization;
+				auto marker = Objects::MarkerStore::client.FindByReference(focusTarget);
+				if (marker && marker->IsEntityMarker())
+					return ((Objects::PEntityMarker&)marker)->visualization;
 			}
 			return Objects::PWorldEntity();
 		}

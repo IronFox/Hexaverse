@@ -60,7 +60,7 @@ namespace Nexus
 	};
 		
 
-	static void UpdateAssociatedEntities(MutableArrayRef<NexusPortEnvironment>&env)
+	static void UpdateAssociatedEntities(MutableArrayRef<NexusPortEnvironment> env)
 	{
 		bool anyBases = false;
 		foreach (env,e)
@@ -127,7 +127,7 @@ namespace Nexus
 	@param location Location of the entity. Either its own or of the producer it is queued in
 	@param[in,out] Port environments to add to. The specified entity may be added to multiple environments
 	*/
-	static void AddPresence( const Objects::WorldEntity&e, const Grid::LCellIdI&location, MutableArrayRef<NexusPortEnvironment>&env )
+	static void AddPresence( const Objects::WorldEntity&e, const Grid::LCellIdI&location, MutableArrayRef<NexusPortEnvironment> env )
 	{
 		const M::TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
 		float entityRange = e.GetScanningRange();

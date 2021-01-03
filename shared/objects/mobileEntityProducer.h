@@ -1,7 +1,7 @@
 #ifndef objectMobileEntityProducerH
 #define objectMobileEntityProducerH
 
-#include "../grid/stack.h"
+#include "../grid/setup.h"
 #include "types.h"
 #include "../uniqueID.h"
 #ifndef CLIENT
@@ -81,7 +81,11 @@ namespace Objects
 			Component::VehicleBase*	GetVehicleBase() const;
 			bool					CanSpawnInTerrain() const;
 			bool					CanSpawnAboveTerrain(int&) const;
-			const String&			GetName() const;
+			#ifdef CLIENT
+				const String&		GetName() const;
+			#else
+				String				GetName() const;
+			#endif
 
 			/**
 			Gets a prototype of the local production item.

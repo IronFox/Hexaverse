@@ -32,6 +32,7 @@ namespace Receiver
 //	void	RequestResource(Protocol::ResourceID&, TCP::Peer&peer);
 	void	TutorialAt(NET(INT32)&at);
 	void	EntityTrigger(Protocol::EntityTrigger&t, TCP::Peer&peer);
+	void	AllianceMarkerText(Protocol::AllianceMarkerText&t, TCP::Peer&peer);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -167,6 +168,8 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(ScriptedAIState);
 
 	DECLARE_FACTION_CHANNEL(EntityTrigger);
+
+	DECLARE_FACTION_CHANNEL(AllianceMarkerText);
 
 	namespace Statistics
 	{

@@ -3,17 +3,18 @@
 
 #include "types.h"
 #include "cursorMode.h"
-#include "../grid/stack.h"
+#include "../grid/setup.h"
 #include "../uniqueID.h"
 #include "../fileVersion.h"
 
-
+/*
 #ifdef HAS_WINDOW
 	#include <engine/display.h>
 	#include "../../client/ExtRenderer/DirectX11.h"
 	extern Engine::Display<Engine::DirectX11>	display;
 
 #endif
+*/
 
 /**
 Functions that send events to the non-shared components of the application.
@@ -119,6 +120,10 @@ namespace ApplicationInterface
 	*/
 	void	SignalAllianceInvite(const Objects::PAlliance&, const Objects::PFaction&,BYTE type);
 
+	void	SignalMarkerCreationToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const Objects::PMarker&marker);
+	void	SignalMarkerDestructionToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const TUniqueID&markerID);
+	void	SignalMarkerCreation(const Objects::PFaction&target,const Objects::PMarker&marker);
+	void	SignalMarkerDestruction(const Objects::PFaction&target,const TUniqueID&markerID);
 
 #endif
 }

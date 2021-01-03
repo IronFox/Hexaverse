@@ -43,7 +43,7 @@ namespace Grid
 
 				LogEvent(EventClass::Preset::configurationPrint,"Executing resource distribution program '"+distribution+"'");
 				Timer::Time t0 = timer.Now();
-				api.program->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"));
+				api.program->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"),nullptr);
 
 				Lua::Function<Lua::Table()> compute = api.program->RequireGlobal("Compute");
 				Lua::Table result = compute();

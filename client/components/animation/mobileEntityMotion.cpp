@@ -1,6 +1,9 @@
 #include "mobileEntityMotion.h"
 #include <expectedBehavior.h>
 #include "delayedMobileInsertion.h"
+#ifdef HAS_WINDOW
+	#include <engine/timing.h>
+#endif
 
 namespace Animation
 {

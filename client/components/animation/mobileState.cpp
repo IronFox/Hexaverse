@@ -315,7 +315,7 @@ namespace Animation
 				if (d < 2.f)
 					canDo = false;
 			}
-		},Objects::IncludeGhosts::Living);
+		},Objects::IncludeGhosts::HostileContacts);
 		return canDo;
 	}
 
@@ -513,7 +513,7 @@ namespace Animation
 		{
 			if (!v->t2)
 				v->t2.reset(new Objects::T2::Properties());
-			v->t2->Packable::Unpack(vs.entityState.t2State);
+			v->t2->UnpackFromArray(vs.entityState.t2State);
 		}
 		else
 			v->t2.reset();
@@ -529,7 +529,7 @@ namespace Animation
 		bool automationChange = false;
 		if (v->IsGroundBoundVehicle())
 		{
-			Objects::PVehicle&veh = To<Objects::Vehicle>::Cast(v);
+			Objects::PVehicle veh = To<Objects::Vehicle>::Cast(v);
 			bool newAutomated = (vs.flags & Protocol::VehicleFlags::Automated) != 0;
 			automationChange = newAutomated != veh->isAutomated;
 			veh->isAutomated = newAutomated;

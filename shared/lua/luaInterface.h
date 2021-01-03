@@ -90,8 +90,31 @@ namespace Lua
 	static const Nil	nil;
 
 
+	template <typename T>
+		class WrappedCppFunction
+		{
+		public:
+			const T		func;
+			const WProgram	prog;
+
+			explicit WrappedCppFunction(const PProgram&prog, const T&func):func(func),prog(prog)
+			{}
+		};
+
+	/**
+	@brief Wraps a Cpp (possibly lambda) function such that it can be returned by another Cpp function
+	*/
+	template <typename T>
+		WrappedCppFunction<T>	WrapResultFunction(const PProgram&prog, const T&func)
+		{
+			return WrappedCppFunction<T>(prog,func);
+		}
+
+
 	namespace Detail
 	{
+		void* GetUserData(lua_State*, int idx);
+
 		template <typename T>
 			inline int DeleteT(lua_State*st)
 			{
@@ -123,57 +146,6 @@ namespace Lua
 
 
 
-
-		template <typename T>
-			struct ParameterT
-			{
-				static void	Push(lua_State *state, const T&v)
-				{
-					PushParameter(state,v);
-				}
-			};
-		template <>
-			struct ParameterT<String>
-			{
-				static void Push(lua_State *state, const String&v)
-				{
-					PushStrParameter(state,v);
-				}
-			};
-		template <>
-			struct ParameterT<StringRef>
-			{
-				static void Push(lua_State *state, const StringRef&v)
-				{
-					PushStrParameter(state,v);
-				}
-			};
-		template <>
-			struct ParameterT<const char*>
-			{
-				static void Push(lua_State *state, const char*v)
-				{
-					PushStrParameter(state,v);
-				}
-			};
-		template <count_t L>
-			struct ParameterT<char[L]>
-			{
-				static void Push(lua_State *state, const char(&v)[L])
-				{
-					PushStrParameter(state,(const char*)v);
-				}
-			};
-		template <typename T>
-			struct ParameterT<std::shared_ptr<T>>
-			{
-				static void Push(lua_State*state, const std::shared_ptr<T>&p)
-				{
-					typedef std::shared_ptr<T>	ST;
-					void* dat = PushShared(state,sizeof(ST),DeleteT<ST>);
-					new (dat)ST(p);
-				}
-			};
 
 		void PopStacked(lua_State*);
 
@@ -288,7 +260,6 @@ namespace Lua
 			}
 
 
-		void*	GetUserData(lua_State*,int idx);
 
 
 
@@ -488,6 +459,69 @@ namespace Lua
 
 			};
 
+
+
+
+		template <typename T>
+			struct ParameterT
+			{
+				static void	Push(lua_State *state, const T&v)
+				{
+					PushParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<String>
+			{
+				static void Push(lua_State *state, const String&v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<StringRef>
+			{
+				static void Push(lua_State *state, const StringRef&v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<const char*>
+			{
+				static void Push(lua_State *state, const char*v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <count_t L>
+			struct ParameterT<char[L]>
+			{
+				static void Push(lua_State *state, const char(&v)[L])
+				{
+					PushStrParameter(state,(const char*)v);
+				}
+			};
+		template <typename T>
+			struct ParameterT<std::shared_ptr<T>>
+			{
+				static void Push(lua_State*state, const std::shared_ptr<T>&p)
+				{
+					typedef std::shared_ptr<T>	ST;
+					void* dat = PushShared(state,sizeof(ST),DeleteT<ST>);
+					new (dat)ST(p);
+				}
+			};
+
+		template <typename F>
+			struct ParameterT<WrappedCppFunction<F> >
+			{
+				static void Push(lua_State *state, const WrappedCppFunction<F>&f)
+				{
+					Detail::LibFunction<F>::Push(f.prog.lock(),f.func);
+				}
+			};
+
 	}
 
 
@@ -544,7 +578,7 @@ namespace Lua
 		Attempts to exdecute a script file from disk.
 		Throws file open faults or Lua::Exception in case of errors
 		*/
-		void			ExecuteFile(const PathString&filename);
+		void			ExecuteFile(const PathString&filename, const std::function<void(const PathString&, bool isGlobal)>&importHandler);
 		/**
 		Deserializes binary host data to a new lua reference
 		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
@@ -766,6 +800,7 @@ namespace Lua
 	public:
 		/**/			Table()	{}
 		/**/			Table(const Reference&ref):Super(ref){};
+		/**/			Table(const Nil&) {}
 		/**
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found

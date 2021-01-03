@@ -220,7 +220,8 @@ namespace Objects
 			//#ifdef ONE_COMPOUND_PER_FACTION
 				if (stable)
 				{
-					FeedLeftovers(GetOverproduction(),atTime);
+					auto p = GetOverproduction();
+					FeedLeftovers(p,atTime);
 					total = GetVector();
 				}
 			//#endif
