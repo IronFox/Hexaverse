@@ -2249,7 +2249,7 @@ namespace FileIO
 					for (index_t i = 0; i < Objects::MarkerType::N; i++)
 					{
 						const Objects::MarkerType type = Objects::MarkerType::Reinterpret(i);
-						String typeName = type.GetName();
+						String typeName = type.ToString();
 						if (faction->markers.HasAnyOfType(type))
 						{
 							Riff::Chunk*typedList = markerList->AppendNamedList(typeName.c_str(), typeName.Length());
