@@ -2,9 +2,9 @@ v0.9.11 [Sep 13 2020]
 	+ Implemented Tier 2 unit improvement. Use mechanic to upgrade units
 	+ Added button sounds
 	+ Added resource list tooltips
-	+ AI: Added missing repair command
 	+ AI: Added T2 upgrade command
 	> Initiative is now a user-configurable unit property
+	+ AI: Added missing repair command
 	* Fixed explosion radius always rounded down to int numbers
 
 v0.9.10	[Dec 31 2019]
