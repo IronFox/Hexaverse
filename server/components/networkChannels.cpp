@@ -956,31 +956,7 @@ namespace Receiver
 	
 		Channels::ResourceTable.SendTo(peer,Objects::Resource::table);
 
-		client->faction->markers.Foreach([&peer](const Objects::PMarker&m)
-		{
-			Protocol::Marker	outMarker;
-			ConvertMarker(m, outMarker, Objects::Packable::Target::Owner);
-			Channels::createMarker.SendTo(peer, outMarker);
-		});
-		for (index_t i = 0; i < Objects::MarkerType::N; i++)
-		{
-			Objects::MarkerType t = Objects::MarkerType::Reinterpret(i);
-			if (!Objects::Marker::TypeIsPrivate(t))
-			{
-				client->faction->alliance->ForeachMember([&peer,client,t](const Objects::PFaction&f)
-				{
-					if (f != client->faction)
-					{
-						f->markers.Foreach(t,[&peer](const Objects::PMarker&m)
-						{
-							Protocol::Marker	outMarker;
-							ConvertMarker(m, outMarker, Objects::Packable::Target::Ally);
-							Channels::createMarker.SendTo(peer, outMarker);
-						});
-					}
-				});
-			}
-		}
+	
 
 		ResearchSerialization::SendResearchTo(peer);
 
@@ -1057,6 +1033,33 @@ namespace Receiver
 			Channels::identifyFaction.SendTo(peer,Network::Identify(f));
 
 		});
+
+
+		client->faction->markers.Foreach([&peer](const Objects::PMarker&m)
+		{
+			Protocol::Marker	outMarker;
+			ConvertMarker(m, outMarker, Objects::Packable::Target::Owner);
+			Channels::createMarker.SendTo(peer, outMarker);
+		});
+		for (index_t i = 0; i < Objects::MarkerType::N; i++)
+		{
+			Objects::MarkerType t = Objects::MarkerType::Reinterpret(i);
+			if (!Objects::Marker::TypeIsPrivate(t))
+			{
+				client->faction->alliance->ForeachMember([&peer,client,t](const Objects::PFaction&f)
+				{
+					if (f != client->faction)
+					{
+						f->markers.Foreach(t,[&peer](const Objects::PMarker&m)
+						{
+							Protocol::Marker	outMarker;
+							ConvertMarker(m, outMarker, Objects::Packable::Target::Ally);
+							Channels::createMarker.SendTo(peer, outMarker);
+						});
+					}
+				});
+			}
+		}
 
 
 		if (!newFaction)

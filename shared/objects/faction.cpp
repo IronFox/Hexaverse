@@ -251,6 +251,25 @@ namespace Objects
 		ASSERT__(f);
 		ASSERT__(!IsMember(f));
 		LogEvent(EventSignificance::Debug,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
+
+
+		
+		#ifndef CLIENT
+			for (index_t mi = 0; mi < MarkerType::N; mi++)
+			{
+				MarkerType t = MarkerType::Reinterpret(mi);
+				if (!Marker::TypeIsPrivate(t))
+				{
+					ForeachMarker(t,[this,f](const PMarker&m)
+					{
+						ApplicationInterface::SignalMarkerCreation(f,m);
+					});
+				}
+			}
+		#endif
+
+
+
 		members.Append().wFaction = f;
 		members.Last().rawPointer = f.get();
 		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
@@ -305,6 +324,21 @@ namespace Objects
 				members.erase(m);
 				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 				f->alliance = nullptr;
+
+				#ifndef CLIENT
+					for (index_t mi = 0; mi < MarkerType::N; mi++)
+					{
+						MarkerType t = MarkerType::Reinterpret(mi);
+						if (!Marker::TypeIsPrivate(t))
+						{
+							this->ForeachMarker(t,[f](const Objects::PMarker&m)
+							{
+								ApplicationInterface::SignalMarkerDestruction(f,m->id);
+							});
+						}
+					}
+				#endif
+
 				if (members.IsEmpty())
 					all.Unset(id);
 				else
@@ -341,27 +375,49 @@ namespace Objects
 		foreach (members,m)
 			if ( m->rawPointer == f)
 			{
+				auto faction = m->wFaction.lock();
 				members.erase(m);
 				ASSERT_EQUAL__(members.Count()+1,cnt);
 				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 				f->alliance = nullptr;
+
+				#ifndef CLIENT
+				{
+					if (faction)
+						for (index_t mi = 0; mi < MarkerType::N; mi++)
+						{
+							MarkerType t = MarkerType::Reinterpret(mi);
+							if (!Marker::TypeIsPrivate(t))
+							{
+								this->ForeachMarker(t,[faction](const Objects::PMarker&marker)
+								{
+									ApplicationInterface::SignalMarkerDestruction(faction,marker->id);
+								});
+							}
+						}
+					else
+						LogEvent(EventSignificance::NonFatalError,"Unable to clear out deprecated markers. Faction handle lost");
+				}
+				#endif
+
 				if (members.IsEmpty())
 					all.Unset(id);
 				else
 				{
 					RefreshSensors(false);
 					#ifndef CLIENT
-						for (index_t mi = 0; mi < MarkerType::N; mi++)
-						{
-							MarkerType t = MarkerType::Reinterpret(mi);
-							if (!Marker::TypeIsPrivate(t))
+						if (faction)
+							for (index_t mi = 0; mi < MarkerType::N; mi++)
 							{
-								f->markers.Foreach(t,[this](const PMarker&m)
+								MarkerType t = MarkerType::Reinterpret(mi);
+								if (!Marker::TypeIsPrivate(t))
 								{
-									SignalMarkerDestruction(nullptr,m);
-								});
+									faction->markers.Foreach(t,[this](const PMarker&m)
+									{
+										SignalMarkerDestruction(nullptr,m);
+									});
+								}
 							}
-						}
 					#endif
 				}
 				return;

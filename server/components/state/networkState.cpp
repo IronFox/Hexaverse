@@ -74,9 +74,6 @@ namespace ApplicationInterface
 
 	void	SignalMarkerDestructionToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const TUniqueID&markerID)
 	{
-		if (alliance->CountLivingMembers() <= 1)
-			return;
-		
 		alliance->ForeachMember([markerID,owner](const Objects::PFaction&f)
 		{
 			if (f == owner)
@@ -88,6 +85,31 @@ namespace ApplicationInterface
 			}
 		});
 	}
+
+	void	SignalMarkerCreation(const Objects::PFaction&target,const Objects::PMarker&marker)
+	{
+
+		Network::PClient client;
+		if (Network::playerMap.Query(target,client))
+		{
+			Protocol::Marker serialMarker;
+			serialMarker.markerType = marker->type;
+			marker->PackToArray(serialMarker.state, Objects::Packable::Target::Ally);
+
+			Channels::createMarker.SendTo(client->peer.lock(),serialMarker);
+		}
+	}
+
+
+	void	SignalMarkerDestruction(const Objects::PFaction&target,const TUniqueID&markerID)
+	{
+		Network::PClient client;
+		if (Network::playerMap.Query(target,client))
+		{
+			Channels::destroyMarker.SendTo(client->peer.lock(),markerID);
+		}
+	}
+
 
 
 	void	SignalMarkerCreationToAlliedFaction(const Objects::PFaction&target,const Objects::PMarker&marker)

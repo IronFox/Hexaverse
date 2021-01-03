@@ -119,6 +119,8 @@ namespace ApplicationInterface
 
 	void	SignalMarkerCreationToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const Objects::PMarker&marker);
 	void	SignalMarkerDestructionToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const TUniqueID&markerID);
+	void	SignalMarkerCreation(const Objects::PFaction&target,const Objects::PMarker&marker);
+	void	SignalMarkerDestruction(const Objects::PFaction&target,const TUniqueID&markerID);
 
 #endif
 }
