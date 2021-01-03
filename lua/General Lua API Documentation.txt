@@ -438,6 +438,7 @@ float		Game.Grid.HeightToRadius(int/float);	-- Converts a height value to the ab
 int			Game.Grid.RadiusToHeight(float);	-- Converts a distance from planet center to height value. Result is rounded down
 int			Game.Grid.bottomHeight;		-- Minimum grid height (also applies to terrain)
 int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
+int			Game.Grid.suborbitalHeight;		-- Grid height planes travel on. Generally above Game.Grid.topHeight
 bool		Game.Grid.IsClear(Loc);		-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:

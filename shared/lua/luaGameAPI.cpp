@@ -2088,7 +2088,7 @@ namespace Lua
 			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1",Grid::LowSetup::GridType::CellCount);
 			if (height < Grid::CellStack::BottomHeight)
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
-			if (height > Grid::CellStack::TopHeight)
+			if (height > Grid::CellStack::TopHeight && height != Objects::SubOrbital::Height)
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") exceeds maximum grid height ("+String(Grid::CellStack::TopHeight)+")");
 			return this->ToTable(Grid::LCellIdI(stack,height));
 		});
@@ -2142,6 +2142,8 @@ namespace Lua
 
 		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
 		gridTable.SetField("topHeight",Grid::CellStack::TopHeight);
+		gridTable.SetField("suborbitalHeight", Objects::SubOrbital::Height);
+
 		#ifdef LOWER_RESOLUTION_PLANET
 			gridTable.SetField("lowerResolutionPlanet",true);
 		#else

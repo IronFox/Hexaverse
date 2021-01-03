@@ -3,6 +3,8 @@ v0.9.12
 	+ AI: Added Game.MeasureSecondsFromNow() to measure time
 	+ AI: Added grid radius<->height conversions
 	+ Added alliance-shared visual markers (via shift+click)
+	+ AI: Added Game.Grid.suborbitalHeight
+	> AI: Game.Grid.ToLocation() now accepts Game.Grid.suborbitalHeight as height
 	> HUD: Flipped setting for music during gameplay (misleading tooltip text)
 	> Server: Relative -l/--load parameter now auto-converted to absolute path
 
