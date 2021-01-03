@@ -895,10 +895,8 @@ namespace Network
 
 		void	DestroyMarker(NET(TUniqueID)&mid)
 		{
-			if (!Objects::MarkerStore::client.Destroy(mid))
-				throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to destroy marker id "+ToString(mid));
-
-			GlobalEvents::invalidateObjectCache();
+			if (Objects::MarkerStore::client.Destroy(mid))
+				GlobalEvents::invalidateObjectCache();
 		}
 
 		void	IdentifyFaction(Protocol::IdentifyFaction&id);
