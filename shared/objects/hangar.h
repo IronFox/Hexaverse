@@ -3,7 +3,7 @@
 
 
 #include "types.h"
-#include "../grid/stack.h"
+#include "../grid/setup.h"
 #include <structure/observable.h>
 
 namespace Objects

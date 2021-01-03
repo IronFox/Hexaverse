@@ -6,7 +6,6 @@
 #include "../runtimeConfig.h"
 
 #ifdef HAS_WINDOW
-	//#include "gridAndChoices.h"
 	#include "satellite.h"
 #endif
 #ifndef CLIENT

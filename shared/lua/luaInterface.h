@@ -113,6 +113,8 @@ namespace Lua
 
 	namespace Detail
 	{
+		void* GetUserData(lua_State*, int idx);
+
 		template <typename T>
 			inline int DeleteT(lua_State*st)
 			{
@@ -143,67 +145,6 @@ namespace Lua
 		void PushStrParameter(lua_State *state, const char*str);
 
 
-
-
-		template <typename T>
-			struct ParameterT
-			{
-				static void	Push(lua_State *state, const T&v)
-				{
-					PushParameter(state,v);
-				}
-			};
-		template <>
-			struct ParameterT<String>
-			{
-				static void Push(lua_State *state, const String&v)
-				{
-					PushStrParameter(state,v);
-				}
-			};
-		template <>
-			struct ParameterT<StringRef>
-			{
-				static void Push(lua_State *state, const StringRef&v)
-				{
-					PushStrParameter(state,v);
-				}
-			};
-		template <>
-			struct ParameterT<const char*>
-			{
-				static void Push(lua_State *state, const char*v)
-				{
-					PushStrParameter(state,v);
-				}
-			};
-		template <count_t L>
-			struct ParameterT<char[L]>
-			{
-				static void Push(lua_State *state, const char(&v)[L])
-				{
-					PushStrParameter(state,(const char*)v);
-				}
-			};
-		template <typename T>
-			struct ParameterT<std::shared_ptr<T>>
-			{
-				static void Push(lua_State*state, const std::shared_ptr<T>&p)
-				{
-					typedef std::shared_ptr<T>	ST;
-					void* dat = PushShared(state,sizeof(ST),DeleteT<ST>);
-					new (dat)ST(p);
-				}
-			};
-
-		template <typename F>
-			struct ParameterT<WrappedCppFunction<F> >
-			{
-				static void Push(lua_State *state, const WrappedCppFunction<F>&f)
-				{
-					Detail::LibFunction<F>::Push(f.prog.lock(),f.func);
-				}
-			};
 
 
 		void PopStacked(lua_State*);
@@ -319,7 +260,6 @@ namespace Lua
 			}
 
 
-		void*	GetUserData(lua_State*,int idx);
 
 
 
@@ -517,6 +457,69 @@ namespace Lua
 					PushLibFunctionT(prog,f);
 				}
 
+			};
+
+
+
+
+		template <typename T>
+			struct ParameterT
+			{
+				static void	Push(lua_State *state, const T&v)
+				{
+					PushParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<String>
+			{
+				static void Push(lua_State *state, const String&v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<StringRef>
+			{
+				static void Push(lua_State *state, const StringRef&v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <>
+			struct ParameterT<const char*>
+			{
+				static void Push(lua_State *state, const char*v)
+				{
+					PushStrParameter(state,v);
+				}
+			};
+		template <count_t L>
+			struct ParameterT<char[L]>
+			{
+				static void Push(lua_State *state, const char(&v)[L])
+				{
+					PushStrParameter(state,(const char*)v);
+				}
+			};
+		template <typename T>
+			struct ParameterT<std::shared_ptr<T>>
+			{
+				static void Push(lua_State*state, const std::shared_ptr<T>&p)
+				{
+					typedef std::shared_ptr<T>	ST;
+					void* dat = PushShared(state,sizeof(ST),DeleteT<ST>);
+					new (dat)ST(p);
+				}
+			};
+
+		template <typename F>
+			struct ParameterT<WrappedCppFunction<F> >
+			{
+				static void Push(lua_State *state, const WrappedCppFunction<F>&f)
+				{
+					Detail::LibFunction<F>::Push(f.prog.lock(),f.func);
+				}
 			};
 
 	}
@@ -797,6 +800,7 @@ namespace Lua
 	public:
 		/**/			Table()	{}
 		/**/			Table(const Reference&ref):Super(ref){};
+		/**/			Table(const Nil&) {}
 		/**
 		Fetches a reference for the specified field in the local table.
 		The result may be empty if the specified field was not found

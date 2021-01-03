@@ -4,7 +4,7 @@ using namespace DeltaWorks;
 
 namespace Objects
 {
-	void Packable::Pack(D::Array<BYTE>&a,Target target) const
+	void Packable::PackToArray(D::Array<BYTE>&a,Target target) const
 	{
 		using Serialization::Serialize;
 		SerialSizeScanner scanner;
@@ -17,7 +17,7 @@ namespace Objects
 		}
 	} 
 
-	void Packable::Unpack(const D::Array<BYTE>&a)
+	void Packable::UnpackFromArray(const D::Array<BYTE>&a)
 	{
 		MemReadStream s(a.GetPointer(),a.GetLength());
 		Unpack(s);

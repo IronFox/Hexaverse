@@ -1199,19 +1199,19 @@ int main( int argc, const char* argv[])
 
 			std::cout << "Running tests..." << std::endl;
 			{
-				Test::Run(Test::Routing());
-				Test::Run(Test::AutoTargeting());
-				Test::Run(Test::StringMethods());
-				Test::Run(Test::Serialization());
-				Test::Run(Test::CharacterEncoding());
-				Test::Run(Test::ServerClient());
-				Test::Run(Test::TerrainUpdates());
-				Test::Run(Test::SharedContainer());
-				Test::Run(Test::HighGridFamilies());
-				Test::Run(Test::Bin2Str());
-				Test::Run(Test::VehiclePlant());
-				IF_SATELLITES(Test::Run(Test::SkyPort()));
-				Test::Run(Test::StorageUnits());
+				Test::Run<Test::Routing>();
+				Test::Run<Test::AutoTargeting>();
+				Test::Run<Test::StringMethods>();
+				Test::Run<Test::Serialization>();
+				Test::Run<Test::CharacterEncoding>();
+				Test::Run<Test::ServerClient>();
+				Test::Run<Test::TerrainUpdates>();
+				Test::Run<Test::SharedContainer>();
+				Test::Run<Test::HighGridFamilies>();
+				Test::Run<Test::Bin2Str>();
+				Test::Run<Test::VehiclePlant>();
+				IF_SATELLITES(Test::Run<Test::SkyPort>());
+				Test::Run<Test::StorageUnits>();
 			}
 			std::cout << "Tests completed. Press enter to quit" << std::endl;
 			char c;
@@ -1255,6 +1255,14 @@ int main( int argc, const char* argv[])
 		if (ParameterConfig::loadFile.IsNotEmpty())
 		{
 			PathString filename = ParameterConfig::loadFile;
+			if (!filename.Contains('/') && !filename.Contains('\\') && !FileSystem::IsFile(filename))
+			{
+				if (!filename.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+					filename += RuntimeConfig::savFileExtension;
+				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
+
+				filename = saveDirPath + FOLDER_SLASH + filename;
+			}
 			if (FileSystem::IsFile(filename))
 			{
 				FileIO::Load(filename);

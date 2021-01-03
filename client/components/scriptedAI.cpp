@@ -8,7 +8,7 @@
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/dialog.h"
 #include "visual/hud/guiComponents.h"
-#include "visual/scene/debugMarkers.h"
+#include "visual/scene/visualMarkers.h"
 #include <io/string_file.h>
 #include "io.h"
 #include "playerControlBegin.h"
@@ -370,7 +370,7 @@ namespace ScriptedAI
 				destroyedMarkers.Clear();
 				foreach (touchedMarkers,m)
 				{
-					auto marker = Objects::Marker::Find(*m);
+					auto marker = Objects::MarkerStore::client.FindByID(*m);
 					if (marker)
 						ObjectHelper::SignalMarkerTouch(*marker);
 				}
@@ -379,25 +379,19 @@ namespace ScriptedAI
 
 			void	MarkerCreate( const TUniqueID&mID, Objects::MarkerType t, const Objects::PWorldEntity&e, const Grid::LCellIdI&loc )
 			{
-				Protocol::Marker&marker = createdMarkers.Append();
-				marker.id = mID;
-				marker.createdInRound = RuntimeConfig::roundNumber;
-				static_assert(Objects::MarkerType::EntityDeath==0, "MarkerTyp expectation violation");
-				static_assert(Objects::MarkerType::HostileContact==1, "MarkerTyp expectation violation");
-				static_assert(Objects::MarkerType::Visited == 2, "MarkerTyp expectation violation");
-				switch (t)
+				Objects::PMarker om = Objects::Marker::Instantiate(t);
+				if (om->IsEntityMarker())
 				{
-					case Objects::MarkerType::EntityDeath:
-						ObjectHelper::FillMarker(marker, e, marker.data.Set0());
-					break;
-					case Objects::MarkerType::HostileContact:
-						ObjectHelper::FillMarker(marker, e, marker.data.Set1());
-						break;
-					case Objects::MarkerType::Visited:
-						marker.data.Set2();
-						break;
+					ObjectHelper::FillMarker((Objects::EntityMarker&)*om, e);
+					om->location = loc;
 				}
-				marker.location = loc;
+				else
+					ObjectHelper::FillMarker(*om, loc);
+
+
+				Protocol::Marker&marker = createdMarkers.Append();
+				marker.markerType = om->type;
+				om->PackToArray(marker.state, Objects::Packable::Target::Owner);
 			}
 
 			void	MarkerDestroy( const TUniqueID&mID )
@@ -505,7 +499,7 @@ namespace ScriptedAI
 
 			#ifdef HAS_WINDOW
 
-			namespace DebugMarkers
+			namespace VisualMarkers
 			{
 				std::atomic<index_t>	counter;
 
@@ -514,18 +508,18 @@ namespace ScriptedAI
 					index_t idx = counter++;
 					if (idx == InvalidIndex)
 						idx = counter++;
-					mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label](){Objects::DebugMarkers::CreatePreIdentified(idx,loc,color,label);});
+					mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label](){Objects::VisualMarkers::Debug::CreatePreIdentified(idx,loc,color,label);});
 					return idx;
 				}
 
 				void		Delete( index_t idx )
 				{
-					mainThreadExecute << Job("Remove existing debug marker",[idx](){Objects::DebugMarkers::Delete(idx);});
+					mainThreadExecute << Job("Remove existing debug marker",[idx](){Objects::VisualMarkers::Debug::Delete(idx);});
 				}
 
 				void		FlushAll( )
 				{
-					mainThreadExecute << Job("Flush debug markers",Objects::DebugMarkers::FlushAll);
+					mainThreadExecute << Job("Flush debug markers",Objects::VisualMarkers::Debug::FlushAll);
 				}
 
 			}
@@ -950,9 +944,9 @@ namespace ScriptedAI
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
 		#ifdef HAS_WINDOW
-			api.onVisualMarkerCreate = Callback::DebugMarkers::Create;
-			api.onVisualMarkerDelete = Callback::DebugMarkers::Delete;
-			api.onVisualMarkerFlush = Callback::DebugMarkers::FlushAll;
+			api.onVisualMarkerCreate = Callback::VisualMarkers::Create;
+			api.onVisualMarkerDelete = Callback::VisualMarkers::Delete;
+			api.onVisualMarkerFlush = Callback::VisualMarkers::FlushAll;
 		#endif
 
 		api.onRemoveEntity =Callback::RemoveEntity;
@@ -1033,7 +1027,7 @@ namespace ScriptedAI
 			{
 				#ifdef HAS_WINDOW
 					Details::ExecuteMainThreadEvents();
-					Objects::DebugMarkers::FlushAll();
+					Objects::VisualMarkers::Debug::FlushAll();
 				#endif
 
 				Details::ThreadEnqueue("Map Terrain",[](Details::Thread&thread)
@@ -1087,12 +1081,11 @@ namespace ScriptedAI
 
 					if (thread.nonCompressedExportedState.IsNotEmpty())
 					{
-						auto state = api.program->DeserializeToReference(
-							MemReadStream(
-								thread.nonCompressedExportedState.GetPointer(),
-								(serial_size_t)thread.nonCompressedExportedState.GetContentSize()
-							)
+						MemReadStream s(
+							thread.nonCompressedExportedState.GetPointer(),
+							(serial_size_t)thread.nonCompressedExportedState.GetContentSize()
 						);
+						auto state = api.program->DeserializeToReference(s);
 						thread.init(state);
 					}
 					else

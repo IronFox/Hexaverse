@@ -39,6 +39,17 @@ namespace Objects
 
 
 	public:
+		using Super::location;
+
+		using Super::Category;
+		#ifndef CLIENT
+			using Super::FinalLeftoverIteration;
+		#else
+			#ifdef HAS_WINDOW
+				using Super::DescExcludeExtended;
+			#endif
+		#endif
+
 		Resource::Vector			storage,maxStorage;
 		static const int			MaxStorage = StorageCommon::MaxStorage;
 
@@ -196,14 +207,14 @@ namespace Objects
 		typedef StorageStructure<Self>	Super;
 		friend class Super;
 		friend class WorkingStructureT<Self>;
-		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+		/**/						MunitionStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime)
 									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
 				maxStorage[Resource::Munitions] = MaxStorage;
 			#endif
 		}
-		/**/						Self()
+		/**/						MunitionStorage()
 		{
 			#ifndef NO_MUNITION
 				maxStorage[Resource::Munitions] = MaxStorage; 
@@ -234,7 +245,7 @@ namespace Objects
 
 
 		static const int LocalMunitionStorage = 4;
-		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						MunitionFactory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
 									: Super(table,owner,location,atTime)
 		{
 			#ifndef NO_MUNITION
@@ -244,7 +255,7 @@ namespace Objects
 				SetEnabled(false,atTime,false,ForceEnable);
 			#endif
 		}
-		/**/						Self()
+		/**/						MunitionFactory()
 		{
 			#ifndef NO_MUNITION
 				maxStorage[Resource::Munitions] = LocalMunitionStorage;

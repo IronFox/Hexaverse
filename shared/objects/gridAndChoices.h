@@ -49,9 +49,11 @@ namespace Objects
 		class ObjectVolumeGrid : private VolumeGrid<std::shared_ptr<T> >
 		{
 			typedef VolumeGrid<std::shared_ptr<T> >	Super;
+		protected:
+			using Super::entries;
 		public:
 			typedef std::shared_ptr<T>	Entry;
-
+			using Super::CellToGridIndex;
 
 			const Entry&	operator[](const Grid::LCellIdI&loc)	const
 			{

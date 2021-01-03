@@ -531,12 +531,12 @@ namespace Menu
 
 			try
 			{
-				StringFile info;
+				StringFile info(CM_RETURN_EMPTY_LINES);
 				info.Open("../info.txt");
 
 				String line;
 				StringBuffer str;
-				str << text << nl;
+				str << text << nl<<nl;
 				while (info >> line)
 					str << line << nl;
 				text = str.ToStringRef();

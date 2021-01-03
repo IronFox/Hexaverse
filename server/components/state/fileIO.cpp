@@ -127,7 +127,7 @@ namespace FileIO
 		}
 
 
-		bool operator==(const GridContentMap&other)
+		bool operator==(const GridContentMap&other)	const
 		{
 			if (Count() != other.Count())
 				return false;
@@ -137,7 +137,7 @@ namespace FileIO
 			return true;
 		}
 
-		bool	operator!=(const GridContentMap&other)
+		bool	operator!=(const GridContentMap&other)	const
 		{
 			return !operator==(other);
 		}
@@ -233,6 +233,7 @@ namespace FileIO
 		//FactionGroup = WorldGroup + 1024,
 		FactionSection = ResourceSection + 1024,
 		FactionStatisticsSection,
+				FactionMarkers,
 				//FactionID,
 				//FactionAccessToken,
 				//ResourcesDiscovered_Compressed,
@@ -290,7 +291,8 @@ namespace FileIO
 								factionSupportFlags("FSFL"),
 								goal("GOAL"),
 								location("LOCA"),
-								factionMarkers("MARK"),
+								deprecatedFactionMarkers("MARK"),
+								factionMarkerState("MKST"),
 								mobileEntityType("METY"),
 								mobileEntityParentJobIndex("MJPI"),
 								factionName("NAME"),
@@ -1486,7 +1488,8 @@ namespace FileIO
 											auto t = list->FindFirst(RID::terrainTypeMap);
 											if (t)
 											{
-												Deserialize(MemReadStream(t->pointer(),t->size()),fileMap);
+												auto s = MemReadStream(t->pointer(), t->size());
+												Deserialize(s,fileMap);
 											}
 											else
 											{
@@ -1581,7 +1584,8 @@ namespace FileIO
 											{
 												try
 												{
-													Deserialize(MemReadStream(chunk->pointer(),chunk->size()),loadedTable);
+													auto s = MemReadStream(chunk->pointer(), chunk->size());
+													Deserialize(s,loadedTable);
 													if (loadedTable == Objects::Resource::table)
 														foreignTable = nullptr;
 													else
@@ -1813,14 +1817,58 @@ namespace FileIO
 										}
 
 							
-										if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
 										{
-											Riff::Chunk*markerChunk = list->FindFirst(RID::factionMarkers);
-											if (markerChunk)
+											if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersAreSerialized)
 											{
-												Ctr::Array<Objects::Marker>	markers;
-												DeserializeFromCompactMemory(markers, markerChunk->pointer(), markerChunk->size());
-												faction->RestoreMarkers(markers);
+												auto markerChunk = list->FindFirstNamedListMatch(ChunkName::FactionMarkers);
+												if (markerChunk)
+												{
+													Riff::Chunk*markerTypeName,*list,*markerState;
+													if (markerChunk->FindFirstNamedList(markerTypeName,list))
+														do
+														{
+															String typeName(TStringLength(markerTypeName->size()));
+															markerTypeName->Get(typeName.mutablePointer());
+
+															Objects::MarkerType type;
+															if (!type.Decode(typeName.c_str()))
+															{
+																LogEvent(EventSignificance::NonFatalError,faction,"Marker type '"+typeName+"' not supported. Skipping");
+																continue;
+															}
+
+															index_t idx = 0;
+															if (markerState = list->FindFirst(RID::factionMarkerState))
+																do
+																{
+																	idx++;
+																	try
+																	{
+																		MemReadStream stream(markerState->pointer(),markerState->size());
+																		faction->CreateMarker(type,stream,true);
+																	}
+																	catch (const std::exception&ex)
+																	{
+																		LogEvent(EventSignificance::NonFatalError,faction,"While loading markers: "+String(ex.what()));
+																	}
+																}
+																while (markerState = list->FindNext(RID::factionMarkerState));
+														}
+														while (markerChunk->FindNextNamedList(markerTypeName,list));
+												}
+											}
+											else
+											{
+												Riff::Chunk*markerChunk = list->FindFirst(RID::deprecatedFactionMarkers);
+												if (markerChunk && markerChunk->size() > 0)
+													LogEvent(EventSignificance::NonFatalError,faction,"Marker format has changed. No markers will be loaded.");
+												/*
+													was:
+												
+													Ctr::Array<Objects::Marker>	markers;
+													DeserializeFromCompactMemory(markers, markerChunk->pointer(), markerChunk->size());
+													faction->RestoreMarkers(markers);
+												*/
 											}
 										}
 
@@ -2197,8 +2245,28 @@ namespace FileIO
 
 				if (faction->markers.IsNotEmpty())
 				{
+					Riff::Chunk*markerList = factionSection->AppendNamedList(ChunkName::FactionMarkers);
+					for (index_t i = 0; i < Objects::MarkerType::N; i++)
+					{
+						const Objects::MarkerType type = Objects::MarkerType::Reinterpret(i);
+						String typeName = type.ToString();
+						if (faction->markers.HasAnyOfType(type))
+						{
+							Riff::Chunk*typedList = markerList->AppendNamedList(typeName.c_str(), typeName.Length());
+							faction->markers.Foreach(type,[typedList](const Objects::PMarker&marker)
+							{
+								Riff::Chunk*markerState = typedList->AppendBlock(RID::factionMarkerState);
+								static ByteStreamBuffer serial;
+								serial.Clear();
+								marker->ToSavegame(serial);
+								markerState->SetData(serial.GetWrittenData());
+							});
+						}
+					}
+					/*
 					Riff::Chunk*markerChunk = factionSection->AppendBlock(RID::factionMarkers);
 					SetSerialData(*markerChunk,faction->markers.ToRef());
+					*/
 				}
 
 				{

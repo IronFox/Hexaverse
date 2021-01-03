@@ -1,7 +1,6 @@
 #include <global_root.h>
 #include "faction.h"
 #include "../cast.h"
-//#include "vehicle.h"
 #include "mobileEntity.h"
 #include "gridAndChoices.h"
 #include "prototypes.h"
@@ -12,8 +11,8 @@
 #include "../runtimeConfig.h"
 #include "prototypes.h"
 #include "structure/tower.h"
-#include "../protocol.h"
 #include "structure/vehicleStore.h"
+#include "../protocol.h"
 
 namespace Objects
 {
@@ -21,6 +20,9 @@ namespace Objects
 	/*static*/ const String			Faction::nexusName = "<Nexus>";
 
 	/*static*/ HashTable<TUniqueID,WAlliance>	Alliance::all;
+
+
+
 
 
 	#ifndef CLIENT
@@ -122,7 +124,30 @@ namespace Objects
 		}
 	}
 
+	#ifndef CLIENT
 
+		void		Alliance::SignalMarkerCreation(const PFaction&owner, const PMarker&m)
+		{
+			ApplicationInterface::SignalMarkerCreationToAlliedFactions(shared_from_this(),owner,m);
+		}
+
+
+		void		Alliance::SignalMarkerDestruction(const PFaction&owner, const PMarker&m)
+		{
+			ApplicationInterface::SignalMarkerDestructionToAlliedFactions(shared_from_this(),owner,m->id);
+		}
+
+
+		void		Alliance::ForeachMarker(Objects::MarkerType type, const std::function<void(const PMarker&)>&func) const
+		{
+			ASSERT__(!Marker::TypeIsPrivate(type));
+			ForeachMember([type,func](const PFaction&f)
+			{
+				f->markers.Foreach(type,func);
+			});
+
+		}
+	#endif
 
 	void		Alliance::ForeachMember(const std::function<void(const PFaction&)>&visitor, bool livingOnly)	const
 	{
@@ -227,6 +252,25 @@ namespace Objects
 		ASSERT__(f);
 		ASSERT__(!IsMember(f));
 		LogEvent(EventSignificance::Debug,f, "@"+String((const void*)f.get())+ " Joined alliance "+ToString(id));
+
+
+		
+		#ifndef CLIENT
+			for (index_t mi = 0; mi < MarkerType::N; mi++)
+			{
+				MarkerType t = MarkerType::Reinterpret(mi);
+				if (!Marker::TypeIsPrivate(t))
+				{
+					ForeachMarker(t,[this,f](const PMarker&m)
+					{
+						ApplicationInterface::SignalMarkerCreation(f,m);
+					});
+				}
+			}
+		#endif
+
+
+
 		members.Append().wFaction = f;
 		members.Last().rawPointer = f.get();
 		LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
@@ -251,6 +295,19 @@ namespace Objects
 		#ifndef CLIENT
 			ApplicationInterface::SignalAllianceMembershipChange(f);
 			ApplicationInterface::SignalNexusControlChange(shared_from_this());
+
+
+			for (index_t mi = 0; mi < MarkerType::N; mi++)
+			{
+				MarkerType t = MarkerType::Reinterpret(mi);
+				if (!Marker::TypeIsPrivate(t))
+				{
+					f->markers.Foreach(t,[this,f](const PMarker&m)
+					{
+						SignalMarkerCreation(f,m);
+					});
+				}
+			}
 		#endif
 
 		RefreshSensors(false);
@@ -268,6 +325,21 @@ namespace Objects
 				members.erase(m);
 				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 				f->alliance = nullptr;
+
+				#ifndef CLIENT
+					for (index_t mi = 0; mi < MarkerType::N; mi++)
+					{
+						MarkerType t = MarkerType::Reinterpret(mi);
+						if (!Marker::TypeIsPrivate(t))
+						{
+							this->ForeachMarker(t,[f](const Objects::PMarker&m)
+							{
+								ApplicationInterface::SignalMarkerDestruction(f,m->id);
+							});
+						}
+					}
+				#endif
+
 				if (members.IsEmpty())
 					all.Unset(id);
 				else
@@ -275,10 +347,24 @@ namespace Objects
 					RefreshSensors(false);
 					#ifndef CLIENT
 						ApplicationInterface::SignalNexusControlChange(shared_from_this());
+
+						for (index_t mi = 0; mi < MarkerType::N; mi++)
+						{
+							MarkerType t = MarkerType::Reinterpret(mi);
+							if (!Marker::TypeIsPrivate(t))
+							{
+								f->markers.Foreach(t,[this](const PMarker&m)
+								{
+									SignalMarkerDestruction(nullptr,m);
+								});
+							}
+						}
 					#endif
+
 				}
 				return;
 			} 
+
 		FATAL__("Faction not found");
 	}
 
@@ -290,14 +376,51 @@ namespace Objects
 		foreach (members,m)
 			if ( m->rawPointer == f)
 			{
+				auto faction = m->wFaction.lock();
 				members.erase(m);
 				ASSERT_EQUAL__(members.Count()+1,cnt);
 				LogEvent(EventSignificance::Common,"New member count in alliance "+ToString(id)+": "+String(members.Count()));
 				f->alliance = nullptr;
+
+				#ifndef CLIENT
+				{
+					if (faction)
+						for (index_t mi = 0; mi < MarkerType::N; mi++)
+						{
+							MarkerType t = MarkerType::Reinterpret(mi);
+							if (!Marker::TypeIsPrivate(t))
+							{
+								this->ForeachMarker(t,[faction](const Objects::PMarker&marker)
+								{
+									ApplicationInterface::SignalMarkerDestruction(faction,marker->id);
+								});
+							}
+						}
+					else
+						LogEvent(EventSignificance::NonFatalError,"Unable to clear out deprecated markers. Faction handle lost");
+				}
+				#endif
+
 				if (members.IsEmpty())
 					all.Unset(id);
 				else
+				{
 					RefreshSensors(false);
+					#ifndef CLIENT
+						if (faction)
+							for (index_t mi = 0; mi < MarkerType::N; mi++)
+							{
+								MarkerType t = MarkerType::Reinterpret(mi);
+								if (!Marker::TypeIsPrivate(t))
+								{
+									faction->markers.Foreach(t,[this](const PMarker&m)
+									{
+										SignalMarkerDestruction(nullptr,m);
+									});
+								}
+							}
+					#endif
+				}
 				return;
 			} 
 		FATAL__("Faction not found");
@@ -1603,6 +1726,56 @@ namespace Objects
 		}
 
 
+		PMarker		Faction::CreateMarker(MarkerType type, const ArrayRef<BYTE>&data, bool fromSaveGame)
+		{
+			auto s = MemReadStream(data.GetPointer(), data.GetContentSize());
+			return CreateMarker(type,s,fromSaveGame);
+		}
+
+		PMarker		Faction::CreateMarker(MarkerType type, IReadStream&data, bool fromSaveGame)
+		{
+			PMarker rs = markers.Create(type,data,fromSaveGame,[this](const PMarker&m)->bool
+			{
+				bool result = true;
+				ForeachFaction([m,&result,this](const PFaction&f)
+				{
+					if (f->markers.FindByID(m->id))
+					{
+						LogEvent(EventClass::Preset::commandRejected, shared_from_this(), "Marker creation denied. ID is already in use by other faction: "+f->GetLogName());
+						result = false;
+					}
+				});
+				return result;
+			});
+
+			if (!rs)
+				return nullptr;
+
+			rs->ownerFactionID = this->id;
+
+			if (!fromSaveGame)
+			{
+				if (!rs->IsPrivate())	//alliance and spectators see this
+					alliance->SignalMarkerCreation(shared_from_this(),rs);
+			}
+
+
+			return rs;
+		}
+
+		bool		Faction::DestroyMarker(const TUniqueID&id)
+		{
+			PMarker m = markers.Destroy(id);
+			if (m)
+			{
+				if (!m->IsPrivate())
+					alliance->SignalMarkerDestruction(shared_from_this(),m);
+				return true;
+			}
+			return false;
+		}
+
+
 		//void		Faction::RegisterSensorCreation(const Grid::LCellIdI&center, float radius, float t)
 		//{
 		//	ChangeSensory(center,radius,t,1);
@@ -1626,13 +1799,6 @@ namespace Objects
 		/*static*/ HashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
-		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
-		/*static*/ HashTable<TUniqueID, index_t>	Marker::idMap,
-								Marker::referenceIDMap,
-								Marker::visitedSystemIDMap;
-		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;
-		/*static*/ SharedContainer<Structure>		Marker::livingStructureGhosts, Marker::deadStructureGhosts;
-		/*static*/ SharedContainer<MobileEntity>	Marker::livingMobileGhosts, Marker::deadMobileGhosts;
 
 		/*static*/ PFaction				Faction::FindByID(const TUniqueID&id)
 		{
@@ -1754,14 +1920,7 @@ namespace Objects
 		#endif
 		SubOrbital::planes.Foreach(func);
 		#ifdef CLIENT
-			switch (include)
-			{
-				case IncludeGhosts::All:
-					Marker::deadMobileGhosts.Foreach(func);
-				case IncludeGhosts::Living:
-					Marker::livingMobileGhosts.Foreach(func);
-				break;
-			}
+			MarkerStore::client.GetArtifacts().ForeachMobileGhost(func,include);
 		#endif
 	}
 
@@ -1783,350 +1942,28 @@ namespace Objects
 		ForeachMobileWorldEntity(func,include);
 		structures.Foreach(func);
 		#ifdef CLIENT
-			switch (include)
-			{
-				case IncludeGhosts::All:
-					Marker::deadStructureGhosts.Foreach(func);
-				case IncludeGhosts::Living:
-					Marker::livingStructureGhosts.Foreach(func);
-				break;
-			}
+			MarkerStore::client.GetArtifacts().ForeachStructureGhost(func,include);
 		#endif
 	}
 
 
 	
-	#ifdef CLIENT
 
+	#ifndef CLIENT
 
-		void Marker::UpdateAge(const RuntimeConfig::RoundNumber& currentRoundNumber)
-		{
-			age = currentRoundNumber - createdInRound;
-			ASSERT_LESS__(age,100000);	//overflow otherwise, 100000 seems a good limit
-			if (visualization)
-				visualization->health = -(int)(age);
-			if (type == Type::Visited)
-			{
-				index_t at = visitedSystemIDMap.Require(id);
-				visitedSystems[at].age = age;
-			}
-		}
-
-		/*static*/ bool				Marker::GetOutdated(BasicBuffer<Marker>&outOutdated, const RuntimeConfig::RoundNumber& currentRoundNumber, UINT32 deathOutdatedAfterRounds)
-		{
-			outOutdated.Clear();
-			foreach(all, m)
-			{
-				m->UpdateAge(currentRoundNumber);
-				switch (m->type)
-				{
-					case Type::EntityDeath:
-						
-						if (m->age > deathOutdatedAfterRounds)
-						{
-							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
-
-							outOutdated << *m;
-						}
-					break;
-					case Type::HostileContact:
-					{
-						if (m->age < 2 || !m->visualization) //don't delete hostile markers in round < 2: grid sensory might be outdated
-							continue;
-						if (World::actual.SensoryIsInvalid())
-						{
-							//it's actually outdated and known to be outdated
-							outOutdated.Clear();
-							return false;
-						}
-
-						if (World::actual.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad()))	//I see you. Or should, anyway, but you're gone
-							outOutdated << *m;
-					}
-					break;
-
-				}
-		
-
-			}
-			return true;
-		}
-
-
-		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, EntityType referenceType, const RoundNumber& currentRound)
-		{
-			const index_t newIndex = all.Count();
-			Marker&m = all.Append();
-			m.id = id;
-			m.referenceEntityOwner = referenceOwnerID;
-			m.location = location;
-			m.createdInRound = createdInRound;
-			m.age = currentRound - createdInRound;
-
-			m.type = type;
-			ASSERT__(idMap.SetNew(id, newIndex));
-			if (m.UtilizesReferenceEntity())
-			{
-				m.referenceEntity = referenceID;
-				referenceIDMap.Set(referenceID,newIndex);
-				m.referencedType = referenceType;
-
-				const bool isDead = m.type == Type::EntityDeath;
-
-				PWorldEntity prototype = Objects::Prototypes::all.Find(referenceType);
-				if (prototype)
-				{
-					ASSERT1__(prototype, referenceType);
-					m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
-					if (prototype->IsStructure())
-					{
-						if (isDead)
-							deadStructureGhosts << To<Structure>::Cast(m.visualization);
-						else
-							livingStructureGhosts << To<Structure>::Cast(m.visualization);
-					}
-					else
-						if (prototype->IsMobile())
-						{
-							if (isDead)
-								deadMobileGhosts << To<MobileEntity>::Cast(m.visualization);
-							else
-								livingMobileGhosts << To<MobileEntity>::Cast(m.visualization);
-						}
-						else
-							LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
-				}
-				else
-				{
-					//vehicle
-					if (referenceType.HasTurret())
-					{
-						Component::VehicleBase* base = Component::baseComponents.Find(referenceType.baseType);
-						Component::Turret* turret = Component::vehicleTurretComponents.Find(referenceType.turretType);
-						ASSERT1__(base, referenceType);
-						ASSERT1__(turret, referenceType);
-						m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-						if (isDead)
-							deadMobileGhosts << To<MobileEntity>::Cast(m.visualization);
-						else
-							livingMobileGhosts << To<MobileEntity>::Cast(m.visualization);
-					}
-					else
-						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType.baseType));
-				}
-
-				if (m.visualization)
-				{
-					if (m.visualization->IsMobile())
-						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-					m.visualization->id = referenceID;
-					if (referenceOwnerID.IsNotEmpty())
-						m.visualization->owner = Faction::GetOrCreate(referenceOwnerID);
-					else
-						LogEvent(EventSignificance::NonFatalError,"Ghost entity has no owner: "+ToString(referenceID));
-					m.visualization->health = -(int)m.age;
-					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
-					m.visualization->UpdateNiceName();
-				}
-			}
-			else
-			{
-				if (type == Type::Visited)//should be always true but regardless
-				{
-					M::TMatrix4<> system;
-					Mat::makeAxisSystem(Grid::ToWorld(m.location),Grid::low.cells[m.location.stackID].centerVertex.xyz,2,system);
-					index_t systemID = visitedSystems.Count();
-					visitedSystems.Append().system = system;
-					visitedSystems.Last().age = m.age;
-					visitedSystemIDMap.Set(id,systemID);
-				}
-				else
-					FATAL__("Not anticipating this");
-			}
-
-			//m.UpdateAge(currentRound);
-
-		}
-		/*static*/ void				Marker::Destroy(const TUniqueID&id, bool controlEnabled)
-		{
-			index_t index;
-			ASSERT1__(idMap.QueryAndUnset(id, index),ToString(id));	//this mustn't happen anymore
-			Marker&m = all[index];
-			if (m.UtilizesReferenceEntity())
-			{
-				ASSERT__(referenceIDMap.Unset(m.referenceEntity));
-				if (m.visualization)
-				{
-					const bool isDead = m.type == Type::EntityDeath;
-
-					if (m.visualization->IsMobile())
-					{
-						if (isDead)
-							deadMobileGhosts.FindAndErase(m.visualization);
-						else
-							livingMobileGhosts.FindAndErase(m.visualization);
-					}
-					elif(m.visualization->IsStructure())
-					{
-						if (isDead)
-							deadStructureGhosts.FindAndErase(m.visualization);
-						else
-							livingStructureGhosts.FindAndErase(m.visualization);
-					}
-					#ifdef HAS_WINDOW
-						ApplicationInterface::OnVanish(m.visualization,RemovalType::Vanished,true);
-					#endif
-					m.visualization.reset();
-				}
-			}
-			else
-			{
-				if (m.type == Type::Visited)//should be always true but regardless
-				{
-					index_t sysID;
-					if (visitedSystemIDMap.QueryAndUnset(id,sysID))
-					{
-						visitedSystems.Erase(sysID);
-						visitedSystemIDMap.VisitAllValues([sysID](index_t&value)
-						{
-							if (value > sysID)
-								value--;
-						});
-					}
-				}
-				else
-					FATAL__("Not anticipating this");	//assuming an error for now
-
-			}
-			referenceIDMap.VisitAllValues([index](index_t&value)
-			{
-				if (value > index)
-					value--;
-			});
-			idMap.VisitAllValues([index](index_t&value)
-			{
-				if (value > index)
-					value--;
-			});
-			all.Erase(index);
-			#ifdef _DEBUG
-				foreach(all, m)
-				{
-					index_t at;
-					ASSERT__(idMap.Query(m->id, at));
-					ASSERT_LESS__(at, all.Count());
-					ASSERT__(m == all + at);
-				}
-			#endif
-		}
-
-		/*static*/ Marker*			Marker::Find(const Grid::LCellIdI&loc)
-		{
-			foreach (all,m)
-				if (m->visualization && m->visualization->location == loc)
-					return m;
-			return nullptr;
-		}
-
-		/*static*/ Marker*			Marker::FindByReference(const TUniqueID&referenceID)
-		{
-			index_t index;
-			if (referenceIDMap.Query(referenceID, index))
-				return all + index;
-			return nullptr;
-		}
-
-		/*static*/ Marker*			Marker::Find(const TUniqueID&referenceID)
-		{
-			index_t index;
-			if (idMap.Query(referenceID, index))
-				return all + index;
-			return nullptr;
-		}
-
-		/*static*/ void				Marker::GetDeletionCandidates(BasicBuffer<TCandidate>&candidates)
-		{
-			candidates.Clear();
-			for (index_t i = 0; /*i < MaxMarkersPerFaction / 10 && */i < all.Count(); i++)
-			{
-				candidates.Append().markerID = all[i].id;
-				candidates.Last().priority = all[i].age;
-			}
-			std::sort(candidates.begin(),candidates.end());
-			candidates.Truncate(MaxMarkersPerFaction / 10);
-		}
-
-		/*static*/ void				Marker::FlushAll()
-		{
-			all.Clear();
-			idMap.Clear();
-			referenceIDMap.Clear();
-			livingMobileGhosts.Clear();
-			deadMobileGhosts.Clear();
-			livingStructureGhosts.Clear();
-			deadStructureGhosts.Clear();
-			visitedSystems.Clear();
-			visitedSystemIDMap.Clear();
-		}
-	#else
-
-
-
-
-		/*virtual override*/	void		Marker::Serialize(IWriteStream&s) const
-		{
-			s.WritePrimitive(id);
-			s.WritePrimitive((UINT8)type);
-			s.WritePrimitive(createdInRound);
-			s.WritePrimitive(location);
-			if (UtilizesReferenceEntity())
-			{
-				s.WritePrimitive(this->referenceEntity);
-				s.WritePrimitive(this->referenceEntityOwner);
-				using Serialization::Serialize;
-				Serialize(s,ToString(referencedType));
-			}
-		}
-		/*virtual override*/	void		Marker::Deserialize(IReadStream&inStream)
-		{
-			UINT8 typei;
-			inStream.ReadPrimitive(id);
-			inStream.ReadPrimitive(typei);
-			inStream.ReadPrimitive(createdInRound);
-			inStream.ReadPrimitive(location);
-			type = Type::Reinterpret(typei);
-			if (UtilizesReferenceEntity())
-			{
-				String t0;
-				inStream.ReadPrimitive(this->referenceEntity);
-
-				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
-				{
-					inStream.ReadPrimitive(this->referenceEntityOwner);
-				}
-				else
-					this->referenceEntityOwner = TUniqueID::Empty();
-				using Serialization::Deserialize;
-				Deserialize(inStream,t0);
-				this->referencedType = DecodeType(t0);
-				//this->referenceEntityType.Deserialize(inStream, fixedSize);
-			}
-			else
-			{
-				referenceEntity = TUniqueID::Empty();
-				referencedType = EntityType();
-			}
-		}
-
-
+	/*
 		Marker&		Faction::CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID)
 		{
 			ASSERT__(CanCreateMarker(priveleged)); 
+
+			PMarker&rs = markers.Create(
+
+
 			Marker&rs = markers.Append(); 
 			rs.id = id; 
 			rs.type = type;
-			rs.referenceEntity = referenceID;
-			rs.referenceEntityOwner = referenceOwnerID;
+			rs.refEntityID = referenceID;
+			rs.refEntityOwnerID = referenceOwnerID;
 			markerMap.Set(rs.id, markers.Count() - 1); 
 			if (rs.UtilizesReferenceEntity())
 				ASSERT__(referenceMap.SetNew(referenceID,markers.Count()-1));
@@ -2156,7 +1993,7 @@ namespace Objects
 				markerMap.Set(m->id, m - markers.pointer());
 				ASSERT__(m->location != Grid::LCellIdI::Invalid);
 				if (m->UtilizesReferenceEntity())
-					ASSERT__(referenceMap.SetNew(m->referenceEntity,m - markers.pointer()));
+					ASSERT__(referenceMap.SetNew(m->refEntityID,m - markers.pointer()));
 
 			}
 		}
@@ -2171,7 +2008,7 @@ namespace Objects
 			}
 			ASSERT_LESS__(at, markers.Count());
 			if (markers[at].UtilizesReferenceEntity())
-				ASSERT__(referenceMap.Unset(markers[at].referenceEntity));
+				ASSERT__(referenceMap.Unset(markers[at].refEntityID));
 
 			markers.Erase(at);
 			markerMap.VisitAllValues([at](index_t&val)
@@ -2194,7 +2031,7 @@ namespace Objects
 					ASSERT__(m == markers + at);
 					if (m->UtilizesReferenceEntity())
 					{
-						ASSERT__(referenceMap.Query(m->referenceEntity,at));
+						ASSERT__(referenceMap.Query(m->refEntityID,at));
 						ASSERT_LESS__(at, markers.Count());
 						ASSERT__(m == markers + at);
 					}
@@ -2220,6 +2057,7 @@ namespace Objects
 			return nullptr;
 
 		}
+		*/
 
 
 

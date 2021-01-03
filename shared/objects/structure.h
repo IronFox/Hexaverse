@@ -707,9 +707,9 @@ namespace Objects
 		typedef WorkingStructureT<NexusPort>			Super;
 		typedef NexusPort		Self;
 		friend class Super;
-		/**/						Self(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						NexusPort(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
 									: Super(table,owner,location,atTime),resistance(-1)	{}
-		/**/						Self()	{ }	//global prototype
+		/**/						NexusPort()	{ }	//global prototype
 
 		#ifndef CLIENT
 			virtual void			OnEnabledChange() override;

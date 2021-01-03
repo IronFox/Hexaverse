@@ -3,7 +3,7 @@
 #include <general/enumeration.h>
 #include <math/vector.h>
 #include <global_string.h>
-#include "../grid/stack.h"
+#include "../grid/setup.h"
 
 namespace Objects
 {

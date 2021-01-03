@@ -3,7 +3,7 @@
 #include <global_string.h>
 #include <math/vclasses.h>
 #include "../stringTable.h"
-#include "stack.h"
+#include "setup.h"
 
 namespace Grid
 {

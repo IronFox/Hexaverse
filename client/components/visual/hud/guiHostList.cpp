@@ -12,6 +12,7 @@
 #include "../../clientEvents.h"
 #include "menu.h"
 #include "../tutorial.h"
+#include "../display.h"
 
 #ifdef HAS_WINDOW
 

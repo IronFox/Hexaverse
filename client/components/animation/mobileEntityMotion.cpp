@@ -1,6 +1,7 @@
 #include "mobileEntityMotion.h"
 #include <expectedBehavior.h>
 #include "delayedMobileInsertion.h"
+#include <engine/timing.h>
 
 namespace Animation
 {

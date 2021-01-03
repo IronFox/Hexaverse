@@ -86,7 +86,7 @@ namespace RemoteControl
 			const TCP::WPeer	peer;
 
 
-			/**/			Attachment(TCP::PPeer&peer):peer(peer), parser(Reflection::state->NewParser())
+			/**/			Attachment(const TCP::PPeer&peer):peer(peer), parser(Reflection::state->NewParser())
 			{
 				parser->onFocusChanged = [this]()
 				{

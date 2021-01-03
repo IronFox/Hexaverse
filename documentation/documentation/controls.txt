@@ -48,6 +48,7 @@ Additionally, [[units/turrets/terraformer]]s support the following hotkeys to di
 * **G** Construct a new [[units/structures/generator]]
 * **F**/**V** Construct a new [[units/structures/vehicle plant]]
 * **L** Construct a new [[units/structures/laboratory]]
+* **P** Construct a road to the selected location
 
 
 Once any construction commands have been issued,

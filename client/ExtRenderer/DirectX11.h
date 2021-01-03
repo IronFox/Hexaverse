@@ -11,6 +11,7 @@
 #include <math/vclasses.h>
 #include <io/file_system.h>
 
+#include <initguid.h>
 #include <d3d11.h>
 //#include <d3dx11.h>
 //#include <d3dx10.h>
@@ -1208,7 +1209,7 @@ namespace Engine
 		void						ScanShaderHeader(const PathString&path);
 
 		const Resolution&			GetResolution()	const	{return _currentResolution;}
-		ArrayRef<const MSAAConfig>	GetMSAAModes() const {return _msaaConfigs.ToRef();}
+		ArrayRef<const MSAAConfig>	GetMSAAModes() const {return _msaaConfigs.ToRef().Const();}
 		index_t						GetCurrentMSAAMode() const {return _currentMSAAConfig;}
 		BYTE						GetCurrentMSAARate() const {return _msaaConfigs[_currentMSAAConfig].sampleCount;}
 		BYTE						GetMSAARate(index_t mode) const;

@@ -29,6 +29,7 @@ namespace Dialog
 	typedef std::function<bool(const StringRef&)>	FCheckInput;
 	typedef std::function<void(const StringRef&)>	FFetchInput;
 	typedef std::function<void(const char*)>	FOnPassword;
+	typedef std::function<void()>	FOnDelete;
 
 
 
@@ -46,7 +47,7 @@ namespace Dialog
 
 		//Type					type;
 
-		HUD::Component::PButton	confirmButton,noButton,helpButton,cancelButton;
+		HUD::Component::PButton	confirmButton,noButton,helpButton,cancelButton,deleteButton;
 		HUD::Component::PInput		userInput;
 		HUD::Component::PPasswordInput	passwordInput;
 		HUD::Component::PLabel		textField;
@@ -61,6 +62,7 @@ namespace Dialog
 		FCheckInput			checkInput;
 		FFetchInput			fetchInput;
 		FOnPassword			onPassword;
+		FOnDelete			onDelete;
 		bool				isTutorial = false,
 							autoNextTutorial = true,
 							sendNullPasswordOnAbortByUser = false;
@@ -180,6 +182,11 @@ namespace Dialog
 	*/
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&, const FFetchInput&);
 	WDialog	CheckedQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&, const FFetchInput&);
+
+	/**
+	Creates a query dialog with a delete button
+	*/
+	WDialog	DeleteQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&, const FFetchInput&, const FOnDelete&);
 
 	/**
 	Queues a tutorial message. Allows hiding all following tutorials

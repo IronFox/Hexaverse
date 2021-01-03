@@ -1,5 +1,6 @@
 #include <objects/types.h>
 #include <container/buffer.h>
+#include <objects/markers.h>
 
 namespace Objects
 {
@@ -9,9 +10,9 @@ namespace Objects
 	*/
 	class Storage
 	{
-		Buffer0<PWorldEntity>	objects,livingMarkerObjects,deadMarkerObjects;
+		Objects::MarkerStore markers;
+		Buffer0<PWorldEntity>	objects;
 		Buffer0<std::pair<PHangar, PMobileEntity> > storedMobiles;
-		Buffer0<Marker, Strategy::Adopt>	markers;
 		Array<std::pair<EntityType,UINT16> >	unitLimits;
 		bool	loaded = false;
 	public:

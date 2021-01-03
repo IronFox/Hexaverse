@@ -1,8 +1,7 @@
 #include "inputControl.h"
-#include <objects/faction.h>
 #include "network.h"
-#include "cameraControl.h"
 #include "visual/objectChoices.h"
+#include "cameraControl.h"
 #include "timelapse.h"
 #include "visual/scene/terrain.h"
 #include "visual/tutorial.h"
@@ -628,6 +627,53 @@ namespace InputControl
 				return;
 			}
 
+
+			if (Engine::input.pressed[Key::Shift] && !Objects::AnySelected())
+			{
+				Grid::LCellIdI	target;
+				bool includeWater = true;
+				if (InputControl::GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
+				{
+					Objects::PMarker m = Objects::MarkerStore::client.FindByLocation(Objects::MarkerType::Alliance, Objects::Faction::mine->id, target);
+					if (m != nullptr)
+					{
+						auto am = To<Objects::AllianceMarker>::Cast(m);
+						auto wdialog = HUD::Dialog::DeleteQuery(am->GetNiceName(), am->text,
+							Network::allowedChatCharacters, 
+						[]()
+						{
+							if (!Network::client.IsConnected())
+								return HUD::Dialog::CheckResult::Abort;
+							return HUD::Dialog::CheckResult::OkayContinue;
+						}, 
+						[target,m](const String&text)
+						{
+							Protocol::AllianceMarkerText t;
+							t.markerID = m->id;
+							t.markerText = text;
+							Network::Channels::AllianceMarkerText.SendTo(Network::client,t);
+						},
+						[m]()
+						{
+							ObjectHelper::SignalMarkerDeletion(m->id);
+						});
+						return;
+					}
+
+					{
+						Objects::AllianceMarker marker;
+						marker.id.Generate();
+						marker.createdInRound = RuntimeConfig::roundNumber;
+						marker.location = target;
+						marker.ownerFactionID = Objects::Faction::mine->id;
+						ObjectHelper::SignalMarkerCreation(marker);
+					}
+				}
+				return;
+			}
+
+
+
 			//int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
 			//if (Objects::selectedEntity)
 			//	oldVehicleHeight = Objects::selectedEntity->location.height;
@@ -849,10 +895,12 @@ namespace InputControl
 											Objects::PWorldEntity e = Objects::GetEntity(target);
 											Objects::Select(e,Network::ControlEnabled());
 											selectionDone = true;
+											/*
 											#ifdef _DEBUG
-												if (Engine::input.pressed[Key::Shift])
+												if (Engine::input.pressed[Key::Shift])	//use different key: shift is now marker
 													ShowMessage(ToString(target));
 											#endif
+											*/
 										}
 									}
 								}

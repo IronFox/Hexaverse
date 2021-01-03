@@ -78,15 +78,18 @@ namespace Objects
 		#endif
 	}
 
-	const String&			MobileEntityProducer::WorkItem::GetName() const
-	{
-		#ifdef CLIENT
+	#ifdef CLIENT
+		const String& MobileEntityProducer::WorkItem::GetName() const
+		{
 			return name;
-		#else
+		}
+	#else
+		String MobileEntityProducer::WorkItem::GetName() const
+		{
 			return producing->GetTypeName();
-		#endif
-	}
-
+		}
+	#endif
+	
 
 	bool					MobileEntityProducer::WorkItem::IsPureVehicle() const
 	{
@@ -248,11 +251,15 @@ namespace Objects
 							if (!owner->IsFriendly(e->owner))
 								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,e->location));
 						});
-						foreach (owner->markers,m)
-							if (m->type == Objects::Marker::Type::EntityDeath || m->type == Objects::Marker::Type::HostileContact)
-							{
-								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
-							}
+						owner->markers.Foreach(Objects::MarkerType::EntityDeath,[&badness,choice](const Objects::PMarker&m)
+						{
+							badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+						});
+						owner->markers.Foreach(Objects::MarkerType::HostileContact,[&badness,choice](const Objects::PMarker&m)
+						{
+							badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+						});
+
 						if (badness < best)
 						{
 							best = badness;

@@ -962,14 +962,14 @@ template <typename Result, typename ...T>
 	bool CallRegisteredFunction(lua_State *state, int refID, Result&result, const T&...parameters)
 	{
 		lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
-		int numParameters = Lua::PushParameters(state,parameters...);
+		int numParameters = PushParameters(state,parameters...);
 		int status = lua_pcallk(state, numParameters, 1, 0, 0, NULL);
 		if (status != LUA_OK)
 		{
 			report(state, status);
 			return false;
 		}
-		Lua::GetStacked(state,-1,result);
+		GetStacked(state,-1,result);
 		return true;
 	}
 
