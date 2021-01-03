@@ -1255,6 +1255,14 @@ int main( int argc, const char* argv[])
 		if (ParameterConfig::loadFile.IsNotEmpty())
 		{
 			PathString filename = ParameterConfig::loadFile;
+			if (!filename.Contains('/') && !filename.Contains('\\') && !FileSystem::IsFile(filename))
+			{
+				if (!filename.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
+					filename += RuntimeConfig::savFileExtension;
+				PathString saveDirPath = RuntimeConfig::sharedConfig.Lookup("saves");
+
+				filename = saveDirPath + FOLDER_SLASH + filename;
+			}
 			if (FileSystem::IsFile(filename))
 			{
 				FileIO::Load(filename);
