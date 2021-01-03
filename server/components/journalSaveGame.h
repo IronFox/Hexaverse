@@ -772,6 +772,22 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 
+		class AllianceMarkerText : public FactionEventT<AllianceMarkerText>
+		{
+		public:
+			TUniqueID		markerID;
+			String			markerText;
+
+			/**/			AllianceMarkerText(const TUniqueID&markerID, String&&markerText)
+							:markerID(markerID),markerText(std::move(markerText))	{}
+			/**/			AllianceMarkerText()	{};
+			virtual void	Decode(const Entry&e) override;
+			virtual void	Execute(const Objects::PFaction&) const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
+
 		class QueueResearch : public FactionEventT<QueueResearch>
 		{
 		public:

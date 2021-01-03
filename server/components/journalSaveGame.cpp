@@ -1687,6 +1687,46 @@ namespace Journal
 		LogEvent(EventSignificance::Common, peer, marker->GetName()+" created");
 	}
 
+	
+
+	/*virtual override*/ void Round::AllianceMarkerText::Compile(Entry&e)	const
+	{
+		//e.uuidParameters.Set("MarkerID",markerID);
+		e.uuidParameters.Set("Target",markerID);
+		e.stringParameters.Set("Text",markerText);
+	}
+
+	/*virtual override*/ void Round::AllianceMarkerText::Decode(const Entry&e)
+	{
+		e.uuidParameters.Require(CLOCATION,"Target",markerID);
+		e.stringParameters.Require(CLOCATION,"Text",markerText);
+	}
+
+	/*virtual override*/ void Round::AllianceMarkerText::Execute(const Objects::PFaction&f) const
+	{
+		Objects::PMarker marker = f->markers.FindByID(markerID);
+		if (!marker || marker->type != Objects::MarkerType::Alliance)
+			throw RoundException(CLOCATION, "Alliance marker " + ToString(markerID) + " not found for text update");
+
+		auto am = To<Objects::AllianceMarker>::Cast(marker);
+		am->text = std::move(markerText);
+
+		TCP::Serial<Protocol::AllianceMarkerText> s;
+		s.Ref().markerID = markerID;
+		s.Ref().markerText = am->text;
+		s.Seal();
+
+
+		TCP::PPeer peer = GetPeerOfFaction(f);
+		LogEvent(EventSignificance::Common, peer, marker->Describe()+" text updated");
+
+		f->alliance->ForeachMember([&s, f](const Objects::PFaction&other)
+		{
+			TCP::PPeer peer = GetPeerOfFaction(other);
+			if (peer)
+				Channels::AllianceMarkerText.SendTo(peer,s);
+		});
+	}
 
 	/*virtual override*/ void Round::DestroyMarker::Execute(const Objects::PFaction&f) const
 	{
@@ -2278,6 +2318,7 @@ namespace Journal
 		MAP_ADD(EnableStructure);
 		MAP_ADD(CreateMarker);
 		MAP_ADD(DestroyMarker);
+		MAP_ADD(AllianceMarkerText);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
 		MAP_ADD(QueueResearch);

@@ -1365,6 +1365,18 @@ namespace Network
 			GlobalEvents::resourceTableUpdated();
 		}
 
+		void	AllianceMarkerText(Protocol::AllianceMarkerText&text)
+		{
+			Objects::PMarker m = Objects::MarkerStore::client.FindByID(text.markerID);
+			if (!m)
+				return;	//going to ignore this one because client might have deleted its own marker already
+			Objects::PAllianceMarker am = To<Objects::AllianceMarker>::DynamicCast(m);
+			if (!am)
+				throw Except::IO::Network::ProtocolViolation(CLOCATION, "Trying to update text of non-alliance-marker "+m->Describe());
+
+			am->text = text.markerText;
+		}
+
 	}
 
 
@@ -1465,6 +1477,8 @@ namespace Network
 		DECLARE_CHANNEL(ScriptedAIState);
 
 		DECLARE_OBJECT_SENDER(EntityTrigger);
+
+		DECLARE_CHANNEL(AllianceMarkerText);
 	}
 
 
@@ -1741,7 +1755,8 @@ namespace Network
 		client.InstallChannel(Channels::ChoiceResponse);
 
 		client.InstallChannel(Channels::ScriptedAIState);
-		
+
+		client.InstallChannel(Channels::AllianceMarkerText);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -2192,6 +2207,7 @@ void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 	#ifdef HAS_WINDOW
 		HUD::FactionTable::Update();
 	#endif
+	Objects::MarkerStore::client.SignalFactionColorChange(faction);
 }
 
 

@@ -795,6 +795,11 @@ namespace Protocol
 		, ScriptedAIStateVector, dataVector
 	);
 
+	NETSTRUCT2(AllianceMarkerText
+		, TUniqueID, markerID
+		, Package::NetString<64>, markerText
+	);
+
 	typedef Objects::Resource::Table ResourceTable;
 
 
@@ -871,6 +876,7 @@ namespace Protocol
 
 			CreateMarker,		//c2s/s2c: Marker (non-dialogue)
 			MarkerCreationFailedLimitReached,	//s2c: ClientMarker
+			AllianceMarkerText,		//c2s: AllianceMarkerText
 			DestroyMarker,		//c2s/s2c: TUniqueID
 			TouchMarker,		//c2s: TouchedMarker
 

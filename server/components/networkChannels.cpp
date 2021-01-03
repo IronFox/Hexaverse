@@ -420,6 +420,8 @@ namespace Channels
 
 	DECLARE_FACTION_CHANNEL(EntityTrigger);
 
+	DECLARE_FACTION_CHANNEL(AllianceMarkerText);
+
 	namespace Statistics
 	{
 		TCP::ObjectSender<Objects::Statistics::Round, Protocol::ChannelID::RoundStatistics>			round;
@@ -1357,6 +1359,32 @@ namespace Receiver
 	void	TutorialAt(NET(INT32)&at)
 	{
 		Game::tutorialAt = at;
+	}
+
+	void	AllianceMarkerText(Protocol::AllianceMarkerText&t, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: AllianceMarkerText target "+ToString(t.markerID));
+
+		if (!CheckCommandMode(peer))
+			return;
+
+		Network::PClient cl = To<Network::Client>::Cast(peer.attachment);
+		if (!cl || !cl->faction)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, "Client has no faction");
+			return;
+		}
+		
+		Objects::PMarker m0 = cl->faction->markers.FindByID(t.markerID);
+		if (!m0 || m0->type != Objects::MarkerType::Alliance)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, "Alliance marker "+ToString(t.markerID)+" does not exist");
+			return;
+		}
+
+		Objects::PAllianceMarker am = To<Objects::AllianceMarker>::Cast(m0);
+
+		Journal::currentRound.Register(true,cl->faction,new Journal::Round::AllianceMarkerText(t.markerID, std::move(t.markerText)));
 	}
 
 	void	EntityTrigger(Protocol::EntityTrigger&t, TCP::Peer&peer)
