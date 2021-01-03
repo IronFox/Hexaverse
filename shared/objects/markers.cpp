@@ -484,9 +484,8 @@ namespace Objects
 
 	/*static*/ float4 AllianceMarker::GetColorOf(const PFaction&f)
 	{
-		return float4(1.f - (1.f - f->activeEntityColor) * 0.5f,1);
+		return float4(1.f - (1.f - f->color) * 0.5f,1);
 		//return float4(f->activeEntityColor,1);
-
 	}
 
 	
