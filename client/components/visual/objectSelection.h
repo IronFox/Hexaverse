@@ -22,7 +22,7 @@ namespace Objects
 	void					Deselect(bool controlEnabled);
 	PWorldEntity			GetRayIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance);
 	inline bool				IsSelected(const PWorldEntity&e) {return selectedEntity == e;}
-
+	inline bool				AnySelected() {return !!selectedEntity;}
 
 
 

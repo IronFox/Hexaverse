@@ -241,6 +241,12 @@ namespace Component
 			value = other.value;
 		}
 
+		void	ResetToPlaceholder()
+		{
+			type = Type::Placeholder;
+			value = NAN;
+		}
+
 		/**
 		Converts the local value to a size/distance applicable in screen size (ideally in [0,1]).
 		Automatically queries the global display size, as necessary.
@@ -397,6 +403,7 @@ namespace Component
 			bool		Stretches() const {return BothAnchorsAreOn() && !isAutoCentering;}
 			bool		RequiresFixedParentSize() const {return lower.RequiresFixedParentSize() || upper.RequiresFixedParentSize() || extent.RequiresFixedParentSize() /*|| Stretches()*/;}	//stretching is valid
 			bool		SetExtent(const Distance&);
+			void		ClearExtent();
 			void		AnchorLower(const Distance&extent, const Distance&lowerOffset = Distance());
 			void		AnchorLower(const Distance&extent, const PComponent&lowerReference, const Distance& lowerOffset = Distance());
 			void		AnchorUpper(const Distance&extent, const Distance&upperOffset = Distance());
@@ -794,6 +801,7 @@ namespace Component
 		virtual void	OnMouseUp()	{}
 		virtual void	OnMouseMove(const M::TVec2<>&mouseAt, bool clipAreaContainsMouse);
 		
+		void			UpdateDynamicSize() { ChangeRecorder dummy; UpdateDynamicSize(dummy); }
 		virtual void	UpdateDynamicSize(ChangeRecorder&);
 
 		virtual Ctx		Render(const Decoration::Context&);
@@ -1165,7 +1173,7 @@ namespace Component
 		void			SetColor(const float4&color)	{this->color = color;}
 		void			SetColor(const float3&color, float alpha = 1.f)	{this->color.rgb = color; this->color.a = alpha;}
 		void			SetColor(float r, float g, float b, float a = 1.f)	{this->color = float4(r,g,b,a);}
-		void			SetLocalFontScale(float zoom)	{this->zoom = zoom; ReWrap(); UpdateDynamicSize(ChangeRecorder());OnTextChange();}
+		void			SetLocalFontScale(float zoom) { this->zoom = zoom; ReWrap(); UpdateDynamicSize(); OnTextChange(); }
 		float			GetLocalFontScale() const {return zoom;}
 		float			GetTotalFontScale() const;
 
@@ -1203,6 +1211,7 @@ namespace Component
 		}
 
 		virtual void	UpdateDynamicSize(ChangeRecorder&) override;
+		using Super::UpdateDynamicSize;
 		virtual Ctx		Render(const Decoration::Context&) override;
 	private:
 		HAlign			hAlign;

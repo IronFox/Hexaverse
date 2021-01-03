@@ -51,6 +51,78 @@ namespace ApplicationInterface
 		});
 	}
 
+	void	SignalMarkerCreationToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const Objects::PMarker&marker)
+	{
+		if (alliance->CountLivingMembers() <= 1)
+			return;
+
+		Protocol::Marker serialMarker;
+		serialMarker.markerType = marker->type;
+		marker->PackToArray(serialMarker.state, Objects::Packable::Target::Ally);
+
+		alliance->ForeachMember([&serialMarker,owner](const Objects::PFaction&f)
+		{
+			if (f == owner)
+				return;
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::createMarker.SendTo(client->peer.lock(),serialMarker);
+			}
+		});
+	}
+
+	void	SignalMarkerDestructionToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const TUniqueID&markerID)
+	{
+		alliance->ForeachMember([markerID,owner](const Objects::PFaction&f)
+		{
+			if (f == owner)
+				return;
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
+			{
+				Channels::destroyMarker.SendTo(client->peer.lock(),markerID);
+			}
+		});
+	}
+
+	void	SignalMarkerCreation(const Objects::PFaction&target,const Objects::PMarker&marker)
+	{
+
+		Network::PClient client;
+		if (Network::playerMap.Query(target,client))
+		{
+			Protocol::Marker serialMarker;
+			serialMarker.markerType = marker->type;
+			marker->PackToArray(serialMarker.state, Objects::Packable::Target::Ally);
+
+			Channels::createMarker.SendTo(client->peer.lock(),serialMarker);
+		}
+	}
+
+
+	void	SignalMarkerDestruction(const Objects::PFaction&target,const TUniqueID&markerID)
+	{
+		Network::PClient client;
+		if (Network::playerMap.Query(target,client))
+		{
+			Channels::destroyMarker.SendTo(client->peer.lock(),markerID);
+		}
+	}
+
+
+
+	void	SignalMarkerCreationToAlliedFaction(const Objects::PFaction&target,const Objects::PMarker&marker)
+	{
+
+	}
+
+	void	SignalMarkerDestructionToAlliedFaction(const Objects::PFaction&target,const TUniqueID&markerID)
+	{
+
+
+	}
+
 
 }
 
@@ -500,6 +572,8 @@ namespace Network
 		server.InstallChannel(Channels::ScriptedAIState);
 
 		server.InstallChannel(Channels::EntityTrigger);
+
+		server.InstallChannel(Channels::AllianceMarkerText);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);

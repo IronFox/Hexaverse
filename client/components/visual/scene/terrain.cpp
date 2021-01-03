@@ -236,7 +236,7 @@ namespace VisualTerrain
 
 
 		for (index_t i = 0; i < ARRAYSIZE(unitSphereFamilyBoundingBox); i++)
-			unitSphereFamilyBoundingBox[i] = planetFamilyBoundingBox[i] =  M::Box<>::Invalid();
+			unitSphereFamilyBoundingBox[i] = planetFamilyBoundingBox[i] =  M::Box<>::Invalid;
 
 		float r0 = ToRadius(-CellStack::HalfRange);
 		float r1 = ToRadius(CellStack::HalfRange);
@@ -689,7 +689,7 @@ namespace VisualTerrain
 		CompileWater(stacks, dat.water, offset, members, clipHeight);
 		CompilePlants(stacks, dat.plants, offset, members, clipHeight);
 
-		M::Box<> box = M::Box<>::Invalid();
+		M::Box<> box = M::Box<>::Invalid;
 
 		foreach(dat.terrain.vertices, vtx)
 			box.Include(vtx->vertex.xyz);
@@ -795,7 +795,7 @@ namespace VisualTerrain
 		dat.resources.Clear();
 		CompileResources(dat.resources,  vis,grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources);
 
-		M::Box<> box = M::Box<>::Invalid();
+		M::Box<> box = M::Box<>::Invalid;
 
 		foreach(dat.resources.vertices, vtx)
 			box.Include(vtx->vertex.xyz);

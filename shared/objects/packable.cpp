@@ -17,7 +17,7 @@ namespace Objects
 		}
 	} 
 
-	void Packable::Unpack(const D::Array<BYTE>&a)
+	void Packable::UnpackFromArray(const D::Array<BYTE>&a)
 	{
 		MemReadStream s(a.GetPointer(),a.GetLength());
 		Unpack(s);

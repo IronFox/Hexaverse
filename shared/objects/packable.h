@@ -20,7 +20,7 @@ namespace Objects
 		virtual void FromSavegame(D::IReadStream&s)=0;
 
 		void PackToArray(D::Array<BYTE>&a,Target target) const;
-		void Unpack(const D::Array<BYTE>&a);
+		void UnpackFromArray(const D::Array<BYTE>&a);
 
 
 	};
