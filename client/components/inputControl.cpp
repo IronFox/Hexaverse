@@ -618,7 +618,7 @@ namespace InputControl
 			}
 
 
-			if (Engine::input.pressed[Key::F2])
+			if (Engine::input.pressed[Key::Shift] && !Objects::AnySelected())
 			{
 				Grid::LCellIdI	target;
 				bool includeWater = true;
@@ -883,10 +883,12 @@ namespace InputControl
 											Objects::PWorldEntity e = Objects::GetEntity(target);
 											Objects::Select(e,Network::ControlEnabled());
 											selectionDone = true;
+											/*
 											#ifdef _DEBUG
-												if (Engine::input.pressed[Key::Shift])
+												if (Engine::input.pressed[Key::Shift])	//use different key: shift is now marker
 													ShowMessage(ToString(target));
 											#endif
+											*/
 										}
 									}
 								}
