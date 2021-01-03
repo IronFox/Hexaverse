@@ -266,7 +266,7 @@ namespace Objects
 
 	PMarker				MarkerStore::Create(MarkerType type, D::IReadStream&s, bool fromSavegame, const std::function<bool(const PMarker&)>&check)
 	{
-
+		LogEvent(EventSignificance::Common,"Creating marker of type "+String(type.ToString()));
 		PMarker m = Marker::Instantiate(type);
 
 
@@ -282,9 +282,6 @@ namespace Objects
 		all << m;
 		typed.Set(type) << m;
 
-		#ifdef CLIENT
-			m->Register(clientArtifacts);
-		#endif
 
 		doesOutdate.Set(type) = m->CanOutdateInTime();
 
@@ -294,6 +291,13 @@ namespace Objects
 		m->UpdateAge(RuntimeConfig::roundNumber);
 		Objects::BuildStructureSystem(m->location,m->system);
 
+		#ifdef CLIENT
+			m->UpdateNiceName();
+		#endif
+
+		#ifdef CLIENT
+			m->Register(clientArtifacts);
+		#endif
 
 		return m;
 	}
@@ -390,7 +394,36 @@ namespace Objects
 		#endif
 	}
 
+	void				MarkerStore::SignalFactionColorChange(const Objects::PFaction&f)
+	{
+		#ifdef CLIENT
+			auto list = typed.QueryPointer(MarkerType::Alliance);
+			if (!list)
+				return;
 
+			list->Foreach([this,f](const PMarker&m)
+			{
+				PAllianceMarker am = To<AllianceMarker>::Cast(m);
+				if (am->ownerFactionID == f->id)
+				{
+					index_t idx = clientArtifacts.allianceDefs.GetIndexOf(am->allianceDef);
+					if (idx != InvalidIndex)
+					{
+						clientArtifacts.allianceDefs[idx].color = AllianceMarker::GetColorOf(f);
+					}
+				}
+			});
+		#endif
+	}
+
+
+
+	String						EntityMarker::DescribeEntity() const
+	{
+		if (refEntityID.IsEmpty())
+			return "-";
+		return "e"+ToString(refEntityID)+" ("+ToString(refEntityType)+")";
+	}
 
 	
 
@@ -449,7 +482,39 @@ namespace Objects
 	}
 
 
-			
+	/*static*/ float4 AllianceMarker::GetColorOf(const PFaction&f)
+	{
+		return float4(1.f - (1.f - f->activeEntityColor) * 0.5f,1);
+		//return float4(f->activeEntityColor,1);
+
+	}
+
+	
+	#ifdef CLIENT
+		/*virtual override*/ void			AllianceMarker::Register(TMarkerArtifacts&a)
+		{
+			ASSERT__(!allianceDef.owner);
+			PFaction f = Faction::FindByID(ownerFactionID);
+			allianceDef.owner = f;
+			ASSERT__(f);
+			allianceDef.marker = shared_from_this();
+
+
+			auto&def = a.allianceDefs.Append(allianceDef);
+
+			def.color = AllianceMarker::GetColorOf(f);
+			def.system = system;
+			def.labelCenter = system.w.xyz + system.z.xyz * 2.f;
+		}
+
+		/*virtual override*/ void			AllianceMarker::Unregister(TMarkerArtifacts&a)
+		{
+			a.allianceDefs.FindAndErase(allianceDef);
+			allianceDef = TAllianceDef();
+		}
+
+	#endif
+
 	/*virtual override*/	void				AllianceMarker::Pack(D::IWriteStream&s,Target target) const
 	{
 		Super::Pack(s,target);

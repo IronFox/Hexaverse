@@ -8,7 +8,7 @@
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/dialog.h"
 #include "visual/hud/guiComponents.h"
-#include "visual/scene/debugMarkers.h"
+#include "visual/scene/visualMarkers.h"
 #include <io/string_file.h>
 #include "io.h"
 #include "playerControlBegin.h"
@@ -499,7 +499,7 @@ namespace ScriptedAI
 
 			#ifdef HAS_WINDOW
 
-			namespace DebugMarkers
+			namespace VisualMarkers
 			{
 				std::atomic<index_t>	counter;
 
@@ -508,18 +508,18 @@ namespace ScriptedAI
 					index_t idx = counter++;
 					if (idx == InvalidIndex)
 						idx = counter++;
-					mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label](){Objects::DebugMarkers::CreatePreIdentified(idx,loc,color,label);});
+					mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label](){Objects::VisualMarkers::Debug::CreatePreIdentified(idx,loc,color,label);});
 					return idx;
 				}
 
 				void		Delete( index_t idx )
 				{
-					mainThreadExecute << Job("Remove existing debug marker",[idx](){Objects::DebugMarkers::Delete(idx);});
+					mainThreadExecute << Job("Remove existing debug marker",[idx](){Objects::VisualMarkers::Debug::Delete(idx);});
 				}
 
 				void		FlushAll( )
 				{
-					mainThreadExecute << Job("Flush debug markers",Objects::DebugMarkers::FlushAll);
+					mainThreadExecute << Job("Flush debug markers",Objects::VisualMarkers::Debug::FlushAll);
 				}
 
 			}
@@ -944,9 +944,9 @@ namespace ScriptedAI
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
 		#ifdef HAS_WINDOW
-			api.onVisualMarkerCreate = Callback::DebugMarkers::Create;
-			api.onVisualMarkerDelete = Callback::DebugMarkers::Delete;
-			api.onVisualMarkerFlush = Callback::DebugMarkers::FlushAll;
+			api.onVisualMarkerCreate = Callback::VisualMarkers::Create;
+			api.onVisualMarkerDelete = Callback::VisualMarkers::Delete;
+			api.onVisualMarkerFlush = Callback::VisualMarkers::FlushAll;
 		#endif
 
 		api.onRemoveEntity =Callback::RemoveEntity;
@@ -1027,7 +1027,7 @@ namespace ScriptedAI
 			{
 				#ifdef HAS_WINDOW
 					Details::ExecuteMainThreadEvents();
-					Objects::DebugMarkers::FlushAll();
+					Objects::VisualMarkers::Debug::FlushAll();
 				#endif
 
 				Details::ThreadEnqueue("Map Terrain",[](Details::Thread&thread)

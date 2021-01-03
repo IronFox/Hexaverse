@@ -22,10 +22,30 @@ namespace Objects
 	);
 
 
+	struct TAllianceDef
+	{
+		PFaction						owner;
+		PAllianceMarker					marker;
+
+		float4							color;
+		float2							screenLocation;
+		bool							labelVisible = false;
+		float3							labelCenter;
+		M::TMatrix4<>					system;
+
+
+		bool							operator==(const TAllianceDef&other) const
+		{
+			return marker == other.marker;
+		}
+	};
+
+
 	struct TMarkerArtifacts
 	{
 		SharedContainer<Structure>		deadStructureGhosts,livingStructureGhosts;
 		SharedContainer<MobileEntity>	deadMobileGhosts,livingMobileGhosts;
+		Buffer0<TAllianceDef>			allianceDefs;
 
 		void							ForeachMobileGhost(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts) const;
 		void							ForeachStructureGhost(const std::function<void(const PStructure&)>&func, IncludeGhosts) const;
@@ -37,6 +57,7 @@ namespace Objects
 			deadStructureGhosts.Clear();
 			livingMobileGhosts.Clear();
 			livingStructureGhosts.Clear();
+			allianceDefs.Clear();
 		}
 
 		void							swap(TMarkerArtifacts&other)
@@ -45,6 +66,7 @@ namespace Objects
 			deadStructureGhosts.swap(other.deadStructureGhosts);
 			livingMobileGhosts.swap(other.livingMobileGhosts);
 			livingStructureGhosts.swap(other.livingStructureGhosts);
+			allianceDefs.swap(other.allianceDefs);
 		}
 
 		friend void swap(TMarkerArtifacts&a, TMarkerArtifacts&b)
@@ -125,7 +147,7 @@ namespace Objects
 		virtual void				ToSavegame(D::IWriteStream&s) const override;
 		virtual void				FromSavegame(D::IReadStream&s) override;
 
-
+		virtual String				Describe() const =0;
 	};
 
 
@@ -170,6 +192,7 @@ namespace Objects
 		virtual void				ToSavegame(D::IWriteStream&s) const override;
 		virtual void				FromSavegame(D::IReadStream&s) override;
 
+		String						DescribeEntity() const;
 
 	};
 
@@ -180,7 +203,7 @@ namespace Objects
 		/**/						VisitedMarker():Super(MarkerType::Visited)
 		{}
 
-
+		virtual String				Describe() const {return "VisitedMarker{"+ToString(id)+" @"+ToString(location)+" age "+String(age)+"}";}
 	};
 
 
@@ -201,6 +224,7 @@ namespace Objects
 			virtual void			Register(TMarkerArtifacts&) override;
 			virtual void			Unregister(TMarkerArtifacts&) override;
 		#endif
+		virtual String				Describe() const {return "EntityDeathMarker{"+ToString(id)+" "+DescribeEntity()+" @"+ToString(location)+" age "+String(age)+"}";}
 
 	};
 
@@ -218,11 +242,12 @@ namespace Objects
 			virtual void			Register(TMarkerArtifacts&) override;
 			virtual void			Unregister(TMarkerArtifacts&) override;
 		#endif
+		virtual String				Describe() const {return "HostileContactMarker{"+ToString(id)+" "+DescribeEntity()+" @"+ToString(location)+" age "+String(age)+"}";}
 
 	};
 
 
-	class AllianceMarker : public Marker
+	class AllianceMarker : public Marker, public std::enable_shared_from_this<AllianceMarker>
 	{
 		typedef Marker				Super;
 	public:
@@ -231,14 +256,23 @@ namespace Objects
 
 		Package::NetString<64>		text;
 
+		TAllianceDef				allianceDef;
+
+		static float4				GetColorOf(const PFaction&f);
 
 		virtual bool				IsPrivate() const override {return false;}
-
 		
 		virtual void				Pack(D::IWriteStream&s,Target target) const override;
 		virtual void				Unpack(D::IReadStream&s) override;
 		virtual void				ToSavegame(D::IWriteStream&s) const override;
 		virtual void				FromSavegame(D::IReadStream&s) override;
+
+		#ifdef CLIENT
+			virtual void			Register(TMarkerArtifacts&) override;
+			virtual void			Unregister(TMarkerArtifacts&) override;
+		#endif
+		virtual String				Describe() const {return "AllianceMarker{"+ToString(id)+" @"+ToString(location)+" age "+String(age)+"}";}
+
 	};
 
 
@@ -291,6 +325,7 @@ namespace Objects
 		bool						IsEmpty() const {return all.IsEmpty();}
 		bool						IsNotEmpty() const {return all.IsNotEmpty();}
 
+		void						SignalFactionColorChange(const Objects::PFaction&);
 
 		/**
 		Retrieves all markers that should be deleted because they are outdated or otherwise invalid.
@@ -338,7 +373,7 @@ namespace Objects
 
 			static MarkerStore		client;
 
-			const TMarkerArtifacts&	GetArtifacts() const {return clientArtifacts;}
+			TMarkerArtifacts&		GetArtifacts() {return clientArtifacts;}
 		#endif
 
 	private:

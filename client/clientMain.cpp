@@ -60,7 +60,7 @@
 #include "components/visual/scene/world.h"
 #include "components/visual/scene/lighting.h"
 #include "components/visual/scene/atmosphere.h"
-#include "components/visual/scene/debugMarkers.h"
+#include "components/visual/scene/visualMarkers.h"
 #include "components/visual/hud/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
 #include "components/visual/hud/menu.h"
@@ -1213,7 +1213,7 @@ bool loop()
 
 			Objects::Renderer::RefreshFactionColors(!InputControl::saveScreenshot);
 			Objects::Renderer::RenderScene();
-			Objects::DebugMarkers::Render();
+			Objects::VisualMarkers::Render();
 
 			display.SetDepthTest(true,false);
 			display.SetRasterizer(true,false);
@@ -1390,7 +1390,7 @@ bool loop()
 				//else
 				//	TransferPanel::Invalidate();
 			}
-			Objects::DebugMarkers::RenderText();
+			Objects::VisualMarkers::RenderText();
 
 			if (HUD::showControlsAndContacts)
 			{
