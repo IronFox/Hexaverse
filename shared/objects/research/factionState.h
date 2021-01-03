@@ -67,7 +67,7 @@ namespace Objects
 			void					Contribute(int c)	{totalContribution+=c;}
 
 			bool					IsIdle() const {return researchQueue.IsEmpty();}
-			ArrayRef<const PTopic>	GetResearchQueue() const	{return researchQueue.ToRef();}
+			ArrayRef<const PTopic>	GetResearchQueue() const	{return researchQueue.ToRef().Const();}
 			PTopic					GetActiveTopic() const {return researchQueue.IsNotEmpty() ? researchQueue.First() : PTopic();}
 			String					ExportResearchQueue();
 			void					ExportResearchQueue(Ctr::Array<UINT32>&);

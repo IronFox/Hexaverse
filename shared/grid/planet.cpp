@@ -271,7 +271,7 @@ namespace Grid
 		Concurrency::parallel_for(UINT32(0),LowSetup::GridType::CellCount,[this,&world,&seq](UINT32 i)
 		{
 			UINT32 fine = Grid::low.grid.GetCell(i).higherEquivalent;
-			auto&centerStack = seq.AccessStack(fine);
+			auto centerStack = seq.AccessStack(fine);
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			const auto&n0 = Grid::low.grid.GetCell(i).neighborhood;
 			for (int ni = 0; ni < n.numNeighbors; ni++)

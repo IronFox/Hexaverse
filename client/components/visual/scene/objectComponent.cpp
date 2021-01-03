@@ -79,7 +79,7 @@ namespace Objects
 		for (int ir = 1; ir < RadialResolution; ir++)
 		{
 			float fr = float(ir)/float(RadialResolution-1);
-			float fr0 = fr * 2.f * flatRange;
+			float fr0 = fr * 2.5f * flatRange;
 
 
 			float2 p (fr0,height);

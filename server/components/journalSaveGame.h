@@ -152,13 +152,7 @@ namespace Journal
 				entries.Clear();
 			}
 
-			const T&	Require(const TCodeLocation&loc, const String&p)	const
-			{
-				foreach (entries,e)
-					if (e->key == p)
-						return e->value;
-				throw Round::RoundException(loc, "Decoding stage: Unable to retrieve value of "+p+" ("+String(typeid(T).name())+")");
-			}
+			const T& Require(const TCodeLocation& loc, const String& p)	const;
 
 			void	Require(const TCodeLocation&loc, const String&p, T&rsOut)	const
 			{
@@ -171,14 +165,7 @@ namespace Journal
 				rsOut = (T1)Require(loc,p);
 			}
 			template <typename T1>
-			void	RequireEnum(const TCodeLocation&loc, const String&p, T1&rsOut)	const
-			{
-				T val = Require(loc,p);
-				if (!rsOut.Load(val))
-				{
-					throw Round::RoundException(loc,"Unable to cast value '"+String(val)+"' to "+T1::GetName());
-				}
-			}
+			void	RequireEnum(const TCodeLocation& loc, const String& p, T1& rsOut)	const;
 
 
 			bool		TryGet(const String&p, T&rs) const
@@ -756,14 +743,11 @@ namespace Journal
 		class CreateMarker : public FactionEventT<CreateMarker>
 		{
 		public:
-			TUniqueID		markerID;
-			Objects::Marker::Type	type;
-			RoundNumber		createdInRound;
-			Grid::LCellIdI	location;
-			Protocol::MarkerReferenceEntity	referenceEntity;
+			Objects::MarkerType	type;
+			Array<BYTE>		state;
 
-			/**/			CreateMarker(const TUniqueID&markerID, Objects::Marker::Type t, const RoundNumber&createdInRound, const Grid::LCellIdI&location, const Protocol::MarkerReferenceEntity&referenceEntity)
-							:markerID(markerID),type(t),createdInRound(createdInRound),location(location),referenceEntity(referenceEntity)	{}
+			/**/			CreateMarker(Objects::MarkerType t, ArrayData<BYTE>&&state)
+							:type(t),state(std::move(state))	{}
 			/**/			CreateMarker()	{};
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;
@@ -781,6 +765,22 @@ namespace Journal
 
 			/**/			DestroyMarker()	{}
 			/**/			DestroyMarker(const TUniqueID&id): markerID(id)	{}
+			virtual void	Decode(const Entry&e) override;
+			virtual void	Execute(const Objects::PFaction&) const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
+
+		class AllianceMarkerText : public FactionEventT<AllianceMarkerText>
+		{
+		public:
+			TUniqueID		markerID;
+			String			markerText;
+
+			/**/			AllianceMarkerText(const TUniqueID&markerID, String&&markerText)
+							:markerID(markerID),markerText(std::move(markerText))	{}
+			/**/			AllianceMarkerText()	{};
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute(const Objects::PFaction&) const override;
 
@@ -845,7 +845,7 @@ namespace Journal
 
 			template <typename ... T>
 				index_t			FindLastOf() const	{ return FindMax(FindLast(typeid(T))...);  }
-			count_t				Count(const std::type_info&) const
+			count_t				Count(const std::type_info&t) const
 			{
 				count_t count = 0;
 				for (const auto&ev : *this)
@@ -963,6 +963,32 @@ namespace Journal
 
 		static void StaticCreate();
 	};
+
+
+
+
+	template <typename T>
+		const T& ParameterStore<T>::Require(const TCodeLocation& loc, const String& p)	const
+		{
+			foreach(entries, e)
+				if (e->key == p)
+					return e->value;
+			throw Round::RoundException(loc, "Decoding stage: Unable to retrieve value of " + p + " (" + String(typeid(T).name()) + ")");
+		}
+
+	template <typename T>
+		template <typename T1>
+			void	ParameterStore<T>::RequireEnum(const TCodeLocation& loc, const String& p, T1& rsOut)	const
+			{
+				T val = Require(loc, p);
+				if (!rsOut.Load(val))
+				{
+					throw Round::RoundException(loc, "Unable to cast value '" + String(val) + "' to " + T1::GetName());
+				}
+			}
+
+
+
 
 
 

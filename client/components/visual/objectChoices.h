@@ -2,17 +2,18 @@
 #ifdef HAS_WINDOW
 
 
-#include <grid/stack.h>
+#include <grid/setup.h>
 #include <objects/types.h>
+#include <container/buffer.h>
 
 namespace Objects
 {
 	struct Choice;
 
-	extern Buffer0<Choice>			movementChoices;
+	extern Ctr::Buffer0<Choice>			movementChoices;
 	extern TChoiceVisualization		choiceVis;
-	extern Buffer0<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
-	extern Buffer0<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
+	extern Ctr::Buffer0<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
+	extern Ctr::Buffer0<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
 
 
 

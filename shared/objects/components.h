@@ -321,6 +321,8 @@ namespace Objects
 			float							GetScanningRange(const Research::Attributes::Table&researchState, int bonus=0) const;
 			float							GetGroundScanningRange(const Research::Attributes::Table&researchState) const;
 
+			static float					GetHorizontalDistance(const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest);
+
 			static float					MaxRangeToVelocity(float range)
 			{
 				return sqrt(range*g);

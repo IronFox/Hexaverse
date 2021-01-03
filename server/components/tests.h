@@ -52,6 +52,13 @@ namespace Test
 
 	void Run(Test&test);
 
+	template <typename T>
+		void Run()
+		{
+			T test;
+			Run(test);
+		}
+
 	class StringMethods : public Test
 	{
 	public:

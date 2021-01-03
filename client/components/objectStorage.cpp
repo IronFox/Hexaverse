@@ -13,8 +13,6 @@ namespace Objects
 	{
 		objects.Clear();
 		storedMobiles.Clear();
-		livingMarkerObjects.Clear();
-		deadMarkerObjects.Clear();
 		markers.Clear();
 		unitLimits.Clear();
 		loaded = false;
@@ -37,12 +35,8 @@ namespace Objects
 			else
 				objects << e; 
 		},Objects::IncludeGhosts::None);
-		Objects::Marker::livingMobileGhosts.CastAppendAllTo(livingMarkerObjects);
-		Objects::Marker::livingStructureGhosts.CastAppendAllTo(livingMarkerObjects);
-		Objects::Marker::deadMobileGhosts.CastAppendAllTo(deadMarkerObjects);
-		Objects::Marker::deadStructureGhosts.CastAppendAllTo(deadMarkerObjects);
 
-		markers.swap(Marker::all);
+		markers.swap(Objects::MarkerStore::client);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
 
 		Objects::preserveReferencesOnFlush = true;
@@ -64,7 +58,8 @@ namespace Objects
 	{
 		GlobalEvents::FlushObjects();
 		World::actual.ResetStructureCounters(true);
-		markers.swap(Marker::all);
+		markers.swap(Objects::MarkerStore::client);
+		markers.Clear();
 		RuntimeConfig::UnitLimits::Import(unitLimits);
 		for (const PWorldEntity&e : objects)
 		{
@@ -75,22 +70,6 @@ namespace Objects
 				elif (e->IsMobile())
 					Objects::InsertConstructed(To<MobileEntity>::Cast(e),t,true,false);
 			}
-		}
-
-		for (const PWorldEntity&e : livingMarkerObjects)
-		{
-			if (e->IsMobile())
-				Marker::livingMobileGhosts << To<MobileEntity>::Cast(e);
-			elif (e->IsStructure())
-				Marker::livingStructureGhosts << To<Structure>::Cast(e);
-		}
-
-		for (const PWorldEntity&e : deadMarkerObjects)
-		{
-			if (e->IsMobile())
-				Marker::deadMobileGhosts << To<MobileEntity>::Cast(e);
-			elif (e->IsStructure())
-				Marker::deadStructureGhosts << To<Structure>::Cast(e);
 		}
 
 		for (const auto&p : storedMobiles)

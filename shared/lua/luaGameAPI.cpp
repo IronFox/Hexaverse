@@ -68,7 +68,7 @@ namespace Lua
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
-		void UpdateResourceTable(Lua::Table&t,const Objects::Resource::Vector&v)
+		void UpdateResourceTable(Lua::Table t,const Objects::Resource::Vector&v)
 		{
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			{
@@ -494,22 +494,28 @@ namespace Lua
 
 		void		API::AddMyMarkers()
 		{
-			foreach(Objects::Marker::all, m)
-				AddMyMarker(*m);
+			Objects::MarkerStore::client.Foreach([this](const Objects::PMarker&m)
+			{
+				AddMyMarker(m);
+			});
 		}
 
-		void		API::AddMyMarker(const Objects::Marker&m)
+		void		API::AddMyMarker(const Objects::PMarker&m)
 		{
 			Lua::Table t = program->CreateTable();
-			myMarkerIDMap.SetField(m.id.ToFullString(), t);
-			t.SetField("location",ToTable(m.location));
-			t.SetField("type",m.type.ToString());
+			myMarkerIDMap.SetField(m->id.ToFullString(), t);
+			t.SetField("location",ToTable(m->location));
+			t.SetField("type",m->type.ToString());
 			t.SetField("confirmed", true);
-			t.SetField("age",m.age);
-			t.SetField("id",m.id.ToFullString());
-			if (m.visualization)
-				t.SetField("unitReference",MapEntity(m.visualization,false,false));
-			auto id = m.id;
+			t.SetField("age",m->age);
+			t.SetField("id",m->id.ToFullString());
+			if (m->IsEntityMarker())
+			{
+				Objects::PEntityMarker em = To<Objects::EntityMarker>::Cast(m);
+				if (em->visualization)
+					t.SetField("unitReference",MapEntity(em->visualization,false,false));
+			}
+			auto id = m->id;
 			index_t at = t.GetLength();
 			t.SetFunction("Touch",[id,this,at]()
 			{
@@ -880,6 +886,14 @@ namespace Lua
 		gameTable.SetFunction("RandomIndex",[this](int max)
 		{
 			return random.Next(max-1) + 1;
+		});
+		gameTable.SetFunction("MeasureSecondsFromNow",[this]()
+		{
+			auto start = timer.Now();
+			return Lua::WrapResultFunction(program, [start]()
+			{
+				return timer.GetSecondsSinceD(start);
+			});
 		});
 
 		gameTable.SetFunction("GetRound",[]()
@@ -2071,6 +2085,14 @@ namespace Lua
 			if (height > Grid::CellStack::TopHeight)
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") exceeds maximum grid height ("+String(Grid::CellStack::TopHeight)+")");
 			return this->ToTable(Grid::LCellIdI(stack,height));
+		});
+		gridTable.SetFunction("HeightToRadius",[](float height)
+		{
+			return Grid::ToRadiusf(height);
+		});
+		gridTable.SetFunction("RadiusToHeight",[](float radius)
+		{
+			return Grid::HeightFloorFromRadius(radius);
 		});
 		gridTable.SetFunction("AffectedByEMP",[](const Lua::Table&loc)
 		{

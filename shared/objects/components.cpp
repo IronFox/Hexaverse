@@ -346,11 +346,18 @@ namespace Objects
 
 
 
+		/*static*/ float					Turret::GetHorizontalDistance(const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest)
+		{
+			M::TVec3<> p2;
+			Vec::mult(dest.worldLocation,origin.radius / dest.radius, p2);
+			return Vec::distance(origin.worldLocation,p2);
+		}
+
 
 		/*static*/ bool						Turret::CanHit( TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle )
 		{
 			if (t == TrajectoryType::Artillery)
-				return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
+				return Detail::ArtilleryCanHit(flatRange,GetHorizontalDistance(origin,dest),dest.radius - origin.radius,outAngle);
 
 			outAngle = 0;
 			return CanHit(t,flatRange,origin,dest);
@@ -368,7 +375,7 @@ namespace Objects
 					return dest.cellLocation.height >= GetGroundHeight(World::actual, origin.cellLocation)-1;
 				}
 				case TrajectoryType::Artillery:
-					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius);
+					return Detail::ArtilleryCanHit(flatRange,GetHorizontalDistance(origin,dest),dest.radius - origin.radius);
 				case TrajectoryType::Missile:
 					return Detail::MissileCanHit(flatRange,origin,dest);
 				default:

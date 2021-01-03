@@ -432,7 +432,8 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 					LogLine(peer.ToString()+": "+TCP::event2str(event));
 				if (!connectionRetryThread.joinable())
 				{
-					connectionRetryThread.swap(std::thread(ConnectionRetry));
+					auto s = std::thread(ConnectionRetry);
+					connectionRetryThread.swap(s);
 				}
 			}
 			else

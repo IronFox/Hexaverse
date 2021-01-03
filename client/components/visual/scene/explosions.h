@@ -8,6 +8,7 @@
 #include <container/buffer.h>
 
 #include "../../../ExtRenderer/DirectX11.h"
+#include <engine/aspect.h>
 
 namespace Explosions
 {

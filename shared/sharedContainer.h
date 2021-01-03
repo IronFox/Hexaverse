@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <limits>
+#include <global_string.h>
 
 /**
 Container for shared objects (effectively stores std::shared_ptr<T>).
@@ -18,10 +19,12 @@ template <typename T>
 
 		static_assert(sizeof(sindex_t) == sizeof(index_t),"Type size error");
 
-		count_t		recursionDepth=0;
-		sindex_t	currentIterationAt[10]={0};
+		mutable count_t		recursionDepth=0;
+		mutable sindex_t	currentIterationAt[10]={0};
 
 	public:
+		typedef SharedContainer<T>	Self;
+
 		Super::IsEmpty;
 		Super::IsNotEmpty;
 		Super::Count;
@@ -30,17 +33,51 @@ template <typename T>
 		Super::operator[];
 		Super::GetIndexOf;
 
-		void		Foreach(const std::function<void(const PT&)>&f)
+		void		Foreach(const std::function<void(const PT&)>&f) const
 		{
 			DBG_ASSERT_LESS__(recursionDepth,ARRAYSIZE(currentIterationAt));
 			sindex_t&c = currentIterationAt[recursionDepth];
 			recursionDepth++;
-			for (c = 0; c < (sindex_t)Super::Count(); c++)
+			try
 			{
-				PT copy = Super::at(c);	//make sure we can manipulate the base as we see fit
-				f(copy);
+				for (c = 0; c < (sindex_t)Super::Count(); c++)
+				{
+					PT copy = Super::at(c);	//make sure we can manipulate the base as we see fit
+					f(copy);
+				}
+			}
+			catch (...)
+			{
+				recursionDepth--;
+				throw;
 			}
 			recursionDepth--;
+		}
+
+		PT			Scan(const std::function<bool(const PT&)>&f) const
+		{
+			DBG_ASSERT_LESS__(recursionDepth,ARRAYSIZE(currentIterationAt));
+			sindex_t&c = currentIterationAt[recursionDepth];
+			recursionDepth++;
+			try
+			{
+				for (c = 0; c < (sindex_t)Super::Count(); c++)
+				{
+					PT copy = Super::at(c);	//make sure we can manipulate the base as we see fit
+					if (f(copy))
+					{
+						recursionDepth--;
+						return copy;
+					}
+				}
+			}
+			catch (...)
+			{
+				recursionDepth--;
+				throw;
+			}
+			recursionDepth--;
+			return nullptr;
 		}
 
 		SharedContainer<T>&	operator<<(const PT&element)
@@ -84,4 +121,15 @@ template <typename T>
 				outTarget.AppendAll((const Super&)*this);
 			}
 		
+
+		void	swap(Self&other)
+		{
+			//leave recursion depth etc as they are
+			Super::swap(other);
+		}
+
+		friend void swap(Self&a, Self&b)
+		{
+			a.swap(b);
+		}
 	};

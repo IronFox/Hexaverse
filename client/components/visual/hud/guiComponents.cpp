@@ -249,9 +249,16 @@ namespace Component
 		VerifyIntegrity(sender,FVerification(),true);
 	}
 
+
+	void		AnchorConfig::Axis::ClearExtent()
+	{
+		extent.ResetToPlaceholder();
+		VerifyIntegrity(CLOCATION,FVerification(),true);
+	}
+
 	bool		AnchorConfig::Axis::SetExtent(const Distance&d)
 	{
-		ASSERT__(!Stretches());
+		ASSERT__(!Stretches() || !d.IsDefined());
 		//ASSERT__(lower.IsFixed() || upper.IsFixed());
 		if (extent == d)
 			return false;
@@ -742,7 +749,7 @@ namespace Component
 		anchorConfig = cfg;
 		if (anchorConfig.HasExtentPlaceholders())
 		{
-			UpdateDynamicSize(ChangeRecorder());
+			UpdateDynamicSize();
 			if (anchorConfig.HasExtentPlaceholders())
 			{
 				anchorConfig.GetHAxis().UpdateExtentIfEnabled(Distance::GameWindow( GetWidth() ));
@@ -1800,7 +1807,7 @@ namespace Component
 		slider.OnScreenSizeOrUIScaleChange();
 		relativeHeight = GetPixelHeight() / Detail::ViewPortHeight();
 		relativeThumbWidth = GetThumbPixelWidth() / Detail::ViewPortWidth();
-		UpdateDynamicSize(ChangeRecorder());
+		UpdateDynamicSize();
 	}
 
 
@@ -2437,7 +2444,7 @@ namespace Component
 	void			Panel::AnchorBelowPrevious(const TCodeLocation&caller, const PComponent&newComponent, const Distance& distanceFromSides /*= 0.015f*/,  const Distance&  distanceToPrevious/* = 0.015f*/)
 	{
 		{
-			auto&mod = newComponent->Anchor();
+			auto mod = newComponent->Anchor();
 			if (components.IsNotEmpty())
 				mod.Beneath(components.Last(), distanceToPrevious);
 			else
@@ -2800,7 +2807,7 @@ namespace Component
 	void	TextField::HandleTextChange()
 	{
 		ReWrap();
-		UpdateDynamicSize(ChangeRecorder());
+		UpdateDynamicSize();
 		OnTextChange();
 		if (this->widthLockedToIdeal || this->heightLockedToIdeal)
 			this->SignalLayoutChangeUp();

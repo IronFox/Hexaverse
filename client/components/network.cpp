@@ -883,35 +883,11 @@ namespace Network
 
 		void	CreateMarker(Protocol::Marker&marker)
 		{
-			TUniqueID	entityID = TUniqueID::Empty(), ownerID = TUniqueID::Empty();
-			Objects::EntityType	entityType;
-			Objects::Marker::Type type;
-
-			const Protocol::MarkerReferenceEntity*entity = marker.data.Get0();
-			if (entity)
-			{
-				type = Objects::Marker::Type::Reinterpret(0);
-				entityID = entity->id;
-				ownerID = entity->owner;
-				entityType = entity->type;
-			}
-			else
-			{
-				entity = marker.data.Get1();
-				if (entity)
-				{
-					type = Objects::Marker::Type::Reinterpret(1);
-					entityID = entity->id;
-					ownerID = entity->owner;
-					entityType = entity->type;
-				}
-				else
-				{
-					ASSERT_NOT_NULL__(marker.data.Get2());
-					type = Objects::Marker::Type::Reinterpret(2);
-				}
-			}
-			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max(RuntimeConfig::roundNumber,marker.createdInRound));
+			Objects::MarkerType type;
+			if (!type.Load(marker.markerType))
+				throw Except::Program::DataConsistencyFault(CLOCATION,"Unable to load parse marker type #"+String(marker.markerType));
+			
+			Objects::MarkerStore::client.Create(type,marker.state,false);
 			GlobalEvents::invalidateObjectCache();
 		}
 
@@ -919,8 +895,8 @@ namespace Network
 
 		void	DestroyMarker(NET(TUniqueID)&mid)
 		{
-			Objects::Marker::Destroy(mid, ControlEnabled());
-			GlobalEvents::invalidateObjectCache();
+			if (Objects::MarkerStore::client.Destroy(mid))
+				GlobalEvents::invalidateObjectCache();
 		}
 
 		void	IdentifyFaction(Protocol::IdentifyFaction&id);
@@ -1394,6 +1370,18 @@ namespace Network
 			GlobalEvents::resourceTableUpdated();
 		}
 
+		void	AllianceMarkerText(Protocol::AllianceMarkerText&text)
+		{
+			Objects::PMarker m = Objects::MarkerStore::client.FindByID(text.markerID);
+			if (!m)
+				return;	//going to ignore this one because client might have deleted its own marker already
+			Objects::PAllianceMarker am = To<Objects::AllianceMarker>::DynamicCast(m);
+			if (!am)
+				throw Except::IO::Network::ProtocolViolation(CLOCATION, "Trying to update text of non-alliance-marker "+m->Describe());
+
+			am->text = text.markerText;
+		}
+
 	}
 
 
@@ -1495,6 +1483,8 @@ namespace Network
 		DECLARE_CHANNEL(ScriptedAIState);
 
 		DECLARE_OBJECT_SENDER(EntityTrigger);
+
+		DECLARE_CHANNEL(AllianceMarkerText);
 	}
 
 
@@ -1772,7 +1762,8 @@ namespace Network
 		client.InstallChannel(Channels::ChoiceResponse);
 
 		client.InstallChannel(Channels::ScriptedAIState);
-		
+
+		client.InstallChannel(Channels::AllianceMarkerText);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -2074,7 +2065,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			{
 				if (!e->isOwnedByMe)
 					return;
-				Objects::Marker *m = Objects::Marker::Find(e->location);
+				Objects::PMarker m = Objects::MarkerStore::client.FindByLocation(Objects::MarkerType::Visited, e->location);
 				if (m)
 					ObjectHelper::SignalMarkerDeletion(m->id);
 			},Objects::IncludeGhosts::None);
@@ -2223,20 +2214,18 @@ void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 	#ifdef HAS_WINDOW
 		HUD::FactionTable::Update();
 	#endif
+	Objects::MarkerStore::client.SignalFactionColorChange(faction);
 }
 
 
 void	Network::Receiver::MarkerCreationFailedLimitReached(Protocol::Marker&marker)
 {
 	bool anyDeleted = false;
-	Buffer0<Objects::Marker::TCandidate>	candidates;
-	Objects::Marker::GetDeletionCandidates(candidates);
+	Buffer0<Objects::MarkerStore::TCandidate>	candidates;
+	Objects::MarkerStore::client.GetDeletionCandidates(candidates);
 	ASSERT__(candidates.IsNotEmpty());
 	foreach(candidates,m)
-	{
-		Network::Channels::destroyMarker.SendTo(Network::client,m->markerID);
-		Objects::Marker::Destroy(m->markerID,Network::ControlEnabled());
-	}
+		ObjectHelper::SignalMarkerDeletion(m->markerID);
 	Network::Channels::createMarker.SendTo(Network::client,marker);
 	//SignalMarkerCreation(marker);	//can't - would create marker once more
 }

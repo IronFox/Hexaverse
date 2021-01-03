@@ -3,6 +3,12 @@ All functions and global constants are located in the Game table (e.g. Game.unit
 Array-like tables are denoted X[], whereas maps are denotes {Key->Value}
 Although Lua does not actually support types as such, they are used here to clarify what content
 can be expected.
+
+
+In addition to the regular Lua API, import statements may be used to include other script files:
+--#require <filepath relative to script directory>
+--#require "filepath relative to this file"
+
 ]]
 
 
@@ -13,6 +19,7 @@ string		Game.GetPhase()					-- Fetches the current phase. Typically the result w
 bool		Game.CanIssueUnitCommands()		-- Checks whether the current phase is valid for command execution. Typically the result will be true, so there is usually no need to check this
 float		Game.Random()					-- Fetches the next uniformly distributed random value in [0,1]
 int			Game.RandomIndex(int max)		-- Fetches the next uniformly distributed random integer in [1,max]
+double()	Game.MeasureSecondsFromNow()	-- Creates a new function to query the seconds from when this function was called
 
 [client only]
 	{id->Unit}	Game.myUnits				-- Table of all player-owned units currently known to the client, mapped by id (string) to unit
@@ -145,7 +152,7 @@ Table-Type: VBaseType extends Type
 	bool		motionIgnoresAttack;	-- True if the local base can move regardless of whether an active turret has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	int			maxClimbUp;				-- Maximum climbing height difference. Typically 1
 	int			minClimbDown;			-- Minimum down-climbing height difference. Negative. Typically -1 or less
-	int			movementSpeed;			-- Theoretical upper movement steps per round, EXcluding possible turret overweight and EMP damage. The effective speed depends on the encountered terrain. (Unresearched)
+	int			movementSpeed;			-- Theoretical upper movement steps per round, Excluding possible turret overweight and EMP damage. The effective speed depends on the encountered terrain. (Unresearched)
 }
 
 	
@@ -420,9 +427,11 @@ bool		Game.Grid.lowerResolutionPlanet		-- Set to true if the planet has reduced 
 
 bool		Game.Grid.AffectedByEMP(Cell);		-- Returns true if EMP zones affect the given cell
 Loc			Game.Grid.ToLocation(Cell, int);	-- Constructs a location at the given cell and height
+float		Game.Grid.HeightToRadius(int/float);	-- Converts a height value to the absolute distance from the planet's center. Supports fractions
+int			Game.Grid.RadiusToHeight(float);	-- Converts a distance from planet center to height value. Result is rounded down
 int			Game.Grid.bottomHeight;		-- Minimum grid height (also applies to terrain)
 int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
-bool		Game.Grid.IsClear(Loc);												-- Checks if all terrain cells affecting the specified location are clear
+bool		Game.Grid.IsClear(Loc);		-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:
 Identifies the first height level from the top down where the specified unit (vehicle) can stand

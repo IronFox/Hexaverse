@@ -80,10 +80,8 @@ namespace Objects
 				candidates << e;
 			});
 
-			std::random_shuffle(candidates.begin(),candidates.end(),[&source](count_t range)->index_t
-			{
-				return source.entityRandom.NextIndex(range);
-			});
+
+			std::shuffle(candidates.begin(), candidates.end(), source.entityRandom);
 
 			foreach (candidates,c)
 			{

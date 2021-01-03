@@ -4,6 +4,7 @@
 #include <container/buffer.h>
 #include <global_string.h>
 #include "../../lua/luaInterface.h"
+#include "../../expectedBehavior.h"
 
 namespace Objects
 {

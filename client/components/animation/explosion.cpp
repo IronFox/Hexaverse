@@ -21,18 +21,15 @@ namespace Animation
 
 	/*virtual override*/ void Explosion::End()
 	{
-		for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-		{
-			const Objects::Marker&m = Objects::Marker::all[i];
-			if (m.type != Objects::Marker::Type::HostileContact)
-				continue;
-			if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < M::Sqr(explosionRadius))
+		Objects::MarkerStore::client.Foreach(Objects::MarkerType::HostileContact,
+			[this](const Objects::PMarker&m)
 			{
-				LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-				ObjectHelper::SignalMarkerDeletion(m.id);
-				i--;
-			}
-		}
+				if (Vec::quadraticDistance(Grid::ToWorld(m->location),explosionCenter) < M::Sqr(explosionRadius))
+				{
+					LogEvent(EventSignificance::Common,nullptr,m->GetName()+ " considered near occuring explosion. Dropping marker");
+					ObjectHelper::SignalMarkerDeletion(m->id);
+				}
+			});
 	}
 
 	/*virtual override*/ String Explosion::Describe() const

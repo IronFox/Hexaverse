@@ -11,136 +11,12 @@
 #include "research/factionState.h"
 #include "../grid/resources.h"
 #include "statistics.h"
+#include "markers.h"
 #include <map>
 
 
 namespace Objects
 {
-	CONSTRUCT_ENUMERATION3(MarkerType, 
-		EntityDeath,		//friendly entity has died here. usually preserved for 2-5 rounds. AI may preserve them longer to establish statistics 
-		HostileContact,		//hostile entity was detected here when radar contact was lost. Usually preserved until radar contact is re-established
-		Visited				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
-		);	
-
-	/**
-	Persistent scene markers added/removed by the client.
-	Markers are visible only to the owning faction, and do not hinder movement or construction.
-	Multiple markers can be placed on the same location.
-	*/
-	class Marker : public BaseEntity
-		#ifndef CLIENT
-			, public SerializableObject
-		#endif
-	{
-	public:
-		typedef MarkerType			Type;
-
-		TUniqueID					referenceEntity = TUniqueID::Empty(),	//!< Usage depends on type
-									referenceEntityOwner = TUniqueID::Empty();
-		EntityType					referencedType;
-		
-
-		Type						type;
-		RoundNumber					createdInRound;
-
-		#ifdef CLIENT
-			UINT32					age = 0;	//age in rounds, updated during GetOutdated()
-		#endif
-
-		static const count_t		MaxMarkersPerFaction = 256;
-
-		/**/						Marker() :BaseEntity(TEmpty())
-		{}
-
-		void						adoptData(Marker&other)
-		{
-			referenceEntity = other.referenceEntity;
-			referenceEntityOwner = other.referenceEntityOwner;
-			referencedType = other.referencedType;
-			type = other.type;
-			createdInRound = other.createdInRound;
-
-			#ifdef CLIENT
-				visualization.swap(other.visualization);
-			#endif
-			((BaseEntity&)*this) = other;
-		}
-
-		#ifndef CLIENT
-			virtual	void			Serialize(IWriteStream&outStream) const override;
-			virtual	void			Deserialize(IReadStream&inStream) override;
-		#endif
-
-		virtual String				GetTypeName() const override { return "Marker (" + String(type.ToString())+")"; }
-		virtual EntityType			GetType() const override {return ConstName::Type_Marker;}
-
-
-		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
-		bool						UtilizesReferenceEntity() const { return UtilizesReferenceEntity(type); }
-		static bool					UtilizesReferenceEntity(Type type) { return type != Type::Visited; }
-
-		bool						operator==(const Marker&other) const
-		{ 
-			return id == other.id && location == other.location 
-			&& type == other.type && createdInRound == other.createdInRound 
-			&& referenceEntity == other.referenceEntity && referencedType == other.referencedType;
-		}
-		bool						operator!=(const Marker&other) const {return !operator==(other);}
-
-
-		#ifdef CLIENT
-
-			void					UpdateAge(const RoundNumber&roundNumber);
-
-			PWorldEntity			visualization;
-			//PStructure				structureVisualization;
-			//PMobileEntity			mobileVisualization;
-
-			struct TVisited
-			{
-				M::TMatrix4<>		system;
-				UINT32				age;
-			};
-
-			struct TCandidate
-			{
-				TUniqueID			markerID;
-				UINT32				priority;
-
-				bool				operator<(const TCandidate&other) const
-				{
-					return priority > other.priority;	//biggest first, usually sorted by age
-				}
-			};
-
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, EntityType referenceType, const RoundNumber& currentRound);
-			static void				Destroy(const TUniqueID&id, bool controlEnabled);
-			static Marker*			FindByReference(const TUniqueID&referenceID);
-			static Marker*			Find(const TUniqueID&referenceID);
-			static Marker*			Find(const Grid::LCellIdI&);
-			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
-			static void				FlushAll();
-
-			/**
-			Retrieves all markers that should be deleted because they are outdated or otherwise invalid.
-			Friendly tomestone markers are considered outdated if a given number of rounds have passed since their creation.
-			Hostile markers do not outdate as such, but are removed if the respective area is considered visible.
-			If grid visibility must be checked but cannot be retrieved right now, the method fails and returns false.
-			The caller should try again later if this happens.
-			@param[out] outOutdated List of resulting markers to erase. Empty if the method returns false
-			@param currentRoundNumber Round number to use for age checks
-			@param deathOutdatedAfterRounds Number of rounds that friendly tomestone markers should remain
-			@return True if a list could be produced, false otherwise. Unavailable grid sensory can cause this method to fail
-			*/
-			static bool				GetOutdated(BasicBuffer<Marker>&outOutdated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
-
-			static Buffer0<Marker, Strategy::Adopt>	all;
-			static SharedContainer<Structure>		deadStructureGhosts,livingStructureGhosts;
-			static SharedContainer<MobileEntity>	deadMobileGhosts,livingMobileGhosts;
-			static Buffer0<TVisited>	visitedSystems;
-			static HashTable<TUniqueID, index_t>	idMap, referenceIDMap,visitedSystemIDMap;
-		#endif
-	};
 
 
 	class Alliance : public std::enable_shared_from_this<Alliance>
@@ -185,9 +61,13 @@ namespace Objects
 		count_t				CountLivingMembers() const;
 		PFaction			GetMember(index_t i ) const {return members[i].wFaction.lock();}
 		#ifndef CLIENT
+			void			ForeachMarker(Objects::MarkerType type, const std::function<void(const PMarker&)>&f) const;
 			TNexusStats		GetNexusStats() const;
 			UINT64			GetWinningScore() const;
+			void			SignalMarkerCreation(const PFaction&owner, const PMarker&m);
+			void			SignalMarkerDestruction(const PFaction&owner, const PMarker&m);
 		#endif
+
 
 		void				Invite(const PFaction&f);
 		void				CancelInvite(const PFaction&f);
@@ -349,7 +229,7 @@ namespace Objects
 		static const String				nexusName;
 		bool							isDead = false;
 
-		static count_t					CountMaxMarkers(bool priveleged) {return (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction);}
+		static count_t					CountMaxMarkers(bool priveleged) {return (priveleged ? MarkerStore::MaxMarkersPerFaction*16 : MarkerStore::MaxMarkersPerFaction);}
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
@@ -370,6 +250,10 @@ namespace Objects
 
 			bool						IsNexus() const {return name == nexusName;}
 		#else
+
+			PMarker						CreateMarker(MarkerType type, const ArrayRef<BYTE>&data, bool fromSaveGame);
+			PMarker						CreateMarker(MarkerType type, IReadStream&data, bool fromSaveGame);
+			bool						DestroyMarker(const TUniqueID&id);
 
 			CryptographicID				accessToken;
 		private:
@@ -447,8 +331,7 @@ namespace Objects
 
 			UnitClass			hasUnitClasses = UnitClass::None;
 
-			Ctr::Buffer0<Marker,Strategy::Adopt>		markers;
-			Ctr::HashTable<TUniqueID, index_t>	markerMap,referenceMap;
+			MarkerStore			markers;
 
 
 
@@ -573,11 +456,13 @@ namespace Objects
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 
 			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < CountMaxMarkers(priveleged); }
+			/*
 			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
 			Marker*		FindMarker(const TUniqueID&markerID);
 			bool		DestroyMarker(const TUniqueID&markerID);
 			void		RestoreMarkers(const Ctr::ArrayData<Marker>&source);
 			Marker*		FindReferenceMarker(Marker::Type type, const TUniqueID&);
+			*/
 
 			#ifdef ONE_COMPOUND_PER_FACTION
 				/**
@@ -641,12 +526,6 @@ namespace Objects
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource::ID res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource::ID res);
 	#endif
-
-	CONSTRUCT_ENUMERATION3(IncludeGhosts
-		, None
-		, Living
-		, All
-	);
 
 
 

@@ -195,7 +195,7 @@ namespace Lua
 		TAlliance*	AddAlliance(const Objects::PAlliance&a, bool updateIfFound, bool updateMembers);
 		void		AddObjectAndPathfindingFunctions(bool priveleged);
 		#ifdef CLIENT
-			void	AddMyMarker(const Objects::Marker&m);
+			void	AddMyMarker(const Objects::PMarker&m);
 			void	AddMyMarkers();
 			void	SetSelectedUnit(const Objects::PWorldEntity&e, bool updateIfFound);
 		#endif
