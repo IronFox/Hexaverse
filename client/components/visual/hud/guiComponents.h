@@ -241,6 +241,12 @@ namespace Component
 			value = other.value;
 		}
 
+		void	ResetToPlaceholder()
+		{
+			type = Type::Placeholder;
+			value = NAN;
+		}
+
 		/**
 		Converts the local value to a size/distance applicable in screen size (ideally in [0,1]).
 		Automatically queries the global display size, as necessary.
@@ -397,6 +403,7 @@ namespace Component
 			bool		Stretches() const {return BothAnchorsAreOn() && !isAutoCentering;}
 			bool		RequiresFixedParentSize() const {return lower.RequiresFixedParentSize() || upper.RequiresFixedParentSize() || extent.RequiresFixedParentSize() /*|| Stretches()*/;}	//stretching is valid
 			bool		SetExtent(const Distance&);
+			void		ClearExtent();
 			void		AnchorLower(const Distance&extent, const Distance&lowerOffset = Distance());
 			void		AnchorLower(const Distance&extent, const PComponent&lowerReference, const Distance& lowerOffset = Distance());
 			void		AnchorUpper(const Distance&extent, const Distance&upperOffset = Distance());

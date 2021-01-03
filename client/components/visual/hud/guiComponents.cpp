@@ -249,9 +249,16 @@ namespace Component
 		VerifyIntegrity(sender,FVerification(),true);
 	}
 
+
+	void		AnchorConfig::Axis::ClearExtent()
+	{
+		extent.ResetToPlaceholder();
+		VerifyIntegrity(CLOCATION,FVerification(),true);
+	}
+
 	bool		AnchorConfig::Axis::SetExtent(const Distance&d)
 	{
-		ASSERT__(!Stretches());
+		ASSERT__(!Stretches() || !d.IsDefined());
 		//ASSERT__(lower.IsFixed() || upper.IsFixed());
 		if (extent == d)
 			return false;
