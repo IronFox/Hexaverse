@@ -1072,7 +1072,7 @@ namespace Game
 					const Objects::Packable*se = dynamic_cast<const Objects::Packable*>(&s);
 					if (se)
 					{
-						se->Pack(state.packed,target);
+						se->PackToArray(state.packed,target);
 					}
 				}
 			}

@@ -135,8 +135,11 @@ namespace Objects
 					owner->knownWorld.InvalidateSensory();
 				#endif
 
-				Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(ByteReadStream(serializedState));
-				globalState.importState(luaResearchState,deserialized);
+				{
+					ByteReadStream s(serializedState);
+					Lua::Reference deserialized = globalState.researchProgram->DeserializeToReference(s);
+					globalState.importState(luaResearchState,deserialized);
+				}
 
 				ASSERT_EQUAL__(globalState.allTopics.Count(), topicProgressVector.Count());
 				foreach (globalState.allTopics,t)

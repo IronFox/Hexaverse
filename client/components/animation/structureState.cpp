@@ -98,7 +98,7 @@ namespace Animation
 			Objects::Packable*se = dynamic_cast<Objects::Packable*>(s.get());
 			if (se)
 			{
-				se->Unpack(vs.packed);
+				se->UnpackFromArray(vs.packed);
 			}
 		}
 		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;

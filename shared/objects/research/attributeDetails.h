@@ -1,5 +1,5 @@
 #include <global_string.h>
-
+#include <logEvent.h>
 
 namespace Objects
 {

@@ -3,9 +3,11 @@
 
 #include <global_string.h>
 #include "niceName.h"
+#include <math/basic.h>
 
 namespace Bin2Str
 {
+	namespace M = DeltaWorks::Math;
 
 	inline void _ToHex(char&out, BYTE v)
 	{

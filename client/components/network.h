@@ -317,6 +317,7 @@ namespace Network
 		DECLARE_CHANNEL(ScriptedAIState);
 
 		DECLARE_OBJECT_SENDER(EntityTrigger);
+		DECLARE_CHANNEL(AllianceMarkerText);
 	}
 
 

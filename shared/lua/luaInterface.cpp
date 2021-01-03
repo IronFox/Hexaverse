@@ -2,7 +2,9 @@
 #include "luaInterface.h"
 #include <io/byte_stream.h>
 #include <io/random_access_file.h>
+#include <io/string_file.h>
 #include <io/file_system.h>
+#include <string/string_buffer.h>
 #include <math/basic.h>
 
 #include <functional>
@@ -807,6 +809,8 @@ namespace Lua
 
 		void* RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*))
 		{
+			if (!prog)
+				throw Lua::Exception(CLOCATION,"Program reference not set or expired");
 			lua_State*st = prog->GetState();
 
 			void*fdata = lua_newuserdata(st,fsize);		//stack now: ... userdata(f)
@@ -958,14 +962,14 @@ template <typename Result, typename ...T>
 	bool CallRegisteredFunction(lua_State *state, int refID, Result&result, const T&...parameters)
 	{
 		lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
-		int numParameters = Lua::PushParameters(state,parameters...);
+		int numParameters = PushParameters(state,parameters...);
 		int status = lua_pcallk(state, numParameters, 1, 0, 0, NULL);
 		if (status != LUA_OK)
 		{
 			report(state, status);
 			return false;
 		}
-		Lua::GetStacked(state,-1,result);
+		GetStacked(state,-1,result);
 		return true;
 	}
 
@@ -1769,20 +1773,51 @@ namespace Lua
 	}
 
 
-	void	Program::ExecuteFile(const PathString&filename)
+	void	Program::ExecuteFile(const PathString&filename, const std::function<void(const PathString&, bool isGlobal)>&importHandler)
 	{
-		RandomAccessFile	file;
-		if (!file.Open(filename.c_str()))
-			throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to load Lua file '"+String(filename)+"'");
-		UINT len = file.GetSize();
-		StringType::TStringLength slen(len);
-		String content(slen);
+		String content;
+		if (!importHandler)
+		{
+			RandomAccessFile	file;
+			if (!file.Open(filename.c_str()))
+				throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to load Lua file '"+FileSystem::PathToString(filename)+"'");
+			UINT len = file.GetSize();
+			StringType::TStringLength slen(len);
+			content = slen;
 
-		file.Extract(0,content.mutablePointer(),len);
-		file.Close();
-		for (index_t i = 0; i < len; i++)
+			file.Extract(0,content.mutablePointer(),len);
+			file.Close();
+		}
+		else
+		{
+			PathString folder = FileSystem::ExtractFileDir(filename);
+			StringFile lineReader(CM_RETURN_EMPTY_LINES);
+			lineReader.Open(filename);
+			String line;
+			StringBuffer code;
+			index_t lineIndex = 0;
+			while (lineReader >> line)
+			{
+				lineIndex++;
+				StringRef content = line.TrimRef();
+				if (content.BeginsWith("--#require"))
+				{
+					content = content.SubStringRef(10).Trim();
+					if (content.BeginsWith('"') && content.EndsWith('"'))
+						importHandler(folder+FOLDER_SLASH+PathString(content.SubStringRef(1,content.Length()-2)),false);
+					elif (content.BeginsWith('<') && content.EndsWith('>'))
+						importHandler(PathString(content.SubStringRef(1,content.Length()-2)),true);
+					else
+						importHandler(folder+FOLDER_SLASH+PathString(content),false);
+				}
+				code << line << nl;
+			}
+			content = code.ToStringRef();
+		}
+
+		for (index_t i = 0; i < content.GetLength(); i++)
 			if (content[i] == 0)
-				throw Exception(CLOCATION,"Lua file contains zero characters: '"+String(filename)+"'");
+				throw Exception(CLOCATION,"Lua file contains zero characters: '"+FileSystem::PathToString(filename)+"'");
 		
 		Execute(content,String(FileSystem::ExtractFileNameExt(filename)));
 	}

@@ -60,7 +60,7 @@
 #include "components/visual/scene/world.h"
 #include "components/visual/scene/lighting.h"
 #include "components/visual/scene/atmosphere.h"
-#include "components/visual/scene/debugMarkers.h"
+#include "components/visual/scene/visualMarkers.h"
 #include "components/visual/hud/guiHostList.h"
 #include "components/visual/commandDefinitions.h"
 #include "components/visual/hud/menu.h"
@@ -688,10 +688,12 @@ namespace ApplicationInterface
 
 		if (t == Objects::RemovalType::UncontrolledExplosion && allied)
 		{
+			Objects::EntityDeathMarker dm;
+			static_assert(Objects::MarkerType::EntityDeath == 0, "Please update marker logic");
+			ObjectHelper::FillMarker(dm, e);
 			Protocol::Marker marker;
-			static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
-			marker.id.Generate();
-			ObjectHelper::FillMarker(marker, e, marker.data.Set0());
+			marker.markerType = dm.type;
+			dm.PackToArray(marker.state,Objects::Packable::Target::Owner);
 			ObjectHelper::SignalMarkerCreation(marker);
 			LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 		}
@@ -702,15 +704,12 @@ namespace ApplicationInterface
 				//and happen, in fact, so rapidly, the creation event hasn't been confirmed yet
 
 
-				if (!Objects::Marker::FindByReference(e->id))//apparently, this can happen
+				if (!Objects::MarkerStore::client.FindByReference(e->id))//apparently, this can happen
 				{
-				
-					Protocol::Marker marker;
-					marker.id.Generate();
-					static_assert(Objects::Marker::Type::HostileContact == 1, "Please update marker logic");
-					ObjectHelper::FillMarker(marker, e, marker.data.Set1());
-					ObjectHelper::SignalMarkerCreation(marker);
+					Objects::HostileContactMarker hm;
+					ObjectHelper::FillMarker(hm, e);
 
+					ObjectHelper::SignalMarkerCreation(hm);
 					LogEvent(EventSignificance::Debug,e.get(),"Created hostile contact marker for "+e->GetName()+" since original disappeared");
 				}
 			}
@@ -760,28 +759,29 @@ namespace ApplicationInterface
 		#endif
 		//fix: doesn't matter if e->isOwnedByMe is true or not. Must ALWAYS remove existing markers if we see the original again.
 		//reason for this problem: entity ownership change causes vanishing, and thus ghost creation, which was not removed here, because e was suddenly mine.
-		Objects::Marker*m = Objects::Marker::FindByReference(e->id);
-		if (m)
 		{
-			LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
-			ObjectHelper::SignalMarkerDeletion(m->id);
+			Objects::PMarker m = Objects::MarkerStore::client.FindByReference(e->id);
+			if (m)
+			{
+				LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
+				ObjectHelper::SignalMarkerDeletion(m->id);
+			}
 		}
-
 
 		if (e->isOwnedByMe)
 		{
 			if (To<Objects::Structure>::DynamicCast(e))
 			{
-				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
-				{
-					Objects::Marker&m = Objects::Marker::all[i];
-					if (m.type == Objects::Marker::Type::EntityDeath && m.location == e->location)
+				Objects::MarkerStore::client.Foreach(Objects::MarkerType::EntityDeath,
+					[e](const Objects::PMarker&m)
 					{
-						LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m.GetName()+" since new structure constructed in its place");
-						ObjectHelper::SignalMarkerDeletion(m.id);
-						i--;
+						if (m->location == e->location)
+						{
+							LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m->GetName()+" since new structure constructed in its place");
+							ObjectHelper::SignalMarkerDeletion(m->id);
+						}
 					}
-				}
+				);
 			}
 		}
 		elif (Objects::Faction::mine)
@@ -1213,7 +1213,7 @@ bool loop()
 
 			Objects::Renderer::RefreshFactionColors(!InputControl::saveScreenshot);
 			Objects::Renderer::RenderScene();
-			Objects::DebugMarkers::Render();
+			Objects::VisualMarkers::Render();
 
 			display.SetDepthTest(true,false);
 			display.SetRasterizer(true,false);
@@ -1390,7 +1390,7 @@ bool loop()
 				//else
 				//	TransferPanel::Invalidate();
 			}
-			Objects::DebugMarkers::RenderText();
+			Objects::VisualMarkers::RenderText();
 
 			if (HUD::showControlsAndContacts)
 			{

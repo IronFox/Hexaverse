@@ -40,11 +40,12 @@ namespace Dialog
 			{
 				ConfirmButton = 0x1,
 				CancelButton = 0x2,
-				Input = 0x4,
-				Image = 0x8,
-				NoButton = 0x10,
-				HelpButton = 0x20,
-				PasswordInput = 0x40,
+				DeleteButton = 0x4,
+				Input = 0x8,
+				Image = 0x10,
+				NoButton = 0x20,
+				HelpButton = 0x40,
+				PasswordInput = 0x80,
 			};
 		};
 
@@ -71,6 +72,7 @@ namespace Dialog
 		{
 			auto cfg = c->GetAnchorConfig();
 			cfg.GetHAxis().upper.Set(HUD::Component::Distance::OfParentSize( v));
+			cfg.GetHAxis().SetExtent(HUD::Component::Distance::Disabled);
 			c->SetAnchorConfig(cfg);
 		}
 
@@ -97,7 +99,7 @@ namespace Dialog
 			
 			//height controlled by content
 
-			HUD::Component::PButton confirmButton,cancelButton,noButton,helpButton;
+			HUD::Component::PButton confirmButton,cancelButton,deleteButton,noButton,helpButton;
 			HUD::Component::PInput	inputField;
 			HUD::Component::PPasswordInput passwordInputField;
 			HUD::Component::PImage	imageField;
@@ -137,45 +139,43 @@ namespace Dialog
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
-				confirmButton.reset(new HUD::Component::Button(confirmWord));
-				confirmButton->Anchor().FillHorizontally().Beneath(textPanel,0.015f);
-				dialog->AddComponent( confirmButton,CLOCATION);
-				buttons << std::make_pair(1, confirmButton);
+				HUD::Component::PButton b (new HUD::Component::Button(confirmWord));
+				buttons << std::make_pair(1, b);
+				confirmButton = b;
 			}
 			if (componentFlags & ComponentFlags::HelpButton)
 			{
-				helpButton.reset(new HUD::Component::Button("?"));
-				{
-					HUD::Component::AnchorConfig cfg;
-					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textPanel,HUD::Component::Distance::GameWindow(0.015f));
-					helpButton->SetAnchorConfig(cfg);
-				}
-				dialog->AddComponent(helpButton,CLOCATION);
-				buttons << std::make_pair(0.25f, helpButton);
+				HUD::Component::PButton b (new HUD::Component::Button("?"));
+				buttons << std::make_pair(0.25f, b);
+				helpButton = b;
 			}
 			if (componentFlags & ComponentFlags::NoButton)
 			{
-				noButton.reset(new HUD::Component::Button("No"));
-				{
-					HUD::Component::AnchorConfig cfg;
-					cfg.GetVAxis().AnchorUpper(HUD::Component::Distance::Unknown,textPanel,HUD::Component::Distance::GameWindow(0.015f));
-					noButton->SetAnchorConfig(cfg);
-				}
-				dialog->AddComponent( noButton,CLOCATION);
-				buttons << std::make_pair(1, noButton);
+				HUD::Component::PButton b (new HUD::Component::Button("No"));
+				buttons << std::make_pair(1, b);
+				noButton = b;
+			}
+			if (componentFlags & ComponentFlags::DeleteButton)
+			{
+				HUD::Component::PButton b (new HUD::Component::Button("Delete"));
+				buttons << std::make_pair(1, b);
+				deleteButton = b;
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
-				cancelButton.reset(new HUD::Component::Button("Cancel"));
-				cancelButton->Anchor().FillHorizontally(HUD::Component::Distance::OfParentSize(0.505f),0).Beneath(textPanel,0.015f);
-				dialog->AddComponent(cancelButton,CLOCATION);
-				buttons << std::make_pair(1, cancelButton);
+				HUD::Component::PButton b (new HUD::Component::Button("Cancel"));
+				buttons << std::make_pair(1, b);
+				cancelButton = b;
 			}
 
 			{
 				float total = 0.f;
 				foreach (buttons,b)
+				{
+					b->second->Anchor().Beneath(textPanel,0.015f);
+					dialog->AddComponent(b->second,CLOCATION);
 					total += b->first;
+				}
 				float width = 1.f / float(total);
 				float at = 0.f;
 				
@@ -218,6 +218,7 @@ namespace Dialog
 
 			dialog->cancelButton = cancelButton;
 			dialog->confirmButton = confirmButton;
+			dialog->deleteButton = deleteButton;
 			dialog->helpButton = helpButton;
 			dialog->noButton = noButton;
 			dialog->userInput = inputField;
@@ -229,9 +230,12 @@ namespace Dialog
 			{
 
 //				confirmButton->SetText(confirmWord);
-				Dialog*d = dialog.get();
-				confirmButton->SetCheck([d, inputField]()->bool
+				WDialog wd = dialog;
+				confirmButton->SetCheck([wd, inputField]()->bool
 				{
+					auto d = wd.lock();
+					if (!d)
+						return false;
 					bool canConfirmNow = !d->check || d->check() == CheckResult::OkayContinue;
 					if (d->checkInput && inputField)
 					{
@@ -240,22 +244,53 @@ namespace Dialog
 					}
 					return canConfirmNow;
 				});
-				confirmButton->SetTriggerFunction(std::bind(&Dialog::Confirm,d,false));
-				confirmButton->SetCutCorners(M::Quad<bool>(true,true,!cancelButton,false));
+				confirmButton->SetTriggerFunction([wd]
+				{
+					auto d = wd.lock();
+					if (!d)
+						return;
+					d->Confirm(false);
+				});
 			}
 
 			if (cancelButton)
-			{
 				cancelButton->SetTriggerFunction(std::bind(&Dialog::DumpMe,dialog.get()));
-				cancelButton->SetCutCorners(M::Quad<bool>(!confirmButton,true,true,false));
+
+			if (deleteButton)
+			{
+				WDialog wd = dialog;
+
+				deleteButton->SetTriggerFunction([wd]()
+				{
+					auto d = wd.lock();
+					if (!d)
+						return;
+					if (d->onDelete)
+						d->onDelete();
+					d->DumpMe();
+				});
 			}
 
-			if (confirmButton || cancelButton)
-				textPanel->SetCutCorners(M::Quad<bool>(true,false,true,true));
+			switch (buttons.Count())
+			{
+				case 0:
+					break;
+				case 1:
+					textPanel->SetCutCorners(M::Quad<bool>(true,false,true,true));
+					buttons.Last().second->SetCutCorners(M::Quad<bool>(true,true,true,false));
+					break;
+				default:
+					textPanel->SetCutCorners(M::Quad<bool>(true,false,true,true));
+					buttons.First().second->SetCutCorners(M::Quad<bool>(true,true,false,false));
+					buttons.Last().second->SetCutCorners(M::Quad<bool>(false,true,true,false));
+
+					for (index_t i = 1; i+1 < buttons.Count(); i++)
+						buttons[i].second->SetCutCorners(false);
+					break;
+			}
 
 
 			dialog->ReLayout();
-
 		}
 
 	}
@@ -405,6 +440,30 @@ namespace Dialog
 		return d;
 	}
 
+
+	WDialog	DeleteQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&check, const FFetchInput&fetch, const FOnDelete&onDelete)
+	{
+		WindowStack::VerifyIntegrity(CLOCATION);
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::Input | Detail::ComponentFlags::DeleteButton, "OK", false);
+		d->textField->SetText(query);
+
+		ASSERT__(!d->isTutorial);
+
+
+		d->fetchInput = fetch;
+		d->check = check;
+		d->onDelete = onDelete;
+
+		d->userInput->SetText(initial);
+		d->userInput->SetAllowedAlphabet(allowChars);
+
+		d->confirmButton->DetectEnabledState();
+
+		d->ReLayout();
+		WindowStack::VerifyIntegrity(CLOCATION);
+
+		return d;
+	}
 
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&check, const FFetchInput&fetch)
 	{

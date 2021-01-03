@@ -46,7 +46,7 @@ namespace Reflection
 		{
 			for (const auto&var : f->variables)
 			{
-				Reflection::Variable::PBase&v = To<Reflection::Variable::Base>::DynamicCast(var);
+				Reflection::Variable::PBase v = To<Reflection::Variable::Base>::DynamicCast(var);
 				if (v)
 				{
 					callback(v);
@@ -337,7 +337,10 @@ namespace Reflection
 			class EnumVariable : public MappedEnumVariable<T,T>
 			{
 				typedef MappedEnumVariable<T,T>	Super;
+
 			public:
+				using Super::reference;
+				using Super::defaultValue;
 
 				/**/			EnumVariable(const String&name, Persistence p, T&reference, unsigned protection=CLI::EraseProtection):Super(name,p,reference,protection)	{}
 				virtual String	ConvertToString()		const	override	{return reference->ToString();}

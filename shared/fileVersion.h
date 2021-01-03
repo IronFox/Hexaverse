@@ -7,7 +7,7 @@ namespace ApplicationInterface
 	#ifndef CLIENT
 		extern UINT32			globalVersionOfCurrentFile;
 
-		static const UINT32	SupportedFileVersion = 1049;	//doubles as current file version to write to files
+		static const UINT32	SupportedFileVersion = 1050;	//doubles as current file version to write to files
 
 		struct FileVersions
 		{
@@ -23,6 +23,7 @@ namespace ApplicationInterface
 				SeparateRoadAndBridgeJobs = 1047,
 				IncludeGridContentMap = 1048,
 				DynamicResourceTables = 1049,
+				MarkersAreSerialized = 1050,
 			};
 		};
 	#endif

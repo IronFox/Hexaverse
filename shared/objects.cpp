@@ -192,7 +192,7 @@ namespace Objects
 			structureGrid.Flush();
 			#ifdef CLIENT
 				skyLinks.Clear();
-				Marker::FlushAll();
+				MarkerStore::client.Clear();
 				#ifndef NO_HIBERNATION
 					uplinkTraffic = 0;
 					onlineUplinkTraffic = 0;

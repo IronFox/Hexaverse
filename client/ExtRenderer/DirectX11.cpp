@@ -1,13 +1,13 @@
 #ifdef HAS_WINDOW
 
 #include <global_root.h>
-#define INITGUID
+#include <comdef.h>
+
 #include "DirectX11.h"
 #include <io/file_system.h>
 //#include <DxErr.h>
 #include <io/cryptographic_hash.h>
 #include <engine/timing.h>
-#include <comdef.h>
 
 namespace Engine
 {

@@ -315,7 +315,7 @@ namespace Animation
 				if (d < 2.f)
 					canDo = false;
 			}
-		},Objects::IncludeGhosts::Living);
+		},Objects::IncludeGhosts::HostileContacts);
 		return canDo;
 	}
 
@@ -516,7 +516,7 @@ namespace Animation
 		bool automationChange = false;
 		if (v->IsVehicle())
 		{
-			Objects::PVehicle&veh = To<Objects::Vehicle>::Cast(v);
+			Objects::PVehicle veh = To<Objects::Vehicle>::Cast(v);
 			bool newAutomated = (vs.flags & Protocol::VehicleFlags::Automated) != 0;
 			automationChange = newAutomated != veh->isAutomated;
 			veh->isAutomated = newAutomated;

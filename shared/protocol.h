@@ -615,20 +615,13 @@ namespace Protocol
 		, NET(bool), doSet
 	)
 
-	NETSTRUCT3(MarkerReferenceEntity
-		, NET(TUniqueID), id
-		, NET(TUniqueID), owner
-		, Objects::EntityType, type
-	)
 
-	static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
-	typedef Selective3<MarkerReferenceEntity, MarkerReferenceEntity, NoData>	MarkerData;
 
-	NETSTRUCT4(Marker
-		, NET(TUniqueID), id
-		, Grid::LCellIdI, location		
-		, MarkerData, data
-		, NET(RuntimeConfig::RoundNumber), createdInRound
+	typedef NetArray<BYTE,100000>	SerialMarkerState;
+
+	NETSTRUCT2(Marker
+		, UINT32, markerType
+		, SerialMarkerState, state
 	)
 
 	NETSTRUCT2(TouchedMarker
@@ -811,6 +804,11 @@ namespace Protocol
 		, ScriptedAIStateVector, dataVector
 	);
 
+	NETSTRUCT2(AllianceMarkerText
+		, TUniqueID, markerID
+		, Package::NetString<64>, markerText
+	);
+
 	typedef Objects::Resource::Table ResourceTable;
 
 
@@ -887,6 +885,7 @@ namespace Protocol
 
 			CreateMarker,		//c2s/s2c: Marker (non-dialogue)
 			MarkerCreationFailedLimitReached,	//s2c: ClientMarker
+			AllianceMarkerText,		//c2s: AllianceMarkerText
 			DestroyMarker,		//c2s/s2c: TUniqueID
 			TouchMarker,		//c2s: TouchedMarker
 
