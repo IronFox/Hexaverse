@@ -618,22 +618,48 @@ namespace InputControl
 			}
 
 
-			if (Engine::input.pressed[Key::F1])
+			if (Engine::input.pressed[Key::F2])
 			{
 				Grid::LCellIdI	target;
 				bool includeWater = true;
 				if (InputControl::GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 				{
-					HUD::Dialog::Query("Enter marker text:", "", Network::allowedChatCharacters, nullptr, [target](const String&text)
+					Objects::PMarker m = Objects::MarkerStore::client.FindByLocation(Objects::MarkerType::Alliance, Objects::Faction::mine->id, target);
+					if (m != nullptr)
+					{
+						auto am = To<Objects::AllianceMarker>::Cast(m);
+						auto wdialog = HUD::Dialog::DeleteQuery(am->GetNiceName(), am->text,
+							Network::allowedChatCharacters, 
+						[]()
+						{
+							if (!Network::client.IsConnected())
+								return HUD::Dialog::CheckResult::Abort;
+							return HUD::Dialog::CheckResult::OkayContinue;
+						}, 
+						[target,m](const String&text)
+						{
+							Protocol::AllianceMarkerText t;
+							t.markerID = m->id;
+							t.markerText = text;
+							Network::Channels::AllianceMarkerText.SendTo(Network::client,t);
+						},
+						[m]()
+						{
+							ObjectHelper::SignalMarkerDeletion(m->id);
+						});
+						return;
+					}
+
 					{
 						Objects::AllianceMarker marker;
 						marker.id.Generate();
 						marker.createdInRound = RuntimeConfig::roundNumber;
 						marker.location = target;
-						marker.text = text;
+						marker.ownerFactionID = Objects::Faction::mine->id;
 						ObjectHelper::SignalMarkerCreation(marker);
-					});
+					}
 				}
+				return;
 			}
 
 
