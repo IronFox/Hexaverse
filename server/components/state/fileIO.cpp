@@ -273,7 +273,6 @@ namespace FileIO
 	{
 		static const Riff::TID	
 								mostFactionsAlive(" MFA"),
-								mostAlliancesAlive(" MAA"),
 								worldTypeChunk(" WTC"),
 								worldCounterChunk(" WCC"),
 								factionAccessToken("ACTK"),
@@ -342,10 +341,12 @@ namespace FileIO
 								aiScriptName("AISN"),
 								aiScriptState("AISS"),
 								terrainTypeMap("TTMP"),
+								roundOneStartActivePlayerAlliances("ROAA"),
 
 								//deprecated:
 								resources("RSRC"),
 								noMunitionResources("RSRM"),
+								deprecatedMostAlliancesAlive(" MAA"),
 
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
@@ -1460,7 +1461,7 @@ namespace FileIO
 										GetPOD(list,RID::worldID,World::worldID);
 										GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
 										GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
-										GetOptionalPOD(list,RID::mostAlliancesAlive,Game::mostAlliancesAlive,(UINT32)0);
+										GetOptionalPOD(list,RID::roundOneStartActivePlayerAlliances,Game::roundOneStartActivePlayerAlliances,(UINT32)0);
 										GetOptionalPOD(list,RID::winningAlliance,winnerID,TUniqueID::Empty());
 
 										{
@@ -2112,7 +2113,7 @@ namespace FileIO
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 		general->AppendBlock(RID::snowHeight)->SetPODData(Grid::currentPlanetConfig.snowHeight);
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
-		general->AppendBlock(RID::mostAlliancesAlive)->SetPODData(Game::mostAlliancesAlive);
+		general->AppendBlock(RID::roundOneStartActivePlayerAlliances)->SetPODData(Game::roundOneStartActivePlayerAlliances);
 		
 		if (!Game::winner.expired())
 			general->AppendBlock(RID::winningAlliance)->SetPODData(Game::winner.lock()->id);	//implies that this game has ended

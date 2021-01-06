@@ -12,7 +12,6 @@
 void			ApplicationInterface::SignalFactionsChanged()
 {
 	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Game::CountLivingPlayerFactions());
-	Game::mostAlliancesAlive = std::max(Game::mostAlliancesAlive, (UINT32)Game::CountLivingPlayerAlliances());
 	Reflection::SignalFactionsChanged();
 }
 
@@ -20,7 +19,7 @@ void			ApplicationInterface::SignalFactionsChanged()
 
 namespace Game
 {
-	UINT32				mostFactionsAlive=0, mostAlliancesAlive=0;
+	UINT32				mostFactionsAlive=0, roundOneStartActivePlayerAlliances = 0;
 	Evolver::Abstract	*evolver = nullptr;
 	Objects::WAlliance	winner;	//if set indicates game is over
 	Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
@@ -574,7 +573,7 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
-			mostAlliancesAlive = 0;
+			roundOneStartActivePlayerAlliances = 0;
 			tutorialAt=1;
 			endRoundNow = false;
 			winner.reset();
@@ -1582,7 +1581,7 @@ namespace Game
 					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 				else
-				if (livingPlayerAlliances == 1 && mostAlliancesAlive > 1)
+				if (livingPlayerAlliances == 1 && RuntimeConfig::roundNumber.main > 1 && roundOneStartActivePlayerAlliances > 1)
 				{
 					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one of several alliances left alive. Declaring winner.");
 

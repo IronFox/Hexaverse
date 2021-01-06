@@ -5,6 +5,7 @@ v0.9.12
 	+ Added alliance-shared visual markers (via shift+click)
 	> HUD: Flipped setting for music during gameplay (misleading tooltip text)
 	> Server: Relative -l/--load parameter now auto-converted to absolute path
+	* Fixed server ending game unexpectedly in closed multi-alliance games
 
 v0.9.11 [Sep 13 2020]
 	+ Added button sounds
