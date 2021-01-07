@@ -28,7 +28,7 @@ namespace Objects { namespace VisualMarkers
 				M::TMatrix4<>	system;
 
 				bool			labelVisible = false;
-				M::TVec2<>		screenLocation;
+				M::TVec3<>		screenLocation;
 			};
 
 
@@ -149,6 +149,15 @@ namespace Objects { namespace VisualMarkers
 		display.StoreRendererState();
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::Add);
+		foreach (Objects::MarkerStore::client.GetArtifacts().allianceDefs, def)
+		{
+			if (def->marker->age < 1)
+			{
+				display.SetObjectMatrix(def->system);
+				keyColor.Update(def->color);
+				display.Render(gatheringPoint,true);
+			}
+		}
 		foreach (Debug::markers,m)
 		{
 			display.SetObjectMatrix(m->system);
@@ -163,32 +172,43 @@ namespace Objects { namespace VisualMarkers
 			keyColor.Update(m->keyColor);
 			display.Render(gatheringPoint,true);
 			m->labelVisible = m->label.IsNotEmpty()
-				&& Camera::scene.PointToScreen(m->labelCenter,m->screenLocation);
+				&& Camera::scene.Project(m->labelCenter,m->screenLocation);
 		}
 
 		foreach (Objects::MarkerStore::client.GetArtifacts().allianceDefs, def)
 		{
+			//display.SetDepthTest(def->marker->age >= 1,false);
 			display.SetObjectMatrix(def->system);
 			keyColor.Update(def->color);
 			display.Render(gatheringPoint,true);
 			def->labelVisible = def->marker->text.IsNotEmpty()
-				&& Camera::scene.PointToScreen(def->labelCenter,def->screenLocation);
+				&& Camera::scene.Project(def->labelCenter,def->screenLocation);
 		}
 
 		display.RestoreRendererState();
 	}
 
+	void	Locate(const M::TVec3<>&projected)
+	{
+		textout.MoveTo(float3(projected.xy * 0.5f + 0.5f,-projected.z));	
+	}
+	
 	void	RenderText( )
 	{
 		namespace Debug = Debug::Details;
 		if (Debug::markers.IsEmpty() && Objects::MarkerStore::client.GetArtifacts().allianceDefs.IsEmpty())
 			return;
+
+		display.StoreRendererState();
+
+		display.SetDepthTest(true,false);
+
 		textout.PushState();
 		textout.Scale(2.f);
 		foreach (Debug::markers,m)
 			if (m->labelVisible)
 			{
-				textout.MoveTo(m->screenLocation * 0.5f + 0.5f);
+				Locate(m->screenLocation);
 				textout.SetColor(m->color);
 				textout << m->label;
 			}
@@ -196,13 +216,17 @@ namespace Objects { namespace VisualMarkers
 		foreach (Objects::MarkerStore::client.GetArtifacts().allianceDefs, def)
 			if (def->labelVisible)
 			{
-				textout.MoveTo(def->screenLocation * 0.5f + 0.5f);
+				display.SetDepthTest(def->marker->age >= 1,false);
+
+				Locate(def->screenLocation);
 				textout.SetColor(def->color);
 				textout << def->marker->text;
 			}
 
 
 		textout.PopState();
+
+		display.RestoreRendererState();
 	}
 
 }}

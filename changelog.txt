@@ -3,8 +3,12 @@ v0.9.12
 	+ AI: Added Game.MeasureSecondsFromNow() to measure time
 	+ AI: Added grid radius<->height conversions
 	+ Added alliance-shared visual markers (via shift+click)
+	+ Added positional markers beneath all mobile units
 	> HUD: Flipped setting for music during gameplay (misleading tooltip text)
 	> Server: Relative -l/--load parameter now auto-converted to absolute path
+	* Fixed server ending game unexpectedly in closed multi-alliance games
+	* Fixed missing state-update to alliance members on structure creation
+	* Fixed unit status icons still visible when hiding all objects
 
 v0.9.11 [Sep 13 2020]
 	+ Implemented Tier 2 unit improvement. Use mechanic to upgrade units

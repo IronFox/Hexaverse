@@ -1290,7 +1290,10 @@ bool loop()
 			}
 		}
 			
+		display.Pick(Camera::hud);
+			Objects::VisualMarkers::RenderText();
 
+		display.Pick(Camera::scene);
 
 
 		display.ClearDepth();
@@ -1390,7 +1393,6 @@ bool loop()
 				//else
 				//	TransferPanel::Invalidate();
 			}
-			Objects::VisualMarkers::RenderText();
 
 			if (HUD::showControlsAndContacts)
 			{

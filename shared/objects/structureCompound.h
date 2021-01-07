@@ -109,7 +109,7 @@ namespace Objects
 		extern Buffer0<Compound,Swap>		compounds;
 	#endif
 
-	void RefreshCompoundStates( float atTime);
+	void RefreshCompoundStates(float atTime);
 
 
 	/**
