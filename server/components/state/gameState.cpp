@@ -12,7 +12,6 @@
 void			ApplicationInterface::SignalFactionsChanged()
 {
 	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Game::CountLivingPlayerFactions());
-	Game::mostAlliancesAlive = std::max(Game::mostAlliancesAlive, (UINT32)Game::CountLivingPlayerAlliances());
 	Reflection::SignalFactionsChanged();
 }
 
@@ -20,7 +19,7 @@ void			ApplicationInterface::SignalFactionsChanged()
 
 namespace Game
 {
-	UINT32				mostFactionsAlive=0, mostAlliancesAlive=0;
+	UINT32				mostFactionsAlive=0, roundOneStartActivePlayerAlliances = 0;
 	Evolver::Abstract	*evolver = nullptr;
 	Objects::WAlliance	winner;	//if set indicates game is over
 	Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
@@ -574,7 +573,7 @@ namespace Game
 		{
 			roundTimerPaused = true;
 			mostFactionsAlive = 0;
-			mostAlliancesAlive = 0;
+			roundOneStartActivePlayerAlliances = 0;
 			tutorialAt=1;
 			endRoundNow = false;
 			winner.reset();
@@ -1206,11 +1205,15 @@ namespace Game
 			if (s.changeFlags)
 			{
 				//anythingChanged = true;
-				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
 				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeignerFlags()) != 0;
-				const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
+				//const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
 				const bool alliesNeedToKnow = (s.changeFlags & Network::NotifyAllies) != 0;
+
+				if (s.IsWorkingStructure())
+					LogEvent(EventSignificance::Common,&s,"State change detected ("+String(s.changeFlags)+",enabled="+String(To<Objects::WorkingStructure>::Cast(_s)->IsEnabled())+",allies="+String(alliesNeedToKnow)+",foreign="+String(foreignersNeedToKnow)+",t="+String(s.changeTimer)+")");
+				else
+					LogEvent(EventSignificance::Common,&s,"State change detected ("+String(s.changeFlags)+",allies="+String(alliesNeedToKnow)+",foreign="+String(foreignersNeedToKnow)+",t="+String(s.changeTimer)+")");
 
 				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
@@ -1231,7 +1234,7 @@ namespace Game
 						if (::Network::CanSeeAsOwner(*cl,s))	//also coveres alliance members if details are exposed
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),owned);
 						else
-							if (::Network::CanSee(*cl,_s,0))
+							if (::Network::CanSee(*cl,_s,timestamp.atTime))
 							{
 								Channels::setStructureState.SendTo((*cl)->peer.lock(),(*cl)->faction->IsAlliedWith(s.owner) ? allied : foreign);
 							}
@@ -1591,7 +1594,7 @@ namespace Game
 					Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 				}
 				else
-				if (livingPlayerAlliances == 1 && mostAlliancesAlive > 1)
+				if (livingPlayerAlliances == 1 && RuntimeConfig::roundNumber.main > 1 && roundOneStartActivePlayerAlliances > 1)
 				{
 					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one of several alliances left alive. Declaring winner.");
 
