@@ -1194,6 +1194,8 @@ namespace VisualTerrain
 
 	void	RenderResources(const Engine::Frustum<>&frustum)
 	{
+		display.SetRasterizer(true,true);
+		display.SetDepthTest(true,true);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 	//	display.SetBlendMode(Engine::BlendMode::FlareBlend);
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
