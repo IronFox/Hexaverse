@@ -493,6 +493,12 @@ namespace Evolver
 		});
 
 		RuntimeConfig::roundNumber.main++;
+		if (RuntimeConfig::roundNumber.main == 1)
+		{
+			Game::roundOneStartActivePlayerAlliances = (UINT32)Objects::Alliance::Count();
+			if (Objects::Faction::nexus)
+				Game::roundOneStartActivePlayerAlliances--;
+		}
 		
 		Objects::Statistics::SignalNewRoundBegin(true);
 

@@ -7,7 +7,7 @@
 #include "../../objectNetworkHelper.h"
 #include <globalEvents.h>
 #include "../hud/iconNameToFileName.h"
-
+#include "objectRendering.h"
 
 namespace Objects
 {
@@ -232,14 +232,16 @@ namespace Objects
 
 			display.SetRasterizer(true,false);
 
-			automationIcon.Render();
-			sleepIcon.Render();
-			questionIcon.Render();
+			if (Objects::objectView)
+			{
+				automationIcon.Render();
+				sleepIcon.Render();
+				questionIcon.Render();
+			}
 			t2LevelUp.Render();
 
 			foreach (resourceFamily,res)
 				res->Render();
-
 
 		}
 

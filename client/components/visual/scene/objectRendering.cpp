@@ -2268,7 +2268,7 @@ namespace Objects
 	
 	namespace Renderer
 	{
-		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
+		void RenderEntityBaseBeam(const Objects::PMobileEntity&e)
 		{
 			M::TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,1),
@@ -2281,7 +2281,14 @@ namespace Objects
 								0.05f
 								);
 			}
+		}
+
+
+		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
+		{
+			M::TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			bool first = true;
+			const float bottom = Grid::BottomPlanetRadius;
 			for (const auto&t : e->myTasks)
 			{
 				if (t.ContainsMovement())
@@ -2324,10 +2331,19 @@ namespace Objects
 			foreach (satellites,_s)
 				RenderFlyingUnitBeams(*_s);
 		#endif
-		SubOrbital::planes.Foreach([](const SubOrbital::PPlane&p)
-		{
-			RenderFlyingUnitBeams(p);
-		});
+
+		if (objectView && Grid::CellStack::bottom.content != Grid::Content::Clear)
+			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
+			{
+				RenderEntityBaseBeam(e);
+			});
+
+
+		if (objectView)
+			SubOrbital::planes.Foreach([](const SubOrbital::PPlane&p)
+			{
+				RenderFlyingUnitBeams(p);
+			});
 
 		
 		bool nexusSet[12] = {false};

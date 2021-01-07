@@ -118,7 +118,7 @@ namespace Game
 	Not decremented when factions die. Restored from savegame.
 	*/
 	extern UINT32			mostFactionsAlive	/*=0*/;
-	extern UINT32			mostAlliancesAlive;
+	extern UINT32			roundOneStartActivePlayerAlliances;
 
 	extern Objects::WAlliance	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
 	extern Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
