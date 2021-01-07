@@ -1196,11 +1196,15 @@ namespace Game
 			if (s.changeFlags)
 			{
 				//anythingChanged = true;
-				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
 				const bool foreignersNeedToKnow = (s.changeFlags & Network::NotifyForeignerFlags()) != 0;
-				const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
+				//const bool exposeDetailsToAllies = s.owner->alliance && s.owner->alliance->config.exposeEntityDetails;
 				const bool alliesNeedToKnow = (s.changeFlags & Network::NotifyAllies) != 0;
+
+				if (s.IsWorkingStructure())
+					LogEvent(EventSignificance::Common,&s,"State change detected ("+String(s.changeFlags)+",enabled="+String(To<Objects::WorkingStructure>::Cast(_s)->IsEnabled())+",allies="+String(alliesNeedToKnow)+",foreign="+String(foreignersNeedToKnow)+",t="+String(s.changeTimer)+")");
+				else
+					LogEvent(EventSignificance::Common,&s,"State change detected ("+String(s.changeFlags)+",allies="+String(alliesNeedToKnow)+",foreign="+String(foreignersNeedToKnow)+",t="+String(s.changeTimer)+")");
 
 				const Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
@@ -1221,7 +1225,7 @@ namespace Game
 						if (::Network::CanSeeAsOwner(*cl,s))	//also coveres alliance members if details are exposed
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),owned);
 						else
-							if (::Network::CanSee(*cl,_s,0))
+							if (::Network::CanSee(*cl,_s,timestamp.atTime))
 							{
 								Channels::setStructureState.SendTo((*cl)->peer.lock(),(*cl)->faction->IsAlliedWith(s.owner) ? allied : foreign);
 							}
