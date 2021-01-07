@@ -2155,19 +2155,27 @@ namespace Objects
 	
 	namespace Renderer
 	{
-		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
+		void RenderEntityBaseBeam(const Objects::PMobileEntity&e)
 		{
 			M::TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
-			SetBeamColor(float4(color,0.25),
-						float4(color,0.25));
+			SetBeamColor(float4(color,1),
+						float4(color,1));
 			const float bottom = Grid::BottomPlanetRadius;
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(e->GetWorldPosition(),Grid::ToRadius(e->location.height) - bottom,
+				const float r = Grid::ToRadius(e->location.height);
+				RenderBeam(e->GetWorldPosition()/r*bottom,r - bottom,
 								0.05f
 								);
 			}
+		}
+
+
+		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
+		{
+			M::TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			bool first = true;
+			const float bottom = Grid::BottomPlanetRadius;
 			for (const auto&t : e->myTasks)
 			{
 				if (t.ContainsMovement())
@@ -2211,6 +2219,14 @@ namespace Objects
 			foreach (satellites,_s)
 				RenderFlyingUnitBeams(*_s);
 		#endif
+
+		if (objectView && Grid::CellStack::bottom.content != Grid::Content::Clear)
+			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
+			{
+				RenderEntityBaseBeam(e);
+			});
+
+
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
