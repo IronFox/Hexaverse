@@ -28,7 +28,7 @@ namespace Objects
 		PAllianceMarker					marker;
 
 		float4							color;
-		float2							screenLocation;
+		float3							screenLocation;
 		bool							labelVisible = false;
 		float3							labelCenter;
 		M::TMatrix4<>					system;
