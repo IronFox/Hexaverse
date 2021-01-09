@@ -13,6 +13,8 @@
 #include <objects/structure/planeFactory.h>
 #include <objects/subOrbital.h>
 #include <objects/structure/tower.h>
+#include <objects/structure/plantation.h>
+#include <objects/structure/resourceConverters.h>
 #include "../clientRuntimeConfig.h"
 #include "../network.h"
 #include "hud/dialog.h"
@@ -404,6 +406,55 @@ namespace Objects
 					return Objects::CommandFlags::None;
 				PMine mine = ToMine(selectedEntity);
 				return mine && !mine->IsLinkedToCore() ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			},
+			NoCosts
+			));
+		}
+
+		void DefinePlantation(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			commands.Add( new Command::IconCommand("Plant Trees",[]()
+			{
+				PPlantation p = ToPlantation(selectedEntity);
+				if (p)
+				{
+					Network::Channels::EntityTrigger.SendTo(Network::client,Protocol::EntityTrigger(p->id,Plantation::Triggers::PlantTrees));
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return Objects::CommandFlags::None;
+				PPlantation p = ToPlantation(selectedEntity);
+				if (!p)
+					return Objects::CommandFlags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+				if (p->plantTrees)
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
+			},
+			NoCosts
+			));
+			commands.Add( new Command::IconCommand("Plant Crystals",[]()
+			{
+				PPlantation p = ToPlantation(selectedEntity);
+				if (p)
+				{
+					Network::Channels::EntityTrigger.SendTo(Network::client,Protocol::EntityTrigger(p->id,Plantation::Triggers::PlantCrystals));
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return Objects::CommandFlags::None;
+				PPlantation p = ToPlantation(selectedEntity);
+				if (!p)
+					return Objects::CommandFlags::None;
+				Objects::CommandFlags rs = Objects::CommandFlags::IsEnabled;
+				if (p->plantCrystals)
+					rs |= Objects::CommandFlags::IsPermaActive;
+				return rs;
 			},
 			NoCosts
 			));
@@ -1524,13 +1575,20 @@ namespace Objects
 
 			DefinePlaneFactory(Objects::PlaneFactory::commands);
 			DefineMine(Objects::Mine::commands);
+			DefinePlantation(Objects::Plantation::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
+			DefineWorkingStructure(Objects::CrystalStorage::commands);
+			DefineWorkingStructure(Objects::OrganicStorage::commands);
 			DefineWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
+			DefineWorkingStructure(Objects::CompositeMaterialStorage::commands);
 			DefineWorkingStructure(Objects::Generator::commands);
 			DefineWorkingStructure(Objects::ReactorCore::commands);
 			DefineWorkingStructure(Objects::NexusPort::commands);
+			DefineWorkingStructure(Objects::OrganicCompoundFactory::commands);
+			DefineWorkingStructure(Objects::CrystallineCompoundFactory::commands);
+			DefineWorkingStructure(Objects::CompositeMaterialFactory::commands);
 			DefineLaboratory(Objects::Laboratory::commands);
 			DefineHangar();
 

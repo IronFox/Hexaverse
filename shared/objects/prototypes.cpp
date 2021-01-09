@@ -12,7 +12,8 @@
 #include "structure/planeFactory.h"
 #include "structure/vehicleStore.h"
 #include "structure/laboratory.h"
-
+#include "structure/plantation.h"
+#include "structure/resourceConverters.h"
 
 namespace Objects
 {
@@ -109,6 +110,10 @@ namespace Objects
 
 			structures	
 				<< Mine::globalPrototype
+				<< Plantation::globalPrototype
+				<< OrganicCompoundFactory::globalPrototype
+				<< CrystallineCompoundFactory::globalPrototype
+				<< CompositeMaterialFactory::globalPrototype
 				<< Generator::globalPrototype
 				<< ReactorCore::globalPrototype
 				<< MunitionFactory::globalPrototype
@@ -116,6 +121,9 @@ namespace Objects
 				<< Laboratory::globalPrototype
 				<< Connector::globalPrototype
 				<< FuelContainer::globalPrototype
+				<< CrystalStorage::globalPrototype
+				<< OrganicStorage::globalPrototype
+				<< CompositeMaterialStorage::globalPrototype
 				<< MineralContainer::globalPrototype
 				<< MunitionStorage::globalPrototype //DO NOT COMMENT. Nexus bases feature these
 				<< UraniumStorage::globalPrototype

@@ -800,7 +800,8 @@ namespace Objects
 					LogEvent(EventSignificance::Common,this,"Silent motion completed");
 				#endif
 			}
-
+			ClearPlants(entityTime);
+			entityTime+=timeEpsilon;
 		}
 
 

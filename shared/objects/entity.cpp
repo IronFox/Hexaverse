@@ -531,10 +531,49 @@ namespace Objects
 		}
 	#endif
 
+	void		WorldEntity::ClearPlants(World::Data::ChangeSequence&seq) const
+	{
+		{
+			const auto&existing = seq.GetCellI(location.height-1);
+			if (existing.IsPlant())
+				seq.Change(location.height-1,existing.GetPlantDeteriorationType());
+		}
+	}
+
+	void		WorldEntity::ClearPlants(float atTime) const
+	{
+		ClearPlants(World::actual,atTime);
+	}
+
+	void		WorldEntity::ClearPlants(World::Data&world, float atTime) const
+	{
+		#ifdef HYBRID_GRID
+			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
+		#else
+			const UINT32 higher = location.stackID;
+		#endif
+		auto seq = world.BeginChangeSequence(atTime);
+		using StringConversion::ToString;
+		#ifdef HYBRID_GRID
+			for (int j = 0; j < n.numNeighbors; j++)
+			{
+				seq.SelectStack(n.neighborID[j]);
+				ClearPlants(seq);
+			}
+		#endif
+		seq.SelectStack(higher);
+		ClearPlants(seq);
+	}
+
+
 	bool		WorldEntity::ClearOccupiedTerrain(World::Data::ChangeSequence&seq)	const
 	{
 		const bool forceRemoveAll = this->IsIndestructible();
 		const int objHeight = GetHeight();
+
+		ClearPlants(seq);
+
 		for (int a = 0; a < objHeight; a++)
 		{
 			if (!forceRemoveAll && seq.GetCellI(location.height+a).content == Grid::Content::Lava)

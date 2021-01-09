@@ -172,7 +172,8 @@ caves for nexus
 encryption
 
 
-accelerate pathfinding, by parallelization and creation of a second coarse grid
+accelerate pathfinding, by parallel
+ization and creation of a second coarse grid
 
 
 
@@ -198,7 +199,14 @@ multi-planet
 
 
 ------------- done (newest first) -------------
-
+all done (from the looks of it):
+plants:
+	recompile on clip
+	recompile on reconnect to server
+	clear out by vehicles and buildings
+	grow
+	probabilities (serialize)
+	adaptive planet loading of different type configuration
 fixed: missing-resource-floaters no longer working
 fixed: t2 upgrade works if vehicle targets location next to target but hasn't arrived yet
 fixed: plantation button icons missing

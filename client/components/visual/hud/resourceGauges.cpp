@@ -74,6 +74,19 @@ namespace ResourceGauges
 	}
 
 
+
+	void	Gauge::LoadTexture(const Objects::Resource::Type &res)
+	{
+		if (res.icon.IsNotEmpty())
+			IconItem::LoadTexture(res.icon);
+		else
+			IconItem::LoadTexture(res.name);
+		myTag = res.tag;
+		color = float3(res.color) / 255.f;
+	}
+
+
+
 	void	Gauge::Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled)
 	{
 
@@ -539,17 +552,6 @@ namespace ResourceGauges
 			g.color = float3(0.1,1,1);
 		}
 		#endif
-
-
-		gauges[Objects::Resource::Energy.serialIndex].color = float3(0.2,0.4,1);
-		gauges[Objects::Resource::FuelID].color = float3(0.4,1,0.2);
-		gauges[Objects::Resource::MineralID].color = float3(0.7,0.7,0.7);
-		#ifndef NO_MUNITION
-			gauges[Objects::Resource::Munitions.serialIndex].color = float3(1,0.4,0.2);
-		#endif
-		gauges[Objects::Resource::UraniumID].color = float3(1,1,0.1);
-		gauges[Objects::Resource::UraniumID].alternatingColor = float3(0.1,0.1,0.1);
-		gauges[Objects::Resource::UraniumID].usesAlternatingColors = true;
 	}
 
 
@@ -584,6 +586,13 @@ namespace ResourceGauges
 	}
 
 
+
+	static float lastUpperEdge = 1.f;
+
+	float GetUpperEdgeFromBottomInPixels()
+	{
+		return lastUpperEdge;
+	}
 
 	#ifndef NO_HIBERNATION
 
@@ -693,8 +702,17 @@ namespace ResourceGauges
 				float lineHeight = textout.GetScaledHeight()*1.2f;
 				SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 				float w = 0.15f / display.GetPixelAspect();
+
+				count_t numGauges = 0;
+				#ifndef NO_HIBERNATION
+					numGauges = 2;
+				#endif
+				numGauges += gauges.Count();
+				const auto bottomRowSpacing = 4;
 				//textout.locate(-1.f + 0.01f,-1.f + textout.GetScaledHeight()*1.2f*(y+6));
-				M::Rect<> t(-1,lineHeight*5.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
+				M::Rect<> t(-1, lineHeight*bottomRowSpacing-1.f,
+					w*2.f - 1.f, lineHeight*(0.5f+bottomRowSpacing+numGauges) - 1.f);
+				lastUpperEdge = (1 - (1.f - t.y.max) * 0.5f) * display.GetClientHeight();
 				SurfaceRenderer::Rasterize(
 					float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 					float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
@@ -710,7 +728,11 @@ namespace ResourceGauges
 				#endif
 				if (showExtraGauges)
 				{
-					index_t at = 2;
+					#ifndef NO_HIBERNATION
+						index_t at = 2;
+					#else
+						index_t at = 0;
+					#endif
 					foreach (gauges,res)
 					{
 						res->RenderListText((int)(at++));

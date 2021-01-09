@@ -83,8 +83,13 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_SensorDrone,
 	Type_Ragnarok,
 	Type_StarPort,
-		
-
+	Type_Plantation,
+	Type_CrystalStorage,
+	Type_OrganicStorage,
+	Type_CompositeMaterialStorage,
+	Type_OrganicCompoundFactory,
+	Type_CrystallineCompoundFactory,
+	Type_CompositeMaterialFactory,
 
 	NumTypes,
 };

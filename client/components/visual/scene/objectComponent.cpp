@@ -5,7 +5,9 @@
 #include <objects/structure/vehiclePlant.h>
 #include <objects/structure/planeFactory.h>
 #include <objects/structure/mine.h>
+#include <objects/structure/plantation.h>
 #include <objects/structure/laboratory.h>
+#include <objects/structure/resourceConverters.h>
 #include <objects/systems.h>
 #include <objects/subOrbital.h>
 #include "../display.h"
@@ -220,6 +222,14 @@ namespace Objects
 		LoadFor<Objects::Generator>();
 		LoadFor<Objects::ReactorCore>();
 		LoadFor<Objects::NexusPort>();
+		LoadFor<Objects::Plantation>();
+		LoadFor<Objects::CrystalStorage>();
+		LoadFor<Objects::OrganicStorage>();
+		LoadFor<Objects::CompositeMaterialStorage>();
+		LoadFor<Objects::OrganicCompoundFactory>();
+		LoadFor<Objects::CrystallineCompoundFactory>();
+		LoadFor<Objects::CompositeMaterialFactory>();
+
 		LoadFor("tower",1.f,Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
 		foreach (Objects::Tower::globalPrototypes,p)
 			(*p)->instance->shape = Objects::Tower::staticShape;

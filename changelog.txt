@@ -15,6 +15,10 @@ v0.9.12
 v0.9.11 [Sep 13 2020]
 	+ Implemented Tier 2 unit improvement. Use mechanic to upgrade units
 	+ Added button sounds
+	+ Added new resources: organic,cystal/composite compounds
+	+ Added plantation (organic/crystal harvesting)
+	+ Added organic/crystal/composite factory structures
+	+ Added organic/crystal/composite storage structures
 	+ Added resource list tooltips
 	+ AI: Added T2 upgrade command
 	> Initiative is now a user-configurable unit property
@@ -31,6 +35,7 @@ v0.9.10	[Dec 31 2019]
 	> Improved tooltip documentation
 
 v0.9.9	[Feb 3 2019]
+	+ Added experimental tree/crystal growth and rendering.
 	> Improved automated surveyor routing.
 	* AI: Fixed Unit.GetReach[From]() ignoring maxReach when a block function is specified.
 

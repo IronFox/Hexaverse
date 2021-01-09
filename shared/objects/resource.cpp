@@ -153,7 +153,7 @@ namespace Objects
 			#endif
 			CrystallineCompounds = Offset,
 			OrganicCompounds = Offset+1,
-			AdvancedCompounds = Offset+2,
+			CompositeMaterials = Offset+2,
 			_ = ID::Invalid;
 
 		Table lastTable, table = CompileLocalTable();
@@ -579,6 +579,11 @@ namespace Objects
 		{
 			Table rs = minimal;
 			
+			
+
+			rs.Set(CrystallineCompounds, "Crystalline Compounds", "", float3(0.4,0.3,0.7));
+			rs.Set(OrganicCompounds, "Organic Compounds", "",float3(0.6,1,0.3));
+			rs.Set(CompositeMaterials, "Composite Materials", "", float3(0.4,0.4,0.4));
 			return rs;
 		}
 

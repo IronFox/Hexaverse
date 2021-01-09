@@ -279,7 +279,7 @@ namespace Objects
 			Munitions,
 			CrystallineCompounds,
 			OrganicCompounds,
-			AdvancedCompounds,
+			CompositeMaterials,
 			_;	//not a resource, just a terminal symbol so the previous one can end with a comma. do not use
 
 

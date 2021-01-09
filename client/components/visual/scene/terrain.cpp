@@ -18,6 +18,7 @@
 #include "terrainCompilers/solidTerrain.h"
 #include "terrainCompilers/water.h"
 #include "terrainCompilers/resourceVisualization.h"
+#include "terrainCompilers/plants.h"
 	
 extern Engine::Display<Engine::DirectX11>	display;
 //namespace Camera
@@ -356,6 +357,55 @@ namespace VisualTerrain
 		Instruction::terrainShadowBase.SetTriangles();
 
 
+		Instruction::plantBase.LoadQualitiesFromFile("shaders/gridPlant.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		{
+			Instruction::plantBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.binding.Append("NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+
+			Instruction::plantBase.instanceBinding.Append("InstancePosition",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceUp",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceDir",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceColor",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::plantBase.instanceBinding.Append("InstanceScale",0,DXGI_FORMAT_R32_FLOAT);
+			ASSERT_EQUAL__(Instruction::plantBase.instanceBinding.GetStride(), sizeof(TPlantInstance));
+
+			Instruction::plantBase.UpdateLayout();
+		}
+		Instruction::plantShadowBase.shader.LoadFromFile("shaders/gridPlantShadow.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::plantShadowBase.prototype.vDesc = Instruction::plantBase.binding;
+		Instruction::plantShadowBase.instances.vDesc = Instruction::plantBase.instanceBinding;
+		Instruction::plantShadowBase.UpdateLayout();
+
+		CreatePlants();
+
+		#if 0
+		Instruction::leafBlobBase.LoadQualitiesFromFile("shaders/gridLeafBlob.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
+		{
+			//TVec3<>	center;
+			//float radius;
+			//float windSensitivity;
+			Instruction::leafBlobBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::leafBlobBase.binding.Append("Radius_WindSensitivity",0,DXGI_FORMAT_R32G32_FLOAT);
+			Instruction::leafBlobBase.SetPoints();
+			Instruction::leafBlobBase.UpdateLayout();
+		}		
+		Instruction::leafBlobShadowBase.shader.LoadFromFile("shaders/gridLeafBlobShadow.hlsl", "vsMain","gsMain", "psMain");
+		Instruction::leafBlobShadowBase.binding = Instruction::leafBlobBase.binding;
+		Instruction::leafBlobShadowBase.UpdateLayout();
+		Instruction::leafBlobShadowBase.SetPoints();
+
+		Instruction::treeTrunkBase.LoadQualitiesFromFile("shaders/gridTreeTrunk.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
+		{
+			//TVec3<>	center;
+			//float	height,
+			//		radius;
+			Instruction::treeTrunkBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			Instruction::treeTrunkBase.binding.Append("Height_Radius",0,DXGI_FORMAT_R32G32_FLOAT);
+			Instruction::treeTrunkBase.SetPoints();
+			Instruction::treeTrunkBase.UpdateLayout();
+		}		
+		#endif /*0*/
 		{
 			Engine::VertexBinding binding;
 			binding.vertex.Set(0, 4);
@@ -513,6 +563,8 @@ namespace VisualTerrain
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
 				TResourceHull			resources;	//!< low-resolution resource visualization. M::Similar to @a overlay, but uses different shader
+				FixedArray<TPlantHull<TPlantInstance>,PlantType::N>	plants;
+				
 			#endif 
 			bool						outdated,resourceOutdated;
 
@@ -528,6 +580,10 @@ namespace VisualTerrain
 					overlay.Destroy();
 					water.Destroy();
 					resources.Destroy();
+					//leafBlobs.Destroy();
+					//treeTrunks.Destroy();
+					foreach (plants,p)
+						p->Destroy();
 				#endif
 			}
 		};
@@ -568,6 +624,16 @@ namespace VisualTerrain
 		overlayBase.Clear();
 		overlayShadowBase.Clear();
 		resourceBase.Clear();
+		plantBase.Clear();
+		plantShadowBase.Clear();
+		foreach (plantPrototypes,proto)
+			proto->Clear();
+		#if 0
+		leafBlobBase.Clear();
+		leafBlobShadowBase.Clear();
+		treeTrunkBase.Clear();
+		treeTrunkShadowBase.Clear();
+		#endif /*0*/
 		terrainBase.Clear();
 		terrainSphereBase.Clear();
 		terrainParaboloidBase.Clear();
@@ -616,10 +682,16 @@ namespace VisualTerrain
 		dat.terrain.Clear();
 		dat.overlay.Clear();
 		dat.water.Clear();
+		foreach (dat.plants,p)
+			p->Clear();
+		//dat.leafBlobs.Clear();
+		//dat.treeTrunks.Clear();
+
 		const index_t offset = Grid::high.grid.GetFamilyOffset(family);
 		const count_t members = Grid::high.grid.CountFamilyMembers(family);
 		CompileSolidTerrain(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
 		CompileWater(stacks, dat.water, offset, members, clipHeight);
+		CompilePlants(stacks, dat.plants, offset, members, clipHeight);
 
 		M::Box<> box = M::Box<>::Invalid;
 
@@ -649,6 +721,38 @@ namespace VisualTerrain
 			dat.water.instruction[2] = Instruction::waterSphereBase;
 		}
 
+		if (Instruction::plantPrototypes.First().ibo.IsSet())
+		{
+			foreach (dat.plants,p)
+			{
+				if (p->instruction.shader.IsEmpty())
+				{
+					const index_t plantType = p - dat.plants.begin();
+					const auto&proto = Instruction::plantPrototypes[plantType];
+
+					ASSERT__(proto.ibo.IsSet());
+					ASSERT__(proto.vbo.IsSet());
+					ASSERT__(proto.vDesc.IsNotEmpty());
+					p->instruction = Instruction::plantBase;
+					p->instruction.assembled.prototype = proto;
+					p->instruction.SignalShadowQualityChange();
+					p->shadowInstruction = Instruction::plantShadowBase;
+					p->shadowInstruction.prototype = proto;
+					ASSERT__(p->shadowInstruction.prototype.ibo.IsSet());
+					ASSERT__(p->shadowInstruction.generatedData.combinedLayout.IsSet());
+					ASSERT_EQUAL__(p->shadowInstruction.generatedData.protoStride,proto.vDesc.GetStride());
+				}
+
+				if (p->vertices.IsNotEmpty())
+				{
+					p->instruction.assembled.instances.vbo.CreateFromStructs(p->vertices);
+				}
+				else
+					p->instruction.assembled.instances.vbo.Clear();
+				p->shadowInstruction.instances.vbo = p->instruction.assembled.instances.vbo;
+				p->instruction.AssertAssembled(p->vertices.IsNotEmpty());
+			}
+		}
 
 		dat.terrain.instruction[0].vbo.CreateFromStructs(dat.terrain.vertices);
 		dat.terrain.instruction[0].ibo.Create(dat.terrain.indices);
@@ -1297,6 +1401,25 @@ namespace VisualTerrain
 		}
 	}
 
+	count_t	RenderPlants(const Engine::Frustum<>&frustum)
+	{
+		count_t rs = 0;
+		for (index_t pi = 0; pi < PlantType::N; pi++)
+		{
+			for (BaseGrid::family_t k = 0; k < BaseGrid::NumFamilies; k++)
+			{
+				TFamily::TData&dat = family[k].normal;
+				if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
+				{
+					auto p = dat.plants + pi;
+					p->instruction.AssertAssembled(false);
+					rs += display.Render(p->instruction.assembled,true);
+				}
+			}
+		}
+		return rs;
+	}
+
 	void	RenderShadows()
 	{
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
@@ -1306,6 +1429,9 @@ namespace VisualTerrain
 				display.Render(dat.terrain.shadowInstruction);
 			if (dat.overlay.shadowInstruction.shader.IsSet())
 				display.Render(dat.overlay.shadowInstruction);
+			foreach (dat.plants,p)
+				if (p->shadowInstruction.shader.IsSet())
+					display.Render(p->shadowInstruction);
 		}
 	}
 }

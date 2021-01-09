@@ -407,6 +407,14 @@ namespace Objects{ namespace Pathfinding
 			case Grid::Content::Foundation:
 				outCount.road += multiplier;
 			break;
+			case Grid::Content::Crystals:
+			case Grid::Content::Trees:
+				outCount.fewPlants += multiplier;
+			break;
+			case Grid::Content::Forest:
+			case Grid::Content::CrystalForest:
+				outCount.manyPlants += multiplier;
+			break;
 			default:
 				outCount.other += multiplier;
 		}

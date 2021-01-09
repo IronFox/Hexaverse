@@ -52,6 +52,7 @@ namespace Objects
 					DECLARE_POINTER_CLASS(PlaneFactory)
 					DECLARE_POINTER_CLASS(VehicleStore)
 					DECLARE_POINTER_CLASS(Mine)
+					DECLARE_POINTER_CLASS(Plantation)
 					DECLARE_POINTER_CLASS(NexusPort)
 					DECLARE_POINTER_CLASS(Generator)
 					DECLARE_POINTER_CLASS(Laboratory)

@@ -5,6 +5,7 @@
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
 #include <objects/structure/mine.h>
+#include <objects/structure/plantation.h>
 #include <objects/structure/vehiclePlant.h>
 #include <objects/faction.h>
 #include <objects/packable.h>
@@ -1042,6 +1043,23 @@ namespace Game
 								}
 							}
 						}
+					}
+				}
+
+				if (
+					(expose & Expose::ResourceAvailability && (changeFlags & Objects::WorldEntity::ResourceAvailabilityChanged))
+					||
+					(expose & Expose::StructureTasks && (changeFlags & Objects::WorldEntity::TasksChanged))
+					)
+				{
+					const Objects::Plantation*p = dynamic_cast<const Objects::Plantation*>(&s);
+					if (p)
+					{
+						Protocol::PlantationState&subState = state.selective.Set4();
+						subState.crystalAvailability = p->crystalPresence;
+						subState.treeAvailability = p->treePresence;
+						subState.plantTrees = p->plantTrees;
+						subState.plantCrystals = p->plantCrystals;
 					}
 				}
 
