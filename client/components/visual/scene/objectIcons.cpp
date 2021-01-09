@@ -23,6 +23,8 @@ namespace Objects
 		{
 			Sprites::Attributes	attributes;
 			Objects::PWorldEntity	entity;
+			index_t				slotIndex;
+			count_t				slotCount;
 			bool				halfHeight;
 		};
 
@@ -37,14 +39,16 @@ namespace Objects
 		Buffer0<Prepared>		prepared;
 		Buffer0<ExtPrepared>	extPrepared;
 		float3					pulse;
-		float					scale;
+		float					scale,
+								forward;
 
 
-		void					Setup(const PathString&sourceFileName, float worldScale, const float3&pulse)
+		void					Setup(const PathString&sourceFileName, float worldScale, const float3&pulse, float forward = 0)
 		{
 			PathString cached = sourceFileName.EndsWithIgnoreCase(".png") ? sourceFileName : sourceFileName+".png";
 			scale = worldScale;
 			this->pulse = pulse;
+			this->forward = forward;
 			renderer.CreateOrLoadFromIcon("resources/icons/"+sourceFileName,"resources/floaters/"+cached,false,1.f / worldScale);
 		}
 
@@ -64,7 +68,19 @@ namespace Objects
 				Vec::setLen(dir,h);
 				Vec::add(inst.location,dir);
 			}
+			if (forward)
+				Vec::mad(inst.location,Camera::scene.direction,forward);
 			inst.size = h * size;
+			if (p.slotCount > 1)
+			{
+				 //inst.size /= p.slotCount;
+				 M::TVec3<> right;
+				 //Vec::cross(e->system.z.xyz,Camera::scene.direction,right);
+				 Vec::cross(Camera::scene.upAxis,Camera::scene.direction,right);
+				 Vec::normalize0(right);
+				 right = Camera::scene.vsystem.x;
+				 Vec::mad(inst.location,right,(float(p.slotIndex) - float(p.slotCount-1)/2)*h*size);
+			}
 			renderer.Render(inst);
 		}
 
@@ -81,10 +97,12 @@ namespace Objects
 		}
 
 
-		void					Put(Prepared&inst, const Objects::PWorldEntity&e)
+		void					Put(Prepared&inst, const Objects::PWorldEntity&e, index_t slotIndex, count_t slotCount)
 		{
 			inst.entity = e;
 			inst.halfHeight = e->IsMobile();
+			inst.slotIndex = slotIndex;
+			inst.slotCount = slotCount;
 
 			if (e->owner)
 				inst.attributes.color = e->owner->color*0.5f + 0.5f;
@@ -92,16 +110,16 @@ namespace Objects
 		}
 
 		void					BeginInclusion()	{prepared.Clear();extPrepared.Clear();}
-		void					Include(const Objects::PWorldEntity&e)
+		void					Include(const Objects::PWorldEntity&e, index_t slotIndex, count_t slotCount)
 		{
 			auto&inst = prepared.Append();
-			Put(inst,e);
+			Put(inst,e,slotIndex, slotCount);
 		}
 
-		void					IncludeExt(const Objects::PWorldEntity&e, Timer::Time referenceTime, const std::function<float(float)>&sizeFunction, const std::function<float(float)>&locationHeightDeltaFunction, const float3&color)
+		void					IncludeExt(const Objects::PWorldEntity&e, index_t slotIndex, count_t slotCount, Timer::Time referenceTime, const std::function<float(float)>&sizeFunction, const std::function<float(float)>&locationHeightDeltaFunction, const float3&color)
 		{
 			auto&inst = extPrepared.Append();
-			Put(inst,e);
+			Put(inst,e,slotIndex,slotCount);
 			inst.referenceTime = referenceTime;
 			inst.getSize = sizeFunction;
 			inst.getLocationHeightDelta = locationHeightDeltaFunction;
@@ -138,6 +156,7 @@ namespace Objects
 		static SpriteFamily		sleepIcon
 								,automationIcon
 								,questionIcon
+								,t2LevelUp
 								;
 		static Array<SpriteFamily>
 								resourceFamily;
@@ -165,7 +184,7 @@ namespace Objects
 		void TAnimatedFloater::Insert()
 		{
 			float h = locationHeightDelta;
-			family->IncludeExt(entity,created,
+			family->IncludeExt(entity,0,1,created,
 				SizeFunction,
 				[h](float t){return h + LocationFunction(t);},
 				float3(1,0.3,0.3));
@@ -188,6 +207,7 @@ namespace Objects
 			sleepIcon.Setup("Sleep.png",1.f,float3(0.8f,1.f,1.f));
 			automationIcon.Setup("Automate.png",0.5f,float3(1));
 			questionIcon.Setup("Question-Mark.png",1.f / 1.5f,float3(0.5,1.5f,3));
+			t2LevelUp.Setup("Upgrade.png",0.5,float3(1.1,1.5,1),-0.1);
 
 			RebuildResourceFamilies();
 
@@ -218,6 +238,7 @@ namespace Objects
 				sleepIcon.Render();
 				questionIcon.Render();
 			}
+			t2LevelUp.Render();
 
 			foreach (resourceFamily,res)
 				res->Render();
@@ -232,6 +253,7 @@ namespace Objects
 			automationIcon.BeginInclusion();
 			sleepIcon.BeginInclusion();
 			questionIcon.BeginInclusion();
+			t2LevelUp.BeginInclusion();
 			foreach (resourceFamily,rf)
 				rf->BeginInclusion();
 
@@ -239,16 +261,27 @@ namespace Objects
 			{
 				if (!e->isOwnedByMe)
 					return;
+				count_t slotCount = 0;
+				if (e->t2 && e->t2->CanLevelUp())
+					slotCount++;
 				if (e->IsAutomated())
-					automationIcon.Include(e);
-				else
-				if (e->IsSleeping())
-				{
-					sleepIcon.Include(e);
-				}
-				else
-				if (ObjectHelper::IsIdle(e))
-					questionIcon.Include(e);
+					slotCount++;
+				else if (e->IsSleeping())
+					slotCount++;
+				else if (ObjectHelper::IsIdle(e))
+					slotCount++;
+
+				index_t slotIndex = 0;
+				if (e->t2 && e->t2->CanLevelUp())
+					t2LevelUp.Include(e,slotIndex++,slotCount);
+				if (!e->isOwnedByMe)
+					return;
+				if (e->IsAutomated())
+					automationIcon.Include(e,slotIndex++,slotCount);
+				else if (e->IsSleeping())
+					sleepIcon.Include(e,slotIndex++,slotCount);
+				else if (ObjectHelper::IsIdle(e))
+					questionIcon.Include(e,slotIndex++,slotCount);
 			});
 
 

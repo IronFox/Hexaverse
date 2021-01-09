@@ -182,19 +182,21 @@ namespace Protocol
 		{
 			IsUnstable = 0x1,
 			IsSleeping = 0x2,
+			IsUpgrading = 0x4,
 		};
 	}
 
 
 
 
-	NETSTRUCT6(EntityState
+	NETSTRUCT7(EntityState
 		, Timestamp, timestamp
 		, TUniqueID, id
 		, Grid::LCellIdI, location
 		, SerialUnsigned, health
 		, SerialUnsigned, empDamageLevel
 		, BYTE, entityStateFlags
+		, NETA(BYTE), t2State
 	)
 
 	namespace TaskFlags
@@ -745,6 +747,12 @@ namespace Protocol
 		, ResearchAttributeDeltaArray<bool>, boolAttributes
 	);
 
+	NETSTRUCT2( T2Globals
+		, INT32, upgradeCostQuantity
+		, UINT32, upgradeCostTypeResourceIndex
+	);
+
+
 
 	//NETSTRUCT2(ResourceData
 	//	, ResourceID, id
@@ -894,6 +902,7 @@ namespace Protocol
 			ResearchFactionState,	// s2c : ResearchFactionState
 			QueueResearch,		// c2s : QueueResearch -> s2c : ResearchQueue
 			ResearchQueue,		// s2c : ResearchQueue
+			T2Globals,					// s2c : T2Globals
 			ResearchAttributeVector,	// s2c : ResearchAttributeVector
 			ResearchAttributeDeltaVector,	//s2c : ResearchAttributeDeltaVector
 

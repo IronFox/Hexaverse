@@ -1070,6 +1070,13 @@ namespace Network
 				}
 			}
 
+
+		void	T2Globals( Protocol::T2Globals&globals )
+		{
+			Objects::Research::globalState.t2.upgradeCostQuantity = globals.upgradeCostQuantity;
+			Objects::Research::globalState.t2.upgradeCostType = Objects::Resource::ID(globals.upgradeCostTypeResourceIndex);
+		}
+
 		void	ResearchAttributeVector( Protocol::ResearchAttributeVector&attributes )
 		{
 			Objects::Research::Attributes::Table*table0 = nullptr;
@@ -1467,6 +1474,7 @@ namespace Network
 		DECLARE_CHANNEL(ResearchFactionState);
 		DECLARE_CHANNEL(ResearchQueue);
 		DECLARE_OBJECT_SENDER(QueueResearch);
+		DECLARE_CHANNEL(T2Globals);
 		DECLARE_CHANNEL(ResearchAttributeVector);
 		DECLARE_CHANNEL(ResearchAttributeDeltaVector);
 
@@ -1747,6 +1755,7 @@ namespace Network
 		client.InstallChannel(Channels::ResearchProgram);
 		client.InstallChannel(Channels::ResearchFactionState);
 		client.InstallChannel(Channels::ResearchQueue);
+		client.InstallChannel(Channels::T2Globals);
 		client.InstallChannel(Channels::ResearchAttributeVector);
 		client.InstallChannel(Channels::ResearchAttributeDeltaVector);
 

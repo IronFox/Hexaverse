@@ -131,6 +131,7 @@ Table-Type: TurretType extends Type
 			-- Construct
 			-- SelfDetonate
 			-- Repair
+			-- Upgrade
 			-- AddTerrain
 			-- RemoveTerrain 
 			-- (e.g. canConstruct)
@@ -229,6 +230,9 @@ Table-Type: Unit
 		[type.turretType.canSelfDetonate]
 			void	SelfDetonate();				-- Schedules self-detonation at the vehicle's last queued location
 			void	Obliterate();				-- Schedules doomsday self-detonation at the vehicle's last queued location
+		[type.turretType.canUpgrade]
+			void	Upgrade(Loc);				-- Schedules upgrade of any unit found at the given location. Must be neighboring the last scheduled location
+			ResVec	GetUpgradeCost(Unit);		-- Gets the costs required to upgrade the specified unit
 		[type.turretType.canRepair]
 			void	Repair(Loc);				-- Schedules repair of any unit found at the given location. Most be neighboring the last scheduled location
 		[type.turretType.canAddTerrain]
@@ -364,6 +368,7 @@ Table-Type: Turret
 			-- Construct
 			-- SelfDetonate
 			-- Repair
+			-- Upgrade
 			-- AddTerrain
 			-- RemoveTerrain
 			-- (e.g. speedOfConstruct)

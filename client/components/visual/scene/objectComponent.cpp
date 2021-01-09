@@ -251,10 +251,16 @@ namespace Objects
 		if (scale != 1.f)
 			staticGeometry.Scale(scale);
 
-		if (shape->constShape.shader.IsEmpty())
-			shape->constShape = standardLocalizableShader;
-		shape->constShape.vbo.CreateFromStructs(staticGeometry.GetLOD(0).vertices);
-		shape->constShape.ibo.Create(staticGeometry.GetLOD(0).indices);
+		if (shape->shape[0].shader.IsEmpty())
+		{
+			shape->shape[0] = standardLocalizableShader;
+			shape->shape[1] = t2LocalizableShader;
+		}
+
+		shape->shape[0].vbo.CreateFromStructs(staticGeometry.GetLOD(0).vertices);
+		shape->shape[0].ibo.Create(staticGeometry.GetLOD(0).indices);
+		shape->shape[1].vbo = shape->shape[0].vbo;
+		shape->shape[1].ibo = shape->shape[0].ibo;
 	}
 
 	void				ConnectorHull::RecompileConnectors(Objects::Structure&structure)
@@ -359,18 +365,35 @@ namespace Objects
 	}
 
 
-	void			VisualComponent::FinishCreation(Objects::Component::Base&base, bool scaleToVehicleSize/*=true*/)
+	void				VisualComponent::FinishCreation(Objects::Component::Base&base, bool scaleToVehicleSize/*=true*/)
 	{
-		partInstruction.SetSize(base.parts.Count());
+
+		for (index_t i = 0; i < ARRAYSIZE(parts); i++)
+			parts[i].SetSize(base.parts.Count());
+
 		for (index_t i = 0; i < base.parts.Count(); i++)
 		{
 			auto&part = base.parts[i];
-			auto&inst = partInstruction[i];
 			if (scaleToVehicleSize)
 				part.Scale(vehicleScale);
-			inst = stdVehicleShader;
-			inst.vbo.CreateFromStructs(part.GetLOD(0).vertices);
-			inst.ibo.Create(part.GetLOD(0).indices);
+
+			DX11::VBO vbo;
+			DX11::IBO32 ibo;
+			vbo.CreateFromStructs(part.GetLOD(0).vertices);
+			ibo.Create(part.GetLOD(0).indices);
+
+			{
+				auto&inst = parts[0][i];
+				inst = stdVehicleShader;
+				inst.vbo = vbo;
+				inst.ibo = ibo;
+			}
+			{
+				auto&inst = parts[1][i];
+				inst = t2VehicleShader;
+				inst.vbo = vbo;
+				inst.ibo = ibo;
+			}
 		}
 	}
 
@@ -568,7 +591,7 @@ namespace Objects
 			Shape&shape = localizableShapes.Append();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 
-			const auto&strucShape = StructureHull::Of(*p).constShape;
+			const auto&strucShape = StructureHull::Of(*p).shape[0];
 			shape.instruction.vbo = strucShape.vbo;
 			shape.instruction.ibo = strucShape.ibo;
 			shape.depthTest = true;

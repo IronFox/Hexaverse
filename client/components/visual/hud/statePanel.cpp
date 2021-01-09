@@ -58,8 +58,6 @@ namespace StatePanel
 		currentColor = pushedColors.Pop();
 	}
 
-
-
 	struct TCachedLine
 	{
 		float4		color;
@@ -184,6 +182,8 @@ namespace StatePanel
 		#endif
 
 		const bool ownedByMe = e.owner == Objects::Faction::mine;	//ghosts set isOwnedByMe true if they are actually owned by the alliance, so it cannot be used here
+		if (e.t2)
+			cachedLines << " T2 Experience: "+String(e.t2->experience - e.t2->currentLevelAtXp)+"/"+String(e.t2->nextLevelAtXP - e.t2->currentLevelAtXp);
 		cachedLines << " Owner: "+e.owner->GetName()+(ownedByMe ? " (me)":"");
 		if (e.isOwnedByMe)
 		{
@@ -221,15 +221,20 @@ namespace StatePanel
 				cachedLines << " Indestructible";
 			else
 			{
-				int maxHealth = e.GetMaxHealth();
-				if (e.health < maxHealth/4)
-					currentColor.rgb &= float3(1,0.2,0.2);
-				elif (e.health < maxHealth/2)
-					currentColor.rgb &= float3(1,1,0.2);
-				elif (e.health < maxHealth)
-					currentColor.rgb &= float3(0.2,1,0.2);
+				PushCurrentColor();
+					int maxHealth = e.GetMaxHealth();
+					if (e.health < maxHealth/4)
+						currentColor.rgb &= float3(1,0.2,0.2);
+					elif (e.health < maxHealth/2)
+						currentColor.rgb &= float3(1,1,0.2);
+					elif (e.health < maxHealth)
+						currentColor.rgb &= float3(0.2,1,0.2);
 	
-				cachedLines << " Health: " + String(e.health) + "/" + e.DescribeMaxHealth();
+					cachedLines << " Health: " + String(e.health) + "/" + e.DescribeMaxHealth();
+				PopCurrentColor();
+				if (e.t2 && e.t2->healthRegeneration.HasEffect())
+					cachedLines << " T2 Health Regeneration: "+Objects::DescNumeric(e.t2->healthRegeneration.multiplier*100)+"% per round";
+
 			}
 		}
 		else
@@ -282,8 +287,21 @@ namespace StatePanel
 				}
 			#endif
 			if (m->turret->CanAttack())
-				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+String((int)m->turret->initiative);
-			cachedLines << " Speed: " + m->DescribeMovementStepsPerRound(e.owner);
+			{
+				auto maxIni = m->turret->initiative.GetValue(researchState);
+
+				String maxIniS;
+				if (m->t2 && m->t2->initiative.HasEffect())
+				{
+					auto maxIni2 = m->t2->initiative.Apply(maxIni);
+					maxIniS = String(maxIni2)+" [="+m->turret->initiative.Describe(researchState)+m->t2->initiative.Describe()+"]";
+				}
+				else
+					maxIniS = m->turret->initiative.Describe(researchState);
+
+				cachedLines << " Attack Initiative: "+String((int)m->GetAttackInitiative())+"/"+maxIniS;
+			}
+			cachedLines << " Speed: " + m->DescribeMovementStepsPerRoundExt(e.owner,m->t2 ? m->t2->speed : Objects::T2::TModifier());
 			if (m->turret->CanAttack())
 			{
 				if (m->turret->independentAttackAndMotion)
@@ -293,12 +311,12 @@ namespace StatePanel
 				//cachedLines << " Ammo-Usage: "<<m->turret->ammoNeedPerShot<<nl;
 				if (m->turret->horizontalAttackRange.IsFunctionOrConstNonZero())
 				{
-					cachedLines << " Hrz. Range: "+m->turret->horizontalAttackRange.Describe(researchState)
-									+'+'+m->turret->explosionRadius.Describe(researchState);
+					cachedLines << " Hrz. Range: "+ m->DescribeFlatAttackRange();
+					cachedLines << " Exp. Range: "+ m->DescribeAttackExplosionRadius();
 				}
 				elif (m->turret->explosionRadius.IsFunctionOrConstNonZero())
-					cachedLines << " Explosion Radius: "+m->turret->explosionRadius.Describe(researchState);
-				cachedLines << " Damage: "+String(m->turret->GetDamageLevel(researchState));
+					cachedLines << " Explosion Radius: "+m->DescribeAttackExplosionRadius();
+				cachedLines << " Damage: "+String(m->DescribeDamageLevel());
 				int ammoNeed = m->turret->GetAmmoNeedPerShot(researchState);
 				if (ammoNeed > 0)
 					cachedLines << " "+m->turret->ammoType.GetTagStr()+"Ammo-Usage: "+String(ammoNeed);
@@ -383,11 +401,13 @@ namespace StatePanel
 			const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
 			if (t)
 			{
-				cachedLines << " Attack Initiative: "+String((int)t->turret->initiative);
+				cachedLines << " Attack Initiative: "+String((int)t->GetAttackInitiative());
 				if (t->turret->CanAttack())
 				{
 					const Objects::Tower*v = t;	//rename
-					cachedLines << " Hrz. Range: "+t->DescribeFlatAttackRange(e.owner);
+					cachedLines << " Hrz. Range: "+ t->DescribeFlatAttackRange();
+					cachedLines << " Exp. Range: "+ t->DescribeAttackExplosionRadius();
+
 					cachedLines << " Damage: "+t->turret->damageLevel.Describe(e.GetResearchState());
 					cachedLines << " "+v->turret->ammoType.GetTagStr()+"Ammo-Usage: "+String(v->turret->ammoNeedPerShot.Describe(e.GetResearchState()));
 				}

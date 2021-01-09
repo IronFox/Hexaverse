@@ -87,7 +87,7 @@ namespace ApplicationInterface
 			else
 			{
 				Protocol::MobileState state;
-				Game::Network::Describe(state,(const Objects::MobileEntity&)v,timestamp,Game::Network::ExposeAll,0xFFFFFFFF);
+				Game::Network::Describe(state,(const Objects::MobileEntity&)v,timestamp,Game::Network::ExposeAll,0xFFFFFFFF,Objects::Packable::Target::Owner);
 				Network::SendToOwner(Channels::setMobileState,v,state);
 				//Channels::setMobileState.SendTo(client->peer.lock(),state);
 			}

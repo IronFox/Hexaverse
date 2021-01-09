@@ -326,8 +326,8 @@ namespace Game
 		}
 
 		void		Describe(Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex);
-		void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
-		void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags);
+		void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags, Objects::Packable::Target target);
+		void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose, UINT32 changeFlags, Objects::Packable::Target target);
 		void		Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, const Protocol::Timestamp&timestamp, Expose expose);
 
 		void		Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element);

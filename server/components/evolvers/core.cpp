@@ -4,6 +4,7 @@
 #include <objects/mobileEntity.h>
 #include <objects/faction.h>
 #include "../state.h"
+#include <objects/t2.h>
 
 namespace Evolver
 {
@@ -467,6 +468,26 @@ namespace Evolver
 
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
+		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+		{
+			if (e->t2)
+			{
+				int maxHealth = e->GetMaxHealth();
+				if (e->health < maxHealth && e->t2->healthRegeneration.HasEffect())
+				{
+					LogEvent(EventSignificance::Common,"Regenerating "+e->GetNameAndOwner());
+					int heal = ceil(e->t2->healthRegeneration.multiplier * maxHealth);
+					e->health = std::min(maxHealth,e->health + heal);
+					e->SignalChangeByExternalCause(Objects::WorldEntity::HealthChanged,e->entityTime);
+				}
+
+				if (e->t2->changed)
+					if (Objects::Research::Recompute(*e->t2))
+						e->SignalChangeByExternalCause(Objects::WorldEntity::T2Changed,e->entityTime);
+			}
+		});
+
+
 		Objects::ForeachFaction([](const Objects::PFaction&f)
 		{
 			f->DropPerRoundData();

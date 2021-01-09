@@ -189,7 +189,7 @@ namespace Objects
 			PWorldEntity ref = topic->prototypeReference;
 			if (ref)
 			{
-				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth,Objects::Faction::mine);
+				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth,Objects::Faction::mine,nullptr);
 				return;
 			}
 
@@ -197,12 +197,12 @@ namespace Objects
 			{
 				if (topic->componentReference->IsVehicleBase())
 				{
-					((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : OwnerParameter());
+					((Component::VehicleBase*)topic->componentReference)->DescribeType(outResult,false,true,selectedEntity ? selectedEntity->owner : nullptr,nullptr);
 				}			
 				elif (topic->componentReference->IsTurret())
 				{
 					auto turret = ((Component::Turret*)topic->componentReference);
-					turret->DescribeType(outResult,false, true,turret->mountType.ToString(),selectedEntity ? selectedEntity->owner : OwnerParameter());
+					turret->DescribeType(outResult,false, true,turret->mountType.ToString(),selectedEntity ? selectedEntity->owner : nullptr,nullptr);
 				}
 			}
 		}
@@ -254,9 +254,9 @@ namespace Objects
 			
 			display.SetObjectMatrix(sys);
 			if (base)
-				Renderer::RenderComponent(sys,0,*base,0,0);
+				Renderer::RenderComponent(sys,0,*base,0,0,false);
 			if (turret)
-				Renderer::RenderComponent(sys,base ? base->height : 0,*turret,0,0);
+				Renderer::RenderComponent(sys,base ? base->height : 0,*turret,0,0,false);
 
 
 			target.texture = GeometryImage::EndRendering();
@@ -368,7 +368,7 @@ namespace Objects
 
 			if (ref)
 			{
-				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount,Objects::Faction::mine);
+				ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount,Objects::Faction::mine,nullptr);
 				return;
 			}
 
@@ -376,17 +376,17 @@ namespace Objects
 			{
 
 				PVehicle v(new Vehicle(selectedEntity->owner, selectedEntity->location, base,turret));
-				v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount,Objects::Faction::mine);
+				v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount,Objects::Faction::mine,nullptr);
 			}
 			else
 			{
 				if (base)
 				{
 					//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-					base->DescribeType(outResult,false,true,OwnerParameter());
+					base->DescribeType(outResult,false,true,nullptr,nullptr);
 				}			
 				if (turret)
-					turret->DescribeType(outResult,false, true,"Vehicle",selectedEntity->owner);
+					turret->DescribeType(outResult,false, true,"Vehicle",selectedEntity->owner,nullptr);
 
 			}
 		}
@@ -410,7 +410,7 @@ namespace Objects
 			{
 				outResult << "Deploy mobile unit: "+name;
 
-				vehicle->DescribeType(outResult,Objects::WorldEntity::DescIncludeCurrentHealth | Objects::WorldEntity::DescIncludeMaxHealth | WorldEntity::DescIncludeUnitCount,Objects::Faction::mine);
+				vehicle->DescribeType(outResult,Objects::WorldEntity::DescIncludeCurrentHealth | Objects::WorldEntity::DescIncludeMaxHealth | WorldEntity::DescIncludeUnitCount,Objects::Faction::mine,nullptr);
 			}
 		}
 
@@ -423,13 +423,13 @@ namespace Objects
 			Resource::ID resourceType;
 			GetCosts(resourceCost,resourceType,timeCost);
 
+			outResult << name;
 			if (timeCost == 0)
 			{
-				outResult << name;
+				if (resourceCost > 0)
+					outResult << " "+resourceType.GetTagStr()+ " "+String(resourceCost);
 				return;
 			}
-
-			outResult << name;
 			if (resourceCost > 0)
 			{
 				outResult << " "+resourceType.GetTagStr()+ " "+String(resourceCost) + "  ";

@@ -118,6 +118,7 @@ namespace Objects
 					<< PVehicleJob(new VehicleJob::TransferJob())
 				#endif
 				<< PVehicleJob(new VehicleJob::RepairJob())
+				<< PVehicleJob(new VehicleJob::UpgradeJob())
 				<< PVehicleJob(new VehicleJob::ClearAbove())
 				<< PVehicleJob(new VehicleJob::DigHorizontal())
 				<< PVehicleJob(new VehicleJob::DigDown())

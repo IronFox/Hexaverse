@@ -22,6 +22,7 @@ namespace Objects
 		BuildBridgeMode,
 		PlaceStructureMode,
 		BuildLowWallChainMode,
+		UpgradeMode,
 	};
 
 	#ifdef HAS_WINDOW

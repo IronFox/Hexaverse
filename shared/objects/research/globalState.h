@@ -190,10 +190,54 @@ namespace Objects
 
 		};
 
+		struct T2Globals
+		{
+			#ifndef CLIENT
+				typedef Lua::Function<float(int)>	TModFunc;
+
+				TModFunc	initiative,
+							speed,
+							maxHealth,
+							scanningRange,
+							attacksPerRound,
+							damageLevel,
+							explosionRadius,
+							horizontalAttackRange,
+							healthRegeneration;
+				Lua::Function<int(int)>				xpToLevel,levelToXP;
+			#endif
+				int				upgradeCostQuantity=1;
+				Resource::ID	upgradeCostType;
+
+
+
+			#ifndef CLIENT
+
+				static void Load(const Lua::Table&t, TModFunc&f, String name)
+				{
+					name.Set(0,D::CharFunctions::toupper(name.GetChar(0)));
+					f = t.GetField(name);
+					if (!f)
+						throw new Lua::Exception(CLOCATION,"Unable to find function '"+String(name)+"' in T2 table");
+				}
+
+				void				Load(const Lua::Table&t);
+
+				bool				Recompute(T2::TModifier&mod, int lvl, const TModFunc&f, const char*name) const
+				{
+ 					return mod.Update(f(lvl));
+				}
+
+				bool				Recompute(T2::Properties&p) const;
+			#endif
+		};
+
+
 
 		struct GlobalState
 		{
 			Attributes::Table	zeroTable;
+			
 
 			#ifndef CLIENT
 				/**
@@ -203,6 +247,7 @@ namespace Objects
 				ScriptCache::PScript	script,	//currently loaded program
 										factoryDefault;	//program defined in install directory. Must load or server execution fails
 			#endif
+			T2Globals			t2;
 			Buffer0<PTopic>		allTopics;
 			TopicGroup			rootResearch;
 			#ifndef CLIENT
@@ -229,6 +274,7 @@ namespace Objects
 		#ifndef CLIENT
 			void				ActivateProgram(const ScriptCache::PScript&script);
 			void				LoadDefaultProgram();
+			bool				Recompute(T2::Properties&);
 		#endif
 	}
 }

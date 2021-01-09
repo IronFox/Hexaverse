@@ -128,6 +128,7 @@ namespace Objects
 			Construct,
 			SelfDetonate,
 			Repair,
+			Upgrade,
 			AddTerrain,
 			RemoveTerrain,
 
@@ -175,7 +176,7 @@ namespace Objects
 		class Base 
 		{
 		protected:
-			/**/							Base():initiative(100)	{}
+			/**/							Base()	{}
 
 			struct Detail
 			{
@@ -205,7 +206,7 @@ namespace Objects
 			
 			String							typeName,shortName;
 			ConstName						constName;
-			int								initiative;
+			AttributeWithDefault<int,100>	initiative;
 			Research::Attribute<int>		productionCosts /*=1*/;
 			AttributeWithDefault<bool,true>	isUnlocked;
 											
@@ -220,7 +221,7 @@ namespace Objects
 
 			bool							TestIntersection(float zOffset, float x, float y, const M::TVec3<>&b, const M::TVec3<>&d, float & distance);
 
-			void							DescribeType(Description&,bool compound, const OwnerParameter&);
+			void							DescribeType(Description&,bool compound, const OwnerParameter&, const T2::PConstProperties&t2);
 		};
 
 
@@ -413,6 +414,7 @@ namespace Objects
 			bool							CanDealDamage() const {return damageLevel.IsFunctionOrConstNonZero();}
 			bool							CanDo(Operation op) const {return operationSpeed[op].IsFunctionOrConstNonZero();}
 			bool							CanRepair() const {return CanDo(Operation::Repair);}
+			bool							CanUpgrade() const {return CanDo(Operation::Upgrade);}
 			bool							CanConstruct() const {return CanDo(Operation::Construct);}
 			//bool							IsStandardOffensive() const
 			//{
@@ -427,7 +429,7 @@ namespace Objects
 
 			#ifdef HAS_WINDOW
 			#endif
-			void							DescribeType(Description&, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner);
+			void							DescribeType(Description&, bool compound, bool includeName, const String&parentType, const OwnerParameter&owner, const T2::PConstProperties&t2);
 
 
 			enum geometryType_t
@@ -536,7 +538,7 @@ namespace Objects
 
 			bool							CanStandOn(const World::Data&world, const Grid::LCellIdI&, GroundFlags flags=GroundFlags::None);
 
-			void							DescribeType(Description&, bool compound, bool includeName, const OwnerParameter&);
+			void							DescribeType(Description&, bool compound, bool includeName, const OwnerParameter&, const T2::PConstProperties&t2);
 
 	
 		};

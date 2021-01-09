@@ -376,7 +376,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Connector"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_Connector;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_Connector, t2 != nullptr);}
 
 
 		#ifndef NO_HIBERNATION
@@ -384,10 +384,10 @@ namespace Objects
 		#endif
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override
 			{
 				label.BeginBrief();
-				Super::DescribeType(label,descFlags,owner);
+				Super::DescribeType(label,descFlags,owner,t2);
 				if ((descFlags & DescExcludeExtended) == 0)
 				{
 					label.MarkBriefEnd();
@@ -512,7 +512,7 @@ namespace Objects
 			virtual void			OnSleepChange(float&t) override;
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 			#endif
 
 		#endif
@@ -739,7 +739,7 @@ namespace Objects
 			virtual void			OnInsert( float&atTime, bool freshConstruction )	{Super::OnInsert(atTime,freshConstruction); if (freshConstruction) SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+				virtual void		DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 			#endif
 		#endif
 
@@ -756,7 +756,7 @@ namespace Objects
 		//virtual int					GetMaxHealth() const override {return 1;}
 
 		virtual String				GetTypeName() const override { return "Nexus Port"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_NexusPort;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_NexusPort,t2 != nullptr);}
 
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(Resource::Vector&v, Resource::Vector&, Resource::Vector&) const override
@@ -820,7 +820,7 @@ namespace Objects
 
 
 		virtual String				GetTypeName() const override { return "Generator"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_Generator;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_Generator, t2 != nullptr);}
 
 		virtual void				GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&) const override	{v.Set(Resource::Fuel, -FuelCostPerRound); v.Set(Resource::Energy, GetEnergyProduction()); }
 
@@ -830,7 +830,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 
 	};
@@ -856,12 +856,12 @@ namespace Objects
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
-		virtual EntityType			GetType() const override {return ConstName::Type_ReactorCore;}
+		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_ReactorCore, t2 != nullptr);}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		#ifdef HAS_WINDOW
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override;
-			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner) override;
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 
 		//WorldEntity overrides:
