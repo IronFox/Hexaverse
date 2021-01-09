@@ -93,7 +93,7 @@ namespace ApplicationInterface
 			}
 		}
 
-		if (_v->IsVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
+		if (_v->IsGroundBoundVehicle() && (To<Objects::Vehicle>::Cast(_v)->turret->detectsResources))
 		{
 			Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 		}
@@ -264,7 +264,7 @@ namespace ApplicationInterface
 		motion.time.begin.rightNow = false;
 		motion.time.begin.atTime = t0;
 
-		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
+		if (v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
 		{
 			Game::Network::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.time.begin);
 		}

@@ -166,6 +166,28 @@ namespace ApplicationInterface
 	}
 
 
+	
+	void	SignalExtraGridSensorCreation(const World::Sensor&s)
+	{
+		#ifdef HAS_WINDOW
+		if (s.type == World::Sensor::ShadedSphere || s.type == World::Sensor::SolidSphere || s.type == World::Sensor::UpperHalfSolidSphere)
+		{
+			VisualTerrain::visibleSubOrbitGrid.ChangeSensory(s.worldCenter,s.radius,1);
+		}
+		#endif
+	}
+
+	void	SignalExtraGridSensorRemoval(const World::Sensor&s)
+	{
+		#ifdef HAS_WINDOW
+		if (s.type == World::Sensor::ShadedSphere || s.type == World::Sensor::SolidSphere || s.type == World::Sensor::UpperHalfSolidSphere)
+		{
+			VisualTerrain::visibleSubOrbitGrid.ChangeSensory(s.worldCenter,s.radius,-1);
+		}
+		#endif
+	}
+
+
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e)
 	{
 	//	Grid::LCellIdI loc = e->location;
@@ -1005,12 +1027,19 @@ namespace ApplicationInterface
 					Tutorial::ShowMessage("Hostile IncludeGhosts");
 			}
 
-			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveTerrain())
+			bool anyOrbit = false;
+			if (base && base->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+				anyOrbit = true;
+
+			if (!anyOrbit)
 			{
-				Camera::TargetSkyOrbit();
+				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveTerrain())
+				{
+					Camera::TargetSkyOrbit();
+				}
+				else
+					Camera::TargetGroundOrbit();
 			}
-			else
-				Camera::TargetGroundOrbit();
 		}
 	}
 	#endif
@@ -1087,6 +1116,19 @@ bool loop()
 		//Sys::DisableConsoleQuickEdit();
 	#else
 
+		if (Animation::AllDone())
+			Objects::SubOrbital::planes.Foreach([](const Objects::SubOrbital::PPlane&plane)
+			{
+				auto&s = *plane;
+				if (s.IsGroundBoundVehicle())
+					return;
+				M::TVec3<> at = Grid::ToWorld(s.location);
+				double offset = (((UINT32)s.id.bytes[1]<<16) | ((UINT32)s.id.bytes[2]<<8) | ((UINT32)s.id.bytes[3]));
+				at.x += (sin(offset + Engine::timing.now))*0.025f;
+				at.y += (sin(offset + Engine::timing.now*1.2784))*0.025f;
+				at.z += (sin(offset + Engine::timing.now*1.43485))*0.025f;
+				s.system.w.xyz = at;
+			});
 
 		#if 1
 		{
@@ -1242,6 +1284,14 @@ bool loop()
 				Grid::visibleOrbitGrid.Build(frustum);
 			#endif
 
+			
+			if (Camera::SubOrbitalGridIsVisible())
+			{
+				if (!VisualTerrain::visibleSubOrbitGrid.valid)
+					VisualTerrain::visibleSubOrbitGrid.ForceRecompileNow();
+				VisualTerrain::visibleSubOrbitGrid.Render(frustum);
+			}
+
 			Objects::Renderer::RenderTranslucent(true);
 
 			Objects::Renderer::RenderTranslucentBeams();
@@ -1288,8 +1338,8 @@ bool loop()
 				}
 
 			}
+		
 		}
-			
 		display.Pick(Camera::hud);
 			Objects::VisualMarkers::RenderText();
 
@@ -2000,6 +2050,7 @@ int main( int argc, const char* argv[])
 		//			Engine::input.Bind(Key::R,ToggleResourceView);
 					Engine::input.Bind(Key::Ctrl,InputControl::ActivateAttackMode, [](){Objects::DisableModes(Network::ControlEnabled());});
 					Engine::input.Bind(Key::End,InputControl::ToggleSeeThrough);
+					Engine::input.Bind(Key::Home,Camera::ToggleOrbit);
 
 					Engine::input.Bind(Key::H,InputControl::ToggleControlGUI);
 
@@ -2238,7 +2289,6 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 {
 	return main(0,NULL);
 }
-
 
 
 

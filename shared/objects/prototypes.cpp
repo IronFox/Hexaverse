@@ -3,11 +3,13 @@
 #include "satellite.h"
 #include "vehicle.h"
 #include "structure.h"
+#include "subOrbital.h"
 #include "entityType.h"
 
 #include "structure/tower.h"
 #include "structure/mine.h"
 #include "structure/vehiclePlant.h"
+#include "structure/planeFactory.h"
 #include "structure/vehicleStore.h"
 #include "structure/laboratory.h"
 
@@ -83,6 +85,7 @@ namespace Objects
 
 		Collection<WorldEntity>		all;
 		Collection<Structure>		structures;
+		Collection<SubOrbital::Plane>		planes;
 		#ifndef NO_SATELLITES
 			Collection<Satellite>	satellites;
 		#endif
@@ -92,6 +95,7 @@ namespace Objects
 		{
 			all.Clear();
 			structures.Clear();
+			planes.Clear();
 			#ifndef NO_SATELLITES
 				satellites.Clear();
 			#endif
@@ -117,6 +121,7 @@ namespace Objects
 				<< UraniumStorage::globalPrototype
 				<< NexusPort::globalPrototype
 				<< VehicleStore::globalPrototype
+				<< PlaneFactory::globalPrototype
 				;
 		
 			#ifndef NO_SATELLITES
@@ -129,12 +134,19 @@ namespace Objects
 					;
 			#endif
 
+			planes	<< SubOrbital::Raptor::globalPrototype
+					<< SubOrbital::Bomber::globalPrototype
+					<< SubOrbital::CargoPlane::globalPrototype
+					<< SubOrbital::SensorDrone::globalPrototype
+					;
+
 
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::launcher));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::rockets));
 			//Tower::globalPrototypes.Append().reset(new Tower::Prototype(artillery));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::radar));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::armored));
+			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::antiAircraft));
 			Tower::globalPrototypes.Append().reset(new Tower::Prototype(&Component::resourceScanner));
 			foreach (Tower::globalPrototypes,p)
 				structures.Add(p->get()->instance);
@@ -149,6 +161,7 @@ namespace Objects
 
 			//all specitic prototypes must be set at this point
 			all.Include(structures);
+			all.Include(planes);
 			#ifndef NO_SATELLITES
 				all.Include(satellites);
 			#endif
@@ -186,10 +199,20 @@ namespace Objects
 			Mechanic::Configure(mechanic);
 			Terraformer::Configure(terraformer);
 			ResourceScanner::Configure(resourceScanner);
+			AntiAircraft::Configure(antiAircraft);
 
 			Hoverbase::Configure(hoverbase);
 			Heavybase::Configure(heavybase);
 			Catbase::Configure(catbase);
+			SubOrbital::Base::Configure(SubOrbital::planeBase);
+
+
+			SubOrbital::Raptor::Configure(SubOrbital::raptor);
+			SubOrbital::Bomber::Configure(SubOrbital::bomber);
+			SubOrbital::CargoPlane::Configure(SubOrbital::cargoPlane);
+			SubOrbital::SensorDrone::Configure(SubOrbital::sensorDrone);
+
+
 
 
 
@@ -204,6 +227,8 @@ namespace Objects
 									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								#endif
 								<< &armored << &artillery << &launcher << &rockets << &emp
+								<< &antiAircraft
+                                << &SubOrbital::raptor << &SubOrbital::bomber << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
 								<< &bomb
 								<< &resourceScanner
 								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION

@@ -3,9 +3,11 @@
 #include "objectRendering.h"
 #include <objects/structure/vehicleStore.h>
 #include <objects/structure/vehiclePlant.h>
+#include <objects/structure/planeFactory.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/laboratory.h>
 #include <objects/systems.h>
+#include <objects/subOrbital.h>
 #include "../display.h"
 
 #include <objects/prototypes.h>
@@ -211,6 +213,7 @@ namespace Objects
 		LoadFor<Objects::MunitionStorage>();
 		LoadFor<Objects::MunitionFactory>();
 		LoadFor<Objects::VehiclePlant>();
+		LoadFor<Objects::PlaneFactory>();
 		LoadFor<Objects::VehicleStore>();
 		LoadFor<Objects::Laboratory>();
 		LoadFor<Objects::Connector>();
@@ -220,6 +223,11 @@ namespace Objects
 		LoadFor("tower",1.f,Objects::Tower::geometry,Objects::Tower::staticShape);	//special case, since there is one variant per applicable turret, but all have the same base
 		foreach (Objects::Tower::globalPrototypes,p)
 			(*p)->instance->shape = Objects::Tower::staticShape;
+
+		LoadFor<Objects::SubOrbital::Raptor>();
+		LoadFor<Objects::SubOrbital::Bomber>();
+		LoadFor<Objects::SubOrbital::CargoPlane>();
+		LoadFor<Objects::SubOrbital::SensorDrone>();
 
 		float h = Objects::Tower::geometry.GetBoundingBox().z.max;
 		ASSERT2__(M::Similar(h,Objects::Tower::foundationHeight),h,Objects::Tower::foundationHeight);
@@ -231,6 +239,12 @@ namespace Objects
 
 	}
 
+
+	/*static*/ void				StructureHull::LoadFor(Objects::SubOrbital::Plane&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
+	{
+		LoadFor(prototype.GetTypeName(), vehicleScale, staticGeometry, staticShape);
+		prototype.shape = staticShape;
+	}
 
 	/*static*/ void				StructureHull::LoadFor(Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape)
 	{
@@ -721,6 +735,16 @@ namespace Objects
 	}
 
 	/*static*/ StructureHull&	StructureHull::Allocate(Objects::Structure&s)
+	{
+		return StandardAllocate<StructureHull>(s.shape);
+	}
+
+	/*static*/ StructureHull&	StructureHull::Of(const Objects::SubOrbital::Plane&s)
+	{
+		return StandardOf<StructureHull>(s.shape);
+	}
+
+	/*static*/ StructureHull&	StructureHull::Allocate(Objects::SubOrbital::Plane&s)
 	{
 		return StandardAllocate<StructureHull>(s.shape);
 	}

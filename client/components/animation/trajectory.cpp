@@ -168,6 +168,7 @@ namespace Animation
 					}
 					break;
 					case Objects::TrajectoryType::Missile:
+					case Objects::TrajectoryType::AAMissile:
 					{
 						trajectoryAnimation.localizedSoundSource.Create();
 						#ifdef _DEBUG

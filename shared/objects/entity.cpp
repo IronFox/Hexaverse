@@ -16,6 +16,7 @@
 #include "vehicle.h"
 #include "structure.h"
 #include "faction.h"
+#include "subOrbital.h"
 
 
 namespace Objects
@@ -421,7 +422,9 @@ namespace Objects
 				if (IsMobile())
 				{
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
-					if (IsVehicle())
+					if (IsPlane())
+						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t,true);
+					elif (IsPureVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t,true);
 					#ifndef NO_SATELLITES
 						elif (IsSatellite())
@@ -521,7 +524,9 @@ namespace Objects
 					if (b->turret == &Component::bomb)
 						outResult.GetLastLine() +=" ("+Resource::Uranium.GetTagStr()+": *5)";
 				}
-				b->turret->DescribeType(outResult,true,  false,  IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner, t2);
+				if (b->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+					outResult <<"Sub-orbital scanning range: "+b->DescribeSubOrbitalScanningRange(owner);
+				b->turret->DescribeType(outResult,true, false, IsPlane() ? "Plane" : (IF_SATELLITES(IsSatellite() ? "Satellite" :) (IsPureVehicle() ? "Vehicle":"Tower")),owner,t2);
 			}
 		}
 	#endif

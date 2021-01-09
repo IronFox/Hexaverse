@@ -300,6 +300,7 @@ namespace Objects
 			}
 
 			InitAttrib(myTable,path,"GroundScannerPenetration",t.groundScannerPenetration, OnAttributeNotFound::Ignore);
+			InitAttrib(myTable,path,"SubOrbitalScanningRange",t.subOrbitalScanningRange, OnAttributeNotFound::Ignore);
 			InitAttrib(myTable,path,"GroundScanningRange",t.groundScanningRange, OnAttributeNotFound::Ignore);
 
 			InitAttrib(myTable,path,"AmmoConsumption",t.ammoNeedPerShot, OnAttributeNotFound::Ignore);
@@ -355,6 +356,14 @@ namespace Objects
 				InitAttrib(bomb,"Jobs.Bomb","DoomsdayExplosionRadius",Component::Bomb::doomsdayExplosionRadius, OnAttributeNotFound::Warn);
 				InitAttrib(bomb,"Jobs.Bomb","DoomsdayUraniumCost",Component::Bomb::doomsdayUraniumCost, OnAttributeNotFound::Warn);
 				InitAttrib(bomb,"Jobs.Bomb","RegularUraniumCost",Component::Bomb::regularUraniumCost, OnAttributeNotFound::Warn);
+			}
+			{
+				Lua::Table bomber;
+				if (jobs.IsSet())
+					bomber = jobs.GetField("Bomber");
+				InitAttrib(bomber,"Jobs.Bomber","DoomsdayBeamAttackCosts",Component::SubOrbital::Bomber::doomsdayBeamAttackCosts, OnAttributeNotFound::Warn);
+				InitAttrib(bomber,"Jobs.Bomber","DoomsdayExplosionRadius",Component::SubOrbital::Bomber::doomsdayExplosionRadius, OnAttributeNotFound::Warn);
+				InitAttrib(bomber,"Jobs.Bomber","DoomsdayDamageLevel",Component::SubOrbital::Bomber::doomsdayDamageLevel, OnAttributeNotFound::Warn);
 			}
 		}
 	}

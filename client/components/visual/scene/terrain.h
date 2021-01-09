@@ -149,6 +149,8 @@ namespace VisualTerrain
 		}
 
 		void			ChangeSensory(const Grid::LCellIdI&center, float radius, signed char change);
+		void			ChangeSensory(const Grid::HCellIdI&center, float radius, signed char change);
+		void			ChangeSensory(const M::TVec3<>&center, float radius, signed char change);
 
 		void			Clear()
 		{
@@ -159,6 +161,7 @@ namespace VisualTerrain
 			//colorArea.active = false;
 		}
 
+		index_t	TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)	const;
 
 		//void	Color(const LCellIdI&center, int fuelRadius);
 		//void	StripColor();
@@ -172,6 +175,7 @@ namespace VisualTerrain
 
 	};
 
+	extern OrbitGrid	visibleSubOrbitGrid;
 	typedef std::function<bool(const TBounds&, const M::TVec3<>&, const M::TVec3<>&, float)> FBoundsCheck;
 
 	bool	BoxCheck(const TBounds&, const M::TVec3<>&, const M::TVec3<>&, float);

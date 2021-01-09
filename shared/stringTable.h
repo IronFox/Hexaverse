@@ -17,6 +17,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Turret_Mechanic,
 	Turret_Artillery,
 	Turret_Cannon,
+	Turret_AntiAircraft,
 	Turret_Surveyor,
 	Turret_EMP,
 	Turret_Bomb,
@@ -28,11 +29,15 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Turret_NukeLauncher,
 	Turret_MunitionTransporter,
 	Turret_Ragnarok,
+	Turret_Raptor,
+	Turret_Bomber,
+	Turret_CargoPlane,
+	Turret_SensorDrone,
 	
 	VehicleBase_HeavyBase,
 	VehicleBase_HoverBase,
 	VehicleBase_CatBase,
-	
+	VehicleBase_Plane,
 
 	Job_BuildHorizontalWall,
 	Job_BuildWallUp,
@@ -47,6 +52,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Job_ClearAbove,
 	Job_Sequence,
 	Job_SelfDetonate,
+	Job_DoomsdayBeamAttack,
 
 	DetonationSize_Regular,	//Used in conjunction with Job_SelfDetonate
 	DetonationSize_Doomsday,	//Used in conjunction with Job_SelfDetonate
@@ -58,6 +64,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_Generator,
 	Type_ReactorCore,
 	Type_VehiclePlant,
+	Type_PlaneFactory,
 	Type_Laboratory,
 	Type_Mine,
 	Type_MunitionFactory,
@@ -70,6 +77,10 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_SkyPort,
 	Type_SkyHub,
 	Type_SkyGuardian,
+	Type_Raptor,
+	Type_Bomber,
+	Type_CargoPlane,
+	Type_SensorDrone,
 	Type_Ragnarok,
 	Type_StarPort,
 		

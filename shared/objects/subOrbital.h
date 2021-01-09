@@ -1,0 +1,378 @@
+#ifndef objectsSubOrbitalH
+#define objectsSubOrbitalH
+
+#include "entity.h"
+#include "../cast.h"
+#include "hibernating.h"
+#include "mobileEntity.h"
+#include "interface.h"
+#include "mobileEntityProducer.h"
+#include "vehicle.h"
+#include "hangar.h"
+
+
+namespace Objects
+{
+
+	namespace SubOrbital
+	{
+		static const int			Height = Grid::CellStack::TopHeight +2;
+		static const UINT			Layer = (UINT)(Height + Grid::CellStack::HalfRange);
+
+		class Plane : public Vehicle
+		{
+		protected:
+			typedef Vehicle			Super;
+			/**/					Plane(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location):Super(owner,location,&Component::SubOrbital::planeBase,turret)
+									{}
+
+			struct Detail
+			{
+				enum class Result
+				{
+					ReachedGround,
+					StoppedAtStructure,
+					NoFreeCellFound,
+					NoGroundFound,
+				};
+
+				static Result		WalkStack(const Grid::CellStack&stack, bool stopOnStructure, int&outHeight);
+
+			};
+
+		public:
+		#ifdef HAS_WINDOW
+			/**
+			Type-shared appearance
+			*/
+			PClientAttachment		shape;
+		#endif
+			static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*, bool includeStored);
+
+
+			int						GetLandingHeight() const	{return GetLandingHeight(location,*this);}
+			static int				GetLandingHeight(const Grid::LCellIdI&location, const Plane&p);
+
+
+			#ifndef CLIENT
+				bool				AttackFirst(Grid::LCellIdI target, bool autoTarget);
+			#endif
+
+			//new overridables:
+			#ifndef CLIENT
+				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const {return false;}
+				virtual bool		ProcessRound(float&atTime);
+			#endif
+			float					GetMaxAirSpeed(const OwnerParameter&owner) const {return 100.f / turret->weight.GetValue(GetResearchState(owner));};
+
+			//TurretBase overrides:
+			virtual float			GetFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
+			virtual String			DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
+
+			//WorldEntity overrides:
+			virtual int				GetMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const override;
+			virtual String			DescribeMaxHealthExt(const OwnerParameter&owner, const T2::TModifier&m) const override;
+			virtual int				GetConstructionCost(const Objects::PFaction&owner) const override;
+			virtual bool			IsGroundBoundVehicle() const {return !IsAboveTerrain(location);}	//landed
+			virtual bool			IsPureVehicle() const override {return false;}
+			virtual bool			IsPlane() const override {return true;}
+			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
+			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
+			virtual bool			IsUnlockedAtState(const Research::Attributes::Table&table) const	override {return turret->isUnlocked.GetValue(table);}
+			virtual bool			CanBeUnlocked() const override {return turret->isUnlocked.IsFunctionOrConstNonZero();}
+
+			#ifdef HAS_WINDOW
+				virtual void		DescribeType(Description&outResult, UINT32 descFlags,const OwnerParameter&, const T2::PConstProperties&t2) override;
+				virtual float		GetSoundLevel() const {return IsGroundBoundVehicle() ? 0.f : GetActivityLevel()*0.25f;}	//save 75% for motion
+			#endif
+
+			virtual void			VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance = false) const override;
+			virtual bool			CanSpawnAboveTerrain(int&outHeight) const override {outHeight = Height; return true;}
+			virtual float3			GetScanningCenter(const Grid::LCellIdI&loc) const override;
+			
+
+			//MobileEntity overrides:
+			virtual float			GetBaseMovementInitiative() const override;	//reuse turret initiative for motion
+			virtual bool			IsAffectedByGravity() const override {return !IsAboveTerrain(location);}
+			virtual bool			IsAffectedByGravity(const Grid::LCellIdI&loc) const override {return !IsAboveTerrain(loc);}
+			virtual int				GetMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m) const override
+			{
+				return (int)ceil(EMPModify(m.Apply(GetMaxAirSpeed(owner)),1.f));
+			}
+			virtual String			DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&m)	const override;
+
+			#ifndef ONE_COMPOUND_PER_FACTION
+				virtual ResourceVector		GetMaxStorageCapacity()	const override
+				{
+					return turret->baseStorageCapacity;
+				}
+			#endif
+
+			virtual bool			MotionIgnoresAttack() const override {return true;}
+			//virtual float			GetPathSize() const override {return 0.6f;}
+			#ifndef CLIENT
+				virtual bool		DirectTo(CursorMode, MutableArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+				MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
+			#endif
+		};
+
+
+
+
+		template <typename Derivative>
+			class Template : public Plane
+			{
+			protected:
+				typedef Plane		Super;
+				/**/					Template<Derivative>(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location):Super(owner,turret,location)
+				{
+					#ifdef HAS_WINDOW
+						ASSERT__(staticShape);
+						Super::shape = staticShape;
+					#endif		
+
+				}
+				/**/					Template<Derivative>(Component::Turret*turret) : Super(OwnerParameter(),turret,Grid::LCellIdI(0, 0))
+				{ 
+					#ifdef HAS_WINDOW
+					//	ASSERT__(staticShape);
+						Super::shape = staticShape;
+					#endif		
+				}	//global prototype
+
+			public:
+				static const std::shared_ptr<Derivative>	globalPrototype;
+				#ifdef HAS_WINDOW
+	
+
+					static CommandContainer		commands;
+					static PClientAttachment	staticShape;
+					/**
+					Intersectable, object-space geometry of all instances of this structure type
+					*/
+					static Geometry		geometry;
+				#endif
+
+				virtual Component::Turret*
+										GetTurretType() const=0;
+
+				//WorldEntity overrides:
+				virtual void			PrototypeSetup() override;
+				virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Derivative(owner, location)); }
+				#ifdef HAS_WINDOW
+					virtual bool		TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override;
+					virtual const CC*	GetCommands(CC&dynamicStorage) const override
+					{
+						dynamicStorage.Append(Super::GetCommands(dynamicStorage));
+						dynamicStorage.Append(commands);
+						return &dynamicStorage;
+					}
+				#endif
+
+			};
+
+		template <typename Derivative>
+		/*static*/ const std::shared_ptr<Derivative>	Template<Derivative>::globalPrototype(new Derivative());
+
+		#ifdef HAS_WINDOW
+			template <typename Derivative>
+				/*static*/ CommandContainer		Template<Derivative>::commands;
+			template <typename Derivative>
+				/*static*/ PClientAttachment	Template<Derivative>::staticShape;
+			template <typename Derivative>
+				/*static*/ Geometry		Template<Derivative>::geometry;
+
+			template <typename Derivative>
+			/*virtual overrider*/ bool			Template<Derivative>::TestIntersection(const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const
+			{
+			// {return Super::TestIntersection(geometry,b,d,distance);}
+				M::TVec3<> b,d;//,test;
+				Mat::Transform(inverse,_b,b);
+				Mat::Rotate(inverse,_d,d);
+			
+				return geometry.TestIntersection(b,d,distance) | 	//binary or - must evaluate both
+						turret->TestIntersection(0.f, turretAngleX,turretAngleY,b,d,distance);
+			}
+
+		#endif
+
+
+
+
+		template <typename Derivative>
+			/*virtual override*/	void			Template<Derivative>::PrototypeSetup()
+			{
+				turret = GetTurretType();
+			}
+
+
+
+
+
+		class Raptor : public Template<Raptor>
+		{
+		protected:
+			typedef Template<Raptor>	Super;
+			friend class Super;
+
+			/**/					Raptor(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					Raptor():Super(GetTurretType())
+									{}	//global prototype
+		public:
+
+			#ifndef CLIENT
+				//Satellite overrides:
+				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;
+			#endif
+
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Raptor";}
+			virtual EntityType		GetType() const override {return ConstName::Type_Raptor;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::SubOrbital::raptor;}
+
+			//WorldEntity overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return 4;}
+			#endif
+			virtual bool			IsSentry() const override {return true;}
+
+			//Hibernating overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkPriority() const override {return 900;}
+			#endif
+		};
+
+
+		class Bomber : public Template<Bomber>
+		{
+		protected:
+			typedef Template<Bomber>	Super;
+			friend class Super;
+
+			/**/					Bomber(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					Bomber():Super(GetTurretType())
+									{}	//global prototype
+		public:
+			#ifndef CLIENT
+				//Satellite overrides:
+				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget, TargetChoice&outExtResult) const override;
+			#endif
+
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Bomber";}
+			virtual EntityType		GetType() const override {return ConstName::Type_Bomber;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::SubOrbital::bomber;}
+
+			//WorldEntity overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return 4;}
+			#endif
+			virtual bool			IsSentry() const override {return true;}
+
+			//Hibernating overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkPriority() const override {return 900;}
+			#endif
+		};
+
+		class CargoPlane : public Template<CargoPlane>, public Hangar
+		{
+		protected:
+			typedef Template<CargoPlane>	Super;
+			friend class Super;
+
+			/**/					CargoPlane(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					CargoPlane():Super(GetTurretType())
+									{}	//global prototype
+		public:
+			static const count_t	MaxStorage = 4;
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Cargo Plane";}
+			virtual EntityType		GetType() const override {return ConstName::Type_CargoPlane;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::SubOrbital::cargoPlane;}
+
+			//WorldEntity overrides:
+			virtual bool			IsHangar() const {return true;}
+			virtual PHangar			CastToDestinationForType(const MobileEntity&e) override;
+			virtual void			OnDestroy(RemovalType, float&) override;
+			#ifdef HAS_WINDOW
+				virtual const CC*	GetCommands(CC&dynamicStorage) const override;
+			#endif
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return 4;}
+			#endif
+
+			//Hibernating overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkPriority() const override {return 900;}
+			#endif
+
+			//HangarStructure overrides:
+			virtual const WorldEntity&	ToEntity() const override {return *this;}
+			virtual WorldEntity&		ToEntity() override {return *this;}
+			virtual count_t				GetLoad() const override { return this->stored.Count(); }
+			virtual count_t				GetMaximumLoad() const override {return MaxStorage;}
+			virtual PHangar				CastToHangar() override	{return To<CargoPlane>::Cast(shared_from_this());}
+			virtual bool			CanStoreType(const MobileEntity&e) const override {return e.IsVehicle() && !e.IsHangar();}
+			virtual void			StoreLocallyFromImport(const PMobileEntity&e) override;
+			#ifndef CLIENT
+				virtual bool	Store(const PMobileEntity&e, float&atTime) override;
+			#endif
+			virtual count_t	GetMaxStorage() const override {return MaxStorage;}
+		};
+
+
+		class SensorDrone : public Template<SensorDrone>
+		{
+		protected:
+			typedef Template<SensorDrone>	Super;
+			friend class Super;
+
+			/**/					SensorDrone(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					SensorDrone():Super(GetTurretType())
+									{}	//global prototype
+		public:
+
+
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Sensor Drone";}
+			virtual EntityType		GetType() const override {return ConstName::Type_SensorDrone;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::SubOrbital::sensorDrone;}
+
+			//WorldEntity overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return 4;}
+			#endif
+
+			//Hibernating overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkPriority() const override {return 900;}
+			#endif
+		};
+
+
+		extern SharedContainer<Plane>		planes;
+	}
+}
+
+#endif

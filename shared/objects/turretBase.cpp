@@ -244,6 +244,28 @@ namespace Objects
 		return true;
 	}
 
+
+	/*virtual*/ float			TurretBase::GetSubOrbitalScanningRange(const OwnerParameter&owner) const
+	{
+		const auto&e = ToEntity();
+		if (e.empDamageLevel)
+			return 0;
+		return turret->subOrbitalScanningRange.GetValue(WorldEntity::GetResearchState(owner));
+	}
+	/*virtual*/ String			TurretBase::DescribeSubOrbitalScanningRange(const OwnerParameter&owner) const
+	{
+		return turret->subOrbitalScanningRange.Describe(WorldEntity::GetResearchState(owner));
+	}
+
+	float						TurretBase::GetSubOrbitalScanningRange() const
+	{
+		return GetSubOrbitalScanningRange(ToEntity().owner);
+	}
+
+
+
+	 
+
 	bool					TurretBase::CanAttack()
 	{
 		return CanAttackIgnoreAmmo()
@@ -253,6 +275,7 @@ namespace Objects
 	bool					TurretBase::CanAttackIgnoreAmmo() const
 	{
 		return turret->CanAttack() 
+			&& (turret->trajectoryType != TrajectoryType::AAMissile || !ToEntity().empDamageLevel)
 			;
 	}
 

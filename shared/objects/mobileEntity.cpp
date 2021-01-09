@@ -81,6 +81,12 @@ namespace Objects
 
 	/*virtual override*/ void			MobileEntity::VisitSensors(const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/) const
 	{
+		const float sub = GetSubOrbitalScanningRange();
+		if (sub > 0)
+		{
+			visitor(World::Sensor(Grid::ToWorld(Grid::LCellIdI(loc.stackID,SubOrbital::Height)),sub,World::Sensor::UpperHalfSolidSphere));
+		}
+
 		if (turret->detectsResources)
 		{
 			const auto center = GetScanningCenter(loc);

@@ -258,6 +258,20 @@ TurretConfig =
 		ScanningRange = 4,
 		IsUnlocked = true,
 	},
+	AntiAircraft =
+	{
+		Cost = 10,
+		Weight = 3,
+		HealthMultiplier = 1,
+		ScanningRange = 4,	--must account for tower malus
+		SubOrbitalScanningRange = 5,
+		HorizontalAttackRange = 5,
+		ExplosionRadius = 1,
+		AttacksPerRound = 1,
+		DamageLevel = 10,
+		IsUnlocked = true,
+		Initiative = 80,
+	},
 	Bomb =
 	{
 		Op_SelfDetonate = 50,
@@ -320,7 +334,61 @@ TurretConfig =
 		IsUnlocked = true,
 		Initiative = 100,
 	},
-}
+	
+	--Planes:
+	Raptor =
+	{
+		Cost = 120,
+		Weight = 10,	--defines movement speed: 100/Weight
+		HealthMultiplier = 5,	--directly equals health
+		ScanningRange = 7,
+		HorizontalAttackRange = 9,
+		GroundScanningRange = 7,
+		GroundScannerPenetration = 0,
+		ExplosionRadius = 1,
+		DamageLevel = 5,
+		AttacksPerRound = 2,
+		IsUnlocked = true,
+		Initiative = 100,
+	},
+	Bomber =
+	{
+		Op_FireBeam = 100,
+		Cost = 160,
+		Weight = 20,	--defines movement speed: 100/Weight
+		HealthMultiplier = 5,	--directly equals health
+		ScanningRange = 4,
+		HorizontalAttackRange = 0,
+		GroundScanningRange = 4,
+		GroundScannerPenetration = 0,
+		ExplosionRadius = 2,
+		DamageLevel = 7,
+		AttacksPerRound = 1,
+		IsUnlocked = true,
+		Initiative = 90,
+	},
+	CargoPlane = 
+	{
+		Cost = 120,
+		Weight = 12,	--defines movement speed: 100/Weight
+		HealthMultiplier = 15,	--directly equals health
+		ScanningRange = 5,
+		GroundScanningRange = 2,
+		GroundScannerPenetration = 0,
+		IsUnlocked = true,
+		Initiative = 60,
+	},
+	SensorDrone = 
+	{
+		Cost = 40,
+		Weight = 11,	--defines movement speed: 100/Weight
+		HealthMultiplier = 4,	--directly equals health
+		ScanningRange = 11,
+		GroundScanningRange = 11,
+		GroundScannerPenetration = 2,
+		IsUnlocked = true,
+		Initiative = 110,
+	},}
 
 
 VehicleBaseConfig = 
@@ -626,6 +694,7 @@ StructureConfig =
 	ReactorCore = DefaultStructure(120),
 	VehicleStore = DefaultStructure(40),
 	VehiclePlant = DefaultStructure(80),
+	PlaneFactory = DefaultStructure(200),
 	Laboratory = DefaultStructure(80),
 	MunitionFactory = DefaultStructure(40),
 	Connector = DefaultStructure(5),
@@ -639,6 +708,7 @@ StructureConfig =
 	RadarTower = Tower(TurretConfig.Radar),
 	CannonTower = DeprecatedTower(TurretConfig.Cannon),
 	SurveyorTower = Tower(TurretConfig.Surveyor),
+	AntiAircraftTower = Tower(TurretConfig.AntiAircraft),
 }
 
 
@@ -650,6 +720,13 @@ Jobs =
 		DoomsdayDamageLevel = 50,
 		DoomsdayUraniumCost = 200,
 		RegularUraniumCost = -100,	--negative means 'virtual' cost. Base of calculating how many rounds job takes, but no actual resources are consumed
+	},
+	
+	Bomber =
+	{
+		DoomsdayDamageLevel = TurretConfig.Bomb.DamageLevel * 5,
+		DoomsdayExplosionRadius = TurretConfig.Bomb.ExplosionRadius * 2,
+		DoomsdayBeamAttackCosts = 300,
 	},
 }
 
@@ -666,15 +743,21 @@ launcherUnlock = MakeUnlockResearchable(unlockGroup, nil, TurretConfig, 'Missile
 heavyUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'HeavyBase',20);
 catUnlock = MakeUnlockResearchable(unlockGroup, nil, VehicleBaseConfig, 'CatamaranBase',20);
 MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'ReactorCore',10);
+planeFactoryUnlock = MakeUnlockResearchable(unlockGroup, nil, StructureConfig, 'PlaneFactory',20);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'CargoPlane',40);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Raptor',60);
+MakeUnlockResearchable(unlockGroup, planeFactoryUnlock, TurretConfig, 'Bomber',60);
 
 attackRangeGroup = Game.CreateResearch(improveGroup,'Attack Range','Research_AttackRange');
 	MakeImproveResearchable(attackRangeGroup, artilleryUnlock, TurretConfig, 'Artillery', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, launcherUnlock, TurretConfig, 'MissileLauncher', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'RocketLauncher', 'HorizontalAttackRange',0.005);
 	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'Cannon', 'HorizontalAttackRange',0.005);
+	MakeImproveResearchable(attackRangeGroup, nil, TurretConfig, 'AntiAircraft', 'HorizontalAttackRange',0.02);
 
 scanningRangeGroup = Game.CreateResearch(improveGroup,'Scanning Range','Research_ScanningRange');
 	MakeImproveResearchable(scanningRangeGroup, radarUnlock, TurretConfig, 'Radar', 'ScanningRange',0.005);
+	MakeImproveResearchable(scanningRangeGroup, nil, TurretConfig, 'AntiAircraft', 'SubOrbitalScanningRange',0.02);
 
 healthGroup = Game.CreateResearch(improveGroup,'Health','Research_Health');
 	MakeImproveResearchable(healthGroup, nil, VehicleBaseConfig, 'Hoverbase', 'Health',0.05);

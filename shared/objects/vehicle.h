@@ -104,6 +104,8 @@ namespace Objects
 		virtual String			DescribeScanningRangeExt(const OwnerParameter&, const T2::TModifier&m) const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
+		virtual bool			IsGroundBoundVehicle() const override {return true;}
+		virtual bool			IsPureVehicle() const override {return true;}
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(Command::Base::Label&label, UINT32 descFlags, const OwnerParameter&, const T2::PConstProperties&) override;

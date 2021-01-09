@@ -49,6 +49,7 @@ namespace Objects
 				DECLARE_POINTER_CLASS(WorkingStructure)
 					DECLARE_POINTER_CLASS(SkyPort)
 					DECLARE_POINTER_CLASS(VehiclePlant)
+					DECLARE_POINTER_CLASS(PlaneFactory)
 					DECLARE_POINTER_CLASS(VehicleStore)
 					DECLARE_POINTER_CLASS(Mine)
 					DECLARE_POINTER_CLASS(NexusPort)
@@ -65,6 +66,14 @@ namespace Objects
 					DECLARE_POINTER_CLASS(SkyGuardian)
 					DECLARE_POINTER_CLASS(Ragnarok)
 				#endif
+				namespace SubOrbital
+				{
+					DECLARE_POINTER_CLASS(Plane)
+						DECLARE_POINTER_CLASS(Raptor)
+						DECLARE_POINTER_CLASS(Bomber)
+						DECLARE_POINTER_CLASS(CargoPlane)
+						DECLARE_POINTER_CLASS(SensorDrone)
+				}
 				DECLARE_POINTER_CLASS(Vehicle)
 
 	namespace Component

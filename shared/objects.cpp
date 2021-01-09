@@ -17,6 +17,8 @@
 #include "objects/structure/tower.h"
 #include "objects/structure/vehiclePlant.h"
 #include "objects/structure/vehicleStore.h"
+#include "objects/structure/planeFactory.h"
+#include "objects/subOrbital.h"
 #include "objects/pathfinding.h"
 #include "globalEvents.h"
 
@@ -125,11 +127,13 @@ namespace Objects
 				<< PVehicleJob(new VehicleJob::Construct())
 				<< PVehicleJob(new VehicleJob::Sequence())
 				<< PVehicleJob(new VehicleJob::SelfDetonate())
+				<< PVehicleJob(new VehicleJob::DoomsdayBeamAttack())
 				;
 
 		#endif
 		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Mobile grid of "+String(mobileGrid.GetStructureSize())+" bytes allocated");
 		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetStructureSize())+" bytes allocated");
+
 
 		LogEvent(EventSignificance::Debug, nullptr, "Structure static setup");
 		Structure::StaticSetup();
@@ -185,6 +189,7 @@ namespace Objects
 			#endif
 			vehicles.Clear();
 			structures.Clear();
+			SubOrbital::planes.Clear();
 			idMap.Clear();
 			#ifndef ONE_COMPOUND_PER_FACTION
 				compounds.Clear();
@@ -575,6 +580,7 @@ namespace Objects
 
 
 	#endif /*0*/
+
 
 
 

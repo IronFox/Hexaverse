@@ -153,6 +153,8 @@ namespace Objects
 			void	Build(Satellite&s, float light);
 		#endif
 
+		void	Render(SubOrbital::Plane&p, float light);
+
 		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);
 		void	RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure=false);
 
@@ -173,6 +175,7 @@ namespace Objects
 		Renders both components (base/turret) of a vehicle. No extra calls beyond RenderComnponent()
 		*/
 		void	RenderSimple(const Vehicle&v);
+		void	RenderSimple(const SubOrbital::Plane&p);
 
 		/**
 		Renders the specified vehicle

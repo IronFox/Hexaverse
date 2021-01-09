@@ -10,6 +10,8 @@
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
 #include <objects/faction.h>
+#include <objects/structure/planeFactory.h>
+#include <objects/subOrbital.h>
 #include <objects/structure/tower.h>
 #include "../clientRuntimeConfig.h"
 #include "../network.h"
@@ -17,6 +19,7 @@
 #include "objectChoices.h"
 #include "scene/terrain.h"
 #include "scene/objectRendering.h"
+#include "../cameraControl.h"
 #include "hud/menu.h"
 #include "hud/hexGrid.h"
 #include "../objectNetworkHelper.h"
@@ -265,6 +268,75 @@ namespace Objects
 		}
 
 
+		void DefinePlaneFactory(CommandContainer&commands)
+		{
+			DefineWorkingStructure(commands);
+			commands.VisitLocalMembers([](const Command::PBase&cmd)
+			{
+				if (cmd->name == "Enable")
+				{
+					(*cmd) = Command::IconCommand("Enable",
+						[]()
+					{
+
+						PlaneFactory*s2 = dynamic_cast<PlaneFactory*>(selectedEntity.get());
+						if (s2)
+						{
+							if (!s2->IsEnabled() && !s2->CanEnable())
+							{
+								ApplicationInterface::SignalUserMessage(s2->GetNiceName() + " is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
+								return;
+							}
+							ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
+						}
+					}
+						, [](bool controlEnabled)
+					{
+						Objects::CommandFlags rs = Objects::CommandFlags::None;
+						PlaneFactory*div = dynamic_cast<PlaneFactory *> (selectedEntity.get());
+						if (controlEnabled && div != nullptr)
+							rs |= Objects::CommandFlags::IsEnabled;
+						if (Detail::WorkingStructureIsEnabled())
+							rs |= Objects::CommandFlags::IsPermaActive;
+						return rs;
+					}
+						, NoCosts
+						);
+				}
+			});
+
+
+			foreach(Objects::Prototypes::planes, proto)
+			{
+				auto p = *proto;
+				Command::PEntityConstructionCommand cmd(new Command::EntityConstructionCommand("Construct " + p->GetTypeName(), nullptr, nullptr, p, [p]()
+					{
+						PPlaneFactory factory = To<PlaneFactory>::DynamicCast(selectedEntity);
+						if (!factory)
+							return;
+						ApplicationInterface::SignalConstructionBegin(factory->id, p->GetType());
+					}
+					,
+					[p](bool controlEnabled)
+					{
+						if (!controlEnabled)
+							return CommandFlags::None;
+						PlaneFactory*plant = dynamic_cast<PlaneFactory*>(selectedEntity.get());
+						if (plant)
+						{
+							CommandFlags rs = p->turret->isUnlocked.GetValue(selectedEntity->GetResearchState()) ? CommandFlags::IsEnabled : CommandFlags::None;
+							return rs;
+						}
+						return CommandFlags::None;
+					}
+				));
+
+				commands.Add(cmd);
+				cmd->RasterizeImage();
+			}
+		}
+
+
 		void OnAttackButtonPress()
 		{
 			if (!Objects::selectedEntity)
@@ -272,6 +344,8 @@ namespace Objects
 			auto base = Objects::selectedEntity->GetTurretBase();
 			if (!base)
 				return;
+			if (base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
+				return;	//no manual attack for now
 			if (IsBeam(base->turret->trajectoryType))
 			{
 				Grid::LCellIdI loc = Objects::selectedEntity->location;
@@ -287,6 +361,9 @@ namespace Objects
 
 		void DefineOffensive(Command::Container&commands,Objects::TrajectoryType t)
 		{
+			if (t == Objects::TrajectoryType::AAMissile)
+				return;	//no manual attack for now
+
 			String text = "Attack";
 			if (IsBeam(t))
 				text = "Fire Beam";
@@ -478,6 +555,54 @@ namespace Objects
 
 		namespace Detail
 		{
+			namespace SubOrbitalCmd
+			{
+				Objects::CommandFlags CheckGridVisibility(bool)
+				{
+					return Objects::CommandFlags::IsEnabled |
+						(Camera::SubOrbitalGridIsVisible() ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None);
+				}
+
+				void	Land()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height <= Grid::CellStack::TopHeight)
+						return;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = GetPointOfOrigin(*plane);
+					int h = plane->GetLandingHeight(loc,*plane);
+					if (h != badHeight)
+						ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(loc.stackID, h), false, false);
+				}
+
+				CommandFlags LandCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height <= Grid::CellStack::TopHeight)
+						return CommandFlags::None;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = GetPointOfOrigin(*selectedMobileEntity);
+					int h = plane->GetLandingHeight(loc,*plane);
+					if (h != badHeight)
+						return CommandFlags::IsEnabled;
+					return CommandFlags::None;
+				}
+
+				void	TakeOff()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height > Grid::CellStack::TopHeight)
+						return;
+					ApplicationInterface::DirectTo(selectedMobileEntity, Grid::LCellIdI(GetPointOfOrigin(*selectedMobileEntity).stackID, Objects::SubOrbital::Height), false, false);
+				}
+
+				CommandFlags TakeOffCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || GetPointOfOrigin(*selectedMobileEntity).height > Grid::CellStack::TopHeight)
+						return CommandFlags::None;
+					return CommandFlags::IsEnabled;
+				}
+			}
+		
+
+
 			//struct CellCoords : public int2
 			//{
 
@@ -761,6 +886,44 @@ namespace Objects
 				activeCursorMode = CursorMode::Idle;
 			}
 
+		}
+
+		void	DefinePlane(Objects::Component::Turret&component)
+		{
+			component.commands.Add(new Command::IconCommand("Take Off", &Detail::SubOrbitalCmd::TakeOff, &Detail::SubOrbitalCmd::TakeOffCheck, NoCosts));
+			component.commands.Add(new Command::IconCommand("Land", &Detail::SubOrbitalCmd::Land, &Detail::SubOrbitalCmd::LandCheck, NoCosts));
+		}
+
+		void	DefineSensorDrone(Objects::Component::Turret&component)
+		{
+			DefinePlane(component);
+		}
+
+		void	DefineRaptor( Objects::Component::Turret&component )
+		{
+			DefinePlane(component);
+			DefineOffensive(component);
+		}
+
+		void	DefineBomber( Objects::Component::Turret&component)
+		{
+			DefinePlane(component);
+			DefineOffensive(component);
+			component.commands.Add( new Command::IconCommand("Obliterate", &Detail::IssueParameterizedCommand<ConstName::Job_DoomsdayBeamAttack, ConstName::DetonationSize_Doomsday>
+				, &CommonCmd::IdleCheck
+				,[](int&resourceCostOut, Resource::ID&costTypeOut, int&timeCostOut)
+				{
+					ASSERT__(selectedMobileEntity);
+					resourceCostOut = Component::SubOrbital::Bomber::doomsdayBeamAttackCosts.GetValue(selectedMobileEntity->GetResearchState());
+					costTypeOut = Resource::Uranium;
+					timeCostOut = selectedMobileEntity->GetOperationCompletionRounds(resourceCostOut,Component::Operation::FireBeam);
+				}
+				));
+		}
+
+		void	DefineCargoPlane(Objects::Component::Turret&component)
+		{
+			DefinePlane(component);
 		}
 
 		void	DefineTerraformer(Objects::Component::Turret&component)
@@ -1313,6 +1476,10 @@ namespace Objects
 					}
 					, Detail::GlobalPermaSwitch(Renderer::UncontrolledExplosionRanges)
 				));
+			viewCommands->Add(new GlobalCommand("Show Sky Grid",
+					&Camera::ToggleOrbit, &Detail::SubOrbitalCmd::CheckGridVisibility
+			))->name += " (Home)";
+
 		}
 		
 		void RebuildTerraformerButtons()
@@ -1355,6 +1522,7 @@ namespace Objects
 			Research::globalState.onScriptChange << ReconfigureResearchButtons << RebuildTerraformerButtons;
 			Research::globalState.onQueueChange << [](Faction*f){ if (f == Faction::mine.get()) ReconfigureResearchQueueButtons();};
 
+			DefinePlaneFactory(Objects::PlaneFactory::commands);
 			DefineMine(Objects::Mine::commands);
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
 			DefineWorkingStructure(Objects::MineralContainer::commands);
@@ -1371,6 +1539,7 @@ namespace Objects
 			DefineOffensive(Component::artillery);
 			DefineOffensive(Component::launcher);
 			DefineOffensive(Component::armored);
+			DefineOffensive(Component::antiAircraft);
 			DefineOffensive(Component::emp);
 
 			#ifndef NO_MUNITION
@@ -1378,6 +1547,11 @@ namespace Objects
 			#endif
 			DefineMechanic(Component::mechanic);
 			DefineAutomatable(Component::resourceScanner);
+
+			DefineRaptor(Component::SubOrbital::raptor);
+			DefineBomber(Component::SubOrbital::bomber);
+			DefineSensorDrone(Component::SubOrbital::sensorDrone);
+			DefineCargoPlane(Component::SubOrbital::cargoPlane);
 
 
 			foreach (Objects::Component::vehicleTurretComponents,tc)

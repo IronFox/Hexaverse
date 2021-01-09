@@ -134,6 +134,7 @@ Table-Type: TurretType extends Type
 			-- Upgrade
 			-- AddTerrain
 			-- RemoveTerrain 
+			-- FireBeam
 			-- (e.g. canConstruct)
 	[canAttack]
 		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
@@ -164,6 +165,7 @@ Table-Type: UnitType extends Type
 	int			maxHealth;				-- Maximum possible health of the local entity (unresearched)
 	float		maxUncontrolledExplosionRadius;		-- Maximum possible explosion radius of the local type if suffering uncontrolled destruction
 	bool		isMobile;				-- True if this is a mobile entity
+	bool		isSuborbitalPlane;		-- True if this type is a suborbital plane
 	bool		isStructure;			-- True if this is a building (isMobile and isStructure are mutually exclusive. one is always true)
 	bool		isIndestructible;		-- True if the local unit is indestructible, false otherwise
 	bool		isWorkingStructure;		-- True if this entity is a structure, and actively performing actions (e.g. building, mining, etc)
@@ -227,6 +229,9 @@ Table-Type: Unit
 		void	ClearSafeTasks();		-- Flushes all tasks that have not expended any resources. This may preserve the very first task if resources have been expended on it
 		void	DropLastTask();			-- Drops only the last queued task.
 		void	SetAutomation(bool);	-- Updates automation
+		[type.turretType.canFireBeam]
+			-- note: use Attack(Loc[]) on plane's current location to attack ground beneath it
+			void	Obliterate();				-- Schedules doomsday beam-firing at the mobile unit's last queued location
 		[type.turretType.canSelfDetonate]
 			void	SelfDetonate();				-- Schedules self-detonation at the vehicle's last queued location
 			void	Obliterate();				-- Schedules doomsday self-detonation at the vehicle's last queued location
@@ -342,6 +347,7 @@ Table-Type: Loc (Location)
 	int		height;						-- Layer difference from mean planetary height. Usually in the range [-16,15], though some units may be located above the regular grid
 	Cell	cell;						-- Horizontal cell
 	Vector	world;						-- World location
+	bool	isSuborbital;				-- True if this is an airborne location
 }
 
 Table-Type: Turret
@@ -371,6 +377,7 @@ Table-Type: Turret
 			-- Upgrade
 			-- AddTerrain
 			-- RemoveTerrain
+			-- FireBeam
 			-- (e.g. speedOfConstruct)
 	int		perRound[Operation];				-- Maximum number of operations per round (e.g. perRoundConstruct). May be affected by other operations. Minimum 1, maximum 256. Typical numbers are 1,2, or 4
 }
@@ -431,6 +438,7 @@ float		Game.Grid.HeightToRadius(int/float);	-- Converts a height value to the ab
 int			Game.Grid.RadiusToHeight(float);	-- Converts a distance from planet center to height value. Result is rounded down
 int			Game.Grid.bottomHeight;		-- Minimum grid height (also applies to terrain)
 int			Game.Grid.topHeight;		-- Maximum grid height (also applies to terrain)
+int			Game.Grid.suborbitalHeight;		-- Grid height planes travel on. Generally above Game.Grid.topHeight
 bool		Game.Grid.IsClear(Loc);		-- Checks if all terrain cells affecting the specified location are clear
 --[[
 FindHighestVehicleGround:

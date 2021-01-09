@@ -107,6 +107,10 @@ namespace Objects
 		virtual float			GetZOffset() const = 0;
 		virtual bool			AttacksMovingHostilesDuringMotionPhase() const {return turret->attacksMovingHostilesDuringMotionPhase;}
 
+		virtual float			GetSubOrbitalScanningRange(const OwnerParameter&) const;
+		float					GetSubOrbitalScanningRange() const;
+		virtual String			DescribeSubOrbitalScanningRange(const OwnerParameter&) const;
+
 		/**
 		Checks if there are enough resources available for a single shot.
 		Cannot be const due to the complexity of resource allocation of mobile entities.

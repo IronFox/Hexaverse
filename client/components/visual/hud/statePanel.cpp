@@ -136,9 +136,6 @@ namespace StatePanel
 		cachedNumber = RuntimeConfig::roundNumber;
 		cachedEntity = &e;
 		cachedLines.Clear();
-		if (ConfigurationMode::IsActive())
-			return;
-
 		const auto&researchState = e.GetResearchState();
 
 		currentColor = float4(1);
@@ -178,7 +175,7 @@ namespace StatePanel
 			Vec::normalize(wz);
 			cachedLines << " w1: "+Vec::toString(wz);
 		#else
-			cachedLines << " Height Level: "+String(e.location.height);
+			cachedLines << " Height: "+String(e.location.height);
 		#endif
 
 		const bool ownedByMe = e.owner == Objects::Faction::mine;	//ghosts set isOwnedByMe true if they are actually owned by the alliance, so it cannot be used here
@@ -209,6 +206,8 @@ namespace StatePanel
 		}
 		cachedLines << "";
 		cachedLines << " Scanning-Range: "+e.DescribeScanningRange();
+		if (base && base->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+			cachedLines << " Sub-Orbital Scanning-Range: "+base->DescribeSubOrbitalScanningRange(e.owner);
 		#ifndef NO_HIBERNATION
 			cachedLines << " "<<Objects::TrafficResourceTag()  <<e.GetUplinkTraffic() << nl;
 			if (h)
@@ -266,7 +265,7 @@ namespace StatePanel
 	
 			//if (!v->storedIn.expired())
 				//cachedLines << " Stored in: "<<v->storedIn.lock()->GetName()<<nl;	//probably never happens
-			if (e.IsVehicle())
+			if (e.IsGroundBoundVehicle())
 			{
 				const Objects::Vehicle*veh = (const Objects::Vehicle*)(m);
 				cachedLines << " Turret-Overweight: "+String((int)M::Max(0,veh->turret->weight.GetValue(researchState) - floor(veh->base->GetCarryingCapacity(researchState))));

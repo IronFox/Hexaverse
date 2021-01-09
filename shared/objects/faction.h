@@ -285,7 +285,10 @@ namespace Objects
 
 			Buffer0<WMobileEntity>		activeMobiles,		//!< All active mobiles registered in the world
 										storedMobiles;		//!< All mobile entities registered stored in some other entity. activeMobiles and storedMobiles are exclusive of each other
-			typedef std::pair<Component::Turret*,WWorldEntity>	TSubOrbitalSensor;
+			Buffer0<SubOrbital::WPlane>	planes;
+
+			typedef std::pair<WTurretBase,WWorldEntity>	TSubOrbitalSensor;
+			Buffer0<TSubOrbitalSensor>	subOrbitalSensors;	//!< Lists all entities that have sub orbital scanning capability
 
 			#ifndef NO_SATELLITES
 				Buffer0<WSatellite>		satellites;
@@ -445,6 +448,8 @@ namespace Objects
 
 			count_t		CountOffGridCoverage(int channelHeight, const M::TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const M::Sphere<>&)	const;
+			count_t		CountOrbitalSensorCoverage(const M::TVec3<>&) const;
+			count_t		CountOrbitalSensorCoverage(const M::Sphere<>&) const;
 
 			count_t		GetWinningScore() const;
 			count_t		GetOffensiveCapabilities() const;

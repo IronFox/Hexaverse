@@ -287,7 +287,7 @@ namespace Animation
 			if (e->IsMobile() && e->IsAlive())
 			{
 				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
-				bool surveyor = o->IsVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
+				bool surveyor = o->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
 				bool constructor = o->GetOperationSpeed(Objects::Component::Operation::Construct) > 0;
 				if (!surveyor && !constructor)
 					return;
@@ -527,7 +527,7 @@ namespace Animation
 		#endif
 
 		bool automationChange = false;
-		if (v->IsVehicle())
+		if (v->IsGroundBoundVehicle())
 		{
 			Objects::PVehicle veh = To<Objects::Vehicle>::Cast(v);
 			bool newAutomated = (vs.flags & Protocol::VehicleFlags::Automated) != 0;
@@ -710,7 +710,7 @@ namespace Animation
 				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+ToString(vs.entityState.location));
 				ASSERT1__(v->location == vs.entityState.location,v->GetName());
 				ASSERT1__(v->isInserted,v->GetName());
-				ASSERT1__(Objects::vehicles.Contains(v),v->GetName());
+				ASSERT1__(Objects::vehicles.Contains(v) || Objects::SubOrbital::planes.Contains(v),v->GetName());
 				v->UpdateSystem();
 				#ifdef HAS_WINDOW
 					HUD::ResourceGauges::UpdateTraffic();
@@ -734,7 +734,7 @@ namespace Animation
 			}
 		#endif
 
-		if (automationChange && v->isOwnedByMe && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
+		if (automationChange && v->isOwnedByMe && v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
 		{
 			UpdateAutomation(To<Objects::Vehicle>::Cast(v));
 		}

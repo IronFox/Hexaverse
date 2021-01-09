@@ -1,0 +1,17 @@
+{{ img:units/Bomber.png|Bomber}}
+=Bomber=
+*  Health: 5
+*  Price: %Minerals% 160
+*  [[concepts/scanning range|Scanning range]]: 4
+*  [[concepts/attack range|Hrz. Attack range]]: 0 (VerticalBeam)
+*  Can attack independently of movement action
+*  Does not require ammunition
+*  1 attack per round
+*  Explosion radius: 2
+*  Damage: 7
+Ground targets can be attacked if directly beneath the unit.
+This plane-turret type has special attacks classified as DOOMSDAY WEAPONRY. These typically require Uranium, and may be disallowed by the server.
+*  Can safely fall down 1 height level
+*  Stationary on ground (supported by water)
+*  Speed: 5 (aerial)
+Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

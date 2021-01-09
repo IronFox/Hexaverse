@@ -434,7 +434,7 @@ namespace Objects
 				outResult.GetLastLine()+= " (naval)";
 			else
 				if (base->moveOnWater)
-					outResult.GetLastLine() += " (moves over water)";
+					outResult.GetLastLine() += " (supported by water)";
 
 			int opSpeed = std::max(GetOperationSpeed(Component::Operation::Construct, owner),GetOperationSpeed(Component::Operation::AddTerrain,owner));
 			if (opSpeed)

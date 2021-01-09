@@ -6,6 +6,7 @@
 #include <objects/prototypes.h>
 #include <objects/entity.h>
 #include <objects/structure.h>
+#include <objects/subOrbital.h>
 #include <image/converter/png.h>
 #include "../../ExtRenderer/DirectX11.h"
 
@@ -54,6 +55,7 @@ namespace AutoDocumentation
 //			linkedLine.FindAndReplace("Base scanning range","[[concepts/sensory|Base scanning range]]");
 			linkedLine.FindAndReplace("scanning range","[[concepts/scanning range]]");
 			linkedLine.FindAndReplace("Scanning range","[[concepts/scanning range|Scanning range]]");
+			linkedLine.FindAndReplace("Sub-orbital scanning range","[[concepts/scanning range|Sub-orbital scanning range]]");
 			linkedLine.FindAndReplace("compound","[[concepts/compound]]");
 			linkedLine.FindAndReplace("phase","[[concepts/phase]]");
 			linkedLine.FindAndReplace("attack action","[[concepts/action pool|attack action]]");
@@ -145,6 +147,8 @@ namespace AutoDocumentation
 
 				foreach (Objects::Component::allTurretComponents,c)
 				{
+					if ((*c)->mountType == Objects::Component::Turret::MountType::Plane)
+						continue;
 					LogEvent(EventSignificance::Uncommon, "Capturing "+(*c)->typeName);
 					Objects::Command::EntityConstructionCommand::UpdateTexture(container,nullptr,*c);
 					FinishRendering(folder, container.texture, (*c)->typeName);
@@ -168,6 +172,7 @@ namespace AutoDocumentation
 			{
 				FileSystem::Folder rootFolder(documentationTarget.FindDirectory("units",false));
 				FileSystem::Folder structureFolder(rootFolder.FindDirectory("structures",false));
+				FileSystem::Folder planeFolder(rootFolder.FindDirectory("planes",false));
 				FileSystem::Folder turretFolder(rootFolder.FindDirectory("turrets",false));
 				FileSystem::Folder vbaseFolder(rootFolder.FindDirectory("vbases",false));
 
@@ -194,6 +199,8 @@ namespace AutoDocumentation
 				unitList << "==Turrets=="<<nl;
 				foreach (Objects::Component::allTurretComponents,c)
 				{
+					if ((*c)->mountType == Objects::Component::Turret::MountType::Plane)
+						continue;
 					Objects::Command::Base::Label label;
 					(*c)->DescribeType(label,false,false,"",nullptr,nullptr);
 					WriteDocumentation(rootFolder, turretFolder,unitList, (*c)->typeName, label);
@@ -205,6 +212,14 @@ namespace AutoDocumentation
 					Objects::Command::Base::Label label;
 					(*c)->DescribeType(label,false,false,nullptr,nullptr);
 					WriteDocumentation(rootFolder, vbaseFolder,unitList, (*c)->typeName, label);
+				}
+
+				unitList << "==Sub Orbital Planes=="<<nl;
+				foreach (Objects::Prototypes::planes,s)
+				{
+					Objects::Description label;
+					(*s)->DescribeType(label,0xFFFFFFFF & ~Objects::WorldEntity::DescIncludeName & ~Objects::WorldEntity::DescIncludeCurrentHealth,nullptr,nullptr);
+					WriteDocumentation(rootFolder, planeFolder,unitList, (*s)->GetTypeName(), label);
 				}
 			}
 		}

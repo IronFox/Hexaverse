@@ -8,11 +8,13 @@
 #include "prototypes.h"
 #include "interface.h"
 #include "satellite.h"
+#include "subOrbital.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
 #include "faction.h"
 #include "../grid/worldData.h"
 #include "structure/storageStructures.h"
+#include "subOrbital.h"
 
 namespace Objects
 {
@@ -59,6 +61,7 @@ namespace Objects
 	{
 		Turret			terraformer,mechanic,
 						artillery,launcher,rockets,emp,armored,
+						antiAircraft,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -73,6 +76,13 @@ namespace Objects
 						catbase;
 
 
+
+		namespace SubOrbital
+		{
+			Turret		raptor,bomber,cargoPlane,sensorDrone;
+			VehicleBase	planeBase;
+		}
+
 		const char*				OperationToString(Operation op)
 		{
 			#undef ECASE
@@ -86,6 +96,7 @@ namespace Objects
 				ECASE(Upgrade)
 				ECASE(AddTerrain)
 				ECASE(RemoveTerrain)
+				ECASE(FireBeam)
 			}
 			DBG_FATAL__("Trying to convert unsupported operation index to string "+String((int)op));
 			return "undefined";
@@ -344,6 +355,11 @@ namespace Objects
 			return world.GetStack(fine).FindTopClearOverNonClear(true,false);
 		}
 
+		/*static*/ int				Turret::GetCeilingHeight( const World::Data&world, const Grid::LCellIdI&location )
+		{
+			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			return world.GetStack(fine).FindNextClearBeneathNonClear(true,false,Grid::CellStack::ToLayer(location.height));
+		}
 
 
 		/*static*/ float					Turret::GetHorizontalDistance(const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest)
@@ -373,6 +389,19 @@ namespace Objects
 					if (dest.cellLocation.stackID != origin.cellLocation.stackID)
 						return false;
 					return dest.cellLocation.height >= GetGroundHeight(World::actual, origin.cellLocation)-1;
+				}
+				case TrajectoryType::AAMissile:
+				{
+					//let's define this as a cone, so that mid-way explosions are valid
+					const float h = Grid::ToRadius(Objects::SubOrbital::Height);
+					const float r = flatRange;
+					const float h2 = sqrt(M::Sqr(h) - M::Sqr(r));
+					const auto&axis = Grid::low.cells[origin.cellLocation.stackID].cornerCenter;
+					const float h2d = Vec::dot(axis,dest.worldLocation - origin.worldLocation);
+					if (h2d < 0)
+						return false;
+					const float rd = h2d * r / (h2 - origin.radius);
+					return Vec::quadraticDistance(origin.worldLocation + axis * h2d,dest.worldLocation) <= M::Sqr(rd);
 				}
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,GetHorizontalDistance(origin,dest),dest.radius - origin.radius);
@@ -428,6 +457,7 @@ namespace Objects
 					Detail::TraceAnimationArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),attackAngle, from, to, outSteps);
 				break;
 				case TrajectoryType::Missile:
+				case TrajectoryType::AAMissile:
 					Detail::TraceAnimationMissileTrajectory(flatRange,from, to, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
@@ -448,13 +478,6 @@ namespace Objects
 		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Buffer0<M::TVec4<> >&outSteps)
 		{
 			float d2 = Vec::quadraticDistance(here.worldLocation,there.worldLocation);
-			if (d2 > M::Sqr(range))
-			{
-				LogEvent(EventClass::Preset::error,"TraceMissileTrajectory(): Distance to target ("+String(sqrt(d2))+") exceeds maximum range ("+String(range)+") of missile turret. Ignoring for now.");
-				//DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
-				//return;
-			}
-		
 			const float3 up = (here.worldLocation + there.worldLocation).Normalized0();
 			float distance = sqrt(d2);
 
@@ -526,6 +549,7 @@ namespace Objects
 					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld, !traceInActualWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::Missile:
+				case TrajectoryType::AAMissile:
 					return Detail::TraceMissileTrajectory(flatRange,traceInActualWorld ? actualWorld : visibleWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
@@ -759,8 +783,6 @@ namespace Objects
 			const float3 here = Grid::low.cells[source.stackID].centerVertex.xyz * h0;
 		*/
 			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
-			if (d2 > M::Sqr(range))
-				return ImpactDetails{};
 
 			Turret::traceCount++;
 			const Timer::Time t0 = timer.Now();
@@ -1018,6 +1040,27 @@ namespace Objects
 			component.independentAttackAndMotion = true;
 		}
 
+		void			AntiAircraft::Configure(Turret&component)
+		{
+			#ifdef HAS_WINDOW		
+				component.parts.SetSize(1);
+				component.parts.First().LoadFromObj("objects/antiAircraft.obj");
+			#endif
+
+
+			component.typeName = "Anti Aircraft";
+			component.shortName = " AA";
+			component.constName = ConstName::Turret_AntiAircraft;
+			component.isScanner = true;
+			component.trajectoryType = TrajectoryType::AAMissile;
+
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
+				component.baseStorageCapacity.level[Resource::Munitions] = 20;
+			#endif
+			component.independentAttackAndMotion = false;
+			component.requiresStationaryVehicle = true;
+			component.attacksMovingHostilesDuringMotionPhase = true;
+		}
 
 	
 		void			EMP::Configure(Turret&component)
@@ -1342,6 +1385,114 @@ namespace Objects
 
 
 
+		namespace SubOrbital
+		{
+			namespace Base
+			{
+				void	Configure(VehicleBase&component)
+				{
+					#ifdef HAS_WINDOW
+						component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/plane.wav");
+					#endif
+					component.shortName = "Airborne";
+					component.constName = ConstName::VehicleBase_Plane;
+
+					component.carryingCapacity.SetInvariant(100);
+					component.requirements = VehicleBase::Requirement::AnyBlock;
+					component.moveOnWater = true;
+					component.minClimbDown = -1;	//-int(Grid::CellStack::Range);
+					component.operationSpeedMultiplier.SetInvariant(1);
+					component.turretRangeModifier.SetInvariant(0);
+					#ifndef ONE_COMPOUND_PER_FACTION
+						component.storageMultiplier = 1;
+					#endif
+				}
+			}
+
+
+			void			Raptor::Configure(Turret&component)
+			{
+			
+
+				component.typeName = "Raptor";
+				component.shortName = " Raptor";
+				component.constName = ConstName::Turret_Raptor;	//let's see if i can use the same name here. nope!
+
+				component.mountType = Turret::MountType::Plane;
+
+		
+				component.dealsEMPDamage = false;
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = false;
+				component.independentAttackAndMotion = true;
+				component.trajectoryType = TrajectoryType::Missile;
+
+			}
+
+
+			namespace Bomber
+			{
+				AttributeWithDefault<int,300>		doomsdayBeamAttackCosts;
+				FFunc				doomsdayExplosionRadius;
+				IFunc				doomsdayDamageLevel;
+
+				int		GetDoomsdayDamageLevel(const Research::Attributes::Table&t)
+				{
+					return doomsdayDamageLevel.IsEmpty() ? Bomb::GetDamageLevel(true,t) : doomsdayDamageLevel.GetValue(t);
+				}
+
+				float	GetDoomsdayExplosionRadius(const Research::Attributes::Table&t)
+				{
+					return doomsdayExplosionRadius.IsEmpty() ? Bomb::GetRadius(true,t) : doomsdayExplosionRadius.GetValue(t);
+				}
+
+			}
+
+			void			Bomber::Configure(Turret&component)
+			{
+			
+
+				component.typeName = "Bomber";
+				component.shortName = " Bomber";
+				component.constName = ConstName::Turret_Bomber;
+				component.hasDoomsdayFunctionality = true;
+
+				component.mountType = Turret::MountType::Plane;
+
+		
+				component.dealsEMPDamage = false;
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = false;
+				component.independentAttackAndMotion = true;
+				component.trajectoryType = TrajectoryType::VerticalBeam;
+
+			}
+
+			void			SensorDrone::Configure(Turret&component)
+			{
+				component.typeName = "Sensor Drone";
+				component.shortName = " Sensor";
+				component.constName = ConstName::Turret_SensorDrone;
+
+				component.mountType = Turret::MountType::Plane;
+			}
+
+
+
+
+			void			CargoPlane::Configure(Turret&component)
+			{
+				component.typeName = "Cargo Plane";
+				component.shortName = " Cargo";
+				component.constName = ConstName::Turret_CargoPlane;
+
+				component.mountType = Turret::MountType::Plane;
+			}
+
+
+		}
+
+
 		void			Hoverbase::Configure(VehicleBase&component)
 		{
 		
@@ -1527,7 +1678,7 @@ namespace Objects
 						outResult.GetLastLine()+= " (naval)";
 					else
 						if (moveOnWater)
-							outResult.GetLastLine() += " (moves over water)";
+							outResult.GetLastLine() += " (supported by water)";
 					outResult<<"Base health: "+health.Describe(researchState);
 					float rangeMod = turretRangeModifier.GetValue(researchState);
 					if (rangeMod != 0)
@@ -1572,6 +1723,8 @@ namespace Objects
 				{
 					outResult <<"Weight: "+weight.Describe(researchState);
 					outResult <<"Base scanning range: "+scanningRange.Describe(researchState);
+					if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
+						outResult <<"Sub-orbital scanning range: "+subOrbitalScanningRange.Describe(researchState);
 					float healthMult = healthMultiplier.GetValue(researchState);
 					if (healthMult != 1)
 						outResult <<"Health: x"+healthMultiplier.Describe(researchState);
@@ -1660,6 +1813,14 @@ namespace Objects
 				{
 					switch (trajectoryType)
 					{
+						case TrajectoryType::AAMissile:
+						{
+							if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
+								outResult << ("Sub-orbital planes can be detected and attacked in flight.");
+							else
+								outResult << ("Sub-orbital planes can be attacked in flight.");
+						}
+						break;
 						case TrajectoryType::VerticalBeam:
 						{
 							outResult << ("Ground targets can be attacked if directly beneath the unit.");
@@ -1672,8 +1833,12 @@ namespace Objects
 						outResult << ("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces attack and scanning range, movement speed, and disallows construction operations. Does not cause any permanent damage.");
 				}
 				else
+				{
+					if (subOrbitalScanningRange.IsFunctionOrConstNonZero())
+						outResult << ("This "+lowerName+" type can detect sub-orbital planes in flight.");
 					if (isScanner)
 						outResult << ("The "+this->typeName + " "+lowerName+" is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
+				}
 
 				if (attacksMovingHostilesDuringMotionPhase)
 				{

@@ -79,12 +79,19 @@ namespace InputControl
 				}
 				#endif
 
+				if (Camera::SubOrbitalGridIsVisible())
+				{
+					index_t stackID = VisualTerrain::visibleSubOrbitGrid.TestIntersection(b, d, distance);
+					if (stackID != InvalidIndex && Vec::dot(Grid::low.cells[stackID].centerVertex.xyz,d) < 0.f)
+					{
+						result = Grid::LCellIdI((UINT32)stackID,Objects::SubOrbital::Height);
+						return true;
+					}
+				}
 				{
 					M::TVec3<> normal;
 					if (VisualTerrain::TestHullIntersection(b, d, distance, normal, includeWater))
 					{
-						//if (test)
-							//return false;
 						float3 p = b + d * distance;
 						float height = p.GetLength();
 						distance = std::numeric_limits<float>::max();
@@ -197,7 +204,9 @@ namespace InputControl
 						int h;
 						if (!Objects::selectedMobileEntity->CanSpawnInTerrain() && Objects::selectedMobileEntity->CanSpawnAboveTerrain(h))
 							target.height = h;
-
+						else
+							if (Objects::selectedMobileEntity->IsPlane())
+								target.height = Objects::SubOrbital::Height;
 						ObjectHelper::DirectTo(Objects::selectedMobileEntity,target, ObjectHelper::AssembleMotionFlags(false,false),Objects::activeCursorMode);
 					}
 				}
@@ -352,8 +361,6 @@ namespace InputControl
 			}
 		}
 
-
-
 		count_t		CountIterateableEntities()
 		{
 			return
@@ -361,6 +368,7 @@ namespace InputControl
 				#ifndef NO_SATELLITES
 					+ Objects::satellites.Count() 
 				#endif
+				+ Objects::SubOrbital::planes.Count() 
 				+ Objects::structures.Count();
 		}
 
@@ -371,6 +379,7 @@ namespace InputControl
 			#ifndef NO_SATELLITES
 				GetIterateableEntity(rs,i,Objects::satellites);
 			#endif
+			GetIterateableEntity(rs,i,Objects::SubOrbital::planes);
 			GetIterateableEntity(rs,i,Objects::structures);
 			return rs;
 		}
@@ -382,6 +391,7 @@ namespace InputControl
 			#ifndef NO_SATELLITES
 				FindIterateableEntity(offset,rs,e,Objects::satellites);
 			#endif
+			FindIterateableEntity(offset,rs,e,Objects::SubOrbital::planes);
 			FindIterateableEntity(offset,rs,e,Objects::structures);
 			return rs;
 
@@ -676,11 +686,13 @@ namespace InputControl
 				Grid::LCellIdI	target;
 				bool includeWater = true;
 
-				if (InputControl::GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
+				if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 				{
 					int h;
 					if (!Objects::selectedEntity->CanSpawnInTerrain() && Objects::selectedEntity->CanSpawnAboveTerrain(h))
 						target.height = h;
+					else if (Objects::selectedEntity->IsPlane() && Objects::activeCursorMode != Objects::CursorMode::AttackMode)
+						target.height = Objects::SubOrbital::Height;
 
 					if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
 					{
@@ -768,7 +780,7 @@ namespace InputControl
 					if (base)
 					{
 						Grid::LCellIdI	target;
-						if (InputControl::GetLowCellUnderCursor(target,true,true))
+						if (GetLowCellUnderCursor(target,true,true))
 						{
 							ApplicationInterface::DirectTo(Objects::selectedEntity,target,false,true);
 							return;

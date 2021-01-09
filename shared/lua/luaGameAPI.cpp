@@ -192,6 +192,7 @@ namespace Lua
 		c.SetField("height" ,cell.height);
 		c.SetField("cell",lowCellGrid[cell.stackID]);
 		c.SetField("world",Detail::ToTable(program,Grid::ToWorld(cell)));
+		c.SetField("isSuborbital",cell.height == Objects::SubOrbital::Height);
 
 		locationMap.Set(cell,c);
 
@@ -1814,6 +1815,11 @@ namespace Lua
 					});
 				}
 
+				if (m->turret->CanDo(Objects::Component::Operation::FireBeam))
+				{
+					AddSimpleJob(t,id, "Obliterate", ConstName::Job_DoomsdayBeamAttack, ConstName::DetonationSize_Doomsday);
+				}
+
 				if (m->turret->CanDo(Objects::Component::Operation::AddTerrain))
 				{
 					AddSimpleJob(t,id, "BuildRoad",ConstName::Job_BuildRoad);
@@ -2082,7 +2088,7 @@ namespace Lua
 			index_t stack = Detail::LuaCellToStack(cell,"ToLocation(): Cell parameter #1",Grid::LowSetup::GridType::CellCount);
 			if (height < Grid::CellStack::BottomHeight)
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") falls below minimum grid height ("+String(Grid::CellStack::BottomHeight)+")");
-			if (height > Grid::CellStack::TopHeight)
+			if (height > Grid::CellStack::TopHeight && height != Objects::SubOrbital::Height)
 				throw Lua::Exception("ToLocation(): Height parameter #1 ("+String(height)+") exceeds maximum grid height ("+String(Grid::CellStack::TopHeight)+")");
 			return this->ToTable(Grid::LCellIdI(stack,height));
 		});
@@ -2136,6 +2142,8 @@ namespace Lua
 
 		gridTable.SetField("bottomHeight",Grid::CellStack::BottomHeight);
 		gridTable.SetField("topHeight",Grid::CellStack::TopHeight);
+		gridTable.SetField("suborbitalHeight", Objects::SubOrbital::Height);
+
 		#ifdef LOWER_RESOLUTION_PLANET
 			gridTable.SetField("lowerResolutionPlanet",true);
 		#else
@@ -2222,9 +2230,11 @@ namespace Lua
 
 		if (e)
 		{
+			bool plane = e->IsPlane();
 			t.SetField("isInstantiable",true);
 			t.SetField("height",e->GetHeight());
 			t.SetField("isMobile", e->IsMobile());
+			t.SetField("isSuborbitalPlane", e->IsPlane());
 			t.SetField("isHangar",e->IsHangar());
 			t.SetField("constructionCost",e->GetConstructionCost());
 			t.SetField("isStructure",e->IsStructure());
@@ -2267,7 +2277,7 @@ namespace Lua
 					t.SetField("turretType",AddOrGetType(b->turret->constName));
 			}
 
-			if (e->IsVehicle())
+			if (e->IsPureVehicle())
 			{
 				auto b = To<Objects::Vehicle>::Cast(e)->base;
 				t.SetField("vehicleBaseType",AddOrGetType(b->constName));

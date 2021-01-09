@@ -5,6 +5,7 @@
 #include "vehicle.h"
 #include "satellite.h"
 #include "faction.h"
+#include "subOrbital.h"
 #include "structure/tower.h"
 #ifndef CLIENT
 	#include "../runtimeConfig.h"
@@ -254,6 +255,7 @@ namespace Objects
 					{
 						//just some checks
 						DBG_ASSERT__(!vehicles.Contains(m));
+						DBG_ASSERT__(!SubOrbital::planes.Contains(m));
 					}
 				}
 			}
@@ -627,7 +629,21 @@ namespace Objects
 					else
 					{
 						Grid::LCellIdI	at(entity.location.stackID,h);
-						if (!GetEntity(at))
+
+
+						const auto&stack = World::actual.GetStack(Grid::ToHigh(entity.location).stackID);
+						const UINT32 begin = Grid::CellStack::ToLayer(entity.location.height+1);
+						const UINT32 end = std::min(Grid::CellStack::Range,Grid::CellStack::ToLayer(h));
+						bool clear = true;
+						for (UINT l = begin; l < end; l++)
+							if (stack.volumeCell[l].content != Grid::Content::Clear)
+							{
+								clear = false;
+								break;
+							}
+
+
+						if (clear && !GetEntity(at))
 							movementChoices << Choice(at,0);
 					}
 				}
@@ -779,7 +795,7 @@ namespace Objects
 				}
 				break;
 				case CursorMode::ClearAboveMode:
-					if (v->IsVehicle())
+					if (v->IsGroundBoundVehicle())
 					{
 						const auto&c = Grid::low.grid.GetCell(location.stackID);
 						if (!world.LowCellIsClear(location + 1))
@@ -794,7 +810,7 @@ namespace Objects
 					}
 				break;
 				case CursorMode::DigMode:
-					if (v->IsVehicle())
+					if (v->IsGroundBoundVehicle())
 						for (int i = 0; i < n.numNeighbors; i++)
 						{
 							const Grid::LCellIdI	cell(n.neighborID[i], location.height);
@@ -958,20 +974,19 @@ namespace Objects
 
 		atTime += timeEpsilon;
 		InsertConstructedEntity(v,atTime,insertIntoGrid,setHealthToFull);
-		if (v->IsVehicle())
+
+		if (v->IsPlane())
 		{
-			vehicles <<  To<Vehicle>::Cast(v);
+			//ASSERT__(!satellitesAreLocked);
+			auto plane = To<SubOrbital::Plane>::Cast(v);
+			SubOrbital::planes << plane;
 		}
 		else
-		#ifndef NO_SATELLITES
-			if (v->IsSatellite())
+			if (v->IsPureVehicle())
 			{
-				//ASSERT__(!satellitesAreLocked);
-				satellites << To<Satellite>::Cast(v);
+				PVehicle veh = To<Vehicle>::Cast(v);
+				vehicles << veh;
 			}
-			else
-		#endif
-				FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
 
 		#ifndef CLIENT
 			ApplicationInterface::SignalNewMobileEntity(v,restored,signalTime);
@@ -1195,9 +1210,14 @@ namespace Objects
 					storedMobileEntities.FindAndErase(e);
 				else
 				{
-					if (e->IsVehicle())
-						vehicles.FindAndErase(e);
+					if (e->IsPlane())
+					{
+						SubOrbital::planes.FindAndErase(e);
+					}
 					else
+						if (e->IsPureVehicle())
+							vehicles.FindAndErase(e);
+						else
 							FATAL__("Type not supported at this point: "+e->GetName());
 
 					if (move)
@@ -1485,6 +1505,14 @@ namespace Objects
 					To<SkyHub>::Cast(s)->UpdateConnections();
 			}
 		#endif
+		void			Place( const SubOrbital::PPlane&s)
+		{
+			ASSERT__(s);
+			ASSERT2__(!s->isInMovementStream ,s->location,s->GetName());
+			float t = 0;
+			InsertConstructed(s,t);
+			ASSERT1__(SubOrbital::planes.Contains(s),s->GetName());
+		}
 
 		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGrid/*=true*/, bool setHealthToFull/*=true*/ )
 		{
@@ -1499,12 +1527,17 @@ namespace Objects
 				}
 				else
 			#endif
-				if (m->IsVehicle())
+				if (m->IsPlane())
 				{
-					ASSERT1__(vehicles.Contains(m),m->GetName());
+					ASSERT1__(SubOrbital::planes.Contains(m),m->GetName());
 				}
 				else
-					FATAL__("Unsupported mobile entity type at this point: "+m->GetName());
+					if (m->IsPureVehicle())
+					{
+						ASSERT1__(vehicles.Contains(m),m->GetName());
+					}
+					else
+						FATAL__("Unsupported mobile entity type at this point: "+m->GetName());
 		}
 
 

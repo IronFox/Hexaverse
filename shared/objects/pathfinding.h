@@ -2,6 +2,7 @@
 
 #include "../grid/stack.h"
 #include "mobileEntity.h"
+#include "subOrbital.h"
 #include "volumeGrid.h"
 
 namespace Objects

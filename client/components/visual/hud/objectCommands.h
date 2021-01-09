@@ -323,7 +323,7 @@ namespace Objects
 		};
 
 
-
+		typedef std::shared_ptr<EntityConstructionCommand>	PEntityConstructionCommand;
 
 		class DeployMobileCommand : public EntityCommand
 		{

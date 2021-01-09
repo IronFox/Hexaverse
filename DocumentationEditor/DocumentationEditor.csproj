@@ -47,9 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CreateEntryForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="CreateEntryForm.cs" />
     <Compile Include="CreateEntryForm.Designer.cs">
       <DependentUpon>CreateEntryForm.cs</DependentUpon>
     </Compile>

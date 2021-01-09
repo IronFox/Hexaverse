@@ -157,6 +157,67 @@ namespace Objects{ namespace Pathfinding
 
 		const bool ignoreMobilesOnDestination = routingFlags & RoutingFlags::IgnoreMobilesOnDestination;
 
+		if (v->IsPlane())
+		{
+			if (routingFlags & RoutingFlags::DisallowOffTerrain)
+				return;
+
+			if (WorldEntity::IsAboveTerrain(location))
+			{
+				for (int i = 0; i < n.numNeighbors; i++)
+				{
+					auto cell = Grid::LCellIdI(n.neighborID[i],location.height);
+
+					if (cell==destination)
+					{
+						if (!ignoreMobilesOnDestination && !NoStationaryMobileEntityHereExcept(cell,v))
+							continue;
+					}
+					else
+					{
+						if (routingFlags & RoutingFlags::IgnoreOwnMobilesOnRoute)
+						{
+							if (!NoForeignMobileHere(cell,v->owner,GetEntityTime(*v)))
+								continue;
+						}
+						else
+							if (!NoMobileEntityHereExcept(cell,v))
+								continue;
+					}
+					if (ValidDestinationOf<false>(world,*v,cell, destination, destinationHangar, routingFlags, groundFlags))
+						outWays.Add(cell);
+				}	
+				const auto p = ((Objects::SubOrbital::Plane*)v);
+				int h = p->GetLandingHeight(location,*p);
+				const auto candidate = Grid::LCellIdI(location.stackID,h);
+				if (h != badHeight && ValidDestinationOf<false>(world,*v,candidate, destination, destinationHangar, routingFlags, groundFlags))
+					outWays.Add(candidate);
+				return;
+			}
+
+			const auto fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			const UINT32 base = Grid::CellStack::ToLayer(location.height + v->GetHeight());
+			{
+				const auto&stack = world.GetStack(fine);
+				for (UINT32 layer = base; layer < Grid::CellStack::Range; layer++)
+					if (stack.GetCellU(layer).content != Grid::Content::Clear)
+						return;	//can't go up
+			}
+			#ifdef HYBRID_GRID
+				const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
+				for (int k = 0; k < n.numNeighbors; k++)
+				{
+					const auto&stack = world.GetStack(n.neighborID[k]);
+					for (UINT32 layer = base; layer < Grid::CellStack::Range; layer++)
+						if (stack.GetCellU(layer).content != Grid::Content::Clear)
+							return;	//can't go up
+				}
+			#endif
+			const auto candidate = Grid::LCellIdI(location.stackID,Objects::SubOrbital::Height);
+			if (ValidDestinationOf<false>(world,*v,candidate, destination, destinationHangar, routingFlags, groundFlags))
+				outWays.Add(candidate);
+			return;	//landed planes are limited to liftoff (if at all)
+		}
 
 		for (int j = v->GetMaxClimbingHeight(); j >= -maxWayDown; j--)
 		{

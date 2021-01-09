@@ -464,6 +464,7 @@ namespace Objects
 		Retrieves the current uncontrolled explosion radius, assuming the local entity suffered uncontrolled destruction now
 		*/
 		virtual float				GetUncontrolledExplosionRadius() const {return 0;}
+		virtual M::TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return M::FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		/**
 		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
 		*/
@@ -513,10 +514,22 @@ namespace Objects
 		virtual bool				IsUnlockedAtState(const Research::Attributes::Table&table) const	{return GetTable()->isUnlocked.GetValue(table);}
 		bool						IsUnlocked() const {return IsUnlockedAtState(GetResearchState());}
 		virtual bool				CanBeUnlocked() const {return GetTable()->isUnlocked.IsFunctionOrConstNonZero();}
+		/**
+		Checks whether the local type is a derivative of the Vehicle class, and currently part of the regular world grid (a landed plane would be such, an airborne one not)
+		*/
+		virtual bool				IsGroundBoundVehicle() const {return false;}
+		/**
+		Checks whether the local type is of the Vehicle class, and not any derivatives
+		*/
+		virtual bool				IsPureVehicle() const {return false;}
+		/**
+		Checks whether the local type is of the Vehicle class or any derivative
+		*/
 		virtual bool				IsVehicle() const {return false;}
 		#ifndef NO_SATELLITES
 			virtual bool			IsSatellite() const {return false;}
 		#endif
+		virtual bool				IsPlane() const {return false;}
 		virtual bool				IsStructure() const {return false;}
 		//virtual bool				IsVehiclePlant() const {return false;}
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
@@ -704,6 +717,8 @@ namespace Objects
 		Never call otherwise.
 		*/
 		void					OverrideSetRegisteredSensorToCurrentLocation();
+
+		const RegisteredSensorStorage&	GetRegisteredSensors() const {return registeredSensors;}
 
 	protected:
 		#ifndef CLIENT

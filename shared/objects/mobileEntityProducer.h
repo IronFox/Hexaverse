@@ -75,7 +75,9 @@ namespace Objects
 			#ifndef NO_SATELLITES
 				bool				IsSatellite() const;
 			#endif
+			bool					IsPlane() const;
 			bool					IsVehicle() const;
+			bool					IsPureVehicle() const;
 			Component::VehicleBase*	GetVehicleBase() const;
 			bool					CanSpawnInTerrain() const;
 			bool					CanSpawnAboveTerrain(int&) const;

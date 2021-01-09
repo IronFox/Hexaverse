@@ -60,6 +60,14 @@ namespace Objects
 			return producing->CanSpawnInTerrain();
 		#endif
 	}
+	bool					MobileEntityProducer::WorkItem::IsPlane() const
+	{
+		#ifdef CLIENT
+			return !base && prototype && prototype->IsPlane();
+		#else
+			return producing->IsPlane();
+		#endif
+	}
 
 	bool					MobileEntityProducer::WorkItem::IsVehicle() const
 	{
@@ -82,6 +90,15 @@ namespace Objects
 		}
 	#endif
 	
+
+	bool					MobileEntityProducer::WorkItem::IsPureVehicle() const
+	{
+		#ifdef CLIENT
+			return base != nullptr && (!prototype || prototype->IsPureVehicle());
+		#else
+			return producing->IsPureVehicle();
+		#endif
+	}
 
 	Component::VehicleBase*	MobileEntityProducer::WorkItem::GetVehicleBase() const
 	{
@@ -214,6 +231,16 @@ namespace Objects
 				}
 				else
 				{
+					Buffer0<Choice>	highChoices;
+					foreach (movementChoices,c)
+					if (WorldEntity::IsAboveTerrain(c->location))
+						highChoices << *c;
+
+					if (highChoices.IsNotEmpty())
+						c = highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location;
+					else
+					{
+
 					auto owner = parent->owner;
 					float best = std::numeric_limits<float>::max();
 					foreach (movementChoices,choice)
@@ -243,6 +270,7 @@ namespace Objects
 					}
 					if (best == 0)
 						c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
+					}
 				}
 			}
 
@@ -324,7 +352,7 @@ namespace Objects
 						if (v->storedIn.expired())
 						{
 							LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
-							if (gatheringPoint.current != Grid::LCellIdI::Invalid && v->IsVehicle())
+							if (gatheringPoint.current != Grid::LCellIdI::Invalid && v->IsPureVehicle())
 							{
 								LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 								v->PlotCourse(gatheringPoint.current,false);

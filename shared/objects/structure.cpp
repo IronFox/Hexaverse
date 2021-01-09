@@ -15,6 +15,7 @@
 #include "faction.h"
 #include "satellite.h"
 #include "vehicle.h"
+#include "subOrbital.h"
 #include "structureCompound.h"
 
 #ifndef CLIENT
@@ -200,11 +201,6 @@ namespace Objects
 				return true;
 		return false;
 	}
-
-
-
-
-
 
 
 	void Structure::StaticSetup()
@@ -577,6 +573,7 @@ namespace Objects
 
 
 
+
 	#ifndef NO_SATELLITES
 		/*virtual override*/ bool		SkyPort::WouldLikeToEnable() const
 		{
@@ -631,11 +628,6 @@ namespace Objects
 
 	
 	#ifndef CLIENT
-
-
-
-
-
 		#ifndef NO_SATELLITES
 			/*virtual override*/ void			SkyPort::OnEnabledChange()
 			{
@@ -746,7 +738,7 @@ namespace Objects
 
 		/*virtual override*/ bool				SkyPort::CanProduce(const PWorldEntity&e) const 
 		{
-			return (e->IsVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
+			return (e->IsPureVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
 				||
 				(e->IsSatellite() && e->GetCTypeName() == ConstName::Type_SkyHub)
 			;

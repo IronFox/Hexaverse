@@ -819,7 +819,7 @@ namespace FileIO
 	static void Export(Riff::Chunk*parent, const Objects::MobileEntityProducer::WorkItem&item)
 	{
 		WorkItemSerializable helper;
-		if (item.producing->IsVehicle())
+		if (item.producing->IsPureVehicle())
 		{
 			Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
 			helper.baseName = v->base->typeName;
@@ -989,7 +989,7 @@ namespace FileIO
 		//stream.Append(v.hasMoved);
 		
 		parent->AppendBlock(RID::vehicle,stream);
-		if (v.IsVehicle())
+		if (v.IsPureVehicle())
 		{
 			Objects::Vehicle&veh = (Objects::Vehicle&)v;
 			Export(parent,RID::vehicleTurret,veh.turret->typeName);

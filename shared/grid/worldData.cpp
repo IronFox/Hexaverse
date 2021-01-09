@@ -4,6 +4,15 @@
 
 #include "../globalEvents.h"
 
+
+namespace ApplicationInterface
+{
+#	ifdef CLIENT
+		void	SignalExtraGridSensorCreation(const World::Sensor&);
+		void	SignalExtraGridSensorRemoval(const World::Sensor&);
+	#endif
+}
+
 namespace World
 {
 	using namespace Grid;
@@ -2009,6 +2018,20 @@ namespace World
 	}
 
 
+	bool		Sensor::DetectsSubOrbitalObjects() const
+	{
+		switch (type)
+		{
+			case SolidSphere:
+			case UpperHalfSolidSphere:
+			case ShadedSphere:
+				return gridCenter.layer >= Grid::CellStack::Range;
+			default:
+				return false;
+		}
+	}
+
+
 	template <count_t Depth>
 		struct Pow
 		{
@@ -2150,6 +2173,22 @@ namespace World
 	}
 
 
+	void			Sensor::InsertInto(World::Data&clientWorld, float t, index_t processorIndex/*=0*/, bool ignoreTargetSensorValidity/*=false*/) const
+	{
+		ApplyTo(clientWorld,+1,t,processorIndex,ignoreTargetSensorValidity);
+		#ifdef CLIENT
+			if (this->gridCenter.layer >= Grid::CellStack::Range)
+				ApplicationInterface::SignalExtraGridSensorCreation(*this);
+		#endif
+	}
+	void			Sensor::RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex/*=0*/, bool ignoreTargetSensorValidity/*=false*/) const
+	{
+		ApplyTo(clientWorld,-1,t,processorIndex,ignoreTargetSensorValidity);
+		#ifdef CLIENT
+			if (this->gridCenter.layer >= Grid::CellStack::Range)
+				ApplicationInterface::SignalExtraGridSensorRemoval(*this);
+		#endif
+	}
 
 
 	void		Sensor::ApplyTo(World::Data&v, short change, float t, index_t processorIndex, bool ignoreTargetSensorValidity/*=false*/)	const

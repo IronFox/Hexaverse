@@ -222,6 +222,7 @@ namespace Objects
 
 		extern Collection<WorldEntity>	all;
 		extern Collection<Structure>	structures;
+		extern Collection<SubOrbital::Plane>		planes;
 		#ifndef NO_SATELLITES
 			extern Collection<Satellite>satellites;
 		#endif
@@ -270,7 +271,6 @@ namespace Objects
 	String			ToString(const EntityType&);
 	EntityType		DecodeType(const String&);
 
-	
 
 	namespace Component
 	{

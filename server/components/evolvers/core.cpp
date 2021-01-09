@@ -3,6 +3,7 @@
 #include <objects/gridAndChoices.h>
 #include <objects/mobileEntity.h>
 #include <objects/faction.h>
+#include <objects/subOrbital.h>
 #include "../state.h"
 #include <objects/t2.h>
 
@@ -359,8 +360,6 @@ namespace Evolver
 		{
 			#ifndef NO_SATELLITES
 				Objects::RefreshSkyHubConnections();
-				if (terrainChanged)
-					LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
 			
 				static Buffer0<Objects::PSatellite>	waste;
 				for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())

@@ -711,7 +711,6 @@ namespace Lua
 		PProgram	GetProgram() const {return prog.lock();}
 		lua_State*	GetState() const {PProgram prog = this->prog.lock(); return prog ? prog->GetState() : nullptr;}
 
-
 		/**
 		Pushes the local reference to the top of the stack
 		*/

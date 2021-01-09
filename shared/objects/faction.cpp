@@ -6,6 +6,7 @@
 #include "prototypes.h"
 #include "satellite.h"
 #include "vehicle.h"
+#include "subOrbital.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
 #include "prototypes.h"
@@ -746,6 +747,8 @@ namespace Objects
 				if (t->turret->CanAttack() && t->turret->attacksMovingHostilesDuringMotionPhase)
 					autoFiringTurrets << t;
 				allTurretBases << t;
+				if (t->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+					subOrbitalSensors.Append(std::make_pair(t,s));
 			}
 		}
 
@@ -758,6 +761,8 @@ namespace Objects
 				if (t->turret->CanAttack() && t->turret->attacksMovingHostilesDuringMotionPhase)
 					DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(t)),s->GetName(),GetLogName());
 				DBG_VERIFY2__(FindAndErase(allTurretBases,To<TurretBase>::Cast(t)),s->GetName(),this->GetLogName());
+				if (t->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+					DBG_VERIFY2__(FindAndEraseF(subOrbitalSensors,[s](const TSubOrbitalSensor&p){return p.second.lock() == s;}), s->GetName(),GetLogName());
 			}
 		}
 
@@ -769,6 +774,8 @@ namespace Objects
 			ASSERT1__(v->storedIn.expired(),v->GetName());
 			LogEvent(EventSignificance::Common,v.get(),"RegisterActiveMobileGain");
 
+			if (v->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+				subOrbitalSensors.Append(std::make_pair(v,v));
 			if (v->turret->attacksMovingHostilesDuringMotionPhase)
 				autoFiringTurrets << v;
 			allTurretBases << v;
@@ -782,6 +789,8 @@ namespace Objects
 						this->skyHubs << To<SkyHub>::Cast(sat);
 				}
 			#endif
+			if (v->IsPlane())
+				this->planes << To<SubOrbital::Plane>::Cast(v);
 		}
 
 		void		Faction::RegisterActiveMobileLoss( const PMobileEntity&e )
@@ -790,6 +799,8 @@ namespace Objects
 			DBG_ASSERT1__(e->storedIn.expired(),e->GetName());
 			LogEvent(EventSignificance::Common,e.get(),"RegisterActiveMobileLoss");
 
+			if (e->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero())
+				DBG_VERIFY2__(FindAndEraseF(subOrbitalSensors,[e](const TSubOrbitalSensor&p){return p.second.lock() == e;}), e->GetName(),GetLogName());
 			if (e->turret->attacksMovingHostilesDuringMotionPhase)
 				DBG_VERIFY2__(FindAndErase(autoFiringTurrets,To<TurretBase>::Cast(e)),e->GetName(),this->GetLogName());
 			DBG_VERIFY2__(FindAndErase(activeMobiles,e),e->GetName(),this->GetLogName());
@@ -803,6 +814,8 @@ namespace Objects
 						DBG_VERIFY2__(FindAndErase(skyHubs,sat),sat->GetName(),GetLogName());
 				}
 			#endif
+			if (e->IsPlane())
+				DBG_VERIFY2__(FindAndErase(planes,To<SubOrbital::Plane>::Cast(e)),e->GetName(),GetLogName());
 		}
 
 
@@ -1300,6 +1313,49 @@ namespace Objects
 			return rs;
 		}
 
+		count_t		Faction::CountOrbitalSensorCoverage(const M::Sphere<>&sphere) const
+		{
+			count_t rs = 0;
+			foreach (subOrbitalSensors,s0)
+			{
+				auto s = s0->second.lock();
+				if (!s)
+				{
+					LogEvent(EventClass::Preset::internalError,"Found abandoned sub orbital sensor");
+					continue;
+				}
+				if (s->empDamageLevel > 0)
+					continue;
+				const float r = s0->first.lock()->GetSubOrbitalScanningRange() + sphere.radius;
+				const float dist = Vec::quadraticDistance(Grid::ToWorld(Grid::LCellIdI(s->location.stackID,SubOrbital::Height)),sphere.center);
+				if (dist <= r*r)
+					rs++;
+			}
+			return rs;
+		}
+
+
+		count_t		Faction::CountOrbitalSensorCoverage(const M::TVec3<>&p) const
+		{
+			count_t rs = 0;
+			foreach (subOrbitalSensors,s0)
+			{
+				auto s = s0->second.lock();
+				if (!s)
+				{
+					LogEvent(EventClass::Preset::internalError,"Found abandoned sub orbital sensor");
+					continue;
+				}
+				if (s->empDamageLevel > 0)
+					continue;
+				const float r = s0->first.lock()->GetSubOrbitalScanningRange();
+				const float dist = Vec::quadraticDistance(Grid::ToWorld(Grid::LCellIdI(s->location.stackID,SubOrbital::Height)),p);
+				if (dist <= r*r)
+					rs++;
+			}
+			return rs;
+		}
+
 		
 		count_t		Faction::CountOffGridCoverage(int channelHeight, const M::TVec3<>&p)	const
 		{
@@ -1307,6 +1363,12 @@ namespace Objects
 				if (Satellite::IsSatelliteHeight(channelHeight))
 					return CountRawSensorCoverage(p,satellites);
 			#endif
+			if (channelHeight == SubOrbital::Height)
+				return 
+					CountRawSensorCoverage(p,planes)
+					+
+					CountOrbitalSensorCoverage(p);
+				;
 
 			return 0;
 		}
@@ -1317,6 +1379,8 @@ namespace Objects
 			#ifndef NO_SATELLITES
 				rs += CountRawSensorCoverage(p,satellites);
 			#endif
+			rs += CountRawSensorCoverage(p,planes);
+			rs += CountOrbitalSensorCoverage(p);
 
 			return rs;
 		}
@@ -1383,7 +1447,7 @@ namespace Objects
 					foreach (Objects::satellites,s)
 					{
 						PSatellite sat = *s;
-						if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
+						if (sat->owner.get() != this && sensor.Contains(sat->location))
 						{
 							if (SignalAppearance(sat,t,true) && newContacts)
 								newContacts->Append(sat);
@@ -1391,6 +1455,19 @@ namespace Objects
 					}
 				}
 			#endif
+			if (sensor.DetectsSubOrbitalObjects())
+			{
+				Objects::SubOrbital::planes.Foreach([&sensor,this,newContacts,&t](const SubOrbital::PPlane&plane)
+				{
+					if (plane->owner.get() != this && sensor.Contains(plane->location))
+					{
+						if (SignalAppearance(plane,t,true) && newContacts)
+							newContacts->Append(plane);
+					}
+				}
+				);
+			}
+			
 		}
 
 		Faction::TSensorLock::~TSensorLock()
@@ -1412,7 +1489,8 @@ namespace Objects
 
 			if (!knownWorld.SensoryIsInvalid())
 			{
-				bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
+				const bool offGrid = sensor.DetectsSubOrbitalObjects();
+					//sensorHeight > Grid::CellStack::TopHeight || sensor.gridCenter.layer >= Grid::CellStack::Range;
 
 				this->VisitVisibleForeignEntities(t,[this,offGrid, sensor,&t](const PWorldEntity&s)
 				{
@@ -1840,6 +1918,7 @@ namespace Objects
 		#ifndef NO_SATELLITES
 			satellites.Foreach(func);
 		#endif
+		SubOrbital::planes.Foreach(func);
 		#ifdef CLIENT
 			MarkerStore::client.GetArtifacts().ForeachMobileGhost(func,include);
 		#endif

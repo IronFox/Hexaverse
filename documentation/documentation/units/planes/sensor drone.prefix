@@ -1,0 +1,9 @@
+{{ img:units/Sensor Drone.png|Sensor Drone}}
+=Sensor Drone=
+*  Health: 4
+*  Price: %Minerals% 40
+*  [[concepts/scanning range|Scanning range]]: 11
+*  Can safely fall down 1 height level
+*  Stationary on ground (supported by water)
+*  Speed: 10 (aerial)
+Sub-orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar.

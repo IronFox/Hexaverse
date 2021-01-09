@@ -40,8 +40,11 @@ namespace Camera
 		float3							targetDirection;			//!< Target camera direction (of the focus position from planet core)
 		float							cameraSpeed = 0;			//!< Direction animation camera speed. Starts off at 0 and accelerates as animation progresses
 		bool							moveToTarget = false;		//!< Set true to animate scene camera to given target. Does not affect @a orbit / @a targetOrbit
-		bool							skyGrid = false;
-		bool							skyOrbitBase = false;
+		#ifndef NO_SATELLITES
+			bool						skyGrid = false;
+		#endif
+		bool							subOrbitGrid = false;
+		//bool							skyOrbitBase = false;
 		float							orbitBaseFactor = 1.f;
 	}
 
@@ -55,14 +58,21 @@ namespace Camera
 		sunDirection.Normalize0();
 	}
 
+	void						TargetSubOrbit()
+	{
+		#ifndef NO_SATELLITES
+			Detail::skyGrid = false;
+		#endif
+		Detail::subOrbitGrid = true;
+	}
 
 	void						TargetSkyOrbit()
 	{
 		#ifndef NO_SATELLITES
-			skyGrid = true;
-			if (skyOrbitBase)
+			subOrbitGrid = false;
+			if (skyGrid)
 				return;
-			skyOrbitBase = true;
+			skyGrid = true;
 			return;
 
 			groundTargetOrbit = targetOrbit;
@@ -104,29 +114,43 @@ namespace Camera
 	void						TargetGroundOrbit()
 	{
 		using namespace Detail;
-		skyGrid = false;
-		if (!skyOrbitBase)
-			return;
-		skyOrbitBase = false;
-		return;
-		targetOrbit = groundTargetOrbit;
-		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+		subOrbitGrid = false;
+		
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
 	}
 
 	void						ToggleOrbit()
 	{
-		if (Detail::skyOrbitBase)
-			TargetGroundOrbit();
-		else
-			TargetSkyOrbit();
-
+		#ifndef NO_SATELLITES
+			if (Detail::subOrbitGrid)
+				TargetSkyOrbit();
+			elif (Detail::skyGrid)
+				TargetGroundOrbit();
+			else
+				TargetSubOrbit();
+		#else
+			if (Detail::subOrbitGrid)
+				TargetGroundOrbit();
+			else
+				TargetSubOrbit();
+		#endif
 	}
 
 	bool						SkyGridIsVisible()
 	{
-		return Detail::skyGrid;
+		#ifndef NO_SATELLITES
+			return Detail::skyGrid;
+		#else
+			return false;
+		#endif
 	}
 
+	bool						SubOrbitalGridIsVisible()
+	{
+		return Detail::subOrbitGrid;
+	}
 
 	void						ChangeGroundRadius(float newOrbit)
 	{
@@ -209,8 +233,10 @@ namespace Camera
 		orbitBaseFactor = 1.f;
 
 		moveToTarget = false;
-		skyOrbitBase = false;
-		skyGrid = false;
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
+		subOrbitGrid = false;
 
 		cameraDistance = 4 * WorldScale;
 		scene.retraction = float3(0, 0, -4 * WorldScale);
@@ -223,16 +249,6 @@ namespace Camera
 	}
 
 
-	namespace Cmd
-	{
-
-		Objects::CommandFlags Check(bool)
-		{
-			return Objects::CommandFlags::IsEnabled | 
-					(Camera::SkyGridIsVisible() ? Objects::CommandFlags::IsPermaActive : Objects::CommandFlags::None);
-		}
-	}
-
 	void							Update();
 
 
@@ -244,12 +260,6 @@ namespace Camera
 		//RebuildCamera();
 
 		hud.UpdateProjection(0,0,1,1,-1,1);
-
-		#ifndef NO_SATELLITES
-		Objects::viewCommands->Add( new 
-			Objects::GlobalCommand("Show Sky Grid", 
-			&Camera::ToggleOrbit, &Cmd::Check));
-		#endif
 
 		GlobalEvents::frameBegin << Update;
 

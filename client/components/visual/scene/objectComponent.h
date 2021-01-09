@@ -73,6 +73,7 @@ namespace Objects
 
 		static void					LoadFor(const String&geometryName, float scale, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 		static void					LoadFor(Objects::Structure&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
+		static void					LoadFor(Objects::SubOrbital::Plane&prototype, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
 
 		template <typename T>
 			static void				LoadFor()
@@ -86,6 +87,8 @@ namespace Objects
 		static void					LoadAll();
 		static StructureHull&		Of(const Objects::Structure&);
 		static StructureHull&		Allocate(Objects::Structure&);
+		static StructureHull&		Of(const Objects::SubOrbital::Plane&);
+		static StructureHull&		Allocate(Objects::SubOrbital::Plane&);
 	};
 
 	class ConnectorHull : public ClientAttachment

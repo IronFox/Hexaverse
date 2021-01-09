@@ -790,6 +790,9 @@ namespace Objects
 		virtual WorkingStructure*	CastToStructure() override {return this;}
 
 	};
+
+
+
 	
 	class Generator : public WorkingStructureT<Generator>
 	{

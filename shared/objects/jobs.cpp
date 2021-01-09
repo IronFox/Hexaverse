@@ -223,7 +223,7 @@ namespace Objects
 		/*virtual override*/ BaseJob::continue_t	DigHorizontal::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{			
 			World::actual.Clear(focus,v.entityTime);
-			if (v.IsVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
+			if (v.IsGroundBoundVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
 					World::actual.Overwrite(focus-1,Grid::Content::Water,v.entityTime);
 			if (World::actual.LowCellIsClear(focus))
 			{
@@ -753,6 +753,43 @@ namespace Objects
 		/*virtual override*/ String			SelfDetonate::GetName() const
 		{
 			return doomsday?"Obliterate (DOOMSDAY)" : "Self-Denotate";
+		}
+
+
+		
+		/*virtual override*/ void			DoomsdayBeamAttack::UpdateEstimations(const MobileEntity&v) 
+		{
+			Super::ResetResourceAndRoundsLeft(Component::SubOrbital::Bomber::doomsdayBeamAttackCosts.GetValue(v.GetResearchState()),v,GetOperationAffinity());
+		}
+
+
+		/*virtual override*/ bool	DoomsdayBeamAttack::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
+		{
+			return true;
+		}
+
+
+		/*virtual override*/ BaseJob::continue_t	DoomsdayBeamAttack::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
+		{
+
+			const auto&state = v.GetResearchState();
+			const float radius = Component::SubOrbital::Bomber::GetDoomsdayExplosionRadius(state);
+			const int damageLevel = Component::SubOrbital::Bomber::GetDoomsdayDamageLevel(state);
+
+			v.OverrideExecuteAttackNow(focus,radius,damageLevel,false,true, v.entityTime);
+
+			return JobDone;
+		}
+
+		/**/					DoomsdayBeamAttack::DoomsdayBeamAttack(const MobileEntity&v, const Grid::LCellIdI&loc)	
+			: Super(Component::SubOrbital::Bomber::doomsdayBeamAttackCosts.GetValue(v.GetResearchState()),
+				v,loc,GetOperationAffinity(),Autocomplete::Always,false
+			)
+		{}
+
+		/*virtual override*/ String			DoomsdayBeamAttack::GetName() const
+		{
+			return "Obliterate (DOOMSDAY)";
 		}
 
 
@@ -1563,13 +1600,13 @@ namespace Objects
 		{
 			const World::Data&world = v.owner->knownWorld;
 //			Grid::LCellIdI destination = _destination;
-			if (v.IsVehicle())
+			if (v.IsGroundBoundVehicle())
 			{
 				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
 				//if (mode == CursorMode::BuildBridgeMode
 				//	&&
-				//	v.IsVehicle()
+				//	v.IsGroundBoundVehicle()
 				//	&& !((Vehicle&)v).CanStandOn(world,destination-1,false,true))
 				//		destination++;
 				if (mode != CursorMode::BuildBridgeMode)
@@ -1608,7 +1645,7 @@ namespace Objects
 		{
 			const World::Data&world = v.owner->knownWorld;
 			Grid::LCellIdI destination = _destination;
-			if (v.IsVehicle())
+			if (v.IsGroundBoundVehicle())
 			{
 				while (!world.LowCellIsClear(destination))
 					destination++;

@@ -1,0 +1,14 @@
+{{ img:units/Anti Aircraft Tower.png|Anti Aircraft Tower}}
+=Anti Aircraft Tower=
+*Based on [[units/turrets/Anti Aircraft|Anti Aircraft]] turret
+*  Health: 10
+*  Price: %Minerals% 50
+*  [[concepts/scanning range|Scanning range]]: 2 [=4-2 (tower modifier)]
+*  [[concepts/attack range|Hrz. Attack range]]: 7 [=5+2 (tower modifier)] (AAMissile)
+*  Sub-orbital [[concepts/scanning range]]: 5
+*  Does not require ammunition
+*  1 attack per round
+*  Explosion radius: 1
+*  Damage: 10
+Sub-orbital planes can be detected and attacked in flight.
+The Anti Aircraft tower-turret intercepts hostile mobile units during their movement [[concepts/phase]] even if itself mounted on a mobile unit. It is thus particularly well suited to establish an ad hoc defense perimeter, or to permanently defend strategically important regions if mounted on a tower.

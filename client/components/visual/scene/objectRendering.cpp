@@ -14,6 +14,7 @@
 #include <objects/gridAndChoices.h>
 #include <runtimeConfig.h>
 #include <objects/systems.h>
+#include <objects/subOrbital.h>
 #include "objectComponent.h"
 #include "terrainInstructions.h"
 #include "terrain.h"
@@ -452,6 +453,17 @@ namespace Objects
 				#endif
 			}
 			break;
+			case TrajectoryType::AAMissile:
+			{
+				const float h = Grid::ToRadius(SubOrbital::Height);	//orbital radius
+				const float r = base->GetFlatAttackRange();
+				//const float hC = sqrt(M::Sqr(h)+M::Sqr(r));
+				const float hC = sqrt(M::Sqr(h) - M::Sqr(r));
+
+				const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
+				RenderFlattenedRangeSphere(d * (hC+Grid::GetLayerHeight(location.height) * 0.5f), r + explosionRadius,d,3.f,color, extended);
+			}
+			break;
 			default:
 				FATAL__("Unsupported trajectory type "+String(base->turret->trajectoryType.ToString()));
 		}
@@ -496,6 +508,7 @@ namespace Objects
 		gatheringPoint.Clear();
 		arrowBuffer.Clear();
 		Objects::ParaboloidBuffer::StaticDestroy();
+
 
 	}
 
@@ -669,6 +682,8 @@ namespace Objects
 			smokeTrailShader.SetTriangles();
 		}
 
+
+
 		{
 			DX11::Shader::Binding bindings[] =
 			{
@@ -784,6 +799,10 @@ namespace Objects
 			foundation.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 			foundation.ibo.Create(geo.GetLOD(0).indices);
 		}
+		
+		
+		VisualTerrain::visibleSubOrbitGrid.orbit = Grid::ToRadius(SubOrbital::Height);
+		VisualTerrain::visibleSubOrbitGrid.Clear();
 
 		
 		GlobalEvents::invalidateObjectCache << ClearSmokeTrailHighlighting;
@@ -857,6 +876,24 @@ namespace Objects
 		}
 	#endif
 
+	static void _RenderSimpleLocated(SubOrbital::Plane&p, const M::TMatrix4<>&system)
+	{
+		const auto t2 = p.t2 != nullptr;
+		const auto&shape = StructureHull::Of(p).shape[t2];
+		display.Render(shape, true);
+		Renderer::RenderComponent(system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY, t2);
+	}
+
+	void	Renderer::RenderSimple(const SubOrbital::Plane&p)
+	{
+		_Locate(p);
+		const auto t2 = p.t2 != nullptr;
+		const auto&shape = StructureHull::Of(p).shape[t2];
+		display.Render(shape, true);
+		Renderer::RenderComponent(p.system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY, t2);
+	}
+
+
 	static void _RenderSimpleLocated(Vehicle&v, const M::TMatrix4<>&system)
 	{
 		Renderer::RenderComponent(system,0,*v.base,0,0,v.t2 != nullptr);
@@ -878,7 +915,12 @@ namespace Objects
 				return;
 			}
 		#endif
-		if (e.IsVehicle())
+		if (e.IsPlane())
+		{
+			_RenderSimpleLocated((SubOrbital::Plane&)e,system);
+			return;
+		}
+		if (e.IsPureVehicle())
 		{
 			_RenderSimpleLocated((Vehicle&)e,system);
 			return;
@@ -1042,6 +1084,34 @@ namespace Objects
 			_RenderSimpleLocated(s,s.system);
 		}
 	#endif
+
+	void	Renderer::Render(SubOrbital::Plane&s, float light)
+	{
+		display.SetObjectMatrix(s.system);
+		{
+			M::TVec3<> color;
+			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
+			{
+				if (s.unstable)
+				{
+					keyColor.Update(float4(flip ? float3() : color,light));
+						
+					if (!flip)
+					{
+
+						//WorkingStructure*ws = static_cast<WorkingStructure*>(&s);
+						if (s.AwaitsUserInteraction())
+						{
+							display.Render(userInteractionNotifier,true);
+						}
+					}
+				}
+				else
+					keyColor.Update(float4(color,light));
+			}
+		}
+		_RenderSimpleLocated(s,s.system);
+	}
 
 	void	Renderer::Render(Structure&s, float light)
 	{
@@ -1319,6 +1389,24 @@ namespace Objects
 				}
 			}
 		#endif
+		SubOrbital::planes.Foreach([](const SubOrbital::PPlane&v)
+		{
+			const float light = GetLowLighting(v->location);
+
+			bool isBuilding = v->IsBuilding();
+			if (isBuilding)
+			{
+				display.SetObjectMatrix(v->system);
+				keyColor.Update(float4(v->owner->activeEntityColor,light));
+				display.Render(cordon,true);
+			}
+			if (v != selectedEntity)
+			{
+				ApplyStateTint(*v,baseTint,false);
+				Renderer::Render(*v,light);
+				ApplyBaseTint(*v,baseTint);
+			}
+		});
 
 
 		if (MarkerStore::client.HasAnyOfType(Objects::MarkerType::Visited))
@@ -1387,7 +1475,9 @@ namespace Objects
 			else
 				if (selectedMobileEntity)
 				{
-					if (selectedVehicle)
+					if (selectedMobileEntity->IsPlane())
+						Renderer::Render(*To<SubOrbital::Plane>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
+					elif (selectedVehicle)
 						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
 					#ifndef NO_SATELLITES
 						elif (selectedMobileEntity->IsSatellite())
@@ -1656,12 +1746,18 @@ namespace Objects
 		{
 			if (m->IsAboveTerrain() != orbital)
 				return;
-			if (m->IsVehicle())
+			if (m->IsPlane())
 			{
-				PVehicle v = To<Vehicle>::Cast(m);
-				Renderer::RenderSimple(*v);
+				SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+				Renderer::RenderSimple(*s);
 			}
 			else
+				if (m->IsPureVehicle())
+				{
+					PVehicle v = To<Vehicle>::Cast(m);
+					Renderer::RenderSimple(*v);
+				}
+				else
 				#ifndef NO_SATELLITES
 					if (m->IsSatellite())
 					{
@@ -1710,12 +1806,18 @@ namespace Objects
 		{
 			if (m->IsAboveTerrain() != orbital)
 				return;
-			if (m->IsVehicle())
+			if (m->IsPlane())
 			{
-				PVehicle v = To<Vehicle>::Cast(m);
-				Renderer::RenderSimple(*v);
+				SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+				Renderer::RenderSimple(*s);
 			}
 			else
+				if (m->IsPureVehicle())
+				{
+					PVehicle v = To<Vehicle>::Cast(m);
+					Renderer::RenderSimple(*v);
+				}
+				else
 				#ifndef NO_SATELLITES
 					if (m->IsSatellite())
 					{
@@ -2194,16 +2296,15 @@ namespace Objects
 					if (first)
 					{
 					//	display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-						SetBeamColor(float4(color,0.5f),
-									float4(color,0.5f));
+						SetBeamColor(float4(color,0.75f),
+									float4(color,0.75f));
 						first = false;
 					}
 					for (const auto&waypoint : t.foci)
 					{
-						RenderBeam(Grid::ToWorld(waypoint.target),Grid::ToRadius(waypoint.target.height) - bottom,
+						RenderBeam(Grid::low.cells[waypoint.target.stackID].cornerCenter*bottom,Grid::ToRadius(waypoint.target.height) - bottom,
 										0.025f);
 					}
-
 				}
 			}
 		}
@@ -2238,6 +2339,13 @@ namespace Objects
 			});
 
 
+		if (objectView)
+			SubOrbital::planes.Foreach([](const SubOrbital::PPlane&p)
+			{
+				RenderFlyingUnitBeams(p);
+			});
+
+		
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
@@ -2419,6 +2527,18 @@ namespace Objects
 		_RenderShadow(s.system,0.f,*s.turret,s.turretAngleX,s.turretAngleY);
 	}
 	#endif
+	static void _RenderShadow(const SubOrbital::Plane&s)
+	{
+		display.SetObjectMatrix(s.system);
+		if (s.IsBuilding())
+		{
+			_RenderShadow(cordon);	//not sure if a cordon is appropriate here, but whatever
+		}
+		const auto t2 = s.t2 != nullptr;
+		const auto&shape = StructureHull::Of(s).shape[t2];
+		_RenderShadow(shape);
+		_RenderShadow(s.system,0.f,*s.turret,s.turretAngleX,s.turretAngleY);
+	}
 
 	void					Renderer::EndShadowRendering()
 	{
@@ -2477,7 +2597,7 @@ namespace Objects
 			#else
 				display.LinkShader(shadowInstruction,false,true);
 
-				vehicles.Foreach([](const Objects::PVehicle&v)
+				vehicles.Foreach([](const PVehicle&v)
 				{
 					_RenderShadow(*v);
 				});
@@ -2487,6 +2607,10 @@ namespace Objects
 						_RenderShadow(*s);
 					});
 				#endif
+				SubOrbital::planes.Foreach([](const SubOrbital::PPlane&v)
+				{
+					_RenderShadow(*v);
+				});
 				display.SetObjectMatrix(M::Matrix<>::eye4);
 
 				structures.Foreach([](const Objects::PStructure&_s)

@@ -410,6 +410,7 @@ namespace ObjectHelper
 		return true;
 	}
 
+
 	
 
 	bool	CanHit(const Objects::PMobileEntity&m, const Grid::LCellIdI&loc)

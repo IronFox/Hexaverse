@@ -1610,6 +1610,8 @@ namespace Receiver
 				return Objects::Component::Operation::Construct;
 			case ConstName::Job_SelfDetonate:
 				return Objects::Component::Operation::SelfDetonate;
+			case ConstName::Job_DoomsdayBeamAttack:
+				return Objects::Component::Operation::FireBeam;
 		}
 		return Objects::Component::Operation::RemoveTerrain;	//shouldn't happen, but not our case to handle here
 	}
@@ -1745,6 +1747,17 @@ namespace Receiver
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
+			case ConstName::Job_DoomsdayBeamAttack:
+			{
+				job.reset(new VehicleJob::DoomsdayBeamAttack(*v,jobLocation));
+				target = v->GetLastPointOfOrigin();
+				target.height = Objects::Component::Turret::GetGroundHeight(v->owner->knownWorld,target);
+				if (target.height == badHeight)
+					target.height = Grid::CellStack::BottomHeight;
+				v->RegisterNewJob("", job,&target);
+				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
+			}
+			break;
 			default:
 			{
 				LogEvent(EventClass::Preset::commandRejected,peer,v,"Illegal job name #"+String(int(sjob.jobName)));
@@ -1807,6 +1820,8 @@ namespace Receiver
 		if (loc.stackID >= Grid::LowSetup::GridType::CellCount)
 			return false;
 		if (loc.height >= Grid::CellStack::BottomHeight && loc.height <= Grid::CellStack::TopHeight)
+			return true;
+		if (loc.height == Objects::SubOrbital::Height)
 			return true;
 		#ifndef NO_SATELLITES
 			if (Objects::Satellite::IsSatelliteHeight(loc.height))

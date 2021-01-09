@@ -2,6 +2,7 @@
 #include "tower.h"
 #include "../structureCompound.h"
 #include "../gridAndChoices.h"
+#include "../subOrbital.h"
 #include "../faction.h"
 #include "../t2.h"
 
@@ -295,6 +296,12 @@ namespace Objects
 
 	/*virtual override*/ void				Tower::VisitSensors( const Grid::LCellIdI&loc, const std::function<void(const World::Sensor&)>&visitor, bool appearance /*= false*/ ) const
 	{
+		const float sub = GetSubOrbitalScanningRange();
+		if (sub > 0)
+		{
+			visitor(World::Sensor(Grid::ToWorld(Grid::LCellIdI(loc.stackID,SubOrbital::Height)),sub,World::Sensor::UpperHalfSolidSphere));
+		}
+
 		if (turret->detectsResources)
 		{
 			const auto center = GetScanningCenter(loc);
@@ -343,6 +350,19 @@ namespace Objects
 	/*virtual override*/ String			Tower::DescribeOperationSpeed(Component::Operation op, const OwnerParameter&owner) const
 	{
 		return turret->operationSpeed[op].Describe(GetResearchState(owner));
+	}
+	/*virtual override*/ float				Tower::GetSubOrbitalScanningRange(const OwnerParameter&owner) const
+	{
+		if (empDamageLevel)
+			return 0;
+		return EMPModify(turret->subOrbitalScanningRange.GetValue(GetResearchState(owner)),1);
+	}
+
+	/*virtual override*/ String				Tower::DescribeSubOrbitalScanningRange(const OwnerParameter&) const
+	{
+		if (empDamageLevel)
+			return 0;
+		return turret->subOrbitalScanningRange.Describe(GetResearchState());
 	}
 	
 

@@ -63,8 +63,7 @@ namespace Objects
 
 	static const float g = 9.80665f;
 
-	CONSTRUCT_ENUMERATION3(TrajectoryType, Artillery, Missile, VerticalBeam);
-
+	CONSTRUCT_ENUMERATION4(TrajectoryType, Artillery, Missile, VerticalBeam,AAMissile);
 
 	/**
 	Determines whether the given trajectory is a vertical beam trajectory.
@@ -131,6 +130,7 @@ namespace Objects
 			Upgrade,
 			AddTerrain,
 			RemoveTerrain,
+			FireBeam,
 
 			N
 		};
@@ -238,10 +238,11 @@ namespace Objects
 		{
 			typedef Base					Super;
 		public:
-			CONSTRUCT_ENUMERATION3(MountType,
+			CONSTRUCT_ENUMERATION4(MountType,
 				Vehicle,
 				TowerOnly,
-				Satellite
+				Satellite,
+				Plane
 			);
 
 
@@ -282,6 +283,7 @@ namespace Objects
 			//}								trajectory;
 			FFunc							horizontalAttackRange,	//geometric firing range
 											scanningRange /*= 10*/,	//geometric scanning range
+											subOrbitalScanningRange /*=-1*/,	//>0 indicates that this turret features an additional scanning bubble in sub orbit
 											groundScanningRange /*= -1.f*/;//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
 			FFunc							groundScannerPenetration /*= 1*/;	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
 			float							continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
@@ -301,6 +303,7 @@ namespace Objects
 												}
 
 			static int						GetGroundHeight(const World::Data&world, const Grid::LCellIdI&location);
+			static int						GetCeilingHeight(const World::Data&world, const Grid::LCellIdI&location);
 			//static void						TraceTrajectory(TrajectoryType, float flatRange, const M::TVec3<>&source, const M::TVec3<>&dest, Buffer0<M::TVec4<> >&outSteps);
 			static ImpactDetails			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
 			static ImpactDetails			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest)
@@ -590,6 +593,7 @@ namespace Objects
 	
 		extern Turret	terraformer,mechanic,
 						artillery,launcher,rockets,emp,armored,
+						antiAircraft,
 						bomb,
 						munitionTransporter,
 						radar,resourceScanner
@@ -597,6 +601,12 @@ namespace Objects
 							,protonCannon,skyHubTurret,ragnarok,starPort
 						#endif
 						;
+
+		namespace SubOrbital
+		{
+			extern Turret		raptor,bomber,cargoPlane,sensorDrone;
+			extern VehicleBase	planeBase;
+		}
 
 	
 		namespace Artillery
@@ -652,6 +662,10 @@ namespace Objects
 			void		Configure(Turret&);
 		}
 
+		namespace AntiAircraft
+		{
+			void		Configure(Turret&);
+		}
 
 		namespace Mechanic
 		{
@@ -678,6 +692,47 @@ namespace Objects
 
 
 
+		namespace SubOrbital
+		{
+			#ifdef HAS_WINDOW
+			namespace Cmd
+			{
+				void	Land();
+				void	TakeOff();
+			}
+			#endif
+
+			namespace Raptor
+			{
+				void	Configure(Turret&);
+			}
+
+			namespace Bomber
+			{
+				extern AttributeWithDefault<int,300>		doomsdayBeamAttackCosts;
+				extern FFunc		doomsdayExplosionRadius;
+				extern IFunc		doomsdayDamageLevel;
+
+				int		GetDoomsdayDamageLevel(const Research::Attributes::Table&);
+				float	GetDoomsdayExplosionRadius(const Research::Attributes::Table&);
+				void	Configure(Turret&);
+			}
+
+			namespace CargoPlane
+			{
+				void	Configure(Turret&);
+			}
+
+			namespace SensorDrone
+			{
+				void	Configure(Turret&);
+			}
+
+			namespace Base
+			{
+				void	Configure(VehicleBase&);
+			}
+		}
 
 	
 

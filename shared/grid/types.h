@@ -8,6 +8,7 @@ typedef DeltaWorks::RNG<std::mt19937>	TwisterRandom;
 namespace World
 {
 	class Data;
+	class Sensor;
 }
 
 

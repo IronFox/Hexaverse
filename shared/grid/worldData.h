@@ -581,20 +581,20 @@ namespace World
 							gridCenter(Grid::high.Locate(center),Grid::CellStack::ToLayer(Grid::HeightFloorFromRadius(center.GetLength()))),
 							radius(radius),type(t), terrainPenetration(terrainPenetration){}
 
-		/**/			Sensor(const Grid::LCellIdI&center, float fLayerOffset, float radius, type_t t)
+		/**/			Sensor(const Grid::LCellIdI&center, float fLayerOffset, float radius, type_t t, int terrainPenetration = 0)
 							:worldCenter(Grid::ToWorld(center,fLayerOffset)),
 							gridCenter(Grid::ToLayered(  Grid::ToHigh(center) )),
-							radius(radius),type(t)	{}
+							radius(radius),type(t), terrainPenetration(terrainPenetration) {}
 
-		/**/			Sensor(const Grid::HCellIdI&center, float fLayerOffset, float radius, type_t t)
+		/**/			Sensor(const Grid::HCellIdI&center, float fLayerOffset, float radius, type_t t, int terrainPenetration = 0)
 							:worldCenter(Grid::ToWorld(center,fLayerOffset)),
 							gridCenter(Grid::ToLayered(center)),
-							radius(radius),type(t)	{}
+							radius(radius),type(t), terrainPenetration(terrainPenetration) {}
 
 		void			ApplyTo(World::Data&clientWorld, short change, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false)	const;
-		void			InsertInto(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const {ApplyTo(clientWorld,+1,t,processorIndex,ignoreTargetSensorValidity);}
-		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const {ApplyTo(clientWorld,-1,t,processorIndex,ignoreTargetSensorValidity);}
-
+		void			InsertInto(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const;
+		void			RemoveFrom(World::Data&clientWorld, float t, index_t processorIndex=0, bool ignoreTargetSensorValidity=false) const;
+		bool			DetectsSubOrbitalObjects() const;
 
 		bool			operator==(const Sensor&other) const
 		{
