@@ -441,8 +441,8 @@ namespace VisualTerrain
 			StaticMesh&	operator<<(index_t index)
 						{
 							index_t idx = index + offset;
-							ASSERT_LESS2__(idx,vertexData.Count(),index,offset);
-							ASSERT_LESS__(idx,0x10000);
+							//DBG_ASSERT_LESS2__(idx,vertexData.Count(),index,offset);	//isn't always appropriate
+							DBG_ASSERT_LESS__(idx,0x10000);
 							indexData << UINT16(idx);
 							return *this;
 						}
