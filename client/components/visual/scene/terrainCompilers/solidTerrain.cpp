@@ -56,7 +56,7 @@ namespace VisualTerrain
 								const int ir,const BaseGrid::TCellNeighborhood&, const CellStack&);
 		void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
 										const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const M::TFloatRange<>&range);
-		void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
+		void	DeliverResults(Hull<TerrainVertex>&solidHull, Hull<OverlayVertex>&coverHull);
 	};
 
 
@@ -157,8 +157,10 @@ namespace VisualTerrain
 
 				solidMesh << TerrainVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, col, 1.f);
 			}
-			solidMesh << 0 << 1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
 		}	
+		for (int j = 0; j < cell.numCorners; j++)
+			solidMesh << 0 << 1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
+
 	}
 
 	
@@ -474,7 +476,7 @@ namespace VisualTerrain
 		}
 	}
 
-	void TerrainCompiler::DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull)
+	void TerrainCompiler::DeliverResults(Hull<TerrainVertex>&solidHull, Hull<OverlayVertex>&coverHull)
 	{
 		if (solidMesh.IsNotEmpty() || coverMesh.IsNotEmpty())
 		{
@@ -498,13 +500,13 @@ namespace VisualTerrain
 
 
 
-	void		CompileSolidTerrain(const Array<Grid::CellStack>&stacks, THull<TerrainVertex>&solid, THull<OverlayVertex>&cover, index_t offset, count_t count, Grid::FClipHeight clipHeight)
+	void		CompileSolidTerrain(const Array<Grid::CellStack>&stacks, Hull<TerrainVertex>&solid, Hull<OverlayVertex>&cover, index_t offset, count_t count, Grid::FClipHeight clipHeight)
 	{
 		const index_t end = offset + count;
 		//SpinLock lock;
 		const count_t numBatches = M::CeilDiv(count,BatchSize);
-		static Array<THull<TerrainVertex> >	hulls;
-		static Array<THull<OverlayVertex> >	covers;
+		static Array<Hull<TerrainVertex> >	hulls;
+		static Array<Hull<OverlayVertex> >	covers;
 		count_t numWorkers = System::ParallelLoop::GetGlobalWorkerCount();
 		if (hulls.Count() < numWorkers)
 		{
@@ -513,7 +515,6 @@ namespace VisualTerrain
 		}
 				
 				
-
 
 		System::ParallelFor(numBatches,8,[end,offset, &stacks, clipHeight](index_t i, index_t workerIndex)
 		{

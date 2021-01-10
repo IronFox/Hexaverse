@@ -19,6 +19,7 @@
 #include "terrainCompilers/water.h"
 #include "terrainCompilers/resourceVisualization.h"
 #include "terrainCompilers/plants.h"
+#include "terrainCompilers/compilerBase.h"
 	
 extern Engine::Display<Engine::DirectX11>	display;
 //namespace Camera
@@ -44,6 +45,7 @@ namespace VisualTerrain
 	M::Box<>	unitSphereFamilyBoundingBox[BaseGrid::NumFamilies];
 	M::Box<>	planetFamilyBoundingBox[BaseGrid::NumFamilies];
 
+	ResourceStackStore stackStore;
 
 
 	void		BakeBlockInstruction(const Array<CellStack>&stacks, BYTE family, FClipHeight clipHeight);
@@ -562,7 +564,7 @@ namespace VisualTerrain
 				TTerrainHull			terrain;	//!< high-resolution solid terrain, no transparency, shaded
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
-				TResourceHull			resources;	//!< low-resolution resource visualization. M::Similar to @a overlay, but uses different shader
+				TResourceCover			resources;	//!< dynamic low-resolution resource visualization. uses multi-lod object instances
 				FixedArray<TPlantHull<TPlantInstance>,PlantType::N>	plants;
 				
 			#endif 
@@ -579,9 +581,6 @@ namespace VisualTerrain
 					terrain.Destroy();
 					overlay.Destroy();
 					water.Destroy();
-					resources.Destroy();
-					//leafBlobs.Destroy();
-					//treeTrunks.Destroy();
 					foreach (plants,p)
 						p->Destroy();
 				#endif
@@ -662,11 +661,6 @@ namespace VisualTerrain
 
 	
 	
-	
-
-	
-	
-
 
 
 	void		BakeBlockInstruction(const Array<CellStack>&stacks, BYTE family, FClipHeight clipHeight)
@@ -694,16 +688,13 @@ namespace VisualTerrain
 		CompilePlants(stacks, dat.plants, offset, members, clipHeight);
 
 		M::Box<> box = M::Box<>::Invalid;
-
-		foreach(dat.terrain.vertices, vtx)
-			box.Include(vtx->vertex.xyz);
-		foreach(dat.water.vertices, vtx)
-			box.Include(vtx->vertex.xyz);
+		box.Include(dat.terrain.GetBounds());
+		box.Include(dat.water.GetBounds());
 		dat.terrainBounds.boundingBox = box;
 		dat.terrainBounds.boundingSphere.center = box.GetCenter();
 		dat.terrainBounds.boundingSphere.radius = 0.f;
-		foreach(dat.terrain.vertices, vtx)
-			dat.terrainBounds.boundingSphere.IncludeSquare(vtx->vertex.xyz);
+		dat.terrain.IncludeSquareIn(dat.terrainBounds.boundingSphere);
+		dat.water.IncludeSquareIn(dat.terrainBounds.boundingSphere);
 		dat.terrainBounds.boundingSphere.radius = sqrt(dat.terrainBounds.boundingSphere.radius);
 
 
@@ -743,31 +734,28 @@ namespace VisualTerrain
 					ASSERT_EQUAL__(p->shadowInstruction.generatedData.protoStride,proto.vDesc.GetStride());
 				}
 
-				if (p->vertices.IsNotEmpty())
+				if (p->HasVertices())
 				{
-					p->instruction.assembled.instances.vbo.CreateFromStructs(p->vertices);
+					p->instruction.assembled.instances.vbo.CreateFromStructs(p->GetVertices());
 				}
 				else
 					p->instruction.assembled.instances.vbo.Clear();
 				p->shadowInstruction.instances.vbo = p->instruction.assembled.instances.vbo;
-				p->instruction.AssertAssembled(p->vertices.IsNotEmpty());
+				p->instruction.AssertAssembled(p->HasVertices());
 			}
 		}
 
-		dat.terrain.instruction[0].vbo.CreateFromStructs(dat.terrain.vertices);
-		dat.terrain.instruction[0].ibo.Create(dat.terrain.indices);
+		LoadHull(dat.terrain.instruction[0],dat.terrain);
 		dat.terrain.shadowInstruction.vbo = dat.terrain.instruction[0].vbo;
 		dat.terrain.shadowInstruction.ibo = dat.terrain.instruction[0].ibo;
 		dat.terrain.instruction[1].vbo = dat.terrain.instruction[0].vbo;
 		dat.terrain.instruction[1].ibo = dat.terrain.instruction[0].ibo;
 		dat.terrain.instruction[2].vbo = dat.terrain.instruction[0].vbo;
 		dat.terrain.instruction[2].ibo = dat.terrain.instruction[0].ibo;
-		dat.overlay.instruction.vbo.CreateFromStructs(dat.overlay.vertices);
-		dat.overlay.instruction.ibo.Create(dat.overlay.indices);
+		LoadHull(dat.overlay.instruction,dat.overlay);
 		dat.overlay.shadowInstruction.vbo = dat.overlay.instruction.vbo;
 		dat.overlay.shadowInstruction.ibo = dat.overlay.instruction.ibo;
-		dat.water.instruction[0].vbo.CreateFromStructs(dat.water.vertices);
-		dat.water.instruction[0].ibo.Create(dat.water.indices);
+		LoadHull(dat.water.instruction[0],dat.water);
 		dat.water.instruction[1].vbo = dat.water.instruction[0].vbo;
 		dat.water.instruction[1].ibo = dat.water.instruction[0].ibo;
 		dat.water.instruction[2].vbo = dat.water.instruction[0].vbo;
@@ -796,28 +784,13 @@ namespace VisualTerrain
 
 		const auto&grid = Grid::low.grid;
 
+
 		dat.resources.Clear();
-		CompileResources(dat.resources,  vis,grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources);
+		CompileResources(dat.resources,  vis,grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight, resources, stackStore);
 
-		M::Box<> box = M::Box<>::Invalid;
+		dat.resourceBounds = dat.resources.CalculateBounds();
 
-		foreach(dat.resources.vertices, vtx)
-			box.Include(vtx->vertex.xyz);
-		dat.resourceBounds.boundingBox = box;
-		dat.resourceBounds.boundingSphere.center = box.GetCenter();
-		dat.resourceBounds.boundingSphere.radius = 0.f;
-		foreach(dat.resources.vertices, vtx)
-			dat.resourceBounds.boundingSphere.IncludeSquare(vtx->vertex.xyz);
-		dat.resourceBounds.boundingSphere.radius = sqrt(dat.resourceBounds.boundingSphere.radius);
-
-
-		if (dat.resources.instruction.shader.IsEmpty())
-		{
-			(DX11::BaseInstructionBlock&)dat.resources.instruction = Instruction::resourceBase;
-		}
-
-		dat.resources.instruction.vbo.CreateFromStructs(dat.resources.vertices);
-		dat.resources.instruction.ibo.Create(dat.resources.indices);
+		stackStore.PrepareRendering(Instruction::resourceBase);
 
 		vis.familyChanged[family] = false;
 	}
@@ -881,10 +854,58 @@ namespace VisualTerrain
 	}
 
 	static const count_t HullTestBatch = 16;
+
+	template <typename T>
+	static bool TestIntersection(const Hull<T>&hull, const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool ignoreBackFacing)
+	{
+		const auto*indices = hull.GetIndices().pointer();
+		const auto cnt = hull.CountIndices();
+		const auto vertices = hull.GetVertices();
+		Sys::SpinLock lock;
+		bool rs = false;
+
+		Concurrency::parallel_for(index_t(0), cnt, index_t(3) * HullTestBatch, [vertices,cnt,&lock, &distance, b, d, &rs, indices, &outNormal,ignoreBackFacing](index_t _i)
+			//for (index_t i = 0; i < hullIndices.Count(); i += 3)
+		{
+			float dist = distance;
+			bool any = false;
+			M::TVec3<> normal;
+			for (index_t i = _i; i < _i + HullTestBatch*3 && i < cnt; i+=3)
+			{
+				auto this_normal = vertices[indices[i]].GetNormal();
+				if (ignoreBackFacing && Vec::dot(this_normal,d) > 0.f)
+					continue;
+				if (M::Obj::detectOpticalIntersection(
+					vertices[indices[i]].vertex.xyz,
+					vertices[indices[i + 1]].vertex.xyz,
+					vertices[indices[i + 2]].vertex.xyz,
+					b, d, dist))
+				{
+					any = true;
+					normal = this_normal;	//correct enough
+				}
+			}
+			if (any)
+			{
+				lock.lock();
+				if (dist < distance)
+				{
+					rs = true;
+					distance = dist;
+					outNormal = normal;	//correct enough
+				}
+				lock.unlock();
+			}
+
+		});
+
+		return rs;
+
+	}
+
 	bool	TestHullIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance, M::TVec3<>&outNormal, bool includeWater, bool ignoreBackFacing/*=true*/, FBoundsCheck boundsCheck, count_t*outNumCheckedFamilies/*=nullptr*/)
 	{
 		bool rs = false;
-		Sys::SpinLock lock;
 		count_t numChecked = 0;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
@@ -894,82 +915,9 @@ namespace VisualTerrain
 			{
 				numChecked++;
 				if (includeWater)
-				{
-					const auto*indices = dat.water.indices.pointer();
+					rs = TestIntersection(dat.water, b, d, distance, outNormal, ignoreBackFacing) || rs;
 
-					Concurrency::parallel_for(index_t(0), dat.water.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal,ignoreBackFacing](index_t _i)
-						//for (index_t i = 0; i < hullIndices.Count(); i += 3)
-					{
-						float dist = distance;
-						bool any = false;
-						M::TVec3<> normal;
-						for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.water.indices.Count(); i+=3)
-						{
-							if (ignoreBackFacing && Vec::dot(dat.water.vertices[indices[i]].normal,d) > 0.f)
-								continue;
-							if (M::Obj::detectOpticalIntersection(
-								dat.water.vertices[indices[i]].vertex.xyz,
-								dat.water.vertices[indices[i + 1]].vertex.xyz,
-								dat.water.vertices[indices[i + 2]].vertex.xyz,
-								b, d, dist))
-							{
-								any = true;
-								normal = dat.water.vertices[indices[i]].normal;	//correct enough
-							}
-						}
-						if (any)
-						{
-							lock.lock();
-							if (dist < distance)
-							{
-								rs = true;
-								distance = dist;
-								outNormal = normal;	//correct enough
-							}
-							lock.unlock();
-						}
-
-					});
-				}
-
-				{
-					const auto*indices = dat.terrain.indices.pointer();
-
-					Concurrency::parallel_for(index_t(0), dat.terrain.indices.Count(), index_t(3) * HullTestBatch, [&lock, &distance, b, d, &rs, &dat, indices, &outNormal,ignoreBackFacing](index_t _i)
-						//for (index_t i = 0; i < hullIndices.Count(); i += 3)
-					{
-						float dist = distance;
-						bool any = false;
-						M::TVec3<> normal;
-						for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.terrain.indices.Count(); i+=3)
-						{
-							if (ignoreBackFacing && Vec::dot(dat.terrain.vertices[indices[i]].normal_structure.xyz,d) > 0.f)
-								continue;
-							if (M::Obj::detectOpticalIntersection(
-								dat.terrain.vertices[indices[i]].vertex.xyz,
-								dat.terrain.vertices[indices[i + 1]].vertex.xyz,
-								dat.terrain.vertices[indices[i + 2]].vertex.xyz,
-								b, d, dist))
-							{
-								any = true;
-								Vec::copy(dat.terrain.vertices[indices[i]].normal_structure.xyz,normal);	//correct enough
-								Vec::div(normal,127.f);
-							}
-						}
-						if (any)
-						{
-							lock.lock();
-							if (dist < distance)
-							{
-								rs = true;
-								distance = dist;
-								outNormal = normal;	//correct enough
-							}
-							lock.unlock();
-						}
-
-					});
-				}
+				rs = TestIntersection(dat.terrain, b, d, distance, outNormal, ignoreBackFacing) || rs;
 			}
 		}
 		if (outNumCheckedFamilies)
@@ -1367,7 +1315,17 @@ namespace VisualTerrain
 		{
 			TFamily::TData&dat = family[k].normal;
 			if (frustum.IsVisible(dat.resourceBounds.boundingSphere))
-				display.Render(dat.resources.instruction);
+				foreach (dat.resources.regularStacks,stack)
+					if (frustum.IsVisible(stack->bounds.boundingSphere))
+						stackStore.Render(*stack);
+		}
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			TFamily::TData&dat = family[k].normal;
+			if (frustum.IsVisible(dat.resourceBounds.boundingSphere))
+				foreach (dat.resources.occupiedStacks,stack)
+					if (frustum.IsVisible(stack->bounds.boundingSphere))
+						stackStore.Render(*stack);
 		}
 	}
 

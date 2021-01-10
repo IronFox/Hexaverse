@@ -519,7 +519,7 @@ namespace VisualTerrain
 		});
 
 		foreach (plants,p)
-			outPlants[p->type].vertices.Append(*p);
+			outPlants[p->type] << *p;
 		plants.Clear();
 	}
 

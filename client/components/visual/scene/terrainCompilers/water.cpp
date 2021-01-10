@@ -36,7 +36,7 @@ namespace VisualTerrain
 		}
 
 
-		void	Compile(const index_t offset, const index_t end, THull<WaterVertex>&, Sys::SpinLock&lock);
+		void	Compile(const index_t offset, const index_t end, Hull<WaterVertex>&, Sys::SpinLock&lock);
 		void	CompileLayer(	const index_t i, const UINT ih, const CellStack&stack,
 								const int clipH,const BaseGrid::TNetCell&cell,
 								const BaseGrid::TCellNeighborhood&neighborhood, bool localEMP);
@@ -259,8 +259,9 @@ namespace VisualTerrain
 				mesh << WaterVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, brightness,empMix);
 			}
 					
-			mesh << 0 <<  1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
 		}
+		for (int j = 0; j < cell.numCorners; j++)
+			mesh << 0 <<  1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
 	}
 
 
@@ -358,7 +359,7 @@ namespace VisualTerrain
 	}
 
 
-	void	WaterCompiler::Compile(const index_t offset, const index_t end, THull<WaterVertex>&coverHull, Sys::SpinLock&lock)
+	void	WaterCompiler::Compile(const index_t offset, const index_t end, Hull<WaterVertex>&coverHull, Sys::SpinLock&lock)
 	{
 
 		//for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
@@ -459,7 +460,7 @@ namespace VisualTerrain
 
 
 
-	void		CompileWater(const Array<Grid::CellStack>&stacks, THull<WaterVertex>&cover, index_t offset, count_t count, Grid::FClipHeight clipHeight)
+	void		CompileWater(const Array<Grid::CellStack>&stacks, Hull<WaterVertex>&cover, index_t offset, count_t count, Grid::FClipHeight clipHeight)
 	{
 		const index_t end = offset + count;
 		Sys::SpinLock lock;

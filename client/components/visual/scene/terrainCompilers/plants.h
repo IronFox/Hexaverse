@@ -36,6 +36,12 @@ namespace VisualTerrain
 			this->scale = scale;
 			this->color = color;
 		}
+
+
+		const M::TVec3<>&	GetPosition() const
+		{
+			return position;
+		}
 	};
 
 	static_assert(sizeof(TPlantInstance)==52,"Bad struct alignment");	//this data is uploaded to the gpu so must be compact
@@ -66,9 +72,9 @@ namespace VisualTerrain
 	
 	
 	template <typename TPlant>
-		struct TPlantHull : public TPointSet<TPlant>
+		struct TPlantHull : public PlainPointSet<TPlant>
 		{
-			typedef TPointSet<TPlant>			Super;
+			typedef PlainPointSet<TPlant>		Super;
 			ShadedInstructionBlock32I			instruction;
 			Engine::DX11::InstructionBlock32I	shadowInstruction;
 

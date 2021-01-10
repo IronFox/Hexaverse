@@ -506,7 +506,7 @@ namespace Objects
 			this->storageMax += storageMax;
 		}
 
-		bool	CoreVector::SampleWorld(index_t lowCellID)
+		bool	CoreVector::SampleWorld(index_t lowCellID, bool translateToActual/*=true*/)
 		{
 			#ifdef CLIENT
 				if (!Grid::ResourceDiscovery::client.resourcesDiscovered[lowCellID])
@@ -515,9 +515,13 @@ namespace Objects
 					return false;
 				}
 			#endif
-			fuel = Grid::Resource::GetFuel().coverage[lowCellID] *TranslationFactor;
-			minerals = Grid::Resource::GetMinerals().coverage[lowCellID] *TranslationFactor;
-			uranium = Grid::Resource::GetUranium().coverage[lowCellID] *TranslationFactor;
+			fuel = Grid::Resource::GetFuel().coverage[lowCellID];
+			minerals = Grid::Resource::GetMinerals().coverage[lowCellID];
+			uranium = Grid::Resource::GetUranium().coverage[lowCellID];
+
+			if (translateToActual)
+				this->operator*=(TranslationFactor);
+
 			return true;
 		}
 

@@ -529,6 +529,9 @@ namespace Grid
 		float	sum=0;
 		count_t	numSamples=0;
 
+		/**/	TDistanceRange():Super(M::TFloatRange<>::Invalid)
+		{}
+
 		void	Include(float distance)
 		{
 			Super::Include(distance);

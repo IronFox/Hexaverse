@@ -24,8 +24,9 @@ struct V2P
 
 void vsMain(A2V input, out V2P output)
 {
-	output.normal = input.normal.xyz;
-	output.world = input.position.xyz;
+	output.normal = normalize(mul(ObjectMatrix,float4(input.normal.xyz,0.0)).xyz);
+	output.world = mul(ObjectMatrix,float4(input.position.xyz,1.0)).xyz;
+
 	output.position = TransformAndProject(output.world);
 	output.color = input.color;
 }
@@ -42,8 +43,6 @@ float4 psMain(V2P input) : SV_TARGET
 
 	return float4(input.color.rgb * (0.5 + 0.5 * fresnel) * marker,
 					 0.2+color*0.7 + max(0.0,fresnel-0.25)*0.75);
-
-	//float4(0.7, 1.3, 0.8, smoothstep(0.8, 0.9, input.sourceOpacity));;
 }
 
 

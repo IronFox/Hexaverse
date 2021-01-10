@@ -464,10 +464,18 @@ namespace Objects
 		struct CoreVector
 		{
 			typedef CoreVector Self;
+			typedef unsigned T;
 
-			unsigned	fuel,
+			union
+			{
+				struct
+				{
+					T	fuel,
 						minerals,
 						uranium;
+				};
+				T		array[3];
+			};
 
 			/*
 			Minimum stack height is 2. Translation <3 = 2 means that there are only 4 yield on those areas. As a result a fuel mine on such a location cannot pay for itself.
@@ -476,6 +484,20 @@ namespace Objects
 
 			/**/	CoreVector():fuel(0),minerals(0),uranium(0)	{}
 
+			friend hash_t	Hash(const Self&s)
+			{
+				return HashValue().AddGeneric(s.fuel).AddGeneric(s.minerals).AddGeneric(s.uranium);
+			}
+
+			bool	operator==(const Self&other) const
+			{
+				return fuel == other.fuel && minerals == other.minerals && uranium == other.uranium;
+			}
+
+			bool	operator!=(const Self&other) const
+			{
+				return !operator==(other);
+			}
 
 			void	operator=(const Vector&vec)
 			{
@@ -491,15 +513,43 @@ namespace Objects
 				minerals *= fc;
 				uranium *= fc;
 			}
-			bool	SampleWorld(index_t lowCellID);
+
+			T		GetSum() const {return fuel + minerals + uranium;}
+
+			constexpr count_t Count() const {return ARRAYSIZE(array);}
+
+			T		operator[](index_t resIdx) const
+			{
+				DBG_ASSERT_LESS__(resIdx, Count());
+				return array[resIdx];
+			}
+
+			ID	GetResource(index_t resIdx) const
+			{
+				switch (resIdx)
+				{
+					case 0:
+						return Fuel;
+					case 1:
+						return Minerals;
+					case 2:
+						return Uranium;
+					static_assert(ARRAYSIZE(array)==3,"Expand switch here");
+				}
+				FATAL__("Bad resource index given: "+String(resIdx));
+				return Fuel;
+			}
+	
+
+			bool	SampleWorld(index_t lowCellID, bool translateToActual=true);
 			bool	IsNotEmpty() const {return fuel != 0 || minerals != 0 || uranium != 0;}
 			bool	IsEmpty() const {return fuel == 0 && minerals == 0 && uranium == 0;}
 
 			friend void	Deserialize(IReadStream&s, Self&v)
 			{
-				v.fuel = (unsigned)s.ReadSize();
-				v.minerals = (unsigned)s.ReadSize();
-				v.uranium = (unsigned)s.ReadSize();
+				v.fuel = (T)s.ReadSize();
+				v.minerals = (T)s.ReadSize();
+				v.uranium = (T)s.ReadSize();
 			}
 			friend void	Serialize(IWriteStream&s, const Self&v)
 			{

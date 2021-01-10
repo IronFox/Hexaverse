@@ -5,6 +5,7 @@
 #include <math/matrix.h>
 #include <math/vclasses.h>
 #include "shadedRenderInstruction.h"
+#include "terrainCompilers/compilerBase.h"
 
 namespace VisualTerrain
 {
@@ -169,12 +170,7 @@ namespace VisualTerrain
 
 	};
 
-	struct TBounds
-	{
-		M::Box<>						boundingBox;
-		M::Sphere<>					boundingSphere;
 
-	};
 
 	extern OrbitGrid	visibleSubOrbitGrid;
 	typedef std::function<bool(const TBounds&, const M::TVec3<>&, const M::TVec3<>&, float)> FBoundsCheck;

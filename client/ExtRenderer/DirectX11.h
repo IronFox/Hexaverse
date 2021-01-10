@@ -57,10 +57,14 @@ namespace Engine
 			private:
 				T*			_handle;
 			public:
+				typedef Handle<T> Self;
+
 				/**/		Handle():_handle(NULL)	{}
-				/**/		Handle(const Handle<T>&other):_handle(other._handle)	{if (_handle) _handle->AddRef();}
+				/**/		Handle(const Self&other):_handle(other._handle)	{if (_handle) _handle->AddRef();}
+				/**/		Handle(Self&&other):_handle(other._handle) {other._handle = nullptr;}
 				/**/		~Handle()	{if (!application_shutting_down) Clear();}
-				Handle<T>&	operator=(const Handle<T>&other)	{Clear(); _handle = other._handle; if (_handle) _handle->AddRef(); return *this;}
+				Self&		operator=(const Self&other)	{Clear(); _handle = other._handle; if (_handle) _handle->AddRef(); return *this;}
+				Self&		operator=(Self&&other) {Clear(); _handle = other._handle; other._handle = nullptr; return *this;}
 				T*			operator->() const	{return _handle;}
 				operator	T*() const {return _handle;}
 				bool		IsSet()	const	{return _handle != NULL;}
@@ -70,10 +74,16 @@ namespace Engine
 				T*const*	Reference() const {return &_handle;}
 				void		Clear()		{if (_handle) _handle->Release(); _handle = NULL;}
 				void		Release()	{Clear();}
-				void		swap(Handle<T>&other)	{std::swap(_handle,other._handle);}
-				bool		operator==(const Handle<T>&other) const {return _handle == other._handle;}
-				bool		operator!=(const Handle<T>&other) const	{return _handle != other._handle;}
+				void		swap(Self&other)	{std::swap(_handle,other._handle);}
+				bool		operator==(const Self&other) const {return _handle == other._handle;}
+				bool		operator!=(const Self&other) const	{return _handle != other._handle;}
 				bool		operator!()	{return _handle == NULL;}
+
+
+				friend void swap(Self&a, Self&b)
+				{
+					a.swap(b);
+				}
 			};
 
 
@@ -112,6 +122,15 @@ namespace Engine
 			The input slot class will be set as specified.
 			*/
 			void	AddAsNewStream(const VertexDescription&other, D3D11_INPUT_CLASSIFICATION newClass);
+
+			friend void swap(Self&a, Self&b)
+			{
+				using std::swap;
+				swap(a.desc,b.desc);
+				for (index_t i = 0; i < ARRAYSIZE(stride); i++)
+					swap(a.stride[i],b.stride[i]);
+				swap(a.atStream,b.atStream);
+			}
 		};
 
 
@@ -328,6 +347,12 @@ namespace Engine
 				geometryStage.swap(other.geometryStage);
 				pixelStage.swap(other.pixelStage);
 			}
+
+			friend void			swap(Shader&a, Shader&b)
+			{
+				a.swap(b);
+			}
+
 			VertexLayout		BuildLayout(const VertexDescription&) const;
 
 			void				LoadFromFile(const PathString&filename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
@@ -376,6 +401,11 @@ namespace Engine
 			size_t				GetByteSize() const {return numBytes;}
 			void				swap(BaseBuffer&other)	{handle.swap(other.handle); std::swap(access,other.access); std::swap(numBytes,other.numBytes);}
 			String				ToString() const { return "handle="+String((void*)handle)+", access="+access.ToString()+", bytes="+String(numBytes); }
+
+			friend void			swap(BaseBuffer&a, BaseBuffer&b)
+			{
+				a.swap(b);
+			}
 		};
 
 		template <typename T>
@@ -418,7 +448,7 @@ namespace Engine
 			typedef BaseBuffer	Super;
 			friend class StreamOutBuffer;
 
-			void			Override(const BaseBuffer&buf, count_t numEntries) {((Super&)*this) = buf; this->numEntries = numEntries;}
+			void				Override(const BaseBuffer&buf, count_t numEntries) {((Super&)*this) = buf; this->numEntries = numEntries;}
 		protected:
 			count_t				numEntries;
 			friend class DirectX11;
@@ -427,11 +457,19 @@ namespace Engine
 			void				Create(const void*data, size_t numBytes, count_t numEntries, BufferAccess, UINT bindFlags);
 			//void				Update(const void*data, size_t numBytes);
 		public:
+			typedef ArrayBuffer	Self;
+
 			/**/				ArrayBuffer():numEntries(0)	{}
 			count_t				GetEntryCount() const {return numEntries;}
 			void				Clear()	{Super::Clear();numEntries = 0;}
 			void				swap(ArrayBuffer&other)	{Super::swap(other); std::swap(numEntries,other.numEntries);}
 			String				ToString() const { return Super::ToString() + ", entries=" + String(numEntries); }
+
+			friend void		swap(Self&a, Self&b)
+			{
+				a.swap(b);
+			}
+
 		};
 
 
@@ -441,10 +479,19 @@ namespace Engine
 				typedef ArrayBuffer	Super;
 
 			public:
+				typedef	TypedBuffer<T>	Self;
+
 				void			Update(const T*data, count_t numEntries)	{Super::Update(data,sizeof(T)*numEntries);}
 				void			Update(const ArrayRef<T>&data)	{Update(data.pointer(),data.GetLength());}
 				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.GetLength());}
 				String			ToString() const { return Super::ToString()+", esize=" + String(sizeof(T)); }
+
+				friend void		swap(Self&a, Self&b)
+				{
+					using std::swap;
+					swap((Super&)a,(Super&)b);
+				}
+
 			};
 
 		class VBO : public BaseBuffer
@@ -478,6 +525,8 @@ namespace Engine
 			void				swap(VBO&other)	{Super::swap(other); std::swap(vertexCount,other.vertexCount);}
 
 			String				ToString() const { return Super::ToString() + ", vcnt=" + String(vertexCount); }
+
+			friend void			swap(VBO&a, VBO&b) {a.swap(b);}
 		};
 
 		class StreamVBO : public VBO
@@ -494,10 +543,18 @@ namespace Engine
 			{
 				typedef TypedBuffer<T>	Super;
 			public:
+				typedef IBO<T>	Self;
+
 				void			Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
 				void			Create(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
 				void			Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
 				void			Create(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(&*data.begin(),data.size(),access);}
+
+				friend void		swap(Self&a, Self&b)
+				{
+					using std::swap;
+					swap((Super&)a,(Super&)b);
+				}
 			};
 
 		typedef IBO<UINT16>	IBO16;
@@ -589,6 +646,11 @@ namespace Engine
 			void				swap(StreamOutBuffer&other)	{Super::swap(other); std::swap(usage,other.usage);stageBuffer.swap(other.stageBuffer);/*view.swap(other.view);*/}
 
 			void				Clear()	{Super::Clear();/*view.Clear();*/stageBuffer.Clear();usage=NoUsage;}
+
+			friend void			swap(StreamOutBuffer&a, StreamOutBuffer&b)
+			{
+				a.swap(b);
+			}
 			//Handle<ID3D11ShaderResourceView>	GetView() const {return view;}
 		private:
 			usage_t				usage;
@@ -632,12 +694,24 @@ namespace Engine
 
 		struct ShaderInstructionBlock
 		{
+			typedef ShaderInstructionBlock Self;
+
 			Shader					shader;
 			D3D11_PRIMITIVE_TOPOLOGY	topology;
 			Array<DX11::Texture>	quickSlots;
 			VertexLayout			layout;
 			UINT					stride;
 
+			friend void				swap(Self&a, Self&b)
+			{
+				using std::swap;
+
+				swap(a.shader,b.shader);
+				swap(a.topology,b.topology);
+				swap(a.quickSlots,b.quickSlots);
+				swap(a.layout,b.layout);
+				swap(a.stride,b.stride);
+			}
 
 			/**/					ShaderInstructionBlock():topology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST),stride(0)	{}
 			virtual					~ShaderInstructionBlock(){};
@@ -650,10 +724,24 @@ namespace Engine
 		struct BaseInstructionBlock : public ShaderInstructionBlock
 		{
 			typedef ShaderInstructionBlock	Super;
+			typedef BaseInstructionBlock	Self;
 
 			VBO						vbo;
 			VertexDescription		binding;
 			StreamOutBuffer			streamOutTarget;
+
+
+
+			friend void				swap(Self&a, Self&b)
+			{
+				using std::swap;
+
+				swap((Super&)a,(Super&)b);
+				swap(a.vbo,b.vbo);
+				swap(a.binding,b.binding);
+				swap(a.streamOutTarget,b.streamOutTarget);
+			}
+
 
 			/**/					BaseInstructionBlock()	{}
 			
@@ -686,6 +774,9 @@ namespace Engine
 
 		struct InstructionBlock16 : public BaseInstructionBlock
 		{
+			typedef InstructionBlock16		Self;
+			typedef BaseInstructionBlock	Super;
+
 			IBO16					ibo;
 			/**/					InstructionBlock16()	{SetTriangles();}
 			explicit				InstructionBlock16(const BaseInstructionBlock&base) : BaseInstructionBlock(base)	{SetTriangles();}
@@ -695,10 +786,22 @@ namespace Engine
 				(*this) = InstructionBlock16();
 			}
 
+
+			friend void				swap(Self&a, Self&b)
+			{
+				using std::swap;
+
+				swap((Super&)a,(Super&)b);
+				swap(a.ibo,b.ibo);
+			}
+
 		};
 
 		struct InstructionBlock32 : public BaseInstructionBlock
 		{
+			typedef InstructionBlock32		Self;
+			typedef BaseInstructionBlock	Super;
+
 			IBO32					ibo;
 			/**/					InstructionBlock32()	{SetTriangles();}
 			explicit				InstructionBlock32(const BaseInstructionBlock&base) : BaseInstructionBlock(base)	{SetTriangles();}
@@ -706,6 +809,14 @@ namespace Engine
 			void					Clear()
 			{
 				(*this) = InstructionBlock32();
+			}
+
+			friend void				swap(Self&a, Self&b)
+			{
+				using std::swap;
+
+				swap((Super&)a,(Super&)b);
+				swap(a.ibo,b.ibo);
 			}
 		};
 

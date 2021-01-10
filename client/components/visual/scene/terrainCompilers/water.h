@@ -13,15 +13,20 @@ namespace VisualTerrain
 
 		/**/		WaterVertex()	{};
 		/**/		WaterVertex(const float4&vtx, float h, const float3&n,float light, int emp) : vertex(vtx.xyz*h, vtx.w), normal(n),light((float(emp) + 0.05f + light*0.9f) * 0.25f ){}
+
+		const M::TVec3<>&	GetPosition() const {return vertex.xyz;}
+
+		const M::TVec3<>&	GetNormal() const {return normal;}
 	};
 
-	struct TWaterHull : public THull<WaterVertex>
+	struct TWaterHull : public Hull<WaterVertex>
 	{
+		typedef Hull<WaterVertex>	Super;
 		ShadedInstructionBlock32	instruction[3];
 
 		void						Destroy()
 		{
-			THull<WaterVertex>::Clear();
+			Super::Clear();
 			instruction[0].Clear();
 			instruction[1].Clear();
 			instruction[2].Clear();
@@ -29,7 +34,7 @@ namespace VisualTerrain
 	};
 
 	
-	void		CompileWater(const Array<Grid::CellStack>&stacks, THull<WaterVertex>&cover, index_t offset, count_t count, Grid::FClipHeight clipHeight);
+	void		CompileWater(const Array<Grid::CellStack>&stacks, Hull<WaterVertex>&cover, index_t offset, count_t count, Grid::FClipHeight clipHeight);
 }
 
 #endif

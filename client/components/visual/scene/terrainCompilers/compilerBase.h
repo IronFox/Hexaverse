@@ -11,6 +11,11 @@ namespace VisualTerrain
 {
 	static const constexpr count_t BatchSize = 16;	//the bigger, the less paralism, but the less the overhead during locking (since more work per locking)
 
+	struct TBounds
+	{
+		M::Box<>					boundingBox;
+		M::Sphere<>					boundingSphere;
+	};
 
 
 	struct TWeightedColor;
@@ -87,11 +92,36 @@ namespace VisualTerrain
 	TWeightedColor	GetMixColorU(const Grid::CellStack&stack, unsigned layer, Grid::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Grid::Content&outContent);
 	TWeightedColor	GetDownMixColorU(const Grid::CellStack&stack, unsigned layer, Grid::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Grid::Content&outContent);
 
-	template <typename Vtx>
-		struct TPointSet
-		{
-			Buffer<Vtx, 0>	vertices;
 
+
+	
+
+	
+
+	template <typename Idx>
+		concept IsIndex =	std::integral<Idx>
+							&&
+							requires(Idx idx) {{UINT32(idx)};};
+
+	template<typename Vtx>
+		concept IsValidVertex = requires(const Vtx&v) {{ v.GetPosition()} -> std::convertible_to<M::TVec3<> >;};
+
+
+
+
+
+	template <typename Vtx>
+		class PlainPointSet
+		{
+		public:
+			typedef PlainPointSet<Vtx> Self;
+
+
+			friend void swap(Self&a, Self&b)
+			{
+				using std::swap;
+				swap(a.vertices,b.vertices);
+			}
 
 			void			Clear()
 			{
@@ -99,20 +129,137 @@ namespace VisualTerrain
 			}
 
 
-			void		AppendTo(TPointSet<Vtx>&set) const
+			void		AppendTo(Self&set) const
 			{
 				set.vertices.AppendAll(vertices);
 			}
 
+			void		Append(const ArrayRef<const Vtx>&ref)
+			{
+				index_t at = vertices.Count();
+				vertices.Append(ref.begin(),ref.Count());
+			}
+
+			Self&		operator<<(const Vtx&v)
+			{
+				vertices << v;
+				return *this;
+			}
+
+
+
+			ArrayRef<Vtx>	GetVertices() const
+			{
+				return vertices.ToRef();
+			}
+
+			const Vtx&	operator[](index_t idx) const
+			{
+				return vertices[idx];
+			}
+
+			bool		HasVertices() const
+			{
+				return vertices.IsNotEmpty();
+			}
+
+			count_t		CountVertices() const
+			{
+				return vertices.Count();
+			}
+
+		private:
+			Buffer0<Vtx>	vertices;
+		};
+
+	template <typename Vtx> 
+		requires IsValidVertex<Vtx>
+		class PointSet : public PlainPointSet<Vtx>
+		{
+		public:
+			typedef PointSet<Vtx> Self;
+			typedef PlainPointSet<Vtx> Super;
+
+			friend void swap(Self&a, Self&b)
+			{
+				using std::swap;
+				swap((Super&)a,(Super&)b);
+				swap(a.box,b.box);
+			}
+
+			void			Clear()
+			{
+				Super::Clear();
+				box = M::Box<>::Invalid;
+			}
+
+
+			void		AppendTo(Self&set) const
+			{
+				Super::AppendTo((Super&)set);
+				set.box.Include(box);
+			}
+
+			void		Append(const ArrayRef<const Vtx>&ref)
+			{
+				index_t at = Super::CountVertices();
+				Super::Append(ref);
+				for (index_t i = at; i < Super::CountVertices(); i++)
+					box.Include((*this)[i].GetPosition());
+			}
+
+			Self&		operator<<(const Vtx&v)
+			{
+				Super::operator<<(v);
+				box.Include(v.GetPosition());
+				return *this;
+			}
+
+
+			const M::Box<>&	GetBounds() const
+			{
+				return box;
+			}
+
+			void			IncludeSquareIn(M::Sphere<>&sphere) const
+			{
+				for (const auto&v : Super::GetVertices())
+					sphere.IncludeSquare(v.GetPosition());
+			}
+
+			M::Sphere<>		GetBoundingSphere() const
+			{
+				M::Sphere<> rs;
+				box.GetCenter(rs.center);
+
+				rs.radius = 0;
+
+				IncludeSquareIn(rs);
+
+				rs.radius = sqrt(rs.radius);
+				return rs;
+			}
+
+
+		private:
+			M::Box<>		box = M::Box<>::Invalid;
 		};
 
 	template <typename Vtx>
-		struct THull : public TPointSet<Vtx>
+		requires IsValidVertex<Vtx>
+		class Hull : public PointSet<Vtx>
 		{
-			typedef TPointSet<Vtx>	Super;
+		public:
+			typedef PointSet<Vtx>	Super;
+			typedef Hull<Vtx> Self;
 
-			Buffer<UINT32, 0>	indices;
 
+			friend void swap(Self&a, Self&b)
+			{
+				using std::swap;
+				swap((Super&)a,(Super&)b);
+				swap(a.indices,b.indices);
+			}
 
 			void			Clear()
 			{
@@ -120,22 +267,59 @@ namespace VisualTerrain
 				indices.Clear();
 			}
 
-			void		AppendTo(THull<Vtx>&hull) const
+			void		AppendIndex(UINT32 idx)
 			{
-				UINT32 offset = (UINT32)hull.vertices.Count();
-				Super::AppendTo(hull);
-				const UINT32*iFrom = indices.pointer();
-				UINT32*iTo = hull.indices.AppendRow(this->indices.Count());
-				while (iFrom != this->indices.end())
-				{
-					(*iTo) = (*iFrom) + offset;
-					iFrom++;
-					iTo++;
-				}
-				DBG_ASSERT__(iTo == hull.indices.end());
+				indices << idx;
+				DBG_ASSERT_LESS__(idx, Super::CountVertices());
 			}
+
+			void		AppendTo(Self&hull) const
+			{
+				UINT32 offset = (UINT32)hull.CountVertices();
+				Super::AppendTo(hull);
+				hull.AppendOffsetIndices(indices.ToRef().Const(),offset);
+			}
+
+
+			template <typename Idx>
+				requires IsIndex<Idx>
+				void		AppendOffsetIndices(const ArrayRef<const Idx>&indices, UINT32 offset)
+				{
+					auto iFrom = indices.begin();
+					UINT32*iTo = this->indices.AppendRow(indices.size());
+					while (iFrom != indices.end())
+					{
+						(*iTo) = UINT32(*iFrom) + offset;
+						DBG_ASSERT_LESS__((*iTo),Super::CountVertices());
+						iFrom++;
+						iTo++;
+					}
+					DBG_ASSERT__(iTo == this->indices.end());
+				}
+
+			ArrayRef<UINT32>	GetIndices() const
+			{
+				return indices.ToRef();
+			}
+
+			count_t				CountIndices() const
+			{
+				return indices.Count();
+			}
+
+		private:
+			Buffer<UINT32, 0>	indices;
 		};
 
+
+	
+	template <typename T>
+		requires IsValidVertex<T>
+		static void LoadHull(Engine::DX11::InstructionBlock32&inst, const Hull<T>&hull)
+		{
+			inst.vbo.CreateFromStructs(hull.GetVertices());
+			inst.ibo.Create(hull.GetIndices());
+		}
 
 	template <typename T, count_t maxElements>
 		class StaticList
@@ -200,6 +384,8 @@ namespace VisualTerrain
 			bool		IsEmpty() const {return current == data;}
 			bool		IsNotEmpty() const {return current != data;}
 
+			ArrayRef<T const>	ToRef() const {return ArrayRef<const T>(data,Count());} 
+
 		};
 
 	/**
@@ -242,28 +428,22 @@ namespace VisualTerrain
 
 			StaticMesh&	Quad(int i0, int i1, int i2, int i3)
 						{
-							indexData << UINT16(i0) + offset;
-							indexData << UINT16(i1) + offset;
-							indexData << UINT16(i2) + offset;
-							indexData << UINT16(i0) + offset;
-							indexData << UINT16(i2) + offset;
-							indexData << UINT16(i3) + offset;
-							return *this;
+							return *this
+								<< i0 << i1 << i2
+								<< i0 << i2 << i3
+							;
 						}
 
 			StaticMesh&	InvQuad(int i0, int i1, int i2, int i3)
 						{
-							indexData << UINT16(i0) + offset;
-							indexData << UINT16(i2) + offset;
-							indexData << UINT16(i1) + offset;
-							indexData << UINT16(i0) + offset;
-							indexData << UINT16(i3) + offset;
-							indexData << UINT16(i2) + offset;
-							return *this;
+							return Quad(i3,i2,i1,i0);
 						}
-			StaticMesh&	operator<<(UINT16 index)
+			StaticMesh&	operator<<(index_t index)
 						{
-							indexData << index + offset;
+							index_t idx = index + offset;
+							ASSERT_LESS2__(idx,vertexData.Count(),index,offset);
+							ASSERT_LESS__(idx,0x10000);
+							indexData << UINT16(idx);
 							return *this;
 						}
 			StaticMesh&	operator<<(const Vtx&vtx)
@@ -275,24 +455,14 @@ namespace VisualTerrain
 			Vtx&		NewVertex()
 						{
 							return vertexData.Append();
-
 						}
 
-			void		AppendTo(THull<Vtx>&hull) const
+			void		AppendTo(Hull<Vtx>&hull) const
 						{
-							UINT32 offset = (UINT32)hull.vertices.Count();
-							hull.vertices.Append(vertexData.begin(), vertexData.Count());
-							const UINT16*iFrom = indexData.begin();
-							const UINT16*const iat = indexData.end();
-							UINT32*iTo = hull.indices.AppendRow(indexData.Count());
-							while (iFrom != iat)
-							{
-								(*iTo) = UINT32(*iFrom) + offset;
-								//DBG_ASSERT__(*iTo < _vertices.Count());
-								iFrom++;
-								iTo++;
-							}
-							DBG_ASSERT__(iTo == hull.indices.end());
+							UINT32 offset = (UINT32)hull.CountVertices();
+							hull.Append(vertexData.ToRef());
+							ASSERT_EQUAL2__(hull.CountVertices(),offset + vertexData.Count(),offset,vertexData.Count());
+							hull.AppendOffsetIndices(indexData.ToRef(),offset);
 						}
 		};
 
@@ -357,23 +527,14 @@ namespace VisualTerrain
 							return *this;
 						}
 
-			void		AppendTo(THull<Vtx>&hull) const
+			void		AppendTo(Hull<Vtx>&hull) const
 						{
 							UINT32 offset = (UINT32)hull.vertices.Count();
 							//foreach (vertices,v)
 								//hull.vertices.push_back(*v);
-							hull.vertices.Append(vertices);
+							hull.Append(vertices.ToRef());
 							//const UINT32*iFrom = indices.pointer();
-							auto iFrom = indices.begin();
-							UINT32*iTo = hull.indices.AppendRow(indices.size());
-							while (iFrom != indices.end())
-							{
-								(*iTo) = UINT32(*iFrom) + offset;
-								//DBG_ASSERT__(*iTo < _vertices.Count());
-								iFrom++;
-								iTo++;
-							}
-							DBG_ASSERT__(iTo == hull.indices.end());
+							hull.AppendOffsetIndices(indices.ToRef(),offset);
 						}
 		};
 
