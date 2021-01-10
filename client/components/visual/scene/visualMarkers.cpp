@@ -229,5 +229,25 @@ namespace Objects { namespace VisualMarkers
 		display.RestoreRendererState();
 	}
 
+
+	void	RenderTranslucentBeams()
+	{
+		display.StoreRendererState();
+		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::Add);
+
+
+		
+		foreach (Objects::MarkerStore::client.GetArtifacts().allianceDefs, def)
+			if (def->marker->age < 1)
+				Objects::Renderer::RenderBeam(def->system.w.xyz, Grid::TopPlanetRadius - Grid::BottomPlanetRadius,
+						0.4f, def->color, float4(def->color.rgb,0));
+
+		display.RestoreRendererState();
+	}
+
+
+
 }}
 

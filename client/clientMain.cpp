@@ -1295,6 +1295,7 @@ bool loop()
 			Objects::Renderer::RenderTranslucent(true);
 
 			Objects::Renderer::RenderTranslucentBeams();
+			Objects::VisualMarkers::RenderTranslucentBeams();
 
 			World::RenderOverlay(frustum);
 

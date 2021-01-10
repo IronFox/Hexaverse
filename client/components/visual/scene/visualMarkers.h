@@ -44,6 +44,10 @@ namespace Objects
 		Renders labels according to label positions determined during Render()
 		*/
 		void		RenderText();
+		/**
+		Renders light shafts for focused markers
+		*/
+		void		RenderTranslucentBeams();
 
 	}
 }
