@@ -30,6 +30,8 @@ namespace RuntimeConfig
 	RoundNumber roundNumber;
 	Phase	phase;
 
+	bool autoClipTerrainToFocused = true;
+
 
 	ConfigurationScope	myConfig;
 	ConfigurationScope	sharedConfig;

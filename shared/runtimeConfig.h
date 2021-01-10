@@ -36,6 +36,8 @@ namespace RuntimeConfig
 	extern bool		storagesExplodeWhenDestroyed;
 	extern bool		tutorialMode;
 
+	extern bool		autoClipTerrainToFocused;
+
 	typedef ::RoundNumber	RoundNumber;
 	extern RoundNumber roundNumber;
 	namespace UnitLimits

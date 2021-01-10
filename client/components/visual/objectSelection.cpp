@@ -8,6 +8,7 @@
 #include <objects/faction.h>
 #include <globalEvents.h>
 #include "scene/vehicleAccessibilityMesh.h"
+#include "scene/terrain.h"
 
 #include "hud/hexGrid.h"
 
@@ -93,8 +94,11 @@ namespace Objects
 		if (e != entity)
 			LogEvent(EventSignificance::Debug,entity.get(),"Selecting: UpdatedChoices("+String(controlEnabled)+")");//new
 		UpdateChoices(controlEnabled);
+
 		if (e != entity)
 			LogEvent(EventSignificance::Debug,entity.get(),"Selected");//new
+
+
 	}
 
 	

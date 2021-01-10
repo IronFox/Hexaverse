@@ -12,6 +12,7 @@
 #include "../../scriptedAI.h"
 #include "tooltip.h"
 #include "../../audio/hudAudio.h"
+#include "../../inputControl.h"
 
 namespace HUD
 {
@@ -149,7 +150,7 @@ namespace HexGrid
 		{
 			Objects::PWorldEntity target = reference.lock();
 			if (target)
-				Camera::TranslateTo(target->system.w.xyz);
+				InputControl::Focus(target);
 		}
 
 
@@ -283,10 +284,7 @@ namespace HexGrid
 				group->currentSelection = (group->currentSelection+1) % group->entries.Count();
 			Objects::PWorldEntity e = group->entries[group->currentSelection].lock();
 			if (e)
-			{
-				Camera::TranslateTo(e->system.w.xyz);
-				Objects::Select(e,Network::ControlEnabled());
-			}
+				InputControl::Focus(e);
 		}
 
 

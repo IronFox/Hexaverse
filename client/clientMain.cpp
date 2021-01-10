@@ -1938,6 +1938,7 @@ int main( int argc, const char* argv[])
 				}
 
 				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
+				RuntimeConfig::autoClipTerrainToFocused = StartConfig::GetBool("runtime/autoClipTerrainToFocused",true);
 				ScriptedAI::visualDebugActive = RuntimeConfig::aiMode || StartConfig::GetBool("runtime/aiDebugMode");
 
 				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);

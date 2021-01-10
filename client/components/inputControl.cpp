@@ -12,6 +12,7 @@
 #include <objects/pathfinding.h>
 #include "visual/commandDefinitions.h"
 #include "visual/hud/tooltip.h"
+#include <grid/worldData.h>
 
 void	OnTutorialsChanged();
 
@@ -397,6 +398,64 @@ namespace InputControl
 
 		}
 
+
+
+		void UpdateFocus()
+		{
+			if (RuntimeConfig::autoClipTerrainToFocused && Objects::selectedEntity)
+			{
+				bool anyOccupied = false;
+				for (int h = Objects::selectedEntity->location.height+1; h <= Grid::CellStack::TopHeight; h++)
+				{
+					if (!World::actual.LowCellIsClear(Grid::LCellIdI(Objects::selectedEntity->location.stackID,h)))
+					{
+						anyOccupied = true;
+						break;
+					}
+				}
+			
+				const auto&n = Grid::low.grid.GetCell(Objects::selectedEntity->location.stackID).neighborhood;
+
+				if (!anyOccupied)
+				{
+					int deepest = Grid::CellStack::TopHeight+1;
+					for (BYTE k = 0; k < n.numNeighbors; k++)
+					{
+						UINT32 stack = n.neighborID[k];
+						bool any = false;
+						for (int h = Grid::CellStack::TopHeight; h >= Objects::selectedEntity->location.height ; h--)
+						{
+							if (!World::actual.LowCellIsClear(Grid::LCellIdI(stack,h)))
+							{
+								deepest = std::min(deepest,h);
+								any = true;
+								break;
+							}
+						}
+						if (!any)
+						{
+							deepest = INT_MIN;
+							break;
+						}
+					}
+					anyOccupied = deepest >= Objects::selectedEntity->location.height+2;
+				}
+
+				VisualTerrain::SeeThrough::Update(anyOccupied, Objects::selectedEntity->location);
+			}
+
+		}
+
+
+		void	Focus(const Objects::PWorldEntity&e)
+		{
+			Objects::Select(e,Network::ControlEnabled());
+			Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
+			UpdateFocus();
+		}
+
+
+
 		void	SelectAndFocusNextIdle()
 		{
 			if (HUD::Dialog::ConfirmCurrent(true))
@@ -419,8 +478,7 @@ namespace InputControl
 				Objects::PWorldEntity v = GetIterateableEntity(to);
 				if (v->isOwnedByMe && ObjectHelper::IsIdle(v))
 				{
-					Objects::Select(v,Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
+					Focus(v);
 					return;
 				}
 			}
@@ -428,8 +486,6 @@ namespace InputControl
 
 			HUD::HexGrid::RefreshButtonState(); //just in case
 		}
-
-
 
 
 	
@@ -456,14 +512,11 @@ namespace InputControl
 
 				if (v->owner == Objects::Faction::mine)
 				{
-					Objects::Select(v,Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
+					Focus(v);
 					return;
 				}
 			}
 			while (to != from);
-
-
 		}
 
 		void	SelectAndFocusNext()
@@ -486,8 +539,7 @@ namespace InputControl
 
 				if (v->owner == Objects::Faction::mine)
 				{
-					Objects::Select(v,Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
+					Focus(v);
 					return;
 				}
 			}

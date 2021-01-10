@@ -88,6 +88,7 @@ namespace InputControl
 		Objects::PWorldEntity	GetIterateableEntity(index_t i);
 		index_t	FindIterateableEntity(const Objects::PWorldEntity&e);
 
+		void	Focus(const Objects::PWorldEntity&);
 		void	SelectAndFocusNextIdle();
 		void	SelectAndFocusPrev();
 		void	SelectAndFocusNext();
