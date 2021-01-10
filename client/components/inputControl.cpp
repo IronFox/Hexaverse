@@ -407,7 +407,7 @@ namespace InputControl
 				bool anyOccupied = false;
 				for (int h = Objects::selectedEntity->location.height+1; h <= Grid::CellStack::TopHeight; h++)
 				{
-					if (!World::actual.LowCellIsClear(Grid::LCellIdI(Objects::selectedEntity->location.stackID,h)))
+					if (!World::actual.LowCellIsClearIgnoreStructure(Grid::LCellIdI(Objects::selectedEntity->location.stackID,h)))
 					{
 						anyOccupied = true;
 						break;
