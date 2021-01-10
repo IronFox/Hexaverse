@@ -11,6 +11,7 @@ namespace Animation
 		/**/					DestroyEntity(Protocol::DestroyEntity&);
 		virtual void			Begin(bool instant) override;
 		virtual D::String		Describe() const override;
+		virtual bool			IsEntityDestruction() const override {return true;}
 
 		static void				Explode(const Objects::PWorldEntity&target);
 		static void				Explode(const Objects::PWorldEntity&target, const std::function<void()>&onQuarterDone);

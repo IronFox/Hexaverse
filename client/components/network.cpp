@@ -832,12 +832,26 @@ namespace Network
 
 
 		void	PhaseChange(Protocol::PhaseChange&c);
+
 		void	MobileEntityMotion(Protocol::MobileEntityMotion&m)
 		{
 			ASSERT__(!eventsLocked);
 
 			if (Animation::AlterScheduledEvent(
-				[&m](const auto&ev){return ev->targetEntityID == m.id && ev->IsMobileEntityMotion() && To<Animation::MobileEntityMotion>::Cast(ev)->EndsAt(m.fromLocation);},
+				[&m](const auto&ev, const auto&t)
+				{
+					return ev->targetEntityID == m.id 
+						&& ev->IsMobileEntityMotion() 
+						&& To<Animation::MobileEntityMotion>::Cast(ev)->EndsAt(m.fromLocation)
+						&& !Animation::FindScheduledEvent(
+							[&m, ev,t](const auto&other, const auto&tOther)
+							{
+								return other->targetEntityID == m.id
+									&& tOther.Intersects(Animation::TTime(t.max,m.time.begin.atTime))
+									&& other->IsEntityDestruction();
+							}) == 0
+						;
+				},
 				[&m](const auto&ev, auto&t){To<Animation::MobileEntityMotion>::Cast(ev)->Append(m,t);}
 				))
 				return;

@@ -117,10 +117,28 @@ namespace Animation
 	Buffer0<PEvent>				whenDone;
 	Buffer0<TTimedEvent>		primitives,actives;
 
-	bool		AlterScheduledEvent(const std::function<bool(const PEvent&)>&predicate, const std::function<void(const PEvent&ev, TTime&t)>&updater)
+	count_t		CountScheduledEvents(const std::function<bool(const PEvent&, const TTime&t)>&predicate)
+	{
+		count_t rs = 0;
+		foreach (primitives,prim)
+			if (predicate(prim->event,prim->time))
+				rs++;
+		return rs;
+	}
+
+	PEvent		FindScheduledEvent(const std::function<bool(const PEvent&, const TTime&t)>&predicate)
 	{
 		foreach (primitives,prim)
-			if (predicate(prim->event))
+			if (predicate(prim->event,prim->time))
+				return prim->event;
+		return nullptr;
+	}
+
+
+	bool		AlterScheduledEvent(const std::function<bool(const PEvent&, const TTime&t)>&predicate, const std::function<void(const PEvent&ev, TTime&t)>&updater)
+	{
+		foreach (primitives,prim)
+			if (predicate(prim->event,prim->time))
 			{
 				updater(prim->event,prim->time);
 				return true;

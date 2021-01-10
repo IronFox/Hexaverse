@@ -98,7 +98,9 @@ namespace Animation
 	void		ScheduleEvent(const TTime&, const PEvent&);
 	void		ScheduleEventWhenDone(const PEvent&);
 	PEvent		FindFirstScheduledEventAtTime(const Protocol::Timestamp&st,const std::function<bool(const PEvent&)>&predicate);
-	bool		AlterScheduledEvent(const std::function<bool(const PEvent&)>&predicate, const std::function<void(const PEvent&ev, TTime&t)>&updater);
+	count_t		CountScheduledEvents(const std::function<bool(const PEvent&, const TTime&t)>&predicate);
+	PEvent		FindScheduledEvent(const std::function<bool(const PEvent&, const TTime&t)>&predicate);
+	bool		AlterScheduledEvent(const std::function<bool(const PEvent&, const TTime&t)>&predicate, const std::function<void(const PEvent&ev, TTime&t)>&updater);
 	bool		AllDone();
 	void		Flush();
 	#ifdef HAS_WINDOW

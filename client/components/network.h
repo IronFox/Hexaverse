@@ -180,7 +180,6 @@ namespace Network
 
 		void	SetFactionID(NET(TUniqueID)&id);
 		void	PhaseChange(Protocol::PhaseChange&c);
-		void	VehicleMotion(Protocol::MobileEntityMotion&m);
 		void	PreciseAttackTrajectory(Protocol::PreciseAttackTrajectory&a);
 		void	VagueAttackTrajectory(Protocol::VagueAttackTrajectory&a);
 
