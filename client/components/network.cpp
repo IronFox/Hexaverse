@@ -2079,7 +2079,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			{
 				if (!e->isOwnedByMe)
 					return;
-				Objects::PMarker m = Objects::MarkerStore::client.FindByLocation(Objects::MarkerType::Visited, e->location);
+				Objects::PMarker m = Objects::MarkerStore::client.FindByLocation(Objects::MarkerType::EntityDeath, e->location);
 				if (m)
 					ObjectHelper::SignalMarkerDeletion(m->id);
 			},Objects::IncludeGhosts::None);
