@@ -39,7 +39,7 @@ namespace VisualTerrain
 
 		extern ShadedInstruction			waterBase, waterSphereBase, waterParaboloidBase, terrainBase, terrainSphereBase, terrainParaboloidBase;
 		extern DX11::BaseInstructionBlock	terrainShadowBase, 
-											overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
+											overlayBase, overlayShadowBase, regularResourceBase, occupiedResourceBase;// , terrainEdgeBase;
 	}
 
 

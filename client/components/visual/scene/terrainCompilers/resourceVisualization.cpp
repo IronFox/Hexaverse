@@ -352,7 +352,7 @@ namespace VisualTerrain
 	}
 
 
-	void	ResourceStackStore::PrepareRendering(const DX11::BaseInstructionBlock&base)
+	void	ResourceStackStore::PrepareRendering(const DX11::BaseInstructionBlock&regular, const DX11::BaseInstructionBlock&occupied)
 	{
 		for (index_t i = newFrom; i < stacks.Count(); i++)
 		{
@@ -361,7 +361,7 @@ namespace VisualTerrain
 
 			foreach (s.details,detail)
 			{
-				(DX11::BaseInstructionBlock&)detail->instruction = base;
+				(DX11::BaseInstructionBlock&)detail->instruction = s.isOccupied ? occupied : regular;
 
 				LoadHull(detail->instruction,detail->hull);
 			}

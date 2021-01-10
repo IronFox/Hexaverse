@@ -64,12 +64,14 @@ namespace VisualTerrain
 	public:
 		typedef ResourceStack	Self;
 
-		FixedArray<ResourceStackDetail,4>		details;
+		bool								isOccupied;
+		FixedArray<ResourceStackDetail,4>	details;
 
 		friend void swap(Self&a, Self&b)
 		{
 			using std::swap;
 			swap(a.details,b.details);
+			swap(a.isOccupied,b.isOccupied);
 		}
 
 		void								Compile(const Objects::Resource::CoreVector&vec);
@@ -180,6 +182,7 @@ namespace VisualTerrain
 			lock.unlock();
 
 			ResourceStack s;
+			s.isOccupied = key.isConsumedElsewhere;
 			s.Compile(key.vector);
 			outBoundingSphere = s.GetBoundingSphere();
 
@@ -194,7 +197,7 @@ namespace VisualTerrain
 		void								Render(const TStackInstance&inst) const;
 
 
-		void								PrepareRendering(const DX11::BaseInstructionBlock&);
+		void								PrepareRendering(const DX11::BaseInstructionBlock&regular, const DX11::BaseInstructionBlock&occupied);
 
 	private:
 		HashTable<StackKey,index_t>			stackMap;

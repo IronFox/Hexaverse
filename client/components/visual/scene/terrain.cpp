@@ -62,7 +62,7 @@ namespace VisualTerrain
 									waterBase, waterSphereBase, waterParaboloidBase;
 		DX11::BaseInstructionBlock	terrainShadowBase, 
 									overlayBase, 
-									overlayShadowBase, resourceBase;// , terrainEdgeBase;
+									overlayShadowBase, regularResourceBase, occupiedResourceBase;// , terrainEdgeBase;
 
 		DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
 		DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
@@ -468,8 +468,22 @@ namespace VisualTerrain
 		}
 
 		{
-			DX11::BaseInstructionBlock&base = Instruction::resourceBase;
+			DX11::BaseInstructionBlock&base = Instruction::regularResourceBase;
 			base.shader.LoadFromFile("shaders/gridResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+			{
+				Engine::VertexBinding binding;
+				binding.vertex.Set(0, 4);
+				binding.normal.Set(4, 4);
+				binding.color.Set(8, 4);
+				binding.floats_per_vertex = 12;
+				base.binding = binding;
+				base.UpdateLayout();
+				base.SetTriangles();
+			}
+		}
+		{
+			DX11::BaseInstructionBlock&base = Instruction::occupiedResourceBase;
+			base.shader.LoadFromFile("shaders/gridOccupiedResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 			{
 				Engine::VertexBinding binding;
 				binding.vertex.Set(0, 4);
@@ -622,7 +636,8 @@ namespace VisualTerrain
 		transparentGridShader.Clear();
 		overlayBase.Clear();
 		overlayShadowBase.Clear();
-		resourceBase.Clear();
+		regularResourceBase.Clear();
+		occupiedResourceBase.Clear();
 		plantBase.Clear();
 		plantShadowBase.Clear();
 		foreach (plantPrototypes,proto)
@@ -790,7 +805,7 @@ namespace VisualTerrain
 
 		dat.resourceBounds = dat.resources.CalculateBounds();
 
-		stackStore.PrepareRendering(Instruction::resourceBase);
+		stackStore.PrepareRendering(Instruction::regularResourceBase, Instruction::occupiedResourceBase);
 
 		vis.familyChanged[family] = false;
 	}
