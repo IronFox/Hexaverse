@@ -130,12 +130,12 @@ namespace Logging
 
 	void	CallBugReporter()
 	{
-		StartProcess("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
+		Process::Start("../BugReporter/","BugReporter.exe","\""+activePath+"\"");	//start and abandon
 	}
 
 	void	CallBugReporter(const String&message)
 	{
-		StartProcess("../BugReporter/","BugReporter.exe","\""+activePath+"\" -m \""+PathString(message.Escape("\""))+"\"");	//start and abandon
+		Process::Start("../BugReporter/","BugReporter.exe","\""+activePath+"\" -m \""+PathString(message.Escape("\""))+"\"");	//start and abandon
 	}
 
 	bool	HasBegun()

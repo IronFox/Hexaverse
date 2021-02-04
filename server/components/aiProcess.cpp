@@ -6,6 +6,7 @@
 #include <io/monitoredProcess.h>
 #include <globalEvents.h>
 #include <logEvent.h>
+#include <startProcess.h>
 
 namespace AIProcess
 {
@@ -22,17 +23,13 @@ namespace AIProcess
 		{
 			PathString	path,
 						workingDirectory = "..\\client\\";
-			#ifdef _DEBUG
-				path = "..\\client\\.projector\\Debug\\Visual Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			#elif defined _OPTIMIZED_DEBUG
-				#ifdef PLATFORM_X64
-					path = "..\\client\\.projector\\x64\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-				#else
-					path = "..\\client\\.projector\\OptimizedDebug\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-				#endif
-			#else
-				path = "..\\client\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			#endif
+				path = Process::LocateProjectExecutable(workingDirectory,
+					#ifdef _DEBUG
+						"Visual Client"
+					#else
+						"Console Client"
+					#endif
+				);
 
 
 			try

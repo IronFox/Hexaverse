@@ -631,9 +631,9 @@ namespace Menu
 		{
 			SetFullScreen(false);
 			if (Network::amOnline && Network::client.IsLocalhost())
-				StartProcess("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR  ".exe",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+				Process::StartProject("../ControlConsole/","ControlConsole",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
 			else
-				StartProcess("../ControlConsole/","ControlConsole" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe","");	//start and abandon, without port parameter since we don't know any
+				Process::StartProject("../ControlConsole/","ControlConsole","");	//start and abandon, without port parameter since we don't know any
 		});
 
 		menu->AddCommand("New client with custom profile","Launches another instance of the local client under a different profile. Profiles allow control of each one faction per server",[]()
@@ -659,14 +659,14 @@ namespace Menu
 				}
 				while (len >= execPath.GetLength());
 
-				StartProcess("./",execPath.GetPointer(),parameters);
+				Process::Start("./",execPath.GetPointer(),parameters);
 			});
 		});
 
 		menu->AddCommand("Server Manager","Launches the server manager app to review and control locally running servers",[]()
 		{
 			SetFullScreen(false);
-			StartProcess("../ServerManager","ServerManager.exe");
+			Process::Start("../ServerManager","ServerManager.exe");
 		});
 
 
