@@ -85,6 +85,18 @@ namespace Objects
 		#endif
 	}
 
+	void		Alliance::CancelAllInvites()
+	{
+		if (invited.IsEmpty())
+			return;
+		LogEvent(EventSignificance::Common,"Canceling all invites of alliance "+ToString(id));
+		#ifndef CLIENT
+			foreach (invited,a)
+				ApplicationInterface::SignalAllianceInvite(shared_from_this(), a->wFaction.lock(), Protocol::AllianceInviteType::Cancel);
+		#endif
+		invited.Clear();
+	}
+
 	void		Alliance::CancelInvite(const PFaction&f)
 	{
 		const index_t at = FindInviteOf(f);

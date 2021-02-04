@@ -11,6 +11,7 @@ v0.9.12
 	> AI: Game.Grid.ToLocation() now accepts Game.Grid.suborbitalHeight as height
 	> HUD: Flipped setting for music during gameplay (misleading tooltip text)
 	> Server: Relative -l/--load parameter now auto-converted to absolute path
+	> Alliances are now locked after round 1 if game is closed
 	* Fixed server ending game unexpectedly in closed multi-alliance games
 	* Fixed missing state-update to alliance members on structure creation
 	* Fixed unit status icons still visible when hiding all objects

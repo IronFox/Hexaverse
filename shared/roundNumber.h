@@ -49,6 +49,17 @@ struct RoundNumber
 	bool		operator<(const RoundNumber&other) const {return !operator==(other) && !operator>(other);}
 	bool		operator>=(const RoundNumber&other) const {return operator==(other) || operator>(other);}
 	bool		operator<=(const RoundNumber&other) const {return !operator>(other);}
+
+
+	bool		IsSecondRound() const
+	{
+		return main == 1;
+	}
+
+	bool		IsFirstRound() const
+	{
+		return main == 0;
+	}
 };
 
 namespace std

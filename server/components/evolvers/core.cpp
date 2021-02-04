@@ -493,11 +493,17 @@ namespace Evolver
 		});
 
 		RuntimeConfig::roundNumber.main++;
-		if (RuntimeConfig::roundNumber.main == 1)
+		if (RuntimeConfig::roundNumber.IsSecondRound())
 		{
 			Game::roundOneStartActivePlayerAlliances = (UINT32)Objects::Alliance::Count();
 			if (Objects::Faction::nexus)
 				Game::roundOneStartActivePlayerAlliances--;
+
+			if (Game::Config::closedGame)
+				Objects::Alliance::Foreach([](const Objects::PAlliance&a)
+				{
+					a->CancelAllInvites();
+				});
 		}
 		
 		Objects::Statistics::SignalNewRoundBegin(true);

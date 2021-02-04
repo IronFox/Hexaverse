@@ -73,6 +73,7 @@ namespace Objects
 		void				CancelInvite(const PFaction&f);
 		bool				HaveInvited(const PFaction&f);
 		void				VisitAllInvitedFactions(const std::function<void(const PFaction&)>&f, bool livingOnly=true) const;
+		void				CancelAllInvites();
 
 		void				UpdateConfiguration(const TConfig&);
 		static PAlliance	FindByID(const TUniqueID&id ){ WAlliance rs; all.Query(id,rs); return rs.lock();}

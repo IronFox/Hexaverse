@@ -247,6 +247,12 @@ namespace Receiver
 					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to cancel faction invitation. You are not member of alliance "+ToString(alliance->id));
 					return;
 				}
+
+				if (Game::Config::closedGame && !RuntimeConfig::roundNumber.IsFirstRound())
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Alliances cannot be changed in closed games after the first round");
+					return;
+				}
 				LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),peer,"Invited "+faction->GetName());
 
 				{
@@ -285,6 +291,12 @@ namespace Receiver
 					LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Unable to accept alliance invitation. You are not the specified faction");
 					return;
 				}
+				if (Game::Config::closedGame && !RuntimeConfig::roundNumber.IsFirstRound())
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"Alliances cannot be changed in closed games after the first round");
+					return;
+				}
+
 				if (!alliance->HaveInvited(faction))
 				{
 					LogEvent(EventClass::Preset::commandRejected,peer,"Unable to accept alliance "+ToString(alliance->id)+" invitation. There is no invitation");
