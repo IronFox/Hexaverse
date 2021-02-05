@@ -555,7 +555,7 @@ namespace Protocol
 
 	struct FactionType
 	{
-		enum flag_t
+		enum flag_t : UINT32
 		{
 			ContinueOnly = 0xFFFFFFFF,
 			NexusFaction = 0x1,
