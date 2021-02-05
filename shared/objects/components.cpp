@@ -403,6 +403,20 @@ namespace Objects
 					const float rd = h2d * r / (h2 - origin.radius);
 					return Vec::quadraticDistance(origin.worldLocation + axis * h2d,dest.worldLocation) <= M::Sqr(rd);
 				}
+				case TrajectoryType::A2GMissile:
+				{
+					if (dest.cellLocation.height > Grid::CellStack::TopHeight)
+						return false;
+					const float h = Grid::ToRadius(Objects::SubOrbital::Height);
+					const float r = flatRange;
+					const float h2 = sqrt(M::Sqr(h) - M::Sqr(r));
+
+					const auto&axis = Grid::low.cells[origin.cellLocation.stackID].cornerCenter;
+
+					const auto rTarget = r * (dest.radius / h2);
+
+					return Vec::quadraticDistance(axis * dest.radius,dest.worldLocation) <= M::Sqr(rTarget);
+				}
 				case TrajectoryType::Artillery:
 					return Detail::ArtilleryCanHit(flatRange,GetHorizontalDistance(origin,dest),dest.radius - origin.radius);
 				case TrajectoryType::Missile:
@@ -458,6 +472,7 @@ namespace Objects
 				break;
 				case TrajectoryType::Missile:
 				case TrajectoryType::AAMissile:
+				case TrajectoryType::A2GMissile:
 					Detail::TraceAnimationMissileTrajectory(flatRange,from, to, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
@@ -550,6 +565,7 @@ namespace Objects
 				break;
 				case TrajectoryType::Missile:
 				case TrajectoryType::AAMissile:
+				case TrajectoryType::A2GMissile:
 					return Detail::TraceMissileTrajectory(flatRange,traceInActualWorld ? actualWorld : visibleWorld,source, dest, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
@@ -1464,7 +1480,7 @@ namespace Objects
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
 				component.independentAttackAndMotion = true;
-				component.trajectoryType = TrajectoryType::VerticalBeam;
+				component.trajectoryType = TrajectoryType::A2GMissile;
 
 			}
 
@@ -1823,6 +1839,11 @@ namespace Objects
 								outResult << ("Sub-orbital planes can be detected and attacked in flight.");
 							else
 								outResult << ("Sub-orbital planes can be attacked in flight.");
+						}
+						break;
+						case TrajectoryType::A2GMissile:
+						{
+							outResult << ("Ground targets can be attacked if in range.");
 						}
 						break;
 						case TrajectoryType::VerticalBeam:

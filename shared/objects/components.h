@@ -69,7 +69,13 @@ namespace Objects
 
 	static const float g = 9.80665f;
 
-	CONSTRUCT_ENUMERATION4(TrajectoryType, Artillery, Missile, VerticalBeam,AAMissile);
+	CONSTRUCT_ENUMERATION5(TrajectoryType
+		,Artillery
+		,Missile
+		,VerticalBeam
+		,AAMissile
+		,A2GMissile
+	);
 
 	/**
 	Determines whether the given trajectory is a vertical beam trajectory.

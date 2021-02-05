@@ -464,6 +464,22 @@ namespace Objects
 				RenderFlattenedRangeSphere(d * (hC+Grid::GetLayerHeight(location.height) * 0.5f), r + explosionRadius,d,3.f,color, extended);
 			}
 			break;
+			case TrajectoryType::A2GMissile:
+			{
+				if (location.height == SubOrbital::Height)
+				{
+					const float h1 = Grid::ToRadius(SubOrbital::Height);	//orbital radius
+					const float h0 = Grid::ToRadius(Grid::CellStack::BottomHeight);
+					const float r = base->GetFlatAttackRange();
+					//const float hC = sqrt(M::Sqr(h)+M::Sqr(r));
+					const float hC = sqrt(M::Sqr(h1) - M::Sqr(r));
+
+					const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
+					RenderRangeCylinder(d * h1,r,color,extended);
+					//RenderFlattenedRangeSphere(d * (hC+Grid::GetLayerHeight(location.height) * 0.5f), r + explosionRadius,d,3.f,color, extended);
+				}
+			}
+			break;
 			default:
 				FATAL__("Unsupported trajectory type "+String(base->turret->trajectoryType.ToString()));
 		}
