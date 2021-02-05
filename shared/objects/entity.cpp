@@ -110,6 +110,14 @@ namespace Objects
 #endif
 	};
 
+	/*virtual*/ bool				WorldEntity::IsTransferable() const
+	{
+#ifndef CLIENT
+		return !RuntimeConfig::tutorialMode;
+#else
+		return true;
+#endif
+	};
 
 	#ifdef HAS_WINDOW
 		bool				WorldEntity::TestIntersection(const Geometry&geo, const M::TVec3<>&_b, const M::TVec3<>&_d, float & distance) const

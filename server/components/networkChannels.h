@@ -33,6 +33,7 @@ namespace Receiver
 	void	TutorialAt(NET(INT32)&at);
 	void	EntityTrigger(Protocol::EntityTrigger&t, TCP::Peer&peer);
 	void	AllianceMarkerText(Protocol::AllianceMarkerText&t, TCP::Peer&peer);
+	void	TransferEntityOwnership(Protocol::TransferEntityOwnership&, TCP::Peer&peer);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -170,6 +171,8 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(EntityTrigger);
 
 	DECLARE_FACTION_CHANNEL(AllianceMarkerText);
+
+	DECLARE_FACTION_CHANNEL(TransferEntityOwnership);
 
 	namespace Statistics
 	{

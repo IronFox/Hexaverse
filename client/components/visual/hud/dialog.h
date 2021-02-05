@@ -8,6 +8,7 @@
 #include <global_string.h>
 #include "windowStack.h"
 #include <cast.h>
+#include <objects/types.h>
 
 namespace HUD 
 {
@@ -30,7 +31,7 @@ namespace Dialog
 	typedef std::function<void(const StringRef&)>	FFetchInput;
 	typedef std::function<void(const char*)>	FOnPassword;
 	typedef std::function<void()>	FOnDelete;
-
+	typedef std::function<void(const Objects::PFaction&)> FOnFactionSelected;
 
 
 
@@ -150,6 +151,10 @@ namespace Dialog
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, bool failIfModalWindowExists=false);
 
 	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check);
+
+
+	Component::WWindow	SelectAlliedFaction(const String&query, const FOnFactionSelected&onFactionSelected, const FCheckState&check, bool failIfModalWindowExists=false);
+
 
 	/**
 	Show a new dialog that queries a password from the user

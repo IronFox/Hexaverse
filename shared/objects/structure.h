@@ -759,6 +759,8 @@ namespace Objects
 		virtual EntityType			GetType() const override {return EntityType(ConstName::Type_NexusPort,t2 != nullptr);}
 
 		virtual bool				IsIndestructible() const	override {return true;};
+		virtual bool				IsTransferable() const	override {return false;};
+
 		virtual void				GetResourceVector(Resource::Vector&v, Resource::Vector&, Resource::Vector&) const override
 		{
 			if (BaseGrid::IsIsolatedCorner(location.stackID))

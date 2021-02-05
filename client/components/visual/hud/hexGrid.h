@@ -231,6 +231,18 @@ namespace HexGrid
 			}
 		};
 
+		class TransferOwnershipCommand : public Icon
+		{
+			typedef Icon			Super;
+		public:
+			/**/					TransferOwnershipCommand() : Super("Transfer Ownership") {}
+			/**/					TransferOwnershipCommand(const String&name) : Super(name) {}
+
+			virtual void			Refresh(bool controlsEnabled) override;
+			virtual void			Execute() override;
+			virtual void			CompileLabel(Label&outResult) override;
+		};
+
 		class DemolishCommand : public Icon
 		{
 			typedef Icon			Super;

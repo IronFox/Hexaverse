@@ -818,6 +818,11 @@ namespace Protocol
 		, Package::NetString<64>, markerText
 	);
 
+	NETSTRUCT2(TransferEntityOwnership
+		,TUniqueID, targetEntity
+		,TUniqueID, targetFaction
+	);
+
 	typedef Objects::Resource::Table ResourceTable;
 
 
@@ -889,6 +894,7 @@ namespace Protocol
 
 			Automate,			//c2s: EntityStateUpdate
 			Sleep,				//c2s: EntityStateUpdate
+			TransferEntityOwnership,			//c2s: TransferEntityOwnership
 
 			ResourceUpdate,		//s2c: ResourceUpdate
 

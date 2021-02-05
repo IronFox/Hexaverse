@@ -1501,6 +1501,8 @@ namespace Network
 		DECLARE_OBJECT_SENDER(EntityTrigger);
 
 		DECLARE_CHANNEL(AllianceMarkerText);
+
+		DECLARE_OBJECT_SENDER(TransferEntityOwnership);
 	}
 
 

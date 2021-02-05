@@ -341,6 +341,7 @@ namespace Receiver
 		client->faction->aiScriptState.swap(state.dataVector);
 		client->faction->aiScriptName.swap(state.scriptName);
 	}
+
 }
 
 namespace Channels
@@ -445,6 +446,8 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(EntityTrigger);
 
 	DECLARE_FACTION_CHANNEL(AllianceMarkerText);
+
+	DECLARE_FACTION_CHANNEL(TransferEntityOwnership);
 
 	namespace Statistics
 	{
@@ -1969,6 +1972,33 @@ namespace Receiver
 		//	return;
 		//}
 		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode,cmd.path,detailed,leftClick,clearSafeTasks);
+	}
+
+
+
+
+	void	TransferEntityOwnership(Protocol::TransferEntityOwnership&gift, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Gift entity "+ToString(gift.targetEntity)+" to faction "+ToString(gift.targetFaction));
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(gift.targetEntity,peer);
+		if (!e)
+			return;
+		Network::PClient cl = To<Network::Client>::Cast(peer.attachment);
+		if (!cl || !e->owner || cl->faction != e->owner)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Your faction does not own "+e->GetNiceName());
+			return;
+		}
+
+		Objects::PFaction f = Objects::Faction::FindByID(gift.targetFaction);
+		if (!f)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault. Target faction "+ToString(gift.targetFaction)+" does not exist.");
+			return;
+		}
+
+
+		Journal::currentRound.Register(true,e,new Journal::Round::TransferEntityOwnership(f));
 	}
 
 	#if 0

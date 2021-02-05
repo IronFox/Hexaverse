@@ -12,6 +12,7 @@
 #include "../../clientRuntimeConfig.h"
 #include "../../audio/music.h"
 #include "../../network.h"
+#include <objects/faction.h>
 
 namespace DX11 = Engine::DX11; 
 
@@ -689,6 +690,86 @@ namespace Dialog
 		WindowStack::VerifyIntegrity(CLOCATION);
 		return d;
 	}
+
+	Component::WWindow	SelectAlliedFaction(const String&query, const FOnFactionSelected&onFactionSelected, const FCheckState&check, bool failIfModalWindowExists/*=false*/)
+	{
+		WindowStack::VerifyIntegrity(CLOCATION);
+		CheckResult ck = check();
+		if (ck == CheckResult::Abort)
+			return Component::PWindow{};
+		if (!Objects::Faction::mine || Objects::Faction::mine->alliance->CountLivingMembers() <= 1)
+			return Component::PWindow{};
+
+
+		Component::PWindow rs{Component::Window::Create()};
+
+
+		Component::PLabel label{new Component::Label(query)};
+		label->FillHorizontally(0);
+		label->AnchorTop(0);
+		rs->AddComponent(label,CLOCATION);
+
+		Component::PPanel panel{new Component::Panel()};
+		rs->AddComponent(panel,CLOCATION);
+
+		panel->FillHorizontally(0.005);
+		
+		Component::WWindow ww = rs;
+
+		Component::PButton cancel{new Component::Button("Cancel",[ww]()
+		{
+			Component::PWindow w = ww.lock();
+			if (w)
+				WindowStack::Hide(w);
+		})};
+		rs->AddComponent(cancel,CLOCATION);
+
+		cancel->FillHorizontally(0.005);
+		panel->Anchor().Beneath(label,0.005);
+		cancel->Anchor().Beneath(panel,0.005);
+		
+		Objects::Faction::mine->alliance->VisitMembers([panel,ww,onFactionSelected](const Objects::PFaction&f)
+		{
+			if (f == Objects::Faction::mine)
+				return;
+			Objects::WFaction wf = f;
+			Component::PButton button{new Component::Button(f->GetName(),[wf,ww,onFactionSelected]()
+			{
+				Objects::PFaction f = wf.lock();
+				Component::PWindow w = ww.lock();
+				if (!f || !w)
+					return;
+				WindowStack::Hide(w);
+				onFactionSelected(f);
+			})};
+			button->SetCutCorners(false);
+			button->SetColor(f->color);
+			button->FillHorizontally(0);
+			button->AnchorTop(0);
+			button->Anchor().BeneathLastOf(panel);
+			panel->AddComponent(button,CLOCATION);
+		});
+
+		panel->SetAutoHeightSpacing(0.005);
+		
+
+
+		//panel->SetBackgroundColor(float4(1,0,0,1));
+		panel->SetCutCorners(false);
+		panel->SetAutomaticHeight(true);
+
+		cancel->SetCutCorners(true,true,true,false);
+
+		rs->SetWidth(0.75);
+		rs->SetMaxAutoHeight(0.75);
+		rs->SetAutomaticHeight(true);
+
+		WindowStack::Show(rs);
+
+		WindowStack::VerifyIntegrity(CLOCATION);
+		return rs;
+	}
+
 
 
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, bool failIfModalWindowExists/*=false*/)

@@ -550,6 +550,7 @@ namespace Objects
 		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const;
+		virtual bool				IsTransferable() const;
 
 		/**
 		Checks if the local entity is currently above the regular terrain (e.g. a satellite)

@@ -586,6 +586,21 @@ namespace Journal
 
 		};
 
+
+		class TransferEntityOwnership : public EntityEvent
+		{
+		public:
+			TUniqueID		targetFaction;
+
+			/**/			TransferEntityOwnership(const Objects::PFaction&targetFaction):targetFaction(targetFaction ? targetFaction->id : TUniqueID::Empty()) {}
+			virtual Event*	Instantiate() const override {return new TransferEntityOwnership(nullptr);};
+			virtual void	Execute(const Objects::PWorldEntity&) const override;
+			virtual void	Decode(const Entry&e) override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
+
 		class EnableStructure : public EntityEventT<EnableStructure>
 		{
 		public:

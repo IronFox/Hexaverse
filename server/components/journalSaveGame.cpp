@@ -1561,7 +1561,6 @@ namespace Journal
 		}
 	}
 
-
 	/*virtual override*/ void	Round::DestroyEntity::Compile(Entry&e)	const
 	{
 		e.stringParameters.Set("type",this->type.ToString());
@@ -1588,10 +1587,56 @@ namespace Journal
 		}
 		float t = 0;
 		Objects::Remove(e,type,t);
-		if (To<Objects::Structure>::DynamicCast(e))
+		if (e->IsStructure())
 			Objects::RefreshCompoundCoverageIfNeeded(t);
 
 	}
+
+
+
+	
+	/*virtual override*/ void	Round::TransferEntityOwnership::Compile(Entry&e)	const
+	{
+		e.uuidParameters.Set("targetFaction",targetFaction);
+	}
+
+	/*virtual override*/ void	Round::TransferEntityOwnership::Decode(const Entry&e)
+	{
+		targetFaction = e.uuidParameters.Require(CLOCATION,"targetFaction");
+	}
+
+	/*virtual override*/ void	Round::TransferEntityOwnership::Execute(const Objects::PWorldEntity&e) const
+	{
+		if (e->IsDeadOrGhost())
+			throw RoundException(CLOCATION,e->GetName()+": Unable to gift entity. Entity is dead");
+		
+		if (!e->IsTransferable())
+			throw RoundException(CLOCATION,e->GetName()+": Unable to gift entity. Entity is not giftable");
+		
+		if (!e->owner)
+			throw RoundException(CLOCATION,e->GetName()+": Unable to gift entity. Bad target");
+
+		Objects::PFaction target = Objects::Faction::FindByID(targetFaction);
+		
+		if (!target)
+			throw RoundException(CLOCATION,e->GetName()+": Unable to gift entity. Target faction not found: "+ToString(targetFaction));
+
+		if (target == e->owner)
+			return;
+
+		if (target->alliance != e->owner->alliance)
+			throw RoundException(CLOCATION,e->GetName()+": Unable to gift entity. Target faction not in same alliance: "+target->GetName());
+
+
+		float t = 0;
+		Objects::ChangeOwnership(e,target,t);
+
+		if (e->IsStructure())
+			Objects::RefreshCompoundCoverageIfNeeded(t);
+	}
+
+
+
 	/*
 	static bool ConvertReferenceEntity(const Protocol::MarkerReferenceEntity&source, Objects::Marker&dest )
 	{

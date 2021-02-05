@@ -575,6 +575,9 @@ namespace Network
 
 		server.InstallChannel(Channels::AllianceMarkerText);
 
+		server.InstallChannel(Channels::TransferEntityOwnership);
+
+
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);

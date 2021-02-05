@@ -543,6 +543,7 @@ namespace HexGrid
 			commands << tutorialCommand;
 			commands << PIcon(new VoteCommand());
 
+			commands << PIcon(new TransferOwnershipCommand());
 			commands << PIcon(new DemolishCommand());
 			commands << PIcon(new SleepCommand());
 			commands << PIcon(new AbortCommand());
@@ -602,6 +603,76 @@ namespace HexGrid
 			}
 			foreach (commands,c)
 				Add((*c)->gridCoords, *c);
+		}
+
+
+		/*virtual override*/ void			TransferOwnershipCommand::CompileLabel(Label&outResult)
+		{
+			String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+			outResult << "Transfer ownership of "+name+" to other faction";
+			if (Objects::selectedEntity)
+			{
+				if (!Objects::selectedEntity->IsTransferable())
+					outResult << "(Unit is not transferable)";
+				elif (RuntimeConfig::tutorialMode)
+					outResult << "(Unit transfer not allowed right now)";
+			}
+			else
+				outResult << "(none selected)";
+		}
+
+		/*virtual override*/ void			TransferOwnershipCommand::Refresh(bool controlsEnabled)
+		{
+			state = Objects::CommandFlags::None;
+			if (HUD::WindowStack::IsModal() 
+				|| !controlsEnabled 
+				|| !Objects::selectedEntity 
+				|| !Objects::selectedEntity->IsTransferable() 
+				|| !Objects::selectedEntity->isOwnedByMe
+				|| RuntimeConfig::tutorialMode)
+				return;
+
+			state |= Objects::CommandFlags::IsEnabled;
+		}
+
+
+		static HUD::Dialog::FCheckState EntityCheck(const TUniqueID&id)
+		{
+
+			return [id]()->HUD::Dialog::CheckResult
+			{
+				if (!Network::client.IsConnected())
+					return HUD::Dialog::CheckResult::Abort;
+				Objects::PWorldEntity e = Objects::GetEntity(id);
+				if (!e || !e->isOwnedByMe)
+					return HUD::Dialog::CheckResult::Abort;
+				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
+					return HUD::Dialog::CheckResult::OkayNotRightNow;
+				return HUD::Dialog::CheckResult::OkayContinue;
+			};
+
+		}
+
+		/*virtual override*/ void			TransferOwnershipCommand::Execute()
+		{
+			const TUniqueID id = Objects::selectedEntity->id;
+			HUD::Dialog::SelectAlliedFaction("Select allied faction to transfer ownership of "+Objects::selectedEntity->GetNiceName()+" to. This operation cannot be undone.",[id](const Objects::PFaction&f)
+			{
+				Objects::PWorldEntity entity = Objects::GetEntity(id);
+				if (entity)
+				{
+					Protocol::TransferEntityOwnership e;
+					e.targetFaction = f->id;
+					e.targetEntity = id;
+					HUD::Dialog::Confirm("Transfer ownership of "+entity->GetNiceName()+" to "+f->GetName()+"?",[e]()
+					{
+						Network::Channels::TransferEntityOwnership.SendTo(Network::client,e);
+					},
+					EntityCheck(id));
+				}
+			},
+			EntityCheck(id)
+			);
 		}
 
 		/*virtual override*/ void			DemolishCommand::CompileLabel(Label&outResult)
