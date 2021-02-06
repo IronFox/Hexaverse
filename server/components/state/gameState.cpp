@@ -1152,7 +1152,8 @@ namespace Game
 			factionStartMineralValue = 
 				2 * Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::terraformer,state)
 				+ 
-				Objects::MineralContainer::globalPrototype->GetConstructionCost()
+				//Objects::MineralContainer::globalPrototype->GetConstructionCost()
+				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::mineralTransporter,state)
 				+
 				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::radar,state)
 				+
@@ -1729,16 +1730,10 @@ namespace Game
 			const auto start = Grid::LCellIdI((UINT32)startLocation,h);
 
 			#ifdef ONE_COMPOUND_PER_FACTION
-				std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
-					Objects::MineralContainer::globalPrototype->CreateNewInstance(f,start,0));
-				container->storage = container->maxStorage;
-				container->ClearOccupiedTerrain(0);
-				Objects::InsertConstructed(container,t);
-				Objects::RefreshCompoundCoverage(t);
+				Objects::InsertNewVehicle(f,start,Objects::Component::hoverbase, Objects::Component::mineralTransporter,true,t);
 			#else
 				Objects::InsertNewVehicle(f,start,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
 			#endif
-
 
 			Objects::InsertNewVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
 			Objects::InsertNewVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
