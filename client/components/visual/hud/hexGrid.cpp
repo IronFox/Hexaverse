@@ -656,7 +656,7 @@ namespace HexGrid
 		/*virtual override*/ void			TransferOwnershipCommand::Execute()
 		{
 			const TUniqueID id = Objects::selectedEntity->id;
-			HUD::Dialog::SelectAlliedFaction("Select allied faction to transfer ownership of "+Objects::selectedEntity->GetNiceName()+" to. This operation cannot be undone.",[id](const Objects::PFaction&f)
+			HUD::Dialog::SelectAlliedFaction("Select allied faction to transfer ownership of "+Objects::selectedEntity->GetNiceName()+" to:",[id](const Objects::PFaction&f)
 			{
 				Objects::PWorldEntity entity = Objects::GetEntity(id);
 				if (entity)
@@ -664,7 +664,7 @@ namespace HexGrid
 					Protocol::TransferEntityOwnership e;
 					e.targetFaction = f->id;
 					e.targetEntity = id;
-					HUD::Dialog::Confirm("Transfer ownership of "+entity->GetNiceName()+" to "+f->GetName()+"?",[e]()
+					HUD::Dialog::Confirm("Transfer ownership of "+entity->GetNiceName()+" to "+f->GetName()+"? This operation cannot be undone by you.",[e]()
 					{
 						Network::Channels::TransferEntityOwnership.SendTo(Network::client,e);
 					},
