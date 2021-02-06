@@ -26,32 +26,32 @@ namespace Objects
 
 		bool		isT2 = false;
 
-		/**/		EntityType(){}
-		/**/		EntityType(ConstName base, ConstName turret=ConstName::Empty, bool t2=false):baseType(base),turretType(turret),isT2(t2)
+		constexpr		EntityType(){}
+		constexpr		EntityType(ConstName base, ConstName turret=ConstName::Empty, bool t2=false):baseType(base),turretType(turret),isT2(t2)
 		{
 			DBG_ASSERT__(IsValid());
 		}
-		/**/		EntityType(ConstName base, bool t2):baseType(base),isT2(t2)
+		constexpr		EntityType(ConstName base, bool t2):baseType(base),isT2(t2)
 		{
 			DBG_ASSERT__(IsValid());
 		}
 
-		bool		operator==(const EntityType&other) const {return baseType == other.baseType && turretType == other.turretType;}
-		bool		operator!=(const EntityType&other) const {return !operator==(other);}
-		bool		operator==(ConstName baseTypeName) const {return HasNoTurret() && this->baseType == baseTypeName;}
-		bool		operator!=(ConstName baseTypeName) const {return HasTurret() || this->baseType != baseTypeName;}
+		constexpr bool		operator==(const EntityType&other) const {return baseType == other.baseType && turretType == other.turretType;}
+		constexpr bool		operator!=(const EntityType&other) const {return !operator==(other);}
+		constexpr bool		operator==(ConstName baseTypeName) const {return HasNoTurret() && this->baseType == baseTypeName;}
+		constexpr bool		operator!=(ConstName baseTypeName) const {return HasTurret() || this->baseType != baseTypeName;}
 
 		friend hash_t	Hash(const EntityType&t)
 		{
 			return HashValue() << t.baseType << t.turretType;
 		}
 
-		bool		IsEmpty() const {return baseType == ConstName::Empty;}
-		bool		IsNotEmpty() const {return baseType != ConstName::Empty;}
-		bool		HasTurret() const {return turretType != ConstName::Empty;}
-		bool		HasNoTurret() const {return turretType == ConstName::Empty;}
-		bool		IsValid() const		{return HasNoTurret() || (IsNotEmpty() && BaseRequiresTurret(baseType));}
-		bool		IsInvalid() const	{return HasTurret() && (IsEmpty() || !BaseRequiresTurret(baseType));}
+		constexpr bool		IsEmpty() const {return baseType == ConstName::Empty;}
+		constexpr bool		IsNotEmpty() const {return baseType != ConstName::Empty;}
+		constexpr bool		HasTurret() const {return turretType != ConstName::Empty;}
+		constexpr bool		HasNoTurret() const {return turretType == ConstName::Empty;}
+		constexpr bool		IsValid() const		{return HasNoTurret() || (IsNotEmpty() && BaseRequiresTurret(baseType));}
+		constexpr bool		IsInvalid() const	{return HasTurret() && (IsEmpty() || !BaseRequiresTurret(baseType));}
 
 		String		ToNumericString() const
 		{
@@ -62,12 +62,12 @@ namespace Objects
 			return '#'+String(int(turretType))+":#"+String(int(baseType));
 		}
 
-		bool		IsVehicleBase() const
+		constexpr bool		IsVehicleBase() const
 		{
 			return turretType == ConstName::Empty && IsVehicleBase(baseType);
 		}
 
-		static bool	IsVehicleBase(ConstName baseType)
+		static constexpr bool	IsVehicleBase(ConstName baseType)
 		{
 			switch (baseType)
 			{
@@ -79,12 +79,12 @@ namespace Objects
 			return false;
 		}
 
-		static bool	BaseRequiresTurret(ConstName baseType)
+		static constexpr bool	BaseRequiresTurret(ConstName baseType)
 		{
 			return IsVehicleBase(baseType) || baseType == ConstName::Type_Tower;
 		}
 
-		bool IsVehicle() const
+		constexpr bool IsVehicle() const
 		{
 			return HasTurret() && IsVehicleBase(baseType);
 		}
