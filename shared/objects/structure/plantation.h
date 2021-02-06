@@ -104,6 +104,13 @@ namespace Objects
 		virtual String				GetTypeName() const override { return "Plantation"; };
 		virtual EntityType			GetType() const override {return ConstName::Type_Plantation;}
 
+		
+		virtual void				OnResourceTableUpdate() override
+		{
+			maxStorage.Clear();
+			maxStorage.Set(Resource::CrystallineCompounds, CompoundStorage);
+			maxStorage.Set(Resource::OrganicCompounds, CompoundStorage);
+		};
 
 		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
 		{
