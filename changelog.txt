@@ -7,8 +7,8 @@ v0.9.12
 	+ AI: Added Game.Grid.suborbitalHeight
 	+ Added auto-terrain-clip on unit focus
 	+ Added ability to transfer ownership of units
-	> Aerial: Bombers can now hit targets not directly beneath them.
-	> Aerial: Considerably increased AA range.
+	> Aerial: Bombers can now hit targets not directly beneath them
+	> Aerial: Considerably increased AA range
 	> Added resource visualization LODs
 	> Resource visualizations are now rendered more transparent if occupied anywhere
 	> AI: Game.Grid.ToLocation() now accepts Game.Grid.suborbitalHeight as height
