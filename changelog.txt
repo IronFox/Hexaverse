@@ -7,6 +7,7 @@ v0.9.12
 	+ AI: Added Game.Grid.suborbitalHeight
 	+ Added auto-terrain-clip on unit focus
 	+ Added ability to transfer ownership of units
+	+ Added ability to convert full mineral containers to and from mobile units
 	> Aerial: Bombers can now hit targets not directly beneath them
 	> Aerial: Considerably increased AA range
 	> Added resource visualization LODs
