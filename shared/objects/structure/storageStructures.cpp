@@ -5,6 +5,7 @@
 #include "../components.h"
 #include "../../runtimeConfig.h"
 #include "../research/globalState.h"
+#include "../prototypes.h"
 
 namespace Objects
 {
@@ -72,7 +73,16 @@ namespace Objects
 
 		/*virtual override*/ EntityType			MineralContainer::GetMobilizedType() const
 		{
-			return EntityType(ConstName::VehicleBase_HoverBase,ConstName::Turret_MineralTransporter);
+			return mobileType;
+		}
+	#endif
+
+	#ifdef HAS_WINDOW
+		/*virtual override*/ void			MineralContainer::DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2)
+		{
+			Super::DescribeType(label,descFlags,owner,t2);
+			label.BeginBrief();
+			label << "Can be converted to "+Objects::ToString(mobileType);
 		}
 	#endif
 

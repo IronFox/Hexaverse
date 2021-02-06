@@ -164,6 +164,9 @@ namespace Objects
 		typedef StorageStructure<MineralContainer>	Super;
 		friend class Super;
 		friend class WorkingStructureT<MineralContainer>;
+
+		static const constexpr EntityType mobileType = EntityType(ConstName::VehicleBase_HoverBase,ConstName::Turret_MineralTransporter);
+
 		/**/						MineralContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Minerals, MaxStorage);}
 		/**/						MineralContainer()	{maxStorage.Set(Resource::Minerals, MaxStorage); }	//global prototype
@@ -181,6 +184,10 @@ namespace Objects
 		#ifndef CLIENT
 			virtual const char*		CheckMobilization() const override;
 			virtual EntityType		GetMobilizedType() const override;
+		#endif
+
+		#ifdef HAS_WINDOW
+			virtual void			DescribeType(Description&label, UINT32 descFlags, const OwnerParameter&owner, const T2::PConstProperties&t2) override;
 		#endif
 	};
 

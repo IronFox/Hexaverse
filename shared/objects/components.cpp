@@ -1812,6 +1812,8 @@ namespace Objects
 					if (this == &bomb)
 						outResult.GetLastLine() +=" ("+Resource::Uranium.GetTagStr()+": *5)";
 				}
+				if (settledStructureType.IsNotEmpty())
+					outResult << "Can be converted to "+ToString(settledStructureType);
 
 				if (CanConstruct() && !compound)
 					outResult <<"Construction: Converts "+Resource::Minerals.GetTagStr()+operationSpeed[Operation::Construct].Describe(researchState)+" per round";

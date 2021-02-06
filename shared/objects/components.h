@@ -22,9 +22,6 @@ namespace Objects
 	static const constexpr float			vehicleScale = 0.4f;
 	inline void NoCosts(int&mineralCostOut, Resource::ID&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
-	typedef std::function<void(const Objects::PVehicle&v, UINT16 trigger)> FOnTrigger;
-
-
 	template <typename T>
 		struct TGroundVector
 		{
