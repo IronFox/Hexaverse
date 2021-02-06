@@ -391,7 +391,7 @@ namespace Objects
 
 		void DefineMineralTransporter(Component::Turret&component)
 		{
-			auto cmd = new Command::IconCommand("Deploy Mineral Container",[]()
+			auto cmd = new Command::CustomIconCommand("Convert to Mineral Container","Settle Mobile",[]()
 			{
 				if (!Objects::selectedEntity)
 					return;
@@ -399,7 +399,7 @@ namespace Objects
 				Network::Channels::SettleMobile.SendTo(Network::client,m);
 			}, &CommonCmd::IdleCheck,NoCosts);
 
-			cmd->customLabel << "Deploy Mineral Container";
+			cmd->customLabel << "Convert to Mineral Container";
 			cmd->customLabel.MarkBriefEnd();
 			cmd->customLabel << "Instantly converts the local unit into a full mineral container";
 			component.commands.Add(cmd);
