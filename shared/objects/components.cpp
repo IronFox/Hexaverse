@@ -1105,7 +1105,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/mobileMineralContainer.obj");
+				component.parts.First().LoadFromObj("objects/mineralTransporter.obj");
 			#endif
 
 
