@@ -57,4 +57,23 @@ namespace Objects
 			#endif
 		}
 	}
+
+	#ifndef CLIENT
+		/*virtual override*/ const char*		MineralContainer::CheckMobilization() const
+		{
+			if (storage != maxStorage)
+				return "Storage must be full in order to mobilize";
+			if (!Component::hoverbase.CanStandOn(World::actual,location-1))
+				return "Mobile unit cannot stand here";
+			if (health < GetMaxHealth())
+				return "Container is damaged";
+			return nullptr;
+		}
+
+		/*virtual override*/ EntityType			MineralContainer::GetMobilizedType() const
+		{
+			return EntityType(ConstName::VehicleBase_HoverBase,ConstName::Turret_MineralTransporter);
+		}
+	#endif
+
 }

@@ -284,6 +284,15 @@ TurretConfig =
 		HorizontalAttackRange = 0,
 		IsUnlocked = true,
 	},
+	MineralTransporter =
+	{
+		Cost = 500,
+		Weight = 5,
+		HealthMultiplier = 1,
+		ScanningRange = 1,
+		HorizontalAttackRange = 0,
+		IsUnlocked = true,
+	},
 	EMP =
 	{
 		Cost = 100,

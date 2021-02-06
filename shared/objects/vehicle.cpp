@@ -107,6 +107,30 @@ namespace Objects
 	
 	#ifndef CLIENT
 
+		/*virtual override*/ const char*	Vehicle::CheckSettlement() const
+		{
+			EntityType demobilized = GetSettledType();
+			
+			if (demobilized.IsEmpty())
+				return "Not supported";
+
+			if (health < GetMaxHealth())
+				return "Unit is damaged";
+
+			PWorldEntity e = Prototypes::Find(demobilized);
+			for (int i = 1; i < e->GetHeight(); i++)
+				if (!World::actual.LowCellIsClear(location+i))
+					return "Insufficient head room";
+
+			return nullptr;
+		}
+
+		/*virtual override*/ EntityType		Vehicle::GetSettledType() const
+		{
+			return turret->settledStructureType;
+		}
+
+
 
 		/*virtual override*/ void		Vehicle::OnInsert( float&atTime, bool freshConstruction )
 		{

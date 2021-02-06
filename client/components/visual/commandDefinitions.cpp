@@ -389,6 +389,22 @@ namespace Objects
 				DefineOffensive(proto.commands,proto.turret->trajectoryType);
 		}
 
+		void DefineMineralTransporter(Component::Turret&component)
+		{
+			auto cmd = new Command::IconCommand("Deploy Mineral Container",[]()
+			{
+				if (!Objects::selectedEntity)
+					return;
+				Protocol::SettleMobile m = Objects::selectedEntity->id;
+				Network::Channels::SettleMobile.SendTo(Network::client,m);
+			}, &CommonCmd::IdleCheck,NoCosts);
+
+			cmd->customLabel << "Deploy Mineral Container";
+			cmd->customLabel.MarkBriefEnd();
+			cmd->customLabel << "Instantly converts the local unit into a full mineral container";
+			component.commands.Add(cmd);
+		}
+
 		void DefineMine(CommandContainer&commands)
 		{
 			DefineWorkingStructure(commands);
@@ -493,6 +509,29 @@ namespace Objects
 			};
 			commands.Add(cmd);
 		}
+
+
+		
+		void DefineMobilizableWorkingStructure(CommandContainer & commands)
+		{
+			DefineWorkingStructure(commands);
+			
+
+			Command::PIconCommand cmd (new Command::IconCommand("Mobilize Structure",[]()
+			{
+				if (!Objects::selectedEntity)
+					return;
+				Protocol::MobilizeStructure m = Objects::selectedEntity->id;
+				Network::Channels::MobilizeStructure.SendTo(Network::client,m);
+			},&CommonCmd::IdleCheck
+			,NoCosts
+			));
+			cmd->customLabel << "Mobilize Structure";
+			cmd->customLabel.MarkBriefEnd();
+			cmd->customLabel << "Instantly converts this structure into its mobile counterpart";
+			commands.Add(cmd);
+		}
+
 
 		static void BuildCommand(CommandContainer&parent, const Research::PTopic&t)
 		{
@@ -1579,7 +1618,7 @@ namespace Objects
 			DefineVehiclePlant(Objects::VehiclePlant::commands);
 			DefineWorkingStructure(Objects::CrystalStorage::commands);
 			DefineWorkingStructure(Objects::OrganicStorage::commands);
-			DefineWorkingStructure(Objects::MineralContainer::commands);
+			DefineMobilizableWorkingStructure(Objects::MineralContainer::commands);
 			DefineWorkingStructure(Objects::FuelContainer::commands);
 			DefineWorkingStructure(Objects::UraniumStorage::commands);
 			DefineWorkingStructure(Objects::CompositeMaterialStorage::commands);
@@ -1599,6 +1638,8 @@ namespace Objects
 			DefineOffensive(Component::armored);
 			DefineOffensive(Component::antiAircraft);
 			DefineOffensive(Component::emp);
+
+			DefineMineralTransporter(Component::mineralTransporter);
 
 			#ifndef NO_MUNITION
 				DefineResourceTransfer(Component::munitionTransporter,Resource::Munitions);

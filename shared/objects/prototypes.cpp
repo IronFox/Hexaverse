@@ -200,6 +200,7 @@ namespace Objects
 				StarPort::Configure(starPort);
 			#endif
 
+			MineralTransporter::Configure(mineralTransporter);
 			Bomb::Configure(bomb);
 			Armored::Configure(armored);
 			Radar::Configure(radar);
@@ -238,6 +239,7 @@ namespace Objects
 								<< &antiAircraft
                                 << &SubOrbital::raptor << &SubOrbital::bomber << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
 								<< &bomb
+								<< &mineralTransporter
 								<< &resourceScanner
 								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 									<< &munitionTransporter

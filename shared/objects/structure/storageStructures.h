@@ -177,6 +177,11 @@ namespace Objects
 			maxStorage.Clear();
 			maxStorage.Set(Resource::Minerals, MaxStorage);
 		};
+
+		#ifndef CLIENT
+			virtual const char*		CheckMobilization() const override;
+			virtual EntityType		GetMobilizedType() const override;
+		#endif
 	};
 
 

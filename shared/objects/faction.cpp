@@ -566,6 +566,16 @@ namespace Objects
 			ASSERT_IS_CONSTRAINED__(storage[res] , 0, max[res]);
 		}
 
+		bool FillStorage(WorldEntity&e, float&atTime, const Resource::Vector&max, Resource::Vector&storage)
+		{
+			if (storage == max)
+				return false;
+			storage = max;
+			LogEvent(EventSignificance::Common,&e,"Storage filled to "+storage.ToString()+"/"+max.ToString());
+			e.SignalChangeByExternalCause(WorldEntity::StorageChanged,atTime);
+			return true;
+		}
+
 		void ChangeStorage(WorkingStructure&ws, float&atTime, Resource::ID res, int change)
 		{
 			if (change == 0)
@@ -578,6 +588,28 @@ namespace Objects
 				Resource::Vector testCurrent;
 				ws.GetResourceVector(dummy,testCurrent,max);
 				ASSERT2__(current == testCurrent,current.ToString(),testCurrent.ToString());
+			#endif
+		}
+
+		void	FillStorage(WorkingStructure&ws, float&atTime)
+		{
+			Resource::Vector dummy,current,max;
+			ws.GetResourceVector(dummy,current,max);
+			if (FillStorage(ws,atTime,max,current))
+			{
+				ws.SetResourceStorage(current);
+				#ifdef _DEBUG
+					Resource::Vector testCurrent;
+					ws.GetResourceVector(dummy,testCurrent,max);
+					ASSERT2__(current == testCurrent,current.ToString(),testCurrent.ToString());
+				#endif
+			}
+		}
+
+		void	FillStorage(MobileEntity&m, float&atTime)
+		{
+			#ifndef ONE_COMPOUND_PER_FACTION
+				FillStorage(v,atTime,v.GetMaxStorageCapacity(),v.currentStorage);
 			#endif
 		}
 

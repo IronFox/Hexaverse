@@ -63,6 +63,7 @@ namespace Objects
 						artillery,launcher,rockets,emp,armored,
 						antiAircraft,
 						bomb,
+						mineralTransporter,
 						munitionTransporter,
 						radar,resourceScanner
 						#ifndef NO_SATELLITES
@@ -1097,6 +1098,26 @@ namespace Objects
 		
 			component.dealsEMPDamage = true;
 			component.ammoType = Resource::Uranium;
+		}
+	
+
+		void			MineralTransporter::Configure(Turret&component)
+		{
+			#ifdef HAS_WINDOW		
+				component.parts.SetSize(1);
+				component.parts.First().LoadFromObj("objects/mobileMineralContainer.obj");
+			#endif
+
+
+			component.typeName = "Mineral Transporter";
+			component.shortName = "truck";
+			component.constName = ConstName::Turret_MineralTransporter;
+			component.settledStructureType = ConstName::Type_MineralContainer;
+
+
+			#ifndef ONE_COMPOUND_PER_FACTION
+				component.baseStorageCapacity[Resource::Minerals] = 400;
+			#endif
 		}
 
 

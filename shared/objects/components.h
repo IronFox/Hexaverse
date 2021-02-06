@@ -11,6 +11,8 @@
 #include "clientAttachment.h"
 #include "geometry.h"
 #include "projectileImpact.h"
+#include "entityType.h"
+
 #ifdef HAS_WINDOW
 	#include <al/openal.h>
 #endif
@@ -19,6 +21,8 @@ namespace Objects
 {
 	static const constexpr float			vehicleScale = 0.4f;
 	inline void NoCosts(int&mineralCostOut, Resource::ID&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
+
+	typedef std::function<void(const Objects::PVehicle&v, UINT16 trigger)> FOnTrigger;
 
 
 	template <typename T>
@@ -265,6 +269,8 @@ namespace Objects
 											damageLevel;
 			IFunc							attacksPerRound,
 											ammoNeedPerShot;
+
+			EntityType						settledStructureType;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				Resource::Vector				baseStorageCapacity;
@@ -609,6 +615,7 @@ namespace Objects
 						artillery,launcher,rockets,emp,armored,
 						antiAircraft,
 						bomb,
+						mineralTransporter,
 						munitionTransporter,
 						radar,resourceScanner
 						#ifndef NO_SATELLITES
@@ -639,6 +646,11 @@ namespace Objects
 		};
 	
 		namespace EMP
+		{
+			void		Configure(Turret&);
+		};
+
+		namespace MineralTransporter
 		{
 			void		Configure(Turret&);
 		};

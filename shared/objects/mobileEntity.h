@@ -551,6 +551,17 @@ namespace Objects
 			virtual void		FlushAutoAttacks() override;
 			virtual bool		AttackNext(const Grid::LCellIdI&target, bool autoTarget) override;
 			virtual void		Attack(float&currentTime)	override;
+
+			/**
+			Checks whether the local mobile can be converted into a structure (in its current state).
+			Returns null if possible and a string, describing the error, otherwise.
+			*/
+			virtual const char*	CheckSettlement() const {return "Not supported";}
+			/**
+			Gets the structure type that is to replace the local mobile.
+			If CheckSettlement() returns null, then this method must return a valid structure entity type.
+			*/ 
+			virtual EntityType	GetSettledType() const {return EntityType();}
 		#endif
 		virtual	bool			HasAmmoForShot() override;
 

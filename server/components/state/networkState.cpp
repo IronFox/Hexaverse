@@ -576,6 +576,8 @@ namespace Network
 		server.InstallChannel(Channels::AllianceMarkerText);
 
 		server.InstallChannel(Channels::TransferEntityOwnership);
+		server.InstallChannel(Channels::MobilizeStructure);
+		server.InstallChannel(Channels::SettleMobile);
 
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);

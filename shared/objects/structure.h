@@ -214,6 +214,7 @@ namespace Objects
 		*/
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const {return false;}
 
+
 		/**
 		Checks whether or not the local structure is an instance of SkyPort.
 		Obviously, a dynamic cast would do the same, but at much higher computation cost.
@@ -223,10 +224,23 @@ namespace Objects
 		virtual bool				IsSkyLinkStructure() const {return false;}
 
 		#ifndef CLIENT
+
+			/**
+			Checks whether the local structure can be converted into a mobile entity (in its current state).
+			Returns null if possible and a string, describing the error, otherwise.
+			*/
+			virtual const char*		CheckMobilization() const {return "Not supported";}
+			/**
+			Gets the mobile type that is to replace the local structure.
+			If CheckMobilization() returns null, then this method must return a valid mobile entity type.
+			*/ 
+			virtual EntityType		GetMobilizedType() const {return EntityType();}
+
 			/**
 			Determines whether or not the local structure will connect to structures of different ownership
 			*/
 			virtual bool			ConnectsToDifferentOwnership() const { return false;}
+
 		#else
 			inline bool				ConnectsToDifferentOwnership() const { return false;}
 

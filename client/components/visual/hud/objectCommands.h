@@ -477,7 +477,8 @@ namespace Objects
 			}
 		inline Objects::CommandFlags IdleCheck(bool controlsEnabled)
 		{
-			return controlsEnabled && activeCursorMode == CursorMode::Idle ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
+			return controlsEnabled 
+				&& activeCursorMode == CursorMode::Idle ? Objects::CommandFlags::IsEnabled : Objects::CommandFlags::None;
 		}
 
 

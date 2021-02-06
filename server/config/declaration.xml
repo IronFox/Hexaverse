@@ -233,6 +233,7 @@
 				<variable name="Artillery" default="5" />
 				<variable name="Missile_Launcher" default="0" />
 				<variable name="Rocket_Launcher" default="0" />
+				<variable name="Mineral_Transporter" default="8" />
 				<variable name="EMP" default="3" />
 				<variable name="Anti_Aircraft" default="6" />
 				<variable name="Raptor" default="6" />

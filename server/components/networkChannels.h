@@ -34,6 +34,8 @@ namespace Receiver
 	void	EntityTrigger(Protocol::EntityTrigger&t, TCP::Peer&peer);
 	void	AllianceMarkerText(Protocol::AllianceMarkerText&t, TCP::Peer&peer);
 	void	TransferEntityOwnership(Protocol::TransferEntityOwnership&, TCP::Peer&peer);
+	void	MobilizeStructure(Protocol::MobilizeStructure&, TCP::Peer&peer);
+	void	SettleMobile(Protocol::SettleMobile&, TCP::Peer&peer);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -173,6 +175,8 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(AllianceMarkerText);
 
 	DECLARE_FACTION_CHANNEL(TransferEntityOwnership);
+	DECLARE_FACTION_CHANNEL(SettleMobile);
+	DECLARE_FACTION_CHANNEL(MobilizeStructure);
 
 	namespace Statistics
 	{

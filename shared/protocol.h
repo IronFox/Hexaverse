@@ -739,9 +739,9 @@ namespace Protocol
 		};
 
 	template <typename T>
-		class ResearchAttributeArray : public ::Protocol::NetArray<ResearchAttribute<T>,256> {};
+		class ResearchAttributeArray : public ::Protocol::NetArray<ResearchAttribute<T>,512> {};
 	template <typename T>
-		class ResearchAttributeDeltaArray : public ::Protocol::NetArray<ResearchAttributeDelta<T>,256> {};
+		class ResearchAttributeDeltaArray : public ::Protocol::NetArray<ResearchAttributeDelta<T>,512> {};
 
 	NETSTRUCT4( ResearchAttributeVector
 		, TUniqueID, faction
@@ -827,7 +827,9 @@ namespace Protocol
 
 
 	typedef Package::NetString<32>	SaveAs;
-	typedef TUniqueID	KillFaction;
+	typedef TUniqueID	KillFaction,
+						MobilizeStructure,
+						SettleMobile;
 
 	namespace ChannelID
 	{
@@ -895,6 +897,8 @@ namespace Protocol
 			Automate,			//c2s: EntityStateUpdate
 			Sleep,				//c2s: EntityStateUpdate
 			TransferEntityOwnership,			//c2s: TransferEntityOwnership
+			MobilizeStructure,
+			SettleMobile,
 
 			ResourceUpdate,		//s2c: ResourceUpdate
 

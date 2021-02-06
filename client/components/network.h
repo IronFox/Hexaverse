@@ -320,6 +320,8 @@ namespace Network
 		DECLARE_CHANNEL(AllianceMarkerText);
 
 		DECLARE_OBJECT_SENDER(TransferEntityOwnership);
+		DECLARE_OBJECT_SENDER(MobilizeStructure);
+		DECLARE_OBJECT_SENDER(SettleMobile);
 	}
 
 

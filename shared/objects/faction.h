@@ -531,6 +531,10 @@ namespace Objects
 //		void	VerifyVisibilityNetwork();
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource::ID res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource::ID res);
+		
+		bool	FillStorage(WorldEntity&e, float&atTime, const Resource::Vector&max, Resource::Vector&storage);
+		void	FillStorage(WorkingStructure&ws, float&atTime);
+		void	FillStorage(MobileEntity&m, float&atTime);
 	#endif
 
 

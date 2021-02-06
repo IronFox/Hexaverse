@@ -60,6 +60,8 @@ namespace Objects
 		
 			virtual void		OnInsert( float&atTime, bool freshConstruction ) override;
 
+			virtual const char*	CheckSettlement() const;
+			virtual EntityType	GetSettledType() const;
 		#endif
 
 		/**

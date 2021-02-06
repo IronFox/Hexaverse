@@ -448,6 +448,8 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(AllianceMarkerText);
 
 	DECLARE_FACTION_CHANNEL(TransferEntityOwnership);
+	DECLARE_FACTION_CHANNEL(SettleMobile);
+	DECLARE_FACTION_CHANNEL(MobilizeStructure);
 
 	namespace Statistics
 	{
@@ -1977,10 +1979,10 @@ namespace Receiver
 
 
 
-	void	TransferEntityOwnership(Protocol::TransferEntityOwnership&gift, TCP::Peer&peer)
+	void	TransferEntityOwnership(Protocol::TransferEntityOwnership&t, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Gift entity "+ToString(gift.targetEntity)+" to faction "+ToString(gift.targetFaction));
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(gift.targetEntity,peer);
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Transfer ownership of entity "+ToString(t.targetEntity)+" to faction "+ToString(t.targetFaction));
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(t.targetEntity,peer);
 		if (!e)
 			return;
 		Network::PClient cl = To<Network::Client>::Cast(peer.attachment);
@@ -1990,15 +1992,92 @@ namespace Receiver
 			return;
 		}
 
-		Objects::PFaction f = Objects::Faction::FindByID(gift.targetFaction);
+		Objects::PFaction f = Objects::Faction::FindByID(t.targetFaction);
 		if (!f)
 		{
-			LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault. Target faction "+ToString(gift.targetFaction)+" does not exist.");
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault. Target faction "+ToString(t.targetFaction)+" does not exist.");
 			return;
 		}
 
 
 		Journal::currentRound.Register(true,e,new Journal::Round::TransferEntityOwnership(f));
+	}
+
+
+
+
+	void	MobilizeStructure(Protocol::MobilizeStructure&ms, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Mobilize structure "+ToString(ms));
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(ms,peer);
+		if (!e)
+			return;
+		if (!e->IsStructure())
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Unable to mobilize "+e->GetNiceName()+": Not a structure");
+			return;
+		}
+
+		Objects::PStructure s = To<Objects::Structure>::Cast(e);
+		const char*err = s->CheckMobilization();
+		if (err)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Unable to mobilize "+e->GetNiceName()+": "+String(err));
+			return;
+		}
+		
+		Journal::Round::PCreateEntity c {new Journal::Round::CreateEntity()};
+		c->desc.type = s->GetMobilizedType();
+		c->enableWorkingStructure = false;
+		c->entityID = TUniqueID::New();
+		c->location = s->location;
+		c->fillStorage = true;
+		if (Journal::currentRound.Register(true,e,new Journal::Round::DestroyEntity())
+			&&
+			!Journal::currentRound.Register(true,e->owner,std::move(c)))
+			{
+				LogEvent(EventClass::Preset::internalError,peer,"Instantiating replacement failed for type "+ToString(c->desc.type)+" at "+ToString(c->location));
+				return;
+			}
+}
+
+
+
+	void	SettleMobile(Protocol::SettleMobile&dm, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: SettleMobile "+ToString(dm));
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(dm,peer);
+		if (!e)
+			return;
+		if (!e->IsMobile())
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Unable to settle "+e->GetNiceName()+": Not a mobile unit");
+			return;
+		}
+
+		Objects::PMobileEntity m = To<Objects::MobileEntity>::Cast(e);
+		const char*err = m->CheckSettlement();
+		if (err)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, e, "Unable to settle "+e->GetNiceName()+": "+String(err));
+			return;
+		}
+
+		Journal::Round::PCreateEntity c {new Journal::Round::CreateEntity()};
+		c->desc.type = m->GetSettledType();
+		c->enableWorkingStructure = false;
+		c->entityID = TUniqueID::New();
+		c->location = m->location;
+		c->fillStorage = true;
+		if (Journal::currentRound.Register(true,e,new Journal::Round::DestroyEntity()))
+		{
+			if (!Journal::currentRound.Register(true,e->owner,std::move(c)))
+			{
+				LogEvent(EventClass::Preset::internalError,peer,"Instantiating replacement failed for type "+ToString(c->desc.type)+" at "+ToString(c->location));
+				return;
+			}
+		}
+
 	}
 
 	#if 0

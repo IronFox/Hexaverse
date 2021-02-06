@@ -605,13 +605,20 @@ namespace Journal
 		e.uuidParameters.Set("ID",entityID);
 		e.locationParameters.Set("Location",location);
 		e.intParameters.Set("Enable",enableWorkingStructure);
+		if (fillStorage)
+			e.intParameters.Set("FillStorage",1);
 	}
 	/*virtual override*/ void	Round::CreateEntity::Execute(const Objects::PFaction&f) const
 	{
 		Objects::PWorldEntity e = desc.Instantiate(f,entityID,location);
 		float t = 0;
 		if (e->IsMobile())
-			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),t);
+		{
+			auto m = To<Objects::MobileEntity>::Cast(e);
+			Objects::InsertConstructed(m,t);
+			if (fillStorage)
+				Objects::FillStorage(*m,t);
+		}
 		else
 		{
 			if (e->IsStructure())
@@ -628,6 +635,8 @@ namespace Journal
 					m->LinkToCore(0);
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(e);
 				ws->SetEnabled(enableWorkingStructure,t,false,Objects::WorkingStructure::ForceEnable,false);
+				if (fillStorage)
+					Objects::FillStorage(*ws,t);
 			}
 		}
 	}
@@ -639,6 +648,12 @@ namespace Journal
 		location = e.locationParameters.Require(CLOCATION,"Location");
 		int val = e.intParameters.Require(CLOCATION,"Enable");
 		entityID = e.uuidParameters.Require(CLOCATION,"ID");
+
+		int temp;
+		if (e.intParameters.TryGet("FillStorage",temp))
+			fillStorage = temp == 1;
+		else
+			fillStorage = false;
 
 		enableWorkingStructure = val != 0;
 	}
@@ -1947,45 +1962,65 @@ namespace Journal
 
 
 
-	void	Round::Register(bool execute, const Objects::PFaction&f, Round::FactionEvent*newEvent)
+	bool	Round::Register(bool execute, const Objects::PFaction&f, Round::FactionEvent*newEvent)
 	{
-		PFactionEvent ev(newEvent);
-		if (execute && !ev->TryExecute(f))
-			return;
-		factionStrands.Set(f->id).factionEvents.Append(ev);
+		return Register(execute,f,PFactionEvent(newEvent));
 	}
 
-	void	Round::Register(bool execute, const TUniqueID&fID, Round::FactionEvent*newEvent)
+	bool	Round::Register(bool execute, const Objects::PFaction&f, Round::PFactionEvent&&ev)
 	{
-		PFactionEvent ev(newEvent);
+		if (execute && !ev->TryExecute(f))
+			return false;
+		factionStrands.Set(f->id).factionEvents.Append(std::forward<Round::PFactionEvent>(ev));
+		return true;
+	}
+
+	bool	Round::Register(bool execute, const TUniqueID&fID, Round::FactionEvent*newEvent)
+	{
+		return Register(execute,fID,PFactionEvent(newEvent));
+	}
+
+	bool	Round::Register(bool execute, const TUniqueID&fID, Round::PFactionEvent&&ev)
+	{
 		if (execute)
 		{ 
 			Objects::PFaction f = Objects::Faction::FindByID(fID);
 			if (!f)
 			{
-				LogEvent(EventClass::Preset::commandRejected,"Faction "+ToString(fID)+" not found for event execution "+String(typeid(newEvent).name()));
-				return;
+				LogEvent(EventClass::Preset::commandRejected,"Faction "+ToString(fID)+" not found for event execution "+String(typeid(ev.get()).name()));
+				return false;
 			}
 			if (!ev->TryExecute(f))
-				return;
+				return false;
 		}
-		factionStrands.Set(fID).factionEvents.Append(ev);
+		factionStrands.Set(fID).factionEvents.Append(std::forward<Round::PFactionEvent>(ev));
+		return true;
 	}
 
-	void	Round::Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent)
+	bool	Round::Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent)
 	{
-		PEntityEvent ev(newEvent);
+		return Register(execute,e,PEntityEvent(newEvent));
+	}
+
+	bool	Round::Register(bool execute, const Objects::PWorldEntity&e, PEntityEvent&&ev)
+	{
 		if (execute && !ev->TryExecute(e))
-			return;
-		factionStrands.Set(e->owner->id).entityStrands.Set(e->id).Append(ev);
+			return false;
+		factionStrands.Set(e->owner->id).entityStrands.Set(e->id).Append(std::forward<PEntityEvent>(ev));
+		return true;
 	}
 
-	void	Round::Register(bool execute, Round::GlobalEvent*newEvent)
+	bool	Round::Register(bool execute, Round::GlobalEvent*newEvent)
 	{
-		PGlobalEvent ev(newEvent);
+		return Register(execute,PGlobalEvent(newEvent));
+	}
+
+	bool	Round::Register(bool execute, Round::PGlobalEvent&&ev)
+	{
 		if (execute && !ev->TryExecute())
-			return;
-		globalEvents.Append(ev);
+			return false;
+		globalEvents.Append(std::forward<Round::PGlobalEvent>(ev));
+		return true;
 	}
 
 	void	Round::RegisterDropEntityCommands(bool execute, const Objects::PWorldEntity&e, Protocol::DropMode mode)
@@ -2354,6 +2389,7 @@ namespace Journal
 		MAP_ADD(NewEntityProduction);
 		MAP_ADD(CommitRound);
 		MAP_ADD(DestroyEntity);
+		MAP_ADD(TransferEntityOwnership);
 		MAP_ADD(EntityStateCheck);
 		MAP_ADD(ChangeAutomation);
 		MAP_ADD(ChangeSleep);

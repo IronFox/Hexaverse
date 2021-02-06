@@ -489,7 +489,7 @@ namespace Journal
 			PureEntityDescriptor	desc;
 			Grid::LCellIdI	location;
 			TUniqueID		entityID;
-			bool			enableWorkingStructure;
+			bool			enableWorkingStructure = false, fillStorage = false;
 
 			/**/			CreateEntity()	{}
 			/**/			CreateEntity(const Objects::PWorldEntity&);
@@ -500,6 +500,8 @@ namespace Journal
 		protected:
 			virtual void	Compile(Entry&)	const override;
 		};
+
+		typedef std::shared_ptr<CreateEntity>	 PCreateEntity;
 
 		class CreateFaction : public GlobalEvent
 		{
@@ -592,8 +594,8 @@ namespace Journal
 		public:
 			TUniqueID		targetFaction;
 
-			/**/			TransferEntityOwnership(const Objects::PFaction&targetFaction):targetFaction(targetFaction ? targetFaction->id : TUniqueID::Empty()) {}
-			virtual Event*	Instantiate() const override {return new TransferEntityOwnership(nullptr);};
+			/**/			TransferEntityOwnership(const Objects::PFaction&targetFaction=nullptr):targetFaction(targetFaction ? targetFaction->id : TUniqueID::Empty()) {}
+			virtual Event*	Instantiate() const override {return new TransferEntityOwnership();};
 			virtual void	Execute(const Objects::PWorldEntity&) const override;
 			virtual void	Decode(const Entry&e) override;
 
@@ -957,10 +959,14 @@ namespace Journal
 		void	RegisterResourceCoverageKnowledgeLoss(bool execute, const Objects::PFaction&, UINT32 stackID);
 
 
-		void	Register(bool execute, const TUniqueID&factionID, Round::FactionEvent*newEvent);
-		void	Register(bool execute, const Objects::PFaction&f, Round::FactionEvent*newEvent);
-		void	Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent);
-		void	Register(bool execute, Round::GlobalEvent*newEvent);
+		bool	Register(bool execute, const TUniqueID&factionID, Round::FactionEvent*newEvent);
+		bool	Register(bool execute, const Objects::PFaction&f, Round::FactionEvent*newEvent);
+		bool	Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent);
+		bool	Register(bool execute, Round::GlobalEvent*newEvent);
+		bool	Register(bool execute, const TUniqueID&factionID, Round::PFactionEvent&&newEvent);
+		bool	Register(bool execute, const Objects::PFaction&f, Round::PFactionEvent&&newEvent);
+		bool	Register(bool execute, const Objects::PWorldEntity&e, Round::PEntityEvent&&newEvent);
+		bool	Register(bool execute, Round::PGlobalEvent&&newEvent);
 
 		void	Include(Round&other, bool execute);
 
