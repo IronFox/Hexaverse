@@ -96,10 +96,10 @@ CreateTask(function() Game.DisplayMessage("Now that you have some understanding 
 
 --buildings:
 CreateTask(function() Game.DescribeTask("Please find and select your Generator by left-clicking on it. The name of the building you currently selected is shown in the top-right section of the screen.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.type.name == 'Generator'; end);
-CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy while consuming %Fuel%fuel. This generator suffices to support your mine, and one more consumer. After that you will need more.","generator.jpg") end);
+CreateTask(function() Game.DisplayMessage("Enabled generators supply active buildings with %Energy%energy while consuming %Fuel%fuel. This generator suffices to support your mine and one more consumer. After that you will need more.","generator.jpg") end);
 
 CreateTask(function() Game.DescribeTask("Now, find and select your Mine.") end, function() return Game.selectedUnit ~= nil and Game.selectedUnit.type.name == 'Mine'; end);
-CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the planet core underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out, but they are also rarely enough.","mine.jpg") end);
+CreateTask(function() Game.DisplayMessage("Enabled mines collect natural resources from the planet core underneath. The colorful stack atop indicates how much they mine per round. This one collects %Minerals%minerals and %Fuel%fuel. The resources never run out, but they are also rarely enough.","mine.png") end);
 
 --build lab:
 CreateTask(function() Game.DescribeTask("Please find and select your Terraformer.") end, function() return TurretIsSelected("Terraformer"); end);
@@ -133,7 +133,7 @@ function HaveLab()
 end
 
 	
-CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done, as long as enough %Minerals%minerals are available. The bottom left resource table tells us that we have sufficient resources available: "..Game.myFaction.currentResources.supply.minerals .." per round, "..Game.myFaction.currentResources.storage.minerals.." in storage. So let's press on.") end, HaveLab);
+CreateTask(function() Game.DisplayMessage("The Terraformer will keep constructing the laboratory until done (as long as enough %Minerals%minerals are available). The bottom left resource table tells us that we have sufficient resources available: "..Game.myFaction.currentResources.supply.minerals .." per round, "..Game.myFaction.currentResources.storage.minerals.." in storage. So let's press on.") end, HaveLab);
 
 CreateTask(function() Game.DescribeTask("Until the Laboratory is done, please request new rounds by using the 'End Round' command in the bottom left section of the screen, or by pressing the Enter/Return key."); end,
 	HaveLab
@@ -206,7 +206,7 @@ function SecondGeneratorIsEnabled()
 end;
 
 
-CreateTask(function() Game.DisplayMessage("Both the new generator and mine are currently switched off, since they are not needed. Typically when requiring more %Energy%energy, available generators will be switched on automatically, which, in turn, may enable mines.") end,
+CreateTask(function() Game.DisplayMessage("Both the new generator and mine are currently switched off since they are not needed. Typically when requiring more %Energy%energy, available generators will be switched on automatically which in turn may enable mines.") end,
 	SecondGeneratorIsEnabled
 );
 
@@ -217,7 +217,7 @@ CreateTask(
 				u.Enable(true);
 			end;
 		end;
-		Game.DescribeTask("Please enable either your new mine or your new generator by selecting either, and pressing the Enable button in the bottom screen section.") 
+		Game.DescribeTask("Please enable either your new mine or your new generator by selecting either and pressing the Enable button in the bottom screen section.") 
 	end,
 	SecondGeneratorIsEnabled
 );
@@ -260,7 +260,7 @@ CreateTask(function() Game.DescribeTask("Task your Vehicle Plant to construct an
 	end
 );
 
-CreateTask(function() Game.DisplayMessage("As long as it's enabled, and has access to the required %Minerals%minerals, the vehicle plant will continue producing the items in its queue, left to right. You can abort any job by clicking on it in the list. To automate deployment you may also want to place a gathering point by selecting the vehicle plant in question, then right-clicking at the desired destination.") end);
+CreateTask(function() Game.DisplayMessage("As long as it's enabled (and has access to the required %Minerals%minerals), the vehicle plant will continue producing the items in its queue, left to right. You can abort any job by clicking on it in the list. To automate deployment you may also want to place a gathering point by selecting the vehicle plant in question, then right-clicking at the desired destination.") end);
 
 
 
@@ -308,7 +308,7 @@ CreateTask(function() Game.DescribeTask("Now, construct a Reactor Core next to o
 
 
 
-CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the %Energy%energy output of your compound. They require %Uranium%uranium, and tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
+CreateTask(function() Game.DisplayMessage("Reactor Cores are a great way to boost the %Energy%energy output of your compound. They require %Uranium%uranium and tend to concentrate your power production, however, which may pose a rewarding target for hostile forces.","Reactor Core.jpg") end);
 
 CreateTask(function() Game.DisplayMessage("This concludes the interactive tutorial.\n"..
 "With the basics covered, you will undoubtedly quickly master all other features as well.\n"..
