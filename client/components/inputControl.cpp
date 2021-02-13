@@ -712,6 +712,7 @@ namespace InputControl
 						return;
 					}
 
+					if (Objects::Faction::mine)
 					{
 						Objects::AllianceMarker marker;
 						marker.id.Generate();
