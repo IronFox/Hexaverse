@@ -5,6 +5,7 @@
 #include <general/timer.h>
 #include <io/monitoredProcess.h>
 #include <net/tcp.h>
+#include <startProcess.h>
 
 //#include <logEvent.h>
 //#include "visual/hud/dialog.h"
@@ -125,11 +126,7 @@ namespace ServerProcess
 
 		PathString GetExecutablePath()
 		{
-			#ifdef _DEBUG
-				return "..\\server\\.projector\\Debug\\server" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			#else
-				return "..\\server\\server" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			#endif
+			return Process::LocateProjectExecutable("..\\server","server");
 		}
 
 		bool TryResume()
