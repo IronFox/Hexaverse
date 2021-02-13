@@ -352,11 +352,12 @@ public:
 	void		Create();
 
 
-	const TCell*GetCells() const {return cellField;}
-	const TCell&GetCell(index_t)const;
-	const TCell&GetCell(family_t family, index_t memberIndex)const;
-	UINT32		CountFamilyMembers(family_t family) const;
-	UINT32		GetFamilyOffset(family_t family) const;
+	const TCell*				GetCells() const {return cellField;}
+	const TCell&				GetCell(index_t)const;
+	const TCell&				GetCell(family_t family, index_t memberIndex)const;
+	UINT32						CountFamilyMembers(family_t family) const;
+	UINT32						GetFamilyOffset(family_t family) const;
+	const Fractal::Geometry&	GetGeometry() const {return geometry;}
 
 	void		Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells);	//fourth component contains 0 for center vertices and 1 for outline vertices
 

@@ -13,6 +13,12 @@ namespace Grid
 	extern UINT16				empZonesLocked,
 								empZonesUnlocked;
 
+	struct TNeighborCellID
+	{
+		UINT32						stackID;
+		UINT32						distanceFromOrigin;
+	};
+
 
 	template <unsigned Exponent>
 	class Setup
@@ -136,6 +142,60 @@ namespace Grid
 				for (int i = 0; i < n.numNeighbors; i++)
 					queue << std::make_pair(n.neighborID[i], current.second + 1);
 			}
+		}
+
+		/**
+		Adds the extended neighborhood around the given center cell to a hash set of stack ids. The hash set is not cleared before
+		adding new cells
+		*/
+		void						AddExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, Ctr::HashSet<UINT32>&inOutVisitedCells) const
+		{
+			Ctr::Queue<std::pair<index_t, UINT32> >	queue;
+			queue << std::make_pair(centerCell, 0);
+			std::pair<index_t, UINT32> current;
+			while (queue >> current)
+			{
+				if (inOutVisitedCells.IsSet(current.first))
+					continue;
+				inOutVisitedCells.Set((UINT32)current.first);
+				if (current.second == maxDistance)
+					continue;
+				const auto&n = grid.GetCell(current.first).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					queue << std::make_pair(n.neighborID[i], current.second + 1);
+			}
+		}
+
+		/**
+		Determines the extended neighborhood around the given center cell, including distances
+		*/
+		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicBuffer<TNeighborCellID>&outNeighbors, Ctr::HashTable<UINT32,UINT32>&inOutVisitedCells) const
+		{
+			Ctr::Queue<std::pair<UINT32, UINT32> >	queue;
+			queue << std::make_pair(centerCell, 0);
+			std::pair<UINT32, UINT32> current;
+			outNeighbors.Clear();
+			inOutVisitedCells.Clear();
+			while (queue >> current)
+			{
+				auto oldDist = inOutVisitedCells.QueryPointer(current.first);
+				if (oldDist && *oldDist < current.second)
+					continue;
+				inOutVisitedCells.Set((UINT32)current.first, current.second);
+				if (current.second == maxDistance)
+					continue;
+				const auto&n = grid.GetCell(current.first).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					queue << std::make_pair(n.neighborID[i], current.second + 1);
+			}
+
+			inOutVisitedCells.VisitAllEntries([&outNeighbors](UINT32 stack, UINT32 dist)
+			{
+				auto&cell = outNeighbors.Append();
+				cell.stackID = stack;
+				cell.distanceFromOrigin = dist;
+			});
+
 		}
 
 		void						UpdatePlanarDistanceField(index_t centerCell, UINT32 maxDistance, TDistanceField&field) const
