@@ -374,26 +374,47 @@ namespace NexusPresence
 	};
 
 
+	
+
+	HashTable<UINT32, Buffer0<Grid::TNeighborCellID> > highPoleNeighborhood;
+
+	const Buffer0<Grid::TNeighborCellID>& GetHighPoleNeighborhood(UINT32 lowCellIndex)
+	{
+		const auto*extN = highPoleNeighborhood.QueryPointer(lowCellIndex);
+		if (!extN)
+		{
+			Timer measure;
+			auto&e = highPoleNeighborhood.Set(lowCellIndex);
+			Grid::high.GetExtendedNeighborhood(Grid::low.grid.GetCell(lowCellIndex).higherEquivalent,Grid::high.grid.CellsPerEdge/2,e);
+			extN = &e;
+			LogEvent(EventSignificance::Important,"Time needed for ext neighborhood poll: "+String(measure.GetDelta())+" seconds");
+		}
+		return *extN;
+
+	}
+
+
 	class Presence
 	{
 	public:
-		void				Init(const World::Data&world, index_t pole, bool isBase, bool hasPort)
+		void				Init(const World::Data&world, UINT32 pole, bool isBase, bool hasPort)
 		{
 			this->isBase = isBase;
 			this->hasPort = hasPort || isBase;
 			this->pole = pole;
-
 			Grid::low.GetExtendedNeighborhood(pole,Grid::low.grid.CellsPerEdge/2,lowDomain);
-			Grid::high.GetExtendedNeighborhood(pole,Grid::high.grid.CellsPerEdge/2,highDomain);
+			highDomain = &GetHighPoleNeighborhood(pole);
+
+
 
 			terrainRange = M::TIntRange<>::Invalid;
 			heightSum = 0;
 			heightCount = 0;
 
-			foreach (highDomain,idx)
+			foreach (*highDomain,idx)
 			{
-				Grid::LCellIdI location(*idx,0);	//first 12 are corner cells
-				int h = world.GetStack(*idx).FindMostApplicableGround(Grid::CellStack::TopHeight,true,true);
+				Grid::LCellIdI location(idx->stackID,0);	//first 12 are corner cells
+				int h = world.GetStack(idx->stackID).FindMostApplicableGround(Grid::CellStack::TopHeight,true,true);
 				if (h == Grid::CellStack::BottomHeight || h == Grid::BadHeight)
 					continue;
 				terrainRange.Include(h);
@@ -411,6 +432,41 @@ namespace NexusPresence
 					avgHeight = 0;
 			}
 			ASSERT_IS_CONSTRAINED__(avgHeight,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+
+		}
+
+		void				CarveBase(World::Data::ChangeSequence&seq)
+		{
+			if (!isBase)
+				return;
+
+			foreach (*highDomain,idx)
+			{
+				if (idx->distanceFromOrigin <= 8)
+				{
+					seq.SelectStack(idx->stackID);
+					seq.Change(avgHeight-1,Grid::Content::Lava);
+
+				}
+
+
+				if (idx->distanceFromOrigin <= 12 && idx->distanceFromOrigin > 2)
+				{
+					seq.SelectStack(idx->stackID);
+					int top = Grid::CellStack::TopHeight;
+					int bottom = Grid::CellStack::BottomHeight;
+					if (idx->distanceFromOrigin <= 8)
+					{
+						top = avgHeight-1-(8-idx->distanceFromOrigin);
+						bottom = Grid::CellStack::BottomHeight + (9-idx->distanceFromOrigin);
+					}
+					for (int h = bottom; h <= top; h++)
+						seq.Clear(h);
+					for (int h = Grid::CellStack::BottomHeight; h < bottom; h++)
+						seq.Change(h,Grid::Content::Granite);
+				}
+
+			}
 
 		}
 
@@ -459,8 +515,10 @@ namespace NexusPresence
 
 	private:
 		bool				hasPort, isBase;
-		Buffer0<UINT32>		lowDomain,
-							highDomain;
+		Buffer0<Grid::TNeighborCellID>
+							lowDomain;
+		const Buffer0<Grid::TNeighborCellID>
+							*highDomain;
 		M::TIntRange<>		terrainRange;
 		INT64				heightSum;
 		count_t				heightCount;
@@ -700,9 +758,8 @@ namespace NexusPresence
 
 	void	Pathway::RenderFoundation(World::Data::ChangeSequence&seq)	const
 	{
-		HashSet<UINT32> mask,m_1,m0,m1;
+		BitSet mask,m_1,m0,m1;
 		Buffer0<Grid::TNeighborCellID> extNeighborhood;
-		HashTable<UINT32,UINT32> visited;
 		for (index_t i = 0; i < path.Count(); i++)
 		{
 			const auto h = heights[i];
@@ -728,11 +785,11 @@ namespace NexusPresence
 					Grid::high.AddExtendedNeighborhood(Grid::ToHigh(path[i-1].cell).stackID,1,m_1);
 					Grid::high.AddExtendedNeighborhood(Grid::ToHigh(path[i].cell).stackID,1,m0);
 					Grid::high.AddExtendedNeighborhood(Grid::ToHigh(path[i+1].cell).stackID,1,m1);
-					mask.SetAll(m_1);
-					mask.SetAll(m0);
-					mask.SetAll(m1);
+					mask.Join(m_1);
+					mask.Join(m0);
+					mask.Join(m1);
 
-					Grid::high.GetExtendedNeighborhood(Grid::ToHigh(path[i].cell).stackID,3,extNeighborhood,visited);
+					Grid::high.GetExtendedNeighborhood(Grid::ToHigh(path[i].cell).stackID,3,extNeighborhood);
 
 					
 
@@ -841,6 +898,11 @@ namespace NexusPresence
 
 			auto seq = world.BeginChangeSequence(0);
 
+
+			foreach (presences,p)
+				p->CarveBase(seq);
+
+
 			foreach (poleRoutes, p)
 				p->RenderFoundation(seq);
 
@@ -857,6 +919,8 @@ namespace NexusPresence
 				p->Clear(seq);
 
 
+//			foreach (presences,p)
+	//			p->PlaceBase();
 
 
 

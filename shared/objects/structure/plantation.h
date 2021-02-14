@@ -57,8 +57,7 @@ namespace Objects
 
 		virtual void				OnInsert(float&atTime, bool freshConstruction) override
 		{
-			static HashSet<UINT32> visited;
-			Grid::high.GetExtendedNeighborhood(Grid::ToHigh(location).stackID,5,plantStackIDs, visited);
+			Grid::high.GetExtendedNeighborhood(Grid::ToHigh(location).stackID,5,plantStackIDs);
 			Super::OnInsert(atTime,freshConstruction);
 		}
 
