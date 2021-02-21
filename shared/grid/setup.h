@@ -191,7 +191,7 @@ namespace Grid
 			while (queue >> current)
 			{
 				auto oldDist = distances[current.first];
-				if (oldDist < current.second)
+				if (oldDist <= current.second)
 					continue;
 				if (oldDist == Unset)
 					set << current.first;
