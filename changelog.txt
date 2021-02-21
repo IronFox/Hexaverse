@@ -8,6 +8,7 @@ v0.9.12
 	+ Added auto-terrain-clip on unit focus
 	+ Added ability to transfer ownership of units
 	+ Added ability to convert full mineral containers to and from mobile units
+	+ Improved Nexus bases
 	> Aerial: Bombers can now hit targets not directly beneath them
 	> Aerial: Considerably increased AA range
 	> Added resource visualization LODs
@@ -21,6 +22,7 @@ v0.9.12
 	* Fixed unit status icons still visible when hiding all objects
 	* Fixed rare client crash caused by conflicting animations
 	* Fixed plantation storage display in construction menu
+	* Fixed uneven terrain distortion near poles
 
 v0.9.11 [Sep 13 2020]
 	+ Implemented Tier 2 unit improvement. Use mechanic to upgrade units

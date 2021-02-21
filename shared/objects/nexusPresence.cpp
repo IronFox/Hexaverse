@@ -67,297 +67,6 @@ namespace NexusPresence
 
 
 
-
-
-	void SpawnNexusBaseAtPoleWithPort(World::Data&world, const Objects::PFaction&nexusFaction, int pole)
-	{
-		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
-
-		#ifndef CLIENT
-			auto sensorLock = nexusFaction->LockSensorUpdates();
-		#endif
-
-		Objects::PNexusPort port;
-		int h;
-		for (h = - Grid::CellStack::HalfRange; h < Grid::CellStack::HalfRange; h++)
-		{
-			port = To<Objects::NexusPort>::DynamicCast(Objects::GetStructure(Grid::LCellIdI((UINT32)pole,h)));
-			if (port)
-				break;
-		}
-		if (!port)
-		{
-			FATAL__("Unable to find port at supposed nexus pole "+String(pole));
-			return;
-		}
-
-		Grid::LCellIdI location = port->location;
-
-		bool enableNexus = false;
-		{
-			//if (random.getFloat() < 0.8f)
-			{
-
-				//bool deadly = random.getFloat() > 0.4f;
-
-
-			//	bool rebuild[BaseGrid::NumFamilies] = { false };
-
-				Grid::LowSetup::TDistanceField field;
-				#ifdef LOWER_RESOLUTION_PLANET
-					static const int R = 4;
-					static const int MissileDistance = 4;
-					static const int RadarDistance = 3;
-					static const int OuterFactoryDistance = 2;
-					static const int MaxFactories = 3;
-				#else
-					static const int R = 5;
-					static const int MissileDistance = 5;
-					static const int RadarDistance = 4;
-					static const int OuterFactoryDistance = 3;
-					static const int MaxFactories = 4;
-				#endif
-
-				Grid::low.UpdatePlanarDistanceField(pole,R+1,field);
-
-				Ctr::Buffer0<index_t>	distances;
-
-
-				for (index_t i = 0; i < field.NumEntries; i++)
-				{
-					if (field.distance[i] == 0xFFFFFFFF)
-						continue;
-					if (field.distance[i] <= R)
-						distances << i;
-					else
-					{
-						world.Clear(Grid::LCellIdI(i,h),0);
-						world.Clear(Grid::LCellIdI(i,h+1),0);
-					}
-				}
-
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					UINT32 d1 = (R - field.distance[i])+1;
-
-					int h2 = h + d1;
-					for (int z = h; z <= h2 + 2 ; z++)
-					{
-						world.Clear(Grid::LCellIdI(i,z),0);
-					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
-					}
-				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
-				}
-				Ctr::Buffer0<Objects::PWorkingStructure>	alwaysOn;
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-
-					UINT32 d1 = (R - field.distance[i])+1;
-
-					bool notDirectEdge = Grid::low.grid.GetCell(i).family != 0;
-					bool noEdge = notDirectEdge;
-					if (noEdge)
-					{
-						const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							if (Grid::low.grid.GetCell(n.neighborID[j]).family == 0)
-								noEdge = false;
-
-					}
-
-					bool notCore = field.distance[i] >= 3;
-
-					int h2 = h + d1;
-
-					for (int z = h-2; z < h2; z++)
-					{
-						if (z < h || (z >=h2-1 && notCore/* && !deadly*/) || noEdge)
-						{
-							world.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
-						}
-						else
-							if (!notDirectEdge)
-								break;
-
-					}
-				}
-				for (index_t i : distances)
-				{
-					bool notDirectEdge = Grid::low.grid.GetCell(i).family != 0;
-					if (notDirectEdge || field.distance[i] == 1)
-						for (int z = h-1; z < h; z++)
-						{
-							world.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
-						}
-				}
-
-
-				int factoryCount = 0;
-				int generatorCount = 0,
-					connectorCount = 0;
-				float t = 0;
-				const auto radarPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Radar});
-				ASSERT__(radarPrototype);
-				const auto launcherPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Launcher});
-				ASSERT__(launcherPrototype);
-				for (index_t i : distances)
-				{
-					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					//UINT32 d1 = (R - field.distance[i])+1;
-
-					#if 1
-					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
-					{
-						if (field.distance[i] == MissileDistance)
-						{
-							//#ifndef _DEBUG
-								Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),launcherPrototype);
-							//#endif
-						}
-						if (field.distance[i] == RadarDistance)
-						{
-							Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),radarPrototype);
-						}
-
-						if (field.distance[i] == OuterFactoryDistance)
-						{
-							if (factoryCount == MaxFactories)
-							{
-								#ifdef LOWER_RESOLUTION_PLANET
-									auto generator = Create<Objects::Generator>(nexusFaction,world,Grid::LCellIdI(i,h));
-									generatorCount++;
-									alwaysOn << generator;	//only need three generators switched on
-								#else
-									auto factory = Create<Objects::MunitionFactory>(nexusFaction,world,Grid::LCellIdI(i,h));
-									alwaysOn << factory;
-								#endif
-							}
-							else
-							{
-								Create<Objects::VehiclePlant>(nexusFaction,world,Grid::LCellIdI(i,h));
-								factoryCount++;
-							}
-						}
-
-						#ifndef LOWER_RESOLUTION_PLANET
-							if (field.distance[i] == (2))
-							{
-								if (generatorCount == 4)
-								{
-									auto storage = Create<Objects::MunitionStorage>(nexusFaction,world,Grid::LCellIdI(i,h));
-									storage->storage = storage->maxStorage;
-									alwaysOn << storage;
-								}
-								else
-								{
-									auto generator = Create<Objects::Generator>(nexusFaction,world,Grid::LCellIdI(i,h));
-									generatorCount++;
-									if (generatorCount < 4)
-										alwaysOn << generator;	//only need three generators switched on
-								}
-							}
-						#endif
-
-						if (field.distance[i] == 1 /*|| field.distance[i] == 4*/)
-						{
-							{
-								Create<Objects::Connector>(nexusFaction,world,Grid::LCellIdI(i,h));
-								connectorCount++;
-							}
-						}
-					}
-					else
-					{
-					}
-					#endif /*0*/
-				}
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					UINT32 d1 = (R - field.distance[i]);
-
-					bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-					if (noEdge)
-					{
-						const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							if (Grid::low.grid.GetCell(n.neighborID[j]).family == 0)
-								noEdge = false;
-
-					}
-
-					int h2 = h + d1;
-					//for (int z = h; z <= h2 + 2 ; z++)
-					{
-						if (!noEdge)
-							world.Clear(Grid::LCellIdI(i,h),0);
-					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
-					}
-				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
-				}
-
-				#ifndef CLIENT
-					for (auto ws : alwaysOn)
-					{
-						ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
-					}
-					enableNexus = alwaysOn.IsNotEmpty();
-
-
-					if (enableNexus)
-					{
-						port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
-
-					}
-				#endif
-
-
-				#ifndef NO_SATELLITES
-					if (Config::Nexus::spawnSatellitesAtopBases)
-					{
-						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-						#ifdef CLIENT
-							hub->id = TUniqueID::New();
-						#endif
-						Objects::InsertConstructed(hub,t);
-						ASSERT__(hub->connectedTo.lock() == port);
-
-						for (index_t i : distances)
-						{
-							ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-							UINT32 d1 = (R - field.distance[i]);
-
-							bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-							if (!noEdge && field.distance[i] == 2)
-							{
-								Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-								#ifdef CLIENT
-									guard->id = TUniqueID::New();
-								#endif
-								Objects::InsertConstructed(guard,t);
-							}
-						}
-					}
-				#endif
-			}
-
-
-		}
-
-		location.height = h;
-
-		Grid::Resource::Require(Objects::Resource::Fuel).coverage[pole] = 0;
-		Grid::Resource::Require(Objects::Resource::Minerals).coverage[pole] = 0;
-		Grid::Resource::Require(Objects::Resource::Uranium).coverage[pole] = 0;
-
-
-
-
-
-	}
-
 	
 	class Presence;
 
@@ -378,6 +87,74 @@ namespace NexusPresence
 	};
 
 
+
+	class RingSegment : public Array<UINT32> 
+	{
+	public:
+		UINT32				root;
+	};
+
+	class Ring : public Array<RingSegment>
+	{
+	public:
+		/**/				Ring(UINT32 pole, const Buffer0<Grid::TNeighborCellID>&domain, UINT32 radius)
+		{
+			SetSize(5);
+			foreach (*this,seg)
+				seg->SetSize(radius-1);
+
+			BitSet contained(Grid::LowSetup::GridType::CellCount);
+
+			const auto constexpr Invalid = std::numeric_limits<UINT32>::max();
+			UINT32 root = Invalid;
+			foreach (domain,cell)
+				if (cell->distanceFromOrigin == radius)
+				{
+					contained.Set(cell->stackID);
+					if (root == Invalid && Grid::low.grid.GetCell(cell->stackID).family == 0)
+					{
+						//edge
+						root = cell->stackID;
+					}
+				}
+			ASSERT__(root != Invalid);
+
+			index_t atSegment = InvalidIndex;
+			index_t atElement = 0;
+			UINT32 current = root;
+			UINT32 prev = Invalid;
+
+			for (;;)
+			{
+				const auto&cell = Grid::low.grid.GetCell(current);
+				if (cell.family == 0)
+				{
+					ASSERT__(atElement == 0 || atElement == at(0).Count());
+					atElement = 0;
+					atSegment++;
+					if (atSegment == Count())
+						return;
+					at(atSegment).root = current;
+				}
+				else
+				{
+					at(atSegment)[atElement++] = current;
+				}
+
+				for (BYTE k = 0; k < cell.neighborhood.numNeighbors; k++)
+				{
+					const auto n = cell.neighborhood.neighborID[k];
+					if (!contained.IsSet(n) || n == prev)
+						continue;
+					prev = current;
+					current = n;
+					break;
+				}
+			}
+
+		}
+
+	};
 
 
 	class Presence
@@ -423,6 +200,58 @@ namespace NexusPresence
 
 		static const constexpr UINT32 Max = 15;
 
+
+		void				PlaceBase(World::Data&world, const Objects::PFaction&nexusFaction)
+		{
+			if (this->hasPort)
+				SpawnNexusPortAtPole(world,nexusFaction,pole);
+
+			if (isBase)
+			{
+				const auto radarPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Radar});
+				ASSERT__(radarPrototype);
+				const auto launcherPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Launcher});
+				ASSERT__(launcherPrototype);
+				const auto aaPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_AntiAircraft});
+				ASSERT__(aaPrototype);
+
+				Ring innerRing = Ring(pole,lowDomain,2);
+
+				if (Grid::CellStack::bottom.content != Grid::Content::Clear)
+				{
+					foreach (innerRing,segment)
+					{
+						Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(0),Grid::CellStack::BottomHeight+6),radarPrototype);
+						Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->root,Grid::CellStack::BottomHeight+3),launcherPrototype);
+					}
+				}
+
+				Ring factoryRing = Ring(pole,lowDomain,3);
+
+				foreach (factoryRing,segment)
+				{
+					auto gen = Create<Objects::Generator>(nexusFaction,world, Grid::LCellIdI(segment->at(0),avgHeight));
+					#ifndef CLIENT
+					{
+						float t = 0;
+						gen->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+						Objects::RefreshCompoundCoverageIfNeeded(t);
+					}
+					#endif
+
+					auto plant = Create<Objects::VehiclePlant>(nexusFaction,world,Grid::LCellIdI(segment->at(1),avgHeight));
+				}
+
+				Ring defenseRing = Ring(pole,lowDomain,4);
+
+				foreach (defenseRing,segment)
+				{
+					Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(0),avgHeight),radarPrototype);
+					Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(1),avgHeight),aaPrototype);
+					Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(2),avgHeight),launcherPrototype);
+				}
+			}
+		}
 
 		void				CarveBaseTop(World::Data::ChangeSequence&seq)
 		{
@@ -527,9 +356,20 @@ namespace NexusPresence
 						}
 					}
 
+					if (idx->distanceFromOrigin <= 4)
+					{
+						seq.Change(avgHeight+2,Grid::Content::Granite);
+						if (idx->distanceFromOrigin == 4)
+							for (int h = avgHeight; h < avgHeight+2; h++)
+								seq.Change(h,Grid::Content::Granite);
+					}
+					else if (idx->distanceFromOrigin <= 6)
+					{
+						seq.Change(avgHeight+1,Grid::Content::Granite);
+					}
 
 
-
+					/*
 					if (idx->distanceFromOrigin <= 8 && idx->distanceFromOrigin >= 7)
 					{
 						seq.Change(avgHeight+1,Grid::Content::Granite);
@@ -625,7 +465,7 @@ namespace NexusPresence
 		INT64				heightSum;
 		count_t				heightCount;
 		int					avgHeight;
-		index_t				pole;
+		UINT32				pole;
 	
 
 
@@ -1051,28 +891,9 @@ namespace NexusPresence
 				p->Clear(seq);
 
 
-//			foreach (presences,p)
-	//			p->PlaceBase();
+			foreach (presences,p)
+				p->PlaceBase(world,nexusFaction);
 
-
-
-			return;
-
-
-
-			for (int pole = 0; pole < 12; pole++)
-				if (placeAllPorts || BaseGrid::IsIsolatedCorner(pole))
-					SpawnNexusPortAtPole(world,nexusFaction, pole);
-
-			LogEvent(EventSignificance::Debug, "Spawning Nexus bases...");
-			if (placeBases)
-			{
-				for (int pole = 0; pole < 12; pole++)
-					if (BaseGrid::IsIsolatedCorner(pole))
-					{
-						SpawnNexusBaseAtPoleWithPort(world,nexusFaction, pole);
-					}
-			}
 		}
 	}
 

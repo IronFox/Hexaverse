@@ -184,7 +184,7 @@ namespace Grid
 			outNeighbors.Clear();
 			Ctr::Array<UINT32> distances;
 
-			const auto Unset = std::numeric_limits<UINT32>::max();
+			const constexpr auto Unset = std::numeric_limits<UINT32>::max();
 			distances.SetSize(GridType::CellCount);
 			distances.Fill(Unset);
 			Buffer0<UINT32> set;
