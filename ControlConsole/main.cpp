@@ -8,7 +8,6 @@
 #include <mutex>
 #include <conio.h>
 #include <general/timer.h>
-#include "../shared/protocol.h"
 #include <serverProcess.h>
 #include <container/production_pipe.h>
 #include "../client/version.h"
