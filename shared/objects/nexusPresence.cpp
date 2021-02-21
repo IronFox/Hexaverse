@@ -890,6 +890,9 @@ namespace NexusPresence
 			foreach (poleRoutes, p)
 				p->Clear(seq);
 
+			#ifndef CLIENT
+				auto lock = nexusFaction->LockSensorUpdates();
+			#endif
 
 			foreach (presences,p)
 				p->PlaceBase(world,nexusFaction);
