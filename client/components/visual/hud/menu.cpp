@@ -739,6 +739,11 @@ namespace Menu
 			a.path.swap(b.path);
 			std::swap(a.time,b.time);
 		}
+
+		bool operator<(const TSaveGame&other) const
+		{
+			return time > other.time;
+		}
 	};
 
 	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
@@ -767,12 +772,17 @@ namespace Menu
 		if (!saveGames)
 			saveGames = Menu::Create();
 		auto menu = saveGames;
-		menu->Setup(0.25f,"Start Server with Saved Game",true);
+		menu->Setup(0.25f,"Start server from savegame",true);
 
 		Buffer0<TSaveGame> saves;
 		LookupSaveGames(saves, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("saves")), "");
 		if (saves.IsEmpty())
 			return false;
+
+
+
+		std::sort(saves.begin(),saves.end());
+
 		foreach (saves,s)
 		{
 			PathString p = s->path;
