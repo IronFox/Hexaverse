@@ -5,6 +5,9 @@
 /*static*/ bool				BaseGrid::CornerIsIsolated[12] = {false};
 
 
+//#define ANGULAR_INTERPOLATION
+
+
 /*static*/ bool BaseGrid::Contains(const TCellNeighborhood&n, UINT32 cellID)
 {
 	for (int i = 0; i < n.numNeighbors; i++)
@@ -34,16 +37,69 @@
 
 /*static*/ void	BaseGrid::RadialInterpolation(const float3&v0, const float3&v1, float at, float3&out)
 {
-	M::TVec3<> axis;
-	Vec::cross(v0, v1, axis);
-	float a0 = Vec::angle(v0, v1);
-	//float angle = a0 * M_PIF/180.f;
-	Vec::normalize(axis);
-	M::TMatrix3<> rot;
-	Mat::BuildRotationMatrix(-a0*at, axis, rot);
-	Mat::Mult(rot, v0, out);
+	#ifndef ANGULAR_INTERPOLATION
+		Vec::interpolate(v0,v1,at,out);
+	#else
+		M::TVec3<> axis;
+		Vec::cross(v0, v1, axis);
+		float a0 = Vec::angle(v0, v1);
+		//float angle = a0 * M_PIF/180.f;
+		Vec::normalize(axis);
+		M::TMatrix3<> rot;
+		Mat::BuildRotationMatrix(-a0*at, axis, rot);
+		Mat::Mult(rot, v0, out);
+	#endif
 }
 
+
+/*static*/ float3	BaseGrid::ProcessEdgeVertex(index_t id, count_t cellsPerEdge, const Fractal::Geometry&geometry)
+{
+	const index_t edgeIndex = id / cellsPerEdge;
+	const index_t edgeOffset = id % cellsPerEdge;
+	float at = float(edgeOffset + 1) / float(cellsPerEdge + 1);
+	float3 o1;
+
+	RadialInterpolation(geometry.vertexField[geometry.edgeField[edgeIndex * 2]], geometry.vertexField[geometry.edgeField[edgeIndex * 2 + 1]], at, o1);
+
+	return (o1).Normalized();
+
+	//Vec::interpolate(geometry.vertexField[geometry.edgeField[edgeIndex * 2]], geometry.vertexField[geometry.edgeField[edgeIndex * 2 + 1]], at, out);
+	//if (normalize)
+	//	Vec::normalize(out);
+	//return out;
+}
+
+/*static*/ float3	BaseGrid::ProcessAreaVertex(index_t id, count_t areaVertices, count_t cellsPerEdge, const Fractal::Geometry&geometry, const Fractal::VertexMap&fullMap)
+{
+	const index_t faceIndex = id / areaVertices;
+	const index_t vertexIndex = id % areaVertices;
+	const auto&desc = fullMap.vertex_descriptor[vertexIndex];
+
+	float fx = float(desc.x + 1) / float(cellsPerEdge+1);
+	float fy = 1.f - float(desc.y + 2) / float(cellsPerEdge+1);
+
+	//float2 f(fx, fy);
+	//float2 c = float2(1.f / 3.f);
+	//float r = Vec::distance(f, c);
+	//float r2 = powf(r, 1.0125f);
+	////r2 = r * r + r2 * (1 - r);
+	//f = (f - c) * r2 / r + c;
+	//fx = f.x;
+	//fy = f.y;
+
+	float3 out;
+
+	RadialInterpolation(geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]], geometry.vertexField[geometry.triangleField[faceIndex * 3 + 2]], geometry.vertexField[geometry.triangleField[faceIndex * 3 + 0]], fx, fy, out);
+
+
+/*		float3 dx = geometry.vertexField[geometry.triangleField[faceIndex * 3 + 2]] - geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]];
+	float3 dy = geometry.vertexField[geometry.triangleField[faceIndex * 3 + 0]] - geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]];
+	out = geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]] + dx * fx + dy * fy;
+	if (normalize)
+		Vec::normalize(out);*/
+	return out;
+
+}
 
 
 
@@ -74,24 +130,32 @@
 
 	//ComplexMath::_qRotateCCW(q,base,out);
 
-
-	float3 summed;
 	float3 a,b;
 
-	RadialInterpolation(base, vy, yat, a);
-	RadialInterpolation(vx, vy, yat, b);
+	float3 x = vx - base;
+	float3 y = vy - base;
 
-	RadialInterpolation(a, b, xat / (1.f - yat), out);
-	summed += out;
+	#ifndef ANGULAR_INTERPOLATION	
+		out = base + x * xat + y * yat;
+		M::Vec::normalize0(out);
+	#else
+		float3 summed;
+
+		RadialInterpolation(base, vy, yat, a);
+		RadialInterpolation(vx, vy, yat, b);
+
+		RadialInterpolation(a, b, xat / (1.f - yat), out);
+		summed += out;
 
 
-	RadialInterpolation(base, vx, xat, a);
-	RadialInterpolation(vy, vx, xat, b);
+		RadialInterpolation(base, vx, xat, a);
+		RadialInterpolation(vy, vx, xat, b);
 
-	RadialInterpolation(a, b, yat / (1.f - xat), out);
-	summed += out;
+		RadialInterpolation(a, b, yat / (1.f - xat), out);
+		summed += out;
 
-	out = summed/2;
+		out = summed/2;
+	#endif
 
 	/*
 	geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]], geometry.vertexField[geometry.triangleField[faceIndex * 3 + 2]], geometry.vertexField[geometry.triangleField[faceIndex * 3 + 0]], fx, fy, out);

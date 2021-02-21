@@ -169,6 +169,8 @@ protected:
 	static void UpdateRadii(Ctr::Array<TNetCell>&cells);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, float at, float3&out);
 	static void	RadialInterpolation(const float3&v0, const float3&v1, const float3&v2, float xat, float yat, float3&out);
+	static float3	ProcessEdgeVertex(index_t id, count_t cellsPerEdge, const Fractal::Geometry&geometry);
+	static float3	ProcessAreaVertex(index_t id, count_t areaVertices, count_t edgeVertices, const Fractal::Geometry&geometry, const Fractal::VertexMap&fullMap);
 
 };
 
@@ -774,6 +776,7 @@ template <unsigned Exponent>
 		return 0;
 	}
 
+
 template <unsigned Exponent>
 	float3		GridSetup<Exponent>::_LocateCell(index_t id, bool normalize)
 	{
@@ -784,50 +787,12 @@ template <unsigned Exponent>
 		id -= 12;
 		if (id < CellsPerEdge * 30)
 		{
-			const index_t edgeIndex = id / CellsPerEdge;
-			const index_t edgeOffset = id % CellsPerEdge;
-			float at = float(edgeOffset + 1) / float(CellsPerEdge + 1);
-			float3 out;
-
-			RadialInterpolation(geometry.vertexField[geometry.edgeField[edgeIndex * 2]], geometry.vertexField[geometry.edgeField[edgeIndex * 2 + 1]], at, out);
-
-
-			//Vec::interpolate(geometry.vertexField[geometry.edgeField[edgeIndex * 2]], geometry.vertexField[geometry.edgeField[edgeIndex * 2 + 1]], at, out);
-			//if (normalize)
-			//	Vec::normalize(out);
-			return out;
-
+			return ProcessEdgeVertex(id, CellsPerEdge,geometry);
 		}
 		id -= CellsPerEdge * 30;
 		if (id < BaseMap::vertices * 20)
 		{
-			const index_t faceIndex = id / BaseMap::vertices;
-			const index_t vertexIndex = id % BaseMap::vertices;
-			const auto&desc = fullMap.vertex_descriptor[vertexIndex];
-
-			float fx = float(desc.x + 1) / float(BaseMap::range + 2);
-			float fy = 1.f - float(desc.y + 2) / float(BaseMap::range + 2);
-
-			//float2 f(fx, fy);
-			//float2 c = float2(1.f / 3.f);
-			//float r = Vec::distance(f, c);
-			//float r2 = powf(r, 1.0125f);
-			////r2 = r * r + r2 * (1 - r);
-			//f = (f - c) * r2 / r + c;
-			//fx = f.x;
-			//fy = f.y;
-
-			float3 out;
-
-			RadialInterpolation(geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]], geometry.vertexField[geometry.triangleField[faceIndex * 3 + 2]], geometry.vertexField[geometry.triangleField[faceIndex * 3 + 0]], fx, fy, out);
-
-
-	/*		float3 dx = geometry.vertexField[geometry.triangleField[faceIndex * 3 + 2]] - geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]];
-			float3 dy = geometry.vertexField[geometry.triangleField[faceIndex * 3 + 0]] - geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]];
-			out = geometry.vertexField[geometry.triangleField[faceIndex * 3 + 1]] + dx * fx + dy * fy;
-			if (normalize)
-				Vec::normalize(out);*/
-			return out;
+			return ProcessAreaVertex(id,BaseMap::vertices, CellsPerEdge, geometry, fullMap);
 		}
 		FATAL__("bad call");
 		return float3();
