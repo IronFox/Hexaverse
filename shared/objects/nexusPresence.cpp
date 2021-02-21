@@ -12,6 +12,9 @@
 
 namespace NexusPresence
 {
+
+	void			Place(World::Data::ChangeSequence&seq, const Grid::LCellIdI&loc, BYTE content);
+
 	template <typename T>
 		static std::shared_ptr<T> Create(const Objects::PFaction&nexusFaction, World::Data&world, const Grid::LCellIdI&location, const Objects::PStructure&prototype)
 		{
@@ -370,28 +373,11 @@ namespace NexusPresence
 		Array<int>	heights;
 		index_t		ownerPole, destinationPole;
 		Buffer0<Objects::PathNode> path;
+		const Presence*start,*end;
 
 	};
 
 
-	
-
-	HashTable<UINT32, Buffer0<Grid::TNeighborCellID> > highPoleNeighborhood;
-
-	const Buffer0<Grid::TNeighborCellID>& GetHighPoleNeighborhood(UINT32 lowCellIndex)
-	{
-		const auto*extN = highPoleNeighborhood.QueryPointer(lowCellIndex);
-		if (!extN)
-		{
-			Timer measure;
-			auto&e = highPoleNeighborhood.Set(lowCellIndex);
-			Grid::high.GetExtendedNeighborhood(Grid::low.grid.GetCell(lowCellIndex).higherEquivalent,Grid::high.grid.CellsPerEdge/2,e);
-			extN = &e;
-			LogEvent(EventSignificance::Important,"Time needed for ext neighborhood poll: "+String(measure.GetDelta())+" seconds");
-		}
-		return *extN;
-
-	}
 
 
 	class Presence
@@ -403,16 +389,16 @@ namespace NexusPresence
 			this->hasPort = hasPort || isBase;
 			this->pole = pole;
 			Grid::low.GetExtendedNeighborhood(pole,Grid::low.grid.CellsPerEdge/2,lowDomain);
-			highDomain = &GetHighPoleNeighborhood(pole);
-
-
+			Grid::high.GetExtendedNeighborhood(Grid::low.grid.GetCell(pole).higherEquivalent,Grid::high.grid.CellsPerEdge,highDomain);
 
 			terrainRange = M::TIntRange<>::Invalid;
 			heightSum = 0;
 			heightCount = 0;
 
-			foreach (*highDomain,idx)
+			foreach (highDomain,idx)
 			{
+				if (idx->distanceFromOrigin > Grid::high.grid.CellsPerEdge / 2)
+					continue;
 				Grid::LCellIdI location(idx->stackID,0);	//first 12 are corner cells
 				int h = world.GetStack(idx->stackID).FindMostApplicableGround(Grid::CellStack::TopHeight,true,true);
 				if (h == Grid::CellStack::BottomHeight || h == Grid::BadHeight)
@@ -435,12 +421,42 @@ namespace NexusPresence
 
 		}
 
+		static const constexpr UINT32 Max = 15;
+
+
+		void				CarveBaseTop(World::Data::ChangeSequence&seq)
+		{
+			if (!isBase)
+			{
+				for (int h = avgHeight; h <= Grid::CellStack::TopHeight; h++)
+					Place(seq,Grid::LCellIdI(this->pole,h),Grid::Content::Clear);
+				return;
+			}
+			foreach (highDomain,idx)
+			{
+				if (idx->distanceFromOrigin <= Max)
+				{
+					seq.SelectStack(idx->stackID);
+					for (int h = avgHeight; h < Grid::CellStack::TopHeight; h++)
+						seq.Clear(h);
+				}
+				else if (idx->distanceFromOrigin <= Max+8)
+				{
+					seq.SelectStack(idx->stackID);
+					int carveToHeight = avgHeight + (idx->distanceFromOrigin - Max - 1)/2;
+					for (int h = carveToHeight; h <= Grid::CellStack::TopHeight; h++)
+						seq.Clear(h);
+				}
+			}
+
+		}
+
 		void				CarveBase(World::Data::ChangeSequence&seq)
 		{
 			if (!isBase)
 				return;
 
-			foreach (*highDomain,idx)
+			foreach (highDomain,idx)
 			{
 				if (idx->distanceFromOrigin <= 8)
 				{
@@ -450,21 +466,109 @@ namespace NexusPresence
 				}
 
 
-				if (idx->distanceFromOrigin <= 12 && idx->distanceFromOrigin > 2)
+				if (idx->distanceFromOrigin <= 2)
+				{
+					for (int h = avgHeight; h < Grid::CellStack::TopHeight; h++)
+						seq.Change(h,Grid::Content::Clear);
+					int from = Grid::CellStack::BottomHeight;
+					if (Grid::CellStack::bottom.content == Grid::Content::Clear)
+						from = avgHeight - 7;
+					for (int h = from; h < avgHeight; h++)
+						seq.Change(h,Grid::Content::Granite);
+
+				}
+				else if (idx->distanceFromOrigin <= Max)
 				{
 					seq.SelectStack(idx->stackID);
 					int top = Grid::CellStack::TopHeight;
-					int bottom = Grid::CellStack::BottomHeight;
-					if (idx->distanceFromOrigin <= 8)
+					int carveBottom = Grid::CellStack::BottomHeight;
+					int fillBottom = Grid::CellStack::BottomHeight;
+					if (idx->distanceFromOrigin <= 9)
 					{
-						top = avgHeight-1-(8-idx->distanceFromOrigin);
-						bottom = Grid::CellStack::BottomHeight + (9-idx->distanceFromOrigin);
+						top = avgHeight-1-(9-idx->distanceFromOrigin);
+						fillBottom = carveBottom = Grid::CellStack::BottomHeight + (9-idx->distanceFromOrigin);
+						if (idx->distanceFromOrigin == 4)
+						{
+							fillBottom++;	//ledge for radar
+							carveBottom++;
+						}
+						seq.Change(avgHeight-1,Grid::Content::Granite);
 					}
-					for (int h = bottom; h <= top; h++)
+					else
+					{
+						carveBottom = Grid::CellStack::BottomHeight + (idx->distanceFromOrigin - 9);
+					}
+					for (int h = carveBottom; h <= top; h++)
 						seq.Clear(h);
-					for (int h = Grid::CellStack::BottomHeight; h < bottom; h++)
+
+					for (int h = top+1; h+1 < avgHeight; h++)
 						seq.Change(h,Grid::Content::Granite);
+
+					if (Grid::CellStack::bottom.content != Grid::Content::Clear)
+						for (int h = Grid::CellStack::BottomHeight; h < fillBottom; h++)
+							seq.Change(h,Grid::Content::Granite);
+
+					for (int h = Grid::CellStack::BottomHeight; h < carveBottom; h++)
+					{
+						switch (seq.GetCellI(h).content)
+						{
+							case Grid::Content::Clear:
+							case Grid::Content::Granite:
+							case Grid::Content::Rock:
+							case Grid::Content::CrystalForest:
+							case Grid::Content::Crystals:
+								continue;
+							case Grid::Content::Lava:
+								seq.Change(h,Grid::Content::Granite);
+								break;
+							default:
+								seq.Change(h,Grid::Content::Rock);
+								break;
+						}
+					}
+
+
+
+
+					if (idx->distanceFromOrigin <= 8 && idx->distanceFromOrigin >= 7)
+					{
+						seq.Change(avgHeight+1,Grid::Content::Granite);
+						if (idx->distanceFromOrigin == 8)
+							for (int h = avgHeight; h < avgHeight + 1; h++)
+								seq.Change(h,Grid::Content::Granite);
+					}
+
+					/*
+					if (idx->distanceFromOrigin < 7 && (idx->distanceFromOrigin % 2) == 0)
+					{
+						seq.Change(avgHeight + 2 + (6 - idx->distanceFromOrigin)/2,Grid::Content::Foundation);
+					}
+					*/
 				}
+				else if (idx->distanceFromOrigin == Max+1)
+				{
+					seq.SelectStack(idx->stackID);
+					for (int h = Grid::CellStack::BottomHeight; h <= Grid::CellStack::TopHeight; h++)
+					{
+						switch (seq.GetCellI(h).content)
+						{
+							case Grid::Content::Clear:
+							case Grid::Content::Granite:
+							case Grid::Content::Rock:
+							case Grid::Content::CrystalForest:
+							case Grid::Content::Crystals:
+								continue;
+							case Grid::Content::Lava:
+								seq.Change(h,Grid::Content::Granite);
+								break;
+							default:
+								seq.Change(h,Grid::Content::Rock);
+								break;
+						}
+					}
+				}
+				
+
 
 			}
 
@@ -516,9 +620,7 @@ namespace NexusPresence
 	private:
 		bool				hasPort, isBase;
 		Buffer0<Grid::TNeighborCellID>
-							lowDomain;
-		const Buffer0<Grid::TNeighborCellID>
-							*highDomain;
+							lowDomain,highDomain;
 		M::TIntRange<>		terrainRange;
 		INT64				heightSum;
 		count_t				heightCount;
@@ -533,7 +635,7 @@ namespace NexusPresence
 
 	void			Place(World::Data::ChangeSequence&seq, const Grid::LCellIdI&loc, BYTE content)
 	{
-		ASSERT_IS_CONSTRAINED__(loc.height,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+		ASSERT_IS_CONSTRAINED__(loc.height,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
 
 
 		const auto fine = Grid::ToHigh(loc);
@@ -717,6 +819,8 @@ namespace NexusPresence
 
 	void		Pathway::Init(const World::Data&world, const Presence&start, const Presence&end)
 	{
+		this->start = &start;
+		this->end = &end;
 		this->ownerPole = ownerPole;
 		this->destinationPole = destinationPole;
 
@@ -768,6 +872,19 @@ namespace NexusPresence
 
 			auto finer = Grid::low.grid.GetCell(stackID).higherEquivalent;
 
+
+
+			if (((i == 1 && start->IsBase())
+				||
+				(i+2 == path.Count() && end->IsBase()))
+				&& Grid::CellStack::bottom.content != Grid::Content::Clear)
+			{
+				for (int h = 3; h <= 5; h++)
+				{
+					Place(seq,Grid::LCellIdI(stackID,h+Grid::CellStack::BottomHeight),Grid::Content::Clear);
+				}
+			}
+
 			if (Grid::CellStack::bottom.content == Grid::Content::Clear)
 			{
 
@@ -776,7 +893,13 @@ namespace NexusPresence
 			else
 			{
 
-				if ((i % 5) == 2 && i+1 < path.Count())	//pillar
+				if ((i % 5) == 2 && i+1 < path.Count()
+					&& 
+					(i > 5 || !start->IsBase())
+					&&
+					(i+ 6 < path.Count() || !end->IsBase())
+					)
+					//pillar
 				{
 					mask.Clear();
 					m_1.Clear();
@@ -892,16 +1015,25 @@ namespace NexusPresence
 			foreach (presences,p)
 			{
 				p->CheckHeight(avgHeight,maxHeightDifference);
+			}
+
+			{
+				auto seq = world.BeginChangeSequence(0);
+
+
+				foreach (presences,p)
+					p->CarveBaseTop(seq);
+			}
+			
+			foreach (presences,p)
+			{
 				p->TracePoleRoutes(world, presences.ToRef(),poleRoutes);
 			}
 
-
 			auto seq = world.BeginChangeSequence(0);
-
 
 			foreach (presences,p)
 				p->CarveBase(seq);
-
 
 			foreach (poleRoutes, p)
 				p->RenderFoundation(seq);
