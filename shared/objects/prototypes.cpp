@@ -69,11 +69,15 @@ namespace Objects
 		}
 		else
 		{
-			auto c = Component::allComponents.FindByName(combined);
-			if (c)
-				rs = c->constName;
-			else
-				rs = Prototypes::all.ToType(base);
+			rs = Prototypes::all.ToType(base);
+			if (rs.IsEmpty())
+			{
+				auto c = Component::allComponents.FindByName(combined);
+				if (c)
+					rs = c->constName;
+				else
+					throw Except::Program::ParameterFault(CLOCATION,"No type declaration found for '"+combined+"'");
+			}
 		}
 		if (rs.IsInvalid())
 			throw Except::Program::ParameterFault(CLOCATION,"Decoded type declaration '"+ToString(rs)+"' is not valid, trying to decode '"+combined+"'");

@@ -150,22 +150,28 @@ namespace Objects
 		{
 			Super::Register(a);
 
-			if (visualization->IsMobile())
-				a.deadMobileGhosts << To<MobileEntity>::Cast(visualization);
-			elif (visualization->IsStructure())
-				a.deadStructureGhosts << To<Structure>::Cast(visualization);
-			else
-				LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
+			if (visualization)
+			{
+				if (visualization->IsMobile())
+					a.deadMobileGhosts << To<MobileEntity>::Cast(visualization);
+				elif (visualization->IsStructure())
+					a.deadStructureGhosts << To<Structure>::Cast(visualization);
+				else
+					LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
+			}
 		}
 
 		/*virtual override*/ void				EntityDeathMarker::Unregister(TMarkerArtifacts&a)
 		{
-			if (visualization->IsMobile())
-				a.deadMobileGhosts.FindAndErase(visualization);
-			elif (visualization->IsStructure())
-				a.deadStructureGhosts.FindAndErase(visualization);
-			else
-				LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
+			if (visualization)
+			{
+				if (visualization->IsMobile())
+					a.deadMobileGhosts.FindAndErase(visualization);
+				elif (visualization->IsStructure())
+					a.deadStructureGhosts.FindAndErase(visualization);
+				else
+					LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+visualization->GetName()+"'");
+			}
 
 
 			Super::Unregister(a);
@@ -589,6 +595,7 @@ namespace Objects
 			{
 				ASSERT1__(prototype, refEntityType);
 				visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
+				ASSERT__(visualization,prototype->GetTypeName());
 			}
 			else
 			{
