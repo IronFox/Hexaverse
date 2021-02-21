@@ -8,9 +8,13 @@
 #include "structure/tower.h"
 #include "structure/vehiclePlant.h"
 #include "../grid/resources.h"
+#include "../objects/pathfinding.h"
 
 namespace NexusPresence
 {
+
+	void			Place(World::Data::ChangeSequence&seq, const Grid::LCellIdI&loc, BYTE content);
+
 	template <typename T>
 		static std::shared_ptr<T> Create(const Objects::PFaction&nexusFaction, World::Data&world, const Grid::LCellIdI&location, const Objects::PStructure&prototype)
 		{
@@ -63,297 +67,750 @@ namespace NexusPresence
 
 
 
+	
+	class Presence;
 
-
-	void SpawnNexusBaseAtPoleWithPort(World::Data&world, const Objects::PFaction&nexusFaction, int pole)
+	class Pathway
 	{
-		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
+	public:
+		void		Init(const World::Data&world, const Presence&start, const Presence&end);
+		void		RenderRoad(World::Data::ChangeSequence&seq)	const;
+		void		RenderFoundation(World::Data::ChangeSequence&seq)	const;
+		void		Clear(World::Data::ChangeSequence&seq)	const;
 
-		#ifndef CLIENT
-			auto sensorLock = nexusFaction->LockSensorUpdates();
-		#endif
+	private:
+		Array<int>	heights;
+		index_t		ownerPole, destinationPole;
+		Buffer0<Objects::PathNode> path;
+		const Presence*start,*end;
 
-		Objects::PNexusPort port;
-		int h;
-		for (h = - Grid::CellStack::HalfRange; h < Grid::CellStack::HalfRange; h++)
+	};
+
+
+
+	class RingSegment : public Array<UINT32> 
+	{
+	public:
+		UINT32				root;
+	};
+
+	class Ring : public Array<RingSegment>
+	{
+	public:
+		/**/				Ring(UINT32 pole, const Buffer0<Grid::TNeighborCellID>&domain, UINT32 radius)
 		{
-			port = To<Objects::NexusPort>::DynamicCast(Objects::GetStructure(Grid::LCellIdI((UINT32)pole,h)));
-			if (port)
-				break;
-		}
-		if (!port)
-		{
-			FATAL__("Unable to find port at supposed nexus pole "+String(pole));
-			return;
-		}
+			SetSize(5);
+			foreach (*this,seg)
+				seg->SetSize(radius-1);
 
-		Grid::LCellIdI location = port->location;
+			BitSet contained(Grid::LowSetup::GridType::CellCount);
 
-		bool enableNexus = false;
-		{
-			//if (random.getFloat() < 0.8f)
+			const auto constexpr Invalid = std::numeric_limits<UINT32>::max();
+			UINT32 root = Invalid;
+			foreach (domain,cell)
+				if (cell->distanceFromOrigin == radius)
+				{
+					contained.Set(cell->stackID);
+					if (root == Invalid && Grid::low.grid.GetCell(cell->stackID).family == 0)
+					{
+						//edge
+						root = cell->stackID;
+					}
+				}
+			ASSERT__(root != Invalid);
+
+			index_t atSegment = InvalidIndex;
+			index_t atElement = 0;
+			UINT32 current = root;
+			UINT32 prev = Invalid;
+
+			for (;;)
 			{
-
-				//bool deadly = random.getFloat() > 0.4f;
-
-
-			//	bool rebuild[BaseGrid::NumFamilies] = { false };
-
-				Grid::LowSetup::TDistanceField field;
-				#ifdef LOWER_RESOLUTION_PLANET
-					static const int R = 4;
-					static const int MissileDistance = 4;
-					static const int RadarDistance = 3;
-					static const int OuterFactoryDistance = 2;
-					static const int MaxFactories = 3;
-				#else
-					static const int R = 5;
-					static const int MissileDistance = 5;
-					static const int RadarDistance = 4;
-					static const int OuterFactoryDistance = 3;
-					static const int MaxFactories = 4;
-				#endif
-
-				Grid::low.UpdatePlanarDistanceField(pole,R+1,field);
-
-				Ctr::Buffer0<index_t>	distances;
-
-
-				for (index_t i = 0; i < field.NumEntries; i++)
+				const auto&cell = Grid::low.grid.GetCell(current);
+				if (cell.family == 0)
 				{
-					if (field.distance[i] == 0xFFFFFFFF)
+					ASSERT__(atElement == 0 || atElement == at(0).Count());
+					atElement = 0;
+					atSegment++;
+					if (atSegment == Count())
+						return;
+					at(atSegment).root = current;
+				}
+				else
+				{
+					at(atSegment)[atElement++] = current;
+				}
+
+				for (BYTE k = 0; k < cell.neighborhood.numNeighbors; k++)
+				{
+					const auto n = cell.neighborhood.neighborID[k];
+					if (!contained.IsSet(n) || n == prev)
 						continue;
-					if (field.distance[i] <= R)
-						distances << i;
-					else
-					{
-						world.Clear(Grid::LCellIdI(i,h),0);
-						world.Clear(Grid::LCellIdI(i,h+1),0);
-					}
+					prev = current;
+					current = n;
+					break;
 				}
+			}
 
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					UINT32 d1 = (R - field.distance[i])+1;
+		}
 
-					int h2 = h + d1;
-					for (int z = h; z <= h2 + 2 ; z++)
-					{
-						world.Clear(Grid::LCellIdI(i,z),0);
-					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
-					}
-				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
-				}
-				Ctr::Buffer0<Objects::PWorkingStructure>	alwaysOn;
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-
-					UINT32 d1 = (R - field.distance[i])+1;
-
-					bool notDirectEdge = Grid::low.grid.GetCell(i).family != 0;
-					bool noEdge = notDirectEdge;
-					if (noEdge)
-					{
-						const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							if (Grid::low.grid.GetCell(n.neighborID[j]).family == 0)
-								noEdge = false;
-
-					}
-
-					bool notCore = field.distance[i] >= 3;
-
-					int h2 = h + d1;
-
-					for (int z = h-2; z < h2; z++)
-					{
-						if (z < h || (z >=h2-1 && notCore/* && !deadly*/) || noEdge)
-						{
-							world.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Rock,0);
-						}
-						else
-							if (!notDirectEdge)
-								break;
-
-					}
-				}
-				for (index_t i : distances)
-				{
-					bool notDirectEdge = Grid::low.grid.GetCell(i).family != 0;
-					if (notDirectEdge || field.distance[i] == 1)
-						for (int z = h-1; z < h; z++)
-						{
-							world.Overwrite(Grid::LCellIdI(i,z),Grid::Content::Road,0);
-						}
-				}
+	};
 
 
-				int factoryCount = 0;
-				int generatorCount = 0,
-					connectorCount = 0;
-				float t = 0;
+	class Presence
+	{
+	public:
+		void				Init(const World::Data&world, UINT32 pole, bool isBase, bool hasPort)
+		{
+			this->isBase = isBase;
+			this->hasPort = hasPort || isBase;
+			this->pole = pole;
+			Grid::low.GetExtendedNeighborhood(pole,Grid::low.grid.CellsPerEdge/2,lowDomain);
+			Grid::high.GetExtendedNeighborhood(Grid::low.grid.GetCell(pole).higherEquivalent,Grid::high.grid.CellsPerEdge,highDomain);
+
+			terrainRange = M::TIntRange<>::Invalid;
+			heightSum = 0;
+			heightCount = 0;
+
+			foreach (highDomain,idx)
+			{
+				if (idx->distanceFromOrigin > Grid::high.grid.CellsPerEdge / 2)
+					continue;
+				Grid::LCellIdI location(idx->stackID,0);	//first 12 are corner cells
+				int h = world.GetStack(idx->stackID).FindMostApplicableGround(Grid::CellStack::TopHeight,true,true);
+				if (h == Grid::CellStack::BottomHeight || h == Grid::BadHeight)
+					continue;
+				terrainRange.Include(h);
+				heightSum += h;
+				heightCount++;
+			}
+
+			if (heightCount > 0)
+				avgHeight = M::RoundToInt(double(heightSum) / heightCount);
+			else
+			{
+				if (Grid::CellStack::bottom.content != Grid::Content::Clear)
+					avgHeight = Grid::CellStack::BottomHeight+1;
+				else
+					avgHeight = 0;
+			}
+			ASSERT_IS_CONSTRAINED__(avgHeight,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+
+		}
+
+		static const constexpr UINT32 Max = 15;
+
+
+		void				PlaceBase(World::Data&world, const Objects::PFaction&nexusFaction)
+		{
+			if (this->hasPort)
+				SpawnNexusPortAtPole(world,nexusFaction,pole);
+
+			if (isBase)
+			{
 				const auto radarPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Radar});
 				ASSERT__(radarPrototype);
 				const auto launcherPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_Launcher});
 				ASSERT__(launcherPrototype);
-				for (index_t i : distances)
+				const auto aaPrototype = Objects::Prototypes::structures.Find({ConstName::Type_Tower,ConstName::Turret_AntiAircraft});
+				ASSERT__(aaPrototype);
+
+				Ring innerRing = Ring(pole,lowDomain,2);
+
+				if (Grid::CellStack::bottom.content != Grid::Content::Clear)
 				{
-					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					//UINT32 d1 = (R - field.distance[i])+1;
-
-					#if 1
-					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
+					foreach (innerRing,segment)
 					{
-						if (field.distance[i] == MissileDistance)
-						{
-							//#ifndef _DEBUG
-								Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),launcherPrototype);
-							//#endif
-						}
-						if (field.distance[i] == RadarDistance)
-						{
-							Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(i,h),radarPrototype);
-						}
-
-						if (field.distance[i] == OuterFactoryDistance)
-						{
-							if (factoryCount == MaxFactories)
-							{
-								#ifdef LOWER_RESOLUTION_PLANET
-									auto generator = Create<Objects::Generator>(nexusFaction,world,Grid::LCellIdI(i,h));
-									generatorCount++;
-									alwaysOn << generator;	//only need three generators switched on
-								#else
-									auto factory = Create<Objects::MunitionFactory>(nexusFaction,world,Grid::LCellIdI(i,h));
-									alwaysOn << factory;
-								#endif
-							}
-							else
-							{
-								Create<Objects::VehiclePlant>(nexusFaction,world,Grid::LCellIdI(i,h));
-								factoryCount++;
-							}
-						}
-
-						#ifndef LOWER_RESOLUTION_PLANET
-							if (field.distance[i] == (2))
-							{
-								if (generatorCount == 4)
-								{
-									auto storage = Create<Objects::MunitionStorage>(nexusFaction,world,Grid::LCellIdI(i,h));
-									storage->storage = storage->maxStorage;
-									alwaysOn << storage;
-								}
-								else
-								{
-									auto generator = Create<Objects::Generator>(nexusFaction,world,Grid::LCellIdI(i,h));
-									generatorCount++;
-									if (generatorCount < 4)
-										alwaysOn << generator;	//only need three generators switched on
-								}
-							}
-						#endif
-
-						if (field.distance[i] == 1 /*|| field.distance[i] == 4*/)
-						{
-							{
-								Create<Objects::Connector>(nexusFaction,world,Grid::LCellIdI(i,h));
-								connectorCount++;
-							}
-						}
+						Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(0),Grid::CellStack::BottomHeight+6),radarPrototype);
+						Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->root,Grid::CellStack::BottomHeight+3),launcherPrototype);
 					}
-					else
-					{
-					}
-					#endif /*0*/
-				}
-				for (index_t i : distances)
-				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					UINT32 d1 = (R - field.distance[i]);
-
-					bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-					if (noEdge)
-					{
-						const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-						for (int j = 0; j < n.numNeighbors; j++)
-							if (Grid::low.grid.GetCell(n.neighborID[j]).family == 0)
-								noEdge = false;
-
-					}
-
-					int h2 = h + d1;
-					//for (int z = h; z <= h2 + 2 ; z++)
-					{
-						if (!noEdge)
-							world.Clear(Grid::LCellIdI(i,h),0);
-					//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,z));
-					}
-				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
 				}
 
-				#ifndef CLIENT
-					for (auto ws : alwaysOn)
+				Ring factoryRing = Ring(pole,lowDomain,3);
+
+				foreach (factoryRing,segment)
+				{
+					auto gen = Create<Objects::Generator>(nexusFaction,world, Grid::LCellIdI(segment->at(0),avgHeight));
+					#ifndef CLIENT
 					{
-						ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+						float t = 0;
+						gen->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+						Objects::RefreshCompoundCoverageIfNeeded(t);
 					}
-					enableNexus = alwaysOn.IsNotEmpty();
+					#endif
 
+					auto plant = Create<Objects::VehiclePlant>(nexusFaction,world,Grid::LCellIdI(segment->at(1),avgHeight));
+				}
 
-					if (enableNexus)
-					{
-						port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+				Ring defenseRing = Ring(pole,lowDomain,4);
 
-					}
-				#endif
-
-
-				#ifndef NO_SATELLITES
-					if (Config::Nexus::spawnSatellitesAtopBases)
-					{
-						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-						#ifdef CLIENT
-							hub->id = TUniqueID::New();
-						#endif
-						Objects::InsertConstructed(hub,t);
-						ASSERT__(hub->connectedTo.lock() == port);
-
-						for (index_t i : distances)
-						{
-							ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-							UINT32 d1 = (R - field.distance[i]);
-
-							bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-							if (!noEdge && field.distance[i] == 2)
-							{
-								Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-								#ifdef CLIENT
-									guard->id = TUniqueID::New();
-								#endif
-								Objects::InsertConstructed(guard,t);
-							}
-						}
-					}
-				#endif
+				foreach (defenseRing,segment)
+				{
+					Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(0),avgHeight),radarPrototype);
+					Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(1),avgHeight),aaPrototype);
+					Create<Objects::Tower>(nexusFaction,world,Grid::LCellIdI(segment->at(2),avgHeight),launcherPrototype);
+				}
 			}
+		}
 
+		void				CarveBaseTop(World::Data::ChangeSequence&seq)
+		{
+			if (!isBase)
+			{
+				for (int h = avgHeight; h <= Grid::CellStack::TopHeight; h++)
+					Place(seq,Grid::LCellIdI(this->pole,h),Grid::Content::Clear);
+				return;
+			}
+			foreach (highDomain,idx)
+			{
+				if (idx->distanceFromOrigin <= Max)
+				{
+					seq.SelectStack(idx->stackID);
+					for (int h = avgHeight; h < Grid::CellStack::TopHeight; h++)
+						seq.Clear(h);
+				}
+				else if (idx->distanceFromOrigin <= Max+8)
+				{
+					seq.SelectStack(idx->stackID);
+					int carveToHeight = avgHeight + (idx->distanceFromOrigin - Max - 1)/2;
+					for (int h = carveToHeight; h <= Grid::CellStack::TopHeight; h++)
+						seq.Clear(h);
+				}
+			}
 
 		}
 
-		location.height = h;
+		void				CarveBase(World::Data::ChangeSequence&seq)
+		{
+			if (!isBase)
+				return;
 
-		Grid::Resource::Require(Objects::Resource::Fuel).coverage[pole] = 0;
-		Grid::Resource::Require(Objects::Resource::Minerals).coverage[pole] = 0;
-		Grid::Resource::Require(Objects::Resource::Uranium).coverage[pole] = 0;
+			foreach (highDomain,idx)
+			{
+				if (idx->distanceFromOrigin <= 8)
+				{
+					seq.SelectStack(idx->stackID);
+					seq.Change(avgHeight-1,Grid::Content::Lava);
+
+				}
+
+
+				if (idx->distanceFromOrigin <= 2)
+				{
+					for (int h = avgHeight; h < Grid::CellStack::TopHeight; h++)
+						seq.Change(h,Grid::Content::Clear);
+					int from = Grid::CellStack::BottomHeight;
+					if (Grid::CellStack::bottom.content == Grid::Content::Clear)
+						from = avgHeight - 7;
+					for (int h = from; h < avgHeight; h++)
+						seq.Change(h,Grid::Content::Granite);
+
+				}
+				else if (idx->distanceFromOrigin <= Max)
+				{
+					seq.SelectStack(idx->stackID);
+					int top = Grid::CellStack::TopHeight;
+					int carveBottom = Grid::CellStack::BottomHeight;
+					int fillBottom = Grid::CellStack::BottomHeight;
+					if (idx->distanceFromOrigin <= 9)
+					{
+						top = avgHeight-1-(9-idx->distanceFromOrigin);
+						fillBottom = carveBottom = Grid::CellStack::BottomHeight + (9-idx->distanceFromOrigin);
+						if (idx->distanceFromOrigin == 4)
+						{
+							fillBottom++;	//ledge for radar
+							carveBottom++;
+						}
+						seq.Change(avgHeight-1,Grid::Content::Granite);
+					}
+					else
+					{
+						carveBottom = Grid::CellStack::BottomHeight + (idx->distanceFromOrigin - 9);
+					}
+					for (int h = carveBottom; h <= top; h++)
+						seq.Clear(h);
+
+					for (int h = top+1; h+1 < avgHeight; h++)
+						seq.Change(h,Grid::Content::Granite);
+
+					if (Grid::CellStack::bottom.content != Grid::Content::Clear)
+						for (int h = Grid::CellStack::BottomHeight; h < fillBottom; h++)
+							seq.Change(h,Grid::Content::Granite);
+
+					for (int h = Grid::CellStack::BottomHeight; h < carveBottom; h++)
+					{
+						switch (seq.GetCellI(h).content)
+						{
+							case Grid::Content::Clear:
+							case Grid::Content::Granite:
+							case Grid::Content::Rock:
+							case Grid::Content::CrystalForest:
+							case Grid::Content::Crystals:
+								continue;
+							case Grid::Content::Lava:
+								seq.Change(h,Grid::Content::Granite);
+								break;
+							default:
+								seq.Change(h,Grid::Content::Rock);
+								break;
+						}
+					}
+
+					if (idx->distanceFromOrigin <= 4)
+					{
+						seq.Change(avgHeight+2,Grid::Content::Granite);
+						if (idx->distanceFromOrigin == 4)
+							for (int h = avgHeight; h < avgHeight+2; h++)
+								seq.Change(h,Grid::Content::Granite);
+					}
+					else if (idx->distanceFromOrigin <= 6)
+					{
+						seq.Change(avgHeight+1,Grid::Content::Granite);
+					}
+
+
+					/*
+					if (idx->distanceFromOrigin <= 8 && idx->distanceFromOrigin >= 7)
+					{
+						seq.Change(avgHeight+1,Grid::Content::Granite);
+						if (idx->distanceFromOrigin == 8)
+							for (int h = avgHeight; h < avgHeight + 1; h++)
+								seq.Change(h,Grid::Content::Granite);
+					}
+
+					/*
+					if (idx->distanceFromOrigin < 7 && (idx->distanceFromOrigin % 2) == 0)
+					{
+						seq.Change(avgHeight + 2 + (6 - idx->distanceFromOrigin)/2,Grid::Content::Foundation);
+					}
+					*/
+				}
+				else if (idx->distanceFromOrigin == Max+1)
+				{
+					seq.SelectStack(idx->stackID);
+					for (int h = Grid::CellStack::BottomHeight; h <= Grid::CellStack::TopHeight; h++)
+					{
+						switch (seq.GetCellI(h).content)
+						{
+							case Grid::Content::Clear:
+							case Grid::Content::Granite:
+							case Grid::Content::Rock:
+							case Grid::Content::CrystalForest:
+							case Grid::Content::Crystals:
+								continue;
+							case Grid::Content::Lava:
+								seq.Change(h,Grid::Content::Granite);
+								break;
+							default:
+								seq.Change(h,Grid::Content::Rock);
+								break;
+						}
+					}
+				}
+				
+
+
+			}
+
+		}
+
+
+		void				CheckHeight(int globalAvgHeight, int maxHeightDifference)
+		{
+			int delta = avgHeight - globalAvgHeight;
+			if (abs(delta) <= maxHeightDifference)
+				return;
+
+			avgHeight = globalAvgHeight + M::Sign(delta) * maxHeightDifference;
+			ASSERT_IS_CONSTRAINED__(avgHeight,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+		}
+
+		int					GetHeight() const {return avgHeight;}
+		index_t				GetPole() const {return pole;}
+		bool				IsBase() const {return isBase;}
+
+		void				TracePoleRoutes(const World::Data&world, const ArrayRef<Presence>&others, BasicBuffer<Pathway>&outPathways)
+		{
+			Buffer0<index_t> neighborPoles;
+			const auto&edgeField = Grid::low.grid.GetGeometry().edgeField;
+			for (index_t e = 0; e < edgeField.Count(); e+=2)
+			{
+				auto from = edgeField[e];
+				auto to = edgeField[e+1];
+				if (from == pole)
+					neighborPoles << to;
+				if (to == pole)
+					neighborPoles << from;
+			}
+
+
+			
+			foreach (neighborPoles,p)
+			{
+				const auto&other = others[*p];
+				if (other.pole > pole && (hasPort || other.hasPort))
+				{
+					Pathway&pathway = outPathways.Append();
+					pathway.Init(world, *this,others[*p]);
+				}
+			}
+		}
+
+
+	private:
+		bool				hasPort, isBase;
+		Buffer0<Grid::TNeighborCellID>
+							lowDomain,highDomain;
+		M::TIntRange<>		terrainRange;
+		INT64				heightSum;
+		count_t				heightCount;
+		int					avgHeight;
+		UINT32				pole;
+	
 
 
 
 
+	};
+
+	void			Place(World::Data::ChangeSequence&seq, const Grid::LCellIdI&loc, BYTE content)
+	{
+		ASSERT_IS_CONSTRAINED__(loc.height,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
+
+
+		const auto fine = Grid::ToHigh(loc);
+		const auto n = Grid::high.grid.GetCell(fine.stackID).neighborhood;
+
+		seq.Change(fine,content);
+
+		for (int k = 0; k < n.numNeighbors; k++)
+		{
+			seq.Change(Grid::HCellIdI(n.neighborID[k],fine.height),content);
+		}
+	}
+
+	void			ClearGround(World::Data::ChangeSequence&seq, const Grid::LCellIdI&loc)
+	{
+		ASSERT_IS_CONSTRAINED__(loc.height,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+		const auto fine = Grid::ToHigh(loc);
+		const auto n = Grid::high.grid.GetCell(fine.stackID).neighborhood;
+
+		seq.Clear(fine);
+		seq.Clear(fine+1);
+
+		for (int k = 0; k < n.numNeighbors; k++)
+		{
+			seq.Clear(Grid::HCellIdI(n.neighborID[k],fine.height));
+			seq.Clear(Grid::HCellIdI(n.neighborID[k],fine.height+1));
+		}
+	}
+
+	class PathTracer
+	{
+	public:
+		PathTracer(const Presence&origin, index_t pathIndex, sindex_t step, ArrayRef<Objects::PathNode> path)
+		{
+			this->isBase = origin.IsBase();
+			this->startIndex = this->pathIndex = pathIndex;
+			initialHeight = lastHeight = origin.GetHeight();
+			distance = 1;
+			this->step = step;
+			this->path = path;
+		}
+
+
+		count_t	GetDistance() const
+		{
+			return distance;
+		}
+
+		bool	operator<(const PathTracer&b) const
+		{
+			return pathIndex < b.pathIndex;
+		}
+
+		void	Progress(const World::Data&world,const PathTracer&other, std::function<void(index_t,int)> outHeight)
+		{
+			if (isBase && distance <= 3)
+			{
+				outHeight(pathIndex,lastHeight);
+				lastSet = pathIndex;
+				pathIndex+=step;
+				distance++;
+				return;
+			}
+
+			
+
+
+			const auto location = Grid::LCellIdI(path[pathIndex].cell.stackID,lastHeight);
+			int terrainHeight = Objects::FindApplicableGround(world, location,true,true); //do not submerge into lava
+			if (terrainHeight == Objects::badHeight || terrainHeight == Grid::CellStack::BottomHeight)
+			{
+				lastHeightTolerance++;
+				pathIndex += step;
+				distance++;
+				return;
+			}
+
+			const int distToOther = other.lastSet != InvalidIndex ? abs(int(other.lastSet - pathIndex)) : 10000;
+			if (distToOther < 0)
+				return;
+
+			terrainHeight = M::Clamp(terrainHeight,lastHeight - lastHeightTolerance, lastHeight+lastHeightTolerance);
+			terrainHeight = M::Clamp(terrainHeight,other.lastHeight - distToOther, other.lastHeight + distToOther);
+			outHeight(pathIndex,terrainHeight);
+			auto prevHeight = lastHeight;
+			lastHeight = terrainHeight;
+			lastHeightTolerance = 1;
+
+			index_t lastSetNext = lastSet != InvalidIndex ? lastSet + step : startIndex;
+			if (lastSetNext != pathIndex)
+			{
+				int startHeight = prevHeight;
+				int endHeight = terrainHeight;
+				InterpolateHeight(outHeight, lastSetNext, pathIndex, startHeight, endHeight);
+			}
+
+			lastSet = pathIndex;
+			pathIndex += step;
+			distance++;
+		}
+
+		void	CompleteTo(const World::Data&world,const PathTracer&other, std::function<void(index_t,int)> outHeight)
+		{
+			if (lastSet != InvalidIndex && other.lastSet != InvalidIndex)
+			{
+				if (lastSet+1 < other.lastSet)
+				{
+					InterpolateHeight(outHeight,lastSet+1, other.lastSet,lastHeight,other.lastHeight);
+				}
+			}
+			else
+			{
+
+
+				index_t from = lastSet != InvalidIndex ? lastSet+1 : 0;
+				index_t to = other.lastSet != InvalidIndex ? other.lastSet : path.Count();
+
+				int fromHeight = lastHeight;
+					//lastSet != InvalidIndex ? outHeights[lastSet] : initialHeight;
+				int toHeight = other.lastHeight;
+					//other.lastSet != InvalidIndex ? outHeights[other.lastSet] : other.initialHeight;
+				InterpolateHeight(outHeight,from, to, fromHeight, toHeight);
+
+			}
+		}
+
+
+		static void InterpolateHeight(std::function<void(index_t,int)> outHeight, index_t begin, index_t end, int startHeight, int endHeight)
+		{
+			ASSERT_IS_CONSTRAINED__(startHeight,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+			ASSERT_IS_CONSTRAINED__(endHeight,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+
+			index_t at = 0;
+			const count_t range = abs(sindex_t(end - begin));
+			const int heightRange = endHeight - startHeight;
+			const sindex_t step = end > begin ? 1 : -1;
+
+			for (index_t j = begin; j != end; j += step)
+			{
+				int h = int(startHeight + M::RoundToInt( (double(at)+0.5) / range * heightRange ));
+				outHeight(j,h);
+				at++;
+			}
+		}
+
+	private:
+		ArrayRef<Objects::PathNode> path;
+		bool	isBase;
+		index_t	pathIndex,startIndex;
+		index_t distance;
+		sindex_t step;
+		int initialHeight;
+		int lastHeight;
+		int lastHeightTolerance = 0;
+		index_t lastSet = InvalidIndex;
+	};
+
+
+	static const constexpr int InvalidHeight = INT_MIN;
+
+	static std::function<void(index_t,int)> SetHeight(MutableArrayRef<int> outHeights)
+	{
+		return [&outHeights](index_t idx, int height)
+		{
+			ASSERT_IS_CONSTRAINED__(height,Grid::CellStack::BottomHeight+1, Grid::CellStack::TopHeight-1);
+			if (idx > 0)
+			{
+				int neighborHeight = outHeights[idx-1];
+				if (neighborHeight != InvalidHeight)
+					ASSERT3__(abs(neighborHeight - height) <= 1, (idx-1),height,neighborHeight);
+			}
+			if (idx+1 < outHeights.Count())
+			{
+				int neighborHeight = outHeights[idx+1];
+				if (neighborHeight != InvalidHeight)
+					ASSERT3__(abs(neighborHeight - height) <= 1, (idx+1),height,neighborHeight);
+			}
+			outHeights[idx] = height;
+		};
+	}
+
+	void		Pathway::Init(const World::Data&world, const Presence&start, const Presence&end)
+	{
+		this->start = &start;
+		this->end = &end;
+		this->ownerPole = ownerPole;
+		this->destinationPole = destinationPole;
+
+
+		path.Clear();
+		Objects::Pathfinding::AppendShortestDirectPath(Grid::LCellIdI(start.GetPole(),0),Grid::LCellIdI(end.GetPole(),0),path);
+//		path.Truncate(Grid::low.grid.CellsPerEdge/2);	//no need to process other half
+		path.EraseLast();
+
+
+		heights.SetSize(path.Count());
+		heights.Fill(InvalidHeight);
+		PathTracer a(start,0,1,path.ToRef()), b(end,path.Count()-1,-1,path.ToRef());
+
+
+		while (a < b)
+		{
+			a.Progress(world,b,SetHeight(heights));
+			b.Progress(world,a,SetHeight(heights));
+
+		}
+		a.CompleteTo(world,b,SetHeight(heights));
+		for (index_t i = 0; i < heights.Count(); i++)
+			ASSERT2__(heights[i] != InvalidHeight,i, heights.Count());
+				
 
 	}
 
+
+	
+
+	void	Pathway::RenderRoad(World::Data::ChangeSequence&seq)	const
+	{
+		for (index_t i = 0; i < path.Count(); i++)
+		{
+			Place(seq, Grid::LCellIdI(path[i].cell.stackID,heights[i]-1), Grid::Content::Road);
+		}
+	}
+
+	void	Pathway::RenderFoundation(World::Data::ChangeSequence&seq)	const
+	{
+		BitSet mask,m_1,m0,m1;
+		Buffer0<Grid::TNeighborCellID> extNeighborhood;
+		for (index_t i = 0; i < path.Count(); i++)
+		{
+			const auto h = heights[i];
+			const auto stackID = path[i].cell.stackID;
+			Place(seq, Grid::LCellIdI(stackID,h-2), Grid::Content::Foundation);
+
+			auto finer = Grid::low.grid.GetCell(stackID).higherEquivalent;
+
+
+
+			if (((i == 1 && start->IsBase())
+				||
+				(i+2 == path.Count() && end->IsBase()))
+				&& Grid::CellStack::bottom.content != Grid::Content::Clear)
+			{
+				for (int h = 3; h <= 5; h++)
+				{
+					Place(seq,Grid::LCellIdI(stackID,h+Grid::CellStack::BottomHeight),Grid::Content::Clear);
+				}
+			}
+
+			if (Grid::CellStack::bottom.content == Grid::Content::Clear)
+			{
+
+
+			}
+			else
+			{
+
+				if ((i % 5) == 2 && i+1 < path.Count()
+					&& 
+					(i > 5 || !start->IsBase())
+					&&
+					(i+ 6 < path.Count() || !end->IsBase())
+					)
+					//pillar
+				{
+					mask.Clear();
+					m_1.Clear();
+					m0.Clear();
+					m1.Clear();
+					Grid::high.AddExtendedNeighborhood(Grid::ToHigh(path[i-1].cell).stackID,1,m_1);
+					Grid::high.AddExtendedNeighborhood(Grid::ToHigh(path[i].cell).stackID,1,m0);
+					Grid::high.AddExtendedNeighborhood(Grid::ToHigh(path[i+1].cell).stackID,1,m1);
+					mask.Join(m_1);
+					mask.Join(m0);
+					mask.Join(m1);
+
+					Grid::high.GetExtendedNeighborhood(Grid::ToHigh(path[i].cell).stackID,3,extNeighborhood);
+
+					
+
+					int b = Grid::CellStack::BottomHeight;
+					/*
+					seq.SelectStack(path[i].cell.stackID);
+					for (int h2 = h-3; h2 >= Grid::CellStack::BottomHeight; h2--)
+					{
+						auto content = seq.GetCellI(h2).content;
+						if (content != Grid::Content::Clear && content != Grid::Content::Foundation)
+						{
+							b = h2;
+							break;
+						}
+					}
+					*/
+
+					foreach(extNeighborhood,n)
+					{
+						if (mask.IsSet(n->stackID))
+						{
+							seq.SelectStack(n->stackID);
+							const int xDistance = n->distanceFromOrigin;
+							const float yDistance = (sqrt(4.f*4 - M::Sqr(4.f - xDistance)));
+							const int height = n->distanceFromOrigin <= 1 ? Grid::CellStack::Range : M::RoundToInt(2*( 4.f- yDistance));
+
+							int myH = h;
+							if (!m0.IsSet(n->stackID))
+							{
+								if (m1.IsSet(n->stackID))
+									myH = heights[i+1];
+								else
+									myH = heights[i-1];
+							}
+
+							const int bottom = M::Max(myH - 3 - height,b);
+							for (int h2 = myH-3; h2 >= bottom; h2--)
+							{
+								//if (!seq.GetCellI(h2).IsClearOrLiquidIgnoreStructure())
+								//	break;
+								seq.Change(h2,Grid::Content::Foundation);
+							}
+						}
+					}
+				}
+
+			}
+
+		}
+	}
+
+	void	Pathway::Clear(World::Data::ChangeSequence&seq)	const
+	{
+		for (index_t i = 0; i < path.Count(); i++)
+		{
+			ClearGround(seq, Grid::LCellIdI(path[i].cell.stackID,heights[i]));
+		}
+	}
 
 
 
@@ -374,19 +831,72 @@ namespace NexusPresence
 		if (placeBases || placeAllPorts)
 		{
 			LogEvent(EventSignificance::Common, "Spawning Nexus Ports (EMP fields="+String(RuntimeConfig::empZones)+")...");
-			for (int pole = 0; pole < 12; pole++)
-				if (placeAllPorts || BaseGrid::IsIsolatedCorner(pole))
-					SpawnNexusPortAtPole(world,nexusFaction, pole);
 
-			LogEvent(EventSignificance::Debug, "Spawning Nexus bases...");
-			if (placeBases)
+			M::TIntRange<> hRange = M::TIntRange<>::Invalid;
+
+			Buffer0<Presence>	presences;
+
+			for (int pole = 0; pole < 12; pole++)
 			{
-				for (int pole = 0; pole < 12; pole++)
-					if (BaseGrid::IsIsolatedCorner(pole))
-					{
-						SpawnNexusBaseAtPoleWithPort(world,nexusFaction, pole);
-					}
+				const bool isolated = BaseGrid::IsIsolatedCorner(pole);
+				presences.Append().Init(world,pole,placeBases && isolated, placeAllPorts);
 			}
+
+
+			INT64 heightSum = 0;
+			foreach (presences,p)
+				heightSum += p->GetHeight();
+
+			int avgHeight = M::RoundToInt(double(heightSum) / presences.Count());
+			const int maxHeightDifference = (Grid::low.grid.CellsPerEdge-2 - 4)/2;
+
+			Buffer0<Pathway> poleRoutes;
+
+			foreach (presences,p)
+			{
+				p->CheckHeight(avgHeight,maxHeightDifference);
+			}
+
+			{
+				auto seq = world.BeginChangeSequence(0);
+
+
+				foreach (presences,p)
+					p->CarveBaseTop(seq);
+			}
+			
+			foreach (presences,p)
+			{
+				p->TracePoleRoutes(world, presences.ToRef(),poleRoutes);
+			}
+
+			auto seq = world.BeginChangeSequence(0);
+
+			foreach (presences,p)
+				p->CarveBase(seq);
+
+			foreach (poleRoutes, p)
+				p->RenderFoundation(seq);
+
+			foreach (presences,p)
+				Place(seq,Grid::LCellIdI(p->GetPole(),p->GetHeight()-2),Grid::Content::Foundation);
+
+			foreach (poleRoutes, p)
+				p->RenderRoad(seq);
+
+			foreach (presences,p)
+				Place(seq,Grid::LCellIdI(p->GetPole(),p->GetHeight()-1),Grid::Content::Road);
+
+			foreach (poleRoutes, p)
+				p->Clear(seq);
+
+			#ifndef CLIENT
+				auto lock = nexusFaction->LockSensorUpdates();
+			#endif
+
+			foreach (presences,p)
+				p->PlaceBase(world,nexusFaction);
+
 		}
 	}
 

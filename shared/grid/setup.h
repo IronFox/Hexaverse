@@ -1,6 +1,7 @@
 #pragma once
 
 #include <container/queue.h>
+#include <container/bit_set.h>
 #include "base.h"
 #include "stack.h"
 
@@ -12,6 +13,12 @@ namespace Grid
 
 	extern UINT16				empZonesLocked,
 								empZonesUnlocked;
+
+	struct TNeighborCellID
+	{
+		UINT32						stackID;
+		UINT32						distanceFromOrigin;
+	};
 
 
 	template <unsigned Exponent>
@@ -93,19 +100,25 @@ namespace Grid
 
 		/**
 		Determines the extended neighborhood around the given center cell.
-		Should be used for small neighborhoods only since it uses linear search on all already found neighbors
+		Will utilize internal bit set beyond max distance 4
 		*/
-		void						GetExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors) const
+		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors) const
 		{
-			Ctr::Queue<std::pair<index_t, UINT32> >	queue;
+			if (maxDistance > 4)
+			{
+				Ctr::BitSet visited;
+				GetExtendedNeighborhood(centerCell,maxDistance,outNeighbors,visited);
+				return;
+			}
+			Ctr::Queue<std::pair<UINT32, UINT32> >	queue;
 			queue << std::make_pair(centerCell, 0);
-			std::pair<index_t, UINT32> current;
+			std::pair<UINT32, UINT32> current;
 			outNeighbors.Clear();
 			while (queue >> current)
 			{
 				if (outNeighbors.Contains(current.first))
 					continue;
-				outNeighbors << (UINT32)current.first;
+				outNeighbors << current.first;
 				if (current.second == maxDistance)
 					continue;
 				const auto&n = grid.GetCell(current.first).neighborhood;
@@ -117,24 +130,84 @@ namespace Grid
 		/**
 		Determines the extended neighborhood around the given center cell
 		*/
-		void						GetExtendedNeighborhood(index_t centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors, Ctr::HashSet<UINT32>&inOutVisitedCells) const
+		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors, Ctr::BitSet&inOutVisitedCells) const
 		{
-			Ctr::Queue<std::pair<index_t, UINT32> >	queue;
+			Ctr::Queue<std::pair<UINT32, UINT32> >	queue;
 			queue << std::make_pair(centerCell, 0);
-			std::pair<index_t, UINT32> current;
+			std::pair<UINT32, UINT32> current;
 			outNeighbors.Clear();
-			inOutVisitedCells.Clear();
+			inOutVisitedCells.ResizeZero(GridType::CellCount);
 			while (queue >> current)
 			{
 				if (inOutVisitedCells.IsSet(current.first))
 					continue;
 				outNeighbors << (UINT32)current.first;
-				inOutVisitedCells.Set((UINT32)current.first);
+				inOutVisitedCells.Set(current.first);
 				if (current.second == maxDistance)
 					continue;
 				const auto&n = grid.GetCell(current.first).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					queue << std::make_pair(n.neighborID[i], current.second + 1);
+			}
+		}
+
+		/**
+		Adds the extended neighborhood around the given center cell to a hash set of stack ids. The bit set is not cleared before
+		adding new cells
+		*/
+		void						AddExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BitSet&inOutVisitedCells) const
+		{
+			Ctr::Queue<std::pair<UINT32, UINT32> >	queue;
+			queue << std::make_pair(centerCell, 0);
+			std::pair<UINT32, UINT32> current;
+			while (queue >> current)
+			{
+				if (inOutVisitedCells.IsSet(current.first))
+					continue;
+				inOutVisitedCells.Set(current.first);
+				if (current.second == maxDistance)
+					continue;
+				const auto&n = grid.GetCell(current.first).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					queue << std::make_pair(n.neighborID[i], current.second + 1);
+			}
+		}
+
+		/**
+		Determines the extended neighborhood around the given center cell, including distances
+		*/
+		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicBuffer<TNeighborCellID>&outNeighbors) const
+		{
+			Ctr::Queue<std::pair<UINT32, UINT32> >	queue;
+			queue << std::make_pair(centerCell, 0);
+			std::pair<UINT32, UINT32> current;
+			outNeighbors.Clear();
+			Ctr::Array<UINT32> distances;
+
+			const constexpr auto Unset = std::numeric_limits<UINT32>::max();
+			distances.SetSize(GridType::CellCount);
+			distances.Fill(Unset);
+			Buffer0<UINT32> set;
+			while (queue >> current)
+			{
+				auto oldDist = distances[current.first];
+				if (oldDist <= current.second)
+					continue;
+				if (oldDist == Unset)
+					set << current.first;
+				distances[current.first] = current.second;
+				if (current.second == maxDistance)
+					continue;
+				const auto&n = grid.GetCell(current.first).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					queue << std::make_pair(n.neighborID[i], current.second + 1);
+			}
+
+			foreach (set,idx)
+			{
+				auto&cell = outNeighbors.Append();
+				cell.stackID = *idx;
+				cell.distanceFromOrigin = distances[*idx];
 			}
 		}
 
