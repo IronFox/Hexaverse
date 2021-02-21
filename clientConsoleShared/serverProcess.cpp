@@ -6,6 +6,8 @@
 #include <io/monitoredProcess.h>
 #include <net/tcp.h>
 #include <startProcess.h>
+#include <io/file_system.h>
+#include <ports.h>
 
 //#include <logEvent.h>
 //#include "visual/hud/dialog.h"

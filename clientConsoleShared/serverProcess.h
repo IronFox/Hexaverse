@@ -2,7 +2,8 @@
 
 #include <global_string.h>
 #include <functional>
-#include "../shared/protocol.h"
+//#include "../clientServerShared/protocol.h"
+#include <ports.h>
 
 #include <structure/observable.h>
 

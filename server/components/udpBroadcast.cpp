@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "udpBroadcast.h"
 #include <protocol.h>
+#include <ports.h>
 #include <globalEvents.h>
 #include "../../client/version.h"
 #include "serverLogEvent.h"

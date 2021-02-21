@@ -9,6 +9,7 @@
 #include <ctime>
 #include "../client/version.h"
 #include <protocol.h>
+#include <ports.h>
 #include <runtimeConfig.h>
 
 //#include <third_party/bz2/bz2.h>

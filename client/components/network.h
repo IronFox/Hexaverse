@@ -2,7 +2,8 @@
 #define networkComponentH
 
 #include <protocol.h>
-//#include "visual/guiElements.h"
+#include <ports.h>
+
 
 /**
 All network-related aspects. Multiple additions to this namespace exist.

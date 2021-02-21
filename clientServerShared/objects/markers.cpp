@@ -595,7 +595,6 @@ namespace Objects
 			{
 				ASSERT1__(prototype, refEntityType);
 				visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
-				ASSERT__(visualization,prototype->GetTypeName());
 			}
 			else
 			{

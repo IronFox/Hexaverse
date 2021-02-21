@@ -1,5 +1,6 @@
 <project type="Application:Console" extraProjectOptions="/std:c++latest /Zc:__cplusplus">
 	<source path="./" />
 	<source path="../clientConsoleShared" include="true" />
+	<source path="../globalShared" include="true" />
 	<referenceProject name="DeltaWorksCore" includePath="true" />
 </project>

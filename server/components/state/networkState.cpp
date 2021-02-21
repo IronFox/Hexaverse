@@ -2,6 +2,7 @@
 #include "networkState.h"
 
 #include <protocol.h>
+#include <ports.h>
 #include <objects.h>
 #include <runtimeConfig.h>
 #include "../journalSaveGame.h"

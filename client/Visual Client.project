@@ -1,6 +1,7 @@
 <project type="Application:Windows" stackSize="4000000" extraProjectOptions="/std:c++latest /Zc:__cplusplus">
-	<source path="../shared" include="true" />
+	<source path="../clientServerShared" include="true" />
 	<source path="../clientConsoleShared" include="true" />
+	<source path="../globalShared" include="true" />
 	<source path="./">
 		<exclude file="console.rc2" />
 	</source>

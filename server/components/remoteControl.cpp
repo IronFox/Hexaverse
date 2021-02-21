@@ -6,6 +6,7 @@
 
 #include <string/cli_defaults.h>
 #include <globalEvents.h>
+#include <ports.h>
 
 #include "reflection.h"
 
