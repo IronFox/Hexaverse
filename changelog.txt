@@ -1,3 +1,6 @@
+v0.9.13
+	> Resource display will now always show own resources, regardless of selection
+
 v0.9.12 [Feb 21 2021]
 	+ AI: Added --#require <...>/--#require "..." statements to include other Lua files
 	+ AI: Added Game.MeasureSecondsFromNow() to measure time

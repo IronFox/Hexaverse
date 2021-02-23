@@ -918,9 +918,9 @@ namespace ApplicationInterface
 	#else
 
 		Objects::PFaction f;
-		if (Objects::selectedEntity)
+		/*if (Objects::selectedEntity)
 			f = Objects::selectedEntity->owner;
-		else
+		else*/
 			f = Objects::Faction::mine;
 		if (f)
 		{
@@ -967,8 +967,9 @@ namespace ApplicationInterface
 			}
 		#endif
 
+			
 			Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
-			if (ws)
+			if (ws && ws->isOwnedByMe)
 			{
 				Objects::Resource::Vector _change, storage, _max, zero;
 				ws->GetResourceVector(_change, storage, _max);
