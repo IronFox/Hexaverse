@@ -185,7 +185,27 @@ namespace Objects
 
 		void Research::FactionState::UpdateAttributeTable()
 		{
+			HashTable<TUniqueID,double> floatHealth;
+
+			owner->VisitMyEntities([&floatHealth](const PWorldEntity&e)
+			{
+				floatHealth.Set(e->id, double(e->health) / e->GetMaxHealth());
+			},true);
+
 			attributeTable.Update(luaResearchState);
+
+			float t = 0;
+			owner->VisitMyEntities([&floatHealth,&t](const PWorldEntity&e)
+			{
+				int newHealth = M::RoundToInt(floatHealth[e->id] * e->GetMaxHealth());
+				if (newHealth != e->health)
+				{
+					e->health = newHealth;
+					e->SignalChangeByExternalCause(WorldEntity::HealthChanged,t);
+				}
+			},true);
+
+
 			topicProgressChanged = true;	//implied
 		}
 	
