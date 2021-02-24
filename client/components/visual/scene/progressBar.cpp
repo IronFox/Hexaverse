@@ -61,8 +61,7 @@ namespace ProgressBar
 		{
 			display.StoreRendererState();
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-			//display.SetDepthTest(true,false);
-			display.SetDepthTest(false,false);	//experimental
+			display.SetDepthTest(true,false);
 			display.SetRasterizer(true,true);
 			vbo.PartialUpdate(vertices.pointer(),vertices.Count(),sizeof(TVertex));
 

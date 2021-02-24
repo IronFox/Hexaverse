@@ -1346,12 +1346,17 @@ namespace VisualTerrain
 
 	void	RenderOverlay(const Engine::Frustum<>&frustum)
 	{
+		display.StoreRendererState();
+		display.SetDepthTest(true,false);
+
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			TFamily::TData&dat = family[k].normal;
 			if (frustum.IsVisible(dat.terrainBounds.boundingSphere))
 				display.Render(dat.overlay.instruction);
 		}
+
+		display.RestoreRendererState();
 	}
 
 	void	RenderWater(const Engine::Frustum<>&frustum)

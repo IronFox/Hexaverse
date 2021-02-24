@@ -1531,12 +1531,18 @@ namespace Objects
 	{
 		if (!objectView)
 			return;
+
+
+		const bool forceShowHealthBars = false;	//for debugging
 		
-		ForeachMobileWorldEntity([](const PMobileEntity&v)
+		ForeachMobileWorldEntity([forceShowHealthBars](const PMobileEntity&v)
 		{
 			{
-				int maxHealth = v->GetMaxHealth();
+				const int maxHealth = v->GetMaxHealth();
 				bool isBuilding = v->IsBuilding();
+
+				const bool showHealthBar = v->health < maxHealth || forceShowHealthBars;
+
 				std::pair<int,int> progress;
 				if (isBuilding)
 					progress = v->GetBuildingProgress();
@@ -1549,7 +1555,7 @@ namespace Objects
 				if (isBuilding && progress.second <= 1)
 					isBuilding = false;
 
-				if (isBuilding || v->health < maxHealth)
+				if (isBuilding || showHealthBar)
 				{
 					float scale = WorldEntity::GetScaleAtHeight(v->location.height);
 					IF_SATELLITES(if (v->IsSatellite()) scale *= 3.f;)
@@ -1559,7 +1565,7 @@ namespace Objects
 						std::pair<int,int>progress = v->GetBuildingProgress();
 						ProgressBar::RenderNewBar(progress.first,progress.second,float3(0.6,0.7,1));
 					}
-					if (v->health < maxHealth)
+					if (showHealthBar)
 					{
 						float h = (float)v->health / float(maxHealth);
 						ProgressBar::RenderNewBar(v->health,maxHealth,float3(1,0.5f*h,0.5f*h));
@@ -1569,14 +1575,15 @@ namespace Objects
 		},Objects::IncludeGhosts::None);
 
 
-		structures.Foreach([](const Objects::PStructure&s)
+		structures.Foreach([forceShowHealthBars](const Objects::PStructure&s)
 		{
-			int maxHealth = s->GetMaxHealth();
-			//float progress;
+			const int maxHealth = s->GetMaxHealth();
+			const bool showHealthBar = s->health < maxHealth || forceShowHealthBars;
+			
 			std::pair<int,int> progress;
-			bool isBuilding = s->IsBuilding(progress);
+			const bool isBuilding = s->IsBuilding(progress);
 
-			if (s->health < maxHealth || isBuilding)
+			if (showHealthBar || isBuilding)
 			{
 				float scale = WorldEntity::GetScaleAtHeight(s->location.height);
 				ProgressBar::SetLocation(s->GetWorldPosition()
@@ -1587,7 +1594,7 @@ namespace Objects
 					{
 						ProgressBar::RenderNewBar(progress.first,progress.second,float3(0.6,0.7,1));
 					}
-					if (s->health < maxHealth)
+					if (showHealthBar)
 					{
 						float h = (float)s->health / float(maxHealth);
 						ProgressBar::RenderNewBar(s->health,maxHealth,float3(1,0.5f*h,0.5f*h));
