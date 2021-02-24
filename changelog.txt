@@ -1,5 +1,6 @@
 v0.9.13
 	> Resource display will now always show own resources, regardless of selection
+	> Health and progress bars are no longer see-through
 	> Current entity health is now auto-adjusted when researching max health
 
 v0.9.12 [Feb 21 2021]

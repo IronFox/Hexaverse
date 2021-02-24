@@ -1275,6 +1275,8 @@ bool loop()
 			
 			Objects::Icons::Render();
 
+			Objects::Renderer::RenderProgressBars();
+
 			Objects::Renderer::RenderTranslucent(false);
 
 			if (Objects::resourceView)
@@ -1309,7 +1311,6 @@ bool loop()
 
 
 
-			Objects::Renderer::RenderProgressBars();
 
 			if (Objects::choiceVis.showArrow && !HUD::WindowStack::IsModal())
 			{
