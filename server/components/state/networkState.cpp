@@ -12,7 +12,7 @@
 #include "../udpBroadcast.h"
 #include "worldState.h"
 #include <globalEvents.h>
-
+#include <objects/nexus/nexusThreatEstimation.h>
 
 
 #undef StartService
@@ -789,6 +789,39 @@ namespace Network
 		if (server.IsOnline())
 			return "Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is online.";
 		return "Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.";
+	}
+
+	void		UpdateNexusThreatPresence()
+	{
+		if (!Objects::Faction::nexus)
+			return;
+		Network::PClient nexusClient = Network::playerMap.Get(Objects::Faction::nexus,nullptr);
+		if (!nexusClient)
+			return;
+
+		TCP::PPeer peer = nexusClient->peer.lock();
+		if (!peer)
+			return;
+
+		Objects::NexusThreat::Update([](index_t poleIdx)
+		{
+			return Game::Config::Nexus::bases.havePlaced && BaseGrid::IsIsolatedCorner(poleIdx);
+		});
+		Buffer<Protocol::NexusHostilePortPresence,12> presences;
+		for (int i = 0; i < 12; i++)
+		{
+			if (Objects::NexusThreat::GetPort(i))
+			{
+				Protocol::NexusHostilePortPresence&p = presences.Append();
+				p.poleIndex = i;
+				p.highestConstructorPresence = Objects::NexusThreat::GetClosestHostileConstructorPresence(i);
+				p.airSum = Objects::NexusThreat::SumAirHostiles(i);
+				p.constructorPresence = Objects::NexusThreat::SumHostileConstructorPresence(i);
+				p.groundSum = Objects::NexusThreat::SumGroundHostiles(i);
+				p.hasBase = Objects::NexusThreat::IsBase(i);
+			}
+		}
+		Channels::NexusHostilePresence.SendTo(peer,presences.ToRef());
 	}
 
 

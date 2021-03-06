@@ -29,6 +29,7 @@
 #include "scriptedAI.h"
 #include <expectedBehavior.h>
 #include <passwordMatch.h>
+#include <objects/nexus/nexusThreatEstimation.h>
 
 #include "animation/worldDelta.h"
 #include "animation/mobileState.h"
@@ -849,7 +850,7 @@ namespace Network
 					[&m, ev,t](const auto&other, const auto&tOther)
 					{
 						return other->targetEntityID == m.id
-							&& tOther.Intersects(Animation::TTime(t.max,m.time.begin.atTime))
+							&& tOther.Intersects(M::Range(t.max,m.time.begin.atTime))
 							&& other->IsEntityDestruction();
 					});
 					return !vanish;
@@ -1379,6 +1380,17 @@ namespace Network
 			ScriptedAI::Resume(state.scriptName,state.dataVector);
 		}
 
+		void	NexusHostilePresence(Protocol::NexusHostilePresence&state)
+		{
+			LogEvent(EventSignificance::Common,"Received update to nexus-hostile presences");
+
+			for (int i = 0; i < 12; i++)
+				Objects::NexusThreat::UpdatePole(i,0,0,false,0,0);
+
+			foreach (state,pole)
+				Objects::NexusThreat::UpdatePole(pole->poleIndex,pole->groundSum,pole->airSum,pole->hasBase,pole->constructorPresence,pole->highestConstructorPresence);
+		}
+
 		void	ResourceTable(Protocol::ResourceTable&table)
 		{
 			Objects::Resource::lastTable = std::move(Objects::Resource::table);
@@ -1497,6 +1509,7 @@ namespace Network
 		DECLARE_CHANNEL(ChoiceResponse);
 
 		DECLARE_CHANNEL(ScriptedAIState);
+		DECLARE_CHANNEL(NexusHostilePresence);
 
 		DECLARE_OBJECT_SENDER(EntityTrigger);
 
@@ -1782,6 +1795,7 @@ namespace Network
 		client.InstallChannel(Channels::ChoiceResponse);
 
 		client.InstallChannel(Channels::ScriptedAIState);
+		client.InstallChannel(Channels::NexusHostilePresence);
 
 		client.InstallChannel(Channels::AllianceMarkerText);
 

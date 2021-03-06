@@ -169,6 +169,7 @@ namespace Network
 	String		DescribeStatus();
 	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig);
 
+	void		UpdateNexusThreatPresence();
 
 
 	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);

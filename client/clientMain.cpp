@@ -36,6 +36,7 @@
 #include <objects/prototypes.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/laboratory.h>
+#include <objects/nexus/nexusThreatEstimation.h>
 #include <boot.h>
 
 #include "components/visual/scene/explosions.h"
@@ -2119,6 +2120,7 @@ int main( int argc, const char* argv[])
 			Loading::Stage("State Panel",HUD::StatePanel::Create);
 		#endif
 
+		Loading::Stage("Nexus Threat",Objects::NexusThreat::Create);
 		Loading::Stage("Marker Check",ObjectHelper::MarkerCheck::Create);
 		Loading::Stage("Client Grid",ClientGrid::Create);
 		Loading::Stage("Server Process",[]()

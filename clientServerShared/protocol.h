@@ -804,6 +804,15 @@ namespace Protocol
 		,TUniqueID, targetFaction
 	);
 
+	NETSTRUCT6(NexusHostilePortPresence
+		,BYTE, poleIndex
+		,float, groundSum
+		,float, airSum
+		,bool, hasBase
+		,float, constructorPresence
+		,float, highestConstructorPresence
+	);
+
 	typedef Objects::Resource::Table ResourceTable;
 
 
@@ -811,6 +820,8 @@ namespace Protocol
 	typedef TUniqueID	KillFaction,
 						MobilizeStructure,
 						SettleMobile;
+
+	typedef NetArray<NexusHostilePortPresence,12> NexusHostilePresence;
 
 	namespace ChannelID
 	{
@@ -936,6 +947,8 @@ namespace Protocol
 			FactionInteractionStatistics,	//s2c: Statistics::FactionInteraction
 
 			ScriptedAIState,			//[both]: ScriptedAIState
+
+			NexusHostilePresence,		//s2c: NexusHostilePresence
 
 			SaveAs,	//c2s: SaveAs
 		};

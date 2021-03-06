@@ -35,7 +35,29 @@ double()	Game.MeasureSecondsFromNow()	-- Creates a new function to query the sec
 Unit			Game.GetMobileAt(Loc);		-- Gets the mobile unit at the given location. nil if none. Operates in O(1): fast
 Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the given location. nil if none. Operates in O(1): fast
 
-
+[AI script only]
+	bool		Game.AI.IsBase(int);					-- Checks if the specified pole index (1-12) is covered by a Nexus base
+	--[[
+	General note about the below sum functions:
+	These functions are designed to estimate whether the factories of a nexus base should be activated and a reaction to player presence should be prepared.
+	They observe all units, including those not currently visible to the Nexus AI.
+	A typical use case is to schedule unit construction until the overall friendly-sum equals or exceeds the respective hostile-sum
+	]]
+	float		Game.AI.SumGroundHostiles(int);			-- Estimates the threat-level imposed by nearby player vehicles to the specified pole index (1-12)
+	float		Game.AI.SumGroundFriendlies(int, bool inclStationary);		-- Estimates the friendly counter-weight imposted by nearby Nexus vehicles
+	float		Game.AI.SumAirHostiles(int);			-- Estimates the threat-level imposed by nearby player aerials to the specified pole index (1-12)
+	float		Game.AI.SumAirFriendlies(int);			-- Estimates the friendly counter-weight imposted by nearby Nexus aerials
+	--[[
+	Estimates the impact of a unit type at the given location for the specified pole base.
+	This function represents the base estimation used for the sum-functions before.
+	It takes into account the distance from the pole, construction cost, and scanning/attack range (depending on availability).
+	The effective pole-distance of hostile units is reduced by their scanning/attack range to estimate their effective influence zone.
+	]]
+	float		Game.AI.Estimate(int poleIdx, UnitType, Loc, Faction);
+	float		Game.AI.EstimateUnit(int poleIdx, Unit);				-- Same as above for a known unit. Also takes their relative health into account
+	Unit[]		Game.AI.GetBaseVehiclePlants(int);		-- Fetches all vehicle plants provided by the base at the specified pole index (1-12)
+	Unit[]		Game.AI.GetBasePlaneFactories(int);		-- Fetches all plane factories provided by the base at the specified pole index (1-12)
+	
 
 --[[
 Put():

@@ -3,7 +3,7 @@
 #include <protocol.h>
 #include "networkState.h"
 #include "../networkChannels.h"
-#include <objects/nexusPresence.h>
+#include <objects/nexus/nexusPresence.h>
 
 namespace World
 {

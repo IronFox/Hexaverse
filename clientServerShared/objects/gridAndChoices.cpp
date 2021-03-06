@@ -1371,6 +1371,8 @@ namespace Objects
 			PVehicle vehicle(new Vehicle(owner, baseLocation,b,t));
 			vehicle->location = baseLocation;
 			vehicle->id = id;
+			if (type.isT2)
+				vehicle->t2.reset(new Objects::T2::Properties());
 			vehicle->UpdateSystem();
 			return vehicle;
 		}

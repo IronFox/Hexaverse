@@ -7,6 +7,10 @@
 #include "../objects/faction.h"
 #include "../runtimeConfig.h"
 #include "../objects/gridAndChoices.h"
+#include "../objects/nexus/nexusThreatEstimation.h"
+#include "../objects/structure/vehiclePlant.h"
+#include "../objects/structure/planeFactory.h"
+
 
 namespace Lua
 {
@@ -179,6 +183,30 @@ namespace Lua
 		{
 			return DecodeTypeExt(ref,pname,nullptr);
 		}
+
+
+
+		Objects::PFaction DecodeFaction(const Lua::Table&luaFaction, bool allowNull, const String&ctx, const String&pname)
+		{
+			if (!luaFaction)
+			{
+				if (allowNull)
+					return nullptr;
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" is nil");
+			}
+			TUniqueID id;
+			String sid;
+			if (!luaFaction.GetField("id",sid))
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" is not a faction");
+			if (!id.Decode(sid))
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" is not a faction");
+
+			Objects::PFaction f = Objects::Faction::FindByID(id);
+			if (!f)
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" does not point to an existing faction");
+			return f;
+		}
+
 	}
 
 
@@ -701,6 +729,7 @@ namespace Lua
 		vbaseTypes.ClearReference();
 		onDeployedCallbacks.Clear();
 		gameTable.ClearReference();
+		aiTable.ClearReference();
 		markTable.ClearReference();
 		gridTable.ClearReference();
 		terrainTable.ClearReference();
@@ -824,6 +853,7 @@ namespace Lua
 	void	API::Setup()
 	{
 		gameTable = program->SetGlobalTable("Game");
+			aiTable = gameTable.SetSubTable("AI");
 			markTable = gameTable.SetSubTable("DebugMarkers");
 			gridTable = gameTable.SetSubTable("Grid");
 			terrainTable = gameTable.SetSubTable("Terrain");
@@ -855,6 +885,59 @@ namespace Lua
 		{
 			LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
 		});
+
+
+		//ai functions:
+		{
+			aiTable.SetFunction("IsBase",[this](int poleIdx)->bool
+			{
+				return Objects::NexusThreat::IsBase(poleIdx-1);
+			});
+			aiTable.SetFunction("SumGroundHostiles",[this](int poleIdx)->float
+			{
+				return Objects::NexusThreat::SumGroundHostiles(poleIdx-1);
+			});
+			aiTable.SetFunction("SumGroundFriendlies",[this](int poleIdx, bool inclStationary)->float
+			{
+				return Objects::NexusThreat::SumGroundFriendlies(poleIdx-1,inclStationary);
+			});
+			aiTable.SetFunction("SumAirHostiles",[this](int poleIdx)->float
+			{
+				return Objects::NexusThreat::SumAirHostiles(poleIdx-1);
+			});
+			aiTable.SetFunction("SumAirFriendlies",[this](int poleIdx)->float
+			{
+				return Objects::NexusThreat::SumAirFriendlies(poleIdx-1);
+			});
+			aiTable.SetFunction("Estimate",[this](int poleIdx, const Lua::Table&typeTable, const Lua::Table&locTable, const Lua::Table&luaFaction)->float
+			{
+				Objects::PFaction f = Detail::DecodeFaction(luaFaction,true,"Estimate()","Faction parameter #4");
+				Objects::EntityType type = Detail::DecodeType(typeTable,"Type parameter #2");
+				Grid::LCellIdI loc = Detail::ToLGridCell(locTable,"Location parameter #3");
+				return Objects::NexusThreat::Estimate(poleIdx-1,loc,type,f).impact;
+			});
+			aiTable.SetFunction("EstimateUnit",[this](int poleIdx, const Lua::Table&luaEntity)->float
+			{
+				Objects::PWorldEntity e = LuaUnitToEntity(luaEntity,"Parameter");
+				return Objects::NexusThreat::Estimate(poleIdx-1,e).impact;
+			});
+			aiTable.SetFunction("GetBaseVehiclePlants",[this](int poleIdx)->Lua::Table
+			{
+				Lua::Table rs = program->CreateTable();
+				auto entities = Objects::NexusThreat::GetBaseVehiclePlants(poleIdx-1);
+				foreach (entities,e)
+					rs.AppendElement(MapEntity(*e,true,false));
+				return rs;
+			});
+			aiTable.SetFunction("GetBasePlaneFactories",[this](int poleIdx)->Lua::Table
+			{
+				Lua::Table rs = program->CreateTable();
+				auto entities = Objects::NexusThreat::GetBasePlaneFactories(poleIdx-1);
+				foreach (entities,e)
+					rs.AppendElement(MapEntity(*e,true,false));
+				return rs;
+			});
+		}
 
 
 		markTable.SetFunction("Put",[this](const Lua::Table&tloc, float red, float green, float blue, const String&msg, bool seeThrough)
@@ -2190,16 +2273,7 @@ namespace Lua
 		t.SetField("canBeUnlocked",component->isUnlocked.IsFunctionOrConstNonZero());
 		t.SetFunction("IsUnlockedForFaction",[component](const Lua::Table&luaFaction)
 		{
-			TUniqueID id;
-			String sid;
-			if (!luaFaction.GetField("id",sid))
-				throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
-			if (!id.Decode(sid))
-				throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
-
-			Objects::PFaction f = Objects::Faction::FindByID(id);
-			if (!f)
-				throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter does not point to an existing faction");
+			Objects::PFaction f = Detail::DecodeFaction(luaFaction,false,"IsUnlockedForFaction()","Parameter");
 			return component->isUnlocked.GetValue(f->researchState.attributeTable);
 		});
 	}

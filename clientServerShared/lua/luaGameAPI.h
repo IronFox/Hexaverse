@@ -43,6 +43,7 @@ namespace Lua
 	{
 		Lua::PProgram		program;
 		Lua::Table			gameTable,//Game.X
+							aiTable,	//Game.AI.X
 							markTable,	//Game.DebugMarkers.X
 							researchTable,	//Game.Research.X
 							typeTable,		//Game.Type.X

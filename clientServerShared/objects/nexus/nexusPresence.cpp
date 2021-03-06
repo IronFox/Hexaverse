@@ -1,14 +1,15 @@
 #include "nexusPresence.h"
-#include "../logEvent.h"
-#include "../grid/base.h"
-#include "../grid/worldData.h"
-#include "gridAndChoices.h"
-#include "faction.h"
-#include "prototypes.h"
-#include "structure/tower.h"
-#include "structure/vehiclePlant.h"
-#include "../grid/resources.h"
-#include "../objects/pathfinding.h"
+#include "../../logEvent.h"
+#include "../../grid/base.h"
+#include "../../grid/worldData.h"
+#include "../gridAndChoices.h"
+#include "../faction.h"
+#include "../prototypes.h"
+#include "../structure/tower.h"
+#include "../structure/vehiclePlant.h"
+#include "../structure/planeFactory.h"
+#include "../../grid/resources.h"
+#include "../../objects/pathfinding.h"
 
 namespace NexusPresence
 {
@@ -239,7 +240,9 @@ namespace NexusPresence
 					}
 					#endif
 
-					auto plant = Create<Objects::VehiclePlant>(nexusFaction,world,Grid::LCellIdI(segment->at(1),avgHeight));
+					Create<Objects::VehiclePlant>(nexusFaction,world,Grid::LCellIdI(segment->at(1),avgHeight));
+
+					Create<Objects::PlaneFactory>(nexusFaction,world,Grid::LCellIdI(segment->at(1),avgHeight+2));
 				}
 
 				Ring defenseRing = Ring(pole,lowDomain,4);

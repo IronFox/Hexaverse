@@ -10,7 +10,7 @@
 #include "visual/hud/hexGrid.h"
 #include "visual/hud/objectCommands.h"
 #include "visual/hud/guiHostList.h"
-#include <objects/nexusPresence.h>
+#include <objects/nexus/nexusPresence.h>
 
 #include "serverProcess.h"
 #include "network.h"

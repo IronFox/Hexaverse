@@ -1,7 +1,7 @@
 #pragma once
-#include "../runtimeConfig.h"
-#include "types.h"
-#include "../grid/types.h"
+#include "../../runtimeConfig.h"
+#include "../types.h"
+#include "../../grid/types.h"
 
 
 namespace NexusPresence

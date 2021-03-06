@@ -316,6 +316,7 @@ namespace Network
 		DECLARE_CHANNEL(ChoiceResponse);
 
 		DECLARE_CHANNEL(ScriptedAIState);
+		DECLARE_CHANNEL(NexusHostilePresence);
 
 		DECLARE_OBJECT_SENDER(EntityTrigger);
 		DECLARE_CHANNEL(AllianceMarkerText);

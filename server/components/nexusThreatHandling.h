@@ -1,5 +1,8 @@
 #pragma once
 
+#include <grid/setup.h>
+#include <objects/types.h>
+
 
 /**
 This module handles Nexus Threat detection and handling.
@@ -9,6 +12,7 @@ The AI client is not informed of this detection. Instead, vehicles plants are en
 */
 namespace Nexus
 {
-	void	Setup();
 	void	ProcessCoverage();
+
+	float	Estimate(int poleIndex, const Grid::LCellIdI&location, const Objects::EntityType&type, Objects::PFaction&owner);
 }

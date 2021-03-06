@@ -676,6 +676,10 @@ namespace Game
 
 			if (RuntimeConfig::IsACommandPhase(to))
 			{
+				if (Objects::Faction::nexus)
+				{
+					::Network::UpdateNexusThreatPresence();
+				}
 
 
 				if (Objects::Research::globalState.zeroTable.AnyChanged())
