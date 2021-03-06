@@ -16,12 +16,12 @@ namespace Objects
 			/**
 			Creates a new marker.
 			*/
-			index_t	Create(const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label);
+			index_t	Create(const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label, bool seeThrough);
 			/**
 			Creates a new marker using an externally defined unique ID.
 			@param id Unique marker identifier. Must be neither InvalidIndex nor already in use
 			*/
-			void	CreatePreIdentified(index_t id, const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label);
+			void	CreatePreIdentified(index_t id, const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label, bool seeThrough);
 			/**
 			Checks whether an ID candidate is already in use
 			*/

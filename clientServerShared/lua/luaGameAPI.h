@@ -132,7 +132,7 @@ namespace Lua
 												onDropSafeTasks,
 												onDropLastTask
 												;
-		std::function<index_t(const Grid::LCellIdI&, const M::TVec3<>&color, const String&msg)>	onVisualMarkerCreate;
+		std::function<index_t(const Grid::LCellIdI&, const M::TVec3<>&color, const String&msg, bool seeThrough)>	onVisualMarkerCreate;
 		std::function<void(index_t)>			onVisualMarkerDelete;
 		std::function<void()>					onVisualMarkerFlush;
 

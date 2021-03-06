@@ -503,12 +503,12 @@ namespace ScriptedAI
 			{
 				std::atomic<index_t>	counter;
 
-				index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+				index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label, bool seeThrough )
 				{
 					index_t idx = counter++;
 					if (idx == InvalidIndex)
 						idx = counter++;
-					mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label](){Objects::VisualMarkers::Debug::CreatePreIdentified(idx,loc,color,label);});
+					mainThreadExecute << Job("Create new debug marker ("+String(idx)+")",[idx,loc,color,label,seeThrough](){Objects::VisualMarkers::Debug::CreatePreIdentified(idx,loc,color,label,seeThrough);});
 					return idx;
 				}
 

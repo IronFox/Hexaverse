@@ -1,5 +1,6 @@
 #include "music.h"
 #include <al/musicPlayer.h>
+#include <logEvent.h>
 
 
 namespace Music
@@ -8,6 +9,8 @@ namespace Music
 	static bool	lastShown = false;
 	static bool musicDuringGameplay = false;
 	static const DeltaWorks::PathString file = "resources/audio/Hexaverse Title M4.mp3";
+
+	static bool playbackFailed = false;
 
 	Engine::OpenAL::MusicPlayer	player;
 
@@ -31,6 +34,8 @@ namespace Music
 
 	static void UpdatePlayback()
 	{
+		if (playbackFailed)
+			return;
 		bool doPlay = lastShown || musicDuringGameplay;
 
 		if (doPlay == player.IsPlaying())
@@ -39,7 +44,9 @@ namespace Music
 		if (doPlay)
 		{
 			player.SetVolume(musicVolume);
-			player.Begin(file,true);
+			playbackFailed = !player.TryBegin(file,true);
+			if (playbackFailed)
+				LogEvent(EventSignificance::NonFatalError,player.GetLastErrorText());
 		}
 		else
 			player.FadeOut(5.f);

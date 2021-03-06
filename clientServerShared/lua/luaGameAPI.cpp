@@ -857,12 +857,12 @@ namespace Lua
 		});
 
 
-		markTable.SetFunction("Put",[this](const Lua::Table&tloc, float red, float green, float blue, const String&msg)
+		markTable.SetFunction("Put",[this](const Lua::Table&tloc, float red, float green, float blue, const String&msg, bool seeThrough)
 		{
 			const auto loc = Detail::ToLGridCell(tloc,"Put(): Location parameter #1");
 			if (!onVisualMarkerCreate)
 				return InvalidIndex;	//ignore
-			const auto rs = onVisualMarkerCreate(loc,float3(red,green,blue),msg);
+			const auto rs = onVisualMarkerCreate(loc,float3(red,green,blue),msg, seeThrough);
 			return rs;
 		});
 		markTable.SetFunction("Remove",[this](index_t id)

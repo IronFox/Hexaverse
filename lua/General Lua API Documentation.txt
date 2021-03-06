@@ -44,10 +44,11 @@ Set all color components to 1 for a white visual debug marker, or 0 for black.
 @param	r	Red color component in [0,1]. 0=none, 1=full
 @param	g	Green color component in [0,1]
 @param	b	Blue color component in [0,1]
-@param 	label Label to print atop the marker. May be empty
+@param 	label 		Label to print atop the marker. May be empty
+@param  seeThrough 	Set true to see label through the ground, false to clip if submerged
 @return Marker ID
 ]]
-int				Game.DebugMarkers.Put(Loc, float r, float g, float b, string label);
+int				Game.DebugMarkers.Put(Loc, float r, float g, float b, string label, boolean seeThrough);
 
 --[[
 Remove():

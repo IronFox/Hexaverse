@@ -27,7 +27,7 @@ namespace Objects { namespace VisualMarkers
 				String			label;
 				M::TMatrix4<>	system;
 
-				bool			labelVisible = false;
+				bool			labelVisible = false,seeThrough=false;
 				M::TVec3<>		screenLocation;
 			};
 
@@ -57,7 +57,7 @@ namespace Objects { namespace VisualMarkers
 	
 
 
-		void		CreatePreIdentified( index_t id, const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+		void		CreatePreIdentified( index_t id, const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label, bool seeThrough )
 		{
 			ASSERT__(id != InvalidIndex);
 			using namespace Details;
@@ -88,16 +88,17 @@ namespace Objects { namespace VisualMarkers
 			const auto h = Grid::GetLayerHeight(loc.height);
 			BuildSystem(loc,h,h,m->system);
 			m->labelCenter = m->system.w.xyz + m->system.z.xyz * 2.f;
+			m->seeThrough = seeThrough;
 			LogEvent(EventSignificance::Debug,"Created visual marker "+String(m->id)+" at "+ToString(loc));
 
 			ASSERT_EQUAL__(markers.Count(),indexMap.Count());
 			ASSERT_EQUAL__(markers.Count(),locationMap.Count());
 		}
 
-		index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label )
+		index_t		Create( const Grid::LCellIdI&loc, const M::TVec3<>&color, const D::String&label, bool seeThrough )
 		{
 			const index_t rs = Details::NextID();
-			CreatePreIdentified(rs,loc,color,label);
+			CreatePreIdentified(rs,loc,color,label,seeThrough);
 			return rs;
 
 		}
@@ -160,9 +161,12 @@ namespace Objects { namespace VisualMarkers
 		}
 		foreach (Debug::markers,m)
 		{
-			display.SetObjectMatrix(m->system);
-			keyColor.Update(m->keyColor);
-			display.Render(gatheringPoint,true);
+			if (m->seeThrough)
+			{
+				display.SetObjectMatrix(m->system);
+				keyColor.Update(m->keyColor);
+				display.Render(gatheringPoint,true);
+			}
 		}
 		display.SetDepthTest(true,true);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
@@ -208,6 +212,8 @@ namespace Objects { namespace VisualMarkers
 		foreach (Debug::markers,m)
 			if (m->labelVisible)
 			{
+				display.SetDepthTest(!m->seeThrough,false);
+
 				Locate(m->screenLocation);
 				textout.SetColor(m->color);
 				textout << m->label;
@@ -237,7 +243,10 @@ namespace Objects { namespace VisualMarkers
 		display.SetDepthTest(true,false);
 		display.SetBlendMode(Engine::BlendMode::Add);
 
-
+		foreach (Debug::Details::markers,m)
+			if (m->seeThrough)
+				Objects::Renderer::RenderBeam(m->system.w.xyz, Grid::TopPlanetRadius - Grid::BottomPlanetRadius,
+					0.4f, float4(m->color,1), float4(m->color,0));
 		
 		foreach (Objects::MarkerStore::client.GetArtifacts().allianceDefs, def)
 			if (def->marker->age < 1)
