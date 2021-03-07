@@ -612,11 +612,11 @@ namespace Objects{ namespace Pathfinding
 	*/
 
 	void	ReachabilityMapper::CheckNodeCosts( TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, 
-		const FCellCostModifier&costModifier, const THindranceVector&hindrance )
+		const FCellCostModifier&costModifier, const THindranceVector&hindrance, RoutingFlags routingFlags )
 	{
 		if (!tn.nodeCosts)
 		{
-			if (m.IsAffectedByGravity(cellID))
+			if (!m.IsAffectedByGravity(cellID) || routingFlags & RoutingFlags::EdgeCostIsAlwaysOne)
 				tn.nodeCosts = 1;
 			else
 				tn.nodeCosts = GetCellMovementCosts(world,cellID,hindrance);
@@ -675,7 +675,7 @@ namespace Objects{ namespace Pathfinding
 
 			const Grid::LCellIdI cellID(current);
 			TReachableNode&tn = buffer[current];
-			CheckNodeCosts(tn, world,m, cellID,costModifier,hindrance);
+			CheckNodeCosts(tn, world,m, cellID,costModifier,hindrance,routingFlags);
 			if (tn.isBlocked)
 				continue;
 
@@ -691,7 +691,7 @@ namespace Objects{ namespace Pathfinding
 			{
 				const auto option = possibilities.way[i];
 				TReachableNode&n = buffer[option];
-				CheckNodeCosts(n, world,m,option,costModifier,hindrance);
+				CheckNodeCosts(n, world,m,option,costModifier,hindrance,routingFlags);
 				if (n.isBlocked)
 					continue;
 

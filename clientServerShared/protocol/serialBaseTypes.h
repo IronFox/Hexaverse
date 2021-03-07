@@ -38,7 +38,7 @@ namespace Protocol
 			void				operator=(ArrayRef<T>&&other)
 			{
 				ASSERT_LESS_OR_EQUAL__(other.Count(), MaxSize);
-				Super::operator=(std::move(other));
+				Super::operator=(std::forward<ArrayRef<T> >(other));
 			}
 #endif
 

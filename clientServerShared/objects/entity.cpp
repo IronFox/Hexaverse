@@ -330,6 +330,11 @@ namespace Objects
 
 	float					WorldEntity::GetScanningRange() const
 	{
+		return GetScanningRange(owner);
+	}
+
+	float					WorldEntity::GetScanningRange(const OwnerParameter&owner) const
+	{
 		return GetScanningRangeExt(owner,t2 ? t2->scanningRange : T2::TModifier());
 	}
 

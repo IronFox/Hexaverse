@@ -803,25 +803,64 @@ namespace Network
 		if (!peer)
 			return;
 
-		Objects::NexusThreat::Update([](index_t poleIdx)
+		float estimationFactor = Game::Config::Nexus::threatEstimationFactor;
+		if (!Game::Config::Nexus::bases.havePlaced && Game::Config::Nexus::allPorts.havePlaced)
+			estimationFactor *= 0.25f;
+		Objects::NexusThreat::SetEstimationFactor(estimationFactor);
+		Objects::Pathfinding::ReachabilityMapper mapper(true);
+
+		Objects::NexusThreat::Update([](UINT32 poleIdx)
 		{
 			return Game::Config::Nexus::bases.havePlaced && BaseGrid::IsIsolatedCorner(poleIdx);
+		},
+		[&mapper](const Objects::PNexusPort&pole)->bool
+		{
+			Grid::LCellIdI poleLoc(Grid::low.grid.GetCell(pole->location.stackID).neighborhood.neighborID[0],pole->location.height);
+			Objects::Vehicle testHover(Objects::Faction::nexus,poleLoc,&Objects::Component::hoverbase,&Objects::Component::armored);
+			Objects::Vehicle testHeavy(Objects::Faction::nexus,poleLoc,&Objects::Component::heavybase,&Objects::Component::armored);
+			mapper.Map(testHover,poleLoc,
+				Objects::Pathfinding::RoutingFlags::IgnoreLimit
+					|Objects::Pathfinding::RoutingFlags::IgnoreMobilesOnDestination
+					|Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute
+					|Objects::Pathfinding::RoutingFlags::EdgeCostIsAlwaysOne,
+				Objects::Component::GroundFlags::None,
+				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
+			auto scope = mapper.result.Count();
+			mapper.Map(testHeavy,poleLoc,
+				Objects::Pathfinding::RoutingFlags::IgnoreLimit
+					|Objects::Pathfinding::RoutingFlags::IgnoreMobilesOnDestination
+					|Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute
+					|Objects::Pathfinding::RoutingFlags::EdgeCostIsAlwaysOne,
+				Objects::Component::GroundFlags::None,
+				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
+			auto heavy = mapper.result.Count();
+			return heavy >= scope * 3/4;
 		});
-		Buffer<Protocol::NexusHostilePortPresence,12> presences;
+		Buffer<Protocol::NexusBaseHint,12> presences;
 		for (int i = 0; i < 12; i++)
 		{
 			if (Objects::NexusThreat::GetPort(i))
 			{
-				Protocol::NexusHostilePortPresence&p = presences.Append();
+				Protocol::NexusBaseHint&p = presences.Append();
 				p.poleIndex = i;
-				p.highestConstructorPresence = Objects::NexusThreat::GetClosestHostileConstructorPresence(i);
-				p.airSum = Objects::NexusThreat::SumAirHostiles(i);
-				p.constructorPresence = Objects::NexusThreat::SumHostileConstructorPresence(i);
-				p.groundSum = Objects::NexusThreat::SumGroundHostiles(i);
+				const auto threat = Objects::NexusThreat::Get(i);
+
+				p.closestHostileConstructorOpacity = threat.closestHostileConstructorOpacity;
+				p.constructorOpacitySum = threat.constructorOpacitySum;
+				p.airMobileThreatLevel = threat.air.mobile;
+				p.airStationaryThreatLevel = threat.air.stationary;
+				p.groundMobileThreatLevel = threat.ground.mobile;
+				p.groundStationaryThreatLevel = threat.ground.stationary;
 				p.hasBase = Objects::NexusThreat::IsBase(i);
+				p.deployHeavyBases = Objects::NexusThreat::DeployHeavyVehicleBases(i);
 			}
 		}
-		Channels::NexusHostilePresence.SendTo(peer,presences.ToRef());
+
+		Protocol::NexusAIHints hints;
+		hints.estimationFactor = estimationFactor;
+		hints.bases = presences.ToRef();
+
+		Channels::NexusAIHints.SendTo(peer,hints);
 	}
 
 

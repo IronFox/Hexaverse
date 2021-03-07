@@ -17,13 +17,10 @@ namespace Objects
 		{
 			struct Pole
 			{
-				float		hostileGroundSum = 0,
-							hostileAirSum = 0,
-							friendlyGroupSum[2] = {0,0}, 
-							friendlyAirSum = 0,
-							constructorNearNexus = 0,
-							highestConstructorNearNexus = 0;
-				bool		hasBase = false;
+				TLevel		threatLevel;
+				TSupport	support;
+				bool		hasBase = false, 
+							deployHeavyVehicleBases = false;
 				PNexusPort	port;
 				bool		isInEMPZone = false;
 				M::TVec3<>	center;
@@ -48,14 +45,21 @@ namespace Objects
 
 
 			FixedArray<Pole,12>	poles;
+			float estimationFactor = 1;
 
-			void	CheckIndex(index_t poleIndex)
+			void	CheckIndex(int poleIndex)
 			{
-				if (poleIndex >= 12)
+				if (poleIndex >= 12 || poleIndex < 0)
 					throw Except::Program::ParameterFault(CLOCATION,"Pole index "+String(poleIndex)+" is out of bounds (0..11)");
 			}
+
+			Pole& GetPole(int poleIndex)
+			{
+				CheckIndex(poleIndex);
+				return poles[poleIndex];
+			}
 			
-			TEstimation	_Estimate(const Objects::PFaction&nexus, const Objects::WorldEntity&e, const Grid::LCellIdI&loc, const Objects::PFaction&owner, index_t poleIndex)
+			TEstimation	_Estimate(const Objects::PFaction&nexus, const Objects::WorldEntity&e, const Grid::LCellIdI&loc, const Objects::PFaction&owner, int poleIndex)
 			{
 				TEstimation rs;
 
@@ -73,8 +77,45 @@ namespace Objects
 				//const bool isHostile = owner != nexus;
 				rs.isHostile = owner != nexus;
 				rs.isConstructor = turretBase && turretBase->turret->CanDo(Objects::Component::Operation::Construct);
-				rs.isPlane = e.IsPlane();
-				rs.isStructure = e.IsStructure();
+				rs.isAirborne = e.IsAboveTerrain();
+				if (turretBase)
+				{
+					if (e.IsPlane())
+					{
+						if (turretBase->CanAttackIgnoreAmmo())
+						{
+							rs.groundActivity = 
+							(
+								turretBase->turret->trajectoryType == Objects::TrajectoryType::A2GMissile
+								||
+								turretBase->turret->trajectoryType == Objects::TrajectoryType::VerticalBeam
+							) ? 1 : 0;
+
+							rs.airActivity = std::max(0.25f,1.f - rs.groundActivity);
+						}
+						else
+						{
+							rs.airActivity = 1;
+							rs.groundActivity = std::min(1.f, float(turretBase->turret->groundScanningRange.GetValue(e.GetResearchState(owner))) / 
+								e.GetScanningRange(owner));
+						}
+					}
+					else
+					{
+						rs.airActivity = turretBase->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero() ? 1 : 0;
+						if (rs.airActivity == 0)
+							rs.groundActivity = 1;
+						else
+							rs.groundActivity = std::min(1.f, float(e.GetScanningRange(owner)) / turretBase->turret->subOrbitalScanningRange.GetValue(e.GetResearchState(owner))) * 0.25f;
+					}
+				}
+				else
+				{
+					rs.airActivity = e.IsPlane() ? 1 : 0;
+					rs.groundActivity = 1.f - rs.airActivity;
+				}
+
+				rs.isStationary = !e.IsMobile();
 
 				if (rs.impact > 0)
 				{
@@ -90,7 +131,7 @@ namespace Objects
 					const bool isRed = stepDistance < 4;
 					const bool isYellow = stepDistance < 6;
 					const bool isNoticed = stepDistance < 9;
-					rs.opacity = (float(isBlack?6:0) + float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2
+					rs.opacity = (float(isBlack?6:0) + float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2->4(black)
 					rs.isRedZone = isRed;
 					rs.totalImpact = rs.opacity * rs.impact;
 				}
@@ -125,26 +166,12 @@ namespace Objects
 						if (est.isHostile)
 						{
 							#ifndef CLIENT
-								if (est.isPlane)
-									at->hostileAirSum += est.totalImpact;
-								else
-									at->hostileGroundSum += est.totalImpact;
-								if (est.isConstructor && est.isRedZone)
-								{
-									at->constructorNearNexus += est.opacity;
-									at->highestConstructorNearNexus = std::max(at->highestConstructorNearNexus,est.opacity);
-								}
+								at->threatLevel += est;
 							#endif
 						}
 						else
 						{
-							if (est.isPlane)
-								at->friendlyAirSum += est.totalImpact;
-							else
-							{
-								at->friendlyGroupSum[0] += est.isStructure ? 0 : est.totalImpact;
-								at->friendlyGroupSum[1] += est.totalImpact;
-							}
+							at->support += est;
 						}
 					}
 			}
@@ -254,12 +281,47 @@ namespace Objects
 		}
 
 
-		void					Update(const std::function<bool(index_t)>&poleHasBase)
+		void TVector::operator+=(const TEstimation&est)
+		{
+			if (est.totalImpact == 0)
+				return;
+			if (est.isStationary)
+			{
+				air.stationary += est.totalImpact * est.airActivity;
+				ground.stationary += est.totalImpact * est.groundActivity;
+			}
+			else
+			{
+				air.mobile += est.totalImpact * est.airActivity;
+				ground.mobile += est.totalImpact * est.groundActivity;
+			}
+		}
+
+		void TLevel::operator+=(const TEstimation&est)
+		{
+			TVector::operator+=(est);
+
+			if (est.isConstructor)
+			{
+				constructorOpacitySum += est.opacity;
+				closestHostileConstructorOpacity = std::max(closestHostileConstructorOpacity,est.opacity);
+			}
+		}
+
+
+
+		void					SetEstimationFactor(float estimationFactor)
+		{
+			Detail::estimationFactor = estimationFactor;
+		}
+
+
+		void					Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases)
 		{
 			foreach (Detail::poles,pole)
 				pole->port = nullptr;
 
-			Objects::structures.Foreach([poleHasBase](const Objects::PStructure&s)
+			Objects::structures.Foreach([poleHasBase,deployHeavyVehicleBases](const Objects::PStructure&s)
 			{
 				if (   s->location.stackID >= 12					//structure is not located on pole (there are 12 poles and they are the first 12 cell stacks)
 					|| s->GetType() != ConstName::Type_NexusPort	//we're looking at something else
@@ -269,26 +331,28 @@ namespace Objects
 					return;
 				auto&pole = Detail::poles[s->location.stackID];
 				pole.port = To<Objects::NexusPort>::Cast(s);
-				pole.friendlyAirSum = 0;
-				pole.friendlyGroupSum[0] = 0;
-				pole.friendlyGroupSum[1] = 0;
+				pole.support = TSupport();
 				#ifndef CLIENT
-					pole.hostileGroundSum = 0;
-					pole.hostileAirSum = 0;
-					
-					pole.constructorNearNexus = 0;
-					pole.highestConstructorNearNexus = 0;
+					pole.threatLevel = TLevel();
 				#endif
 				if (poleHasBase)
 					pole.hasBase = poleHasBase(s->location.stackID);
 				pole.isInEMPZone = Grid::AffectedByEMP(s->location);
 				pole.center = Grid::low.cells[s->location.stackID].centerVertex.xyz;
+				if (deployHeavyVehicleBases)
+					pole.deployHeavyVehicleBases = deployHeavyVehicleBases(pole.port);
 			});
 
 
 
 
 
+		}
+
+
+		bool					DeployHeavyVehicleBases(int poleIndex)
+		{
+			return Detail::GetPole(poleIndex).deployHeavyVehicleBases;
 		}
 
 
@@ -299,74 +363,60 @@ namespace Objects
 			GlobalEvents::phaseChange << []()
 			{
 				if (RuntimeConfig::IsInAnyCommandPhase())
-					Update(nullptr);
+					Update(nullptr,nullptr);
 			};
 		}
 
 
 
-		bool					IsBase(index_t poleIndex)
+		bool					IsBase(int poleIndex)
 		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].hasBase;
+			return Detail::GetPole(poleIndex).hasBase;
 		}
 
-		float					SumGroundHostiles(index_t poleIndex)
+		bool					HasPort(int poleIndex)
 		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].hostileGroundSum;
+			return Detail::GetPole(poleIndex).port != nullptr;
 		}
 
-		float					SumAirHostiles(index_t poleIndex)
+		bool					IsInEmpZone(int poleIndex)
 		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].hostileAirSum;
+			return Detail::GetPole(poleIndex).isInEMPZone;
 		}
 
-		float					SumGroundFriendlies(index_t poleIndex, bool includeStationaries)
+		float					GetEstimationFactor()
 		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].friendlyGroupSum[includeStationaries ? 1 : 0];
+			return Detail::estimationFactor;
 		}
 
-		float					SumAirFriendlies(index_t poleIndex)
+		TLevel					Get(int poleIndex)
 		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].friendlyAirSum;
+			return Detail::GetPole(poleIndex).threatLevel * GetEstimationFactor();
 		}
 
-		float					SumHostileConstructorPresence(index_t poleIndex)
+		const TSupport&			GetSupport(int poleIndex)
 		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].constructorNearNexus;
-		}
-
-		float					GetClosestHostileConstructorPresence(index_t poleIndex)
-		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].highestConstructorNearNexus;
-		}
-
-		ArrayRef<PVehiclePlant>	GetBaseVehiclePlants(index_t poleIndex)
-		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].associatedVehiclePlants.ToRef();
-		}
-
-		ArrayRef<PPlaneFactory>	GetBasePlaneFactories(index_t poleIndex)
-		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].associatedPlaneFactories.ToRef();
-		}
-
-		Objects::PNexusPort		GetPort(index_t poleIndex)
-		{
-			Detail::CheckIndex(poleIndex);
-			return Detail::poles[poleIndex].port;
+			return Detail::GetPole(poleIndex).support;
 		}
 
 
-		TEstimation				Estimate(index_t poleIndex, const Grid::LCellIdI&location, const Objects::EntityType&type, Objects::PFaction&owner)
+		ArrayRef<PVehiclePlant>	GetBaseVehiclePlants(int poleIndex)
+		{
+			return Detail::GetPole(poleIndex).associatedVehiclePlants.ToRef();
+		}
+
+		ArrayRef<PPlaneFactory>	GetBasePlaneFactories(int poleIndex)
+		{
+			return Detail::GetPole(poleIndex).associatedPlaneFactories.ToRef();
+		}
+
+		Objects::PNexusPort		GetPort(int poleIndex)
+		{
+			return Detail::GetPole(poleIndex).port;
+		}
+
+
+		TEstimation				Estimate(int poleIndex, const Grid::LCellIdI&location, const Objects::EntityType&type, Objects::PFaction&owner)
 		{
 			Detail::CheckIndex(poleIndex);
 			Objects::PWorldEntity proto = Objects::Prototypes::Find(type);
@@ -384,13 +434,13 @@ namespace Objects
 			return Detail::_Estimate(Detail::GetNexus(),*proto,location,owner,poleIndex);
 		}
 
-		TEstimation				Estimate(index_t poleIndex, const PWorldEntity&e)
+		TEstimation				Estimate(int poleIndex, const PWorldEntity&e)
 		{
 			Detail::CheckIndex(poleIndex);
 			return Detail::_Estimate(Detail::GetNexus(),*e,e->location,e->owner,poleIndex);
 		}
 
-		TEstimation				Estimate(index_t poleIndex, const PWorldEntity&e, const Grid::LCellIdI&location)
+		TEstimation				Estimate(int poleIndex, const PWorldEntity&e, const Grid::LCellIdI&location)
 		{
 			Detail::CheckIndex(poleIndex);
 			return Detail::_Estimate(Detail::GetNexus(),*e,location,e->owner,poleIndex);
@@ -399,7 +449,7 @@ namespace Objects
 		
 
 		#ifdef CLIENT
-			void				UpdatePole(index_t poleIdx, float groundSum, float airSum, bool hasBase, float constructorPresence, float highestConstructorPresence)
+			void				UpdatePole(int poleIdx, float groundSum, float airSum, bool hasBase, float constructorPresence, float highestConstructorPresence)
 			{
 				Detail::poles[poleIdx].hostileGroundSum = groundSum;
 				Detail::poles[poleIdx].hostileAirSum = airSum;

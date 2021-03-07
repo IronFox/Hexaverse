@@ -893,22 +893,15 @@ namespace Lua
 			{
 				return Objects::NexusThreat::IsBase(poleIdx-1);
 			});
-			aiTable.SetFunction("SumGroundHostiles",[this](int poleIdx)->float
+			aiTable.SetFunction("GetThreatLevel",[this](int poleIdx, bool ground, bool stationary)->float
 			{
-				return Objects::NexusThreat::SumGroundHostiles(poleIdx-1);
+				return Objects::NexusThreat::Get(poleIdx-1).Domain(ground).Level(stationary);
 			});
-			aiTable.SetFunction("SumGroundFriendlies",[this](int poleIdx, bool inclStationary)->float
+			aiTable.SetFunction("GetSupportLevel",[this](int poleIdx, bool ground, bool stationary)->float
 			{
-				return Objects::NexusThreat::SumGroundFriendlies(poleIdx-1,inclStationary);
+				return Objects::NexusThreat::GetSupport(poleIdx-1).Domain(ground).Level(stationary);
 			});
-			aiTable.SetFunction("SumAirHostiles",[this](int poleIdx)->float
-			{
-				return Objects::NexusThreat::SumAirHostiles(poleIdx-1);
-			});
-			aiTable.SetFunction("SumAirFriendlies",[this](int poleIdx)->float
-			{
-				return Objects::NexusThreat::SumAirFriendlies(poleIdx-1);
-			});
+
 			aiTable.SetFunction("Estimate",[this](int poleIdx, const Lua::Table&typeTable, const Lua::Table&locTable, const Lua::Table&luaFaction)->float
 			{
 				Objects::PFaction f = Detail::DecodeFaction(luaFaction,true,"Estimate()","Faction parameter #4");

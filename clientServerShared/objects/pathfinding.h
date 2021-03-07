@@ -49,6 +49,7 @@ namespace Objects
 			AllowAccessibleHangars = 0x10,		//!< Allows accessible hangars on destination
 			IncludeOrigin = 0x20,				//!< Includes the origin location into the result
 			DisallowOffTerrain = 0x40,			//!< Disallows locations above the terrain
+			EdgeCostIsAlwaysOne = 0x80,			//!< Movement cost from one node to a neighbor is always one, regardless of vehicle or terrain properties
 		};
 
 
@@ -223,7 +224,7 @@ namespace Objects
 			VolumeGrid<TReachableNode>	buffer;
 
 //			bool					CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked);
-			void					CheckNodeCosts(TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FCellCostModifier&cellCostModifer, const THindranceVector&vec);
+			void					CheckNodeCosts(TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FCellCostModifier&cellCostModifer, const THindranceVector&vec, RoutingFlags routingFlags);
 		};
 
 

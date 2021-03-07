@@ -38,15 +38,22 @@ Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the gi
 [AI script only]
 	bool		Game.AI.IsBase(int);					-- Checks if the specified pole index (1-12) is covered by a Nexus base
 	--[[
-	General note about the below sum functions:
+	General note about the below functions:
 	These functions are designed to estimate whether the factories of a nexus base should be activated and a reaction to player presence should be prepared.
 	They observe all units, including those not currently visible to the Nexus AI.
-	A typical use case is to schedule unit construction until the overall friendly-sum equals or exceeds the respective hostile-sum
+	A typical use case is to schedule unit construction until the overall friendly-sum equals or exceeds the respective hostile-sum.
+	Ground/air estimation observes units able to attack or scan in those areas. Units are generally classified
+	as either ground or air-active, regardless of where they currently are.
+	An anti-air tower or mobile unit is air-active, not ground-active.
+	Likewise a bomber is considered ground-active, not air-active.
+	
+	@param pole Pole index in [1,12]
+	@param ground True: estimate ground-active units only, False: estimate air-active units only
+	@param stationary True: estimate stationary units only, False: estimate mobile units only
 	]]
-	float		Game.AI.SumGroundHostiles(int);			-- Estimates the threat-level imposed by nearby player vehicles to the specified pole index (1-12)
-	float		Game.AI.SumGroundFriendlies(int, bool inclStationary);		-- Estimates the friendly counter-weight imposted by nearby Nexus vehicles
-	float		Game.AI.SumAirHostiles(int);			-- Estimates the threat-level imposed by nearby player aerials to the specified pole index (1-12)
-	float		Game.AI.SumAirFriendlies(int);			-- Estimates the friendly counter-weight imposted by nearby Nexus aerials
+	float		Game.AI.GetThreatLevel(int pole, bool ground, bool stationary);
+	float		Game.AI.GetSupportLevel(int pole, bool ground, bool stationary);
+	
 	--[[
 	Estimates the impact of a unit type at the given location for the specified pole base.
 	This function represents the base estimation used for the sum-functions before.

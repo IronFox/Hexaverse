@@ -13,6 +13,4 @@ The AI client is not informed of this detection. Instead, vehicles plants are en
 namespace Nexus
 {
 	void	ProcessCoverage();
-
-	float	Estimate(int poleIndex, const Grid::LCellIdI&location, const Objects::EntityType&type, Objects::PFaction&owner);
 }

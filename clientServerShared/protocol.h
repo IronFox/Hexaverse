@@ -804,13 +804,16 @@ namespace Protocol
 		,TUniqueID, targetFaction
 	);
 
-	NETSTRUCT6(NexusHostilePortPresence
+	NETSTRUCT9(NexusBaseHint
 		,BYTE, poleIndex
-		,float, groundSum
-		,float, airSum
 		,bool, hasBase
-		,float, constructorPresence
-		,float, highestConstructorPresence
+		,bool, deployHeavyBases
+		,float, constructorOpacitySum
+		,float, closestHostileConstructorOpacity
+		,float, groundMobileThreatLevel
+		,float, airMobileThreatLevel
+		,float, groundStationaryThreatLevel
+		,float, airStationaryThreatLevel
 	);
 
 	typedef Objects::Resource::Table ResourceTable;
@@ -821,7 +824,13 @@ namespace Protocol
 						MobilizeStructure,
 						SettleMobile;
 
-	typedef NetArray<NexusHostilePortPresence,12> NexusHostilePresence;
+	typedef NetArray<NexusBaseHint,12> NexusBaseHints;
+
+	NETSTRUCT2(NexusAIHints
+		,NexusBaseHints, bases
+		,float, estimationFactor
+	);
+
 
 	namespace ChannelID
 	{
@@ -948,7 +957,7 @@ namespace Protocol
 
 			ScriptedAIState,			//[both]: ScriptedAIState
 
-			NexusHostilePresence,		//s2c: NexusHostilePresence
+			NexusAIHints,					//s2c: NexusAIHints
 
 			SaveAs,	//c2s: SaveAs
 		};

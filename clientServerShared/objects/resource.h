@@ -386,12 +386,38 @@ namespace Objects
 				return true;
 			}
 
+
+			bool	operator>(const Self&v) const
+			{
+				for (index_t i = 0; i < Resource::table.Count(); i++)
+					if (Get(i) <= v.Get(i))
+						return false;
+				return true;
+			}
+			bool	operator>=(const Self&v) const
+			{
+				for (index_t i = 0; i < Resource::table.Count(); i++)
+					if (Get(i) < v.Get(i))
+						return false;
+				return true;
+			}
+
+
 			void	operator+=(const Self&v);
 			void	operator-=(const Self&v);
 			void	operator*=(int multiplier);
 			bool	operator==(const Self&v) const;
 			bool	operator!=(const Self&v) const;
 			Self	operator-(const Self&v)	const;
+			Self	operator+(const Self&v) const;
+			/**
+			Calculates how often the specified other vector fits into the local vector.
+			Effectively the lowest resource division result, rounded down.
+			If the other vector is zero, the result is the maximum representable int value.
+			The result may be negative if the sign of the local and given vectors
+			differ.
+			*/
+			int		operator/(const Self&v) const;
 			Self	operator*(int multiplier) const;
 			/**
 			Sums up all levels

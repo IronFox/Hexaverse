@@ -455,6 +455,7 @@ namespace Objects
 		*/
 		virtual float				GetScanningRangeExt(const OwnerParameter&, const T2::TModifier&) const;
 		float						GetScanningRange() const;
+		float						GetScanningRange(const OwnerParameter&) const;
 		virtual float3				GetScanningCenter(const Grid::LCellIdI&loc) const;
 		float3						GetScanningCenter() const {return GetScanningCenter(location);}
 		/**

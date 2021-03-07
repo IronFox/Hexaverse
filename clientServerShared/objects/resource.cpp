@@ -304,6 +304,7 @@ namespace Objects
 			Set(Resource::Uranium,v.uranium);
 		}
 
+
 		void	Vector::operator+=(const CoreVector&v)
 		{
 			if (v.IsEmpty())
@@ -367,12 +368,46 @@ namespace Objects
 			return storage != other.storage;
 		}
 
+
+		Vector	Vector::operator+(const Self&v) const
+		{
+			Vector rs = *this;
+			rs += v;
+			return rs;
+		}
+
+
 		Vector	Vector::operator-(const Self&other)	const
 		{
 			Vector rs = *this;
 			rs -= other;
 			return rs;
 		}
+
+		int		Vector::operator/(const Self&v) const
+		{
+			int rs = std::numeric_limits<int>::max();
+			if (IsZero())
+				return 0;
+			if (v.IsZero())
+				return rs;
+
+			for (index_t i = 0; i < v.storage.Count(); i++)
+			{
+				auto other = v.storage[i];
+				auto local = Get(i);
+				if (other != 0)
+				{
+					if (std::abs(local) <= std::abs(other))
+						return 0;
+					int div = local / other;
+					if (std::abs(div) < std::abs(rs))
+						rs = div;
+				}
+			}
+			return rs;
+		}
+
 
 		Vector	Vector::operator*(int multiplier) const
 		{

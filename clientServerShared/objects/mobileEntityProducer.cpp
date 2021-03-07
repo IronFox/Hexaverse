@@ -240,36 +240,35 @@ namespace Objects
 						c = highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location;
 					else
 					{
+						auto owner = parent->owner;
+						float best = std::numeric_limits<float>::max();
+						foreach (movementChoices,choice)
+						{
+							float badness = 0;
+							owner->VisitVisibleForeignEntities([&badness,owner,choice](const Objects::PWorldEntity&e)
+							{
+								if (!owner->IsFriendly(e->owner))
+									badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,e->location));
+							});
+							owner->markers.Foreach(Objects::MarkerType::EntityDeath,[&badness,choice](const Objects::PMarker&m)
+							{
+								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+							});
+							owner->markers.Foreach(Objects::MarkerType::HostileContact,[&badness,choice](const Objects::PMarker&m)
+							{
+								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+							});
 
-					auto owner = parent->owner;
-					float best = std::numeric_limits<float>::max();
-					foreach (movementChoices,choice)
-					{
-						float badness = 0;
-						owner->VisitVisibleForeignEntities([&badness,owner,choice](const Objects::PWorldEntity&e)
-						{
-							if (!owner->IsFriendly(e->owner))
-								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,e->location));
-						});
-						owner->markers.Foreach(Objects::MarkerType::EntityDeath,[&badness,choice](const Objects::PMarker&m)
-						{
-							badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
-						});
-						owner->markers.Foreach(Objects::MarkerType::HostileContact,[&badness,choice](const Objects::PMarker&m)
-						{
-							badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
-						});
-
-						if (badness < best)
-						{
-							best = badness;
-							c = choice->location;
+							if (badness < best)
+							{
+								best = badness;
+								c = choice->location;
+							}
+							if (best == 0)
+								break;
 						}
 						if (best == 0)
-							break;
-					}
-					if (best == 0)
-						c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
+							c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
 					}
 				}
 			}

@@ -442,7 +442,7 @@ namespace Channels
 	DECLARE_FACTION_CHANNEL(QueueResearch);
 
 	DECLARE_FACTION_CHANNEL(ScriptedAIState);
-	DECLARE_OBJECT_SENDER(NexusHostilePresence);
+	DECLARE_OBJECT_SENDER(NexusAIHints);
 
 	DECLARE_FACTION_CHANNEL(EntityTrigger);
 

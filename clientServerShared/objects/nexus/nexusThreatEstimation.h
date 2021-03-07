@@ -15,17 +15,100 @@ namespace Objects
 	*/
 	namespace NexusThreat
 	{
+		/**
+		Threat or support estimation of an entity
+		*/
 		struct TEstimation
 		{
-			float				impact = 0,
-								opacity = 0,
-								totalImpact = 0;
-			bool				isConstructor = false,
-								isRedZone = false,
-								isHostile = false,
-								isPlane = false,
-								isStructure = false;
+			float				impact = 0,	//!< Significance of the unit, regardless of distance
+								opacity = 0,	//!< Opacity value [0-4] (usually [0-1]) to the respective pole. Estimations are 0(none), 1/3(noticed: <9 steps), 1(yellow: <6 steps), 2(red: <4 steps), 4(black: at port)
+								totalImpact = 0;	//!< Product of impact and opacity
+			bool				isConstructor = false,	//!< True if this entity can build things
+								isRedZone = false,		//!< True if the entity is within the red-zone (currently less than 4 cells from the pole)
+								isHostile = false,		//!< True if this entity is hostile
+								isAirborne = false,		//!< True if this entity is currently flying
+								isStationary = false;	//!< True if this entity cannot move
+			float				airActivity = 0,		//!< Air activity factor [0,1]
+								groundActivity = 0;		//!< Ground activity factor [0,1]
 		};
+
+
+		/**
+		Activity domain.
+		Entities are generally classified as air-active
+		or ground-active
+		*/
+		struct TDomain
+		{
+			float				mobile = 0,
+								stationary = 0;
+
+			float				Total() const {return mobile + stationary;}
+			float				Level(bool sourceStationary) const {return sourceStationary ? stationary : mobile;}
+			void				operator*=(float factor)
+			{
+				mobile *= factor;
+				stationary *= factor;
+			}
+		};
+
+
+		/**
+		Generic presence vector.
+		Provides accumulated estimations results (totalImpact)
+		of all detected entities (either hostile or friendly).
+		May be affected by estimation factor.
+		*/
+		struct TVector
+		{
+			TDomain				air,
+								ground;
+
+			float				AirTotal() const {return air.Total();}
+			float				GroundTotal() const {return ground.Total();}
+			float				Total() const {return AirTotal() + GroundTotal();}
+			float				MobileTotal() const {return air.mobile + ground.mobile;}
+			float				StationaryTotal() const {return air.stationary + ground.stationary;}
+
+			const TDomain&		Domain(bool targetGround) const {return targetGround ? ground : air;}
+			TDomain&			Domain(bool targetGround) {return targetGround ? ground : air;}
+
+			void				operator+=(const TEstimation&est);
+			void				operator*=(float factor)
+			{
+				air *= factor;
+				ground *= factor;
+			}
+		};
+
+		/**
+		Support vector (all friendly entities)
+		*/
+		typedef TVector			TSupport;
+
+		/**
+		Threat level vector (all hostile entities)
+		*/
+		struct TLevel: public TVector
+		{
+			/**
+			Sum of all hostile constructor opacities.
+			*/
+			float				constructorOpacitySum=0;
+			/**
+			Highest hostile constructor opacity.
+			*/
+			float				closestHostileConstructorOpacity=0;
+
+			void				operator+=(const TEstimation&est);
+			TLevel				operator*(float factor)
+			{
+				TLevel rs = *this;
+				rs *= factor;
+				return rs;
+			}
+		};
+
 
 
 
@@ -37,42 +120,40 @@ namespace Objects
 		@param owner Entity owner. May be null which is always hostile but with null research state
 		@return Threat estimation
 		*/
-		TEstimation				Estimate(index_t poleIndex, const Grid::LCellIdI&location, const Objects::EntityType&type, Objects::PFaction&owner);
-		TEstimation				Estimate(index_t poleIndex, const PWorldEntity&e);
-		TEstimation				Estimate(index_t poleIndex, const PWorldEntity&e, const Grid::LCellIdI&location);
+		TEstimation				Estimate(int poleIndex, const Grid::LCellIdI&location, const Objects::EntityType&type, Objects::PFaction&owner);
+		TEstimation				Estimate(int poleIndex, const PWorldEntity&e);
+		TEstimation				Estimate(int poleIndex, const PWorldEntity&e, const Grid::LCellIdI&location);
 
 
 
-		bool					IsBase(index_t poleIndex);
-		float					SumGroundHostiles(index_t poleIndex);
-		float					SumAirHostiles(index_t poleIndex);
-		float					SumGroundFriendlies(index_t poleIndex, bool includeStationaries);
-		float					SumAirFriendlies(index_t poleIndex);
-		float					SumHostileConstructorPresence(index_t poleIndex);
-		float					GetClosestHostileConstructorPresence(index_t poleIndex);
+		bool					IsBase(int poleIndex);
+		bool					HasPort(int poleIndex);
+		bool					IsInEmpZone(int poleIndex);
+		TLevel					Get(int poleIndex);
+		const TSupport&			GetSupport(int support);
+		bool					DeployHeavyVehicleBases(int poleIndex);
 
-		ArrayRef<PVehiclePlant>	GetBaseVehiclePlants(index_t poleIndex);
-		ArrayRef<PPlaneFactory>	GetBasePlaneFactories(index_t poleIndex);
-		Objects::PNexusPort		GetPort(index_t poleIndex);
 
+		ArrayRef<PVehiclePlant>	GetBaseVehiclePlants(int poleIndex);
+		ArrayRef<PPlaneFactory>	GetBasePlaneFactories(int poleIndex);
+		Objects::PNexusPort		GetPort(int poleIndex);
+
+
+		void					SetEstimationFactor(float estimationFactor);
 
 		#ifdef CLIENT
 			/**
 			Updates the server-provided hostile presence values
 			*/
-			void				UpdatePole(index_t poleIdx, float groundSum, float airSum, bool hasBase, float constructorPresence, float highestConstructorPresence);
+			void				UpdatePole(int poleIdx, const TLevel&, bool deployHeavyVehicleBases);
 
 			/**
 			Central creation method. Must be called once during client application start
 			*/
 			void				Create();
 		#else
-			void				Update(const std::function<bool(index_t)>&poleHasBase);
+			void				Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases);
 		#endif
-
-
-
-
 	}
 
 }
