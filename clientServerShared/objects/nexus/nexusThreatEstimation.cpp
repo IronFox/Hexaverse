@@ -24,28 +24,61 @@ namespace Objects
 				PNexusPort	port;
 				bool		isInEMPZone = false;
 				M::TVec3<>	center;
+				Array<UINT32>distanceField;
 
 
 				Buffer0<Objects::PWorkingStructure>	associatedWorkingStructures;
 				Buffer0<Objects::PVehiclePlant > associatedVehiclePlants;
 				Buffer0<Objects::PPlaneFactory > associatedPlaneFactories;
 
-				void	Clear()
-				{
-					ClearAssociation();
-				}
-
-				void	ClearAssociation()
+				void	Reset()
 				{
 					associatedWorkingStructures.Clear();
 					associatedVehiclePlants.Clear();
 					associatedPlaneFactories.Clear();
+				}
+
+
+				void	RebuildDistanceField()
+				{
+					Timer::Time t0 = timer.Now();
+
+					Buffer0<Grid::TNeighborCellID>	neighborhood;
+					Grid::low.GetExtendedNeighborhood(port->location.stackID,Grid::LowSetup::GridType::CellsPerEdge,neighborhood);
+					distanceField.SetSize(Grid::LowSetup::GridType::CellCount);
+					distanceField.Fill(std::numeric_limits<UINT32>::max());
+					foreach (neighborhood,n)
+						distanceField[n->stackID] = n->distanceFromOrigin;
+
+					LogEvent(EventSignificance::PerformanceMeasurement,"Distance field computation around pole "+ToString(port->location)+" took seconds: "+String(timer.GetSecondsSince(t0)));
 				}
 			};
 
 
 			FixedArray<Pole,12>	poles;
 			float estimationFactor = 1;
+
+
+			bool	IsBlack(UINT32 stepDistance)
+			{
+				return stepDistance < 2;
+			}
+
+			bool	IsRed(UINT32 stepDistance)
+			{
+				return stepDistance < 4;
+			}
+
+			bool	IsYellow(UINT32 stepDistance)
+			{
+				return stepDistance < 6;
+			}
+
+			bool	IsNoticed(UINT32 stepDistance)
+			{
+				return stepDistance < 9;
+			}
+
 
 			void	CheckIndex(int poleIndex)
 			{
@@ -62,6 +95,8 @@ namespace Objects
 			TEstimation	_Estimate(const Objects::PFaction&nexus, const Objects::WorldEntity&e, const Grid::LCellIdI&loc, const Objects::PFaction&owner, int poleIndex)
 			{
 				TEstimation rs;
+
+				const auto&pole = poles[poleIndex];
 
 				float entityRange = e.GetScanningRange();
 				rs.impact = e.GetConstructionCost() + (e.t2 ? e.t2->level * Objects::Research::globalState.t2.upgradeCostQuantity : 0);
@@ -119,20 +154,40 @@ namespace Objects
 
 				if (rs.impact > 0)
 				{
+					UINT32 locStack = loc.stackID;
+					if (rs.isHostile)
+					{
+						float angleToPole = M::Vec::angle(worldLoc,pole.center);
+						float angleToRange = acos(1.f - M::Sqr(entityRange) / (2.f * M::Sqr(Grid::ToRadius(loc.height)))) * 180 / M_PIF;
+							//asin(entityRange / Grid::ToRadius(loc.height)) * 180 / M_PIF;
+						if (angleToRange >= angleToPole)
+						{
+							locStack = poleIndex;
+						}
+						else
+						{
+							auto loc2 = worldLoc + (pole.center - worldLoc).Normalized() * entityRange;
+							locStack = Grid::low.Locate(loc2,loc.stackID);
+						}
+
+					}
+					UINT32 stepDistance = poles[poleIndex].distanceField[locStack];
+
+					/*
 
 					float worldDistance = Vec::distance(Grid::low.cells[poleIndex].centerVertex.xyz * Grid::MeanPlanetRadius,worldLoc);
 					if (rs.isHostile)
 						worldDistance = M::Max(0,worldDistance-entityRange);
+					*/
 
+					//const float stepDistance = worldDistance / Grid::MeanPlanetRadius / avg * 0.75f;
 
-					const float stepDistance = worldDistance / Grid::MeanPlanetRadius / avg * 0.75f;
-
-					const bool isBlack = stepDistance < 2;
-					const bool isRed = stepDistance < 4;
-					const bool isYellow = stepDistance < 6;
-					const bool isNoticed = stepDistance < 9;
+					const bool isBlack = IsBlack(stepDistance);
+					const bool isRed = IsRed(stepDistance);
+					const bool isYellow = IsYellow(stepDistance);
+					const bool isNoticed = IsNoticed(stepDistance);
 					rs.opacity = (float(isBlack?6:0) + float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2->4(black)
-					rs.isRedZone = isRed;
+					rs.distanceToPole = stepDistance;
 					rs.totalImpact = rs.opacity * rs.impact;
 				}
 				return rs;
@@ -191,7 +246,7 @@ namespace Objects
 				bool anyBases = false;
 				foreach (poles,e)
 				{
-					e->ClearAssociation();
+					e->Reset();
 					anyBases |= e->hasBase;
 				}
 
@@ -281,6 +336,20 @@ namespace Objects
 		}
 
 
+		Zone TEstimation::GetZone() const
+		{
+			if (Detail::IsBlack(distanceToPole))
+				return Zone::Black;
+			if (Detail::IsRed(distanceToPole))
+				return Zone::Red;
+			if (Detail::IsYellow(distanceToPole))
+				return Zone::Yellow;
+			if (Detail::IsNoticed(distanceToPole))
+				return Zone::Noticed;
+			return Zone::Irrelevant;
+		}
+
+
 		void TVector::operator+=(const TEstimation&est)
 		{
 			if (est.totalImpact == 0)
@@ -318,10 +387,16 @@ namespace Objects
 
 		void					Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases)
 		{
-			foreach (Detail::poles,pole)
-				pole->port = nullptr;
+			FixedArray<Objects::PNexusPort,12> oldPorts;
+			for (index_t i = 0; i < 12; i++)
+			{
+				oldPorts[i] = Detail::poles[i].port;
+				Detail::poles[i].port = nullptr;
+			}
 
-			Objects::structures.Foreach([poleHasBase,deployHeavyVehicleBases](const Objects::PStructure&s)
+
+
+			Objects::structures.Foreach([poleHasBase,deployHeavyVehicleBases,&oldPorts](const Objects::PStructure&s)
 			{
 				if (   s->location.stackID >= 12					//structure is not located on pole (there are 12 poles and they are the first 12 cell stacks)
 					|| s->GetType() != ConstName::Type_NexusPort	//we're looking at something else
@@ -331,6 +406,10 @@ namespace Objects
 					return;
 				auto&pole = Detail::poles[s->location.stackID];
 				pole.port = To<Objects::NexusPort>::Cast(s);
+				if (pole.port != oldPorts[s->location.stackID])
+				{
+					pole.RebuildDistanceField();
+				}
 				pole.support = TSupport();
 				#ifndef CLIENT
 					pole.threatLevel = TLevel();
@@ -391,7 +470,7 @@ namespace Objects
 
 		TLevel					Get(int poleIndex)
 		{
-			return Detail::GetPole(poleIndex).threatLevel * GetEstimationFactor();
+			return Detail::GetPole(poleIndex).threatLevel;
 		}
 
 		const TSupport&			GetSupport(int poleIndex)
@@ -449,13 +528,10 @@ namespace Objects
 		
 
 		#ifdef CLIENT
-			void				UpdatePole(int poleIdx, float groundSum, float airSum, bool hasBase, float constructorPresence, float highestConstructorPresence)
+			void				UpdatePole(int poleIdx, const TLevel&lvl, bool deployHeavyVehicleBases)
 			{
-				Detail::poles[poleIdx].hostileGroundSum = groundSum;
-				Detail::poles[poleIdx].hostileAirSum = airSum;
-				Detail::poles[poleIdx].hasBase = hasBase;
-				Detail::poles[poleIdx].constructorNearNexus = constructorPresence;
-				Detail::poles[poleIdx].highestConstructorNearNexus = highestConstructorPresence;
+				Detail::poles[poleIdx].threatLevel = lvl;
+				Detail::poles[poleIdx].deployHeavyVehicleBases = deployHeavyVehicleBases;
 			}
 		#endif
 

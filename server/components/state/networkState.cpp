@@ -815,6 +815,8 @@ namespace Network
 		},
 		[&mapper](const Objects::PNexusPort&pole)->bool
 		{
+			Timer::Time t0 = timer.Now();
+
 			Grid::LCellIdI poleLoc(Grid::low.grid.GetCell(pole->location.stackID).neighborhood.neighborID[0],pole->location.height);
 			Objects::Vehicle testHover(Objects::Faction::nexus,poleLoc,&Objects::Component::hoverbase,&Objects::Component::armored);
 			Objects::Vehicle testHeavy(Objects::Faction::nexus,poleLoc,&Objects::Component::heavybase,&Objects::Component::armored);
@@ -834,6 +836,9 @@ namespace Network
 				Objects::Component::GroundFlags::None,
 				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
 			auto heavy = mapper.result.Count();
+
+			LogEvent(EventSignificance::PerformanceMeasurement,"Heavy base terrain evaluation for pole "+String(pole->location.stackID)+ " took seconds: "+String(timer.GetSecondsSince(t0)));
+
 			return heavy >= scope * 3/4;
 		});
 		Buffer<Protocol::NexusBaseHint,12> presences;

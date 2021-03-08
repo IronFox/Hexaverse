@@ -895,7 +895,7 @@ namespace Lua
 			});
 			aiTable.SetFunction("GetThreatLevel",[this](int poleIdx, bool ground, bool stationary)->float
 			{
-				return Objects::NexusThreat::Get(poleIdx-1).Domain(ground).Level(stationary);
+				return Objects::NexusThreat::Get(poleIdx-1).Domain(ground).Level(stationary) * Objects::NexusThreat::GetEstimationFactor();
 			});
 			aiTable.SetFunction("GetSupportLevel",[this](int poleIdx, bool ground, bool stationary)->float
 			{

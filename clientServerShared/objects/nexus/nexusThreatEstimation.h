@@ -15,6 +15,14 @@ namespace Objects
 	*/
 	namespace NexusThreat
 	{
+		CONSTRUCT_ENUMERATION5(Zone
+			,Irrelevant
+			,Noticed
+			,Yellow
+			,Red
+			,Black
+		);
+
 		/**
 		Threat or support estimation of an entity
 		*/
@@ -24,13 +32,16 @@ namespace Objects
 								opacity = 0,	//!< Opacity value [0-4] (usually [0-1]) to the respective pole. Estimations are 0(none), 1/3(noticed: <9 steps), 1(yellow: <6 steps), 2(red: <4 steps), 4(black: at port)
 								totalImpact = 0;	//!< Product of impact and opacity
 			bool				isConstructor = false,	//!< True if this entity can build things
-								isRedZone = false,		//!< True if the entity is within the red-zone (currently less than 4 cells from the pole)
 								isHostile = false,		//!< True if this entity is hostile
 								isAirborne = false,		//!< True if this entity is currently flying
 								isStationary = false;	//!< True if this entity cannot move
+			UINT32				distanceToPole = std::numeric_limits<UINT32>::max();	//!< Detected cell distance to the estimation pole
 			float				airActivity = 0,		//!< Air activity factor [0,1]
 								groundActivity = 0;		//!< Ground activity factor [0,1]
+
+			Zone				GetZone() const;
 		};
+
 
 
 		/**
@@ -140,6 +151,7 @@ namespace Objects
 
 
 		void					SetEstimationFactor(float estimationFactor);
+		float					GetEstimationFactor();
 
 		#ifdef CLIENT
 			/**

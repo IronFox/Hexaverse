@@ -1380,15 +1380,25 @@ namespace Network
 			ScriptedAI::Resume(state.scriptName,state.dataVector);
 		}
 
-		void	NexusHostilePresence(Protocol::NexusHostilePresence&state)
+		void	NexusAIHints(Protocol::NexusAIHints&state)
 		{
 			LogEvent(EventSignificance::Common,"Received update to nexus-hostile presences");
 
+			Objects::NexusThreat::SetEstimationFactor(state.estimationFactor);
 			for (int i = 0; i < 12; i++)
-				Objects::NexusThreat::UpdatePole(i,0,0,false,0,0);
+				Objects::NexusThreat::UpdatePole(i,Objects::NexusThreat::TLevel(),false);
 
-			foreach (state,pole)
-				Objects::NexusThreat::UpdatePole(pole->poleIndex,pole->groundSum,pole->airSum,pole->hasBase,pole->constructorPresence,pole->highestConstructorPresence);
+			foreach (state.bases,pole)
+			{
+				Objects::NexusThreat::TLevel lvl;
+				lvl.air.mobile = pole->airMobileThreatLevel;
+				lvl.air.stationary = pole->airStationaryThreatLevel;
+				lvl.ground.mobile = pole->groundMobileThreatLevel;
+				lvl.ground.stationary = pole->groundStationaryThreatLevel;
+				lvl.closestHostileConstructorOpacity = pole->closestHostileConstructorOpacity;
+				lvl.constructorOpacitySum = pole->constructorOpacitySum;
+				Objects::NexusThreat::UpdatePole(pole->poleIndex,lvl,pole->deployHeavyBases);
+			}
 		}
 
 		void	ResourceTable(Protocol::ResourceTable&table)
@@ -1509,7 +1519,7 @@ namespace Network
 		DECLARE_CHANNEL(ChoiceResponse);
 
 		DECLARE_CHANNEL(ScriptedAIState);
-		DECLARE_CHANNEL(NexusHostilePresence);
+		DECLARE_CHANNEL(NexusAIHints);
 
 		DECLARE_OBJECT_SENDER(EntityTrigger);
 
@@ -1795,7 +1805,7 @@ namespace Network
 		client.InstallChannel(Channels::ChoiceResponse);
 
 		client.InstallChannel(Channels::ScriptedAIState);
-		client.InstallChannel(Channels::NexusHostilePresence);
+		client.InstallChannel(Channels::NexusAIHints);
 
 		client.InstallChannel(Channels::AllianceMarkerText);
 
