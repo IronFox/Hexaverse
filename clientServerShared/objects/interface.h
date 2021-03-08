@@ -6,6 +6,7 @@
 #include "../grid/setup.h"
 #include "../uniqueID.h"
 #include "../fileVersion.h"
+#include "../roundNumber.h"
 
 /*
 #ifdef HAS_WINDOW
@@ -124,8 +125,11 @@ namespace ApplicationInterface
 	void	SignalMarkerDestructionToAlliedFactions(const Objects::PAlliance&alliance, const Objects::PFaction&owner,const TUniqueID&markerID);
 	void	SignalMarkerCreation(const Objects::PFaction&target,const Objects::PMarker&marker);
 	void	SignalMarkerDestruction(const Objects::PFaction&target,const TUniqueID&markerID);
-
 #endif
+
+	RoundNumber	GetMinAIRoundForHeavyVehicleBases();
+	RoundNumber	GetMinAIRoundForPlanes();
+
 }
 
 #endif

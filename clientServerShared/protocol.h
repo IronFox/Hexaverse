@@ -826,9 +826,11 @@ namespace Protocol
 
 	typedef NetArray<NexusBaseHint,12> NexusBaseHints;
 
-	NETSTRUCT2(NexusAIHints
+	NETSTRUCT4(NexusAIHints
 		,NexusBaseHints, bases
 		,float, estimationFactor
+		,UINT32,minRoundForHeavyVehicleBases
+		,UINT32,minRoundForPlanes
 	);
 
 

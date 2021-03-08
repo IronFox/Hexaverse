@@ -889,20 +889,28 @@ namespace Lua
 
 		//ai functions:
 		{
-			aiTable.SetFunction("IsBase",[this](int poleIdx)->bool
+			aiTable.SetFunction("IsBase",[](int poleIdx)->bool
 			{
 				return Objects::NexusThreat::IsBase(poleIdx-1);
 			});
-			aiTable.SetFunction("GetThreatLevel",[this](int poleIdx, bool ground, bool stationary)->float
+			aiTable.SetFunction("GetThreatLevel",[](int poleIdx, bool ground, bool stationary)->float
 			{
 				return Objects::NexusThreat::Get(poleIdx-1).Domain(ground).Level(stationary) * Objects::NexusThreat::GetEstimationFactor();
 			});
-			aiTable.SetFunction("GetSupportLevel",[this](int poleIdx, bool ground, bool stationary)->float
+			aiTable.SetFunction("GetSupportLevel",[](int poleIdx, bool ground, bool stationary)->float
 			{
 				return Objects::NexusThreat::GetSupport(poleIdx-1).Domain(ground).Level(stationary);
 			});
+			aiTable.SetFunction("ShouldBuildPlanes",[]()->bool
+			{
+				return RuntimeConfig::roundNumber >= ApplicationInterface::GetMinAIRoundForPlanes();
+			});
+			aiTable.SetFunction("ShouldBuildHeavyVehicleBases",[]()->bool
+			{
+				return RuntimeConfig::roundNumber >= ApplicationInterface::GetMinAIRoundForHeavyVehicleBases();
+			});
 
-			aiTable.SetFunction("Estimate",[this](int poleIdx, const Lua::Table&typeTable, const Lua::Table&locTable, const Lua::Table&luaFaction)->float
+			aiTable.SetFunction("Estimate",[](int poleIdx, const Lua::Table&typeTable, const Lua::Table&locTable, const Lua::Table&luaFaction)->float
 			{
 				Objects::PFaction f = Detail::DecodeFaction(luaFaction,true,"Estimate()","Faction parameter #4");
 				Objects::EntityType type = Detail::DecodeType(typeTable,"Type parameter #2");

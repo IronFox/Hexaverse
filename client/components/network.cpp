@@ -1385,6 +1385,11 @@ namespace Network
 			LogEvent(EventSignificance::Common,"Received update to nexus-hostile presences");
 
 			Objects::NexusThreat::SetEstimationFactor(state.estimationFactor);
+
+			
+			AI::SetMinRoundForHeavyVehicleBases(state.minRoundForHeavyVehicleBases);
+			AI::SetMinRoundForPlanes(state.minRoundForPlanes);
+
 			for (int i = 0; i < 12; i++)
 				Objects::NexusThreat::UpdatePole(i,Objects::NexusThreat::TLevel(),false);
 

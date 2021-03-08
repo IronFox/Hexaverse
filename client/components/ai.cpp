@@ -11,6 +11,18 @@ namespace AI
 	Buffer0<Objects::PVehicle>	vehicles;
 	Buffer0<M::TVec3<> >	tempMarkers;
 
+	UINT32	minRoundForHeavyVehicleBases = 10,
+			minRoundForPlanes = 10;
+
+	void	SetMinRoundForHeavyVehicleBases(UINT32 v)
+	{
+		minRoundForHeavyVehicleBases = v;
+	}
+
+	void	SetMinRoundForPlanes(UINT32 v)
+	{
+		minRoundForPlanes = v;
+	}
 
 	static Random random;
 
@@ -617,3 +629,19 @@ namespace AI
 
 
 }
+
+
+namespace ApplicationInterface
+{
+	RoundNumber	GetMinAIRoundForHeavyVehicleBases()
+	{
+		return AI::minRoundForHeavyVehicleBases;
+	}
+
+	RoundNumber	GetMinAIRoundForPlanes()
+	{
+		return AI::minRoundForPlanes;
+	}
+}
+
+

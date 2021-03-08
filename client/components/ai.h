@@ -31,6 +31,8 @@ namespace AI
 	void	AssemblePath(const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult);
 	void	IssuePath(const Objects::PVehicle&v, const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current);
 
+	void	SetMinRoundForHeavyVehicleBases(UINT32 minRoundForHeavyVehicleBases);
+	void	SetMinRoundForPlanes(UINT32 minRoundForPlanes);
 }
 
 

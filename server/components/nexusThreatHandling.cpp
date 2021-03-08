@@ -75,7 +75,9 @@ namespace Nexus
 
 	bool SpawnBomberAgainstGroundThreat(Random&rnd)
 	{
-		return rnd.NextFloat() < 0.25f;
+		return RuntimeConfig::roundNumber >= Game::Config::Nexus::minRoundForPlanes
+			&&
+			rnd.NextFloat() < 0.25f;
 	}
 
 	bool SpawnMobileAirDefense(Random&rnd)
@@ -102,7 +104,7 @@ namespace Nexus
 
 					if (airThreat)
 						t.turretType = ConstName::Turret_AntiAircraft;
-					if (Objects::NexusThreat::DeployHeavyVehicleBases(poleIndex) && port->entityRandom.NextBool())
+					if (RuntimeConfig::roundNumber > Game::Config::Nexus::minRoundForHeavyVehicleBases && Objects::NexusThreat::DeployHeavyVehicleBases(poleIndex) && port->entityRandom.NextBool())
 						t.baseType = ConstName::VehicleBase_HeavyBase;
 				}
 				else
@@ -171,7 +173,12 @@ namespace Nexus
 					if (airThreat)
 						turret = &Objects::Component::antiAircraft;
 					float t = 0;
-					spawned = Objects::InsertNewVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
+					auto base = &Objects::Component::hoverbase;
+					if (RuntimeConfig::roundNumber > Game::Config::Nexus::minRoundForHeavyVehicleBases &&  Objects::NexusThreat::DeployHeavyVehicleBases(poleIndex) && port->entityRandom.NextBool())
+						base = &Objects::Component::heavybase;
+					spawned = Objects::InsertNewVehicle(Objects::Faction::nexus, location, base, turret, true, t);
+
+					
 				}
 				else
 				{
@@ -263,7 +270,11 @@ namespace Nexus
 					groundState += AutoDeploy(producer,producer);
 				for (auto producer : Objects::NexusThreat::GetBasePlaneFactories(i))
 					airState += AutoDeploy(producer,producer);
-				groundState.y = std::min(groundState.y, (portProductionPerRound - planeFactoryCostPerRound) / vehiclePlantCostPerRound);	//keep at least one plane factory free to enable
+
+				if (RuntimeConfig::roundNumber < Game::Config::Nexus::minRoundForPlanes)
+					airState.y = 0;
+				else
+					groundState.y = std::min(groundState.y, (portProductionPerRound - planeFactoryCostPerRound) / vehiclePlantCostPerRound);	//keep at least one plane factory free to enable
 
 
 				if ((vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * airState.x) >= portProductionPerRound)
@@ -314,7 +325,8 @@ namespace Nexus
 			elif (!Game::Config::Nexus::bases.havePlaced)	//different logic
 			{
 				SpawnEntities(i, port, threat.GroundTotal(), support.ground.mobile, constructorViolation,false);
-				SpawnEntities(i, port, threat.AirTotal(), support.air.mobile, false,true);
+				if (RuntimeConfig::roundNumber >= Game::Config::Nexus::minRoundForPlanes)
+					SpawnEntities(i, port, threat.AirTotal(), support.air.mobile, false,true);
 			}
 		}
 	}

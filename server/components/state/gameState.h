@@ -236,10 +236,12 @@ namespace Game
 			*/
 			extern Placement	satellitesAtopBases;
 
-			extern bool		startBases/* = false*/,
-							enableAI/* = false*/;
-			extern float	threatEstimationFactor/* = 1.f*/;
-			extern UINT32	roundsPerResearchPoint;
+			extern bool			startBases/* = false*/,
+								enableAI/* = false*/;
+			extern float		threatEstimationFactor/* = 1.f*/;
+			extern UINT32		roundsPerResearchPoint;
+			extern UINT32		minRoundForPlanes,
+								minRoundForHeavyVehicleBases;
 			extern Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}

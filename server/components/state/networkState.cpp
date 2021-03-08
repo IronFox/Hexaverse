@@ -864,6 +864,8 @@ namespace Network
 		Protocol::NexusAIHints hints;
 		hints.estimationFactor = estimationFactor;
 		hints.bases = presences.ToRef();
+		hints.minRoundForHeavyVehicleBases = Game::Config::Nexus::minRoundForHeavyVehicleBases;
+		hints.minRoundForPlanes = Game::Config::Nexus::minRoundForPlanes;
 
 		Channels::NexusAIHints.SendTo(peer,hints);
 	}

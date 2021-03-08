@@ -1379,6 +1379,8 @@ namespace Reflection
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::RestoreFromSavegame);
 				VAR(roundsPerResearchPoint,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
+				VAR(minRoundForPlanes,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
+				VAR(minRoundForHeavyVehicleBases,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
 				parser->SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			parser->ExitFolder();
 		parser->ExitFolder();

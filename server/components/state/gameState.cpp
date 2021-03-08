@@ -17,6 +17,17 @@ void			ApplicationInterface::SignalFactionsChanged()
 	Reflection::SignalFactionsChanged();
 }
 
+RoundNumber		ApplicationInterface::GetMinAIRoundForHeavyVehicleBases()
+{
+	return RoundNumber(Game::Config::Nexus::minRoundForHeavyVehicleBases);
+}
+
+RoundNumber		ApplicationInterface::GetMinAIRoundForPlanes()
+{
+	return RoundNumber(Game::Config::Nexus::minRoundForPlanes);
+}
+
+
 
 
 namespace Game
@@ -459,6 +470,8 @@ namespace Game
 
 			bool		enableAI = false;
 			UINT32		roundsPerResearchPoint=10;
+			UINT32		minRoundForPlanes = 40, 
+						minRoundForHeavyVehicleBases = 20;
 			float		threatEstimationFactor = 1.f;
 			Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
