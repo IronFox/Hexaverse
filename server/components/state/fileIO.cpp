@@ -2035,6 +2035,8 @@ namespace FileIO
 
 		RuntimeConfig::loadingPhase = false;
 
+		Game::UpdateNexusThreatPresence();
+
 
 		//it is important that all faction sensor locks are released before this point as RestartSession() does not react well to locked sensor grids
 		if (wasOpen)

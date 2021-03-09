@@ -10,6 +10,7 @@
 #include <objects/faction.h>
 #include <objects/packable.h>
 #include <objects/t2.h>
+#include <objects/nexus/nexusThreatEstimation.h>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -691,7 +692,9 @@ namespace Game
 			{
 				if (Objects::Faction::nexus)
 				{
-					::Network::UpdateNexusThreatPresence();
+					UpdateNexusThreatPresence();
+
+					::Network::TransferNexusAIHints();
 				}
 
 
@@ -1758,8 +1761,55 @@ namespace Game
 			Objects::InsertNewVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
 			Objects::InsertNewVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
 		}
+
+		UpdateNexusThreatPresence();
 	}
 
+	
+	void		UpdateNexusThreatPresence()
+	{
+		if (!Objects::Faction::nexus)
+			return;
 
+		float estimationFactor = Game::Config::Nexus::threatEstimationFactor;
+		if (!Game::Config::Nexus::bases.havePlaced && Game::Config::Nexus::allPorts.havePlaced)
+			estimationFactor *= 0.25f;
+		Objects::NexusThreat::SetEstimationFactor(estimationFactor);
+		Objects::Pathfinding::ReachabilityMapper mapper(true);
+
+		Objects::NexusThreat::Update([](UINT32 poleIdx)
+		{
+			return Game::Config::Nexus::bases.havePlaced && BaseGrid::IsIsolatedCorner(poleIdx);
+		},
+		[&mapper](const Objects::PNexusPort&pole)->bool
+		{
+			Timer::Time t0 = timer.Now();
+
+			Grid::LCellIdI poleLoc(Grid::low.grid.GetCell(pole->location.stackID).neighborhood.neighborID[0],pole->location.height);
+			Objects::Vehicle testHover(Objects::Faction::nexus,poleLoc,&Objects::Component::hoverbase,&Objects::Component::armored);
+			Objects::Vehicle testHeavy(Objects::Faction::nexus,poleLoc,&Objects::Component::heavybase,&Objects::Component::armored);
+			mapper.Map(testHover,poleLoc,
+				Objects::Pathfinding::RoutingFlags::IgnoreLimit
+					|Objects::Pathfinding::RoutingFlags::IgnoreMobilesOnDestination
+					|Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute
+					|Objects::Pathfinding::RoutingFlags::EdgeCostIsAlwaysOne,
+				Objects::Component::GroundFlags::None,
+				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
+			auto scope = mapper.result.Count();
+			mapper.Map(testHeavy,poleLoc,
+				Objects::Pathfinding::RoutingFlags::IgnoreLimit
+					|Objects::Pathfinding::RoutingFlags::IgnoreMobilesOnDestination
+					|Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute
+					|Objects::Pathfinding::RoutingFlags::EdgeCostIsAlwaysOne,
+				Objects::Component::GroundFlags::None,
+				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
+			auto heavy = mapper.result.Count();
+
+			LogEvent(EventSignificance::PerformanceMeasurement,"Heavy base terrain evaluation for pole "+String(pole->location.stackID)+ ", resulting in "+String(heavy)+"/"+String(scope)+", took seconds: "+String(timer.GetSecondsSince(t0)));
+
+			return heavy >= scope * 3/4;
+		});
+
+	}
 }
 

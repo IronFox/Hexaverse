@@ -169,7 +169,12 @@ namespace Network
 	String		DescribeStatus();
 	void		DescribeConfiguration(const std::function<void(const String&)>&logConfig);
 
-	void		UpdateNexusThreatPresence();
+	/**
+	Retransmits Nexus AI hints to connected AI client.
+	If none is connected, the function has no effect.
+	*/
+	void		TransferNexusAIHints();
+	bool		NexusClientIsConnected();
 
 
 	Protocol::IdentifyFaction	Identify(const Objects::PFaction&f);

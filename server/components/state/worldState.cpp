@@ -396,7 +396,7 @@ namespace World
 		Game::Config::Nexus::bases.havePlaced = Game::Config::Nexus::bases.doPlace;
 		Game::Config::Nexus::satellitesAtopBases.havePlaced = Game::Config::Nexus::satellitesAtopBases.doPlace;
 		NexusPresence::Create(Game::Config::Nexus::bases.havePlaced,Game::Config::Nexus::allPorts.havePlaced,Game::Config::Nexus::satellitesAtopBases.havePlaced);
-
+		Game::UpdateNexusThreatPresence();
 	}
 
 	void			BuildConfiguredWorld(UINT32 seed)

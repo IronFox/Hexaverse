@@ -447,7 +447,10 @@ namespace Game
 	*/
 	void			SpawnFactionStartUnits(const Objects::PFaction&f, index_t startLocationCenterStackIndex);
 
-
+	/**
+	Recomputes nexus threat values, useful for AI
+	*/
+	void			UpdateNexusThreatPresence();
 }
 
 #endif

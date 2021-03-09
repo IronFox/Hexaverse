@@ -6,6 +6,7 @@
 #include <objects/structure/mine.h>
 #include "state/gameState.h"
 #include <passwordMatch.h>
+#include "nexusThreatHandling.h"
 
 extern TwisterRandom		random;
 
@@ -993,7 +994,6 @@ namespace Receiver
 		if (newFaction)
 		{
 			Game::SpawnFactionStartUnits(client->faction,startLocation);
-
 		}
 
 
@@ -1173,6 +1173,11 @@ namespace Receiver
 			state.scriptName = faction->aiScriptName;
 			Channels::ScriptedAIState.SendTo(peer,state);
 		}
+
+		if (faction == Objects::Faction::nexus || newFaction)
+			Network::TransferNexusAIHints();
+		if (faction == Objects::Faction::nexus)
+			Nexus::ProcessCoverage();
 		
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
 	}

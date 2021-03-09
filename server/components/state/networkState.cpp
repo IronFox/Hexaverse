@@ -791,7 +791,23 @@ namespace Network
 		return "Server "+ToString(Network::serverID)+"/"+UDPBroadCast::packet.version+" is created but offline.";
 	}
 
-	void		UpdateNexusThreatPresence()
+
+	bool		NexusClientIsConnected()
+	{
+		if (!Objects::Faction::nexus)
+			return false;
+		Network::PClient nexusClient = Network::playerMap.Get(Objects::Faction::nexus,nullptr);
+		if (!nexusClient)
+			return false;
+
+		TCP::PPeer peer = nexusClient->peer.lock();
+		if (!peer)
+			return false;
+		return true;
+	}
+
+
+	void TransferNexusAIHints()
 	{
 		if (!Objects::Faction::nexus)
 			return;
@@ -803,44 +819,8 @@ namespace Network
 		if (!peer)
 			return;
 
-		float estimationFactor = Game::Config::Nexus::threatEstimationFactor;
-		if (!Game::Config::Nexus::bases.havePlaced && Game::Config::Nexus::allPorts.havePlaced)
-			estimationFactor *= 0.25f;
-		Objects::NexusThreat::SetEstimationFactor(estimationFactor);
-		Objects::Pathfinding::ReachabilityMapper mapper(true);
+		LogEvent(EventSignificance::Common,Objects::Faction::nexus,"Transferring Nexus AI hints to AI client");
 
-		Objects::NexusThreat::Update([](UINT32 poleIdx)
-		{
-			return Game::Config::Nexus::bases.havePlaced && BaseGrid::IsIsolatedCorner(poleIdx);
-		},
-		[&mapper](const Objects::PNexusPort&pole)->bool
-		{
-			Timer::Time t0 = timer.Now();
-
-			Grid::LCellIdI poleLoc(Grid::low.grid.GetCell(pole->location.stackID).neighborhood.neighborID[0],pole->location.height);
-			Objects::Vehicle testHover(Objects::Faction::nexus,poleLoc,&Objects::Component::hoverbase,&Objects::Component::armored);
-			Objects::Vehicle testHeavy(Objects::Faction::nexus,poleLoc,&Objects::Component::heavybase,&Objects::Component::armored);
-			mapper.Map(testHover,poleLoc,
-				Objects::Pathfinding::RoutingFlags::IgnoreLimit
-					|Objects::Pathfinding::RoutingFlags::IgnoreMobilesOnDestination
-					|Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute
-					|Objects::Pathfinding::RoutingFlags::EdgeCostIsAlwaysOne,
-				Objects::Component::GroundFlags::None,
-				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
-			auto scope = mapper.result.Count();
-			mapper.Map(testHeavy,poleLoc,
-				Objects::Pathfinding::RoutingFlags::IgnoreLimit
-					|Objects::Pathfinding::RoutingFlags::IgnoreMobilesOnDestination
-					|Objects::Pathfinding::RoutingFlags::IgnoreOwnMobilesOnRoute
-					|Objects::Pathfinding::RoutingFlags::EdgeCostIsAlwaysOne,
-				Objects::Component::GroundFlags::None,
-				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
-			auto heavy = mapper.result.Count();
-
-			LogEvent(EventSignificance::PerformanceMeasurement,"Heavy base terrain evaluation for pole "+String(pole->location.stackID)+ " took seconds: "+String(timer.GetSecondsSince(t0)));
-
-			return heavy >= scope * 3/4;
-		});
 		Buffer<Protocol::NexusBaseHint,12> presences;
 		for (int i = 0; i < 12; i++)
 		{
@@ -862,7 +842,7 @@ namespace Network
 		}
 
 		Protocol::NexusAIHints hints;
-		hints.estimationFactor = estimationFactor;
+		hints.estimationFactor = Objects::NexusThreat::GetEstimationFactor();
 		hints.bases = presences.ToRef();
 		hints.minRoundForHeavyVehicleBases = Game::Config::Nexus::minRoundForHeavyVehicleBases;
 		hints.minRoundForPlanes = Game::Config::Nexus::minRoundForPlanes;
