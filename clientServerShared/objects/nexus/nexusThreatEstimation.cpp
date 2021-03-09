@@ -224,7 +224,7 @@ namespace Objects
 					foreach (poles, at)
 					{
 						index_t poleIndex = at-poles.begin();
-						TEstimation est = _Estimate(nexus, e, location, e.owner, poleIndex);
+						TEstimation est = _Estimate(nexus, e, location, e.owner, (int)poleIndex);
 				
 						if (est.isHostile)
 						{
