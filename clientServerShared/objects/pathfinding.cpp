@@ -446,17 +446,17 @@ namespace Objects{ namespace Pathfinding
 
 	Result ShortestPath::SelectiveUpdate( const MobileEntity&m, const Grid::LCellIdI&from, const Grid::LCellIdI&to, 
 							RoutingFlags routingFlags, Component::GroundFlags groundFlags /*= Component::GroundFlags::None*/,
-							bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
+							bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifier /*= nullptr*/)
 	{
 		if (routingFlags & RoutingFlags::IgnoreOwnMobilesOnRoute)
-			return Update(m,from,to,routingFlags,groundFlags,outWouldFailDueToLimitReached,cellCostModifer);
+			return Update(m,from,to,routingFlags,groundFlags,outWouldFailDueToLimitReached,cellCostModifier);
 
 		routeIgnore.Clear();
-		Result hasI = Update(m,from,to, routingFlags | RoutingFlags::IgnoreOwnMobilesOnRoute, groundFlags,outWouldFailDueToLimitReached, cellCostModifer);
+		Result hasI = Update(m,from,to, routingFlags | RoutingFlags::IgnoreOwnMobilesOnRoute, groundFlags,outWouldFailDueToLimitReached, cellCostModifier);
 		if (hasI != Result::DestinationReached)
 			return hasI;
 		routeIgnore.swap(result);
-		Result has = Update(m,from,to,routingFlags, groundFlags ,outWouldFailDueToLimitReached, cellCostModifer);
+		Result has = Update(m,from,to,routingFlags, groundFlags ,outWouldFailDueToLimitReached, cellCostModifier);
 		if (has != Result::DestinationReached)
 		{
 			swap(routeIgnore, result);
@@ -486,7 +486,7 @@ namespace Objects{ namespace Pathfinding
 
 	Result ShortestPath::Update( const MobileEntity&m, const Grid::LCellIdI&from, const Grid::LCellIdI&to,  
 		RoutingFlags routingFlags, Component::GroundFlags groundFlags /*= Component::GroundFlags::None*/,
-		bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifer /*= nullptr*/)
+		bool*outWouldFailDueToLimitReached/*=nullptr*/, FCellCostModifier cellCostModifier /*= nullptr*/)
 	{
 		result.Clear();
 		if (outWouldFailDueToLimitReached)
@@ -539,9 +539,9 @@ namespace Objects{ namespace Pathfinding
 			if (!tn.nodeCosts)
 			{
 				tn.nodeCosts = m.IsAffectedByGravity(cellID) ? GetCellMovementCosts(world,cellID,hindrance) : 1;
-				if (cellCostModifer)
+				if (cellCostModifier)
 				{
-					cellCostModifer(cellID, tn.nodeCosts);
+					cellCostModifier(cellID, tn.nodeCosts);
 					if (tn.nodeCosts <= 0)
 					{
 						tn.nodeCosts = -1;
@@ -568,9 +568,9 @@ namespace Objects{ namespace Pathfinding
 				if (!n.nodeCosts)
 				{
 					n.nodeCosts = GetCellMovementCosts(world, possibilities.way[i], hindrance);
-					if (cellCostModifer)
+					if (cellCostModifier)
 					{
-						cellCostModifer(possibilities.way[i], n.nodeCosts);
+						cellCostModifier(possibilities.way[i], n.nodeCosts);
 						if (n.nodeCosts <= 0)
 						{
 							n.nodeCosts = -1;

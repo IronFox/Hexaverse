@@ -113,11 +113,11 @@ namespace Objects
 			@param groundFlags Parameters affecting where the mobile entity can stand
 			@param failIfLimitReached Set true to apply server-side work limit of 2000 routing steps (radially, following Dijkstra), false to take until done or no ways left
 			@param[out] outWouldFailDueToLimitReached Set if failIfLimitReached is set false, and the limit has been reached (and ignored)
-			@param cellCostModifer Custom cell modifier function, that receives the input cell ID, and determined terrain costs, and can alter this value. Must not be set negative
+			@param cellCostModifier Custom cell modifier function, that receives the input cell ID, and determined terrain costs, and can alter this value. Must not be set negative
 			@return Routing result
 			*/
 			Result Update(const MobileEntity&mobile, const Grid::LCellIdI&from, const Grid::LCellIdI&to, 
-				RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
+				RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifier = nullptr);
 
 
 			/**
@@ -126,7 +126,7 @@ namespace Objects
 			Otherwise the ignoring will be copied
 			*/
 			Result SelectiveUpdate(const MobileEntity&mobile, const Grid::LCellIdI&from, const Grid::LCellIdI&to, 
-				RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifer = nullptr);
+				RoutingFlags routingFlags, Component::GroundFlags groundFlags = Component::GroundFlags::None, bool*outWouldFailDueToLimitReached = nullptr, FCellCostModifier cellCostModifier = nullptr);
 
 
 			/**
@@ -224,7 +224,7 @@ namespace Objects
 			VolumeGrid<TReachableNode>	buffer;
 
 //			bool					CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked);
-			void					CheckNodeCosts(TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FCellCostModifier&cellCostModifer, const THindranceVector&vec, RoutingFlags routingFlags);
+			void					CheckNodeCosts(TReachableNode&tn, const World::Data&world, const MobileEntity&m, const Grid::LCellIdI&cellID, const FCellCostModifier&cellCostModifier, const THindranceVector&vec, RoutingFlags routingFlags);
 		};
 
 
