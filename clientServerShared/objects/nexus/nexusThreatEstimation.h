@@ -34,6 +34,7 @@ namespace Objects
 			bool				isConstructor = false,	//!< True if this entity can build things
 								isHostile = false,		//!< True if this entity is hostile
 								isAirborne = false,		//!< True if this entity is currently flying
+								isPlane = false,		//!< True if this entity is a plane
 								isStationary = false;	//!< True if this entity cannot move
 			UINT32				distanceToPole = std::numeric_limits<UINT32>::max();	//!< Detected cell distance to the estimation pole
 			float				airActivity = 0,		//!< Air activity factor [0,1]
@@ -56,6 +57,13 @@ namespace Objects
 
 			float				Total() const {return mobile + stationary;}
 			float				Level(bool sourceStationary) const {return sourceStationary ? stationary : mobile;}
+			void				operator+=(const TEstimation&est)
+			{
+				if (est.isStationary)
+					stationary += est.totalImpact;
+				else
+					mobile += est.totalImpact;
+			}
 			void				operator*=(float factor)
 			{
 				mobile *= factor;

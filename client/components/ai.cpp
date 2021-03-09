@@ -52,7 +52,8 @@ namespace AI
 	{
 		bool	selfIsOffensiveVehicle = false,
 				selfCanIgnoreThreat = false,
-				selfIsOverconfident = false;
+				selfIsOverconfident = false,
+				selfIsScanner = false;
 		Objects::PWorldEntity self;
 
 		void	EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const;
@@ -60,7 +61,6 @@ namespace AI
 		void	EstimateThreatFromAll(const Objects::TrajectoryEndPoint&loc, bool ignoreHostiles, TThreatEstimation&threat) const;
 	};
 	static TThreatContext		currentContext;
-
 
 	struct TThreatEstimation
 	{
@@ -70,22 +70,25 @@ namespace AI
 
 	
 
-		bool	ShouldBlock(const TThreatEstimation&base) const
+		bool	ShouldBlock(const TThreatEstimation&base, bool ignoreUnknownDistanceThreat) const
 		{
 			const TThreatContext&ctx = currentContext;
 
 
-			if (!beingSeen && ctx.selfIsOffensiveVehicle && unknownDistanceThreat < 0.2f)
+			if (!beingSeen && (ctx.selfIsOffensiveVehicle || ctx.selfIsScanner) && unknownDistanceThreat < 0.2f)
 				return false;
 
 			if (damageThreat > base.damageThreat)
 				return true;
-			if (unknownDistanceThreat == base.unknownDistanceThreat)
+			if (ignoreUnknownDistanceThreat)
 				return false;
 
 			return unknownDistanceThreat * 0.8f > base.unknownDistanceThreat;
 		}
 	};
+
+	static HashTable<Grid::LCellIdI,TThreatEstimation> threatCache;
+
 
 
 	void TThreatContext::EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const
@@ -185,6 +188,8 @@ namespace AI
 		{
 			EstimateDeadThreatLevelFrom(loc,*e,threat);
 		},Objects::IncludeGhosts::EntityDeaths);
+
+		threatCache.Set(loc.cellLocation,threat);
 	}
 
 
@@ -194,6 +199,7 @@ namespace AI
 	{
 		auto base = v->GetTurretBase();
 		currentContext.selfIsOffensiveVehicle = base && base->turret->CanAttack() && base->turret->independentAttackAndMotion;
+		currentContext.selfIsScanner = base && (base->turret == &Objects::Component::radar || base->turret == &Objects::Component::SubOrbital::sensorDrone);
 		currentContext.selfCanIgnoreThreat = canIgnoreThreat;
 		currentContext.selfIsOverconfident = overConfident;
 		currentContext.self = v;
@@ -214,7 +220,7 @@ namespace AI
 		TThreatEstimation threat;
 		currentContext.EstimateThreatFromAll(Objects::TrajectoryEndPoint(location),false,threat);
 
-		if (threat.ShouldBlock(ambientThreat))
+		if (threat.ShouldBlock(ambientThreat,false))
 			cost = -1;
 	}
 
@@ -561,13 +567,15 @@ namespace AI
 					{
 						if (isAA)
 						{
-							float distance = QuadraticInterestDistance(n->cell,e,interestedInAirborne,interestedInGroundTargets);
-							const auto base = e->GetTurretBase();
-							if (base && base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
-								badWeight += 20 / (1.f + distance);
-							else
-								goodWeight += 5 / (1.f + distance);
-
+							//if (e->IsMobile())
+							{
+								float distance = QuadraticInterestDistance(n->cell,e,interestedInAirborne,interestedInGroundTargets);
+								const auto base = e->GetTurretBase();
+								if (base && base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
+									badWeight += 20 / (1.f + distance);
+								else
+									goodWeight += 5 / (1.f + distance);
+							}
 							//if (distance < 16.f)
 							//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
 							return;
@@ -580,7 +588,6 @@ namespace AI
 						return;
 					if (!e->IsAboveTerrain() && !interestedInGroundTargets)
 						return;
-
 					float distance = QuadraticInterestDistance(n->cell,e,interestedInAirborne,interestedInGroundTargets);
 
 					float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
@@ -590,6 +597,9 @@ namespace AI
 					else
 						goodWeight += fc / (1.f + distance);
 				},Objects::IncludeGhosts::HostileContacts);
+
+
+
 				//if (badWeight < 0.1f && goodWeight < 0.05f)
 
 				if (!isAA)
@@ -599,24 +609,37 @@ namespace AI
 						[reference, minMotion, n, &badWeight](const Objects::PMarker&m)
 						{
 							float distance = Vec::quadraticDistance(Grid::ToWorld(m->location),reference);
-							if (distance < 49.f || (n->movementCostsFromRoot >= minMotion && distance < 16.f))
-								badWeight += 10.f / (1.f + float(m->age));
+							//if (distance < 49.f || (n->movementCostsFromRoot >= minMotion && distance < 16.f))
+							//if (distance < 16.f)
+							badWeight += 10.f / (1.f + float(m->age) + distance * 0.2f);
 						}
 					);
 					foreach (tempMarkers,_m)
 					{
 						float distance = Vec::quadraticDistance(*_m,reference);
-						if (distance < 49.f || (n->movementCostsFromRoot >= minMotion && distance < 16.f))
-							badWeight += 10.f;
+						badWeight += 10.f / (1.f + distance * 0.2f);
+						//if (distance < 49.f || (n->movementCostsFromRoot >= minMotion && distance < 16.f))
+							//badWeight += 2.f;
 					}
 
-					if (!haveMarker)
+				}
+
+				float score = (1.f + goodWeight) / (1.f+badWeight);
+				if (!isAA)
+					score /= (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
+
+				if (!overconfident)
+				{
+					TThreatEstimation local;
+					if (threatCache.Query(n->cell,local))
 					{
-						badWeight += 1.f;
+						if (ambientThreat.ShouldBlock(local,true))
+						{
+							score += 3000.f / (1+n->movementCostsFromRoot);
+						}
 					}
 				}
-			
-				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
+
 				{
 					float extent = 1.f + M::Sqr(M::Sqr(M::Sqr(random.NextFloat())));
 					if (random.NextBool())

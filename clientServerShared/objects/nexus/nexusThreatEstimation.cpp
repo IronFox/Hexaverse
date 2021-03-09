@@ -115,6 +115,7 @@ namespace Objects
 				rs.isHostile = owner != nexus;
 				rs.isConstructor = turretBase && turretBase->turret->CanDo(Objects::Component::Operation::Construct);
 				rs.isAirborne = e.IsAboveTerrain();
+				rs.isPlane = e.IsPlane();
 				if (turretBase)
 				{
 					if (e.IsPlane())
@@ -222,7 +223,8 @@ namespace Objects
 				if (impact > 0)
 					foreach (poles, at)
 					{
-						TEstimation est = _Estimate(nexus, e, location, e.owner, at-poles.begin());
+						index_t poleIndex = at-poles.begin();
+						TEstimation est = _Estimate(nexus, e, location, e.owner, poleIndex);
 				
 						if (est.isHostile)
 						{
@@ -363,6 +365,15 @@ namespace Objects
 		{
 			if (est.totalImpact == 0)
 				return;
+			if (est.isHostile)
+			{
+				if (est.isPlane)
+					air += est;
+				else
+					ground += est;
+				return;
+			}
+
 			if (est.isStationary)
 			{
 				air.stationary += est.totalImpact * est.airActivity;
