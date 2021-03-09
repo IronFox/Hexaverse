@@ -1704,7 +1704,7 @@ void ParseKeyValue(const String&key, const String&value)
 				{
 					if (!Network::client.IsConnected())
 					{
-						LogEvent(EventSignificance::ClientFatal, "Unable to connect with 15 seconds. Shutting down");
+						LogEvent(EventSignificance::ClientFatal, "Unable to connect within 15 seconds. Shutting down");
 						application_shutting_down = true;
 					}
 					else
