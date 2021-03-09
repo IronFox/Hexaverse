@@ -8,6 +8,7 @@
 #include "../structure/planeFactory.h"
 #include "../prototypes.h"
 #include "../../grid/setup.h"
+#include <container/bit_set.h>
 
 namespace Objects
 {
@@ -57,26 +58,27 @@ namespace Objects
 
 			FixedArray<Pole,12>	poles;
 			float estimationFactor = 1;
+			BitSet planeFactoryIsHere;
 
 
 			bool	IsBlack(UINT32 stepDistance)
 			{
-				return stepDistance < 2;
+				return stepDistance < 4;
 			}
 
 			bool	IsRed(UINT32 stepDistance)
 			{
-				return stepDistance < 4;
+				return stepDistance < 8;
 			}
 
 			bool	IsYellow(UINT32 stepDistance)
 			{
-				return stepDistance < 6;
+				return stepDistance < 11;
 			}
 
 			bool	IsNoticed(UINT32 stepDistance)
 			{
-				return stepDistance < 9;
+				return stepDistance < 20;
 			}
 
 
@@ -201,6 +203,10 @@ namespace Objects
 			*/
 			void AddPresence( const Objects::PFaction&nexus, const Objects::WorldEntity&e, const Grid::LCellIdI&location )
 			{
+				#ifdef CLIENT
+					if (e.owner != nexus)
+						return;
+				#endif
 				const M::TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
 				float entityRange = e.GetScanningRange();
 				float impact = e.GetConstructionCost();
@@ -241,7 +247,7 @@ namespace Objects
 			}
 
 
-			void UpdateAssociatedEntities()
+			void UpdateAssociatedEntitiesAndLevels()
 			{
 				bool anyBases = false;
 				foreach (poles,e)
@@ -249,6 +255,8 @@ namespace Objects
 					e->Reset();
 					anyBases |= e->hasBase;
 				}
+
+				planeFactoryIsHere.ResizeZero(Grid::LowSetup::GridType::CellCount);
 
 				if (!anyBases)
 					return;
@@ -327,6 +335,7 @@ namespace Objects
 									}
 								}
 								poles[closest].associatedPlaneFactories << factory;
+								planeFactoryIsHere.Set(factory->location.stackID);
 							}
 
 						}
@@ -423,7 +432,10 @@ namespace Objects
 			});
 
 
+			Detail::UpdateAssociatedEntitiesAndLevels();
 
+			for (int i = 0; i < 12; i++)
+				LogEvent(EventSignificance::Common,"Nexus pole #"+String(i)+": threat={"+ToString(Detail::poles[i].threatLevel)+"}, supp={"+ToString(Detail::poles[i].support)+"}");
 
 
 		}
@@ -444,6 +456,12 @@ namespace Objects
 				if (RuntimeConfig::IsInAnyCommandPhase())
 					Update(nullptr,nullptr);
 			};
+		}
+
+
+		bool					IsPlaneFactoryHere(UINT32 stackID)
+		{
+			return Detail::planeFactoryIsHere.IsSet(stackID);
 		}
 
 

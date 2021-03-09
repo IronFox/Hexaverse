@@ -20,7 +20,7 @@ namespace AI
 	@param canIgnoreThreat True if the local vehicle should be able to ignore the threat posed by some chosen outnumbered hostile unit
 	@param overConfident Set true to completely ignore hostile threats
 	*/
-	void	BeginBlockTest(const Objects::PVehicle&v, bool zeroThreatOnly, bool canIgnoreThreat, bool overConfident);
+	void	BeginBlockTest(const Objects::PWorldEntity&v, bool zeroThreatOnly, bool canIgnoreThreat, bool overConfident);
 	/**
 	The following cost function is used by AI mapping and can be used by other automating vehicles.
 	It modifies the previously determined location cost to -1 if a blocking condition is determined.

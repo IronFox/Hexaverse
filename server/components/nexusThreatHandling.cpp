@@ -211,17 +211,22 @@ namespace Nexus
 
 	void ProcessCoverage()
 	{
-		if (!Game::Config::Nexus::enableAI || !Objects::Faction::nexus || 
-			(
+		if ( (!Game::Config::Nexus::enableAI && !Network::NexusClientIsConnected()) 
+			|| !Objects::Faction::nexus 
+			|| (
 				Objects::Faction::nexus->aiScriptName.IsNotEmpty()
 				&&
 				Game::Config::Nexus::bases.havePlaced
 			))
 			return;
 		
-		Objects::Resource::Vector vehiclePlantCostPerRound, planeFactoryCostPerRound, dummy;
-		Objects::VehiclePlant::globalPrototype->GetResourceVector(vehiclePlantCostPerRound,dummy,dummy);
-		Objects::PlaneFactory::globalPrototype->GetResourceVector(planeFactoryCostPerRound,dummy,dummy);
+		Objects::Resource::Vector vehiclePlantCostPerRound, planeFactoryCostPerRound, dummy,v;
+		Objects::VehiclePlant::globalPrototype->GetResourceVector(v,dummy,dummy);
+		v.SeparateBySign(dummy,vehiclePlantCostPerRound);
+		vehiclePlantCostPerRound.Negate();
+		Objects::PlaneFactory::globalPrototype->GetResourceVector(v,dummy,dummy);
+		v.SeparateBySign(dummy,planeFactoryCostPerRound);
+		planeFactoryCostPerRound.Negate();
 
 		const auto ConstructorThreshold = 
 			Game::Config::Nexus::allPorts.havePlaced 
@@ -244,9 +249,9 @@ namespace Nexus
 
 			const auto port = Objects::NexusThreat::GetPort(i);
 
-			Objects::Resource::Vector portProductionPerRound;
-			port->GetResourceVector(portProductionPerRound,dummy,dummy);
-
+			Objects::Resource::Vector v,portProductionPerRound;
+			port->GetResourceVector(v,dummy,dummy);
+			v.SeparateBySign(portProductionPerRound,dummy);
 
 
 
@@ -274,7 +279,10 @@ namespace Nexus
 				if (RuntimeConfig::roundNumber < Game::Config::Nexus::minRoundForPlanes)
 					airState.y = 0;
 				else
+				{
 					groundState.y = std::min(groundState.y, (portProductionPerRound - planeFactoryCostPerRound) / vehiclePlantCostPerRound);	//keep at least one plane factory free to enable
+					airState.y = std::min(airState.y,(portProductionPerRound - vehiclePlantCostPerRound * groundState.x) / planeFactoryCostPerRound);
+				}
 
 
 				if ((vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * airState.x) >= portProductionPerRound)

@@ -52,6 +52,11 @@ namespace Animation
 		});
 		if (RuntimeConfig::aiMode)
 		{
+			Objects::SubOrbital::planes.Foreach([](const Objects::SubOrbital::PPlane&p)
+			{
+				if (p->isOwnedByMe)
+					AI::vehicles << p;
+			});
 			DBG_ASSERT__(!Network::newRoundRequested);
 			AI::SignalStart("UpdateAutomation",loc);
 		}

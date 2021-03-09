@@ -61,6 +61,11 @@ namespace Objects
 				mobile *= factor;
 				stationary *= factor;
 			}
+
+			friend String		ToString(const TDomain&d)
+			{
+				return "m="+String(d.mobile)+",s="+String(d.stationary);
+			}
 		};
 
 
@@ -90,6 +95,10 @@ namespace Objects
 				air *= factor;
 				ground *= factor;
 			}
+			friend String		ToString(const TVector&v)
+			{
+				return "A{"+ToString(v.air)+"},G{"+ToString(v.ground)+"}";
+			}
 		};
 
 		/**
@@ -118,6 +127,11 @@ namespace Objects
 				rs *= factor;
 				return rs;
 			}
+			friend String		ToString(const TLevel&v)
+			{
+				return ToString((const TVector&)v)+",constOpSum="+String(v.constructorOpacitySum)+",closest="+String(v.closestHostileConstructorOpacity);
+			}
+
 		};
 
 
@@ -143,7 +157,7 @@ namespace Objects
 		TLevel					Get(int poleIndex);
 		const TSupport&			GetSupport(int support);
 		bool					DeployHeavyVehicleBases(int poleIndex);
-
+		bool					IsPlaneFactoryHere(UINT32 stackID);
 
 		ArrayRef<PVehiclePlant>	GetBaseVehiclePlants(int poleIndex);
 		ArrayRef<PPlaneFactory>	GetBasePlaneFactories(int poleIndex);

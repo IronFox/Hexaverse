@@ -4,6 +4,7 @@
 #include "objectNetworkHelper.h"
 #include "scriptedAI.h"
 #include "playerControlBegin.h"
+#include <objects/nexus/nexusThreatEstimation.h>
 
 
 namespace AI
@@ -45,7 +46,20 @@ namespace AI
 	};
 
 
-	static bool	currentIsOffensiveVehicle = false;
+	struct TThreatEstimation;
+
+	struct TThreatContext
+	{
+		bool	selfIsOffensiveVehicle = false,
+				selfCanIgnoreThreat = false,
+				selfIsOverconfident = false;
+		Objects::PWorldEntity self;
+
+		void	EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const;
+		void	EstimateLivingThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const;
+		void	EstimateThreatFromAll(const Objects::TrajectoryEndPoint&loc, bool ignoreHostiles, TThreatEstimation&threat) const;
+	};
+	static TThreatContext		currentContext;
 
 
 	struct TThreatEstimation
@@ -53,11 +67,15 @@ namespace AI
 		bool	beingSeen = false;
 		int		damageThreat = 0;
 		float	unknownDistanceThreat = 0.f;
+
 	
 
 		bool	ShouldBlock(const TThreatEstimation&base) const
 		{
-			if (!beingSeen && currentIsOffensiveVehicle && unknownDistanceThreat < 0.2f)
+			const TThreatContext&ctx = currentContext;
+
+
+			if (!beingSeen && ctx.selfIsOffensiveVehicle && unknownDistanceThreat < 0.2f)
 				return false;
 
 			if (damageThreat > base.damageThreat)
@@ -70,27 +88,82 @@ namespace AI
 	};
 
 
-	static void EstimateDeadThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, TThreatEstimation &current)
+	void TThreatContext::EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const
 	{
-		float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
+		if (e.IsAboveTerrain() != self->IsAboveTerrain())
+			return;
+		float distance = Vec::quadraticDistance(e.system.w.xyz,loc.worldLocation);
 
 		current.unknownDistanceThreat += 1.f / (1.f + distance);
 	}
 
 
-	static void EstimateLivingThreatLevelFrom(Objects::WorldEntity&e, const M::TVec3<>&reference, bool canIgnoreThreat, TThreatEstimation &current)
+	static bool IsSubOrbital(const Grid::LCellIdI&loc)
 	{
-		if (canIgnoreThreat && e.ignoreThreatRounds)
+		return loc.height == Objects::SubOrbital::Height;
+	}
+
+	static float3 ToSubOrbit(const Grid::LCellIdI&loc)
+	{
+		return Grid::ToWorld(Grid::LCellIdI(loc.stackID,Objects::SubOrbital::Height));
+	}
+
+	static float3 ToGround(const Grid::LCellIdI&loc, const Objects::TrajectoryEndPoint&ref)
+	{
+		return Grid::ToWorld(Grid::LCellIdI(loc.stackID,ref.cellLocation.height));
+	}
+
+
+	void TThreatContext::EstimateLivingThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const
+	{
+		const TThreatContext&ctx = *this;
+		if (ctx.selfCanIgnoreThreat && e.ignoreThreatRounds)
+			return;
+		if (e.isOwnedByMe)
 			return;
 		//Objects::PTurretBase b = e.GetTurretBase();
-		float distance = Vec::quadraticDistance(e.system.w.xyz,reference);
-		if (distance < M::Sqr(e.GetScanningRange()))
-			current.beingSeen = true;
+		if (IsSubOrbital(loc.cellLocation))
+		{
+			if (e.IsAboveTerrain())
+			{
+				float distance = Vec::quadraticDistance(e.system.w.xyz,loc.worldLocation);
+				if (distance < M::Sqr(e.GetScanningRange()))
+					current.beingSeen = true;
+			}
+			else
+			{
+				float distance = Vec::quadraticDistance(ToSubOrbit(e.location),loc.worldLocation);
+				auto turretBase = e.GetTurretBase();
+				if (turretBase && distance < M::Sqr(turretBase->GetSubOrbitalScanningRange()))
+					current.beingSeen = true;
+			}
+		}
+		else
+		{
+			if (e.IsAboveTerrain())
+			{
+				float distance = Vec::quadraticDistance(ToGround(e.location,loc),loc.worldLocation);
+
+				auto turretBase = e.GetTurretBase();
+				if (turretBase && distance < M::Sqr(turretBase->turret->groundScanningRange.GetValue(e.GetResearchState())))
+				{
+					//extended test here later. see if scanner can actually penetrate ground
+					current.beingSeen = true;
+				}
+			}
+			else
+			{
+				float distance = Vec::quadraticDistance(e.system.w.xyz,loc.worldLocation);
+
+				if (distance < M::Sqr(e.GetScanningRange()))
+					current.beingSeen = true;
+			}
+		}
 
 		
 		const auto&state = e.GetResearchState();
 
-		if (e.CanHit(reference))
+		if (e.CanHit(loc.worldLocation))
 		{
 			Objects::PTurretBase b = e.GetTurretBase();
 			current.damageThreat += b->GetDamagePotentialPerRound();
@@ -98,41 +171,50 @@ namespace AI
 	}
 
 
-	static void EstimateThreatFromAll(const M::TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation&threat)
+	void TThreatContext::EstimateThreatFromAll(const Objects::TrajectoryEndPoint&loc, bool friendlyDeathsOnly, TThreatEstimation&threat) const
 	{
+		
 		threat = TThreatEstimation();
-		if (!ignoreHostiles)
-			Objects::ForeachWorldEntity([reference,canIgnoreThreat,&threat](const Objects::PWorldEntity&e)
+		if (!friendlyDeathsOnly)
+			Objects::ForeachWorldEntity([&threat,this,loc](const Objects::PWorldEntity&e)
 			{
-				EstimateLivingThreatLevelFrom(*e,reference,canIgnoreThreat,threat);
+				EstimateLivingThreatLevelFrom(loc,*e,threat);
 			},Objects::IncludeGhosts::HostileContacts);
 
-		Objects::MarkerStore::client.GetArtifacts().ForeachGhost([reference,&threat](const Objects::PWorldEntity&e)
+		Objects::MarkerStore::client.GetArtifacts().ForeachGhost([&threat,this,loc](const Objects::PWorldEntity&e)
 		{
-			EstimateDeadThreatLevelFrom(*e,reference,threat);
+			EstimateDeadThreatLevelFrom(loc,*e,threat);
 		},Objects::IncludeGhosts::EntityDeaths);
 	}
 
 
-	static TThreatEstimation	currentThreat;
-	static bool					currentCanIgnoreThreat,currentIsOverconfident=false;
+	static TThreatEstimation	ambientThreat;
 
-
-	void	BeginBlockTest( const Objects::PVehicle&v, bool zeroThreatOnly, bool canIgnoreThreat, bool overConfident )
+	void	BeginBlockTest( const Objects::PWorldEntity&v, bool initWithFriendlyDeathsOnly, bool canIgnoreThreat, bool overConfident )
 	{
-		currentIsOffensiveVehicle = v->turret->CanAttack() && v->turret->independentAttackAndMotion;
-		currentCanIgnoreThreat = canIgnoreThreat;
-		currentIsOverconfident = overConfident;
-		EstimateThreatFromAll(v->system.w.xyz,zeroThreatOnly, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
+		auto base = v->GetTurretBase();
+		currentContext.selfIsOffensiveVehicle = base && base->turret->CanAttack() && base->turret->independentAttackAndMotion;
+		currentContext.selfCanIgnoreThreat = canIgnoreThreat;
+		currentContext.selfIsOverconfident = overConfident;
+		currentContext.self = v;
+		currentContext.EstimateThreatFromAll(Objects::TrajectoryEndPoint(v->location),initWithFriendlyDeathsOnly, ambientThreat);	//determine base threat based on ghosts
 	}
 
 	void CostModifier( const Grid::LCellIdI&location, int&cost )
 	{
-		const M::TVec3<> reference = Grid::ToWorld(location);
-		TThreatEstimation threat;
-		EstimateThreatFromAll(reference,currentIsOverconfident,  currentCanIgnoreThreat,threat);
+		if (currentContext.self->IsPlane())
+		{
+			if (Objects::NexusThreat::IsPlaneFactoryHere(location.stackID))
+			{
+				cost = -1;
+				return;
+			}
+		}
 
-		if (threat.ShouldBlock(currentThreat))
+		TThreatEstimation threat;
+		currentContext.EstimateThreatFromAll(Objects::TrajectoryEndPoint(location),false,threat);
+
+		if (threat.ShouldBlock(ambientThreat))
 			cost = -1;
 	}
 
@@ -185,10 +267,15 @@ namespace AI
 		return rs / health;
 	}
 
-	static void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicBuffer<TAttackTarget>&attackTarget)
+	static void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicBuffer<TAttackTarget>&attackTarget, bool attacksAirborne, bool attacksGroundEntities)
 	{
 		if (candidate.isOwnedByMe || candidate.IsIndestructible())
 			return;
+		if (candidate.IsAboveTerrain() && !attacksAirborne)
+			return;
+		if (!candidate.IsAboveTerrain() && !attacksGroundEntities)
+			return;
+
 		//float distance = Vec::quadraticDistance(source.system.w.xyz,candidate.system.w.xyz);
 		//const float range = source.GetAttackRange();
 		Objects::TurretBase::TargetChoice choice;
@@ -241,6 +328,31 @@ namespace AI
 	
 	}
 
+	static float QuadraticInterestDistance(const Grid::LCellIdI&self, const Objects::PWorldEntity&other, bool interestedInAirborne, bool interestedInGround)
+	{
+
+		if (other->IsAboveTerrain())
+		{
+			if (self.height == Objects::SubOrbital::Height)
+				return Vec::quadraticDistance(Grid::ToWorld(self),other->system.w.xyz);
+			if (interestedInAirborne)
+			{
+				auto airborne = Grid::ToWorld(Grid::LCellIdI(self.stackID,Objects::SubOrbital::Height));
+				return Vec::quadraticDistance(airborne,other->system.w.xyz);
+			}
+			return std::numeric_limits<float>::max();	//shouldn't happen
+		}
+
+		if (self.height < Objects::SubOrbital::Height)
+			return Vec::quadraticDistance(Grid::ToWorld(self),other->system.w.xyz);
+		if (interestedInGround)
+		{
+			auto ground = Grid::ToWorld(Grid::LCellIdI(self.stackID,other->location.height));
+			return Vec::quadraticDistance(ground,other->system.w.xyz);
+		}
+		return std::numeric_limits<float>::max();	//shouldn't happen
+	}
+
 	static void ProcessVehicle( const Objects::PVehicle&v )
 	{
 		Objects::Component::Turret*t = v->turret;
@@ -254,9 +366,24 @@ namespace AI
 		int minMotion = v->GetMovementStepsPerRound();
 
 		//attacker logic
-		Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr;
-		float bestScore = 0.f;
+		Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr, *current = nullptr;
+		float bestScore = 0.f, currentScore = 0.f;
 		const bool attacker = t->CanAttack();
+		const bool attacksAirborne = attacker && (v->IsPlane() || t->trajectoryType == Objects::TrajectoryType::AAMissile);
+		const bool detectsAirborne = v->IsPlane() || v->GetSubOrbitalScanningRange() > 0;
+		const bool attacksGroundEntities = attacker 
+			&& ( 
+				(!v->IsPlane() && t->trajectoryType != Objects::TrajectoryType::AAMissile) 
+				|| (v->IsPlane() 
+					&& (t->trajectoryType == Objects::TrajectoryType::A2GMissile || t->trajectoryType == Objects::TrajectoryType::VerticalBeam)
+					)
+				);
+		const bool isAA = !v->IsPlane() && attacksAirborne;
+
+		const bool interestedInAirborne = attacksAirborne || v->GetSubOrbitalScanningRange() > 0 || (v->IsPlane() && !attacksGroundEntities);
+		const bool interestedInGroundTargets = attacksGroundEntities || !v->IsPlane() || v->turret->groundScanningRange.GetValue(v->GetResearchState()) >= 0.5f * v->GetScanningRange();
+
+
 //		const float myRange = t->maxRange + t->GetExplosionRadius(e.owner) - 1;
 
 
@@ -276,55 +403,58 @@ namespace AI
 		}
 
 
-
+		
 		bool haveMarker = false;
-		Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
-			[v,&haveMarker](const Objects::PMarker&m)
-			{
-				float distance = Vec::quadraticDistance(Grid::ToWorld(m->location),v->system.w.xyz);
-				if (distance < 25.f)
-				{
-					ObjectHelper::SignalMarkerTouch(*m);
-					haveMarker = true;
-				}
-			}
-		);
-		if (!haveMarker)
-			foreach (tempMarkers,_m)
-			{
-				float distance = Vec::quadraticDistance(*_m,v->system.w.xyz);
-				if (distance < 25.f)
-				{
-					haveMarker = true;
-					break;
-				}
-			}
-
-		if (!haveMarker)
+		if (!isAA)
 		{
-			Objects::VisitedMarker vm;
-			vm.id.Generate();
-			vm.location = v->location;
+			Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
+				[v,&haveMarker](const Objects::PMarker&m)
+				{
+					float distance = Vec::quadraticDistance(Grid::ToWorld(m->location),v->system.w.xyz);
+					if (distance < 25.f)
+					{
+						ObjectHelper::SignalMarkerTouch(*m);
+						haveMarker = true;
+					}
+				}
+			);
+			if (!haveMarker)
+				foreach (tempMarkers,_m)
+				{
+					float distance = Vec::quadraticDistance(*_m,v->system.w.xyz);
+					if (distance < 25.f)
+					{
+						haveMarker = true;
+						break;
+					}
+				}
+
+			if (!haveMarker)
+			{
+				Objects::VisitedMarker vm;
+				vm.id.Generate();
+				vm.location = v->location;
 			
-			Protocol::Marker marker;
-			marker.markerType = vm.type;
-			vm.PackToArray(marker.state, Objects::Packable::Target::Owner);
+				Protocol::Marker marker;
+				marker.markerType = vm.type;
+				vm.PackToArray(marker.state, Objects::Packable::Target::Owner);
 
-			tempMarkers << v->system.w.xyz;
-			ObjectHelper::SignalMarkerCreation(marker);
+				tempMarkers << v->system.w.xyz;
+				ObjectHelper::SignalMarkerCreation(marker);
+			}
 		}
-
 		const float explosionRadius = v->GetAttackExplosionRadius();
 
-		if (attacker)
+
+		if (attacker && !isAA)
 		{
 			String id = ToString(v->id);
 			static Buffer0<TAttackTarget>	attackTarget;
 			attackTarget.Clear();
 
-			Objects::ForeachWorldEntity([v](const Objects::PWorldEntity&e)
+			Objects::ForeachWorldEntity([v,attacksAirborne, attacksGroundEntities](const Objects::PWorldEntity&e)
 			{
-				ProcessAttackTarget(*v,*e,attackTarget);
+				ProcessAttackTarget(*v,*e,attackTarget,attacksAirborne, attacksGroundEntities);
 			},Objects::IncludeGhosts::HostileContacts);
 
 			for(index_t at = 0; at < attackTarget.Count(); at++)
@@ -368,21 +498,29 @@ namespace AI
 		bool overconfident = false;
 		{
 			count_t proximityPresence = 0,
-					radarProximity = 0;
-			Objects::ForeachMobileWorldEntity([v,&proximityPresence,&radarProximity](const Objects::PMobileEntity&e)
+					radarProximity = 0,
+					aaProximity = 0;
+			Objects::ForeachMobileWorldEntity([v,&proximityPresence,&radarProximity,&aaProximity](const Objects::PMobileEntity&e)
 			{
 				if (e->isOwnedByMe && Vec::quadraticDistance(v->GetWorldPosition(),e->GetWorldPosition()) < 25.f)
 				{
-					if (e->turret->CanDealDamage())
+					if (e->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
+						aaProximity++;
+					elif (e->turret->CanDealDamage())
 						proximityPresence++;
 					else
 						radarProximity++;
 				}
-			}
-			,Objects::IncludeGhosts::None);
+			});
 			
-			overconfident = proximityPresence > 5;
+			overconfident = proximityPresence > 5 && !isAA;
 			if (!attacker && radarProximity > 1 && random.NextFloat() < 0.3f)
+			{
+				ApplicationInterface::SignalRemoval(v);
+				return;
+			}
+
+			if (isAA && aaProximity > 1 && random.NextFloat() < 0.3f)
 			{
 				ApplicationInterface::SignalRemoval(v);
 				return;
@@ -394,14 +532,13 @@ namespace AI
 		
 		static Objects::Pathfinding::ReachabilityMapper mapper(false);
 
-		const bool canIgnoreThreat = (attacker || random.NextFloat() < 0.5f) && !t->dealsEMPDamage;
+		const bool canIgnoreThreat = ((attacker && !isAA) || random.NextBool()) && !t->dealsEMPDamage;
 		BeginBlockTest(v,true,canIgnoreThreat,overconfident);	//force current to have no threat level, limiting motion to areas with zero threat
 
 		const Objects::Component::GroundFlags groundFlags = Objects::Component::GroundFlags::DisallowUnknownGround;
 
-
-		mapper.Map(*v, v->location,  Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed, CostModifier);
-		if (mapper.result.IsEmpty())
+		mapper.Map(*v, v->location,  Objects::Pathfinding::RoutingFlags::ForceRevertible | Objects::Pathfinding::RoutingFlags::IncludeOrigin, groundFlags,referenceSpeed, CostModifier);
+		if (mapper.result.Count() <= 1)
 		{
 			//no chance to get out of danger, so try to reduce threat level
 			BeginBlockTest(v,false,canIgnoreThreat,overconfident);
@@ -414,18 +551,38 @@ namespace AI
 		{
 			foreach (mapper.result,n)
 			{
-				const M::TVec3<> reference = Grid::ToWorld(n->cell);
+				if (v->IsPlane() && n->predecessor != InvalidIndex && n->cell.height != Objects::SubOrbital::Height)
+					continue;//ignore all ground-based locations. they make no sense for a plane
 				float goodWeight = 0;
 				float badWeight = 0;
-				Objects::ForeachWorldEntity([explosionRadius,&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
+				Objects::ForeachWorldEntity([explosionRadius,&goodWeight,&badWeight,isAA,interestedInAirborne,interestedInGroundTargets,n](const Objects::PWorldEntity&e)
 				{
 					if (e->isOwnedByMe IF_SATELLITES( || e->IsSatellite() ))
 					{
-						//if (distance < 16.f)
-						//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
+						if (isAA)
+						{
+							float distance = QuadraticInterestDistance(n->cell,e,interestedInAirborne,interestedInGroundTargets);
+							const auto base = e->GetTurretBase();
+							if (base && base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
+								badWeight += 20 / (1.f + distance);
+							else
+								goodWeight += 5 / (1.f + distance);
+
+							//if (distance < 16.f)
+							//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
+							return;
+						}
 						return;
 					}
-					float distance = Vec::quadraticDistance(e->system.w.xyz,reference);
+					if (isAA)
+						return;
+					if (e->IsAboveTerrain() && !interestedInAirborne)
+						return;
+					if (!e->IsAboveTerrain() && !interestedInGroundTargets)
+						return;
+
+					float distance = QuadraticInterestDistance(n->cell,e,interestedInAirborne,interestedInGroundTargets);
+
 					float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
 								e->GetConstructionCost(),distance);
 					if (distance < explosionRadius)
@@ -434,7 +591,10 @@ namespace AI
 						goodWeight += fc / (1.f + distance);
 				},Objects::IncludeGhosts::HostileContacts);
 				//if (badWeight < 0.1f && goodWeight < 0.05f)
+
+				if (!isAA)
 				{
+					const M::TVec3<> reference = Grid::ToWorld(n->cell);
 					Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
 						[reference, minMotion, n, &badWeight](const Objects::PMarker&m)
 						{
@@ -450,10 +610,10 @@ namespace AI
 							badWeight += 10.f;
 					}
 
-				}
-				if (!haveMarker)
-				{
-					badWeight += 1.f;
+					if (!haveMarker)
+					{
+						badWeight += 1.f;
+					}
 				}
 			
 				float score = (1.f + goodWeight) / (1.f+badWeight) / (1.f + float(abs(n->movementCostsFromRoot- minMotion * 3 / 2))*0.01f);
@@ -469,10 +629,17 @@ namespace AI
 					best = n;
 					bestScore = score;
 				}
+
+				if (n->predecessor == InvalidIndex)
+				{
+					current = n;
+					currentScore = score;
+				}
 			}
 			if (best)
 			{
-				IssuePath(v,mapper,best);
+				if (!isAA || bestScore > currentScore * 1.2f)
+					IssuePath(v,mapper,best);
 			}
 		}
 	}
@@ -494,21 +661,26 @@ namespace AI
 			float r = b->GetFlatAttackRange() + b->GetAttackExplosionRadius();
 			float damagePotentialPerRound = 0.f;
 			count_t participants = 0;
-			Objects::ForeachMobileWorldEntity([ref,r,&damagePotentialPerRound,&participants](const Objects::PMobileEntity&e)
+			Objects::ForeachMobileWorldEntity([ref,r,&damagePotentialPerRound,&participants,&e](const Objects::PMobileEntity&e1)
 			{
-				if (e->isOwnedByMe && e->turret->CanAttack() && !e->turret->dealsEMPDamage)
+				bool canParticipate = (!e.IsAboveTerrain() && (!e1->IsPlane() || e1->GetType() == Objects::SubOrbital::Bomber::globalPrototype->GetType()))
+					|| (e.IsAboveTerrain() && (e1->GetType() == Objects::SubOrbital::Raptor::globalPrototype->GetType() || e1->turret->trajectoryType == Objects::TrajectoryType::AAMissile));
+				if (!canParticipate)
+					return;
+
+				if (e1->isOwnedByMe && e1->turret->CanAttack() && !e1->turret->dealsEMPDamage)
 				{
-					float d2 = Vec::quadraticDistance(e->GetWorldPosition(),ref);
+					float d2 = Vec::quadraticDistance(e1->GetWorldPosition(),ref);
 					if (d2 < M::Sqr(r*1.2f))	//might be okay anyway
 					{
-						float p = e->GetDamagePotentialPerRound();
-						if (!e->turret->independentAttackAndMotion)
+						float p = e1->GetDamagePotentialPerRound();
+						if (!e1->turret->independentAttackAndMotion)
 							p *= 0.5f;
 						damagePotentialPerRound += p;
 						participants++;
 					}
 				}
-			},Objects::IncludeGhosts::None);
+			});
 
 			if (participants > 1)
 			{
@@ -547,10 +719,9 @@ namespace AI
 		Objects::MarkerStore::client.Foreach(Objects::MarkerType::EntityDeath,
 			[](const Objects::PMarker&m0)
 			{
-				Objects::PEntityMarker m = To<Objects::EntityMarker>::Cast(m0);
-				TThreatEstimation estimation;
-				EstimateThreatFromAll(Grid::ToWorld(m->location),false,false,estimation);
-				if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
+				Objects::PEntityDeathMarker m = To<Objects::EntityDeathMarker>::Cast(m0);
+				BeginBlockTest(m->visualization,false,false,false);
+				if (ambientThreat.damageThreat > 0)	//knowing cause, dropping ghost
 				{
 					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m->GetName()+" because cause of destruction is considered known");
 					ObjectHelper::SignalMarkerDeletion(m->id);
