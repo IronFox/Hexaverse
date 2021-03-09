@@ -1781,6 +1781,22 @@ bool ConfigureClient(const wchar_t*commandLine)
 		Tokenizer::DequoteAll(tokenList, cfg);
 		foreach(tokenList, token)
 		{
+			if (token->BeginsWith("--"))
+			{
+				#ifdef _DEBUG
+				if (*token == "--aiDebug" || *token == "--debugAI")
+				{
+					ParseKeyValue("aiAccessToken", "0000000000000000000000000000000000000000000000000000000000000000");
+					ParseKeyValue("serverURL","localhost");
+					continue;
+				}
+				#endif
+
+				throw Except::Program::ParameterFault(CLOCATION, "Runtime parameter '"+*token+"' not recognized");
+
+				continue;
+			}
+
 			if (*token == '=')
 			{
 				if (parameterName.IsEmpty())

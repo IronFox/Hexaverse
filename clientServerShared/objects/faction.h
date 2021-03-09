@@ -131,7 +131,14 @@ namespace Objects
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
-				accessToken.Generate();
+				#ifdef _DEBUG
+					if (isNexus)
+						accessToken = CryptographicID();	//easier to debug
+					else
+						accessToken.Generate();
+				#else
+					accessToken.Generate();
+				#endif
 				Setup(toID,isNexus);
 			}
 		#endif

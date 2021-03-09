@@ -19,7 +19,11 @@ namespace Password
 
 	inline bool HashMatch(const CryptographicID&salt, const CryptographicID&passwordToken, const Hashed&compareToHashed)
 	{
-		return passwordToken.IsSet() && HashMatch(salt,ArrayRef<const BYTE>(passwordToken.GetBytes(),passwordToken.NumBytes),compareToHashed);
+		return 
+			#ifndef _DEBUG
+				passwordToken.IsSet() && 
+			#endif
+			HashMatch(salt,ArrayRef<const BYTE>(passwordToken.GetBytes(),passwordToken.NumBytes),compareToHashed);
 	}
 
 
