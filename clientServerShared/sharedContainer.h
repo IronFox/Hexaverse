@@ -25,13 +25,13 @@ template <typename T>
 	public:
 		typedef SharedContainer<T>	Self;
 
-		Super::IsEmpty;
-		Super::IsNotEmpty;
-		Super::Count;
-		Super::First;
-		Super::Last;
-		Super::operator[];
-		Super::GetIndexOf;
+		using Super::IsEmpty;
+		using Super::IsNotEmpty;
+		using Super::Count;
+		using Super::First;
+		using Super::Last;
+		using Super::operator[];
+		using Super::GetIndexOf;
 
 		void		Foreach(const std::function<void(const PT&)>&f) const
 		{

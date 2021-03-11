@@ -60,7 +60,7 @@ namespace Objects
 				return Super::operator[](loc);
 			}
 
-			Super::GetStructureSize;
+			using Super::GetStructureSize;
 
 			void		RemoveObject(const Grid::LCellIdI&location, const Entry&object)
 			{

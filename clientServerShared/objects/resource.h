@@ -627,11 +627,11 @@ namespace Objects
 
 			bool		operator==(const Super&vec) const
 			{
-				return vec == *this;
+				return vec.operator==(*this);
 			}
 			bool		operator!=(const Super&vec) const
 			{
-				return vec != *this;
+				return vec.operator != (*this);
 			}
 
 			void		operator=(const Super&vec)
