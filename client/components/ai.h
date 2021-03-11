@@ -7,10 +7,12 @@
 
 namespace AI
 {
-	extern Buffer0<Objects::PVehicle>	vehicles;
+	void	ClearPending();
+	void	AddVehicle(const Objects::PVehicle&v);
+	void	SignalStart(const String&because, const TCodeLocation&caller);
+
 
 	void	Process(float timeQuantum);
-	void	SignalStart(const String&because, const TCodeLocation&caller);
 
 	bool	IsDone();
 

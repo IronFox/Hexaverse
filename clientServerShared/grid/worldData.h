@@ -318,6 +318,8 @@ namespace World
 
 		bool					GridCanSee(const Grid::LCellIdI&, int height, bool broad) const;
 		bool					GridCanSeeAny(const Grid::HCellIdU&, UINT height) const;
+		short					GetLowestSensorStrength(const Grid::LCellIdI&, int height, bool broad) const;
+		short					GetLowestSensorStrength(const Grid::HCellIdU&, int height) const;
 
 		float					GetMaxChangeTime() const {float t = 0; foreach (families,fam) t = M::Max(t,fam->structureOrSensory.lastChange); return t;}
 

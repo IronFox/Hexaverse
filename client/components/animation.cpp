@@ -34,8 +34,7 @@ namespace Animation
 
 		if (RuntimeConfig::aiMode)
 		{
-			//LogEvent(EventSignificance::Debug,nullptr,"Automation issued by "+String(loc.ToString()));
-			AI::vehicles.Clear();
+			AI::ClearPending();
 		}
 		Objects::vehicles.Foreach([](const Objects::PVehicle&v)
 		{
@@ -46,7 +45,7 @@ namespace Animation
 				else
 					if (RuntimeConfig::aiMode)
 					{
-						AI::vehicles << v;
+						AI::AddVehicle(v);
 					}
 			}
 		});
@@ -55,7 +54,7 @@ namespace Animation
 			Objects::SubOrbital::planes.Foreach([](const Objects::SubOrbital::PPlane&p)
 			{
 				if (p->isOwnedByMe)
-					AI::vehicles << p;
+					AI::AddVehicle(p);
 			});
 			DBG_ASSERT__(!Network::newRoundRequested);
 			AI::SignalStart("UpdateAutomation",loc);

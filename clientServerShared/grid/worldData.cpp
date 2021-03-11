@@ -2261,6 +2261,41 @@ namespace World
 		return false;
 	}
 
+	short		Data::GetLowestSensorStrength(const Grid::HCellIdU&base, int height) const
+	{
+		ASSERT__(!this->SensoryIsInvalid());
+		short rs = std::numeric_limits<short>::max();
+		const auto&stack = cellStack[base.stackID];
+		UINT end = std::min(base.layer + height,CellStack::Range);
+		for (UINT layer = base.layer; layer < end; layer++)
+		{
+			rs = std::min(rs,stack.volumeCell[layer].visibility);
+			if (!rs)
+				return rs;
+		}
+		return rs;
+	}
+
+
+	short		Data::GetLowestSensorStrength(const Grid::LCellIdI&center, int height, bool broad) const
+	{
+		ASSERT__(!this->SensoryIsInvalid());
+		UINT32 fine = low.grid.GetCell(center.stackID).higherEquivalent;
+		UINT32 layer0 = CellStack::ToLayer(center.height);
+		short rs = GetLowestSensorStrength(HCellIdU(fine,layer0),(UINT)height);
+
+		if (!broad || !rs)
+			return rs;
+		const auto&n = high.grid.GetCell(fine).neighborhood;
+		for (int i = 0; i < n.numNeighbors; i++)
+		{
+			rs = std::min(rs,GetLowestSensorStrength(HCellIdU(n.neighborID[i],layer0),(UINT)height));
+			if (!rs)
+				return rs;
+		}
+		return rs;
+	}
+
 	bool		Data::GridCanSee(const LCellIdI&center, int height, bool broad) const
 	{
 		ASSERT__(!this->SensoryIsInvalid());

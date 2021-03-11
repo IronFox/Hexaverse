@@ -185,7 +185,7 @@ Table-Type: TurretType extends Type
 
 Table-Type: VBaseType extends Type
 {
-	float		carryingCapacity;		-- Maximum turret carrying capacity before speed penalty incurs (Unresearched)
+	float		carryingCapacity;		-- Maximum turret carrying capacity before speed penalty occurs (Unresearched)
 	bool		motionIgnoresAttack;	-- True if the local base can move regardless of whether an active turret has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	int			maxClimbUp;				-- Maximum climbing height difference. Typically 1
 	int			minClimbDown;			-- Minimum down-climbing height difference. Negative. Typically -1 or less
@@ -212,11 +212,11 @@ Table-Type: UnitType extends Type
 	VBaseType	vehicleBaseType;		-- Vehicle base type. May be nil. Comparable via == and ~=
 	
 	[isMobile]
-		int		movementSpeed;			-- Theoretical upper movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain. (Unresearched)
+		int		movementSpeed;			-- Theoretical max movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain. (Unresearched)
 		bool	motionIgnoresAttack;	-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	[isWorkingStructure]
 		ResVec	maxResourceStorage;		-- Resource vector describing the maximum storage capacity. All values are >= 0
-		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative indicating demand
+		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative, indicating demand
 }
 
 {string->Type}	Game.Type.allTypes		-- All types, mapped via unique name
@@ -234,7 +234,7 @@ Table-Type: Unit
 	string 		niceName;				-- Full entity name (as presented to the player). Includes type and nice representation of unique ID
 	string		id;						-- Entity unique ID
 	Faction		owner;					-- Entity owner
-	Loc			location;				-- Entity location. Only one location table instance is used per possible grid location. Therefor, they can be compared using == and ~=
+	Loc			location;				-- Entity location. Only one location table instance is used per possible grid location. Therefor they can be compared using == and ~=
 	bool		isSleeping;				-- True if the local entity is currently sleeping
 	int			health;					-- Current entity health. <= 0 for ghosts
 	int			maxHealth;				-- Maximum possible health of the local entity. May vary with research
@@ -461,7 +461,7 @@ Table-Type: Topic
 		bool	isActive;		-- True if this topic is currently being researched. If true, implies isQueued
 		bool	isQueued;		-- True if this topic is or will be researched
 	
-		void	Enqueue();		-- Schedules this topic to be researched. Appended to the end of the research queue. Effect is delayed
+		void	Enqueue();		-- Schedules this topic to be researched. Appends to the end of the research queue. Effect is delayed
 		void	Dequeue();		-- Unschedules this topic from the research queue. Uncompleted research is not lost. Effect is delayed
 };
 
@@ -550,7 +550,7 @@ Cell		Game.Terrain.UnpackCell(int);		-- Unpacks the TERRAIN cell component of a 
 ]]
 Table-Type: Cell
 {
-	Vector	center;						-- Normalized center vector of the cell
+	Vector	center;						-- Normalized (length=1) center vector of the cell
 	Cell[]	neighbors;					-- Ordered table of all planar neighbor cells
 	int		index;						-- Linear index of this cell in Game.Cells in [1,#Game.unitCells/#Game.Terrain.cells]
 };
@@ -577,7 +577,7 @@ Table-Type: Vector
 		func	Destroy();				-- Destroys the local marker. The marker is removed from Game.myMarkers regardless of whether the operation succeeds
 	}
 
-	Marker		Game.CreateMarker(Unit ref, string type)			-- Creates a new marker, and immediately adds it to markers, as though the operation had succeeded even if it fails
+	Marker		Game.CreateMarker(Unit ref, string type)			-- Creates a new marker, and immediately adds it to markers, as though the operation had succeeded even if it fails later on
 
 	
 	

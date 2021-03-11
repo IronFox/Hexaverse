@@ -2096,7 +2096,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			#endif
 			PlayerControlBegin::pauseAutomaticRoundProgression = false;	//events that undo this happen during the animation phase
 			if (RuntimeConfig::aiMode)
-				AI::vehicles.Clear();	//whichever is left, cannot be computed
+				AI::ClearPending();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&m)
 			{
