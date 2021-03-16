@@ -239,6 +239,9 @@ namespace Objects
 
 		static count_t					CountMaxMarkers(bool priveleged) {return (priveleged ? MarkerStore::MaxMarkersPerFaction*16 : MarkerStore::MaxMarkersPerFaction);}
 
+		void							VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const;
+
+
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
 			static HashTable<TUniqueID,PFaction>	idMap;
@@ -354,7 +357,6 @@ namespace Objects
 			*/
 			void VisitMyMobileEntities(const std::function<void(const PMobileEntity&)>&f) const;
 			void VisitMyStructures(const std::function<void(const PStructure&)>&f) const;
-			void VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const;
 			void VisitVisibleForeignEntities(float t, const std::function<void(const PWorldEntity&e)>&f)	const;
 
 					

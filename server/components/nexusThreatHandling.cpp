@@ -22,49 +22,6 @@ namespace Nexus
 	}
 
 
-	static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Ctr::ArrayRef<Objects::PNexusPort>&cornerPorts)
-	{
-		float d2 = std::numeric_limits<float>::max();
-		Objects::PNexusPort rs;
-		foreach (cornerPorts,p)
-		{
-			float nd2 = Vec::quadraticDistance(e->GetWorldPosition(),(*p)->GetWorldPosition());
-			if (nd2 < d2)
-			{
-				d2 = nd2;
-				rs = *p;
-			}
-		}
-		return rs;
-	}
-
-
-	int2	AutoDeploy(const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&producer)
-	{
-		#ifndef NO_HIBERNATION
-			if (e->ToHibernating()->IsHibernating())
-				return std::make_pair(0,0);
-		#endif
-		if (Grid::AffectedByEMP(e->location))
-			return int2(0,0);
-		Objects::PMobileEntityProducer plant = producer;
-		if (plant->AwaitsUserInteraction())
-		{
-			float t = 0;
-			Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere(t);
-			if (!v)
-			{
-				return int2(1,1);	//dont count as finished, retry later
-			}
-			Journal::currentRound.RegisterChoiceIntersection(false,e,v->location,Objects::CursorMode::Idle,v, TUniqueID::Empty());
-		}
-		if (plant->queue.IsNotEmpty())
-		{
-			ASSERT__(plant->queue.First().producing->owner == Objects::Faction::nexus);
-			return int2(1,1);
-		}
-		return int2(0,1);
-	}
 
 
 	bool SpawnSensorDrone(Random&rnd)
@@ -85,48 +42,6 @@ namespace Nexus
 		return rnd.NextFloat() < 0.25f;
 	}
 
-	template <typename F>
-	Objects::NexusThreat::TEstimation EnableFactory(UINT32 poleIndex, const Objects::PNexusPort&port, ArrayRef<std::shared_ptr<F> > factories, bool airborne, bool airThreat)
-	{
-		LogEvent(EventSignificance::Debug, "Increasing production for " + port->GetName());
-
-		for (auto producer : factories)
-		{
-			Objects::PMobileEntityProducer plant = producer;
-			Objects::PWorldEntity entity = producer;
-			if (plant->queue.IsEmpty())
-			{
-				Objects::EntityType	t;
-				if (!airborne)
-				{
-					index_t choice = entity->entityRandom.NextIndex(Game::Config::Nexus::vehicleTurrets.Count());
-					t = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
-
-					if (airThreat)
-						t.turretType = ConstName::Turret_AntiAircraft;
-					if (RuntimeConfig::roundNumber > Game::Config::Nexus::minRoundForHeavyVehicleBases && Objects::NexusThreat::DeployHeavyVehicleBases(poleIndex) && port->entityRandom.NextBool())
-						t.baseType = ConstName::VehicleBase_HeavyBase;
-				}
-				else
-				{
-					t = airThreat ? Objects::SubOrbital::Raptor::globalPrototype->GetType() :
-						SpawnSensorDrone(entity->entityRandom) 
-						? Objects::SubOrbital::SensorDrone::globalPrototype->GetType() 
-						: Objects::SubOrbital::Bomber::globalPrototype->GetType();
-				}
-
-				LogEvent(EventSignificance::Common,entity.get(),"Enqueueing vehicle production job due to high threat level");
-
-				Journal::currentRound.RegisterProductionJobStart(true,entity,plant,t);
-									
-				if (plant->queue.IsNotEmpty())	//shit happens
-					return Objects::NexusThreat::Estimate(poleIndex,plant->queue.Last().producing);
-			}
-		}
-		LogEvent(EventSignificance::Debug,  port->GetName()+" no longer has idle plants capable of queueing jobs. Aborting");
-		return Objects::NexusThreat::TEstimation();
-
-	}
 
 	void SpawnEntities(UINT32 poleIndex, const Objects::PNexusPort&port, float threatLevel, float supportLevel, bool force, bool airThreat)
 	{
@@ -213,25 +128,12 @@ namespace Nexus
 	{
 		if ( (!Game::Config::Nexus::enableAI && !Network::NexusClientIsConnected()) 
 			|| !Objects::Faction::nexus 
-			|| (
-				Objects::Faction::nexus->aiScriptName.IsNotEmpty()
-				&&
-				Game::Config::Nexus::bases.havePlaced
-			))
+			|| Game::Config::Nexus::bases.havePlaced)
 			return;
-		
-		Objects::Resource::Vector vehiclePlantCostPerRound, planeFactoryCostPerRound, dummy,v;
-		Objects::VehiclePlant::globalPrototype->GetResourceVector(v,dummy,dummy);
-		v.SeparateBySign(dummy,vehiclePlantCostPerRound);
-		vehiclePlantCostPerRound.Negate();
-		Objects::PlaneFactory::globalPrototype->GetResourceVector(v,dummy,dummy);
-		v.SeparateBySign(dummy,planeFactoryCostPerRound);
-		planeFactoryCostPerRound.Negate();
+
 
 		const auto ConstructorThreshold = 
-			Game::Config::Nexus::allPorts.havePlaced 
-			? 3.5f	//black
-			: 0.5f;	//yellow
+			0.5f;
 
 
 		for (int i = 0; i < 12; i++)
@@ -249,93 +151,14 @@ namespace Nexus
 
 			const auto port = Objects::NexusThreat::GetPort(i);
 
-			Objects::Resource::Vector v,portProductionPerRound;
-			port->GetResourceVector(v,dummy,dummy);
-			v.SeparateBySign(portProductionPerRound,dummy);
-
-
 
 			LogEvent(EventSignificance::Debug, "Threat level for " + port->GetName() + " considered " + String(threat.GroundTotal())+"|"+String(threat.AirTotal())
 				+" (support here: "+String(support.GroundTotal())+"|"+String(support.AirTotal())+", hostile constructor(s) at: "+String(threat.closestHostileConstructorOpacity)+"/"+String(threat.constructorOpacitySum)+")");
 
 			bool constructorViolation = (threat.closestHostileConstructorOpacity > ConstructorThreshold && support.MobileTotal() < Game::factionStartMineralValue + 20.f);
-
-			//let's take a look at producers...
-			if (Objects::NexusThreat::IsBase(i))
-			{
-				Objects::RefreshCompoundCoverageIfNeeded(0);
-
-
-
-
-				int2 groundState,airState;
-
-
-				for (auto producer : Objects::NexusThreat::GetBaseVehiclePlants(i))
-					groundState += AutoDeploy(producer,producer);
-				for (auto producer : Objects::NexusThreat::GetBasePlaneFactories(i))
-					airState += AutoDeploy(producer,producer);
-
-				if (RuntimeConfig::roundNumber < Game::Config::Nexus::minRoundForPlanes)
-					airState.y = 0;
-				else
-				{
-					groundState.y = std::min(groundState.y, (portProductionPerRound - planeFactoryCostPerRound) / vehiclePlantCostPerRound);	//keep at least one plane factory free to enable
-					airState.y = std::min(airState.y,(portProductionPerRound - vehiclePlantCostPerRound * groundState.x) / planeFactoryCostPerRound);
-				}
-
-
-				if ((vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * airState.x) >= portProductionPerRound)
-					continue;
-
-
-				while (support.MobileTotal() < threat.Total() || constructorViolation)
-				{
-					auto airDemand = threat.AirTotal() - support.air.mobile;
-					auto groundDemand = threat.GroundTotal() - support.ground.mobile;
-
-					if (airDemand > groundDemand && !constructorViolation)
-					{
-						if (airState.x < airState.y && (vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * (airState.x+1)) <= portProductionPerRound)
-						{
-							support += EnableFactory(i,port,Objects::NexusThreat::GetBasePlaneFactories(i),true,true);
-							airState.x++;	//always increment to prevent endless loop
-							continue;
-						}
-						else if (groundState.x < groundState.y && (vehiclePlantCostPerRound * (groundState.x+1) + planeFactoryCostPerRound * airState.x) <= portProductionPerRound)
-						{
-							support += EnableFactory(i,port,Objects::NexusThreat::GetBaseVehiclePlants(i),false,true);
-							groundState.x++;	//always increment to prevent endless loop
-							continue;
-						}
-					}
-
-					constructorViolation = false;
-
-					if (airState.x < airState.y && (vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * (airState.x+1)) <= portProductionPerRound && SpawnBomberAgainstGroundThreat(port->entityRandom))
-					{
-						support += EnableFactory(i,port,Objects::NexusThreat::GetBasePlaneFactories(i),true,false);
-						airState.x++;	//always increment to prevent endless loop
-						continue;
-					}
-					else if (groundState.x < groundState.y && (vehiclePlantCostPerRound * (groundState.x+1) + planeFactoryCostPerRound * airState.x) <= portProductionPerRound)
-					{
-						support += EnableFactory(i,port,Objects::NexusThreat::GetBaseVehiclePlants(i),false,false);
-						groundState.x++;	//always increment to prevent endless loop
-						continue;
-					}
-					LogEvent(EventSignificance::Common, "Nexus threat level: All factories running. Can't enable more. Nothing to do");
-					break;
-				}
-
-
-			}
-			elif (!Game::Config::Nexus::bases.havePlaced)	//different logic
-			{
-				SpawnEntities(i, port, threat.GroundTotal(), support.ground.mobile, constructorViolation,false);
-				if (RuntimeConfig::roundNumber >= Game::Config::Nexus::minRoundForPlanes)
-					SpawnEntities(i, port, threat.AirTotal(), support.air.mobile, false,true);
-			}
+			SpawnEntities(i, port, threat.GroundTotal(), support.ground.mobile, constructorViolation,false);
+			if (RuntimeConfig::roundNumber >= Game::Config::Nexus::minRoundForPlanes)
+				SpawnEntities(i, port, threat.AirTotal(), support.air.mobile, false,true);
 		}
 	}
 }

@@ -159,6 +159,8 @@ namespace Objects
 			Component::VehicleBase*	GetActiveProductionBase() const;
 
 		#endif
+		bool						GetIdealSpawningPoint(const PMobileEntity&production, Random&rand, Grid::LCellIdI&outLoc) const;
+		bool						GetIdealSpawningPoint(const WorldEntity&self, const PMobileEntity&production, Random&rand, Grid::LCellIdI&outLoc) const;
 
 
 		//new overriables:

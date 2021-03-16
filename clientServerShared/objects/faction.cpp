@@ -1902,6 +1902,18 @@ namespace Objects
 		}
 
 
+
+		void Faction::VisitVisibleForeignEntities(const std::function<void(const PWorldEntity&e)>&f)	const
+		{
+			auto _this = this;
+			ForeachWorldEntity([_this,f](const Objects::PWorldEntity&e)
+			{
+				if (e->owner.get() != _this)
+					f(e);
+			});
+		};
+
+
 	#endif
 
 	void	Faction::ChangeAlliance(const PAlliance&a)

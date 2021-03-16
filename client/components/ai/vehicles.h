@@ -1,5 +1,4 @@
-#ifndef aiH
-#define aiH
+#pragma once
 
 #include <objects.h>
 #include <protocol.h>
@@ -36,7 +35,3 @@ namespace AI
 	void	SetMinRoundForHeavyVehicleBases(UINT32 minRoundForHeavyVehicleBases);
 	void	SetMinRoundForPlanes(UINT32 minRoundForPlanes);
 }
-
-
-
-#endif

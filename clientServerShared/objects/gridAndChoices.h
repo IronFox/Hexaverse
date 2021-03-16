@@ -182,7 +182,7 @@ namespace Objects
 		TrajectoryEndPoint	arrowCellTarget;
 	};
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(const WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
 
 

@@ -586,7 +586,7 @@ namespace Objects
 
 
 	
-	void		GetChoices( WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis )
+	void		GetChoices( const WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis )
 	{
 		const World::Data&world = 
 		#ifdef CLIENT
@@ -653,7 +653,7 @@ namespace Objects
 
 		if (deploying)
 		{
-			const Hangar*s = dynamic_cast<Hangar*>(&entity);
+			const Hangar*s = dynamic_cast<const Hangar*>(&entity);
 			if (s)
 			{
 				const Grid::LCellIdI location = s->ToEntity().location;
@@ -700,9 +700,9 @@ namespace Objects
 		
 
 //		const PVehicle v = To<Vehicle>::DynamicCast(entity);
-		 MobileEntity*v = dynamic_cast<MobileEntity*>(&entity);
+		const MobileEntity*v = dynamic_cast<const MobileEntity*>(&entity);
 		float h;
-		if (PTurretBase b = entity.GetTurretBase(h))
+		if (PConstTurretBase b = entity.GetTurretBase(h))
 		{
 			vis.showArrow = CursorModeExpectsLeftClick(activeCursorMode);
 			if (vis.showArrow)
@@ -877,11 +877,8 @@ namespace Objects
 	}
 
 
-
 	void					GetChoices( const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis )
 	{
-		//showArrow = false;		//why were these here...?
-		//hasArrowCellTarget = false;
 
 		if (entity)
 			GetChoices(*entity,deploying,activeCursorMode, movementChoices, vis);
@@ -890,8 +887,7 @@ namespace Objects
 			movementChoices.Clear();
 			vis = TChoiceVisualization();
 		}
-	
-	
+
 	}
 
 	

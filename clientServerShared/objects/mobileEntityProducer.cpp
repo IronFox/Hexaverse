@@ -168,6 +168,106 @@ namespace Objects
 
 	#endif
 
+	bool						MobileEntityProducer::GetIdealSpawningPoint(const PMobileEntity&production, Random&rand, Grid::LCellIdI&outLoc) const
+	{
+		const WorldEntity*self = dynamic_cast<const WorldEntity*>(this);
+		ASSERT_NOT_NULL__(self);
+		return GetIdealSpawningPoint(*self,production,rand,outLoc);
+	}
+
+	bool						MobileEntityProducer::GetIdealSpawningPoint(const WorldEntity&self, const PMobileEntity&production, Random&rand, Grid::LCellIdI&outLoc) const
+	{
+		Ctr::Buffer0<Choice>	movementChoices;
+		TChoiceVisualization vis;
+		GetChoices(self,production,CursorMode::Idle,movementChoices,vis);
+
+		if (movementChoices.IsEmpty())
+			return false;
+
+		
+		if (movementChoices.Count() == 1)
+		{
+			outLoc = movementChoices.First().location;
+			return true;
+		}
+
+		if (gatheringPoint.current != Grid::LCellIdI::Invalid)
+		{
+			if (movementChoices.Contains(gatheringPoint.current))
+			{
+				outLoc = gatheringPoint.current;
+				return true;
+			}
+
+					
+			float distance = std::numeric_limits<float>::max();
+			foreach (movementChoices,choice)
+			{
+				float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
+				if (d < distance)
+				{
+					outLoc = choice->location;
+					distance = d;
+				}
+			}
+			return true;
+		}
+
+		Buffer0<Choice>	highChoices;
+		foreach (movementChoices,c)
+		if (WorldEntity::IsAboveTerrain(c->location))
+			highChoices << *c;
+
+		if (highChoices.IsNotEmpty())
+		{
+			outLoc = highChoices[rand.NextIndex(highChoices.Count())].location;
+			return true;
+		}
+
+
+		auto owner = self.owner;
+		#ifdef CLIENT
+			ASSERT__(owner->isOwnedByMe);
+		#endif
+		float best = std::numeric_limits<float>::max();
+
+		const auto&markers =
+			#ifdef CLIENT
+				Objects::MarkerStore::client
+			#else
+				owner->markers
+			#endif
+			;
+
+		foreach (movementChoices,choice)
+		{
+			float badness = 0;
+			owner->VisitVisibleForeignEntities([&badness,owner,choice](const Objects::PWorldEntity&e)
+			{
+				if (!owner->IsFriendly(e->owner))
+					badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,e->location));
+			});
+			markers.Foreach(Objects::MarkerType::EntityDeath,[&badness,choice](const Objects::PMarker&m)
+			{
+				badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+			});
+			markers.Foreach(Objects::MarkerType::HostileContact,[&badness,choice](const Objects::PMarker&m)
+			{
+				badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
+			});
+
+			if (badness < best)
+			{
+				best = badness;
+				outLoc = choice->location;
+			}
+			if (best == 0)
+				break;
+		}
+		if (best == 0)
+			outLoc = movementChoices[rand.NextIndex(movementChoices.Count())].location;	//any is good
+		return true;
+	}
 
 
 
@@ -176,110 +276,34 @@ namespace Objects
 		{
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();
-			TChoiceVisualization vis;
-			Ctr::Buffer0<Choice>	movementChoices;
+
 			PMobileEntity production = GetActiveProduction();
+			Grid::LCellIdI c;
+			WorldEntity*self = dynamic_cast<WorldEntity*>(this);
+			ASSERT_NOT_NULL__(self);
 
-
-
-			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
-			LogEvent(EventSignificance::Debug,parent,"Trying to spawn finished production "+production->GetNiceName()+" anywhere...");
+			LogEvent(EventSignificance::Debug,self,"Trying to spawn finished production "+production->GetNiceName()+" anywhere...");
 			String error;
-			if (!parent->owner->CanSpawnType(production,error))
+			if (!self->owner->CanSpawnType(production,error))
 			{
-				LogEvent(EventClass::Preset::operationAborted,parent,"Unable to deploy "+production->GetNiceName()+": "+error);
-				return PMobileEntity();
-			}
-			ASSERT_NOT_NULL__(parent);
-
-			GetChoices(*parent,production,CursorMode::Idle,movementChoices,vis);
-
-			if (movementChoices.IsEmpty())
-			{
-				LogEvent(EventClass::Preset::operationAborted,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
+				LogEvent(EventClass::Preset::operationAborted,self,"Unable to deploy "+production->GetNiceName()+": "+error);
 				return PMobileEntity();
 			}
 
-			
-
+			if (!GetIdealSpawningPoint(*self,production,self->entityRandom,c))
+			{
+				LogEvent(EventClass::Preset::operationAborted,self,"Failed to automatically spawn finished unit. Is something blocking deployment?");
+				return PMobileEntity();
+			}
 
 			PMobileEntity v = CompleteProduction(t);
-			//static Random random;
-			Grid::LCellIdI c;
-			if (movementChoices.Count() == 1)
-				c = movementChoices.First().location;
-			else
-			{
-				if (gatheringPoint.current != Grid::LCellIdI::Invalid)
-				{
-					if (movementChoices.Contains(gatheringPoint.current))
-						c = gatheringPoint.current;
-					else
-					{
-					
-						float distance = std::numeric_limits<float>::max();
-						foreach (movementChoices,choice)
-						{
-							float d = Grid::GetQuadraticGeometricDistance(choice->location,gatheringPoint.current);
-							if (d < distance)
-							{
-								c = choice->location;
-								distance = d;
-							}
-						}
-					}
-				}
-				else
-				{
-					Buffer0<Choice>	highChoices;
-					foreach (movementChoices,c)
-					if (WorldEntity::IsAboveTerrain(c->location))
-						highChoices << *c;
-
-					if (highChoices.IsNotEmpty())
-						c = highChoices[parent->entityRandom.NextIndex(highChoices.Count())].location;
-					else
-					{
-						auto owner = parent->owner;
-						float best = std::numeric_limits<float>::max();
-						foreach (movementChoices,choice)
-						{
-							float badness = 0;
-							owner->VisitVisibleForeignEntities([&badness,owner,choice](const Objects::PWorldEntity&e)
-							{
-								if (!owner->IsFriendly(e->owner))
-									badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,e->location));
-							});
-							owner->markers.Foreach(Objects::MarkerType::EntityDeath,[&badness,choice](const Objects::PMarker&m)
-							{
-								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
-							});
-							owner->markers.Foreach(Objects::MarkerType::HostileContact,[&badness,choice](const Objects::PMarker&m)
-							{
-								badness += 1.f / (1.f + 0.1f * Grid::GetQuadraticGeometricDistance(choice->location,m->location));
-							});
-
-							if (badness < best)
-							{
-								best = badness;
-								c = choice->location;
-							}
-							if (best == 0)
-								break;
-						}
-						if (best == 0)
-							c = movementChoices[parent->entityRandom.NextIndex(movementChoices.Count())].location;	//any is good
-					}
-				}
-			}
-
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
 			{
 				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+ToString(c));
 				FATAL__("Failed to position entity as designated position");
 			}
-			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+ToString(c)+" with placement result "+String(rs.ToString()));
+			LogEvent(EventSignificance::Debug,self,"Successfully spawned finished production  "+production->GetNiceName()+" at "+ToString(c)+" with placement result "+String(rs.ToString()));
 
 			if (rs != MobilePlacementResult::EnteredHangar)
 				InsertConstructed(v,t);
