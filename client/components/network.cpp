@@ -12,7 +12,7 @@
 #include "visual/hud/dialog.h"
 #include "visual/hud/menu.h"
 #include "visual/hud/guiStatistics.h"
-#include "ai.h"
+#include "ai/vehicles.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"

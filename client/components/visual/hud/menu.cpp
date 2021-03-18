@@ -17,7 +17,7 @@
 #include "../../configurationMode.h"
 #include "../../io.h"
 #include "../../cameraControl.h"
-#include "../../scriptedAI.h"
+#include "../../ai/scriptedAI.h"
 #include "hexGrid.h"
 #include "../commandDefinitions.h"
 #include "../autoDocumentation.h"

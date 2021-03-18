@@ -1,11 +1,11 @@
 #include <global_root.h>
-#include "ai.h"
+#include "vehicles.h"
 #include <objects/interface.h>
-#include "objectNetworkHelper.h"
+#include "../objectNetworkHelper.h"
 #include "scriptedAI.h"
-#include "playerControlBegin.h"
+#include "../playerControlBegin.h"
 #include <objects/nexus/nexusThreatEstimation.h>
-#include "gridControl.h"
+#include "../gridControl.h"
 
 
 namespace AI

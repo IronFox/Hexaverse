@@ -6,7 +6,7 @@
 #include "../visual/objectChoices.h"
 #include "../network.h"
 #include "delayedMobileInsertion.h"
-#include "../ai.h"
+#include "../ai/vehicles.h"
 #include "../playerControlBegin.h"
 #include <expectedBehavior.h>
 #include <globalEvents.h>

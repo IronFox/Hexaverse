@@ -3,7 +3,8 @@
 #include "network.h"
 #include "visual/scene/world.h"
 #include "clientRuntimeConfig.h"
-#include "ai.h"
+#include "ai/vehicles.h"
+#include "ai/factories.h"
 #include "visual/objectChoices.h"
 #include "playerControlBegin.h"
 #include "animation/trajectory.h"
@@ -57,6 +58,7 @@ namespace Animation
 					AI::AddVehicle(p);
 			});
 			DBG_ASSERT__(!Network::newRoundRequested);
+			AI::ProcessFactories();
 			AI::SignalStart("UpdateAutomation",loc);
 		}
 	}

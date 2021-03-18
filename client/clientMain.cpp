@@ -56,7 +56,7 @@
 #include "components/visual/lineRenderer.h"
 #include "components/visual/hud/surfaceRenderer.h"
 #include "components/visual/hud/windowStack.h"
-#include "components/ai.h"
+#include "components/ai/vehicles.h"
 #include "components/clientRuntimeConfig.h"
 #include "components/visual/scene/world.h"
 #include "components/visual/scene/lighting.h"

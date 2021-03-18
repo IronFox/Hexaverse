@@ -1,18 +1,18 @@
 #include "scriptedAI.h"
 #include <lua/luaGameAPI.h>
 #include <objects/faction.h>
-#include "clientEvents.h"
-#include "objectNetworkHelper.h"
-#include "network.h"
-#include "visual/hud/windowStack.h"
-#include "visual/hud/hexGrid.h"
-#include "visual/hud/dialog.h"
-#include "visual/hud/guiComponents.h"
-#include "visual/scene/visualMarkers.h"
+#include "../clientEvents.h"
+#include "../objectNetworkHelper.h"
+#include "../network.h"
+#include "../visual/hud/windowStack.h"
+#include "../visual/hud/hexGrid.h"
+#include "../visual/hud/dialog.h"
+#include "../visual/hud/guiComponents.h"
+#include "../visual/scene/visualMarkers.h"
 #include <io/string_file.h>
-#include "io.h"
-#include "playerControlBegin.h"
-#include "clientRuntimeConfig.h"
+#include "../io.h"
+#include "../playerControlBegin.h"
+#include "../clientRuntimeConfig.h"
 
 namespace ScriptedAI
 {

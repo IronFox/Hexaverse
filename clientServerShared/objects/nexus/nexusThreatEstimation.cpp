@@ -29,14 +29,16 @@ namespace Objects
 
 
 				Buffer0<Objects::PWorkingStructure>	associatedWorkingStructures;
-				Buffer0<Objects::PVehiclePlant > associatedVehiclePlants;
-				Buffer0<Objects::PPlaneFactory > associatedPlaneFactories;
+				Buffer0<Objects::PVehiclePlant> associatedVehiclePlants;
+				Buffer0<Objects::PPlaneFactory> associatedPlaneFactories;
+				Buffer0<Objects::PMobileEntity> associatedMobiles;
 
 				void	Reset()
 				{
 					associatedWorkingStructures.Clear();
 					associatedVehiclePlants.Clear();
 					associatedPlaneFactories.Clear();
+					associatedMobiles.Clear();
 				}
 
 
@@ -276,6 +278,20 @@ namespace Objects
 
 					if (isMine)
 					{
+						float closestAt = std::numeric_limits<float>::lowest();
+						index_t closest = InvalidIndex;
+						foreach (poles,pole)
+						{
+							if (!pole->hasBase)
+								continue;
+							float d = Vec::dot(Grid::low.cells[e->location.stackID].centerVertex.xyz,pole->center);
+							if (d > closestAt)
+							{
+								closestAt = d;
+								closest = pole - poles.begin();
+							}
+						}
+
 						if (e->IsWorkingStructure())
 						{
 							auto ws = To<Objects::WorkingStructure>::Cast(e);
@@ -283,36 +299,13 @@ namespace Objects
 								return;
 							float closestAt = std::numeric_limits<float>::lowest();
 							index_t closest = InvalidIndex;
-							foreach (poles,pole)
-							{
-								if (!pole->hasBase)
-									continue;
-								float d = Vec::dot(Grid::low.cells[e->location.stackID].centerVertex.xyz,pole->center);
-								if (d > closestAt)
-								{
-									closestAt = d;
-									closest = pole - poles.begin();
-								}
-							}
+
 							poles[closest].associatedWorkingStructures << ws;
 
 
 							Objects::PVehiclePlant plant = To<Objects::VehiclePlant>::DynamicCast(e);
 							if (plant)
 							{
-								float closestAt = std::numeric_limits<float>::lowest();
-								index_t closest = InvalidIndex;
-								foreach (poles,pole)
-								{
-									if (!pole->hasBase)
-										continue;
-									float d = Vec::dot(Grid::low.cells[e->location.stackID].centerVertex.xyz,pole->center);
-									if (d > closestAt)
-									{
-										closestAt = d;
-										closest = pole - poles.begin();
-									}
-								}
 								poles[closest].associatedVehiclePlants << plant;
 
 								if (plant->queue.IsNotEmpty())
@@ -323,24 +316,14 @@ namespace Objects
 							Objects::PPlaneFactory factory = To<Objects::PlaneFactory>::DynamicCast(e);
 							if (factory)
 							{
-								float closestAt = std::numeric_limits<float>::lowest();
-								index_t closest = InvalidIndex;
-								foreach (poles,pole)
-								{
-									if (!pole->hasBase)
-										continue;
-									float d = Vec::dot(Grid::low.cells[e->location.stackID].centerVertex.xyz,pole->center);
-									if (d > closestAt)
-									{
-										closestAt = d;
-										closest = pole - poles.begin();
-									}
-								}
 								poles[closest].associatedPlaneFactories << factory;
 								planeFactoryIsHere.Set(factory->location.stackID);
 							}
 
 						}
+						elif (e->IsMobile())
+							poles[closest].associatedMobiles << To<Objects::MobileEntity>::Cast(e);
+
 					}
 				});
 			}
@@ -517,6 +500,12 @@ namespace Objects
 		{
 			return Detail::GetPole(poleIndex).associatedPlaneFactories.ToRef();
 		}
+
+		ArrayRef<PMobileEntity>	GetOwnMobiles(int poleIndex)
+		{
+			return Detail::GetPole(poleIndex).associatedMobiles.ToRef();
+		}
+
 
 		Objects::PNexusPort		GetPort(int poleIndex)
 		{

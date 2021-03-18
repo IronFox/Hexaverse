@@ -3,7 +3,7 @@
 #include <io/file_system.h>
 #include <structure/observable.h>
 #include <uniqueID.h>
-#include "visual/hud/objectCommands.h"
+#include "../visual/hud/objectCommands.h"
 #include <objects/types.h>
 #include <general/timer.h>
 

@@ -169,6 +169,8 @@ namespace Objects
 
 		ArrayRef<PVehiclePlant>	GetBaseVehiclePlants(int poleIndex);
 		ArrayRef<PPlaneFactory>	GetBasePlaneFactories(int poleIndex);
+		ArrayRef<PMobileEntity>	GetOwnMobiles(int poleIndex);
+
 		Objects::PNexusPort		GetPort(int poleIndex);
 
 
