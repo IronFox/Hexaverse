@@ -23,7 +23,7 @@ namespace World
 	/**
 	Planetary data container.
 	Describes content as well as visibility.
-	Tracks changes, and can create deltas as needed.
+	Tracks changes and can create deltas as needed.
 	Changes to the terrain should be done using Data::BeginChangeSequence().
 	Changes to visibility should be done using the Sensor class.
 	*/
@@ -36,13 +36,13 @@ namespace World
 			{
 				/** *ProgressiveInit*
 				Works on the assumption that the receiving faction client starts from an empty terrain.
-				Initiates the client state to the current world state where visible, and initial world state where not.
+				Initiates the client state to the current world state where visible and initial world state where not.
 				This type should only be used on completely new factions.
 				*/
 				ProgressiveInit,	
 				ProgressiveUpdate,	//!< Works on the assumption that the recepient has a previous state, which should also be updated if visible
 				ProgressiveUpdateNoDelta,	//!< Like ProgressiveUpdate but generates no delta structure. The passed delta parameter is ignored
-				LocalCopy,		//!< Creates a copy of the specified world-state. Does not update anything. Does not reference any global state
+				LocalCopy,			//!< Creates a copy of the specified world-state. Does not update anything. Does not reference any global state
 				GlobalCopy,			//!< Creates a copy of the actual world state, assuming the recepient knows only an empty terrain. Does not update anything
 				GlobalInitialCopy,	//!< Creates a copy of the initial world state, assuming the recepient knows only an empty terrain. Does not update anything
 			};
