@@ -7,7 +7,9 @@
 #include <objects/types.h>
 #include <general/timer.h>
 
-namespace ScriptedAI
+namespace AI
+{
+namespace Script
 {
 	namespace D = DeltaWorks;
 
@@ -76,4 +78,4 @@ namespace ScriptedAI
 		void		DefineCommands(const Objects::Command::PCommandGroup&aiCommands);
 	#endif
 }
-
+}

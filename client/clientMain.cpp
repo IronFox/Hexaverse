@@ -84,7 +84,7 @@
 #include "components/objectNetworkHelper.h"
 #include "components/playerControlBegin.h"
 #include "components/visual/scene/vehicleAccessibilityMesh.h"
-#include "components/scriptedAI.h"
+#include "components/ai/scriptedAI.h"
 #include "components/visual/scene/objectIcons.h"
 #include "components/startConfiguration.h"
 
@@ -740,7 +740,7 @@ namespace ApplicationInterface
 
 	void	OnAppear( const Objects::PWorldEntity&e )
 	{
-		ScriptedAI::SignalAppearance(e);
+		AI::Script::SignalAppearance(e);
 		#ifdef HAS_WINDOW
 			if (!e->ambientSound.IsCreated())
 			{
@@ -817,7 +817,7 @@ namespace ApplicationInterface
 				#endif
 			if (e->owner->alliance != Objects::Faction::mine->alliance)
 			{
-				if (!ScriptedAI::WillExecuteOnNewRound() && !RuntimeConfig::aiMode)
+				if (!AI::Script::WillExecuteOnNewRound() && !RuntimeConfig::aiMode)
 				{
 					LogEvent(EventClass(isCommon ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss),"New hostile contact: "+e->GetNiceName()+ (RuntimeConfig::autoNewRound && !PlayerControlBegin::pauseAutomaticRoundProgression ? ". Pausing automatic round progression.":"."));
 					PlayerControlBegin::pauseAutomaticRoundProgression = true;
@@ -1649,7 +1649,7 @@ namespace ApplicationInterface
 		return 
 				ObjectHelper::MarkerCheck::DoneThisRound()
 				&&
-				ScriptedAI::DoneThisRound()
+				AI::Script::DoneThisRound()
 				&&
 				(!RuntimeConfig::aiMode || AI::IsDone())
 			;
@@ -1695,7 +1695,7 @@ void ParseKeyValue(const String&key, const String&value)
 		{
 			RuntimeConfig::aiMode = true;
 			RuntimeConfig::autoNewRound = true;
-			ScriptedAI::visualDebugActive = true;
+			AI::Script::visualDebugActive = true;
 
 			static index_t checkReg;
 			checkReg = GlobalEvents::frameBegin.Register([]()
@@ -1959,7 +1959,7 @@ int main( int argc, const char* argv[])
 
 				Objects::SetShiftMeansQueue(!StartConfig::GetBool("runtime/alwaysQueueUnitCommands"));
 				RuntimeConfig::autoClipTerrainToFocused = StartConfig::GetBool("runtime/autoClipTerrainToFocused",true);
-				ScriptedAI::visualDebugActive = RuntimeConfig::aiMode || StartConfig::GetBool("runtime/aiDebugMode");
+				AI::Script::visualDebugActive = RuntimeConfig::aiMode || StartConfig::GetBool("runtime/aiDebugMode");
 
 				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
@@ -2136,7 +2136,6 @@ int main( int argc, const char* argv[])
 			Loading::Stage("State Panel",HUD::StatePanel::Create);
 		#endif
 
-		Loading::Stage("Nexus Threat",Objects::NexusThreat::Create);
 		Loading::Stage("Marker Check",ObjectHelper::MarkerCheck::Create);
 		Loading::Stage("Client Grid",ClientGrid::Create);
 		Loading::Stage("Server Process",[]()

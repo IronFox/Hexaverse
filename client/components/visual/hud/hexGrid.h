@@ -119,16 +119,6 @@ namespace HexGrid
 			}
 		};
 
-		//class AICommand : public Icon
-		//{
-		//	typedef Icon			Super;
-		//public:
-		//	/**/					AICommand() : Super("Reload and run AI", "Enable Nexus AI") {}
-
-		//	virtual void			Refresh(bool) override;
-		//	virtual void			Execute() override;
-		//};
-
 		class VoteCommand : public Icon
 		{
 			typedef Icon			Super;

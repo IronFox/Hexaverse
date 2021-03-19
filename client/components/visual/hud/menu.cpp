@@ -420,9 +420,9 @@ namespace Menu
 
 		AddCheckBox(game,"Auto-Clip to next Idle Unit","runtime/autoClipTerrainToFocused",[](){return RuntimeConfig::autoClipTerrainToFocused;},[](bool b){RuntimeConfig::autoClipTerrainToFocused = b;});
 
-		AddCheckBox(game,"Debug Tools for Scripted AI","runtime/aiDebugMode", [](){return ScriptedAI::visualDebugActive;}, [](bool enabled)
+		AddCheckBox(game,"Debug Tools for Scripted AI","runtime/aiDebugMode", [](){return AI::Script::visualDebugActive;}, [](bool enabled)
 		{
-			ScriptedAI::visualDebugActive = enabled;
+			AI::Script::visualDebugActive = enabled;
 			Objects::Commands::RedefineGlobalCommands();
 			HUD::HexGrid::Configure(Objects::selectedEntity);
 		});

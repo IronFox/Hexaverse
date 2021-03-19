@@ -14,7 +14,9 @@
 #include "../playerControlBegin.h"
 #include "../clientRuntimeConfig.h"
 
-namespace ScriptedAI
+namespace AI
+{
+namespace Script
 {
 	//domains:
 	#define MT	//main thread
@@ -185,7 +187,7 @@ namespace ScriptedAI
 				
 					foreach (workItems, item)
 					{
-						LogEvent(EventClass::Preset::debug,"ScriptedAI.Thread: Executing "+item->first);
+						LogEvent(EventClass::Preset::debug,"AI::Script.Thread: Executing "+item->first);
 						const auto t = timer.Now();
 						try
 						{
@@ -213,10 +215,10 @@ namespace ScriptedAI
 						#ifndef _DEBUG
 						if (seconds > 0.5f)
 						#endif
-							LogEvent(EventClass::Preset::scriptLog,"ScriptedAI: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+							LogEvent(EventClass::Preset::scriptLog,"AI::Script: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
 						#ifndef _DEBUG
 						else
-							LogEvent(EventSignificance::PerformanceMeasurement,"ScriptedAI.Thread: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+							LogEvent(EventSignificance::PerformanceMeasurement,"AI::Script.Thread: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
 						#endif
 
 					}
@@ -550,7 +552,7 @@ namespace ScriptedAI
 		MT void			FlushAndRebuildEntities()
 		{
 			const auto t0 = timer.Now();
-			LogEvent(EventClass::Preset::debug,"ScriptedAI: Rebuilding entities and local research...");
+			LogEvent(EventClass::Preset::debug,"AI::Script: Rebuilding entities and local research...");
 			ASSERT__(!thread.IsBusy());
 			thread.api.FlushAllObjects();
 			thread.api.UpdateResearch();
@@ -561,7 +563,7 @@ namespace ScriptedAI
 			#ifdef HAS_WINDOW
 				thread.api.SetSelectedUnit(Objects::selectedEntity,false);
 			#endif
-			LogEvent(EventSignificance::PerformanceMeasurement,"ScriptedAI: Rebuilt entities in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventSignificance::PerformanceMeasurement,"AI::Script: Rebuilt entities in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 
 
@@ -663,7 +665,7 @@ namespace ScriptedAI
 		{
 			if (controlBeginRegistration != InvalidIndex)
 				return;
-			controlBeginRegistration = GlobalEvents::clientControlBegin.Register(ScriptedAI::Start);
+			controlBeginRegistration = GlobalEvents::clientControlBegin.Register(Script::Start);
 
 		}
 
@@ -843,13 +845,13 @@ namespace ScriptedAI
 
 		if (!scripts.FindFile(PathString(scriptName)+".lua",scriptLocation))
 		{
-			LogEvent(EventClass::Preset::scriptError,"ScriptedAI: Unable to resume server-stored script '"+scriptName+"'. Cannot find file.");
+			LogEvent(EventClass::Preset::scriptError,"AI::Script: Unable to resume server-stored script '"+scriptName+"'. Cannot find file.");
 			#ifdef HAS_WINDOW
 				HUD::Dialog::ShowMessage("The server suggested AI script '"+scriptName+"', but the corresponding script file apparently doesn't exist. Server-stored AI state cannot be applied.");
 			#endif
 			return;
 		}
-		LogEvent(EventSignificance::Important,"ScriptedAI: Attempting to resume script '"+scriptName+"', using "+String(compressedState.GetLength())+" bytes of compressed state");
+		LogEvent(EventSignificance::Important,"AI::Script: Attempting to resume script '"+scriptName+"', using "+String(compressedState.GetLength())+" bytes of compressed state");
 		
 		if (compressedState.GetLength() <= 8)
 			transientImportState.Clear();
@@ -872,7 +874,7 @@ namespace ScriptedAI
 					transientImportState.Clear();
 				}
 				else
-					LogEvent(EventClass::Preset::common,"ScriptedAI: Decompressed "+String(decompressedSize)+" of state bytes for script '"+scriptName+"'");
+					LogEvent(EventClass::Preset::common,"AI::Script: Decompressed "+String(decompressedSize)+" of state bytes for script '"+scriptName+"'");
 			}
 		}
 
@@ -1355,7 +1357,7 @@ namespace ScriptedAI
 			using namespace Objects;
 			CommandFlags rs = CommandFlags::None;
 
-			if (ScriptedAI::IsRunning())
+			if (Script::IsRunning())
 				rs |= CommandFlags::IsPermaActive | CommandFlags::IsFlashing | CommandFlags::SoftFlashing;
 			elif (controlEnabled && IsLoaded())
 				rs |= CommandFlags::IsEnabled;
@@ -1367,7 +1369,7 @@ namespace ScriptedAI
 		aiCommands->Add(new GlobalCommand("Edit Loaded AI",
 		[]()
 		{
-			OpenDocumentExternally(ScriptedAI::GetScriptPath());
+			OpenDocumentExternally(Script::GetScriptPath());
 		},
 		[](bool controlEnabled)->Objects::CommandFlags
 		{
@@ -1381,10 +1383,10 @@ namespace ScriptedAI
 		aiCommands->Add(new GlobalCommand("Open AI Documentation",
 		[]()
 		{
-			OpenDocumentExternally(ScriptedAI::GetDocumentationPath());
+			OpenDocumentExternally(Script::GetDocumentationPath());
 		}));
 
 	}
 	#endif
 }
-
+}

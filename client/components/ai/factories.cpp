@@ -21,8 +21,8 @@ namespace AI
 		struct TChoice
 		{
 			Objects::PWorldEntity			fullPrototype;
-			Objects::Component::VehicleBase	*base;
-			Objects::Component::Turret		*turret;
+			Objects::Component::VehicleBase	*base = nullptr;
+			Objects::Component::Turret		*turret = nullptr;
 			count_t							existing=0;
 			float							demand = 0;
 			float							offset = 0;
@@ -34,6 +34,11 @@ namespace AI
 				if (fullPrototype)
 					return fullPrototype->GetType();
 				return Objects::EntityType(base->constName,turret->constName);
+			}
+
+			friend String					ToString(const TChoice&choice)
+			{
+				return ToString(choice.GetType());
 			}
 
 
@@ -203,7 +208,7 @@ namespace AI
 	template <typename F>
 	Objects::NexusThreat::TEstimation EnableFactory(UINT32 poleIndex, const Objects::PNexusPort&port, ArrayRef<std::shared_ptr<F> > factories, const Detail::TChoice&choice)
 	{
-		LogEvent(EventSignificance::Debug, "Increasing production for " + port->GetName());
+		LogEvent(EventSignificance::Debug, "AI: Increasing production for " + port->GetName()+", using type "+ToString(choice));
 
 		for (auto producer : factories)
 		{
@@ -213,7 +218,7 @@ namespace AI
 			{
 				Objects::EntityType	t = choice.GetType();
 
-				LogEvent(EventSignificance::Common,entity.get(),"Enqueueing vehicle production job due to high threat level");
+				LogEvent(EventSignificance::Common,entity.get(),"AI: Enqueueing vehicle production job due to high threat level");
 
 
 				Protocol::ConstructionBegin cst;
@@ -222,18 +227,23 @@ namespace AI
 
 				Network::Channels::constructionBegin.SendTo(Network::client,cst);
 				if (choice.fullPrototype)
-					Objects::NexusThreat::Estimate(poleIndex,choice.fullPrototype);
+					return Objects::NexusThreat::Estimate(poleIndex,choice.fullPrototype);
 
 				return Objects::NexusThreat::Estimate(poleIndex,Objects::PWorldEntity(new Objects::Vehicle(Objects::Faction::mine,entity->location,choice.base,choice.turret)));
 			}
 		}
-		LogEvent(EventSignificance::Debug,  port->GetName()+" no longer has idle plants capable of queueing jobs. Aborting");
+		LogEvent(EventSignificance::Debug,  "AI: "+port->GetName()+" no longer has idle plants capable of queueing jobs. Aborting");
 		return Objects::NexusThreat::TEstimation();
 
 	}
 
 	void ProcessFactories()
 	{
+		LogEvent(EventSignificance::Common, "AI: Processing factories");
+
+		Objects::NexusThreat::Update(nullptr,nullptr);
+
+
 		Objects::Resource::Vector vehiclePlantCostPerRound, planeFactoryCostPerRound, dummy,v;
 		Objects::VehiclePlant::globalPrototype->GetResourceVector(v,dummy,dummy);
 		v.SeparateBySign(dummy,vehiclePlantCostPerRound);
@@ -264,8 +274,8 @@ namespace AI
 
 
 
-			LogEvent(EventSignificance::Debug, "Threat level for " + port->GetName() + " considered " + String(threat.GroundTotal())+"|"+String(threat.AirTotal())
-				+" (support here: "+String(support.GroundTotal())+"|"+String(support.AirTotal())+", hostile constructor(s) at: "+String(threat.closestHostileConstructorOpacity)+"/"+String(threat.constructorOpacitySum)+")");
+			LogEvent(EventSignificance::Debug, "AI: Threat level for " + port->GetName() + " at pole "+String(i)+" considered " + String(threat.GroundTotal())+"|"+String(threat.AirTotal())
+				+" (support here: "+String(support.air.mobile)+"|"+String(support.ground.mobile)+", hostile constructor(s) at: "+String(threat.closestHostileConstructorOpacity)+"/"+String(threat.constructorOpacitySum)+")");
 
 			bool constructorViolation = (threat.closestHostileConstructorOpacity > ConstructorThreshold);
 
@@ -281,16 +291,24 @@ namespace AI
 					airState += AutoDeploy(producer,producer);
 
 				if (RuntimeConfig::roundNumber < ApplicationInterface::GetMinAIRoundForPlanes())
+				{
 					airState.y = 0;
+					LogEvent(EventSignificance::Debug, "AI: Can't build planes yet");
+				}
 				else
 				{
 					groundState.y = std::min(groundState.y, (portProductionPerRound - planeFactoryCostPerRound) / vehiclePlantCostPerRound);	//keep at least one plane factory free to enable
-					airState.y = std::min(airState.y,(portProductionPerRound - vehiclePlantCostPerRound * groundState.x) / planeFactoryCostPerRound);
+					auto resourcesLeft = (portProductionPerRound - vehiclePlantCostPerRound * groundState.x);
+					auto maxFit = resourcesLeft / planeFactoryCostPerRound;
+					airState.y = std::min(airState.y,maxFit);
 				}
 
 
 				if ((vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * airState.x) >= portProductionPerRound)
+				{
+					LogEvent(EventSignificance::Debug, "AI: Can't produce any more on this pole");
 					continue;
+				}
 
 
 				while (support.MobileTotal() < threat.Total() || constructorViolation)
@@ -302,10 +320,6 @@ namespace AI
 
 					if (airDemand > groundDemand && !constructorViolation)
 					{
-
-
-
-
 						if (airState.x < airState.y && (vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * (airState.x+1)) <= portProductionPerRound)
 						{
 							table.Add(Objects::SubOrbital::Raptor::globalPrototype);
@@ -332,21 +346,43 @@ namespace AI
 
 					constructorViolation = false;
 
-					if (airState.x < airState.y && (vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * (airState.x+1)) <= portProductionPerRound && SpawnBomberAgainstGroundThreat(AI::random))
+					const auto includingPlaneFactoryTotalCosts = (vehiclePlantCostPerRound * groundState.x + planeFactoryCostPerRound * (airState.x+1));
+
+					if (airState.x < airState.y && includingPlaneFactoryTotalCosts <= portProductionPerRound)
 					{
 						table.Add(Objects::SubOrbital::Bomber::globalPrototype);
 						table.Add(Objects::SubOrbital::SensorDrone::globalPrototype);
 					}
+					else
+						LogEvent(EventSignificance::Debug, "AI: Insufficient resources/capacity to enable plane factories: "+String(airState.x)+"/"+String(airState.y)+", "+ToString(includingPlaneFactoryTotalCosts)+"/"+ToString(portProductionPerRound));
 
 
+					const auto includingGroundFactoryTotalCosts = (vehiclePlantCostPerRound * (groundState.x+1) + planeFactoryCostPerRound * airState.x);
 
-					if (groundState.x < groundState.y && (vehiclePlantCostPerRound * (groundState.x+1) + planeFactoryCostPerRound * airState.x) <= portProductionPerRound)
+					if (groundState.x < groundState.y && includingGroundFactoryTotalCosts <= portProductionPerRound)
 					{
 						table.AddVehicleTurret(Objects::Component::armored);
 						table.AddVehicleTurret(Objects::Component::artillery);
 						table.AddVehicleTurret(Objects::Component::radar);
+
+						/*
 						table.AddVehicleTurret(Objects::Component::resourceScanner);
+
+						Leave this one off for now as it essentially adds a different strategy.
+						First off, a resource scanner must be isolated from regular radar,
+						else they blow each other up on close proximity, which is not prevented
+						due to different turrets being used.
+						Secondly, these follow a dramatically different behavior. they must
+						seak out locations currently not observed by other scanners and stick
+						to submerged hostile contacts.
+						Finally, bombers must home into such locations and bomb submerged
+						targets until hit.
+						Work for later
+						*/
+						
 					}
+					else
+						LogEvent(EventSignificance::Debug, "AI: Insufficient resources/capacity to enable vehicle factories: "+String(groundState.x)+"/"+String(groundState.y)+", "+ToString(includingGroundFactoryTotalCosts)+"/"+ToString(portProductionPerRound));
 
 
 					if (table.IsNotEmpty())
@@ -364,10 +400,11 @@ namespace AI
 						continue;
 					}
 
-					LogEvent(EventSignificance::Common, "Nexus threat level: All factories running. Can't enable more. Nothing to do");
+					LogEvent(EventSignificance::Common, "AI: Unable to enqueue production. No capacity left");
 					break;
 				}
 
+				LogEvent(EventSignificance::Debug, "AI: Nothing left to do on pole "+String(i));
 
 			}
 		}

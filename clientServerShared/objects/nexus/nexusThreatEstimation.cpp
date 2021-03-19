@@ -42,18 +42,20 @@ namespace Objects
 				}
 
 
-				void	RebuildDistanceField()
+				void	BuildDistanceField(UINT32 poleIdx)
 				{
+					if (distanceField.Count() == Grid::LowSetup::GridType::CellCount)
+						return;
 					Timer::Time t0 = timer.Now();
 
 					Buffer0<Grid::TNeighborCellID>	neighborhood;
-					Grid::low.GetExtendedNeighborhood(port->location.stackID,Grid::LowSetup::GridType::CellsPerEdge,neighborhood);
+					Grid::low.GetExtendedNeighborhood(poleIdx,Grid::LowSetup::GridType::CellsPerEdge,neighborhood);
 					distanceField.SetSize(Grid::LowSetup::GridType::CellCount);
 					distanceField.Fill(std::numeric_limits<UINT32>::max());
 					foreach (neighborhood,n)
 						distanceField[n->stackID] = n->distanceFromOrigin;
 
-					LogEvent(EventSignificance::PerformanceMeasurement,"Distance field computation around pole "+ToString(port->location)+" took seconds: "+String(timer.GetSecondsSince(t0)));
+					LogEvent(EventSignificance::PerformanceMeasurement,"Distance field computation around pole "+String(poleIdx)+" took seconds: "+String(timer.GetSecondsSince(t0)));
 				}
 			};
 
@@ -297,8 +299,6 @@ namespace Objects
 							auto ws = To<Objects::WorkingStructure>::Cast(e);
 							if (ws->IsNexusPort())
 								return;
-							float closestAt = std::numeric_limits<float>::lowest();
-							index_t closest = InvalidIndex;
 
 							poles[closest].associatedWorkingStructures << ws;
 
@@ -390,6 +390,7 @@ namespace Objects
 
 		void					Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases)
 		{
+			LogEvent(EventSignificance::Common,"AI: Updating threat/support presence");
 			FixedArray<Objects::PNexusPort,12> oldPorts;
 			for (index_t i = 0; i < 12; i++)
 			{
@@ -409,10 +410,8 @@ namespace Objects
 					return;
 				auto&pole = Detail::poles[s->location.stackID];
 				pole.port = To<Objects::NexusPort>::Cast(s);
-				if (pole.port != oldPorts[s->location.stackID])
-				{
-					pole.RebuildDistanceField();
-				}
+				pole.BuildDistanceField(s->location.stackID);
+
 				pole.support = TSupport();
 				#ifndef CLIENT
 					pole.threatLevel = TLevel();
@@ -426,10 +425,13 @@ namespace Objects
 			});
 
 
+			for (int i = 0; i < 12; i++)
+				Detail::poles[i].BuildDistanceField(i);
+
 			Detail::UpdateAssociatedEntitiesAndLevels();
 
 			for (int i = 0; i < 12; i++)
-				LogEvent(EventSignificance::Common,"Nexus pole #"+String(i)+": threat={"+ToString(Detail::poles[i].threatLevel)+"}, supp={"+ToString(Detail::poles[i].support)+"}");
+				LogEvent(EventSignificance::Common,"AI: Nexus pole #"+String(i)+": threat={"+ToString(Detail::poles[i].threatLevel)+"}, supp={"+ToString(Detail::poles[i].support)+"}");
 
 
 		}
@@ -440,17 +442,6 @@ namespace Objects
 			return Detail::GetPole(poleIndex).deployHeavyVehicleBases;
 		}
 
-
-		void					Create()
-		{
-
-
-			GlobalEvents::phaseChange << []()
-			{
-				if (RuntimeConfig::IsInAnyCommandPhase())
-					Update(nullptr,nullptr);
-			};
-		}
 
 
 		bool					IsPlaneFactoryHere(UINT32 stackID)
@@ -546,10 +537,11 @@ namespace Objects
 		
 
 		#ifdef CLIENT
-			void				UpdatePole(int poleIdx, const TLevel&lvl, bool deployHeavyVehicleBases)
+			void				UpdatePole(int poleIdx, const TLevel&lvl, bool deployHeavyVehicleBases, bool hasBase)
 			{
 				Detail::poles[poleIdx].threatLevel = lvl;
 				Detail::poles[poleIdx].deployHeavyVehicleBases = deployHeavyVehicleBases;
+				Detail::poles[poleIdx].hasBase = hasBase;
 			}
 		#endif
 

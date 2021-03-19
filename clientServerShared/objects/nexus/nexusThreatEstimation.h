@@ -181,15 +181,16 @@ namespace Objects
 			/**
 			Updates the server-provided hostile presence values
 			*/
-			void				UpdatePole(int poleIdx, const TLevel&, bool deployHeavyVehicleBases);
+			void				UpdatePole(int poleIdx, const TLevel&, bool deployHeavyVehicleBases, bool hasBase);
 
-			/**
-			Central creation method. Must be called once during client application start
-			*/
-			void				Create();
-		#else
-			void				Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases);
 		#endif
+		/**
+		Updates support and threat (server only) computation.
+		Should be called once before client is handed controll.
+		@param poleHasBase Function to determine whether a pole has a base. May be null (on client)
+		@param deployHeavyVehicleBase Function to determine whether heavy vehicle bases should be used on a pole. May be null (on client)
+		*/
+		void					Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases);
 	}
 
 }

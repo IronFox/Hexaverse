@@ -5,7 +5,7 @@
 #include "clientEvents.h"
 #include "objectNetworkHelper.h"
 #include "clientRuntimeConfig.h"
-#include "scriptedAI.h"
+#include "ai/scriptedAI.h"
 #include "network.h"
 
 namespace PlayerControlBegin
@@ -40,7 +40,7 @@ namespace PlayerControlBegin
 			only way around is to detect all user interactions (everything that is not purely display) and signal that automatic round end should end
 			or add 1 second timeout. that seems to also work
 		*/
-		if (!RuntimeConfig::aiMode && ScriptedAI::SuccessfullyExecutedThisRound() && timer.GetSecondsSince(ScriptedAI::GetCompletionTime()) > 1.f)
+		if (!RuntimeConfig::aiMode && AI::Script::SuccessfullyExecutedThisRound() && timer.GetSecondsSince(AI::Script::GetCompletionTime()) > 1.f)
 		{
 			allowChecks = false;	//don't auto-complete if player has assumed control
 			return;
@@ -53,7 +53,7 @@ namespace PlayerControlBegin
 			allowChecks = false;	//don't redo this during this round
 			ApplicationInterface::SignalRoundEnd();
 		}
-		elif (!RuntimeConfig::aiMode && !ScriptedAI::WillExecuteOnNewRound())
+		elif (!RuntimeConfig::aiMode && !AI::Script::WillExecuteOnNewRound())
 			allowChecks = false;	//don't auto-complete if player has assumed control and we failed here once already
 
 		#ifdef HAS_WINDOW

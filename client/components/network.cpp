@@ -26,7 +26,7 @@
 #include "voting.h"
 #include "objectNetworkHelper.h"
 #include "playerControlBegin.h"
-#include "scriptedAI.h"
+#include "ai/scriptedAI.h"
 #include <expectedBehavior.h>
 #include <passwordMatch.h>
 #include <objects/nexus/nexusThreatEstimation.h>
@@ -207,7 +207,7 @@ namespace Network
 	{
 		client.Disconnect();
 
-		if (ScriptedAI::IsRunning())
+		if (AI::Script::IsRunning())
 		{
 			LogEvent(EventClass::Preset::scriptError,"Cannot connect right now. Scripted AI still busy");
 			#ifdef HAS_WINDOW
@@ -1371,13 +1371,13 @@ namespace Network
 
 		void	ChoiceResponse(Protocol::ChoiceResponse&resp)
 		{
-			ScriptedAI::SignalChoiceResponse(resp.requestID,resp.deployedID);
+			AI::Script::SignalChoiceResponse(resp.requestID,resp.deployedID);
 		}
 
 		void	ScriptedAIState(Protocol::ScriptedAIState&state)
 		{
 			LogEvent(EventSignificance::Common,"Received script state for '"+state.scriptName+"' of "+String(state.dataVector.GetLength())+" byte(s)");
-			ScriptedAI::Resume(state.scriptName,state.dataVector);
+			AI::Script::Resume(state.scriptName,state.dataVector);
 		}
 
 		void	NexusAIHints(Protocol::NexusAIHints&state)
@@ -1391,7 +1391,7 @@ namespace Network
 			AI::SetMinRoundForPlanes(state.minRoundForPlanes);
 
 			for (int i = 0; i < 12; i++)
-				Objects::NexusThreat::UpdatePole(i,Objects::NexusThreat::TLevel(),false);
+				Objects::NexusThreat::UpdatePole(i,Objects::NexusThreat::TLevel(),false,false);
 
 			foreach (state.bases,pole)
 			{
@@ -1402,7 +1402,7 @@ namespace Network
 				lvl.ground.stationary = pole->groundStationaryThreatLevel;
 				lvl.closestHostileConstructorOpacity = pole->closestHostileConstructorOpacity;
 				lvl.constructorOpacitySum = pole->constructorOpacitySum;
-				Objects::NexusThreat::UpdatePole(pole->poleIndex,lvl,pole->deployHeavyBases);
+				Objects::NexusThreat::UpdatePole(pole->poleIndex,lvl,pole->deployHeavyBases,pole->hasBase);
 			}
 		}
 

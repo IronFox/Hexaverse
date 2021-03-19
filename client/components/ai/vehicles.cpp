@@ -97,7 +97,7 @@ namespace AI
 		bool ProcessVehicle( const Objects::PVehicle&v )
 		{
 			Objects::Component::Turret*t = v->turret;
-			if (t->detectsResources || t->CanDo(Objects::Component::Operation::Construct))
+			if (t->CanDo(Objects::Component::Operation::Construct))
 			{
 				LogEvent(EventSignificance::Uncommon,v.get(),  "AI: Skipping unsupported vehicle type");
 				return true;
@@ -110,7 +110,7 @@ namespace AI
 			Objects::Pathfinding::ReachabilityMapper::MapNode*best = nullptr, *current = nullptr;
 			float bestScore = 0.f, currentScore = 0.f;
 			const bool attacker = t->CanAttack();
-			const bool attacksAirborne = attacker && (v->IsPlane() || t->trajectoryType == Objects::TrajectoryType::AAMissile);
+			const bool attacksAirborne = attacker && ((v->IsPlane() && t->trajectoryType == Objects::TrajectoryType::Missile) || t->trajectoryType == Objects::TrajectoryType::AAMissile);
 			const bool detectsAirborne = v->IsPlane() || v->GetSubOrbitalScanningRange() > 0;
 			const bool attacksGroundEntities = attacker 
 				&& ( 
@@ -119,7 +119,7 @@ namespace AI
 						&& (t->trajectoryType == Objects::TrajectoryType::A2GMissile || t->trajectoryType == Objects::TrajectoryType::VerticalBeam)
 						)
 					);
-			const bool isAA = !v->IsPlane() && attacksAirborne;
+			const bool isAA = t->trajectoryType == Objects::TrajectoryType::AAMissile;
 
 			const bool interestedInAirborne = attacksAirborne || v->GetSubOrbitalScanningRange() > 0 || (v->IsPlane() && !attacksGroundEntities);
 			const bool interestedInGroundTargets = attacksGroundEntities || !v->IsPlane() || v->turret->groundScanningRange.GetValue(v->GetResearchState()) >= 0.5f * v->GetScanningRange();
@@ -221,21 +221,22 @@ namespace AI
 						at--;
 					}
 				}
-				std::sort(attackTarget.begin(),attackTarget.end());
-				attackTarget.Truncate(v->GetAttacksPerRound());
-				static Array<Grid::LCellIdI>	targets;
-				targets.SetSize(attackTarget.Count());
-				foreach (attackTarget,t)
+				if (attackTarget.IsNotEmpty())
 				{
-					targets[t-attackTarget.pointer()] = t->target;
-				}
-				ObjectHelper::DirectTo(v,targets,ObjectHelper::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
+					std::sort(attackTarget.begin(),attackTarget.end());
+					attackTarget.Truncate(v->GetAttacksPerRound());
+					static Array<Grid::LCellIdI>	targets;
+					targets.SetSize(attackTarget.Count());
+					foreach (attackTarget,t)
+					{
+						targets[t-attackTarget.pointer()] = t->target;
+					}
+					ObjectHelper::DirectTo(v,targets,ObjectHelper::AssembleMotionFlags( false,true, false),Objects::CursorMode::AttackMode);
 
-				if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
-				{
 					foreach (attackTarget,t)
 						ofInterestToAttacker.Set(t->targetID);
-					return true;
+					if (!v->base->ignoresVehicleAttacks)
+						return true;
 				}
 			}
 
@@ -248,6 +249,8 @@ namespace AI
 				bool primaryAA = true;
 				Objects::ForeachMobileWorldEntity([v,&proximityPresence,&radarProximity,&aaProximity,&primary,&primaryAA](const Objects::PMobileEntity&e)
 				{
+					if (e == v)
+						return;
 					if (e->isOwnedByMe && Vec::quadraticDistance(v->GetWorldPosition(),e->GetWorldPosition()) < 25.f)
 					{
 						if (e->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
@@ -274,13 +277,13 @@ namespace AI
 				});
 			
 				overconfident = proximityPresence > 5 && !isAA;
-				if (!attacker && radarProximity > 1 && primary && random.NextFloat() < 0.3f)
+				if (!attacker && radarProximity > 0 && primary && random.NextFloat() < 0.3f)
 				{
 					ApplicationInterface::SignalRemoval(v);
 					return true;
 				}
 
-				if (isAA && aaProximity > 1 && primaryAA && random.NextFloat() < 0.3f)
+				if (isAA && aaProximity > 0 && primaryAA && random.NextFloat() < 0.3f)
 				{
 					ApplicationInterface::SignalRemoval(v);
 					return true;
@@ -302,9 +305,9 @@ namespace AI
 			{
 				//no chance to get out of danger, so try to reduce threat level
 				BeginBlockTest(v,false,canIgnoreThreat,overconfident);
-				mapper.Map(*v, v->location, Objects::Pathfinding::RoutingFlags::ForceRevertible, groundFlags,referenceSpeed, CostModifier);
-				if (mapper.result.IsEmpty())
-					mapper.Map(*v, v->location, Objects::Pathfinding::RoutingFlags::None, groundFlags,referenceSpeed, CostModifier);
+				mapper.Map(*v, v->location, Objects::Pathfinding::RoutingFlags::ForceRevertible | Objects::Pathfinding::RoutingFlags::IncludeOrigin, groundFlags,referenceSpeed, CostModifier);
+				if (mapper.result.Count() <= 1)
+					mapper.Map(*v, v->location, Objects::Pathfinding::RoutingFlags::IncludeOrigin, groundFlags,referenceSpeed, CostModifier);
 			}
 
 
@@ -875,7 +878,8 @@ namespace AI
 		elif (v->turret == &Objects::Component::antiAircraft)
 			Detail::aa << v;
 		elif (v->turret == &Objects::Component::radar 
-			|| v->turret == &Objects::Component::SubOrbital::sensorDrone)
+			|| v->turret == &Objects::Component::SubOrbital::sensorDrone
+			|| v->turret == &Objects::Component::resourceScanner)
 			Detail::scanners << v;
 		else
 			LogEvent(EventSignificance::Common,"AI: Skipping "+v->GetName());
@@ -909,7 +913,7 @@ namespace AI
 
 	void CostModifier( const Grid::LCellIdI&location, int&cost )
 	{
-		if (Detail::currentContext.self->IsPlane())
+		if (Detail::currentContext.self->IsPlane() && location != Detail::currentContext.self->location)
 		{
 			if (Objects::NexusThreat::IsPlaneFactoryHere(location.stackID))
 			{
@@ -950,7 +954,7 @@ namespace AI
 
 	void	SignalStart( const String&because, const TCodeLocation&caller )
 	{
-		if (ScriptedAI::IsLoaded())
+		if (AI::Script::IsLoaded())
 			return;
 		Detail::ofInterestToAttacker.Clear();
 		Detail::awaitSensory = false;
@@ -1007,7 +1011,7 @@ namespace AI
 		if (Detail::done)
 			return;
 
-		if (ScriptedAI::IsLoaded())
+		if (AI::Script::IsLoaded())
 		{
 			Detail::done = true;
 			return;

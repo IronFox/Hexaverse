@@ -9,7 +9,6 @@
 #include "resourceGauges.h"
 #include "../../configurationMode.h"
 #include "menu.h"
-#include "../../scriptedAI.h"
 #include "tooltip.h"
 #include "../../audio/hudAudio.h"
 #include "../../inputControl.h"
@@ -492,40 +491,6 @@ namespace HexGrid
 		{
 			HUD::WindowStack::Show(HUD::Menu::main);
 		}
-
-		///*virtual override*/ void			AICommand::Refresh(bool controlsAreEnabled)
-		//{
-		//	this->state = Flags::None;
-
-		//	if (ScriptedAI::IsRunning())
-		//		state |= Flags::IsPermaActive | Flags::IsFlashing | Flags::SoftFlashing;
-		//	elif (controlsAreEnabled)
-		//		state |= Flags::IsEnabled;
-		//}
-
-		///*virtual override*/ void			AICommand::Execute()
-		//{
-		//	if (ScriptedAI::IsRunning())
-		//		return;
-		//	FileSystem::Folder scripts = RuntimeConfig::myConfig.Lookup("AIScripts");
-		//	if (!scripts.IsValidLocation())
-		//		FileSystem::CreateDirectory(scripts.GetLocation());
-		//	ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
-
-		//	FileSystem::File debugLua;
-		//	scripts.FindFile("debug.lua", debugLua, false);
-		//	if (!debugLua.DoesExist())
-		//	{
-		//		ScriptedAI::CreateTemplateAt(debugLua);
-		//		Dialog::ShowMessage("It appears you have activated the AI for the first time."
-		//				" A new Lua script has been created at\n"+FileSystem::PathToString(debugLua)+"\n"
-		//				" Edit the file to define the desired behavior.\n"
-		//				"Whenever you press the AI button, the script will be reloaded, and applied to your current set of units.");
-		//	}
-
-		//	ScriptedAI::Load(debugLua, Engine::input.pressed[Key::Shift]);
-		//	ScriptedAI::Start();
-		//}
 
 
 		static void VoteRefresh(const PVote&)

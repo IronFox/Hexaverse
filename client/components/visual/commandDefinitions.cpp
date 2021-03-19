@@ -26,7 +26,7 @@
 #include "hud/hexGrid.h"
 #include "../objectNetworkHelper.h"
 #include "scene/vehicleAccessibilityMesh.h"
-#include "../scriptedAI.h"
+#include "../ai/scriptedAI.h"
 
 
 namespace Objects
@@ -1465,7 +1465,7 @@ namespace Objects
 				return rs;
 			}));
 
-			if (ScriptedAI::visualDebugActive)
+			if (AI::Script::visualDebugActive)
 			{
 				aiCommands = AddChild(globalCommands,"AI Commands","Enable Nexus AI");
 
@@ -1485,7 +1485,7 @@ namespace Objects
 					return rs;
 				}));
 
-				ScriptedAI::DefineCommands(aiCommands);
+				AI::Script::DefineCommands(aiCommands);
 
 			}
 			else
