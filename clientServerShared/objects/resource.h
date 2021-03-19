@@ -452,6 +452,9 @@ namespace Objects
 			Zero-values are not reported. The returned string may be empty
 			*/
 			String	ToString() const;
+
+
+			friend String ToString(const Self&v) {return v.ToString();}
 			/*
 			{
 				Ctr::Buffer0<String> rs;
