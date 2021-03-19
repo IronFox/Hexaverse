@@ -398,7 +398,7 @@ namespace Objects
 				auto local = Get(i);
 				if (other != 0)
 				{
-					if (std::abs(local) <= std::abs(other))
+					if (std::abs(local) < std::abs(other))
 						return 0;
 					int div = local / other;
 					if (std::abs(div) < std::abs(rs))
