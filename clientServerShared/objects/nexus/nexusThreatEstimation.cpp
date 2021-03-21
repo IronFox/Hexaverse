@@ -104,62 +104,80 @@ namespace Objects
 
 				const auto&pole = poles[poleIndex];
 
-				float entityRange = e.GetScanningRange();
-				rs.impact = e.GetConstructionCost() + (e.t2 ? e.t2->level * Objects::Research::globalState.t2.upgradeCostQuantity : 0);
+				rs.isPlane = e.IsPlane();
+				rs.isHostile = owner != nexus;
+
+				auto baseImpact = e.GetConstructionCost() + (e.t2 ? e.t2->level * Objects::Research::globalState.t2.upgradeCostQuantity : 0);
 				auto turretBase = e.GetTurretBase();
-				if (turretBase && turretBase->turret->CanDealDamage())
+				float entityRange;
+				if (turretBase)
 				{
-					rs.impact += turretBase->GetDamagePotentialPerRound();
-					entityRange = M::Max(entityRange,turretBase->GetFlatAttackRange());
+					if (turretBase->turret->CanDealDamage())
+						rs.attack.impact = baseImpact + turretBase->GetDamagePotentialPerRound() + turretBase->GetFlatAttackRange();
+					rs.sensor.impact = baseImpact + M::Max(turretBase->GetSubOrbitalScanningRange(),e.GetScanningRange());
+					entityRange = M::Max(turretBase->GetFlatAttackRange(),e.GetScanningRange());
 				}
-				rs.impact += entityRange;
+				else
+				{
+					rs.sensor.impact = baseImpact + e.GetScanningRange();
+					entityRange = e.GetScanningRange();
+				}
+
 				const M::TVec3<> worldLoc = Grid::ToWorld(loc);
 				const float avg = Grid::low.neighborCellDistances.GetAverage();
 				//const bool isHostile = owner != nexus;
-				rs.isHostile = owner != nexus;
 				rs.isConstructor = turretBase && turretBase->turret->CanDo(Objects::Component::Operation::Construct);
 				rs.isAirborne = e.IsAboveTerrain();
-				rs.isPlane = e.IsPlane();
 				if (turretBase)
 				{
 					if (e.IsPlane())
 					{
 						if (turretBase->CanAttackIgnoreAmmo())
 						{
-							rs.groundActivity = 
+							rs.attack.groundActivity = 
 							(
 								turretBase->turret->trajectoryType == Objects::TrajectoryType::A2GMissile
 								||
 								turretBase->turret->trajectoryType == Objects::TrajectoryType::VerticalBeam
 							) ? 1 : 0;
 
-							rs.airActivity = std::max(0.25f,1.f - rs.groundActivity);
+							rs.attack.airActivity = 1.f - rs.attack.groundActivity;
 						}
-						else
+						
 						{
-							rs.airActivity = 1;
-							rs.groundActivity = std::min(1.f, float(turretBase->turret->groundScanningRange.GetValue(e.GetResearchState(owner))) / 
+							rs.sensor.airActivity = 1;
+							rs.sensor.groundActivity = std::min(1.f, float(turretBase->turret->groundScanningRange.GetValue(e.GetResearchState(owner))) / 
 								e.GetScanningRange(owner));
 						}
 					}
 					else
 					{
-						rs.airActivity = turretBase->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero() ? 1 : 0;
-						if (rs.airActivity == 0)
-							rs.groundActivity = 1;
+						if (turretBase->CanAttackIgnoreAmmo())
+						{
+							rs.attack.airActivity = 
+							(
+								turretBase->turret->trajectoryType == Objects::TrajectoryType::AAMissile
+							) ? 1 : 0;
+							rs.attack.groundActivity = 1.f - rs.attack.airActivity;
+						}
+
+
+						rs.sensor.airActivity = turretBase->turret->subOrbitalScanningRange.IsFunctionOrConstNonZero() ? 1 : 0;
+						if (rs.sensor.airActivity == 0)
+							rs.sensor.groundActivity = 1;
 						else
-							rs.groundActivity = std::min(1.f, float(e.GetScanningRange(owner)) / turretBase->turret->subOrbitalScanningRange.GetValue(e.GetResearchState(owner))) * 0.25f;
+							rs.sensor.groundActivity = std::min(1.f, float(e.GetScanningRange(owner)) / turretBase->turret->subOrbitalScanningRange.GetValue(e.GetResearchState(owner))) * 0.25f;
 					}
 				}
 				else
 				{
-					rs.airActivity = e.IsPlane() ? 1 : 0;
-					rs.groundActivity = 1.f - rs.airActivity;
+					rs.sensor.airActivity = e.IsPlane() ? 1 : 0;
+					rs.sensor.groundActivity = 1.f - rs.sensor.airActivity;
 				}
 
 				rs.isStationary = !e.IsMobile();
 
-				if (rs.impact > 0)
+				//if (rs.TotalHostileImpact() > 0)
 				{
 					UINT32 locStack = loc.stackID;
 					if (rs.isHostile)
@@ -193,9 +211,10 @@ namespace Objects
 					const bool isRed = IsRed(stepDistance);
 					const bool isYellow = IsYellow(stepDistance);
 					const bool isNoticed = IsNoticed(stepDistance);
-					rs.opacity = (float(isBlack?6:0) + float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2->4(black)
+					rs.significance = (float(isBlack?6:0) + float(isRed?3:0) + float(isYellow ? 2 : 0) + float(isNoticed))/3.f;	//0->1/3->1->2->4(black)
 					rs.distanceToPole = stepDistance;
-					rs.totalImpact = rs.opacity * rs.impact;
+					rs.attack.scaled = rs.significance * rs.attack.impact;
+					rs.sensor.scaled = rs.significance * rs.sensor.impact;
 				}
 				return rs;
 			}
@@ -343,40 +362,66 @@ namespace Objects
 			return Zone::Irrelevant;
 		}
 
-
-		void TVector::operator+=(const TEstimation&est)
+		TLevel		TEstimation::ToThreat(bool includeThreatEstimationFactor) const
 		{
-			if (est.totalImpact == 0)
+			TLevel rs;
+			rs += *this;
+			if (includeThreatEstimationFactor)
+				rs *= Detail::estimationFactor;
+			return rs;
+		}
+
+
+		TSupport	TEstimation::ToSupport() const
+		{
+			TSupport rs;
+			rs += *this;
+			return rs;
+		}
+
+
+		void TSupport::operator+=(const TEstimation&est)
+		{
+			attack.Inc(est,est.attack);
+			sensor.Inc(est,est.sensor);
+		}
+
+
+		void TVector::Inc(const TEstimation&est, const TAspect&aspect)
+		{
+			if (est.TotalHostileImpact() == 0)
 				return;
 			if (est.isHostile)
 			{
 				if (est.isPlane)
-					air += est;
+					air.Inc(est,aspect);
 				else
-					ground += est;
+					ground.Inc(est,aspect);
 				return;
 			}
 
 			if (est.isStationary)
 			{
-				air.stationary += est.totalImpact * est.airActivity;
-				ground.stationary += est.totalImpact * est.groundActivity;
+				air.stationary += aspect.scaled * aspect.airActivity;
+				ground.stationary += aspect.scaled * aspect.groundActivity;
 			}
 			else
 			{
-				air.mobile += est.totalImpact * est.airActivity;
-				ground.mobile += est.totalImpact * est.groundActivity;
+				air.mobile += aspect.scaled * aspect.airActivity;
+				ground.mobile += aspect.scaled * aspect.groundActivity;
 			}
 		}
 
 		void TLevel::operator+=(const TEstimation&est)
 		{
-			TVector::operator+=(est);
+			TAspect asp = TAspect::Max(est.attack,est.sensor);
+
+			TVector::Inc(est,asp);
 
 			if (est.isConstructor)
 			{
-				constructorOpacitySum += est.opacity;
-				closestHostileConstructorOpacity = std::max(closestHostileConstructorOpacity,est.opacity);
+				constructorSignificanceSum += est.significance;
+				highestConstructorSignificance = std::max(highestConstructorSignificance,est.significance);
 			}
 		}
 
@@ -471,7 +516,7 @@ namespace Objects
 			return Detail::estimationFactor;
 		}
 
-		TLevel					Get(int poleIndex)
+		const TLevel&			Get(int poleIndex)
 		{
 			return Detail::GetPole(poleIndex).threatLevel;
 		}

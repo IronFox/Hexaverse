@@ -43,9 +43,9 @@ namespace Nexus
 	}
 
 
-	void SpawnEntities(UINT32 poleIndex, const Objects::PNexusPort&port, float threatLevel, float supportLevel, bool force, bool airThreat)
+	void SpawnEntities(UINT32 poleIndex, const Objects::PNexusPort&port, float threatLevel, Objects::NexusThreat::TSupport&support, bool force, bool airThreat)
 	{
-		while (supportLevel < threatLevel || force)
+		while (support.MobileTotal(!airThreat) < threatLevel || force)
 		{
 			force = false;
 
@@ -110,9 +110,9 @@ namespace Nexus
 				}
 
 				Journal::currentRound.LogEntityCreation(spawned);
-				supportLevel += Objects::NexusThreat::Estimate(poleIndex,spawned).totalImpact;
+				support += Objects::NexusThreat::Estimate(poleIndex,spawned);
 
-				if (supportLevel >= threatLevel)
+				if (support.MobileTotal(!airThreat) >= threatLevel)
 					break;	//just spawn one if there's a terraformer violation
 			}
 			else
@@ -153,12 +153,12 @@ namespace Nexus
 
 
 			LogEvent(EventSignificance::Debug, "Threat level for " + port->GetName() + " considered " + String(threat.GroundTotal())+"|"+String(threat.AirTotal())
-				+" (support here: "+String(support.GroundTotal())+"|"+String(support.AirTotal())+", hostile constructor(s) at: "+String(threat.closestHostileConstructorOpacity)+"/"+String(threat.constructorOpacitySum)+")");
+				+" (support here: "+String(support.GroundMobileTotal())+"|"+String(support.AirMobileTotal())+", hostile constructor(s) at: "+String(threat.highestConstructorSignificance)+"/"+String(threat.constructorSignificanceSum)+")");
 
-			bool constructorViolation = (threat.closestHostileConstructorOpacity > ConstructorThreshold && support.MobileTotal() < Game::factionStartMineralValue + 20.f);
-			SpawnEntities(i, port, threat.GroundTotal(), support.ground.mobile, constructorViolation,false);
+			bool constructorViolation = (threat.highestConstructorSignificance > ConstructorThreshold && support.MobileTotal() < Game::factionStartMineralValue + 20.f);
+			SpawnEntities(i, port, threat.GroundTotal(), support, constructorViolation,false);
 			if (RuntimeConfig::roundNumber >= Game::Config::Nexus::minRoundForPlanes)
-				SpawnEntities(i, port, threat.AirTotal(), support.air.mobile, false,true);
+				SpawnEntities(i, port, threat.AirTotal(), support, false,true);
 		}
 	}
 }

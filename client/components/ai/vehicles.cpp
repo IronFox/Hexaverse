@@ -6,7 +6,7 @@
 #include "../playerControlBegin.h"
 #include <objects/nexus/nexusThreatEstimation.h>
 #include "../gridControl.h"
-
+#include "aiCommon.h"
 
 namespace AI
 {
@@ -21,8 +21,6 @@ namespace AI
 				minRoundForPlanes = 10;
 		bool	awaitSensory = false;
 
-		Random random;
-
 		bool done = true;
 
 		struct TThreatEstimation;
@@ -35,8 +33,8 @@ namespace AI
 					selfIsScanner = false;
 			Objects::PWorldEntity self;
 
-			void	EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const;
-			void	EstimateLivingThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const;
+			void	EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, const Objects::WorldEntity&e, TThreatEstimation &current) const;
+			void	EstimateLivingThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, const Objects::WorldEntity&e, TThreatEstimation &current) const;
 			void	EstimateThreatFromAll(const Objects::TrajectoryEndPoint&loc, bool ignoreHostiles, TThreatEstimation&threat) const;
 		};
 		TThreatContext		currentContext;
@@ -88,7 +86,7 @@ namespace AI
 		Buffer0<TAttackTarget>	attackTarget;
 
 		void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicBuffer<TAttackTarget>&attackTarget, bool attacksAirborne, bool attacksGroundEntities);
-		float QuadraticInterestDistance(const Objects::TrajectoryEndPoint&self, const Objects::PWorldEntity&other, bool interestedInAirborne, bool interestedInGround);
+		float QuadraticInterestDistance(const Objects::TrajectoryEndPoint&self, const Objects::WorldEntity&other, bool interestedInAirborne, bool interestedInGround);
 		float EstimateInterest(const Objects::PTurretBase&base, int baseAtHeight, float constructionCost, float distance2);
 		bool Seeing(const Objects::WorldEntity&e, const Objects::TrajectoryEndPoint&loc, float&effectiveSensoryRange);
 		void AddSameTurretBadness(float&badWeight, const Grid::LCellIdI&myLoc, const Grid::LCellIdI&theirLoc, const Objects::PVehicle&v0, const Objects::PVehicle&v1, bool isAA);
@@ -120,6 +118,7 @@ namespace AI
 						)
 					);
 			const bool isAA = t->trajectoryType == Objects::TrajectoryType::AAMissile;
+			const bool isBomber = t->constName == ConstName::Turret_Bomber;
 
 			const bool interestedInAirborne = attacksAirborne || v->GetSubOrbitalScanningRange() > 0 || (v->IsPlane() && !attacksGroundEntities);
 			const bool interestedInGroundTargets = attacksGroundEntities || !v->IsPlane() || v->turret->groundScanningRange.GetValue(v->GetResearchState()) >= 0.5f * v->GetScanningRange();
@@ -335,7 +334,7 @@ namespace AI
 							{
 								//if (e->IsMobile())
 								{
-									float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),e,interestedInAirborne,interestedInGroundTargets);
+									float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),*e,interestedInAirborne,interestedInGroundTargets);
 									const auto base = e->GetTurretBase();
 									if (base && base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
 										badWeight += 20 / (1.f + distance);
@@ -354,7 +353,7 @@ namespace AI
 							return;
 						if (!e->IsAboveTerrain() && !interestedInGroundTargets)
 							return;
-						float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),e,interestedInAirborne,interestedInGroundTargets);
+						float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),*e,interestedInAirborne,interestedInGroundTargets);
 
 						float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
 									e->GetConstructionCost(),distance);
@@ -504,10 +503,10 @@ namespace AI
 							[interestedInAirborne,interestedInGroundTargets,best,v]
 							(const Objects::PWorldEntity&e)
 							{
-								float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(best->cell),e,interestedInAirborne,interestedInGroundTargets);
+								float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(best->cell),*e,interestedInAirborne,interestedInGroundTargets);
 								if (distance < M::Sqr(2.f * v->GetFlatAttackRange()))
 									ofInterestToAttacker.Set(e->id);
-								distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(v->location),e,interestedInAirborne,interestedInGroundTargets);
+								distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(v->location),*e,interestedInAirborne,interestedInGroundTargets);
 								if (distance < M::Sqr(2.f * v->GetFlatAttackRange()))
 									ofInterestToAttacker.Set(e->id);
 							});
@@ -545,7 +544,7 @@ namespace AI
 
 
 
-		void TThreatContext::EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const
+		void TThreatContext::EstimateDeadThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, const Objects::WorldEntity&e, TThreatEstimation &current) const
 		{
 			if (e.IsAboveTerrain() != self->IsAboveTerrain())
 				return;
@@ -576,47 +575,47 @@ namespace AI
 		}
 
 
-		bool Seeing(const Objects::WorldEntity&e, const Objects::TrajectoryEndPoint&loc, float&effectiveSensoryRange)
+		bool Seeing(const Objects::WorldEntity&observer, const Objects::TrajectoryEndPoint&observed, float&effectiveSensoryRange)
 		{
 		
-			if (IsSubOrbital(loc.cellLocation))
+			if (IsSubOrbital(observed.cellLocation))
 			{
-				if (e.IsAboveTerrain())
+				if (observer.IsAboveTerrain())
 				{
-					float distance = Vec::quadraticDistance(e.system.w.xyz,loc.worldLocation);
-					effectiveSensoryRange = e.GetScanningRange();
+					float distance = Vec::quadraticDistance(observer.system.w.xyz,observed.worldLocation);
+					effectiveSensoryRange = observer.GetScanningRange();
 					return distance < M::Sqr(effectiveSensoryRange);
 				}
 				else
 				{
-					float distance = Vec::quadraticDistance(ToSubOrbit(e.location),loc.worldLocation);
-					auto turretBase = e.GetTurretBase();
+					float distance = Vec::quadraticDistance(ToSubOrbit(observer.location),observed.worldLocation);
+					auto turretBase = observer.GetTurretBase();
 					effectiveSensoryRange = turretBase ? turretBase->GetSubOrbitalScanningRange() : 0;
 					return turretBase && distance < M::Sqr(effectiveSensoryRange);
 				}
 			}
 			else
 			{
-				if (e.IsAboveTerrain())
+				if (observer.IsAboveTerrain())
 				{
-					float distance = Vec::quadraticDistance(e.system.w.xyz,ToSubOrbit(loc.cellLocation));
+					float distance = Vec::quadraticDistance(observer.system.w.xyz,ToSubOrbit(observed.cellLocation));
 
-					auto turretBase = e.GetTurretBase();
-					effectiveSensoryRange = turretBase ? turretBase->turret->groundScanningRange.GetValue(e.GetResearchState()) : 0;
+					auto turretBase = observer.GetTurretBase();
+					effectiveSensoryRange = turretBase ? turretBase->turret->groundScanningRange.GetValue(observer.GetResearchState()) : 0;
 					return turretBase && distance < M::Sqr(effectiveSensoryRange);
 				}
 				else
 				{
-					float distance = Vec::quadraticDistance(e.system.w.xyz,loc.worldLocation);
+					float distance = Vec::quadraticDistance(observer.system.w.xyz,observed.worldLocation);
 
-					effectiveSensoryRange = e.GetScanningRange();
+					effectiveSensoryRange = observer.GetScanningRange();
 					return distance < M::Sqr(effectiveSensoryRange);
 				}
 			}
 		}
 
 
-		void TThreatContext::EstimateLivingThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, Objects::WorldEntity&e, TThreatEstimation &current) const
+		void TThreatContext::EstimateLivingThreatLevelFrom(const Objects::TrajectoryEndPoint&loc, const Objects::WorldEntity&e, TThreatEstimation &current) const
 		{
 			const TThreatContext&ctx = *this;
 			if (ctx.selfCanIgnoreThreat && e.ignoreThreatRounds)
@@ -636,7 +635,7 @@ namespace AI
 
 			if (e.CanHit(loc.worldLocation))
 			{
-				Objects::PTurretBase b = e.GetTurretBase();
+				Objects::PConstTurretBase b = e.GetTurretBase();
 				current.damageThreat += b->GetDamagePotentialPerRound();
 			}
 		}
@@ -644,6 +643,8 @@ namespace AI
 
 		void TThreatContext::EstimateThreatFromAll(const Objects::TrajectoryEndPoint&loc, bool friendlyDeathsOnly, TThreatEstimation&threat) const
 		{
+			if (threatCache.Query(loc.cellLocation,threat))
+				return;
 		
 			threat = TThreatEstimation();
 			if (!friendlyDeathsOnly)
@@ -740,23 +741,23 @@ namespace AI
 	
 		}
 
-		float QuadraticInterestDistance(const Objects::TrajectoryEndPoint&self, const Objects::PWorldEntity&other, bool interestedInAirborne, bool interestedInGround)
+		float QuadraticInterestDistance(const Objects::TrajectoryEndPoint&self, const Objects::WorldEntity&other, bool interestedInAirborne, bool interestedInGround)
 		{
 			if (IsSubOrbital(self.cellLocation))
 			{
-				if (other->IsAboveTerrain())
+				if (other.IsAboveTerrain())
 				{
-					float distance = Vec::quadraticDistance(self.worldLocation,other->system.w.xyz);
+					float distance = Vec::quadraticDistance(self.worldLocation,other.system.w.xyz);
 					return distance;
 				}
 
-				return Vec::quadraticDistance(self.worldLocation,ToSubOrbit(other->location));
+				return Vec::quadraticDistance(self.worldLocation,ToSubOrbit(other.location));
 			}
 			else
 			{
-				if (other->IsAboveTerrain())
-					return Vec::quadraticDistance(ToSubOrbit(self.cellLocation),other->system.w.xyz);
-				float distance = Vec::quadraticDistance(self.worldLocation,other->system.w.xyz);
+				if (other.IsAboveTerrain())
+					return Vec::quadraticDistance(ToSubOrbit(self.cellLocation),other.system.w.xyz);
+				float distance = Vec::quadraticDistance(self.worldLocation,other.system.w.xyz);
 				return distance;
 			}
 
@@ -823,31 +824,54 @@ namespace AI
 			{
 				float r = b->GetFlatAttackRange() + b->GetAttackExplosionRadius();
 				float damagePotentialPerRound = 0.f;
-				count_t participants = 0;
+				//count_t participants = 0;
+				Buffer0<Objects::PWorldEntity> participants;
 				Objects::ForeachMobileWorldEntity([ref,r,&damagePotentialPerRound,&participants,&e](const Objects::PMobileEntity&e1)
 				{
-					bool canParticipate = (!e.IsAboveTerrain() && (!e1->IsPlane() || e1->GetType() == Objects::SubOrbital::Bomber::globalPrototype->GetType()))
-						|| (e.IsAboveTerrain() && (e1->GetType() == Objects::SubOrbital::Raptor::globalPrototype->GetType() || e1->turret->trajectoryType == Objects::TrajectoryType::AAMissile));
-					if (!canParticipate)
+					if (!e1->isOwnedByMe || !e1->CanAttack() || e1->turret->dealsEMPDamage 
+						|| e1->turret->requiresStationaryVehicle
+						)
 						return;
 
-					if (e1->isOwnedByMe && e1->turret->CanAttack() && !e1->turret->dealsEMPDamage)
+					if (e.IsAboveTerrain())
 					{
-						float d2 = Vec::quadraticDistance(e1->GetWorldPosition(),ref);
+						if (!e1->CanHit(ToSubOrbit(e1->location)))
+							return;	//can't hit air targets
+					}
+					else
+					{
+						if (!e1->CanHit(ToGround(e1->location,e.location)))
+							return;	//can't hit ground targets
+					}
+
+					if (e1->IsPlane())
+					{
+						if (!e.CanHit(ToSubOrbit(e.location)))
+							return;	//hostile can't hit local. won't participate (due to range-movement-attunement of directly opposed types)
+					}
+					else
+					{
+						if (!e.CanHit(ToGround(e.location, e1->location)))
+							return;	//hostile can't hit local. won't participate (due to range-movement-attunement of directly opposed types)
+					}
+
+					{
+						float d2 = QuadraticInterestDistance( Objects::TrajectoryEndPoint(e1->location),e,true,true);
 						if (d2 < M::Sqr(r*1.2f))	//might be okay anyway
 						{
 							float p = e1->GetDamagePotentialPerRound();
-							if (!e1->turret->independentAttackAndMotion)
-								p *= 0.5f;
+							//if (!e1->turret->independentAttackAndMotion)
+							//	p *= 0.5f;
 							damagePotentialPerRound += p;
-							participants++;
+							participants<< e1;
+//							participants++;
 						}
 					}
 				});
 
-				if (participants > 1)
+				if (participants.Count() > 1)
 				{
-					float potentialLeft = damagePotentialPerRound * (participants -1) / float(participants);
+					float potentialLeft = damagePotentialPerRound * (participants.Count() -1) / float(participants.Count());
 					int health = e.health;
 					if (e.IsDeadOrGhost())	//ghost
 						health = e.GetMaxHealth();
@@ -902,6 +926,7 @@ namespace AI
 
 	void	BeginBlockTest( const Objects::PWorldEntity&v, bool initWithFriendlyDeathsOnly, bool canIgnoreThreat, bool overConfident )
 	{
+		Detail::threatCache.Clear();
 		auto base = v->GetTurretBase();
 		Detail::currentContext.selfIsOffensiveVehicle = base && base->turret->CanAttack() && base->turret->independentAttackAndMotion;
 		Detail::currentContext.selfIsScanner = base && (base->turret == &Objects::Component::radar || base->turret == &Objects::Component::SubOrbital::sensorDrone);

@@ -1400,8 +1400,8 @@ namespace Network
 				lvl.air.stationary = pole->airStationaryThreatLevel;
 				lvl.ground.mobile = pole->groundMobileThreatLevel;
 				lvl.ground.stationary = pole->groundStationaryThreatLevel;
-				lvl.closestHostileConstructorOpacity = pole->closestHostileConstructorOpacity;
-				lvl.constructorOpacitySum = pole->constructorOpacitySum;
+				lvl.highestConstructorSignificance = pole->highestConstructorSignificance;
+				lvl.constructorSignificanceSum = pole->constructorSignificanceSum;
 				Objects::NexusThreat::UpdatePole(pole->poleIndex,lvl,pole->deployHeavyBases,pole->hasBase);
 			}
 		}

@@ -23,24 +23,49 @@ namespace Objects
 			,Black
 		);
 
+		struct TSupport;
+		struct TLevel;
+
+		struct TAspect
+		{
+			float				impact = 0,		//!< Significance of the unit, regardless of distance
+								scaled = 0,		//!< Product of impact and opacity
+								airActivity = 0,
+								groundActivity = 0;
+
+
+			static TAspect		Max(const TAspect&a, const TAspect&b)
+			{
+				TAspect rs;
+				rs.impact = std::max(a.impact,b.impact);
+				rs.scaled = std::max(a.scaled,b.scaled);
+				rs.airActivity = std::max(a.airActivity,b.airActivity);
+				rs.groundActivity = std::max(a.groundActivity,b.groundActivity);
+				return rs;
+			}
+		};
+
 		/**
 		Threat or support estimation of an entity
 		*/
 		struct TEstimation
 		{
-			float				impact = 0,	//!< Significance of the unit, regardless of distance
-								opacity = 0,	//!< Opacity value [0-4] (usually [0-1]) to the respective pole. Estimations are 0(none), 1/3(noticed: <9 steps), 1(yellow: <6 steps), 2(red: <4 steps), 4(black: at port)
-								totalImpact = 0;	//!< Product of impact and opacity
+			TAspect				attack,
+								sensor;
+			float				significance = 0;		//!< Opacity value [0-4] (usually [0-1]) to the respective pole. Estimations are 0(none), 1/3(noticed: <9 steps), 1(yellow: <6 steps), 2(red: <4 steps), 4(black: at port)
 			bool				isConstructor = false,	//!< True if this entity can build things
 								isHostile = false,		//!< True if this entity is hostile
 								isAirborne = false,		//!< True if this entity is currently flying
 								isPlane = false,		//!< True if this entity is a plane
 								isStationary = false;	//!< True if this entity cannot move
 			UINT32				distanceToPole = std::numeric_limits<UINT32>::max();	//!< Detected cell distance to the estimation pole
-			float				airActivity = 0,		//!< Air activity factor [0,1]
-								groundActivity = 0;		//!< Ground activity factor [0,1]
 
 			Zone				GetZone() const;
+			float				TotalHostileImpact() const {return std::max(attack.scaled,sensor.scaled);}
+			float				TotalFriendlyImpact() const {return std::min(attack.scaled,sensor.scaled);}
+
+			TSupport			ToSupport() const;
+			TLevel				ToThreat(bool includeThreatEstimationFactor) const;
 		};
 
 
@@ -57,12 +82,12 @@ namespace Objects
 
 			float				Total() const {return mobile + stationary;}
 			float				Level(bool sourceStationary) const {return sourceStationary ? stationary : mobile;}
-			void				operator+=(const TEstimation&est)
+			void				Inc(const TEstimation&est, const TAspect&aspect)
 			{
 				if (est.isStationary)
-					stationary += est.totalImpact;
+					stationary += aspect.scaled;
 				else
-					mobile += est.totalImpact;
+					mobile += aspect.scaled;
 			}
 			void				operator*=(float factor)
 			{
@@ -92,12 +117,14 @@ namespace Objects
 			float				GroundTotal() const {return ground.Total();}
 			float				Total() const {return AirTotal() + GroundTotal();}
 			float				MobileTotal() const {return air.mobile + ground.mobile;}
+			float				MobileTotal(bool targetGround) const {return targetGround ? ground.mobile : air.mobile;}
 			float				StationaryTotal() const {return air.stationary + ground.stationary;}
+			float				StationaryTotal(bool targetGround) const {return targetGround ? ground.stationary : air.stationary;}
 
 			const TDomain&		Domain(bool targetGround) const {return targetGround ? ground : air;}
 			TDomain&			Domain(bool targetGround) {return targetGround ? ground : air;}
 
-			void				operator+=(const TEstimation&est);
+			void				Inc(const TEstimation&est, const TAspect&aspect);
 			void				operator*=(float factor)
 			{
 				air *= factor;
@@ -112,7 +139,27 @@ namespace Objects
 		/**
 		Support vector (all friendly entities)
 		*/
-		typedef TVector			TSupport;
+		struct TSupport
+		{
+			TVector				attack, 
+								sensor;
+
+			float				AttackTotal() const {return attack.Total();}
+			float				SensorTotal() const {return sensor.Total();}
+			float				Total() const {return std::min(attack.Total(),sensor.Total());}
+			float				MobileTotal() const {return std::min(attack.MobileTotal(),sensor.MobileTotal());}
+			float				MobileTotal(bool targetGround) const {return std::min(attack.MobileTotal(targetGround),sensor.MobileTotal(targetGround));}
+			float				AirMobileTotal() const {return std::min(attack.air.mobile,sensor.air.mobile);}
+			float				GroundMobileTotal() const {return std::min(attack.ground.mobile,sensor.ground.mobile);}
+
+			const TVector&		Aspect(bool attackSupport) const {return attackSupport ? attack : sensor;}
+
+			void				operator+=(const TEstimation&);
+			friend String		ToString(const TSupport&v)
+			{
+				return "At{"+ToString(v.attack)+"},Se{"+ToString(v.sensor)+"}";
+			}
+		};
 
 		/**
 		Threat level vector (all hostile entities)
@@ -120,16 +167,16 @@ namespace Objects
 		struct TLevel: public TVector
 		{
 			/**
-			Sum of all hostile constructor opacities.
+			Sum of all hostile constructor significances.
 			*/
-			float				constructorOpacitySum=0;
+			float				constructorSignificanceSum=0;
 			/**
 			Highest hostile constructor opacity.
 			*/
-			float				closestHostileConstructorOpacity=0;
+			float				highestConstructorSignificance=0;
 
 			void				operator+=(const TEstimation&est);
-			TLevel				operator*(float factor)
+			TLevel				operator*(float factor) const
 			{
 				TLevel rs = *this;
 				rs *= factor;
@@ -137,7 +184,7 @@ namespace Objects
 			}
 			friend String		ToString(const TLevel&v)
 			{
-				return ToString((const TVector&)v)+",constOpSum="+String(v.constructorOpacitySum)+",closest="+String(v.closestHostileConstructorOpacity);
+				return ToString((const TVector&)v)+",constSigSum="+String(v.constructorSignificanceSum)+",highest="+String(v.highestConstructorSignificance);
 			}
 
 		};
@@ -162,7 +209,7 @@ namespace Objects
 		bool					IsBase(int poleIndex);
 		bool					HasPort(int poleIndex);
 		bool					IsInEmpZone(int poleIndex);
-		TLevel					Get(int poleIndex);
+		const TLevel&			Get(int poleIndex);
 		const TSupport&			GetSupport(int support);
 		bool					DeployHeavyVehicleBases(int poleIndex);
 		bool					IsPlaneFactoryHere(UINT32 stackID);

@@ -690,7 +690,7 @@ namespace InputControl
 					if (m != nullptr)
 					{
 						auto am = To<Objects::AllianceMarker>::Cast(m);
-						auto wdialog = HUD::Dialog::DeleteQuery(am->GetNiceName(), am->text,
+						auto wdialog = HUD::Dialog::DeleteQuery(am->GetNiceName()+" at "+ToString(am->location), am->text,
 							Network::allowedChatCharacters, 
 						[]()
 						{

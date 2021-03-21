@@ -263,7 +263,7 @@ namespace AI
 			if (Objects::NexusThreat::IsInEmpZone(i))
 				continue;
 
-			const auto threat = Objects::NexusThreat::Get(i);
+			const auto threat = Objects::NexusThreat::Get(i) * Objects::NexusThreat::GetEstimationFactor();
 			auto support = Objects::NexusThreat::GetSupport(i);
 
 			const auto port = Objects::NexusThreat::GetPort(i);
@@ -272,12 +272,10 @@ namespace AI
 			port->GetResourceVector(v,dummy,dummy);
 			v.SeparateBySign(portProductionPerRound,dummy);
 
-
-
 			LogEvent(EventSignificance::Debug, "AI: Threat level for " + port->GetName() + " at pole "+String(i)+" considered " + String(threat.GroundTotal())+"|"+String(threat.AirTotal())
-				+" (support here: "+String(support.air.mobile)+"|"+String(support.ground.mobile)+", hostile constructor(s) at: "+String(threat.closestHostileConstructorOpacity)+"/"+String(threat.constructorOpacitySum)+")");
+				+" (support here: "+String(support.GroundMobileTotal())+"|"+String(support.AirMobileTotal())+", hostile constructor(s) at: "+String(threat.highestConstructorSignificance)+"/"+String(threat.constructorSignificanceSum)+")");
 
-			bool constructorViolation = (threat.closestHostileConstructorOpacity > ConstructorThreshold);
+			bool constructorViolation = (threat.highestConstructorSignificance > ConstructorThreshold);
 
 			//let's take a look at producers...
 			if (Objects::NexusThreat::IsBase(i))
@@ -311,10 +309,10 @@ namespace AI
 				}
 
 
-				while (support.MobileTotal() < threat.Total() || constructorViolation)
+				while (support.AirMobileTotal() < threat.AirTotal() || support.GroundMobileTotal() < threat.GroundTotal() || constructorViolation)
 				{
-					auto airDemand = threat.AirTotal() - support.air.mobile;
-					auto groundDemand = threat.GroundTotal() - support.ground.mobile;
+					auto airDemand = threat.AirTotal() - support.AirMobileTotal();
+					auto groundDemand = threat.GroundTotal() - support.GroundMobileTotal();
 
 					Detail::ProductionTable table(i);
 

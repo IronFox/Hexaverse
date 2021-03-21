@@ -48,23 +48,19 @@ Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the gi
 	Likewise a bomber is considered ground-active, not air-active.
 	
 	@param pole Pole index in [1,12]
-	@param ground True: estimate ground-active units only, False: estimate air-active units only
-	@param stationary True: estimate stationary units only, False: estimate mobile units only
 	]]
-	float		Game.AI.GetThreatLevel(int pole, bool ground, bool stationary);
-	float		Game.AI.GetSupportLevel(int pole, bool ground, bool stationary);
+	AiThreat	Game.AI.GetThreatLevel(int pole);
+	AiSupport	Game.AI.GetSupportLevel(int pole);
 	
 	bool		Game.AI.ShouldBuildPlanes();			-- Checks whether the AI should build planes right now. Affected by difficulty settings
 	bool		Game.AI.ShouldBuildHeavyVehicleBases();	-- Checks whether the AI should build heavy base vehicles right now. Affected by difficulty settings
 	
 	--[[
 	Estimates the impact of a unit type at the given location for the specified pole base.
-	This function represents the base estimation used for the sum-functions before.
-	It takes into account the distance from the pole, construction cost, and scanning/attack range (depending on availability).
-	The effective pole-distance of hostile units is reduced by their scanning/attack range to estimate their effective influence zone.
+	See table type AiEst for reference.
 	]]
-	float		Game.AI.Estimate(int poleIdx, UnitType, Loc, Faction);
-	float		Game.AI.EstimateUnit(int poleIdx, Unit);				-- Same as above for a known unit. Also takes their relative health into account
+	AiEst		Game.AI.Estimate(int poleIdx, UnitType, Loc, Faction);
+	AiEst		Game.AI.EstimateUnit(int poleIdx, Unit);				-- Same as above for a known unit. Also takes their relative health into account
 	Unit[]		Game.AI.GetBaseVehiclePlants(int);		-- Fetches all vehicle plants provided by the base at the specified pole index (1-12)
 	Unit[]		Game.AI.GetBasePlaneFactories(int);		-- Fetches all plane factories provided by the base at the specified pole index (1-12)
 	Unit		Game.AI.GetNexusPort(int);				-- Fetches the Nexus Port positioned at the specified pole (1-12). May return nil
@@ -109,6 +105,64 @@ Table-Type: ExportResult
 	string		errorType;			-- Export error. May be nil (no error), 'TooLarge', 'TableLoop', 'NotSupported', 'Other'
 	string		errorDesc;			-- Extended error description, meant to be presented to the user
 }
+
+
+Table-Type: AiEst
+{
+	bool		isHostile;			-- True if estimated unit is hostile
+	--[[
+	significance:
+	Estimated significance: 1/3 if noticed, >2 if encroaching (yellow), 
+	>5 if near base (red), >11 if near port (black)
+	]]
+	float		significance;
+	float		airActivity;		-- Estimation of activity of this unit in air-space [0-1]
+	float		groundActivity;		-- Estimation of activity of this unit on ground-level [0-1]
+	int			distanceToPole;		-- Number of movement steps between current unit location and estimation pole
+	string		zone;				-- Detected proximity zone: 'Irrelevant', 'Noticed', 'Yellow', 'Red', 'Black'
+	bool		isAirborne;			-- Unit is currently flying
+	bool		isConstructor;		-- Unit can build structures
+	bool		isPlane;			-- Unit can fly
+	bool		isStationary;		-- Unit is structure (cannot move)
+	float		sensorImpact;		-- Raw unit value in regards to sensory. Generally mineral value+range
+	float		scaledSensorImpact;	-- Product of sensorImpact and significance
+	float		sensorAirActivity;	-- Air sensor activity scalar [0-1]
+	float		sensorGroundActivity;	-- Ground sensor activity scalar [0-1]
+	float 		attackImpact;		-- Raw unit value in regards to attack. Generally mineral value+range+damage potential
+	float		scaledAttackImpact;	-- Product of attackImpact and significance
+	float		attackAirActivity;	-- Air attack activity scalar [0-1]. 0 if unable to attack
+	float		attackGroundActivity;	-- Ground attack activity scalar [0-1]. 0 if unable to attack
+	float		totalHostileImpact;	-- Maximum of scaledSensorImpact and scaledAttackImpact. Base for calculating threat
+	float		totalFriendlyImpact;-- Minimum of scaledSensorImpact and scaledAttackImpact. Base for calculating support
+}
+
+
+Table-Type: AiThreat
+{
+	float		groundStationary;	-- Total hostile impact of hostile stationary ground targets. Scaled by server difficulty
+	float		groundMobile;		-- Total hostile impact of hostile mobile ground targets. Scaled by server difficulty
+	float		airStationary;		-- Total hostile impact of hostile stationary air targets. Scaled by server difficulty
+	float		airMobile;			-- Total hostile impact of hostile mobile air targets. Scaled by server difficulty
+	float		constructorSignificanceSum;	-- Sum of all hostile constructor significances
+	float		highestConstructorSignificance;	-- Highest detected hostile constructor significance
+	
+	void		Inc(AiEst);			-- Includes a the given estimation into the local table
+}
+
+Table-Type: AiSupport
+{
+	float		attackGroundStationary;	-- Total impact of friendly stationary, attacking, ground units
+	float		attackGroundMobile;		-- Total impact of friendly mobile, attacking, ground units
+	float		attackAirStationary;	-- Total impact of friendly stationary, attacking, air units
+	float		attackAirMobile;		-- Total impact of friendly mobile, attacking, air units
+	float		sensorGroundStationary;	-- Total impact of friendly stationary, radar, ground units
+	float		sensorGroundMobile;		-- Total impact of friendly mobile, radar, ground units
+	float		sensorAirStationary;	-- Total impact of friendly stationary, radar, air units
+	float		sensorAirMobile;		-- Total impact of friendly mobile, radar, air units
+
+	void		Inc(AiEst);			-- Includes a the given estimation into the local table
+}
+
 
 
 Table-Type: Alliance

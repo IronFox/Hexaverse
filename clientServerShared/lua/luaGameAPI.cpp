@@ -16,6 +16,68 @@ namespace Lua
 {
 	namespace Detail
 	{
+		template <typename T>
+			void	Require(const Lua::Table&table, const char*fieldName, T&rs)
+			{
+				if (!table.GetField(fieldName,rs))
+					throw Lua::Exception(CLOCATION,"Failed to query field '"+String(fieldName)+"' from Lua table as "+typeid(T).name());
+			}
+		template <typename T>
+			void	Require(const Lua::Table&table, const String&fieldName, T&rs)
+			{
+				if (!table.GetField(fieldName,rs))
+					throw Lua::Exception(CLOCATION,"Failed to query field '"+fieldName+"' from Lua table as "+typeid(T).name());
+			}
+
+		Lua::Table ToTable(const Lua::PProgram&program, const Objects::NexusThreat::TEstimation&est)
+		{
+			Lua::Table table = program->CreateTable();
+			table.SetField("isHostile",est.isHostile);
+			table.SetField("significance",est.significance);
+			table.SetField("distanceToPole",est.distanceToPole);
+			table.SetField("zone",est.GetZone().ToString());
+			table.SetField("isAirborne",est.isAirborne);
+			table.SetField("isConstructor",est.isConstructor);
+			table.SetField("isPlane",est.isPlane);
+			table.SetField("isStationary",est.isStationary);
+			table.SetField("sensorImpact",est.sensor.impact);
+			table.SetField("scaledSensorImpact",est.sensor.scaled);
+			table.SetField("sensorAirActivity",est.sensor.airActivity);
+			table.SetField("sensorGroundActivity",est.sensor.groundActivity);
+			table.SetField("attackImpact",est.attack.impact);
+			table.SetField("scaledAttackImpact",est.attack.scaled);
+			table.SetField("attackAirActivity",est.attack.airActivity);
+			table.SetField("attackGroundActivity",est.attack.groundActivity);
+			table.SetField("totalHostileImpact",est.TotalHostileImpact());
+			table.SetField("totalFriendlyImpact",est.TotalFriendlyImpact());
+			return table;
+		}
+
+		Objects::NexusThreat::TEstimation EstimationFromTable(const Lua::Table&table)
+		{
+			if (table.IsEmpty())
+				throw Lua::Exception(CLOCATION,"Given table is nil");
+
+			Objects::NexusThreat::TEstimation rs;
+			Require(table,"isStationary",rs.isStationary);
+			Require(table,"significance",rs.significance);
+			Require(table,"isHostile",rs.isHostile);
+			Require(table,"distanceToPole",rs.distanceToPole);
+			Require(table,"isAirborne",rs.isAirborne);
+			Require(table,"isConstructor",rs.isConstructor);
+			Require(table,"isPlane",rs.isPlane);
+			Require(table,"sensorImpact",rs.sensor.impact);
+			Require(table,"sensorAirActivity",rs.sensor.airActivity);
+			Require(table,"sensorGroundActivity",rs.sensor.groundActivity);
+			Require(table,"attackImpact",rs.attack.impact);
+			Require(table,"attackAirActivity",rs.attack.airActivity);
+			Require(table,"attackGroundActivity",rs.attack.groundActivity);
+			Require(table,"scaledSensorImpact",rs.sensor.scaled);
+			Require(table,"scaledAttackImpact",rs.attack.scaled);
+			return rs;
+		}
+
+
 		void LogLua(const String&msg, const String&programName)
 		{
 			LogEvent(EventClass::Preset::important,programName+"(Lua): "+msg);
@@ -893,13 +955,99 @@ namespace Lua
 			{
 				return Objects::NexusThreat::IsBase(poleIdx-1);
 			});
-			aiTable.SetFunction("GetThreatLevel",[](int poleIdx, bool ground, bool stationary)->float
+			aiTable.SetFunction("GetThreatLevel",[this](int poleIdx)->Lua::Table
 			{
-				return Objects::NexusThreat::Get(poleIdx-1).Domain(ground).Level(stationary) * Objects::NexusThreat::GetEstimationFactor();
+				auto threat = Objects::NexusThreat::Get(poleIdx-1)*Objects::NexusThreat::GetEstimationFactor();
+				Lua::Table rs = program->CreateTable();
+				for (int i = 0; i < 2; i++)
+					for (int k = 0; k < 2; k++)
+					{
+						bool ground = i == 0;
+						bool stationary = k == 0;
+
+						String name = String(ground ? "ground" : "air")+(stationary ? "Stationary":"Mobile");
+						rs.SetField(name,threat.Domain(ground).Level(stationary));
+					}
+
+				rs.SetField("constructorSignificanceSum",threat.constructorSignificanceSum);
+				rs.SetField("highestConstructorSignificance",threat.highestConstructorSignificance);
+
+				Lua::WReference tab = rs;
+				
+				rs.SetFunction("Inc",[tab](const Lua::Table&estTable)
+				{
+					Lua::Table self = tab;
+					if (self.IsEmpty())
+						return;	//this would be very weird
+					Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
+					auto threat = est.ToThreat(true);
+
+					for (int i = 0; i < 2; i++)
+						for (int k = 0; k < 2; k++)
+						{
+							bool ground = i == 0;
+							bool stationary = k == 0;
+
+							String name = String(ground ? "ground" : "air")+(stationary ? "Stationary":"Mobile");
+							float old;
+							Detail::Require(self,name,old);
+							self.SetField(name, old + threat.Domain(ground).Level(stationary));
+						}
+					if (est.isConstructor)
+					{
+						float old;
+						Detail::Require(self,"constructorSignificanceSum",old);
+						self.SetField("constructorSignificanceSum", old + est.significance);
+
+						Detail::Require(self,"highestConstructorSignificance",old);
+						self.SetField("highestConstructorSignificance", std::max(old,est.significance));
+					}
+
+				});
+
+				return rs;
 			});
-			aiTable.SetFunction("GetSupportLevel",[](int poleIdx, bool ground, bool stationary)->float
+			aiTable.SetFunction("GetSupportLevel",[this](int poleIdx)->Lua::Table
 			{
-				return Objects::NexusThreat::GetSupport(poleIdx-1).Domain(ground).Level(stationary);
+				const auto&supp = Objects::NexusThreat::GetSupport(poleIdx-1);
+				Lua::Table rs = program->CreateTable();
+				for (int i = 0; i < 2; i++)
+					for (int j = 0; j < 2; j++)
+						for (int k = 0; k < 2; k++)
+						{
+							bool ground = i == 0;
+							bool attack = j == 0;
+							bool stationary = k == 0;
+
+							String name = String(attack?"attack":"sensor")+(ground ? "Ground" : "Air")+(stationary ? "Stationary":"Mobile");
+							rs.SetField(name,supp.Aspect(attack).Domain(ground).Level(stationary));
+						}
+				Lua::WReference tab = rs;
+				
+				rs.SetFunction("Inc",[tab](const Lua::Table&estTable)
+				{
+					Lua::Table self = tab;
+					if (self.IsEmpty())
+						return;	//this would be very weird
+					Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
+					auto supp = est.ToSupport();
+
+					for (int i = 0; i < 2; i++)
+						for (int j = 0; j < 2; j++)
+							for (int k = 0; k < 2; k++)
+							{
+								bool ground = i == 0;
+								bool attack = j == 0;
+								bool stationary = k == 0;
+
+								String name = String(attack?"attack":"sensor")+(ground ? "Ground" : "Air")+(stationary ? "Stationary":"Mobile");
+								float old;
+								Detail::Require(self,name,old);
+								self.SetField(name, old + supp.Aspect(attack).Domain(ground).Level(stationary));
+							}
+				});
+
+				return rs;
 			});
 			aiTable.SetFunction("ShouldBuildPlanes",[]()->bool
 			{
@@ -910,17 +1058,17 @@ namespace Lua
 				return RuntimeConfig::roundNumber >= ApplicationInterface::GetMinAIRoundForHeavyVehicleBases();
 			});
 
-			aiTable.SetFunction("Estimate",[](int poleIdx, const Lua::Table&typeTable, const Lua::Table&locTable, const Lua::Table&luaFaction)->float
+			aiTable.SetFunction("Estimate",[this](int poleIdx, const Lua::Table&typeTable, const Lua::Table&locTable, const Lua::Table&luaFaction)->Lua::Table
 			{
 				Objects::PFaction f = Detail::DecodeFaction(luaFaction,true,"Estimate()","Faction parameter #4");
 				Objects::EntityType type = Detail::DecodeType(typeTable,"Type parameter #2");
 				Grid::LCellIdI loc = Detail::ToLGridCell(locTable,"Location parameter #3");
-				return Objects::NexusThreat::Estimate(poleIdx-1,loc,type,f).impact;
+				return Detail::ToTable(program,Objects::NexusThreat::Estimate(poleIdx-1,loc,type,f));
 			});
-			aiTable.SetFunction("EstimateUnit",[this](int poleIdx, const Lua::Table&luaEntity)->float
+			aiTable.SetFunction("EstimateUnit",[this](int poleIdx, const Lua::Table&luaEntity)->Lua::Table
 			{
 				Objects::PWorldEntity e = LuaUnitToEntity(luaEntity,"Parameter");
-				return Objects::NexusThreat::Estimate(poleIdx-1,e).impact;
+				return Detail::ToTable(program,Objects::NexusThreat::Estimate(poleIdx-1,e));
 			});
 			aiTable.SetFunction("GetBaseVehiclePlants",[this](int poleIdx)->Lua::Table
 			{

@@ -808,8 +808,8 @@ namespace Protocol
 		,BYTE, poleIndex
 		,bool, hasBase
 		,bool, deployHeavyBases
-		,float, constructorOpacitySum
-		,float, closestHostileConstructorOpacity
+		,float, constructorSignificanceSum
+		,float, highestConstructorSignificance
 		,float, groundMobileThreatLevel
 		,float, airMobileThreatLevel
 		,float, groundStationaryThreatLevel

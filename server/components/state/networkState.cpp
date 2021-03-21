@@ -830,8 +830,8 @@ namespace Network
 				p.poleIndex = i;
 				const auto threat = Objects::NexusThreat::Get(i);
 
-				p.closestHostileConstructorOpacity = threat.closestHostileConstructorOpacity;
-				p.constructorOpacitySum = threat.constructorOpacitySum;
+				p.highestConstructorSignificance = threat.highestConstructorSignificance;
+				p.constructorSignificanceSum = threat.constructorSignificanceSum;
 				p.airMobileThreatLevel = threat.air.mobile;
 				p.airStationaryThreatLevel = threat.air.stationary;
 				p.groundMobileThreatLevel = threat.ground.mobile;
