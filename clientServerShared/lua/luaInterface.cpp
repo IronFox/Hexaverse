@@ -1724,6 +1724,9 @@ namespace Lua
 		return rs;
 	}
 
+	WReference::WReference(const Reference&ref):prog(ref.prog),refID(ref.refID)
+	{}
+
 
 	void	Reference::operator=(const Reference&other)
 	{
@@ -1735,6 +1738,14 @@ namespace Lua
 			SignalChange(((const NamedReference&)other).GetName());
 		else
 			SignalChange("");
+	}
+
+
+	void	Reference::operator=(const WReference&other)
+	{
+		prog = other.prog;
+		refID = other.refID.lock();
+		SignalChange("");
 	}
 
 	void	Reference::operator=(Nil)

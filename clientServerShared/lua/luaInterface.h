@@ -614,6 +614,24 @@ namespace Lua
 		Reference		GetGlobal(const String&name);
 	};
 
+	class Reference;
+
+
+	/**
+	Weak Lua variable reference.
+	Does not maintain ownership. Reference Lua variable may expire independently.
+	*/
+	class WReference
+	{
+	private:
+		WProgram					prog;
+		std::weak_ptr<int>			refID;
+		friend class Reference;
+	public:
+		/**/						WReference(const Reference&);
+		bool						IsExpired() const {return refID.expired();}
+	};
+
 	/**
 	Generic lua variable reference.
 	Can point to anything lua can store in its stack slots.
@@ -625,6 +643,8 @@ namespace Lua
 	private:
 		WProgram					prog;
 		std::shared_ptr<int>		refID;
+
+		friend class WReference;
 
 		static void Discard(const WProgram&st, int*raw)
 		{
@@ -644,9 +664,11 @@ namespace Lua
 
 		/**/		Reference(){}
 		/**/		Reference(Nil){}
+		/**/		Reference(const WReference&ref):prog(ref.prog),refID(ref.refID.lock()){}
 		virtual		~Reference() {};
 		void		operator=(Nil);
 		void		operator=(const Reference&other);
+		void		operator=(const WReference&ref);
 		/**
 		Reference comparison. Does not compare content
 		*/
@@ -800,6 +822,7 @@ namespace Lua
 	public:
 		/**/			Table()	{}
 		/**/			Table(const Reference&ref):Super(ref){};
+		/**/			Table(const WReference&ref):Super(ref){};
 		/**/			Table(const Nil&) {}
 		/**
 		Fetches a reference for the specified field in the local table.
