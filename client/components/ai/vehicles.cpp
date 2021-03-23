@@ -337,9 +337,13 @@ namespace AI
 									float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),*e,interestedInAirborne,interestedInGroundTargets);
 									const auto base = e->GetTurretBase();
 									if (base && base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
-										badWeight += 20 / (1.f + distance);
+									{
+										if (distance < M::Sqr(base->GetFlatAttackRange()))
+											badWeight += 50 / (1.f + distance);
+									}
 									else
-										goodWeight += 5 / (1.f + distance);
+										if (e->IsMobile())
+											goodWeight += 5 / (1.f + distance);
 								}
 								//if (distance < 16.f)
 								//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
@@ -469,11 +473,12 @@ namespace AI
 						}
 					}
 
+					if (!isAA)
 					{
 						float extent = 1.f + M::Sqr(M::Sqr(M::Sqr(random.NextFloat())));
 						if (random.NextBool())
 							extent = 1.f / extent;
-						score *= extent;				
+						score *= extent;
 					}
 					//score *= random.NextFloat(0.8f,1.25f);
 					if (score > bestScore)
