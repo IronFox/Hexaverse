@@ -10,6 +10,8 @@
 
 namespace PlayerControlBegin
 {
+	using namespace Time::Literals;
+
 	bool pauseAutomaticRoundProgression=false;
 	bool allowChecks = true;
 
@@ -40,7 +42,7 @@ namespace PlayerControlBegin
 			only way around is to detect all user interactions (everything that is not purely display) and signal that automatic round end should end
 			or add 1 second timeout. that seems to also work
 		*/
-		if (!RuntimeConfig::aiMode && AI::Script::SuccessfullyExecutedThisRound() && timer.GetSecondsSince(AI::Script::GetCompletionTime()) > 1.f)
+		if (!RuntimeConfig::aiMode && AI::Script::SuccessfullyExecutedThisRound() && AI::Script::GetCompletionTime().Elapsed() > 1_s)
 		{
 			allowChecks = false;	//don't auto-complete if player has assumed control
 			return;

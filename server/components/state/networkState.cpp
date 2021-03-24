@@ -137,7 +137,7 @@ namespace Network
 	namespace Heartbeat
 	{
 		SOCKET s = INVALID_SOCKET;
-		Timer::Time lastBeat = timer.Now();
+		Time::Stamp lastBeat;
 
 		class Loop : public Sys::ThreadObject
 		{
@@ -156,7 +156,7 @@ namespace Network
 						if (s != INVALID_SOCKET)
 							FATAL__("Heartbeat receive failure. Socket lost");
 					}
-					lastBeat = timer.Now();
+					lastBeat.Update();
 				}
 			}
 		};
@@ -197,7 +197,7 @@ namespace Network
 				return;
 			}
 			loopThread.Start();
-			lastBeat = timer.Now();
+			lastBeat.Update();
 		}
 
 
@@ -217,7 +217,7 @@ namespace Network
 			#else
 				static const float timeOut = 3;
 			#endif
-			if (timer.GetSecondsSince(lastBeat) > timeOut)
+			if (lastBeat.Elapsed().ToSeconds() > timeOut)
 			{
 				LogEvent(EventClass::Preset::fatal,"No heartbeat received in "+String(timeOut)+" seconds. Shutting down");
 

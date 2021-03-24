@@ -304,7 +304,7 @@ namespace Objects
 			float							continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
 
 
-			static Timer::Time				timeSpentTracing;
+			static Time::Delta				timeSpentTracing;
 			static count_t					traceCount;
 
 			/**/							Turret():

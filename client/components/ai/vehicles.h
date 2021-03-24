@@ -11,7 +11,7 @@ namespace AI
 	void	SignalStart(const String&because, const TCodeLocation&caller);
 
 
-	void	Process(float timeQuantum);
+	void	Process(const Time::Delta&timeQuantum);
 
 	bool	IsDone();
 

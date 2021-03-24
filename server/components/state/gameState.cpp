@@ -37,7 +37,7 @@ namespace Game
 	Evolver::Abstract	*evolver = nullptr;
 	Objects::WAlliance	winner;	//if set indicates game is over
 	Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
-	Timer::Time			lastPhaseChange = timer.Now();
+	Time::Stamp			lastPhaseChange;
 	bool				roundTimerPaused = true,endRoundNow=false, evolverActive = false;
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
@@ -685,7 +685,7 @@ namespace Game
 				return;
 			}
 
-			LogEvent(EventSignificance::Common,"Changing phase to "+String(to.ToString())+" with time window "+String(timeWindow)+" after "+String(timer.GetSecondsSince(lastPhaseChange))+" seconds");
+			LogEvent(EventSignificance::Common,"Changing phase to "+String(to.ToString())+" with time window "+String(timeWindow)+" after "+String(lastPhaseChange.Elapsed().ToSeconds())+" seconds");
 
 
 			if (RuntimeConfig::IsACommandPhase(to))
@@ -753,7 +753,7 @@ namespace Game
 			ph.timeFactor = timeWindow;
 			Channels::phaseChange.SendTo(::Network::server,ph,(UINT32)::Network::UserLevel::PreFaction);
 			RuntimeConfig::phase = to;
-			lastPhaseChange = timer.Now();
+			lastPhaseChange.Update();
 
 			#ifdef _DEBUG
 				if (to == RuntimeConfig::Phase::AnimationPhase)	//should have enough time during animation RuntimeConfig::phase
@@ -1783,7 +1783,7 @@ namespace Game
 		},
 		[&mapper](const Objects::PNexusPort&pole)->bool
 		{
-			Timer::Time t0 = timer.Now();
+			Time::Stamp t0;
 
 			Grid::LCellIdI poleLoc(Grid::low.grid.GetCell(pole->location.stackID).neighborhood.neighborID[0],pole->location.height);
 			Objects::Vehicle testHover(Objects::Faction::nexus,poleLoc,&Objects::Component::hoverbase,&Objects::Component::armored);
@@ -1805,7 +1805,7 @@ namespace Game
 				Grid::LowSetup::GridType::CellsPerEdge,nullptr);
 			auto heavy = mapper.result.Count();
 
-			LogEvent(EventSignificance::PerformanceMeasurement,"Heavy base terrain evaluation for pole "+String(pole->location.stackID)+ ", resulting in "+String(heavy)+"/"+String(scope)+", took seconds: "+String(timer.GetSecondsSince(t0)));
+			LogEvent(EventSignificance::PerformanceMeasurement,"Heavy base terrain evaluation for pole "+String(pole->location.stackID)+ ", resulting in "+String(heavy)+"/"+String(scope)+", took seconds: "+String(t0.Elapsed().ToSeconds()));
 
 			return heavy >= scope * 3/4;
 		});

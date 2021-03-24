@@ -31,7 +31,7 @@ namespace Objects
 		struct ExtPrepared : public Prepared
 		{
 			std::function<float(float)>		getLocationHeightDelta;
-			Timer::Time						referenceTime;
+			Time::Stamp						referenceTime;
 			std::function<float(float)>		getSize;
 		};
 
@@ -90,7 +90,7 @@ namespace Objects
 				Render(*p,scale,0);
 			foreach (extPrepared, p)
 			{
-				auto t = timer.GetSecondsSince(p-> referenceTime);
+				auto t = p-> referenceTime.ElapsedSeconds();
 				Render(*p,scale * p->getSize(t),p->getLocationHeightDelta(t));
 			}
 			renderer.Flush();
@@ -116,7 +116,7 @@ namespace Objects
 			Put(inst,e,slotIndex, slotCount);
 		}
 
-		void					IncludeExt(const Objects::PWorldEntity&e, index_t slotIndex, count_t slotCount, Timer::Time referenceTime, const std::function<float(float)>&sizeFunction, const std::function<float(float)>&locationHeightDeltaFunction, const float3&color)
+		void					IncludeExt(const Objects::PWorldEntity&e, index_t slotIndex, count_t slotCount, const Time::Stamp&referenceTime, const std::function<float(float)>&sizeFunction, const std::function<float(float)>&locationHeightDeltaFunction, const float3&color)
 		{
 			auto&inst = extPrepared.Append();
 			Put(inst,e,slotIndex,slotCount);
@@ -137,7 +137,7 @@ namespace Objects
 		{
 			SpriteFamily			*family;
 			Objects::PWorldEntity	entity;
-			Timer::Time				created;
+			Time::Stamp				created;
 			float					locationHeightDelta;
 
 			void					Insert();
@@ -218,9 +218,9 @@ namespace Objects
 		void	Render()
 		{
 			{
-				const auto t = timer.Now();
+				const Time::Stamp t;
 				bool changed = false;
-				while (animatedFloaters.IsNotEmpty() && timer.ToSeconds(t - animatedFloaters.Peek().created) > AnimatedTTL)
+				while (animatedFloaters.IsNotEmpty() && (t - animatedFloaters.Peek().created).ToSeconds() > AnimatedTTL)
 				{
 					animatedFloaters.Peek().End();
 					animatedFloaters.EraseFront();
@@ -299,7 +299,7 @@ namespace Objects
 				if (resourceIndexes & i)
 				{
 					auto&a = animatedFloaters.Push();
-					a.created = timer.Now();
+					//a.created.Update();	//should be redundant?
 					a.entity = e;
 					a.family = resourceFamily+i;
 					a.locationHeightDelta = at;

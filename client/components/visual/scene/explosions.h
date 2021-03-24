@@ -86,7 +86,7 @@ namespace Explosions
 									color;
 		Engine::OpenAL::Source		source,auxiliarySources[2];
 
-		Timer::Time					lastAudioUpdate = 0;
+		Time::Stamp					lastAudioUpdate;
 
 		static const float          ParticleSpeed,//=0.7f,
 									SmallerDelay,//=0.1f,

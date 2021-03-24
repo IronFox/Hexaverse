@@ -176,7 +176,7 @@ namespace World
 
 		void		Begin()
 		{
-			t0 = timer.Now();
+			t0.Update();
 
 			tempStacks.SetSize(Grid::HighSetup::GridType::CellCount);
 			for (UINT32 i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
@@ -205,7 +205,7 @@ namespace World
 				}
 			}
 
-			float t = timer.GetSecondsSince(t0);
+			float t = t0.Elapsed().ToSeconds();
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process terrain change: "+String(t));
 		}
 
@@ -242,7 +242,7 @@ namespace World
 
 	private:
 		Ctr::Array<TStack>	tempStacks;
-		Timer::Time t0;
+		Time::Stamp t0;
 		BaseGrid::FamiliesChanged changed;
 	};
 

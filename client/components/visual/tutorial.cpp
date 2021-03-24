@@ -22,9 +22,11 @@
 
 namespace Tutorial
 {
-	Timer::Time	lastDelayingEvent = timer.Now();
+	Time::Stamp		lastDelayingEvent;
 	bool			movementTutorialIssued = false,
 					endRoundTutorialIssued = false;
+
+	using namespace Time::Literals;
 
 
 	namespace Detail
@@ -57,7 +59,7 @@ namespace Tutorial
 
 		HUD::Dialog::WDialog	holdOn;
 		index_t				holdOnID = InvalidIndex;
-		Timer::Time			holdOnCreated;
+		Time::Stamp			holdOnCreated;
 
 
 		bool				WaitingForUserOkay()
@@ -149,13 +151,13 @@ namespace Tutorial
 		class CameraEvent
 		{
 		public:
-			Timer::Time		lastEvent;
+			Time::Stamp		lastEvent;
 			bool			happend=false;
 			Lua::Function<void()>	trigger;
 
 			void			Process()
 			{
-				if (happend && timer.GetSecondsSince(lastEvent) > 0.5f)
+				if (happend && lastEvent.Elapsed() > 0.5_s)
 				{
 					happend = false;
 					trigger();
@@ -163,7 +165,7 @@ namespace Tutorial
 			}
 			void			Signal()
 			{
-				lastEvent = timer.Now();
+				lastEvent.Update();
 				happend = true;
 			}
 		};
@@ -556,17 +558,17 @@ namespace Tutorial
 		{
 			if (!Engine::mouse.buttons.pressed)		
 			{
-				if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
+				if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && Tutorial::lastDelayingEvent.Elapsed() > 3_s)
 				{
 					Tutorial::movementTutorialIssued = true;
 					Tutorial::ShowMessage("Move To");
-					Tutorial::lastDelayingEvent = timer.Now();
+					Tutorial::lastDelayingEvent.Update();
 				}
-				if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
+				if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Tutorial::lastDelayingEvent.Elapsed() > 10_s)
 				{
 					Tutorial::endRoundTutorialIssued = true;
 					Tutorial::ShowMessage("End Round");
-					Tutorial::lastDelayingEvent = timer.Now();
+					Tutorial::lastDelayingEvent.Update();
 				}
 			}
 		};
@@ -655,7 +657,7 @@ namespace Tutorial
 			}
 			return HUD::Dialog::CheckResult::OkayContinue;
 		});
-		holdOnCreated = timer.Now();
+		holdOnCreated.Update();
 
 		if (holdOnID == InvalidIndex)
 			holdOnID = GlobalEvents::frameBegin.Register([]()
@@ -667,7 +669,7 @@ namespace Tutorial
 					holdOnID = InvalidIndex;
 					return;
 				}
-				if (timer.GetSecondsSince(holdOnCreated) > 30)
+				if (holdOnCreated.Elapsed() > 30_s)
 				{
 					ServerProcess::End();
 					HUD::WindowStack::Hide(d);

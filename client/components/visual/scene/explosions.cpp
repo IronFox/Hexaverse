@@ -15,6 +15,8 @@ extern Engine::Display<Engine::DirectX11>	display;
 
 namespace Explosions
 {
+	using namespace Time::Literals;
+
 	count_t				maxConcurrentParticles = 2000;
 	
 
@@ -136,7 +138,7 @@ namespace Explosions
 	
 
 		float relative = progress/executionTime;
-		if (AudioInterface::IsActive() && timer.CheckIfOutdatedAndUpdate(lastAudioUpdate,0.2f))
+		if (AudioInterface::IsActive() && lastAudioUpdate.CheckIfOutdatedAndUpdate(0.2_s))
 		{
 			const float newVolume = 1.f *(1.f-relative);
 			source.SetVolume(newVolume);

@@ -40,7 +40,7 @@ namespace Network
 
 	extern float			animationTimeFactor,	//!< Speed factor applied to active animations. Updated when server issues next animation phase.
 							roundTimer;
-	extern Timer::Time		phaseStarted;
+	extern Time::Stamp		phaseStarted;
 	extern bool				newRoundRequested;
 	extern bool				serverRequiresPassword;
 
@@ -434,7 +434,7 @@ namespace Network
 	extern Buffer0<ServerInfo,Swap>	servers;
 	extern HashTable<TUniqueID,index_t>	serverMap;
 
-	extern Timer::Time		lastPing,lastServerTableUpdate;
+	extern Time::Stamp		lastPing,lastServerTableUpdate;
 
 	extern const String		allowedChatCharacters;
 

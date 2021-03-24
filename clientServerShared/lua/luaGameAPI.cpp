@@ -1126,10 +1126,10 @@ namespace Lua
 		});
 		gameTable.SetFunction("MeasureSecondsFromNow",[this]()
 		{
-			auto start = timer.Now();
+			Time::Stamp start;
 			return Lua::WrapResultFunction(program, [start]()
 			{
-				return timer.GetSecondsSinceD(start);
+				return start.Elapsed().ToSecondsD();
 			});
 		});
 
@@ -1631,7 +1631,7 @@ namespace Lua
 							{
 								depID.Generate();
 								onDeployedCallbacks.Set(depID,onDeploy);
-								lastDeploymentCallbackRegistered = timer.Now();
+								lastDeploymentCallbackRegistered.Update();
 							}
 							onChoiceIntersection(e->id,m->id,loc,depID, Objects::CursorMode::Idle);
 						});
@@ -1773,7 +1773,7 @@ namespace Lua
 							{
 								depID.Generate();
 								onDeployedCallbacks.Set(depID,onDep);
-								lastDeploymentCallbackRegistered = timer.Now();
+								lastDeploymentCallbackRegistered.Update();
 							}
 							onChoiceIntersection(id,TUniqueID::Empty(),loc,depID, Objects::CursorMode::Idle);
 						}

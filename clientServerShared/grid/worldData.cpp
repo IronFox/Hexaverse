@@ -140,7 +140,7 @@ namespace World
 		if (!lightingOutdated && !force)
 			return false;
 		lightingOutdated = false;
-		Timer::Time t0 = timer.Now();
+		Time::Stamp t0;
 
 		UINT32 top = 0,bottom = CellStack::Range;
 		count_t cnt = 0;
@@ -223,7 +223,7 @@ namespace World
 				stack->lightingChangedTo = 0;
 		}
 
-		LogEvent(EventSignificance::PerformanceMeasurement,  "Updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventSignificance::PerformanceMeasurement,  "Updated lighting in "+String(t0.ElapsedSeconds())+" seconds");
 	
 		return true;
 	}
@@ -1819,7 +1819,7 @@ namespace World
 
 	/*virtual override*/ void					Data::ConcurrentPainting::ThreadMain()
 	{
-		const auto t0 = timer.Now();
+		const Time::Stamp t0;
 		while (!done && !abort)
 		{
 			#ifdef CLIENT
@@ -1846,9 +1846,9 @@ namespace World
 		}
 		#ifdef CLIENT
 			if (!abort)
-				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting completed after "+String(timer.GetSecondsSince(t0))+" seconds");
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting completed after "+String(t0.ElapsedSeconds())+" seconds");
 			else
-				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting aborted after "+String(timer.GetSecondsSince(t0))+" seconds");
+				LogEvent(EventSignificance::PerformanceMeasurement,"Concurrent sensor painting aborted after "+String(t0.ElapsedSeconds())+" seconds");
 		#endif
 		
 		owner->sensoryValid = !abort;
@@ -2215,7 +2215,7 @@ namespace World
 		if (v.SensoryIsInvalid() && !ignoreTargetSensorValidity)
 			return;
 		Data::ChangeSequence seq = v.BeginChangeSequence(t);
-		const Timer::Time t0 = timer.Now();
+		//const Time::Stamp t0;
 		switch (type)
 		{
 			case UpperHalfSolidSphere:

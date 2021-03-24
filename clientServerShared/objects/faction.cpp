@@ -1090,7 +1090,7 @@ namespace Objects
 			if (knownWorld.SensoryIsInvalid())
 			{
 				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
-				Timer::Time started = timer.Now();
+				Time::Stamp started;
 
 				static Buffer0<World::Sensor>	sensors;
 				sensors.Clear();
@@ -1113,8 +1113,8 @@ namespace Objects
 
 				knownWorld.FlushAndValidateSensory();
 
-				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Collected sensors and flushed known world in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Collected sensors and flushed known world in "+String(started.ElapsedSeconds()));
+				started.Update();
 
 
 				{
@@ -1124,8 +1124,8 @@ namespace Objects
 						sensors[index].InsertInto(knownWorld, t,processorIndex);
 					});
 				}
-				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed sensory grid coverage in "+String(started.ElapsedSeconds()));
+				started.Update();
 				const bool shareSensors = alliance->config.shareSensors;
 				ForeachWorldEntity([this,&t,shareSensors](const PWorldEntity&e)
 				{
@@ -1142,15 +1142,15 @@ namespace Objects
 						HandlePotentialAppearance(m,t,shareSensors);
 					});
 
-				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(timer.GetSecondsSince(started)));
-				started = timer.Now();
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed appearances in "+String(started.ElapsedSeconds()));
+				started.Update();
 
 
 				VisitVisibleForeignEntities(t,[this,&t,shareSensors](const PWorldEntity&e)
 				{
 					HandlePotentialDisappearance(e,t,shareSensors);
 				});
-				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed disappearances in "+String(timer.GetSecondsSince(started)));
+				LogEvent(EventSignificance::PerformanceMeasurement,shared_from_this(),"Computed disappearances in "+String(started.ElapsedSeconds()));
 			}
 		}
 		

@@ -34,12 +34,12 @@ void	OnTutorialsChanged();
 namespace InputControl
 {
 
-
+	using namespace Time::Literals;
 
 
 
 	#ifdef HAS_WINDOW
-		Timer::Time rightMouseDragBegun;
+		Time::Stamp rightMouseDragBegun;
 		bool rightMouseDragged = false;
 		int2 rightMouseDragFrom;
 
@@ -121,22 +121,22 @@ namespace InputControl
 
 		void BeginCameraDrag()
 		{
-			Tutorial::lastDelayingEvent = timer.Now();
+			Tutorial::lastDelayingEvent.Update();
 			rightMouseDragged = false;
-			rightMouseDragBegun = timer.Now();
+			rightMouseDragBegun.Update();
 			rightMouseDragFrom = Engine::mouse.location.absolute;
 		}
 
 		void EndCameraDrag(const bool AlsoControlsUnits)
 		{
-			Tutorial::lastDelayingEvent = timer.Now();
+			Tutorial::lastDelayingEvent.Update();
 
 			if (!AlsoControlsUnits)
 				return;
 
 
 
-			if (timer.GetSecondsSince(rightMouseDragBegun) < 0.2f && !rightMouseDragged)
+			if (rightMouseDragBegun.Elapsed() < 0.2_s && !rightMouseDragged)
 			{
 				if (Objects::DisableModes(Network::ControlEnabled()))
 				{
@@ -668,7 +668,7 @@ namespace InputControl
 		*/
 		void Select()
 		{
-			Tutorial::lastDelayingEvent = timer.Now();
+			Tutorial::lastDelayingEvent.Update();
 
 			HUD::Tooltip::Hide();
 			if (HUD::WindowStack::OnMouseDown() || HUD::HexGrid::HandleClick())

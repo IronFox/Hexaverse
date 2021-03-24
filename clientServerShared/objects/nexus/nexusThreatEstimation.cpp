@@ -46,7 +46,7 @@ namespace Objects
 				{
 					if (distanceField.Count() == Grid::LowSetup::GridType::CellCount)
 						return;
-					Timer::Time t0 = timer.Now();
+					Time::Stamp t0;
 
 					Buffer0<Grid::TNeighborCellID>	neighborhood;
 					Grid::low.GetExtendedNeighborhood(poleIdx,Grid::LowSetup::GridType::CellsPerEdge,neighborhood);
@@ -55,7 +55,7 @@ namespace Objects
 					foreach (neighborhood,n)
 						distanceField[n->stackID] = n->distanceFromOrigin;
 
-					LogEvent(EventSignificance::PerformanceMeasurement,"Distance field computation around pole "+String(poleIdx)+" took seconds: "+String(timer.GetSecondsSince(t0)));
+					LogEvent(EventSignificance::PerformanceMeasurement,"Distance field computation around pole "+String(poleIdx)+" took seconds: "+String(t0.ElapsedSeconds()));
 				}
 			};
 

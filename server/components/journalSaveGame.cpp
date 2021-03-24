@@ -170,9 +170,9 @@ namespace Journal
 				throw RoundException(CLOCATION,"Evolver not set. Unable to process round");
 
 			LogEvent(EventSignificance::Uncommon,"Processing round using evolver '"+String(evolver->name)+"'...");
-			Timer::Time t0 = timer.Now();
+			Time::Stamp t0;
 			evolver->ProcessRound();
-			LogEvent(EventSignificance::Uncommon,"Round processed in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventSignificance::Uncommon,"Round processed in "+String(t0.ElapsedSeconds())+" seconds");
 			Game::ProcessChanges(true);
 		}
 

@@ -2129,7 +2129,7 @@ namespace FileIO
 
 		Objects::Statistics::EnterFileMode();
 
-		Timer::Time t0 = timer.Now();
+		Time::Stamp t0;
 
 		Riff::Container container;
 		UINT32 vid = ApplicationInterface::SupportedFileVersion;
@@ -2344,7 +2344,7 @@ namespace FileIO
 		if (container.SaveToFile(name.c_str()))
 		{
 			//keep message in sync with ServerManager:
-			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+FileSystem::PathToString(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),"World snapshot, round "+RuntimeConfig::roundNumber.ToString()+", written to "+FileSystem::PathToString(name)+" in "+String(t0.ElapsedSeconds())+" seconds");
 		}
 		else
 		{

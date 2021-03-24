@@ -109,8 +109,9 @@ extern "C"
 
 #endif
 
+using namespace Time::Literals;
 
-Timer::Time applicationStart;
+Time::Stamp applicationStart;
 
 
 
@@ -542,7 +543,7 @@ namespace ApplicationInterface
 		//Image		image;
 		//Semaphore	semaphore;
 		//volatile bool	active;
-		Timer::Time	lastSubmission = timer.Now();
+		Time::Stamp	lastSubmission;
 		ProductionPipe<std::pair<Image,bool> >	workPipe;
 
 		StorageThread()
@@ -639,7 +640,7 @@ namespace ApplicationInterface
 			}
 		}
 
-		bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > TimeLapse::frameDelaySeconds;}
+		bool	CanRun() const {return lastSubmission.ElapsedSeconds() > TimeLapse::frameDelaySeconds;}
 		void	Run(const std::shared_ptr<std::pair<Image, bool> >&image)
 		{
 			if (!CanRun())
@@ -648,7 +649,7 @@ namespace ApplicationInterface
 	//		active = true;
 		//	semaphore.release();
 			workPipe << image;
-			lastSubmission = timer.Now();
+			lastSubmission.Update();
 		}
 		void	Terminate()
 		{
@@ -852,7 +853,7 @@ namespace ApplicationInterface
 		if (!force && (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || !Animation::AllDone()))
 			return;
 
-		Tutorial::lastDelayingEvent = timer.Now();
+		Tutorial::lastDelayingEvent.Update();
 
 	#ifndef ONE_COMPOUND_PER_FACTION
 		if (Objects::selectedVehicle)
@@ -1104,7 +1105,7 @@ namespace ApplicationInterface
 
 
 
-static Timer::Time	capTime = timer.Now();
+static Time::Stamp	capTime;
 
 bool loop()
 {
@@ -1137,23 +1138,23 @@ bool loop()
 			if (RuntimeConfig::FromFile::capFPS > 0)
 			{
 
-				Timer::Time passed = timer.now() - capTime;
-				static const Timer::Time minTime = timer.toTicks(1.f / float(RuntimeConfig::FromFile:: capFPS));
+				Time::Delta passed = capTime.Elapsed();
+				static const Time::Delta minTime = Time::Delta(1.f / float(RuntimeConfig::FromFile:: capFPS));
 				while (passed < minTime)
 				{
 					Sleep(0);
-					passed = timer.now() - capTime;
+					passed = capTime.Elapsed();
 				}
-				capTime = timer.Now();
+				capTime.Update();
 			}
 		}
 		#endif
 		if (RuntimeConfig::aiMode && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 		{
 			if (Engine::context.isMinimized())
-				AI::Process(0.5f);
+				AI::Process(0.5_s);
 			else
-				AI::Process(0.05f);
+				AI::Process(0.05_s);
 		}
 	#endif
 
@@ -1511,13 +1512,13 @@ bool loop()
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
 				{
 					textout.PushState();
-					float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
+					float remaining = std::max(Network::roundTimer - Network::phaseStarted.ElapsedSeconds(),0.f);
 					textout << "Remaining seconds: "<<nl;
 					textout.Scale(2.f,2.f);
 					if (remaining <= 10.f && !Network::newRoundRequested)
 					{
 						textout.Scale(1.2f,1.2f);
-						bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
+						bool blinkOn = ((Time::Stamp().ToMicroSecondsU()/(1000000/5))%2) != 0;
 						textout.SetColor(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
 					}
 					textout<<M::Round(remaining)<<nl;
@@ -1532,7 +1533,7 @@ bool loop()
 					textout << "Camera locked. Press F4 to unlock" << nl;
 				#ifdef _DEBUG
 					textout << "Plants: "<< World::CountRenderedPlants() << nl;
-					textout << "Server sec: "<<M::RoundToInt(timer.GetSecondsSince(Network::client.GetLastPackageTime()));
+					textout << "Server sec: "<<M::RoundToInt(Network::client.GetLastPackageTime().ElapsedSeconds());
 				#endif
 
 			}
@@ -1700,7 +1701,7 @@ void ParseKeyValue(const String&key, const String&value)
 			static index_t checkReg;
 			checkReg = GlobalEvents::frameBegin.Register([]()
 			{
-				if (timer.GetSecondsSince(RuntimeConfig::programStart) > 15)
+				if (RuntimeConfig::programStart.Elapsed() > 15_s)
 				{
 					if (!Network::client.IsConnected())
 					{
@@ -1864,7 +1865,7 @@ int main( int argc, const char* argv[])
 {
 	Except::onFatal = MyFatal;
 	Vec::assertConsistency<float>();
-	RuntimeConfig::programStart = timer.Now();
+	RuntimeConfig::programStart.Update();
 	
 	#ifndef HAS_WINDOW
 		String cfg;
@@ -1989,7 +1990,7 @@ int main( int argc, const char* argv[])
 			StartConfig::Finish();
 		}
 
-		applicationStart = timer.Now();
+		applicationStart.Update();
 		Boot();
 	#ifdef HAS_WINDOW
 		GlobalEvents::invalidateObjectCache << ApplicationInterface::HandleLocalEntityStatusChange;
