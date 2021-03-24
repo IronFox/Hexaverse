@@ -42,12 +42,12 @@ namespace Grid
 
 
 				LogEvent(EventClass::Preset::configurationPrint,"Executing resource distribution program '"+distribution+"'");
-				Timer::Time t0 = timer.Now();
+				Time::Stamp t0;
 				api.program->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"),nullptr);
 
 				Lua::Function<Lua::Table()> compute = api.program->RequireGlobal("Compute");
 				Lua::Table result = compute();
-				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+String(timer.GetSecondsSince(t0))+" seconds");
+				LogEvent(EventClass::Preset::configurationPrint,"'"+distribution+"' took "+String(t0.ElapsedSeconds())+" seconds");
 
 				foreach (Resource::all,res)
 				{

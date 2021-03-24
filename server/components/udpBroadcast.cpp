@@ -17,7 +17,7 @@ namespace UDPBroadCast
 
 
 	Ctr::Buffer0<sockaddr_in>	everyone;
-	Timer::Time		lastAdapterQuery, lastBroadcast;
+	Time::Stamp		lastAdapterQuery, lastBroadcast;
 
 	Protocol::THostBroadcastPacket	packet;
 	Protocol::THostToManagerPacket	managerPacket;
@@ -195,7 +195,7 @@ namespace UDPBroadCast
 		}
 
 
-		lastBroadcast = lastAdapterQuery = timer.Now();
+		lastBroadcast = lastAdapterQuery = Time::Stamp();
 
 		return true;
 	}
@@ -211,10 +211,11 @@ namespace UDPBroadCast
 		return doBroadcast;
 	}
 
+	using namespace Time::Literals;
 
 	void	Update()
 	{
-		if (timer.CheckIfOutdatedAndUpdate(lastBroadcast,1))
+		if (lastBroadcast.CheckIfOutdatedAndUpdate(1_s))
 		{
 
 			managerPacket.flags = 0;
@@ -226,10 +227,10 @@ namespace UDPBroadCast
 
 			if (doBroadcast)
 			{
-				if (timer.CheckIfOutdatedAndUpdate( lastAdapterQuery,5))
+				if (lastAdapterQuery.CheckIfOutdatedAndUpdate(5_s))
 				{
 					UpdateOutAdapters(everyone);
-					lastAdapterQuery = timer.Now();
+					lastAdapterQuery.Update();
 				}
 
 				foreach (everyone,someone)

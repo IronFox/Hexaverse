@@ -8,7 +8,7 @@ DECLARE_POINTER_CLASS(Vote);
 class Vote : public std::enable_shared_from_this<Vote>
 {
 public:
-	const Timer::Time	created = timer.Now();
+	const Time::Stamp	created;
 	const float			ttlSeconds;
 	const String		phrase;
 	const TUniqueID		id;
@@ -71,7 +71,7 @@ public:
 	/**
 	Calculates the seconds that the local vote remains active. May be negative if the server does not close the local vote in time
 	*/
-	float				GetRemainingSeconds() const {return ttlSeconds - timer.GetSecondsSince(created);}
+	float				GetRemainingSeconds() const {return ttlSeconds - created.ElapsedSeconds();}
 	
 	static void			StaticCreate();
 	/**

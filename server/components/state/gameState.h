@@ -43,7 +43,7 @@ namespace Game
 		//all const that is of relevance to clients, and may not be changed once sent
 		const TUniqueID		id;
 		const String		phrase;
-		const Timer::Time	created = timer.Now();
+		const Time::Stamp	created;
 		const float			closingAfterSeconds = 120;	//!< Seconds after creation, when the local vote should time out. It may complete earlier, if sufficient votes have been collected
 		float				clearedAfterSeconds = 720;	//!< Seconds after creation, when the local vote should be removed (including closingAfterSeconds). Cannot effectively be less than closingAfterSeconds
 
@@ -64,7 +64,7 @@ namespace Game
 		count_t			CountEligibleVoters() const;
 		bool			IsClosed() const {return closed;}
 		void			Cancel();
-		float			GetAge() const {return timer.GetSecondsSince(created);}
+		float			GetAge() const {return created.Elapsed().ToSeconds();}
 
 		static count_t	GetVotesToPass(VotesToPass, count_t voters);
 		static count_t	GetQuorum(Quorum q, count_t eligibleVoters);
@@ -123,7 +123,7 @@ namespace Game
 	extern Objects::WAlliance	winner;	//if set indicates game is over. Do not set manually. Use DeclareWinner()
 	extern Objects::WAlliance	postEvolutionWinner;	//if winner is declared while evolver is active, this variable is set instead for later
 
-	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
+	extern Time::Stamp		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
 	//extern Evolver::Abstract*evolver;
 	extern INT32			tutorialAt;

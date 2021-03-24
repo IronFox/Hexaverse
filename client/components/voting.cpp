@@ -84,12 +84,12 @@ void			Vote::CastVote(bool inFavor, bool hideVote)
 void			Vote::Close(const TOutcome&outcome)
 {
 	if (closed)
-		FATAL__("Double Handling result of vote "+ToString(id)+", timeout after "+String(timer.GetSecondsSince(created))+" seconds: '"+phrase+"'");
+		FATAL__("Double Handling result of vote "+ToString(id)+", timeout after "+String(created.ElapsedSeconds())+" seconds: '"+phrase+"'");
 	PVote v;
 	if (all.QueryAndUnset(id,v))
 	{
 		ASSERT__(v.get() == this);
-		LogEvent(EventSignificance::Common,"Handling result of vote "+ToString(id)+", timeout after "+String(timer.GetSecondsSince(created))+" seconds: '"+phrase+"'");
+		LogEvent(EventSignificance::Common,"Handling result of vote "+ToString(id)+", timeout after "+String(created.ElapsedSeconds())+" seconds: '"+phrase+"'");
 		switch (outcome.result)
 		{
 			case Protocol::VoteResultType::Passed:

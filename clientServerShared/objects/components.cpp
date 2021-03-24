@@ -18,7 +18,7 @@
 
 namespace Objects
 {
-	Timer::Time				Component::Turret::timeSpentTracing = 0;
+	Time::Delta				Component::Turret::timeSpentTracing;
 	count_t					Component::Turret::traceCount=0;
 
 
@@ -653,7 +653,7 @@ namespace Objects
 			}
 
 			Turret::traceCount++;
-			const Timer::Time t0 = timer.Now();
+			const Time::Stamp t0;
 		/*	const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
 			const float h1 = Grid::ToRadiusf(0.05f + dest.height);
 			const float3 there = Grid::low.cells[dest.stackID].centerVertex.xyz * h1;
@@ -768,7 +768,7 @@ namespace Objects
 						rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
 						rs.result = rs.distanceToTarget < 0.1f || impactAtHCell == Grid::HCellIdI(cellAt,h) ? TraceResult::ReachesTarget : TraceResult::MidFlightImpact;
 						
-						Turret::timeSpentTracing += timer.Now() - t0;
+						Turret::timeSpentTracing += t0.Elapsed();
 						return rs;
 					}
 				}
@@ -785,7 +785,7 @@ namespace Objects
 				rs.impactAt = dest.worldLocation;//last;//Grid::ToWorld(rs.impactCell);
 				//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
 				rs.result = TraceResult::ReachesTarget;
-				Turret::timeSpentTracing += timer.Now() - t0;
+				Turret::timeSpentTracing += t0.Elapsed();
 				return rs;
 			}
 		}
@@ -802,7 +802,7 @@ namespace Objects
 			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
 
 			Turret::traceCount++;
-			const Timer::Time t0 = timer.Now();
+			const Time::Stamp t0;
 
 			const float3 up = (source.worldLocation + dest.worldLocation).Normalized0();
 			float distance = sqrt(d2);
@@ -834,7 +834,7 @@ namespace Objects
 					rs.impactCell = Grid::HCellIdI(cellAt,h);
 					rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
 					rs.result = rs.distanceToTarget < 0.1f || impactAtHCell == Grid::HCellIdI(cellAt,h) ? TraceResult::ReachesTarget : TraceResult::MidFlightImpact;
-					Turret::timeSpentTracing += timer.Now() - t0;
+					Turret::timeSpentTracing += t0.Elapsed();
 					return rs;
 				}
 			}
@@ -851,7 +851,7 @@ namespace Objects
 			rs.impactAt = dest.worldLocation;//Grid::ToWorld(rs.impactCell);
 			//rs.distanceToTarget = Vec::distance(rs.impactAt,dest.worldLocation);
 			rs.result = TraceResult::ReachesTarget;
-			Turret::timeSpentTracing += timer.Now() - t0;
+			Turret::timeSpentTracing += t0.Elapsed();
 			return rs;
 		}
 

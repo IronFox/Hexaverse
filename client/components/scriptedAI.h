@@ -60,7 +60,7 @@ namespace ScriptedAI
 	bool			HasSuccessfullyExecuted();
 	D::PathString	GetDocumentationPath();
 
-	D::Timer::Time	GetCompletionTime();
+	D::Time::Stamp	GetCompletionTime();
 	bool			DoneThisRound();
 	bool			SuccessfullyExecutedThisRound();
 	bool			WillExecuteOnNewRound();

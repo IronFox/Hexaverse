@@ -1002,7 +1002,7 @@ namespace AI
 	}
 
 
-	void	Process( float timeQuantum )
+	void	Process( const Time::Delta& timeQuantum )
 	{
 		if (Detail::done)
 			return;
@@ -1016,9 +1016,9 @@ namespace AI
 		if (Detail::awaitSensory && World::actual.PaintingSensorsConcurrently())
 			return;
 
-		LogEvent(EventSignificance::Debug,nullptr,"AI: Resuming processing ("+String(timeQuantum)+")");
+		LogEvent(EventSignificance::Debug,nullptr,"AI: Resuming processing ("+String(timeQuantum.ToSeconds())+")");
 		Detail::tempMarkers.Clear();
-		Timer::Time started = timer.Now();
+		Time::Stamp started;
 		while (Detail::pending.IsNotEmpty())
 		{
 
@@ -1029,7 +1029,7 @@ namespace AI
 			}
 			Detail::processed.Append(Detail::pending.Last());
 			Detail::pending.EraseLast();
-			if (timer.GetSecondsSince(started) > timeQuantum)
+			if (started.Elapsed() > timeQuantum)
 				return;
 		}
 		

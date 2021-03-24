@@ -19,6 +19,7 @@
 namespace HUD{namespace HostList{
 
 	using namespace Component;
+	using namespace Time::Literals;
 
 	//class VisualAttachment: public Network::ServerInfo::VisualAttachment
 	//{
@@ -42,8 +43,8 @@ namespace HUD{namespace HostList{
 
 	void	TickRefresh()
 	{
-		static Timer::Time	lastCheck = timer.Now() - timer.ToTicks(10);
-		if (timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
+		static Time::Stamp	lastCheck = Time::Stamp() - 10_s;
+		if (lastCheck.CheckIfOutdatedAndUpdate(1_s))
 		{
 			if (display.IsMinimized() || !IsVisible())
 				return;

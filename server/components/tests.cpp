@@ -30,23 +30,23 @@ namespace Test
 		std::cout << "Running test '" << test.name << "'..." << std::endl;
 		//std::cout << "Running test '" << typeid(test).name() << "'..." << std::endl;
 		Random random;
-		Timer::Time t0 = timer.Now();
+		Time::Stamp t0;
 		try
 		{
 			test.Run(random);
-			std::cout << "  ...completed. No errors detected after " << timer.GetSecondsSince(t0) << " seconds" << std::endl;
+			std::cout << "  ...completed. No errors detected after " << t0.Elapsed().ToSeconds() << " seconds" << std::endl;
 		}
 		catch (const Exception&ex)
 		{
-			std::cout << "  ...FAILED. Failure detected after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl << ex.what()<<std::endl;
+			std::cout << "  ...FAILED. Failure detected after " << t0.Elapsed().ToSeconds() << " seconds:" << std::endl << ex.what()<<std::endl;
 		}
 		catch (const std::exception&ex)
 		{
-			std::cout << "  ...FAILED. Unhandled exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl << ex.what()<<std::endl;
+			std::cout << "  ...FAILED. Unhandled exception caught after " << t0.Elapsed().ToSeconds() << " seconds:" << std::endl << ex.what()<<std::endl;
 		}
 		catch (...)
 		{
-			std::cout << "  ...FAILED. Unknown exception caught after " << timer.GetSecondsSince(t0) << " seconds:" << std::endl;
+			std::cout << "  ...FAILED. Unknown exception caught after " << t0.Elapsed().ToSeconds() << " seconds:" << std::endl;
 		}
 
 	}
@@ -222,7 +222,7 @@ namespace Test
 
 			messageChannel.SendTo(client,"hello");
 
-			Timer::Time t0 = timer.Now();
+			Time::Stamp t0;
 			for (;;)
 			{
 				server.Resolve();
@@ -237,7 +237,7 @@ namespace Test
 				if (quit)
 					break;
 
-				float sec = timer.GetSecondsSince(t0);
+				float sec = t0.Elapsed().ToSeconds();
 				if (sec > 10)
 				{
 					FATAL__("Transmission failed for "+String(sec)+" seconds");
@@ -634,7 +634,7 @@ namespace Test
 
 		//Objects::PTower prototype = To<Objects::Tower>::DynamicCast( Objects::GetPrototypeByName(ConstName::Type_ArtilleryTower));
 
-		const Timer::Time startT = Objects::Component::Turret::timeSpentTracing;
+		const Time::Delta startT = Objects::Component::Turret::timeSpentTracing;
 		const count_t startC = Objects::Component::Turret::traceCount;
 
 		Ctr::Buffer0<M::TVec4<> > trajectory;
@@ -902,10 +902,10 @@ namespace Test
 		GlobalEvents::FlushObjects();
 
 
-		const Timer::Time deltaT = Objects::Component::Turret::timeSpentTracing - startT;
+		const Time::Delta deltaT = Objects::Component::Turret::timeSpentTracing - startT;
 		const count_t deltaC = Objects::Component::Turret::traceCount - startC;
 
-		std::cout << "        Finished "<<deltaC<<" trajectory traces in "<<timer.ToSeconds(deltaT)<<" sec. => "<<(timer.ToSeconds(deltaT)/deltaC)<<" sec. per trace"<<std::endl;
+		std::cout << "        Finished "<<deltaC<<" trajectory traces in "<<deltaT.ToSeconds()<<" sec. => "<<(deltaT.ToSeconds()/deltaC)<<" sec. per trace"<<std::endl;
 
 	}
 

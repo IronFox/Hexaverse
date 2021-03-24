@@ -1019,8 +1019,8 @@ namespace Objects
 
 	void	Renderer::RefreshFactionColors(bool doPulse)
 	{
-		static const Timer::Time t0 = timer.Now();
-		now = timer.GetSecondsSinceD(t0);
+		static const Time::Stamp t0;
+		now = t0.Elapsed().ToSecondsD();
 
 		if (!Faction::mine)
 		{

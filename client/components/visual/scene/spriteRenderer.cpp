@@ -94,7 +94,7 @@ namespace Objects
 		}
 		using namespace Details;
 
-		Timer::Time t0 = timer.Now();
+		Time::Stamp t0;
 
 		Image src;
 		Magic::LoadFromFile(src,source);

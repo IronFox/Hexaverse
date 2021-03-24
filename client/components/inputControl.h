@@ -50,7 +50,7 @@ namespace InputControl
 		extern bool saveScreenshot,
 					saveTransparentScreenshot;
 
-		extern Timer::Time rightMouseDragBegun;
+		extern Time::Stamp rightMouseDragBegun;
 		extern bool rightMouseDragged;
 		extern int2 rightMouseDragFrom;
 

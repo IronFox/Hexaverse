@@ -7,6 +7,8 @@
 
 namespace HUD
 {
+	using namespace Time::Literals;
+
 	namespace VoteList
 	{
 		namespace Details
@@ -14,7 +16,7 @@ namespace HUD
 			Component::PWindow window;
 			//Component::PPanel activePanel,
 				//				closedPanel;
-			Timer::Time last = timer.Now();
+			Time::Stamp last;
 
 			struct TEntry
 			{
@@ -112,7 +114,7 @@ namespace HUD
 				{
 					Create(v);
 				});
-				last = timer.Now();
+				last.Update();
 			}
 
 			void	Refresh(const PVote&v)
@@ -125,7 +127,7 @@ namespace HUD
 
 			void Count()
 			{
-				if (timer.GetSecondsSince(last) > 1)
+				if (last.Elapsed() > 1_s)
 				{
 					Refresh(nullptr);
 				}

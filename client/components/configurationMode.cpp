@@ -44,7 +44,7 @@ namespace ConfigurationMode
 		Random					rng;
 		StringTable<String>		declarations;
 		Buffer0<TPlanetFile>	planetList;
-		Timer::Time				lastLocalChange=timer.Now();
+		Time::Stamp				lastLocalChange;
 		Grid::WorldDiscovery	showingDiscovery;	//currently selected discovery (interpreted as FullWorld if showDiscovery is false)
 		bool					showDiscovery= false;
 		Objects::PFaction		myNexus;
@@ -206,7 +206,7 @@ namespace ConfigurationMode
 		void Update(bool forceRebuild = true)
 		{
 
-			lastLocalChange = timer.Now();
+			lastLocalChange.Update();
 			config.SetSeed(seed);
 
 			if (isActive)

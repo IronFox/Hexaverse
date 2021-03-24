@@ -44,9 +44,11 @@
 #include "animation/resourceUpdate.h"
 #include "animation/operationLacksResources.h"
 
+using namespace Time::Literals;
 
 namespace Network
 {
+
 	bool			haveFaction = false,
 					haveID = false,
 					amSpectator = false,
@@ -74,7 +76,7 @@ namespace Network
 
 	float			animationTimeFactor = 1,
 					roundTimer = 0;
-	Timer::Time		phaseStarted;
+	Time::Stamp		phaseStarted;
 	bool			newRoundRequested = false;
 	ServerAddress	lastServerAddress;
 
@@ -369,7 +371,7 @@ namespace Network
 					hasContact = true;
 					while (!doQuit && !application_shutting_down && client.IsConnected())
 					{
-						pingChannel.SendTo(client,timer.Now());
+						pingChannel.SendTo(client,Time::Stamp().ToTicks());
 						Sleep(200);
 					}
 					//if (!application_shutting_down)
@@ -468,7 +470,7 @@ namespace Network
 		void OnPing(Protocol::Ping&ping, TCP::Peer&peer)
 		{
 			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
-			me->lastPing = timer.GetSecondsSince(ping);
+			me->lastPing = Time::Stamp::FromTicks(ping).ElapsedSeconds();
 		}
 
 
@@ -1621,7 +1623,7 @@ namespace Network
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = false;	//until game begins
 					Tutorial::HideMessage("Servers");
-					Tutorial::lastDelayingEvent = timer.Now();
+					Tutorial::lastDelayingEvent.Update();
 					if (RuntimeConfig::tutorialMode)
 						Tutorial::SignalConnectedToTutorialServer();
 				#endif
@@ -1908,7 +1910,7 @@ namespace Network
 	Buffer0<ServerInfo,Swap>	servers;
 	HashTable<TUniqueID,index_t>	serverMap;
 
-	Timer::Time		lastPing = timer.Now(),lastServerTableUpdate=timer.Now();
+	Time::Stamp		lastPing,lastServerTableUpdate;
 
 	void		Update()
 	{
@@ -1962,22 +1964,22 @@ namespace Network
 			}
 		}
 
-		Timer::Time t = timer.Now();
-		if (timer.ToSeconds(t -  lastPing) > 2)
+		Time::Stamp t;
+		if (t -  lastPing > 2_s)
 		{
 			lastPing = t;
 			if (client.IsConnected())
 			{
-				static const float maxPong =
+				static const Time::Delta maxPong = 
 					#ifdef _DEBUG
-						15.f;
+						15_s;
 					#else
-						10.f;
+						10_s;
 					#endif
-				float age = timer.ToSeconds(t - client.GetLastPackageTime());
+				Time::Delta age = t - client.GetLastPackageTime();
 				if (age > maxPong)
 				{
-					LogEvent(EventClass::Preset::uncommon,nullptr,"Server has not responded for "+String(age)+"/"+String(maxPong)+" second(s). Disconnecting");
+					LogEvent(EventClass::Preset::uncommon,nullptr,"Server has not responded for "+String(age.ToSeconds())+"/"+String(maxPong.ToSeconds())+" second(s). Disconnecting");
 					client.Disconnect();
 				}
 				else
@@ -1991,7 +1993,7 @@ namespace Network
 
 		}
 
-		if (timer.CheckIfOutdatedAndUpdate(lastServerTableUpdate,0.5f) && !client.IsConnected() && !client.IsAttemptingToConnect())
+		if (lastServerTableUpdate.CheckIfOutdatedAndUpdate(0.5_s) && !client.IsConnected() && !client.IsAttemptingToConnect())
 		{
 			#ifdef DEBUG_SERVER_LIST
 				if (servers.IsEmpty())
@@ -2136,14 +2138,14 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		break;
 	}
 	#ifdef HAS_WINDOW
-		Tutorial::lastDelayingEvent = timer.Now();
+		Tutorial::lastDelayingEvent.Update();
 	#endif
 	RuntimeConfig::phase.Load(c.newPhase);
 	GlobalEvents::phaseChange();
 	if (RuntimeConfig::IsInAnyCommandPhase())
 		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;
-	phaseStarted = timer.Now();
+	phaseStarted.Update();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());
 		HUD::HexGrid::RefreshContacts();
@@ -2284,9 +2286,9 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 {
 	if (Network::client.IsConnected() || Network::client.IsAttemptingToConnect())
 		return false;
-	static Timer::Time lastAttempt = timer.Now()-10;
+	static Time::Stamp lastAttempt = Time::Stamp()-10_s;
 	static count_t delayCounter = 10;
-	if (++delayCounter < 3 || timer.GetSecondsSince(lastAttempt) < 5)
+	if (++delayCounter < 3 || lastAttempt.Elapsed() < 5_s)
 		return false;	//make sure there is enough time to rebuild the server list in-between connection attempts to a ghost-server that is configured via runtime parameter
 	foreach(Network::servers, srv)
 	{
@@ -2306,7 +2308,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 
 			Network::ConnectTo(srv->addresses[found]);
 
-			lastAttempt = timer.Now();
+			lastAttempt.Update();
 			delayCounter = 0;
 			return true;
 		}

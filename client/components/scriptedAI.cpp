@@ -22,6 +22,8 @@ namespace ScriptedAI
 
 
 	using namespace DeltaWorks;
+	using namespace Time::Literals;
+
 	bool			visualDebugActive = false;
 	Observable<>	onExecutionFinished;
 	
@@ -31,7 +33,7 @@ namespace ScriptedAI
 		PathString		scriptPath;
 		FileSystem::ftime_t	scriptTime;
 		bool			reloadScript = true;
-		Timer::Time		completionTime = timer.Now();
+		Time::Stamp		completionTime;
 
 		bool			completedThisPhase = false,
 						exportedThisPhase = false;
@@ -167,7 +169,7 @@ namespace ScriptedAI
 			{
 				return thread.api.onDeployedCallbacks.IsEmpty()
 					||
-					timer.GetSecondsSince(thread.api.lastDeploymentCallbackRegistered) > 3.f;
+					thread.api.lastDeploymentCallbackRegistered.Elapsed() > 3_s;
 			}
 
 			virtual void ThreadMain() override
@@ -186,7 +188,7 @@ namespace ScriptedAI
 					foreach (workItems, item)
 					{
 						LogEvent(EventClass::Preset::debug,"ScriptedAI.Thread: Executing "+item->first);
-						const auto t = timer.Now();
+						const Time::Stamp t;
 						try
 						{
 							item->second(*this);
@@ -209,14 +211,14 @@ namespace ScriptedAI
 							//error = "???";
 							LogEvent(EventClass::Preset::scriptError,"Failed to execute '"+item->first+"'. Unsupported exception type");
 						}
-						const float seconds = timer.GetSecondsSince(t);
+						const float seconds = t.ElapsedSeconds();
 						#ifndef _DEBUG
 						if (seconds > 0.5f)
 						#endif
-							LogEvent(EventClass::Preset::scriptLog,"ScriptedAI: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+							LogEvent(EventClass::Preset::scriptLog,"AI::Script: Executed "+item->first+" in "+String(seconds));
 						#ifndef _DEBUG
 						else
-							LogEvent(EventSignificance::PerformanceMeasurement,"ScriptedAI.Thread: Executed "+item->first+" in "+String(timer.GetSecondsSince(t)));
+							LogEvent(EventSignificance::PerformanceMeasurement,"AI::Script.Thread: Executed "+item->first+" in "+String(seconds));
 						#endif
 
 					}
@@ -549,7 +551,7 @@ namespace ScriptedAI
 		*/
 		MT void			FlushAndRebuildEntities()
 		{
-			const auto t0 = timer.Now();
+			const Time::Stamp t0;
 			LogEvent(EventClass::Preset::debug,"ScriptedAI: Rebuilding entities and local research...");
 			ASSERT__(!thread.IsBusy());
 			thread.api.FlushAllObjects();
@@ -561,7 +563,7 @@ namespace ScriptedAI
 			#ifdef HAS_WINDOW
 				thread.api.SetSelectedUnit(Objects::selectedEntity,false);
 			#endif
-			LogEvent(EventSignificance::PerformanceMeasurement,"ScriptedAI: Rebuilt entities in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventSignificance::PerformanceMeasurement,"AI::Script: Rebuilt entities in "+String(t0.ElapsedSeconds())+" seconds");
 		}
 
 
@@ -779,7 +781,7 @@ namespace ScriptedAI
 
 				onExecutionFinished();
 
-				Details::completionTime = timer.Now();
+				Details::completionTime.Update();
 				Details::completedThisPhase = true;
 
 				PlayerControlBegin::CheckAutoNextRound();
@@ -922,7 +924,7 @@ namespace ScriptedAI
 		thread.DestroyAPI();
 		
 		Details::reloadScript = true;
-		Details::completionTime = timer.Now();
+		Details::completionTime.Update();
 		Details::completedThisPhase = true;		//upon (re)loading, is considered having executed this phase so player can request new round
 		thread.hasSuccessfullyExecuted = true;	//set true here, since we don't know yet
 
@@ -1243,7 +1245,7 @@ namespace ScriptedAI
 		LogEvent(EventSignificance::Uncommon,"New AI script "+FileSystem::PathToString(FileSystem::ExtractFileNameExt(path))+" created");
 	}
 
-	D::Timer::Time	GetCompletionTime()
+	D::Time::Stamp	GetCompletionTime()
 	{
 		return Details::completionTime;
 	}

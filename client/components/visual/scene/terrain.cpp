@@ -1168,7 +1168,7 @@ namespace VisualTerrain
 
 	void		OrbitGrid::ChangeSensory(const M::TVec3<>&worldCenter, float radius, signed char change)
 	{
-		Timer::Time t0 = timer.Now();
+		Time::Stamp t0;
 		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+ToString(worldCenter)+", radius="+String(radius)+", change="+String(change));
 
 		static Grid::LowSetup::TVolumeDescriptor vol;
@@ -1204,7 +1204,7 @@ namespace VisualTerrain
 		}
 		if (vol.coverage.IsNotEmpty())
 			valid = false;
-		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(t0.ElapsedSeconds())+". Used orbit was "+String(orbit));
 	}
 
 	index_t		OrbitGrid::TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float&distance)	const
@@ -1257,7 +1257,7 @@ namespace VisualTerrain
 
 		BYTE familiesRebuilt = 0;
 
-		const auto t0 = timer.Now();
+		const Time::Stamp t0;
 
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
@@ -1298,7 +1298,7 @@ namespace VisualTerrain
 		}
 		if (familiesRebuilt > 0)
 		{
-			float seconds = timer.GetSecondsSince(t0);
+			float seconds = t0.ElapsedSeconds();
 			LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Rebuilt "+String(familiesRebuilt)+" families in "+String(seconds));
 		}
 

@@ -20,7 +20,7 @@ namespace Tutorial
 
 	void	Create();
 
-	extern Timer::Time	lastDelayingEvent;
+	extern Time::Stamp	lastDelayingEvent;
 	extern bool			movementTutorialIssued,
 						endRoundTutorialIssued;
 

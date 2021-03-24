@@ -19,7 +19,7 @@ namespace RuntimeConfig
 	extern CryptographicID aiAccessToken;
 	extern String serverPassword;
 	extern bool udpListen;
-	extern Timer::Time				programStart;
+	extern Time::Stamp				programStart;
 
 	extern Network::ServerAddress	serverAddress;
 

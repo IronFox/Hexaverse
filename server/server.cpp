@@ -831,6 +831,8 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 	return rs;
 }
 
+using namespace Time::Literals;
+
 
 int main( int argc, const char* argv[])
 {
@@ -1325,7 +1327,7 @@ int main( int argc, const char* argv[])
 
 				if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
 				{
-					if (timer.GetSecondsSince(Game::lastPhaseChange) - 0.5f > Game::Config::roundTimer)//tolerance of a half second
+					if (Game::lastPhaseChange.ElapsedSeconds() - 0.5f > Game::Config::roundTimer)//tolerance of a half second
 					{
 						newRoundNow = true;
 						LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Round timeout reached. Forcing new round.");
@@ -1395,7 +1397,7 @@ int main( int argc, const char* argv[])
 
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			{
-				if (timer.GetSecondsSince(Game::lastPhaseChange) >= Game::effectiveAnimationLength+0.5f)
+				if (Game::lastPhaseChange.ElapsedSeconds() >= Game::effectiveAnimationLength+0.5f)
 				{
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
@@ -1433,7 +1435,7 @@ int main( int argc, const char* argv[])
 				static Ctr::Buffer0<TCP::PPeer>	disconnect;
 				Network::server.VisitAllPeers([](const TCP::PPeer&peer)
 				{
-					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
+					if (peer->GetLastPackageTime().ElapsedSeconds() > 30.f)
 					{
 						LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
 						disconnect << peer;
