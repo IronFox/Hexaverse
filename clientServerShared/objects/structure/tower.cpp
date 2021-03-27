@@ -387,7 +387,7 @@ namespace Objects
 	}
 
 
-	bool	Tower::HasAmmoForShot()
+	bool	Tower::HasAmmoForShot() const
 	{
 		return GetCompound().total.storage[turret->ammoType] >= turret->GetAmmoNeedPerShot(GetResearchState());
 		//compoundID < compounds.Count() && compounds[compoundID].total.storage[turret->ammoType] >= turret->ammoNeedPerShot;

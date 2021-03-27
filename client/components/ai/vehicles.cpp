@@ -10,16 +10,45 @@
 
 namespace AI
 {
-	namespace Detail
+	namespace Details
 	{
 		Buffer0<Objects::PVehicle>	attackers,scanners,aa, processed, pending;
 		HashSet<TUniqueID>		ofInterestToAttacker;
 		Buffer0<M::TVec3<> >	tempMarkers;
 		HashTable<TUniqueID,Grid::LCellIdI>	 destHistory;
 
+		struct TAA;
+
+		struct TAAProtection
+		{
+			Objects::PWorldEntity			target;
+			Buffer0<index_t>				effectiveProtectors,	//links to aaEntities
+											theoreticalProtectors;	//links to aaEntities. AAs that cannot fire right now
+		};
+
+		struct TAA
+		{
+			Objects::PWorldEntity			entity;
+			Objects::PConstTurretBase		base;
+			Objects::TrajectoryEndPoint		subOrbitalCenter;
+			float							effectiveProtectionRange,	//includes maxHostileBomberRange
+											effectiveProtectionRangeSqr;
+			bool							canAttack;
+
+			Buffer0<index_t>				protectedEntities;	//links to aaProtected
+		};
+
+		Buffer0<TAAProtection>				aaProtected;
+		Buffer0<Objects::PWorldEntity>		aaUnprotected;
+		Buffer0<TAA>						aaEntities;
+		HashTable<TUniqueID,index_t>		aaEntityMap;
+
+		//Buffer0<
+
 		UINT32	minRoundForHeavyVehicleBases = 10,
 				minRoundForPlanes = 10;
 		bool	awaitSensory = false;
+		float	maxHostileBomberRange = 10;
 
 		bool done = true;
 
@@ -90,6 +119,7 @@ namespace AI
 		float EstimateInterest(const Objects::PTurretBase&base, int baseAtHeight, float constructionCost, float distance2);
 		bool Seeing(const Objects::WorldEntity&e, const Objects::TrajectoryEndPoint&loc, float&effectiveSensoryRange);
 		void AddSameTurretBadness(float&badWeight, const Grid::LCellIdI&myLoc, const Grid::LCellIdI&theirLoc, const Objects::PVehicle&v0, const Objects::PVehicle&v1, bool isAA);
+		Objects::TrajectoryEndPoint ToSubOrbitEP(const Grid::LCellIdI&loc);
 
 
 		bool ProcessVehicle( const Objects::PVehicle&v )
@@ -193,7 +223,7 @@ namespace AI
 
 				Objects::ForeachWorldEntity([v,attacksAirborne, attacksGroundEntities](const Objects::PWorldEntity&e)
 				{
-					Detail::ProcessAttackTarget(*v,*e,attackTarget,attacksAirborne, attacksGroundEntities);
+					Details::ProcessAttackTarget(*v,*e,attackTarget,attacksAirborne, attacksGroundEntities);
 				},Objects::IncludeGhosts::HostileContacts);
 
 				for(index_t at = 0; at < attackTarget.Count(); at++)
@@ -317,101 +347,107 @@ namespace AI
 						continue;//ignore all ground-based locations. they make no sense for a plane
 					float goodWeight = 0;
 					float badWeight = 0;
-					bool abort = false;
-					bool block = false;
-					Objects::ForeachWorldEntity(
-					[
-						v,&block,&abort,attacker,explosionRadius,&goodWeight,
-						&badWeight,isAA,interestedInAirborne,interestedInGroundTargets,n
-					]
-					(const Objects::PWorldEntity&e)
+					bool isCurrent = n->predecessor == InvalidIndex;
+					if (isAA)
 					{
-						if (abort || block)
-							return;
-						if (e->isOwnedByMe IF_SATELLITES( || e->IsSatellite() ))
-						{
-							if (isAA)
-							{
-								//if (e->IsMobile())
-								{
-									float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),*e,interestedInAirborne,interestedInGroundTargets);
-									const auto base = e->GetTurretBase();
-									if (base && base->turret->trajectoryType == Objects::TrajectoryType::AAMissile)
-									{
-										if (distance < M::Sqr(base->GetFlatAttackRange()))
-											badWeight += 50 / (1.f + distance);
-									}
-									else
-										if (e->IsMobile())
-											goodWeight += 5 / (1.f + distance);
-								}
-								//if (distance < 16.f)
-								//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
-								return;
-							}
-							return;
-						}
-						if (isAA)
-							return;
-						if (e->IsAboveTerrain() && !interestedInAirborne)
-							return;
-						if (!e->IsAboveTerrain() && !interestedInGroundTargets)
-							return;
-						float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),*e,interestedInAirborne,interestedInGroundTargets);
+						const auto&aa = aaEntities[aaEntityMap[v->id]];
 
-						float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
-									e->GetConstructionCost(),distance);
-						if (distance < explosionRadius)
-							badWeight += 20 / (1.f + distance);
-						else
+						for (auto eIndex : aa.protectedEntities)
 						{
-							if (!attacker)
+							const auto&prot = aaProtected[eIndex];
+							if (prot.effectiveProtectors.Count() + prot.theoreticalProtectors.Count() == 1)	//only me
 							{
-								if (!e->IsAlive())
-								{
-									fc *= 2;
-									if (ofInterestToAttacker.IsSet(e->id))
-										fc *= 2;
-								}
-								elif (ofInterestToAttacker.IsSet(e->id))
-								{
-									if (World::actual.SensoryIsInvalid())
-									{
-										ClientGrid::CheckSensory();
-										abort = true;
-										return;
-									}
-									float effectiveSensoryRange;
-									if (Seeing(*v,Objects::TrajectoryEndPoint(e->location),effectiveSensoryRange) && World::actual.GetLowestSensorStrength(e->location,e->GetHeight(),true) == 1)
-									{
-										if (distance <= M::Sqr(effectiveSensoryRange))
-										{
-											distance = 0;
-											fc *= 10;	//only one seeing it. maintain visibility
-										}
-										else
-										{
-											block = true;
-											fc = 0;
-											badWeight += 1000;
-											return;
-										}
-											//fc*100;
-									}
-								}
+								float range = QuadraticInterestDistance(ToSubOrbitEP(n->cell),*prot.target,true,true);
+								if (range > aa.effectiveProtectionRangeSqr)
+									badWeight += 1000;
 							}
+						}
+
+						for (const auto&e : aaUnprotected)
+						{
+							float range = QuadraticInterestDistance(ToSubOrbitEP(n->cell),*e,true,true);
+							if (range <= aa.effectiveProtectionRangeSqr)
+								goodWeight += 10.f;
+						}
+					}
+					else
+					{
+						bool abort = false;
+						bool block = false;
+						Objects::ForeachWorldEntity(
+						[
+							v,&block,&abort,attacker,explosionRadius,&goodWeight,
+							&badWeight,isAA,interestedInAirborne,interestedInGroundTargets,n
+							,isCurrent
+						]
+						(const Objects::PWorldEntity&e)
+						{
+							if (abort || block)
+								return;
+							if (e->isOwnedByMe IF_SATELLITES( || e->IsSatellite() ))
+								return;
+							if (isAA)
+								return;
+							if (e->IsAboveTerrain() && !interestedInAirborne)
+								return;
+							if (!e->IsAboveTerrain() && !interestedInGroundTargets)
+								return;
+							float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(n->cell),*e,interestedInAirborne,interestedInGroundTargets);
+
+							float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
+										e->GetConstructionCost(),distance);
+							if (distance < explosionRadius)
+								badWeight += 20 / (1.f + distance);
 							else
 							{
-								//if (fc > 0 && distance < M::Sqr(v->GetFlatAttackRange()*2.f))
-									ofInterestToAttacker.Set(e->id);
+								if (!attacker)
+								{
+									if (!e->IsAlive())
+									{
+										fc *= 2;
+										if (ofInterestToAttacker.IsSet(e->id))
+											fc *= 2;
+									}
+									elif (ofInterestToAttacker.IsSet(e->id))
+									{
+										if (World::actual.SensoryIsInvalid())
+										{
+											ClientGrid::CheckSensory();
+											abort = true;
+											return;
+										}
+										float effectiveSensoryRange;
+										if (Seeing(*v,Objects::TrajectoryEndPoint(e->location),effectiveSensoryRange) && World::actual.GetLowestSensorStrength(e->location,e->GetHeight(),true) == 1)
+										{
+											if (distance <= M::Sqr(effectiveSensoryRange))
+											{
+												distance = 0;
+												fc *= 10;	//only one seeing it. maintain visibility
+											}
+											else
+											{
+												block = true;
+												fc = 0;
+												badWeight += 1000;
+												return;
+											}
+												//fc*100;
+										}
+									}
+								}
+								else
+								{
+									//if (fc > 0 && distance < M::Sqr(v->GetFlatAttackRange()*2.f))
+										ofInterestToAttacker.Set(e->id);
+								}
+								goodWeight += fc / (1.f + distance);
 							}
-							goodWeight += fc / (1.f + distance);
-						}
-					},Objects::IncludeGhosts::HostileContacts);
-					if (abort)
-						return false;
-					if (block)
-						continue;
+						},Objects::IncludeGhosts::HostileContacts);
+						if (abort)
+							return false;
+						if (block)
+							continue;
+					}
 
 					//if (badWeight < 0.1f && goodWeight < 0.05f)
 
@@ -487,7 +523,7 @@ namespace AI
 						bestScore = score;
 					}
 
-					if (n->predecessor == InvalidIndex)
+					if (isCurrent)
 					{
 						current = n;
 						currentScore = score;
@@ -495,7 +531,7 @@ namespace AI
 				}
 				if (best)
 				{
-					if (!isAA || bestScore > currentScore * 1.2f)
+					if (!isAA || bestScore > currentScore * 2.f)
 					{
 						IssuePath(v,mapper,best);
 						destHistory.Set(v->id,best->cell);
@@ -567,6 +603,12 @@ namespace AI
 		float3 ToSubOrbit(const Grid::LCellIdI&loc)
 		{
 			return Grid::ToWorld(Grid::LCellIdI(loc.stackID,Objects::SubOrbital::Height));
+		}
+
+
+		Objects::TrajectoryEndPoint ToSubOrbitEP(const Grid::LCellIdI&loc)
+		{
+			return Objects::TrajectoryEndPoint(Grid::LCellIdI(loc.stackID,Objects::SubOrbital::Height));
 		}
 
 		float3 ToGround(const Grid::LCellIdI&loc, const Objects::TrajectoryEndPoint&ref)
@@ -888,28 +930,95 @@ namespace AI
 			}
 		}
 
+
+		void	UpdateAAProtection()
+		{
+			aaProtected.Clear();
+			aaUnprotected.Clear();
+			aaEntities.Clear();
+			aaEntityMap.Clear();
+			static Buffer0<Objects::PWorldEntity> allEntities;
+			allEntities.Clear();
+
+			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				if (!e->isOwnedByMe)
+					return;
+
+				Objects::PConstTurretBase base = e->GetTurretBase();
+				if (!base)
+				{
+					allEntities << e;
+					return;
+				}
+				if (e->IsPlane())	//technically, a raptor is an AA unit, too, but let's reserve those for hunting
+					return;
+				if (base->turret->trajectoryType != Objects::TrajectoryType::AAMissile)
+				{
+					allEntities << e;
+					return;
+				}
+
+				aaEntityMap.Set(e->id,aaEntities.Count());
+
+				auto&aa = aaEntities.Append();
+				aa.base = base;
+				aa.entity = e;
+				aa.effectiveProtectionRange = base->GetFlatAttackRange() - maxHostileBomberRange;
+				aa.effectiveProtectionRangeSqr = M::Sqr(aa.effectiveProtectionRangeSqr);
+				aa.subOrbitalCenter = ToSubOrbitEP(e->location);
+				aa.canAttack = base->CanAttack() && base->CountPossibleAttacks() > 0;
+			});
+
+			for (const auto&e : allEntities)
+			{
+				TAAProtection*p = nullptr;
+
+				for (index_t i = 0; i < aaEntities.Count(); i++)
+				{
+					auto&aa = aaEntities[i];
+					float r = QuadraticInterestDistance(aa.subOrbitalCenter,*e,true,true);
+					if (r <= M::Sqr(aa.effectiveProtectionRange))
+					{
+						if (p == nullptr)
+						{
+							p = &aaProtected.Append();
+							p->target = e;
+						}
+						if (aa.canAttack)
+							p->effectiveProtectors << i;
+						else
+							p->theoreticalProtectors << i;
+						aa.protectedEntities << (p - aaProtected.begin());
+					}
+				}
+
+				if (!p)
+					aaUnprotected << e;
+			}
+		}
 	}
 
 
 	void ClearPending()
 	{
-		Detail::attackers.Clear();
-		Detail::scanners.Clear();
-		Detail::aa.Clear();
-		Detail::processed.Clear();
-		Detail::pending.Clear();
+		Details::attackers.Clear();
+		Details::scanners.Clear();
+		Details::aa.Clear();
+		Details::processed.Clear();
+		Details::pending.Clear();
 	}
 
 	void	AddVehicle(const Objects::PVehicle&v)
 	{
 		if (v->CanAttack())
-			Detail::attackers << v;
+			Details::attackers << v;
 		elif (v->turret == &Objects::Component::antiAircraft)
-			Detail::aa << v;
+			Details::aa << v;
 		elif (v->turret == &Objects::Component::radar 
 			|| v->turret == &Objects::Component::SubOrbital::sensorDrone
 			|| v->turret == &Objects::Component::resourceScanner)
-			Detail::scanners << v;
+			Details::scanners << v;
 		else
 			LogEvent(EventSignificance::Common,"AI: Skipping "+v->GetName());
 	}
@@ -919,31 +1028,31 @@ namespace AI
 
 	void	SetMinRoundForHeavyVehicleBases(UINT32 v)
 	{
-		Detail::minRoundForHeavyVehicleBases = v;
+		Details::minRoundForHeavyVehicleBases = v;
 	}
 
 	void	SetMinRoundForPlanes(UINT32 v)
 	{
-		Detail::minRoundForPlanes = v;
+		Details::minRoundForPlanes = v;
 	}
 
 
 
 	void	BeginBlockTest( const Objects::PWorldEntity&v, bool initWithFriendlyDeathsOnly, bool canIgnoreThreat, bool overConfident )
 	{
-		Detail::threatCache.Clear();
+		Details::threatCache.Clear();
 		auto base = v->GetTurretBase();
-		Detail::currentContext.selfIsOffensiveVehicle = base && base->turret->CanAttack() && base->turret->independentAttackAndMotion;
-		Detail::currentContext.selfIsScanner = base && (base->turret == &Objects::Component::radar || base->turret == &Objects::Component::SubOrbital::sensorDrone);
-		Detail::currentContext.selfCanIgnoreThreat = canIgnoreThreat;
-		Detail::currentContext.selfIsOverconfident = overConfident;
-		Detail::currentContext.self = v;
-		Detail::currentContext.EstimateThreatFromAll(Objects::TrajectoryEndPoint(v->location),initWithFriendlyDeathsOnly, Detail::ambientThreat);	//determine base threat based on ghosts
+		Details::currentContext.selfIsOffensiveVehicle = base && base->turret->CanAttack() && base->turret->independentAttackAndMotion;
+		Details::currentContext.selfIsScanner = base && (base->turret == &Objects::Component::radar || base->turret == &Objects::Component::SubOrbital::sensorDrone);
+		Details::currentContext.selfCanIgnoreThreat = canIgnoreThreat;
+		Details::currentContext.selfIsOverconfident = overConfident;
+		Details::currentContext.self = v;
+		Details::currentContext.EstimateThreatFromAll(Objects::TrajectoryEndPoint(v->location),initWithFriendlyDeathsOnly, Details::ambientThreat);	//determine base threat based on ghosts
 	}
 
 	void CostModifier( const Grid::LCellIdI&location, int&cost )
 	{
-		if (Detail::currentContext.self->IsPlane() && location != Detail::currentContext.self->location)
+		if (Details::currentContext.self->IsPlane() && location != Details::currentContext.self->location)
 		{
 			if (Objects::NexusThreat::IsPlaneFactoryHere(location.stackID))
 			{
@@ -952,10 +1061,10 @@ namespace AI
 			}
 		}
 
-		Detail::TThreatEstimation threat;
-		Detail::currentContext.EstimateThreatFromAll(Objects::TrajectoryEndPoint(location),false,threat);
+		Details::TThreatEstimation threat;
+		Details::currentContext.EstimateThreatFromAll(Objects::TrajectoryEndPoint(location),false,threat);
 
-		if (threat.ShouldBlock(Detail::ambientThreat,false))
+		if (threat.ShouldBlock(Details::ambientThreat,false))
 			cost = -1;
 	}
 
@@ -986,18 +1095,32 @@ namespace AI
 	{
 		if (AI::Script::IsLoaded())
 			return;
-		Detail::ofInterestToAttacker.Clear();
-		Detail::awaitSensory = false;
-		Detail::processed.Clear();
-		Detail::pending.Clear();
-		Detail::destHistory.Clear();
-		Detail::pending	.AppendAll(Detail::attackers)
-						.AppendAll(Detail::aa)
-						.AppendAll(Detail::scanners);
-		if (Detail::done)
+		Details::ofInterestToAttacker.Clear();
+		Details::awaitSensory = false;
+		Details::processed.Clear();
+		Details::pending.Clear();
+		Details::destHistory.Clear();
+		Details::pending	.AppendAll(Details::attackers)
+						.AppendAll(Details::aa)
+						.AppendAll(Details::scanners);
+		if (Details::done)
 			LogEvent(EventSignificance::Debug,"AI: Starting ("+because+", by "+String(caller)+")");
 
-		Detail::done = false;
+		Details::maxHostileBomberRange = Objects::Component::SubOrbital::bomber.horizontalAttackRange.GetValue(Objects::Research::globalState.zeroTable);
+		Objects::ForeachFaction([](const Objects::PFaction&f)
+		{
+			if (f != Objects::Faction::mine)
+			{
+				float r = Objects::Component::SubOrbital::bomber.horizontalAttackRange.GetValue(f->researchState.attributeTable);
+				Details::maxHostileBomberRange = M::Max(Details::maxHostileBomberRange,r);
+			}
+		});
+		LogEvent(EventSignificance::Debug,"AI: Max hostile bomber range determined to be "+String(Details::maxHostileBomberRange));
+
+
+		Details::UpdateAAProtection();
+
+		Details::done = false;
 
 		Objects::MarkerStore::client.Foreach(Objects::Marker::Type::HostileContact,
 			[](const Objects::PMarker&m0)
@@ -1015,7 +1138,7 @@ namespace AI
 			{
 				Objects::PEntityDeathMarker m = To<Objects::EntityDeathMarker>::Cast(m0);
 				BeginBlockTest(m->visualization,false,false,false);
-				if (Detail::ambientThreat.damageThreat > 0)	//knowing cause, dropping ghost
+				if (Details::ambientThreat.damageThreat > 0)	//knowing cause, dropping ghost
 				{
 					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m->GetName()+" because cause of destruction is considered known");
 					ObjectHelper::SignalMarkerDeletion(m->id);
@@ -1024,7 +1147,7 @@ namespace AI
 
 		Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 		{
-			Detail::ProcessIgnorance(*e);
+			Details::ProcessIgnorance(*e);
 		},Objects::IncludeGhosts::HostileContacts);
 
 
@@ -1032,37 +1155,37 @@ namespace AI
 
 	bool	IsDone()
 	{
-		return Detail::done;
+		return Details::done;
 	}
 
 
 	void	Process( const Time::Delta& timeQuantum )
 	{
-		if (Detail::done)
+		if (Details::done)
 			return;
 
 		if (AI::Script::IsLoaded())
 		{
-			Detail::done = true;
+			Details::done = true;
 			return;
 		}
 
-		if (Detail::awaitSensory && World::actual.PaintingSensorsConcurrently())
+		if (Details::awaitSensory && World::actual.PaintingSensorsConcurrently())
 			return;
 
 		LogEvent(EventSignificance::Debug,nullptr,"AI: Resuming processing ("+String(timeQuantum.ToSeconds())+")");
-		Detail::tempMarkers.Clear();
+		Details::tempMarkers.Clear();
 		Time::Stamp started;
-		while (Detail::pending.IsNotEmpty())
+		while (Details::pending.IsNotEmpty())
 		{
 
-			if (!Detail::ProcessVehicle(Detail::pending.Last()))
+			if (!Details::ProcessVehicle(Details::pending.Last()))
 			{
-				Detail::awaitSensory = true;
+				Details::awaitSensory = true;
 				return;	//try again later
 			}
-			Detail::processed.Append(Detail::pending.Last());
-			Detail::pending.EraseLast();
+			Details::processed.Append(Details::pending.Last());
+			Details::pending.EraseLast();
 			if (started.Elapsed() > timeQuantum)
 				return;
 		}
@@ -1070,7 +1193,7 @@ namespace AI
 		
 		
 
-		if (Detail::pending.IsEmpty())
+		if (Details::pending.IsEmpty())
 		{
 			LogEvent(EventSignificance::Debug,nullptr,"AI: Vehicle processing completed");
 			
@@ -1082,7 +1205,7 @@ namespace AI
 				return;
 			}
 
-			Detail::done = true;
+			Details::done = true;
 			Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
 				[](const Objects::PMarker&m)
 				{
@@ -1109,12 +1232,12 @@ namespace ApplicationInterface
 {
 	RoundNumber	GetMinAIRoundForHeavyVehicleBases()
 	{
-		return AI::Detail::minRoundForHeavyVehicleBases;
+		return AI::Details::minRoundForHeavyVehicleBases;
 	}
 
 	RoundNumber	GetMinAIRoundForPlanes()
 	{
-		return AI::Detail::minRoundForPlanes;
+		return AI::Details::minRoundForPlanes;
 	}
 }
 

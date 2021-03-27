@@ -162,7 +162,7 @@ namespace Objects
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual float				GetFlatAttackRangeExt(const OwnerParameter&owner, const T2::TModifier&) const override;
 		virtual String				DescribeFlatAttackRangeExt(const OwnerParameter&, const T2::TModifier&) const override;
-		virtual bool				HasAmmoForShot() override;
+		virtual bool				HasAmmoForShot() const override;
 		using						TurretBase::GetAttackExplosionRadius;
 		virtual WorldEntity&		ToEntity() override {return *this;}
 		virtual const WorldEntity&	ToEntity() const override {return *this;}

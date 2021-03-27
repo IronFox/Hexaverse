@@ -266,7 +266,7 @@ namespace Objects
 
 	 
 
-	bool					TurretBase::CanAttack()
+	bool					TurretBase::CanAttack() const
 	{
 		return CanAttackIgnoreAmmo()
 			&& HasAmmoForShot();

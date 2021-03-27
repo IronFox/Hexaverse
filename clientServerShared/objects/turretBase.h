@@ -116,7 +116,7 @@ namespace Objects
 		Cannot be const due to the complexity of resource allocation of mobile entities.
 		Must not persistently alter the local entity, however.
 		*/
-		virtual bool			HasAmmoForShot() = 0;
+		virtual bool			HasAmmoForShot() const = 0;
 
 		/**
 		Retrieves the amount of resources that can be converted into the specified operation per action by the local entity
@@ -126,7 +126,7 @@ namespace Objects
 		int						GetOperationSpeed(Component::Operation) const;
 		virtual int				GetOperationAccelerationExponent(Component::Operation) const {return 0;}
 		virtual String			DescribeOperationSpeed(Component::Operation, const OwnerParameter&) const = 0;
-		bool					CanAttack();
+		bool					CanAttack() const;
 		bool					CanAttackIgnoreAmmo() const;
 
 

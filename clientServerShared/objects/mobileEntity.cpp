@@ -1929,7 +1929,7 @@ namespace Objects
 	}
 
 
-	/*virtual override*/bool				MobileEntity::HasAmmoForShot() 
+	/*virtual override*/bool				MobileEntity::HasAmmoForShot()  const
 	{
 		int ammoNeed = turret->GetAmmoNeedPerShot(GetResearchState());
 		if (!ammoNeed)

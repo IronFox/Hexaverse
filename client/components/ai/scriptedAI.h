@@ -7,9 +7,7 @@
 #include <objects/types.h>
 #include <general/timer.h>
 
-namespace AI
-{
-namespace Script
+namespace AI::Script
 {
 	namespace D = DeltaWorks;
 
@@ -77,5 +75,4 @@ namespace Script
 	#ifdef HAS_WINDOW	
 		void		DefineCommands(const Objects::Command::PCommandGroup&aiCommands);
 	#endif
-}
 }

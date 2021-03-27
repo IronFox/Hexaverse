@@ -563,7 +563,7 @@ namespace Objects
 			*/ 
 			virtual EntityType	GetSettledType() const {return EntityType();}
 		#endif
-		virtual	bool			HasAmmoForShot() override;
+		virtual	bool			HasAmmoForShot() const override;
 
 
 		//WorldEntity overrides:

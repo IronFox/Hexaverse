@@ -14,10 +14,9 @@
 #include "../playerControlBegin.h"
 #include "../clientRuntimeConfig.h"
 
-namespace AI
+namespace AI::Script
 {
-namespace Script
-{
+
 	//domains:
 	#define MT	//main thread
 	#define LT	//lua thread
@@ -1390,5 +1389,4 @@ namespace Script
 
 	}
 	#endif
-}
 }
