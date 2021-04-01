@@ -64,6 +64,7 @@ Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the gi
 	Unit[]		Game.AI.GetBaseVehiclePlants(int);		-- Fetches all vehicle plants provided by the base at the specified pole index (1-12)
 	Unit[]		Game.AI.GetBasePlaneFactories(int);		-- Fetches all plane factories provided by the base at the specified pole index (1-12)
 	Unit		Game.AI.GetNexusPort(int);				-- Fetches the Nexus Port positioned at the specified pole (1-12). May return nil
+	bool		Game.AI.IsPlaneFactoryHere(Cell);		-- Checks if a plane factory exists at the specified horizontal cell location
 
 --[[
 Put():
@@ -252,6 +253,8 @@ Table-Type: UnitType extends Type
 	int			constructionCost;		-- Amount of resources necessary to build this type
 	int			height;					-- Unit height in layers. Typically 1. Some structures are larger.
 	float		scanningRange;			-- Regular grid base (unresearched) scanning range
+	float		suborbitalScanningRange;-- Scanning range of ground units at suborbital heights (unresearched). Nil if not supported
+	float		groundScanningRange;	-- Scanning range of aerial units at ground level, regardless of ground elevation. Nil if not supported
 	int			maxHealth;				-- Maximum possible health of the local entity (unresearched)
 	float		maxUncontrolledExplosionRadius;		-- Maximum possible explosion radius of the local type if suffering uncontrolled destruction
 	bool		isMobile;				-- True if this is a mobile entity
@@ -294,6 +297,8 @@ Table-Type: Unit
 	int			maxHealth;				-- Maximum possible health of the local entity. May vary with research
 	int			empDamageLevel;			-- Level of suffered EMP damage. 0 indicates no damage, higher levels prevent construction, reduce firing, scanning, and motion range
 	float		scanningRange;			-- Regular grid scanning range. May vary with research
+	float		suborbitalScanningRange;	-- Scanning range at suborbital heights. Nil if not supported. May vary with research
+	float		groundScanningRange;	-- Scanning range of planes at ground level, regardless of ground elevation. Nil if not supported. May vary with research
 	float		uncontrolledExplosionRadius; -- Retrieves the explosion radius of the local unit if suffering uncontrolled destruction
 	
 	-- control:	These functions do not take immediate effect, as the client does not immediately know whether the operation succeeded. No effect if not owned by the local player, or outside command phase

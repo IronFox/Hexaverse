@@ -645,7 +645,12 @@ namespace AI
 			{
 				if (observer.IsAboveTerrain())
 				{
-					float distance = Vec::quadraticDistance(observer.system.w.xyz,ToSubOrbit(observed.cellLocation));
+					float distance = Vec::quadraticDistance(observer.system.w.xyz,observed.worldLocation);
+					effectiveSensoryRange = observer.GetScanningRange();
+					if (distance < M::Sqr(effectiveSensoryRange))
+						return true;
+
+					distance = Vec::quadraticDistance(observer.system.w.xyz,ToSubOrbit(observed.cellLocation));
 
 					auto turretBase = observer.GetTurretBase();
 					effectiveSensoryRange = turretBase ? turretBase->turret->groundScanningRange.GetValue(observer.GetResearchState()) : 0;

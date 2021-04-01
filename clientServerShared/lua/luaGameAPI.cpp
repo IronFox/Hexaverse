@@ -1090,6 +1090,11 @@ namespace Lua
 			{
 				return MapEntity(Objects::NexusThreat::GetPort(poleIdx-1),true,false);
 			});
+			aiTable.SetFunction("IsPlaneFactoryHere",[this](const Lua::Table&cell)->bool
+			{
+				index_t stack = Detail::LuaCellToStack(cell,"IsPlaneFactoryHere(): Cell parameter #1",Grid::LowSetup::GridType::CellCount);
+				return Objects::NexusThreat::IsPlaneFactoryHere(UINT32(stack));
+			});
 		}
 
 
@@ -1463,6 +1468,16 @@ namespace Lua
 		t.SetField("maxHealth",e->GetMaxHealth());
 		t.SetField("empDamageLevel",e->empDamageLevel);
 		t.SetField("scanningRange",e->GetScanningRange());
+		{
+			auto turret = e->GetTurretBase();
+			if (turret)
+			{
+				if (turret->GetSubOrbitalScanningRange() > 0)
+					t.SetField("suborbitalScanningRange",turret->GetSubOrbitalScanningRange());
+				if (turret->turret->groundScanningRange.IsFunctionOrConstNonZero())
+					t.SetField("groundScanningRange",turret->turret->groundScanningRange.GetValue(e->GetResearchState()));
+			}
+		}
 		t.SetField("uncontrolledExplosionRadius",e->GetUncontrolledExplosionRadius());
 		
 		const TUniqueID id = e->id;
@@ -2467,6 +2482,17 @@ namespace Lua
 			t.SetField("isStructure",e->IsStructure());
 			t.SetField("isIndestructible", e->IsIndestructible());
 			t.SetField("scanningRange",e->GetScanningRange());
+			{
+				auto turret = e->GetTurretBase();
+				if (turret)
+				{
+					if (turret->GetSubOrbitalScanningRange() > 0)
+						t.SetField("suborbitalScanningRange",turret->GetSubOrbitalScanningRange());
+					if (turret->turret->groundScanningRange.IsFunctionOrConstNonZero())
+						t.SetField("groundScanningRange",turret->turret->groundScanningRange.GetValue(e->GetResearchState()));
+				}
+			}
+
 			t.SetField("maxHealth",e->GetMaxHealth());
 			t.SetField("isWorkingStructure",e->IsWorkingStructure());
 			t.SetField("isMobileEntityProducer",e->CastToProducer() != nullptr);
