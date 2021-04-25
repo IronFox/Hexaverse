@@ -341,6 +341,7 @@ namespace Lua
 		{
 			t.SetField("trajectoryType",b.turret->trajectoryType.ToString());
 			t.SetField("independentAttackAndMotion",b.turret->independentAttackAndMotion);
+			t.SetField("requiresStationaryVehicle",b.turret->requiresStationaryVehicle);
 			t.SetField("ammoType",b.turret->ammoType.ToString());
 			t.SetField("ammoDemandPerShot",b.turret->ammoNeedPerShot.GetValue(researchState));
 			#ifdef ONE_COMPOUND_PER_FACTION
@@ -2573,6 +2574,7 @@ namespace Lua
 				t.SetField("trajectoryType",turret->trajectoryType.ToString());
 				t.SetField("ammoDemandPerShot",turret->ammoNeedPerShot.GetValue(z));
 				t.SetField("independentAttackAndMotion",turret->independentAttackAndMotion);
+				t.SetField("requiresStationaryVehicle",turret->requiresStationaryVehicle);
 				t.SetField("attacksPerRound",turret->GetAttacksPerRound(z));
 				t.SetField("ammoType",turret->ammoType.ToString());
 				t.SetField("flatAttackRange",turret->GetHorizontalAttackRange(z));

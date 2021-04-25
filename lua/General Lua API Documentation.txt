@@ -236,6 +236,8 @@ Table-Type: TurretType extends Type
 		float	explosionRadius;		-- Spherical explosion radius (unresearched)
 		int		damageLevel;			-- Damage inflicted by the local turret (unresearched)
 		bool	dealsEMPDamage;				-- True if the local turret deals EMP damage as opposed to permanent health damage
+		bool	independentAttackAndMotion;	-- True if the vehicle can fire and move at 100% each in the same round, with neither action slowing the other
+		bool	requiresStationaryVehicle;	-- True if vehicle must remain motionless one round before it can attack
 }
 
 Table-Type: VBaseType extends Type
