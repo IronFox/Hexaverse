@@ -228,7 +228,7 @@ Table-Type: TurretType extends Type
 			-- FireBeam
 			-- (e.g. canConstruct)
 	[canAttack]
-		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam
+		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam, AAMissile, A2GMissile
 		string	ammoType;				-- String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
 		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot (unresearched)
 		int		attacksPerRound;		-- Theoretical maximum number of attacks per round (unresearched)
@@ -609,7 +609,7 @@ string		Game.Terrain.Content.ToString(int);	-- Converts the respective type (see
 Cell[]		Game.Terrain.cells					-- Ordered table of all planar terrain cells in the world. These are smaller than unit cells
 int			Game.Terrain.Pack(Cell,int);		-- Packs TERRAIN cell and height to a single integer value identifying the volume cell
 int			Game.Terrain.UnpackHeight(int);		-- Unpacks the height component of a packed terrain volume cell
-Cell		Game.Terrain.UnpackCell(int);		-- Unpacks the TERRAIN cell component of a packed terrain volume cell
+Cell		Game.Terrain.UnpackCell(int);					-- Unpacks the TERRAIN cell component of a packed terrain volume cell
 
 --[[
 @brief Planar cell type. The cell is replicated up and down to form a stack of locations, or terrain volume cells
@@ -646,7 +646,7 @@ Table-Type: Vector
 		func	Destroy();				-- Destroys the local marker. The marker is removed from Game.myMarkers regardless of whether the operation succeeds
 	}
 
-	Marker		Game.CreateMarker(Unit ref, string type)			-- Creates a new marker, and immediately adds it to markers, as though the operation had succeeded even if it fails later on
+	Marker		Game.CreateMarker(Unit ref, string type)			-- Creates a new marker and immediately adds it to markers, as though the operation had succeeded even if it fails later on
 
 	
 	
