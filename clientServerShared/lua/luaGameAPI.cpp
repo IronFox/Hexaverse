@@ -2307,6 +2307,14 @@ namespace Lua
 			return highCellGrid[Detail::Unpack(packed).stackID];
 		});
 
+		#ifdef CLIENT
+		terrainTable.SetFunction("GetLowestSensorStrength",[this](const Lua::Table&locTable, int height)
+		{
+			Grid::LCellIdI loc = Detail::ToLGridCell(locTable,"Location parameter #1");
+			return World::actual.GetLowestSensorStrength(loc,height,true);
+		});
+		#endif
+
 		terrainContentTable.SetFunction("ToString",[](int content)
 		{
 			Grid::Content c;

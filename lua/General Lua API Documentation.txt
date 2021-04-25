@@ -590,6 +590,14 @@ Loc			Game.Grid.FindVehicleGround(Unit unit, Loc from)
 	Cell	Game.Grid.FindHighestAvailableResourceLocationExt(string resourceName, bool checkLinkPath, bool checkMobiles)
 	bool	Game.Grid.NoNaturalResourcesHere(Cell cell)	-- Returns true if the location has been surveyed but there is nothing here
 
+	--[[
+	GetLowestSensorStrength():
+	Retrieves the lowest visibility of any TERRAIN cell part of the given location and up to (h-1) locations above.
+	Usually the location and height of a Unit are passed on here.
+	]]
+	int			Game.Terrain.GetLowestSensorStrength(Loc, int h);		
+	
+
 Cell[]		Game.Grid.unitCells						-- Ordered table of all planar unit cells in the world. These are larger than terrain cells
 float		Game.Grid.GetDistance(Loc a, Loc b)		-- Retrieves the geometric distance between the two specified locations
 
