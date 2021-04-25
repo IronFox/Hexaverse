@@ -30,7 +30,7 @@ namespace AI
 		{
 			Objects::PWorldEntity			entity;
 			Objects::PConstTurretBase		base;
-			Objects::TrajectoryEndPoint		subOrbitalCenter;
+			Objects::TrajectoryEndPoint		suborbitalCenter;
 			float							effectiveProtectionRange,	//includes maxHostileBomberRange
 											effectiveProtectionRangeSqr;
 			bool							canAttack;
@@ -377,7 +377,7 @@ namespace AI
 						Objects::ForeachWorldEntity(
 						[
 							v,&block,&abort,attacker,explosionRadius,&goodWeight,
-							&badWeight,isAA,interestedInAirborne,interestedInGroundTargets,n
+							&badWeight,interestedInAirborne,interestedInGroundTargets,n
 							,isCurrent
 						]
 						(const Objects::PWorldEntity&e)
@@ -385,8 +385,6 @@ namespace AI
 							if (abort || block)
 								return;
 							if (e->isOwnedByMe IF_SATELLITES( || e->IsSatellite() ))
-								return;
-							if (isAA)
 								return;
 							if (e->IsAboveTerrain() && !interestedInAirborne)
 								return;
@@ -417,7 +415,7 @@ namespace AI
 											return;
 										}
 										float effectiveSensoryRange;
-										if (Seeing(*v,Objects::TrajectoryEndPoint(e->location),effectiveSensoryRange) && World::actual.GetLowestSensorStrength(e->location,e->GetHeight(),true) == 1)
+										if (Seeing(*v,Objects::TrajectoryEndPoint(e->location),effectiveSensoryRange) && World::actual.GetLowestSensorStrength(e->location,e->GetHeight(),true) <= 1)
 										{
 											if (distance <= M::Sqr(effectiveSensoryRange))
 											{
@@ -447,12 +445,7 @@ namespace AI
 							return false;
 						if (block)
 							continue;
-					}
 
-					//if (badWeight < 0.1f && goodWeight < 0.05f)
-
-					if (!isAA)
-					{
 						const M::TVec3<> reference = Grid::ToWorld(n->cell);
 						Objects::MarkerStore::client.Foreach(Objects::MarkerType::Visited,
 							[reference, minMotion, n, &badWeight](const Objects::PMarker&m)
@@ -470,7 +463,6 @@ namespace AI
 							//if (distance < 49.f || (n->movementCostsFromRoot >= minMotion && distance < 16.f))
 								//badWeight += 2.f;
 						}
-
 					}
 
 
@@ -544,6 +536,8 @@ namespace AI
 							[interestedInAirborne,interestedInGroundTargets,best,v]
 							(const Objects::PWorldEntity&e)
 							{
+								if (e->isOwnedByMe)
+									return;
 								float distance = QuadraticInterestDistance(Objects::TrajectoryEndPoint(best->cell),*e,interestedInAirborne,interestedInGroundTargets);
 								if (distance < M::Sqr(2.f * v->GetFlatAttackRange()))
 									ofInterestToAttacker.Set(e->id);
@@ -600,7 +594,7 @@ namespace AI
 			return loc.height == Objects::SubOrbital::Height;
 		}
 
-		float3 ToSubOrbit(const Grid::LCellIdI&loc)
+		float3 ToSuborbit(const Grid::LCellIdI&loc)
 		{
 			return Grid::ToWorld(Grid::LCellIdI(loc.stackID,Objects::SubOrbital::Height));
 		}
@@ -635,7 +629,7 @@ namespace AI
 				}
 				else
 				{
-					float distance = Vec::quadraticDistance(ToSubOrbit(observer.location),observed.worldLocation);
+					float distance = Vec::quadraticDistance(ToSuborbit(observer.location),observed.worldLocation);
 					auto turretBase = observer.GetTurretBase();
 					effectiveSensoryRange = turretBase ? turretBase->GetSubOrbitalScanningRange() : 0;
 					return turretBase && distance < M::Sqr(effectiveSensoryRange);
@@ -650,7 +644,7 @@ namespace AI
 					if (distance < M::Sqr(effectiveSensoryRange))
 						return true;
 
-					distance = Vec::quadraticDistance(observer.system.w.xyz,ToSubOrbit(observed.cellLocation));
+					distance = Vec::quadraticDistance(observer.system.w.xyz,ToSuborbit(observed.cellLocation));
 
 					auto turretBase = observer.GetTurretBase();
 					effectiveSensoryRange = turretBase ? turretBase->turret->groundScanningRange.GetValue(observer.GetResearchState()) : 0;
@@ -803,12 +797,12 @@ namespace AI
 					return distance;
 				}
 
-				return Vec::quadraticDistance(self.worldLocation,ToSubOrbit(other.location));
+				return Vec::quadraticDistance(self.worldLocation,ToSuborbit(other.location));
 			}
 			else
 			{
 				if (other.IsAboveTerrain())
-					return Vec::quadraticDistance(ToSubOrbit(self.cellLocation),other.system.w.xyz);
+					return Vec::quadraticDistance(ToSuborbit(self.cellLocation),other.system.w.xyz);
 				float distance = Vec::quadraticDistance(self.worldLocation,other.system.w.xyz);
 				return distance;
 			}
@@ -847,7 +841,7 @@ namespace AI
 		{
 			if (isAA)
 			{
-				float distance = Vec::quadraticDistance(ToSubOrbit(myLoc),ToSubOrbit(theirLoc));
+				float distance = Vec::quadraticDistance(ToSuborbit(myLoc),ToSuborbit(theirLoc));
 				float minDist = M::Sqr(std::max( v0->GetSubOrbitalScanningRange(), v1->GetSubOrbitalScanningRange()));
 				if (distance > minDist)
 					return;
@@ -887,7 +881,7 @@ namespace AI
 
 					if (e.IsAboveTerrain())
 					{
-						if (!e1->CanHit(ToSubOrbit(e1->location)))
+						if (!e1->CanHit(ToSuborbit(e1->location)))
 							return;	//can't hit air targets
 					}
 					else
@@ -898,7 +892,7 @@ namespace AI
 
 					if (e1->IsPlane())
 					{
-						if (!e.CanHit(ToSubOrbit(e.location)))
+						if (!e.CanHit(ToSuborbit(e.location)))
 							return;	//hostile can't hit local. won't participate (due to range-movement-attunement of directly opposed types)
 					}
 					else
@@ -971,7 +965,7 @@ namespace AI
 				aa.entity = e;
 				aa.effectiveProtectionRange = base->GetFlatAttackRange() - maxHostileBomberRange;
 				aa.effectiveProtectionRangeSqr = M::Sqr(aa.effectiveProtectionRangeSqr);
-				aa.subOrbitalCenter = ToSubOrbitEP(e->location);
+				aa.suborbitalCenter = ToSubOrbitEP(e->location);
 				aa.canAttack = base->CanAttack() && base->CountPossibleAttacks() > 0;
 			});
 
@@ -982,7 +976,7 @@ namespace AI
 				for (index_t i = 0; i < aaEntities.Count(); i++)
 				{
 					auto&aa = aaEntities[i];
-					float r = QuadraticInterestDistance(aa.subOrbitalCenter,*e,true,true);
+					float r = QuadraticInterestDistance(aa.suborbitalCenter,*e,true,true);
 					if (r <= M::Sqr(aa.effectiveProtectionRange))
 					{
 						if (p == nullptr)
@@ -1016,9 +1010,9 @@ namespace AI
 
 	void	AddVehicle(const Objects::PVehicle&v)
 	{
-		if (v->CanAttack())
+		if (v->turret == &Objects::Component::antiAircraft)
 			Details::attackers << v;
-		elif (v->turret == &Objects::Component::antiAircraft)
+		elif (v->CanAttack())
 			Details::aa << v;
 		elif (v->turret == &Objects::Component::radar 
 			|| v->turret == &Objects::Component::SubOrbital::sensorDrone
@@ -1105,7 +1099,7 @@ namespace AI
 		Details::processed.Clear();
 		Details::pending.Clear();
 		Details::destHistory.Clear();
-		Details::pending	.AppendAll(Details::attackers)
+		Details::pending.AppendAll(Details::attackers)
 						.AppendAll(Details::aa)
 						.AppendAll(Details::scanners);
 		if (Details::done)
