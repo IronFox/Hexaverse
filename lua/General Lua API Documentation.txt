@@ -208,13 +208,14 @@ Table-Type: Type
 	string		typeClass;				-- 'Unit', 'Compound', 'Turret', or 'VehicleBase'
 	string		name;					-- String representation of the local type. May be a compound 'X:Y'
 	bool		canBeUnlocked;			-- Indicates whether this type can be unlocked at all
-	bool		IsUnlockedForFaction(faction)	-- Query unlocked-state for a specific faction
+	bool		IsUnlockedForFaction(Faction)	-- Query unlocked-state for a specific faction
 }
 
 
 Table-Type: TurretType extends Type
 {
 	int		weight;						-- Weight affecting mobile entity speed (unresearched)
+	int		GetWeight(Faction);			-- Retrieves the researched weight for a given faction
 	string	mountType;					-- 'Vehicle', 'TowerOnly'
 	bool	canAttack;					-- True if offensive, false otherwise
 	bool	detectsResources;			-- True if this turret can detect resources and look vertically into the ground
@@ -231,10 +232,15 @@ Table-Type: TurretType extends Type
 		string	trajectoryType;			-- String representation of the trajectory type. May be Artillery, Missile, VerticalBeam, AAMissile, A2GMissile
 		string	ammoType;				-- String representation of the used ammo. Currently supported: Fuel, Minerals, Energy, Uranium
 		int		ammoDemandPerShot;		-- Resource demand (ammoType) per shot (unresearched)
-		int		attacksPerRound;		-- Theoretical maximum number of attacks per round (unresearched)
-		float	flatAttackRange;		-- Horizontal attack range. Vertical range depends on trajectoryType (unresearched). Does not include tower bonus (or malus) (unresearched)
-		float	explosionRadius;		-- Spherical explosion radius (unresearched)
-		int		damageLevel;			-- Damage inflicted by the local turret (unresearched)
+		int		GetAmmoDemandPerShot(Faction);	-- Retrieves the researched resource demand per shot for a given faction
+		int		attacksPerRound;				-- Theoretical maximum number of attacks per round (unresearched)
+		int		GetAttacksPerRound(Faction);	-- Retrieves the researched maximum attacks per round for a given faction
+		float	flatAttackRange;				-- Horizontal attack range. Vertical range depends on trajectoryType (unresearched). Does not include tower bonus (or malus) (unresearched)
+		float	GetFlatAttackRange(Faction);	-- Retrieves the researched horizontal attack range for a given faction
+		float	explosionRadius;				-- Spherical explosion radius (unresearched)
+		float	GetExplosionRadius(Faction);	-- Retrieves the researched explosion radius for a given faction
+		int		damageLevel;				-- Damage inflicted by the local turret (unresearched)
+		int		GetDamageLevel(Faction);	-- Retrieves the researched damage level for a given faction
 		bool	dealsEMPDamage;				-- True if the local turret deals EMP damage as opposed to permanent health damage
 		bool	independentAttackAndMotion;	-- True if the vehicle can fire and move at 100% each in the same round, with neither action slowing the other
 		bool	requiresStationaryVehicle;	-- True if vehicle must remain motionless one round before it can attack
@@ -242,11 +248,13 @@ Table-Type: TurretType extends Type
 
 Table-Type: VBaseType extends Type
 {
-	float		carryingCapacity;		-- Maximum turret carrying capacity before speed penalty occurs (Unresearched)
+	float		carryingCapacity;				-- Maximum turret carrying capacity before speed penalty occurs (Unresearched)
+	float		GetCarryingCapacity(Faction);	-- Retrieves the researched carrying capacity for a given faction
 	bool		motionIgnoresAttack;	-- True if the local base can move regardless of whether an active turret has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	int			maxClimbUp;				-- Maximum climbing height difference. Typically 1
 	int			minClimbDown;			-- Minimum down-climbing height difference. Negative. Typically -1 or less
-	int			movementSpeed;			-- Theoretical upper movement steps per round, Excluding possible turret overweight and EMP damage. The effective speed depends on the encountered terrain. (Unresearched)
+	int			movementSpeed;				-- Theoretical upper movement steps per round, Excluding possible turret overweight and EMP damage. The effective speed depends on the encountered terrain. (Unresearched)
+	int			GetMovementSpeed(Faction);	-- Retrieves the researched movement speed for a given faction
 }
 
 	
@@ -254,10 +262,13 @@ Table-Type: UnitType extends Type
 {
 	int			constructionCost;		-- Amount of resources necessary to build this type
 	int			height;					-- Unit height in layers. Typically 1. Some structures are larger.
-	float		scanningRange;			-- Regular grid base (unresearched) scanning range
-	float		suborbitalScanningRange;-- Scanning range of ground units at suborbital heights (unresearched). Nil if not supported
-	float		groundScanningRange;	-- Scanning range of aerial units at ground level, regardless of ground elevation. Nil if not supported
-	int			maxHealth;				-- Maximum possible health of the local entity (unresearched)
+	float		scanningRange;				-- Regular grid base (unresearched) scanning range
+	float		GetScanningRange(Faction);	-- Retrieves the researched scanning range for a given faction
+	float		suborbitalScanningRange;				-- Scanning range of ground units at suborbital heights (unresearched). Nil if not supported
+	float		GetSuborbitalScanningRange(Faction); 	-- Retrieves the researched suborbital scanning range for a given faction. Function is nil if not supported
+	float		groundScanningRange;					-- Scanning range of aerial units at ground level, regardless of ground elevation. Nil if not supported
+	float		GetGroundScanningRange(Faction);		-- Retrieves the researched ground scanning range for a given faction. Function is nil if not supported
+	int			maxHealth;							-- Maximum possible health of the local entity (unresearched)
 	float		maxUncontrolledExplosionRadius;		-- Maximum possible explosion radius of the local type if suffering uncontrolled destruction
 	bool		isMobile;				-- True if this is a mobile entity
 	bool		isSuborbitalPlane;		-- True if this type is a suborbital plane
@@ -271,8 +282,9 @@ Table-Type: UnitType extends Type
 	VBaseType	vehicleBaseType;		-- Vehicle base type. May be nil. Comparable via == and ~=
 	
 	[isMobile]
-		int		movementSpeed;			-- Theoretical max movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain. (Unresearched)
-		bool	motionIgnoresAttack;	-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
+		int		movementSpeed;				-- Theoretical max movement steps per round, including possible turret overweight and EMP damage. The effective speed may depend on the encountered terrain. (Unresearched)
+		int		GetMovementSpeed(Faction);	-- Retrieves the researched movement speed for a given faction
+		bool	motionIgnoresAttack;		-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	[isWorkingStructure]
 		ResVec	maxResourceStorage;		-- Resource vector describing the maximum storage capacity. All values are >= 0
 		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative, indicating demand

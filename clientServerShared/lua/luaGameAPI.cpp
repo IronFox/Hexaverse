@@ -2455,6 +2455,24 @@ namespace Lua
 		});
 	}
 
+	template<typename T>
+		static void AddTypeAttrib(Lua::Table&t, const char*name, const Objects::Research::Attribute<T>&attrib)
+		{
+			t.SetField(name,attrib.GetValue(Objects::Research::globalState.zeroTable));
+
+			String fName = name;
+			fName.Set(0,CharFunctions::toupper(fName.GetChar(0)));
+			fName = "Get"+fName;
+			auto fFullName = fName+"()";
+			t.SetFunction(fName,[&attrib,fFullName](const Lua::Table&luaFaction)
+			{
+				if (!luaFaction)
+					return attrib.GetValue(Objects::Research::globalState.zeroTable);
+				auto f = Detail::DecodeFaction(luaFaction, false, fFullName, "Faction parameter");
+				return attrib.GetValue(f->researchState.attributeTable);
+			});
+		}
+
 	Lua::Table	API::AddType(Objects::EntityType type)
 	{
 		auto e = Objects::Prototypes::Find(type);
@@ -2476,8 +2494,6 @@ namespace Lua
 			e.reset(new Objects::Vehicle(nullptr,Grid::LCellIdI::Invalid,base,turret));
 			t.SetField("typeClass","Compound");
 		}
-		
-		const auto&z = Objects::Research::globalState.zeroTable;
 
 		if (e)
 		{
@@ -2491,14 +2507,23 @@ namespace Lua
 			t.SetField("isStructure",e->IsStructure());
 			t.SetField("isIndestructible", e->IsIndestructible());
 			t.SetField("scanningRange",e->GetScanningRange());
+			t.SetFunction("GetScanningRange",[e](const Lua::Table&luaFaction)
+			{
+				auto f = Detail::DecodeFaction(luaFaction,true,"GetMovementSpeed()","Faction parameter");
+				if (!f)
+					return e->GetScanningRange();
+				return e->GetScanningRange(f);
+			});
+
+
 			{
 				auto turret = e->GetTurretBase();
 				if (turret)
 				{
 					if (turret->GetSubOrbitalScanningRange() > 0)
-						t.SetField("suborbitalScanningRange",turret->GetSubOrbitalScanningRange());
+						AddTypeAttrib(t,"suborbitalScanningRange",turret->turret->subOrbitalScanningRange);
 					if (turret->turret->groundScanningRange.IsFunctionOrConstNonZero())
-						t.SetField("groundScanningRange",turret->turret->groundScanningRange.GetValue(e->GetResearchState()));
+						AddTypeAttrib(t,"groundScanningRange",turret->turret->groundScanningRange);
 				}
 			}
 
@@ -2511,17 +2536,7 @@ namespace Lua
 			{
 				t.SetFunction("IsUnlockedForFaction",[e,this](const Lua::Table&luaFaction)	//keep a copy of e here. is either a prototype or ad-hoc creation. either should be fine to keep in the std::function object
 				{
-
-					TUniqueID id;
-					String sid;
-					if (!luaFaction.GetField("id",sid))
-						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
-					if (!id.Decode(sid))
-						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter is not a faction");
-
-					Objects::PFaction f = Objects::Faction::FindByID(id);
-					if (!f)
-						throw Lua::Exception(CLOCATION,"IsUnlockedForFaction(): Parameter does not point to an existing faction");
+					auto f = Detail::DecodeFaction(luaFaction, false, "IsUnlockedForFaction()", "Parameter");
 					return e->IsUnlockedAtState(f->researchState.attributeTable);
 				});
 			}
@@ -2530,6 +2545,13 @@ namespace Lua
 			{
 				auto m = To<Objects::MobileEntity>::Cast(e);
 				t.SetField("movementSpeed",m->GetMovementStepsPerRound());
+				t.SetFunction("GetMovementSpeed",[m](const Lua::Table&luaFaction)
+				{
+					auto f = Detail::DecodeFaction(luaFaction,true,"GetMovementSpeed()","Faction parameter");
+					if (!f)
+						return m->GetMovementStepsPerRound();
+					return m->GetMovementStepsPerRound(f);
+				});
 				t.SetField("motionIgnoresAttack",m->MotionIgnoresAttack());
 			}
 
@@ -2560,10 +2582,10 @@ namespace Lua
 			auto b = Objects::Component::baseComponents.Find(type.baseType);
 			t.SetField("typeClass","VehicleBase");
 			t.SetField("motionIgnoresAttack",b->ignoresVehicleAttacks);
-			t.SetField("carryingCapacity",b->carryingCapacity.GetValue(z));
+			AddTypeAttrib(t,"carryingCapacity",b->carryingCapacity);
 			t.SetField("maxClimbUp", b->maxClimbUp);
 			t.SetField("minClimbDown", b->minClimbDown);
-			t.SetField("movementSpeed",b->movementSpeed.GetValue(z));
+			AddTypeAttrib(t,"movementSpeed",b->movementSpeed);
 
 			SetResearchProperties(t,b);
 		}
@@ -2572,7 +2594,7 @@ namespace Lua
 			auto turret = Objects::Component::allTurretComponents.Find(type.baseType);
 			ASSERT_NOT_NULL__(turret);
 			t.SetField("typeClass","Turret");
-			t.SetField("weight",turret->weight.GetValue(Objects::Research::globalState.zeroTable));
+			AddTypeAttrib(t,"weight",turret->weight);
 			t.SetField("detectsResources",turret->detectsResources);
 			t.SetField("canAttack",turret->CanAttack());
 			t.SetField("mountType",turret->mountType.ToString());
@@ -2580,14 +2602,14 @@ namespace Lua
 			if (turret->CanAttack())
 			{
 				t.SetField("trajectoryType",turret->trajectoryType.ToString());
-				t.SetField("ammoDemandPerShot",turret->ammoNeedPerShot.GetValue(z));
+				AddTypeAttrib(t,"ammoDemandPerShot",turret->ammoNeedPerShot);
 				t.SetField("independentAttackAndMotion",turret->independentAttackAndMotion);
 				t.SetField("requiresStationaryVehicle",turret->requiresStationaryVehicle);
-				t.SetField("attacksPerRound",turret->GetAttacksPerRound(z));
+				AddTypeAttrib(t,"attacksPerRound",turret->attacksPerRound);
 				t.SetField("ammoType",turret->ammoType.ToString());
-				t.SetField("flatAttackRange",turret->GetHorizontalAttackRange(z));
-				t.SetField("explosionRadius",turret->GetExplosionRadius(z));
-				t.SetField("damageLevel",turret->GetDamageLevel(z));
+				AddTypeAttrib(t,"flatAttackRange",turret->horizontalAttackRange);
+				AddTypeAttrib(t,"explosionRadius",turret->explosionRadius);
+				AddTypeAttrib(t,"damageLevel",turret->damageLevel);
 				t.SetField("dealsEMPDamage",turret->dealsEMPDamage);
 			}
 			for (index_t op = 0; op < Objects::Component::OperationCount; op++)

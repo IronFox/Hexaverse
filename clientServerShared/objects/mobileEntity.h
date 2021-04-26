@@ -493,6 +493,7 @@ namespace Objects
 		virtual bool			MotionIgnoresAttack() const=0;
 		virtual int				GetMovementStepsPerRoundExt(const OwnerParameter&owner,const T2::TModifier&t2) const =0;
 		int						GetMovementStepsPerRound() const {return GetMovementStepsPerRoundExt(owner,t2 ? t2->speed : T2::TModifier());}
+		int						GetMovementStepsPerRound(const OwnerParameter&owner) const {return GetMovementStepsPerRoundExt(owner,t2 ? t2->speed : T2::TModifier());}
 		virtual String			DescribeMovementStepsPerRoundExt(const OwnerParameter&owner, const T2::TModifier&t2) const =0;
 		virtual float			GetBaseMovementInitiative() const {return 100;}
 		/**
