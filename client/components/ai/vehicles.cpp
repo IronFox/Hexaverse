@@ -1108,7 +1108,7 @@ namespace AI
 		Details::maxHostileBomberRange = Objects::Component::SubOrbital::bomber.horizontalAttackRange.GetValue(Objects::Research::globalState.zeroTable);
 		Objects::ForeachFaction([](const Objects::PFaction&f)
 		{
-			if (f != Objects::Faction::mine)
+			if (f->alliance != Objects::Faction::mine->alliance)
 			{
 				float r = Objects::Component::SubOrbital::bomber.horizontalAttackRange.GetValue(f->researchState.attributeTable);
 				Details::maxHostileBomberRange = M::Max(Details::maxHostileBomberRange,r);
