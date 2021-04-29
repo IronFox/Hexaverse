@@ -1269,6 +1269,35 @@ namespace AI::Script
 
 
 	#ifdef HAS_WINDOW
+
+	struct TScriptFile
+	{
+		String	name;
+		FileSystem::File file;
+	};
+
+	static void ScanScriptFiles(const FileSystem::Folder&folder, Buffer0<TScriptFile>&outScripts, const String&pathPrefix)
+	{
+		FileSystem::FolderScan scan = folder;
+		FileSystem::File f;
+		while (scan.NextEntry(f))
+		{
+			if (f.IsDirectory())
+			{
+				ScanScriptFiles(f,outScripts,pathPrefix + FileSystem::PathToString(f.GetName())+"/");
+				continue;
+			}
+			if (f.IsExtension(".lua"))
+			{
+				TScriptFile&sf = outScripts.Append();
+				sf.name = pathPrefix + FileSystem::PathToString(f.GetInnerName());
+				sf.file = f;
+			}
+		}
+
+	}
+
+
 	void	DefineCommands(const Objects::Command::PCommandGroup&aiCommands)
 	{
 		using namespace Objects::Command;
@@ -1280,20 +1309,24 @@ namespace AI::Script
 			using namespace HUD::Component;
 			PWindow window = Window::Create();
 
-			FileSystem::FolderScan scripts = Details::GetScriptFolder();
-			if (!scripts.IsValidLocation())
-				FileSystem::ForceCreateDirectory(scripts.GetLocation());
+			FileSystem::Folder scriptRoot = Details::GetScriptFolder();
+			if (!scriptRoot.IsValidLocation())
+				FileSystem::ForceCreateDirectory(scriptRoot.GetLocation());
+
+			Buffer0<TScriptFile>	scripts;
+			ScanScriptFiles(scriptRoot,scripts,"");
+
 
 			FileSystem::File file;
 			WWindow w = window;
 			Buffer0<PButton> buttons;
-			while (scripts.NextFile(".lua",file))
+			for (const auto&file:scripts)
 			{
-				PButton button {new Button{FileSystem::PathToString(file.GetInnerName()),"Load this AI script",[file,w]()
+				PButton button {new Button{file.name,"Load this AI script",[file,w]()
 				{
 					PWindow window = w.lock();
 					WindowStack::Hide(window);
-					Load(file.GetLocation(),true);
+					Load(file.file.GetLocation(),true);
 
 					HUD::HexGrid::RefreshButtonState();
 				}}};

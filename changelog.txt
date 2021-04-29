@@ -2,6 +2,7 @@ v0.9.13
 	> Bottom left resource display will now always show own compound status, regardless of unit selection
 	> Health and progress bars are no longer see-through
 	> Current entity health is now auto-adjusted when researching max health
+	> AI scripts can now be loaded from sub-directories
 
 v0.9.12 [Feb 21 2021]
 	+ AI: Added --#require <...>/--#require "..." statements to include other Lua files
