@@ -123,7 +123,7 @@ and passes each to the given function as only parameter.
 If the function returns false (not nil), then iteration is aborted
 ]]
 function Util.ForeachHostileIncludingGhosts(func)
-	for _,e in Game.myMarkers do
+	for _,e in pairs(Game.myMarkers) do
 		if e.type == 'HostileContact' and e.unitReference then
 			local rs = func(e.unitReference);
 			if rs ~= nil and rs == false then
@@ -131,7 +131,7 @@ function Util.ForeachHostileIncludingGhosts(func)
 			end;
 		end;
 	end;
-	for _,e in Game.hostileUnits do
+	for _,e in pairs(Game.hostileUnits) do
 		local rs = func(e);
 		if rs ~= nil and rs == false then
 			return;

@@ -1,5 +1,5 @@
-#include "util.lua"
-#include "queue.lua"
+--#require "util.lua"
+--#require "queue.lua"
 
 
 
@@ -116,7 +116,7 @@ function Work.Clear()
 	Work.scanners = {};
 	Work.aa = {};
 	Work.processed = {};
-	Work.pending = Work.New();
+	Work.pending = Queue.New();
 end;
 
 function Work.AddMobile(unit)
@@ -126,7 +126,7 @@ function Work.AddMobile(unit)
 		Util.Push(Work.attackers,unit);
 	elseif (unit.turret.type.name == 'Radar'
 		or unit.turret.type.name == 'Sensor Drone'
-		or unit.turret.type.name == 'Surveyor')
+		or unit.turret.type.name == 'Surveyor') then
 		Util.Push(Work.scanners,unit);
 	else
 		Game.Log("Skipping "+unit.name);
@@ -152,8 +152,9 @@ end;
 
 
 function EstimateDeadThreatLevelFrom(ctx --[[Context]], u --[[Unit]], estimateAt --[[Loc]], estimation --[[ThreatEstimation]])
-	if (u.location.isSuborbital ~= ctx.self.location.isSuborbital)
+	if (u.location.isSuborbital ~= ctx.self.location.isSuborbital) then
 		return;
+	end;
 	local distance = QuadraticDistance(u.location.world,estimateAt.world);
 	estimation.unknownDistanceThreat = estimation.unknownDistanceThreat + 1.0 / (1.0 + distance);
 end;
@@ -316,15 +317,17 @@ function GetSameTurretBadness(myLoc, myUnit, theirUnit)
 	if (isAA) then
 		local distance = QuadraticDistance(Util.ToSuborbit(myLoc).world,Util.ToSuborbit(theirUnit.location).world);
 		local minDist = Sqr(math.max(myUnit.suborbitalScanningRange,theirUnit.suborbitalScanningRange));
-		if (distance > minDist)
+		if (distance > minDist) then
 			return 0.0;
+		end;
 		return 30.0 / (1.0 + distance * 0.2);
 	end;
 	
 	local distance = QuadraticDistance(myLoc.world,theirUnit.location.world);
 	local minDist = Sqr(math.max(myUnit.scanningRange,theirUnit.scanningRange));
-	if (distance > minDist)
+	if (distance > minDist) then
 		return 0.0;
+	end;
 	return 30.0 / (1.0 + distance * 0.2);
 end;	
 	
@@ -526,121 +529,122 @@ function ProcessMobile(v)
 	for _,n in pairs(reach) do
 		local isCurrent = not n.predecessor;
 		if not v.type.isSuborbitalPlane or isCurrent or n.location.isSuborbital then
-		
-		local goodWeight = 0;
-		local badWeight = 0;
-		if isAA then
-			local aa = aaUnits[v.id];
-			for _,prot in pairs(aa.protectedUnits) do
-				if #prot.effectiveProtectors + #prot.theoreticalProtectors == 1 then --only me
-					local range = QuadraticInterestDistance(Util.ToSuborbit(n.location),prot.target,true,true);
-					if (range > aa.effectiveProtectionRangeSqr) then
-						badWeight += 1000;
+			
+			local goodWeight = 0;
+			local badWeight = 0;
+			if isAA then
+				local aa = aaUnits[v.id];
+				for _,prot in pairs(aa.protectedUnits) do
+					if #prot.effectiveProtectors + #prot.theoreticalProtectors == 1 then --only me
+						local range = QuadraticInterestDistance(Util.ToSuborbit(n.location),prot.target,true,true);
+						if (range > aa.effectiveProtectionRangeSqr) then
+							badWeight = badWeight + 1000;
+						end;
 					end;
 				end;
-			end;
-			
-			for _,e in pairs(aaUnprotected) do
-				local range = QuadraticInterestDistance(Util.ToSuborbit(n.location),e,true,true);
-				if (range <= aa.effectiveProtectionRangeSqr) then
-					goodWeight += 10.f;
+				
+				for _,e in pairs(aaUnprotected) do
+					local range = QuadraticInterestDistance(Util.ToSuborbit(n.location),e,true,true);
+					if (range <= aa.effectiveProtectionRangeSqr) then
+						goodWeight = goodWeight + 10.0;
+					end;
 				end;
-			end;
-		else
-			Util.ForeachHostileIncludingGhosts(function(e)
-				if (not e.location.isSuborbital or interestedInAirborne)
-					and (e.location.isSuborbital or interestedInGroundTargets)
-				then
-					local distance = QuadraticInterestDistance(n.location,e,interestedInAirborne,interestedInGroundTargets);
-					local fc = EstimateInterest(t,e.constructionCost);
-					if (distance < expR2) then
-						badWeight = badWeight + 20 / (1.0 + distance);
-					else
-						if not attacker then
-							if not Util.IsAlive(e) then
-								fc = fc * 2;
-								if ofInterestToAttacker[e.id] ~= nil then
+			else
+				Util.ForeachHostileIncludingGhosts(function(e)
+					if (not e.location.isSuborbital or interestedInAirborne)
+						and (e.location.isSuborbital or interestedInGroundTargets)
+					then
+						local distance = QuadraticInterestDistance(n.location,e,interestedInAirborne,interestedInGroundTargets);
+						local fc = EstimateInterest(t,e.constructionCost);
+						if (distance < expR2) then
+							badWeight = badWeight + 20 / (1.0 + distance);
+						else
+							if not attacker then
+								if not Util.IsAlive(e) then
 									fc = fc * 2;
-								end;
-							elseif ofInterestToAttacker[e.id] ~= nil then
-								local vis = Util.CheckVisibility(v,e.location);
-								if vis.isVisible and Game.Terrain.GetLowestSensorStrength(e.location,e.height) <= 1 then
-									if distance <= vis.quadraticSensorRange then
-										distance = 0;
-										fc = fc * 10;		--only one seeing it. maintain visibility
-									else
-										fc = 0;
-										badWeight = badWeight + 1000;
-										return false;
+									if ofInterestToAttacker[e.id] ~= nil then
+										fc = fc * 2;
+									end;
+								elseif ofInterestToAttacker[e.id] ~= nil then
+									local vis = Util.CheckVisibility(v,e.location);
+									if vis.isVisible and Game.Terrain.GetLowestSensorStrength(e.location,e.height) <= 1 then
+										if distance <= vis.quadraticSensorRange then
+											distance = 0;
+											fc = fc * 10;		--only one seeing it. maintain visibility
+										else
+											fc = 0;
+											badWeight = badWeight + 1000;
+											return false;
+										end;
 									end;
 								end;
+							else
+								ofInterestToAttacker[e.id] = true;
 							end;
-						else
-							ofInterestToAttacker[e.id] = true;
+							goodWeight = goodWeight + fc / (1.0 + distance);
 						end;
-						goodWeight = goodWeight + fc / (1.0 + distance);
+						
 					end;
-					
+				end
+				);
+				
+				for _,m in pairs(Game.myMarkers) do
+					if m.type == 'Visited' then
+						local distance = QuadraticDistance(m.location.world,n.location.world);
+						badWeight = badWeight + 10.0 / (1.0 + (m.age) + distance * 0.2);
+					end;
 				end;
-			end
-			);
 			
-			for _,m in pairs(Game.myMarkers) do
-				if m.type == 'Visited' then
-					local distance = QuadraticDistance(m.location.world,n.location.world);
-					badWeight = badWeight + 10.0 / (1.0 + (m.age) + distance * 0.2);
-				end;
 			end;
-		
-		end;
+				
+			if not attacker or isAA then
+				for _,v2 in pairs(Work.processed) do
+					if v2.turret and v2.turret.type == v.turret.type then
+						badWeight = badWeight + SameTurretBadness(n.location,v2.location,v,v2,isAA);
+					end;
+					local directed = destHistory[v2.id];
+					if directed then
+						badWeight = badWeight + SameTurretBadness(n.location,directed,v,v2,isAA);
+					end;
+				end;
 			
-		if not attacker or isAA then
-			for _,v2 in pairs(Work.processed) do
-				if v2.turret and v2.turret.type == v.turret.type then
+				Queue.Foreach(Work.pending, function(v2)
 					badWeight = badWeight + SameTurretBadness(n.location,v2.location,v,v2,isAA);
-				end;
-				local directed = destHistory[v2.id];
-				if directed then
-					badWeight = badWeight + SameTurretBadness(n.location,directed,v,v2,isAA);
-				end;
+				end);
 			end;
-		
-			Work.pending:Foreach(function(v2)
-				badWeight = badWeight + SameTurretBadness(n.location,v2.location,v,v2,isAA);
-			end);
-		end;
+				
 			
-		
-		local score = (1.0 + goodWeight) / (1.0+badWeight);
-		if not isAA then
-			score = score / (1.0 + (math.abs(n.movementCostsFromRoot- minMotion * 3 / 2))*0.01);
-		end;
-		if not overconfident then
-			local estimation = threatCache[n.location];
-			if estimation and 
-				ShouldBlockAtThreat(ctx, estimation, referenceThreat, true)
-			then
-				score = score + 3000 / (1.0 + n.movementCostsFromRoot);
+			local score = (1.0 + goodWeight) / (1.0+badWeight);
+			if not isAA then
+				score = score / (1.0 + (math.abs(n.movementCostsFromRoot- minMotion * 3 / 2))*0.01);
 			end;
-		end;
-		
-		if not isAA then
-			local extent = 1.0 + Sqr(Sqr(Sqr(math.random())));
-			if (math.random() > 0.5) then
-				extent = 1.0 / extent;
+			if not overconfident then
+				local estimation = threatCache[n.location];
+				if estimation and 
+					ShouldBlockAtThreat(ctx, estimation, referenceThreat, true)
+				then
+					score = score + 3000 / (1.0 + n.movementCostsFromRoot);
+				end;
 			end;
-			score = score * extent;				
-		end;
-		
-		
-		if (score > bestScore) then
-			best = n;
-			bestScore = score;
-		end;
-		
-		if isCurrent then
-			current = n;
-			currentScore = score;
+			
+			if not isAA then
+				local extent = 1.0 + Sqr(Sqr(Sqr(math.random())));
+				if (math.random() > 0.5) then
+					extent = 1.0 / extent;
+				end;
+				score = score * extent;				
+			end;
+			
+			
+			if (score > bestScore) then
+				best = n;
+				bestScore = score;
+			end;
+			
+			if isCurrent then
+				current = n;
+				currentScore = score;
+			end;
 		end;
 	end;
 	
@@ -747,7 +751,7 @@ function	UpdateAAProtection()
 	for _,u in pairs(allUnits) do
 		local p = nil;
 		for _,aa in pairs(aaUnits) do
-			local r = QuadraticInterestDistance(aa.subOrbitalCenter,u,true,true);
+			local r = QuadraticInterestDistance(aa.suborbitalCenter,u,true,true);
 			if (r <= aa.effectiveProtectionRangeSqr) then
 				if (not p) then
 					p = AAProtected.New(u);
@@ -791,7 +795,15 @@ function Execute()
 
 	ofInterestToAttacker = {};
 	
-	local bomberTurret = Game.Type.units['Bomber'].turret;
+	for k,u in pairs(Game.Type.units) do
+		Game.Log(k..' -> '..u.name);
+	end;
+	local bomberType = Game.Type.units['Bomber'];
+	if not bomberType then
+		Game.Log('Bomber type not found. Script not compatible to API');
+		return;
+	end;
+	local bomberTurret = bomberType.turretType;
 	maxHostileBomberRange = bomberTurret.flatAttackRange;
 	for _,f in pairs(Game.factions) do
 		if f.alliance ~= Game.myFaction.alliance then
@@ -838,12 +850,12 @@ function Execute()
 		end;
 	end;
 	
-	Work.pending:PushAllRight(Work.attackers);
-	Work.pending:PushAllRight(Work.aa);
-	Work.pending:PushAllRight(Work.scanners);
+	Queue.PushAllRight(Work.pending,Work.attackers);
+	Queue.PushAllRight(Work.pending,Work.aa);
+	Queue.PushAllRight(Work.pending,Work.scanners);
 
-	while Work.pending:IsNotEmpty() do
-		local u = Work.pending:PopLeft();
+	while Queue.IsNotEmpty(Work.pending) do
+		local u = Queue.PopLeft(Work.pending);
 		ProcessMobile(u);
 		Util.Push(Work.processed,u);
 	end;
