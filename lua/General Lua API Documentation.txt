@@ -147,7 +147,12 @@ Table-Type: AiThreat
 	float		constructorSignificanceSum;	-- Sum of all hostile constructor significances
 	float		highestConstructorSignificance;	-- Highest detected hostile constructor significance
 	
-	void		Inc(AiEst);			-- Includes a the given estimation into the local table
+	--[[ Inc:
+	Creates a new AiThreat estimation with the given estimation included. 
+	The estimation will be scaled during inlusion, depending on server difficulty.
+	Warning: Assumes local attributes have not been manually edited
+	]]
+	AiThreat	Inc(AiEst);
 }
 
 Table-Type: AiSupport
@@ -161,7 +166,7 @@ Table-Type: AiSupport
 	float		sensorAirStationary;	-- Total impact of friendly stationary, radar, air units
 	float		sensorAirMobile;		-- Total impact of friendly mobile, radar, air units
 
-	void		Inc(AiEst);			-- Includes a the given estimation into the local table
+	AiSupport	Inc(AiEst);			-- Creates a new AiSupport estimation with the given estimation included. Warning: Assumes local attributes have not been manually edited
 }
 
 

@@ -912,6 +912,59 @@ namespace Lua
 
 	}
 
+	Lua::Table	API::CreateThreatTable(Objects::NexusThreat::TLevel threat)
+	{
+		Lua::Table rs = program->CreateTable();
+		for (int i = 0; i < 2; i++)
+			for (int k = 0; k < 2; k++)
+			{
+				bool ground = i == 0;
+				bool stationary = k == 0;
+
+				String name = String(ground ? "ground" : "air")+(stationary ? "Stationary":"Mobile");
+				rs.SetField(name,threat.Domain(ground).Level(stationary));
+			}
+
+		rs.SetField("constructorSignificanceSum",threat.constructorSignificanceSum);
+		rs.SetField("highestConstructorSignificance",threat.highestConstructorSignificance);
+
+				
+		rs.SetFunction("Inc",[this,threat](const Lua::Table&estTable)
+		{
+			Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
+			est.Scale(Objects::NexusThreat::GetEstimationFactor());
+			auto copy = threat;
+			copy += est;
+			return CreateThreatTable(copy);
+		});
+		return rs;
+	}
+
+	Lua::Table	API::CreateSupportTable(Objects::NexusThreat::TSupport supp)
+	{
+		Lua::Table rs = program->CreateTable();
+		for (int i = 0; i < 2; i++)
+			for (int j = 0; j < 2; j++)
+				for (int k = 0; k < 2; k++)
+				{
+					bool ground = i == 0;
+					bool attack = j == 0;
+					bool stationary = k == 0;
+
+					String name = String(attack?"attack":"sensor")+(ground ? "Ground" : "Air")+(stationary ? "Stationary":"Mobile");
+					rs.SetField(name,supp.Aspect(attack).Domain(ground).Level(stationary));
+				}
+				
+		rs.SetFunction("Inc",[this,supp](const Lua::Table&estTable)
+		{
+			Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
+			auto copy = supp;
+			copy += est;
+			return CreateSupportTable(copy);
+		});
+
+		return rs;
+	}
 
 	void	API::Setup()
 	{
@@ -959,96 +1012,13 @@ namespace Lua
 			aiTable.SetFunction("GetThreatLevel",[this](int poleIdx)->Lua::Table
 			{
 				auto threat = Objects::NexusThreat::Get(poleIdx-1)*Objects::NexusThreat::GetEstimationFactor();
-				Lua::Table rs = program->CreateTable();
-				for (int i = 0; i < 2; i++)
-					for (int k = 0; k < 2; k++)
-					{
-						bool ground = i == 0;
-						bool stationary = k == 0;
-
-						String name = String(ground ? "ground" : "air")+(stationary ? "Stationary":"Mobile");
-						rs.SetField(name,threat.Domain(ground).Level(stationary));
-					}
-
-				rs.SetField("constructorSignificanceSum",threat.constructorSignificanceSum);
-				rs.SetField("highestConstructorSignificance",threat.highestConstructorSignificance);
-
-				Lua::WReference tab = rs;
-				
-				rs.SetFunction("Inc",[tab](const Lua::Table&estTable)
-				{
-					Lua::Table self = tab;
-					if (self.IsEmpty())
-						return;	//this would be very weird
-					Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
-					auto threat = est.ToThreat(true);
-
-					for (int i = 0; i < 2; i++)
-						for (int k = 0; k < 2; k++)
-						{
-							bool ground = i == 0;
-							bool stationary = k == 0;
-
-							String name = String(ground ? "ground" : "air")+(stationary ? "Stationary":"Mobile");
-							float old;
-							Detail::Require(self,name,old);
-							self.SetField(name, old + threat.Domain(ground).Level(stationary));
-						}
-					if (est.isConstructor)
-					{
-						float old;
-						Detail::Require(self,"constructorSignificanceSum",old);
-						self.SetField("constructorSignificanceSum", old + est.significance);
-
-						Detail::Require(self,"highestConstructorSignificance",old);
-						self.SetField("highestConstructorSignificance", std::max(old,est.significance));
-					}
-
-				});
-
-				return rs;
+				return CreateThreatTable(threat);
 			});
+
 			aiTable.SetFunction("GetSupportLevel",[this](int poleIdx)->Lua::Table
 			{
 				const auto&supp = Objects::NexusThreat::GetSupport(poleIdx-1);
-				Lua::Table rs = program->CreateTable();
-				for (int i = 0; i < 2; i++)
-					for (int j = 0; j < 2; j++)
-						for (int k = 0; k < 2; k++)
-						{
-							bool ground = i == 0;
-							bool attack = j == 0;
-							bool stationary = k == 0;
-
-							String name = String(attack?"attack":"sensor")+(ground ? "Ground" : "Air")+(stationary ? "Stationary":"Mobile");
-							rs.SetField(name,supp.Aspect(attack).Domain(ground).Level(stationary));
-						}
-				Lua::WReference tab = rs;
-				
-				rs.SetFunction("Inc",[tab](const Lua::Table&estTable)
-				{
-					Lua::Table self = tab;
-					if (self.IsEmpty())
-						return;	//this would be very weird
-					Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
-					auto supp = est.ToSupport();
-
-					for (int i = 0; i < 2; i++)
-						for (int j = 0; j < 2; j++)
-							for (int k = 0; k < 2; k++)
-							{
-								bool ground = i == 0;
-								bool attack = j == 0;
-								bool stationary = k == 0;
-
-								String name = String(attack?"attack":"sensor")+(ground ? "Ground" : "Air")+(stationary ? "Stationary":"Mobile");
-								float old;
-								Detail::Require(self,name,old);
-								self.SetField(name, old + supp.Aspect(attack).Domain(ground).Level(stationary));
-							}
-				});
-
-				return rs;
+				return CreateSupportTable(supp);
 			});
 			aiTable.SetFunction("ShouldBuildPlanes",[]()->bool
 			{

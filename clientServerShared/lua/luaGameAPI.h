@@ -11,6 +11,7 @@
 #include "../objects/pathfinding.h"
 #include <functional>
 #include "../objects/entityType.h"
+#include "../objects/nexus/nexusThreatEstimation.h"
 
 namespace Lua
 {
@@ -214,6 +215,8 @@ namespace Lua
 		void		AddAllAlliances();
 		void		SignalDeployment(const TUniqueID&deploymentID, const Objects::PWorldEntity&e);
 	private:
+		Lua::Table	CreateThreatTable(Objects::NexusThreat::TLevel);
+		Lua::Table	CreateSupportTable(Objects::NexusThreat::TSupport);
 
 		Lua::Table	LuaFindShortestPathFrom(const Objects::PMobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&dest, const Lua::Function<int(Lua::Table, int)>&costModifier, bool ignoreFriendlyMobilesOnRoute);
 		Lua::Table	LuaTraceTrajectoryFrom(const Objects::TrajectoryEndPoint&origin, const Objects::TrajectoryEndPoint&target, Objects::TrajectoryType trajectory, float flatAttackRange, const Objects::WFaction&owner);
