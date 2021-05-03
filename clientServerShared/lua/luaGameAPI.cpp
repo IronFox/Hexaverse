@@ -1057,6 +1057,14 @@ namespace Lua
 					rs.AppendElement(MapEntity(*e,true,false));
 				return rs;
 			});
+			aiTable.SetFunction("GetOwnMobiles",[this](int poleIdx)->Lua::Table
+			{
+				Lua::Table rs = program->CreateTable();
+				auto entities = Objects::NexusThreat::GetOwnMobiles(poleIdx-1);
+				foreach (entities,e)
+					rs.AppendElement(MapEntity(*e,true,false));
+				return rs;
+			});
 			aiTable.SetFunction("GetNexusPort",[this](int poleIdx)->Lua::Table
 			{
 				return MapEntity(Objects::NexusThreat::GetPort(poleIdx-1),true,false);

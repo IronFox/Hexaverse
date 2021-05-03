@@ -63,6 +63,7 @@ Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the gi
 	AiEst		Game.AI.EstimateUnit(int poleIdx, Unit);				-- Same as above for a known unit. Also takes their relative health into account
 	Unit[]		Game.AI.GetBaseVehiclePlants(int);		-- Fetches all vehicle plants provided by the base at the specified pole index (1-12)
 	Unit[]		Game.AI.GetBasePlaneFactories(int);		-- Fetches all plane factories provided by the base at the specified pole index (1-12)
+	Unit[]		Game.AI.GetOwnMobiles(int);				-- Fetches all owned mobile units in the domain of the specified pole index (1-12)
 	Unit		Game.AI.GetNexusPort(int);				-- Fetches the Nexus Port positioned at the specified pole (1-12). May return nil
 	bool		Game.AI.IsPlaneFactoryHere(Cell);		-- Checks if a plane factory exists at the specified horizontal cell location
 
