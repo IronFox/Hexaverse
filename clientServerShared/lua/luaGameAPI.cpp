@@ -7,7 +7,6 @@
 #include "../objects/faction.h"
 #include "../runtimeConfig.h"
 #include "../objects/gridAndChoices.h"
-#include "../objects/nexus/nexusThreatEstimation.h"
 #include "../objects/structure/vehiclePlant.h"
 #include "../objects/structure/planeFactory.h"
 
