@@ -80,7 +80,7 @@ namespace Lua
 			Lua::Table		factionTable;
 		};
 
-		struct TFactionResourceBalance
+		struct TFullResourceBalance
 		{
 			Lua::Table		table, storageTable, balanceTable, demandTable, supplyTable;
 
@@ -91,7 +91,7 @@ namespace Lua
 		{
 			Lua::Table		table;
 			Lua::Table		entityTable;
-			TFactionResourceBalance	current,max;
+			TFullResourceBalance	current,max;
 
 			void			AddEntity(const Lua::Table&);
 		};

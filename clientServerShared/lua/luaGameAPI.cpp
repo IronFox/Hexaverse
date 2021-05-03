@@ -1264,7 +1264,7 @@ namespace Lua
 	}
 
 
-	void			API::TFactionResourceBalance::AllocateIn(Lua::Table&parent, const String&name)
+	void			API::TFullResourceBalance::AllocateIn(Lua::Table&parent, const String&name)
 	{
 		auto t = table = parent.SetSubTable(name);
 		balanceTable = t.SetSubTable("balance");
@@ -1684,10 +1684,18 @@ namespace Lua
 		if (e->IsWorkingStructure())
 		{
 			const auto ws = To<Objects::WorkingStructure>::Cast(e);
-			Objects::Resource::Vector balance,storage,storageMax;
+			Objects::Resource::Vector balance,storage,storageMax, demand, supply;
 			ws->GetResourceVector(balance,storage,storageMax);
-
-			Detail::UpdateResourceTable(t.SetSubTable("resourceStorage"),storage);
+			balance.SeparateBySign(supply,demand);
+			demand.Negate();
+			balance += storage;
+			TFullResourceBalance full;
+			full.AllocateIn(t,"balance");
+			Detail::UpdateResourceTable(full.balanceTable,balance);
+			Detail::UpdateResourceTable(full.demandTable,demand);
+			Detail::UpdateResourceTable(full.storageTable,storage);
+			Detail::UpdateResourceTable(full.supplyTable,supply);
+			Detail::UpdateResourceTable(t.SetSubTable("maxStorage"),storageMax);
 
 			t.SetField("isEnabled",ws->IsEnabled());
 			if (actual)
@@ -2550,11 +2558,20 @@ namespace Lua
 			if (e->IsWorkingStructure())
 			{
 				const auto ws = To<Objects::WorkingStructure>::Cast(e);
-				Objects::Resource::Vector balance,storage,storageMax;
-				ws->GetResourceVector(balance,storage,storageMax);
 
-				Detail::UpdateResourceTable(t.SetSubTable("resourceBalance"),balance);
-				Detail::UpdateResourceTable(t.SetSubTable("maxResourceStorage"),storageMax);
+				Objects::Resource::Vector balance,storage,storageMax, demand, supply;
+				ws->GetResourceVector(balance,storage,storageMax);
+				balance.SeparateBySign(supply,demand);
+				demand.Negate();
+				balance += storage;
+				TFullResourceBalance full;
+				full.AllocateIn(t,"balance");
+				Detail::UpdateResourceTable(full.balanceTable,balance);
+				Detail::UpdateResourceTable(full.demandTable,demand);
+				Detail::UpdateResourceTable(full.storageTable,storage);
+				Detail::UpdateResourceTable(full.supplyTable,supply);
+				Detail::UpdateResourceTable(t.SetSubTable("maxStorage"),storageMax);
+
 			}
 		}
 		else if (type.IsVehicleBase())

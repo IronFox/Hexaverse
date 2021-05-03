@@ -295,8 +295,9 @@ Table-Type: UnitType extends Type
 		int		GetMovementSpeed(Faction);	-- Retrieves the researched movement speed for a given faction
 		bool	motionIgnoresAttack;		-- True if the local unit can move regardless of whether it has attacked during this round. False if attacks in some way do negatively affect subsequent motions
 	[isWorkingStructure]
-		ResVec	maxResourceStorage;		-- Resource vector describing the maximum storage capacity. All values are >= 0
-		ResVec	resourceBalance;		-- Resource vector describing the resource change while this structure is enabled. Some values may be negative, indicating demand
+		ResBalance	balance;			-- Structure balance (if enabled)
+		ResVec		maxStorage;			-- Maximum structure resource storage
+		
 }
 
 {string->Type}	Game.Type.allTypes		-- All types, mapped via unique name
@@ -422,10 +423,12 @@ Table-Type: Unit
 		Reachable[]	FindShortestPathFrom(Loc origin, Loc target, int(Loc,int) costModifier,  bool ignoreOwnedMobilesOnRoute)
 		
 	[type.isWorkingStructure]
-		bool	isEnabled;				-- True if the local structure is active
-		ResVec	resourceStorage;		-- Resource vector containing all locally stored resources. All values are >= 0
+		bool		isEnabled;			-- True if the local structure is active
+		ResBalance	balance;			-- Structure balance (if enabled)
+		ResVec		maxStorage;			-- Maximum structure resource storage
 		
-		void 	Enable(bool);			-- Change enable state of the local structure
+		void 		Enable(bool);			-- Change enable state of the local structure
+		
 	[type.isMobileEntityProducer]
 		Prod[]	productionQueue;		-- Table of all production jobs currently enqueued to the local unit. nil if none
 		Loc[]	deploymentOptions;		-- List of all deployment choices. Set if current production is completed. nil otherwise. Can be used to check if production has been completed
