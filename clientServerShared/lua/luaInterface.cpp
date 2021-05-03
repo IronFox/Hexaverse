@@ -1420,6 +1420,25 @@ namespace Lua
 	}
 
 
+	bool			Table::HasField(const String&name)	const
+	{
+		return HasField(name.c_str());
+	}
+
+	bool			Table::HasField(const char*name)	const
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return false;
+		Detail::StackChecker chk(st);
+		if (!PushField(name))
+			return false;
+		lua_pop(st,2);
+		return true;
+	}
+
+
+
 	/*virtual override*/ void BaseFunction::SignalChange(const String&name)
 	{
 		if (!IsEmpty() && !IsFunction())

@@ -830,6 +830,8 @@ namespace Lua
 		*/
 		NamedReference	GetField(const String&name)	const;
 		NamedReference	GetField(const char*name)	const;
+		bool			HasField(const String&name)	const;
+		bool			HasField(const char*name)	const;
 		/**
 		Fetches a reference for the specified index (usually in the range [1,GetLength()]).
 		The result may be empty if the specified index was not found
