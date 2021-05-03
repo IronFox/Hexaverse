@@ -221,8 +221,7 @@ namespace Lua
 		}
 
 	
-
-		Objects::EntityType DecodeTypeExt(const Lua::Reference&ref, const String&pname, const std::function<bool(Objects::EntityType)>&checkFunction)
+		String GetTypeName(const Lua::Reference&ref, const String&pname)
 		{
 			String name;
 			if (ref.IsTable())
@@ -233,16 +232,17 @@ namespace Lua
 			}
 			else
 				name = ref.GetAs<String>();
-
-			Objects::EntityType t = Objects::DecodeType(name);
-			if (t.IsEmpty() || (checkFunction && !checkFunction(t)))
-				throw Lua::Exception(CLOCATION,pname+": '"+name+"' is not valid");
-			return t;
+			return name;
 		}
 
 		Objects::EntityType DecodeType(const Lua::Reference&ref, const String&pname)
 		{
-			return DecodeTypeExt(ref,pname,nullptr);
+			String name = GetTypeName(ref,pname);
+
+			Objects::EntityType t = Objects::DecodeType(name);
+			if (t.IsEmpty())
+				throw Lua::Exception(CLOCATION,pname+": '"+name+"' is not valid");
+			return t;
 		}
 
 
@@ -2708,10 +2708,16 @@ namespace Lua
 		typeTable.SetFunction("ByName",[this](const String&name){return LuaMapType(name);});
 		typeTable.SetFunction("Vehicle",[this](const Lua::Reference&turret, const Lua::Reference&vehicleBase)
 		{
-			auto tt = Detail::DecodeTypeExt(turret,"Vehicle(): Turret parameter #1",[](auto t){return Objects::Component::vehicleTurretComponents.Find(t.baseType)!= nullptr;});
-			auto bt = Detail::DecodeTypeExt(vehicleBase,"Vehicle(): Vehicle base parameter #2",[](auto t){return t.IsVehicleBase();});
+			auto turretName = Detail::GetTypeName(turret,"Vehicle(): Turret parameter #1");
+			auto tt = Objects::Component::vehicleTurretComponents.FindByName(turretName);
+			if (!tt)
+				throw Lua::Exception(CLOCATION,"Vehicle(): Turret component '"+turretName+"' not found");
+			auto baseName = Detail::GetTypeName(vehicleBase,"Vehicle(): Vehicle base parameter #2");
+			auto bt = Objects::Component::baseComponents.FindByName(baseName);
+			if (!bt)
+				throw Lua::Exception(CLOCATION,"Vehicle(): Vehicle base component '"+baseName+"' not found");
 
-			return AddOrGetType(Objects::EntityType(bt.baseType,tt.baseType));
+			return AddOrGetType(Objects::EntityType(bt->constName,tt->constName));
 		});
 
 		ASSERT__(allTypes.GetLength() == 0);
