@@ -108,6 +108,7 @@ namespace Lua
 		typedef Lua::Function<void(const Lua::Table&)>	LFOnDeploy;
 
 		TwisterRandom							random = TwisterRandom(time(NULL) + Time::Stamp().ToTicks());
+		Random									simpleRandom = Random(time(NULL) + Time::Stamp().ToTicks());
 
 		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
 		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;

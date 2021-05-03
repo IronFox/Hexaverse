@@ -1753,6 +1753,26 @@ namespace Lua
 			}
 
 
+				
+			{
+				Objects::WWorldEntity w = e;
+				t.SetFunction("GetIdealDeploymentOption",[this,id,w]()->Lua::Reference
+				{
+					Objects::PWorldEntity e = w.lock();
+					if (!e)
+						throw Lua::Exception(CLOCATION,"GetIdealDeploymentOption(): Unit expired");
+					auto prod = e->CastToProducer();
+					if (prod->queue.IsNotEmpty() && prod->productionRoundsLeft == 0)
+					{
+						Grid::LCellIdI loc;
+						if (prod->GetIdealSpawningPoint(prod->queue.First().GetPrototype(),simpleRandom,loc))
+						{
+							return ToTable(loc);
+						}
+					}
+					return Lua::nil;
+				});
+			}
 
 			if (prod->queue.IsNotEmpty() && prod->productionRoundsLeft == 0)
 			{
