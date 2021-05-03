@@ -468,7 +468,7 @@ function ProcessMobile(v)
 	for _,u in pairs(Game.myUnits) do
 		if u ~= v and u.turret and QuadraticDistance(v.location.world,u.location.world) < 25.0 then
 			if u.turret.trajectoryType == 'AAMissile' then
-				if IsGreater(v,u) then
+				if Util.IsGreater(v,u) then
 					primaryAA = false;
 				end;
 				aaProximity = aaProximity + 1;
@@ -476,7 +476,7 @@ function ProcessMobile(v)
 			elseif u.turret.damageLevel > 0 then
 				proximityPresence = proximityPresence + 1;
 			else
-				if IsGreater(v,u) then
+				if Util.IsGreater(v,u) then
 					primary = false;
 				end;
 				radarProximity = radarProximity + 1;
@@ -693,19 +693,19 @@ function ProcessIgnorance(e)
 				and not u.turret.dealsEMPDamage
 				and not u.turret.requiresStationaryVehicle
 				and (
-						(e.location.isSuborbital and CanAttackSuborbital(u))
-					or 	(not e.location.isSuborbital and CanAttackGround(u,e.location))
+						(e.location.isSuborbital and Util.CanAttackSuborbital(u))
+					or 	(not e.location.isSuborbital and Util.CanAttackGround(u,e.location))
 					)
 				and (
-						(u.type.isSuborbitalPlane and CanAttackSuborbital(e))
-					or	(not u.type.isSuborbitalPlane and CanAttackGround(e,u.location))
+						(u.type.isSuborbitalPlane and Util.CanAttackSuborbital(e))
+					or	(not u.type.isSuborbitalPlane and Util.CanAttackGround(e,u.location))
 					)
 				) 
 				then
 				
 				local d2 = QuadraticInterestDistance(u.location,e,true,true);
 				if (d2 < Sqr(r*1.2)) then	--might be okay anyway
-					local p = GetDamagePotentialPerRound(u);
+					local p = Util.GetDamagePotentialPerRound(u);
 					damagePotentialPerRound = damagePotentialPerRound + p;
 					participants = participants + 1;
 				end;
@@ -795,9 +795,6 @@ function Execute()
 
 	ofInterestToAttacker = {};
 	
-	for k,u in pairs(Game.Type.units) do
-		Game.Log(k..' -> '..u.name);
-	end;
 	local bomberType = Game.Type.units['Bomber'];
 	if not bomberType then
 		Game.Log('Bomber type not found. Script not compatible to API');

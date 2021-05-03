@@ -1,4 +1,3 @@
-Util = {};
 
 function Sqr(x)
 	return x*x;
@@ -6,6 +5,13 @@ end;
 
 function QuadraticDistance(u,v)
 	return Sqr(u.x - v.x) + Sqr(u.y - v.y) + Sqr(u.z - v.z);
+end;
+
+
+Util = {};
+
+function Util.RoundToInt(x)
+	return math.floor(num+.5);
 end;
 
 --[[
@@ -18,27 +24,27 @@ end;
 --[[
 Projects a location to ground, using the specified reference location for height
 ]]
-function ToGround(loc --[[Loc]], ref --[[Loc]]) --[[Loc]]
+function Util.ToGround(loc --[[Loc]], ref --[[Loc]]) --[[Loc]]
 	return Game.Grid.ToLocation(loc.cell,ref.height);
 end;
 
 
-function CanAttackSuborbital(u --[[Unit]]) --bool
+function Util.CanAttackSuborbital(u --[[Unit]]) --bool
 	return u.IsInRange(Util.ToSuborbit(u.location).world);
 end;
 
-function CanAttackGround(u --[[Unit]], ref --[[Loc]]) --bool
+function Util.CanAttackGround(u --[[Unit]], ref --[[Loc]]) --bool
 	return u.IsInRange(ToGround(u.location,ref).world);
 end;
 
-function GetDamagePotentialPerRound(u --[[Unit]]) --float
+function Util.GetDamagePotentialPerRound(u --[[Unit]]) --float
 	if not u.turret then
 		return 0.0;
 	end;
 	return u.turret.damageLevel * u.turret.attacksPerRound;
 end;
 
-function IsGreater(u --[[Unit]], v --[[Unit]]) --bool
+function Util.IsGreater(u --[[Unit]], v --[[Unit]]) --bool
 	return u.type.constructionCost > v.type.constructionCost or 
 	(u.type.constructionCost == v.type.constructionCost and u.id > v.id);
 end;
