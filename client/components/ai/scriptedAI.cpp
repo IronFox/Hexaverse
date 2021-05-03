@@ -13,6 +13,7 @@
 #include "../io.h"
 #include "../playerControlBegin.h"
 #include "../clientRuntimeConfig.h"
+#include <objects/nexus/nexusThreatEstimation.h>
 
 namespace AI::Script
 {
@@ -988,6 +989,8 @@ namespace AI::Script
 
 	void	Start()
 	{
+		Objects::NexusThreat::Update(nullptr,nullptr);
+
 		if (Details::frameBeginRegistration == InvalidIndex)
 		{
 			Details::frameBeginRegistration = GlobalEvents::frameBegin.Register(Details::PerFrameCheck);
