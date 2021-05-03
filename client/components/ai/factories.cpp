@@ -177,9 +177,12 @@ namespace AI
 				ch.mode = (UINT16)Objects::CursorMode::Idle;
 				ch.target = loc;
 				Network::Channels::choiceIntersection.SendTo(Network::client,ch);
+
+				if (plant->queue.Count() > 1)
+					return int2(1,1);
+				else
+					return int2(0,1);
 			}
-			if (plant->queue.Count() > 1)
-				return int2(1,1);
 		}
 		if (plant->queue.IsNotEmpty())
 			return int2(1,1);
