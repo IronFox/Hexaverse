@@ -29,7 +29,7 @@ namespace Objects
 		struct TAspect
 		{
 			float				impact = 0,		//!< Significance of the unit, regardless of distance
-								scaled = 0,		//!< Product of impact and opacity
+								scaled = 0,		//!< Product of impact and opacity, possibly also including an external factor
 								airActivity = 0,
 								groundActivity = 0;
 
@@ -42,6 +42,12 @@ namespace Objects
 				rs.airActivity = std::max(a.airActivity,b.airActivity);
 				rs.groundActivity = std::max(a.groundActivity,b.groundActivity);
 				return rs;
+			}
+
+
+			void				Scale(float factor)
+			{
+				scaled *= factor;
 			}
 		};
 
@@ -66,6 +72,16 @@ namespace Objects
 
 			TSupport			ToSupport() const;
 			TLevel				ToThreat(bool includeThreatEstimationFactor) const;
+
+			/**
+			Multiplies the scalable aspects of this estimation by the specified factor
+			*/
+			void				Scale(float factor)
+			{
+				attack.Scale(factor);
+				sensor.Scale(factor);
+			}
+
 		};
 
 
