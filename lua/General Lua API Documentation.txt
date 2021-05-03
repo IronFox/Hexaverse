@@ -53,7 +53,10 @@ Unit			Game.GetStructureAt(Loc);	-- Gets the structure (building) unit at the gi
 	AiSupport	Game.AI.GetSupportLevel(int pole);
 	
 	bool		Game.AI.ShouldBuildPlanes();			-- Checks whether the AI should build planes right now. Affected by difficulty settings
-	bool		Game.AI.ShouldBuildHeavyVehicleBases();	-- Checks whether the AI should build heavy base vehicles right now. Affected by difficulty settings
+	--[[
+	Checks whether the AI should build heavy base vehicles right now at the given pole index (1-12). Affected by difficulty settings
+	]]
+	bool		Game.AI.ShouldBuildHeavyVehicleBases(int);
 	
 	--[[
 	Estimates the impact of a unit type at the given location for the specified pole base.

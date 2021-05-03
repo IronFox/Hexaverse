@@ -1023,10 +1023,13 @@ namespace Lua
 			{
 				return RuntimeConfig::roundNumber >= ApplicationInterface::GetMinAIRoundForPlanes();
 			});
-			aiTable.SetFunction("ShouldBuildHeavyVehicleBases",[]()->bool
+			aiTable.SetFunction("ShouldBuildHeavyVehicleBases",[](int poleIdx)->bool
 			{
-				return RuntimeConfig::roundNumber >= ApplicationInterface::GetMinAIRoundForHeavyVehicleBases();
+				return RuntimeConfig::roundNumber >= ApplicationInterface::GetMinAIRoundForHeavyVehicleBases()
+					&& Objects::NexusThreat::DeployHeavyVehicleBases(poleIdx-1);
 			});
+			
+
 
 			aiTable.SetFunction("Estimate",[this](int poleIdx, const Lua::Table&typeTable, const Lua::Table&locTable, const Lua::Table&luaFaction)->Lua::Table
 			{
