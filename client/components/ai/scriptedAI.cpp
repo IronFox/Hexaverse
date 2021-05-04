@@ -33,6 +33,7 @@ namespace AI::Script
 	{
 		index_t			frameBeginRegistration = InvalidIndex;
 		PathString		scriptPath;
+		String			scriptName;
 		FileSystem::ftime_t	scriptTime;
 		bool			reloadScript = true;
 		Time::Stamp		completionTime;
@@ -57,6 +58,15 @@ namespace AI::Script
 		typedef std::pair<String,std::function<void()> >	Job;
 
 
+		PathString	ScriptNameToPath(const String&scriptName)
+		{
+			PathString temp;
+			StringEncoding::UTF8::ToUTF16(scriptName, temp);
+			#if FOLDER_SLASH != '/'
+				temp.FindAndReplace('/',FOLDER_SLASH);
+			#endif
+			return temp+".lua";
+		}
 
 		FileSystem::Folder	GetScriptFolder()
 		{
@@ -747,7 +757,7 @@ namespace AI::Script
 						if (Network::client.IsConnected() && Network::haveFaction)
 						{
 							Protocol::ScriptedAIState compressedState;
-							compressedState.scriptName = FileSystem::PathToString(FileSystem::ExtractFileName(Details::scriptPath));
+							compressedState.scriptName = Details::scriptName;
 							if (thread.nonCompressedExportedState.IsNotEmpty())
 							{
 								Array<BYTE> temp(thread.nonCompressedExportedState.GetLength()+100);
@@ -845,7 +855,7 @@ namespace AI::Script
 		FileSystem::Folder scripts = GetScriptFolder();
 		FileSystem::File scriptLocation;
 
-		if (!scripts.FindFile(PathString(scriptName)+".lua",scriptLocation))
+		if (!scripts.FindFile(ScriptNameToPath(scriptName)  ,scriptLocation))
 		{
 			LogEvent(EventClass::Preset::scriptError,"AI::Script: Unable to resume server-stored script '"+scriptName+"'. Cannot find file.");
 			#ifdef HAS_WINDOW
@@ -880,10 +890,10 @@ namespace AI::Script
 			}
 		}
 
-		SynchronizeWithThread(true,rebuildEntitiesOnSynchronize,"AdoptState",[scriptLocation]()
+		SynchronizeWithThread(true,rebuildEntitiesOnSynchronize,"AdoptState",[scriptLocation,scriptName]()
 		{
 			thread.nonCompressedExportedState.swap(transientImportState);
-			Load(scriptLocation,false);
+			Load(scriptLocation,scriptName,false);
 		});
 	}
 
@@ -897,10 +907,10 @@ namespace AI::Script
 		ASSERT__(IsLoaded());
 		const bool doLoad = force || FileSystem::GetModificationTime(Details::scriptPath) != Details::scriptTime;
 		if (doLoad)
-			Load(Details::scriptPath,freshState);
+			Load(Details::scriptPath,Details::scriptName, freshState);
 	}
 
-	void	Load(const PathString&scriptPath, bool freshState)
+	void	Load(const PathString&scriptPath, const String&scriptName, bool freshState)
 	{
 		ASSERT__(!Details::thread.IsBusy());
 		
@@ -973,6 +983,7 @@ namespace AI::Script
 
 		Details::exportedThisPhase = false;
 		Details::scriptPath = scriptPath;
+		Details::scriptName = scriptName;
 		Details::scriptTime = FileSystem::GetModificationTime(scriptPath);
 		if (freshState)
 			thread.nonCompressedExportedState.Clear();
@@ -1241,10 +1252,10 @@ namespace AI::Script
 
 	}
 
-	void	CreateAndLoad(const PathString&path)
+	void	CreateAndLoad(const PathString&path, const String&scriptName)
 	{
 		CreateTemplateAt(path);
-		Load(path,true);
+		Load(path,scriptName, true);
 		HUD::HexGrid::RefreshButtonState();
 		LogEvent(EventSignificance::Uncommon,"New AI script "+FileSystem::PathToString(FileSystem::ExtractFileNameExt(path))+" created");
 	}
@@ -1329,7 +1340,7 @@ namespace AI::Script
 				{
 					PWindow window = w.lock();
 					WindowStack::Hide(window);
-					Load(file.file.GetLocation(),true);
+					Load(file.file.GetLocation(),file.name, true);
 
 					HUD::HexGrid::RefreshButtonState();
 				}}};
@@ -1350,28 +1361,28 @@ namespace AI::Script
 		aiCommands->Add(new GlobalCommand("Create new AI...",
 		[]()
 		{
-			static const String aiAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
+			static const String aiAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/ ";
 
 			HUD::Dialog::Query("Enter name for new AI script","debug",aiAlpha,[](const StringRef&str)->bool
 			{
 				return str.GetLength() > 3;
 			},
-			[](const String&input)
+			[](String input)
 			{
 				FileSystem::Folder scripts = Details::GetScriptFolder();
 				if (!scripts.IsValidLocation())
 					FileSystem::CreateDirectory(scripts.GetLocation());
 				ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
 				FileSystem::File scriptAt;
-				const auto path = PathString(input+".lua");
+				const auto path = Details::ScriptNameToPath(input);
 				scripts.FindFile(path, scriptAt, false);
 				if (scriptAt.DoesExist())
-					HUD::Dialog::Confirm("The specified AI script '"+input+".lua' already exists. Replace?",[scriptAt]()
+					HUD::Dialog::Confirm("The specified AI script '"+input+".lua' already exists. Replace?",[scriptAt,input]()
 					{
-						CreateAndLoad(scriptAt);
+						CreateAndLoad(scriptAt,input);
 					});
 				else
-					CreateAndLoad(scriptAt);
+					CreateAndLoad(scriptAt,input);
 
 
 					

@@ -27,10 +27,11 @@ namespace AI::Script
 	May throw exceptions if loading fails due to IO or syntactical reasons.
 	AI execution must not be currently active.
 	@param scriptPath File path of the Lua script to load
+	@param scriptName UTF8 encoded sub-path used to derive the full path of. Sent to the server and restored from there
 	@param freshState Set true to disregard any previously exported AI script state.
 		Otherwise if such was exported, the ImportState() function is called.
 	*/
-	void	Load(const D::PathString&scriptPath, bool freshState);
+	void	Load(const D::PathString&scriptPath, const String&scriptName, bool freshState);
 
 	/**
 	Checks and potentially reloads the currently loaded file.
