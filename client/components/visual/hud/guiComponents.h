@@ -1052,9 +1052,9 @@ namespace Component
 
 
 		virtual void		SetInputActive(bool isActive);
-		virtual const char*	GetAllowed() const {return nullptr;}
-		virtual StringRef	GetTextRef();
-		virtual float		GetContentHeight() const override;
+		virtual Engine::Keyboard::FAllowed	GetAllowed() const {return [](char32_t c){return c != '\t';};}
+		virtual UTF32StringRef	GetTextRef();
+		virtual float			GetContentHeight() const override;
 	public:
 		/**/				BaseInput();
 		void				Focus() {SetInputActive(IsActive());}
@@ -1078,27 +1078,29 @@ namespace Component
 	class Input : public BaseInput
 	{
 		typedef BaseInput	Super;
-		String				allowed = GetStandardAlphabet();
+		Engine::Keyboard::FAllowed				allowed = nullptr;
 
 	protected:
-		virtual const char*	GetAllowed() const override {return allowed.c_str();}
+		virtual Engine::Keyboard::FAllowed	GetAllowed() const override {return [this](char32_t c){return c != '\t' && (!allowed || allowed(c));};}
 	public:
-		static const char*	GetStandardAlphabet()  {return "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";};
+		//static const char*	GetStandardAlphabet()  {return "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";};
 
-		String				GetText();
-		StringRef			GetTextRef();
+		String				GetTextUTF8();
+		virtual UTF32StringRef	GetTextRef() override;
 		void				SetText(const String&);
-		void				SetAllowedAlphabet(const String&);
+		void				SetAllowed(const Engine::Keyboard::FAllowed&);
 	};
 
 	class PasswordInput : public BaseInput
 	{
 		typedef BaseInput	Super;
+		typedef GenericStringBuffer<char32_t> StringBuffer;
 		static StringBuffer	placeholder;
 	protected:
-		virtual StringRef	GetTextRef() override;
+		virtual UTF32StringRef	GetTextRef() override;
+		virtual Engine::Keyboard::FAllowed	GetAllowed() const override {return nullptr;}
 	public:
-		const char*			GetText();
+		UTF32StringRef		GetText();
 		void				WipeInput();
 	};
 

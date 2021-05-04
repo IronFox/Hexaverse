@@ -234,7 +234,7 @@ namespace InputControl
 			if (HUD::WindowStack::IsModal())
 				return ;
 		
-			HUD::Dialog::Query("Please enter message","",Network::allowedChatCharacters,[](const String&candidate)->bool
+				HUD::Dialog::Query("Please enter message","",nullptr,[](const UTF32StringRef&candidate)->bool
 				{
 					return candidate.GetLength() <= 256;
 				},
@@ -690,8 +690,7 @@ namespace InputControl
 					if (m != nullptr)
 					{
 						auto am = To<Objects::AllianceMarker>::Cast(m);
-						auto wdialog = HUD::Dialog::DeleteQuery(am->GetNiceName()+" at "+ToString(am->location), am->text,
-							Network::allowedChatCharacters, 
+						auto wdialog = HUD::Dialog::DeleteQuery(am->GetNiceName()+" at "+ToString(am->location), am->text,nullptr,
 						[]()
 						{
 							if (!Network::client.IsConnected())

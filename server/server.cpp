@@ -1013,7 +1013,7 @@ int main( int argc, const char* argv[])
 					}
 					FileSystem::File sub;
 
-					const PathString worldID = arguments[1];
+					const auto worldID = arguments[1];
 					if (worldID == "all")
 					{
 						while (scan.NextFolder(sub))

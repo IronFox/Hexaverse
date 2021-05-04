@@ -1,7 +1,7 @@
 #include <global_root.h>
 #include "resource.h"
 #include "../grid/resources.h"
-
+#include <string/encoding.h>
 
 namespace Objects
 {
@@ -9,9 +9,15 @@ namespace Objects
 	{
 		namespace TagMap
 		{
-			String		ToString(char tag)
+			String		ToString(char32_t tag)
 			{
-				return tag != 0 ? String(tag) : "";
+				if (tag == 0)
+					return "";
+				StringEncoding::UTF8::TChar c;
+				StringEncoding::UTF32::ToUTF8(tag,c);
+				String rs (TStringLength(c.numCharsUsed));
+				memcpy(rs.mutablePointer(),c.encoded,c.numCharsUsed);
+				return rs;
 			}
 
 			char		IDToTag(ID idx)
@@ -32,21 +38,21 @@ namespace Objects
 				return char(14+idx);
 			}
 
-			index_t		TagToIndex(char c)
+			index_t		TagToIndex(char32_t c)
 			{
 				if (c < '\t') //9
 					return index_t(c)-3;
 				if (c < '\r')
-					return index_t(c-'\n')+4;
-				return index_t(c - '\r') + 6;
+					return index_t(index_t(c)-'\n')+4;
+				return index_t(index_t(c) - '\r') + 6;
 			}
 
-			ID		TagToID(char c)
+			ID		TagToID(char32_t c)
 			{
 				return TagToIndex(c);
 			}
 
-			bool	IsTag(char c)
+			bool	IsTag(char32_t c)
 			{
 				if (c < '\t')
 					return c > 0;
@@ -630,7 +636,7 @@ namespace Objects
 	}
 
 
-	String GetTagName(char c)
+	String GetTagName(char32_t c)
 	{
 		if (!IsTag(c))
 			return c;

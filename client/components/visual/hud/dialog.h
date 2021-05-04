@@ -27,9 +27,9 @@ namespace Dialog
 	typedef std::function<void()>	FOnConfirm;
 	typedef std::function<void(bool)>	FOnConfirmBool;
 	typedef std::function<CheckResult()>	FCheckState;
-	typedef std::function<bool(const StringRef&)>	FCheckInput;
-	typedef std::function<void(const StringRef&)>	FFetchInput;
-	typedef std::function<void(const char*)>	FOnPassword;
+	typedef std::function<bool(const UTF32StringRef&)>	FCheckInput;
+	typedef std::function<void(const String&)>	FFetchInput;
+	typedef std::function<void(const UTF32StringRef&)>	FOnPassword;
 	typedef std::function<void()>	FOnDelete;
 	typedef std::function<void(const Objects::PFaction&)> FOnFactionSelected;
 
@@ -185,13 +185,13 @@ namespace Dialog
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs that attempts to read a string from the user
 	*/
-	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&, const FFetchInput&);
-	WDialog	CheckedQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&, const FFetchInput&);
+	WDialog	Query(const String&query, const String&initial, const Engine::Keyboard::FAllowed&allowChars, const FCheckInput&, const FFetchInput&);
+	WDialog	CheckedQuery(const String&query, const String&initial, const Engine::Keyboard::FAllowed&allowChars, const FCheckState&, const FFetchInput&);
 
 	/**
 	Creates a query dialog with a delete button
 	*/
-	WDialog	DeleteQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&, const FFetchInput&, const FOnDelete&);
+	WDialog	DeleteQuery(const String&query, const String&initial, const Engine::Keyboard::FAllowed&allowChars, const FCheckState&, const FFetchInput&, const FOnDelete&);
 
 	/**
 	Queues a tutorial message. Allows hiding all following tutorials

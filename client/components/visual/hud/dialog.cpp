@@ -345,7 +345,7 @@ namespace Dialog
 			if (bySpace)
 				return;
 			if (fetchInput)
-				fetchInput(userInput->GetTextRef());
+				fetchInput(userInput->GetTextUTF8());
 			if (onPassword)
 			{
 				onPassword(passwordInput->GetText());
@@ -442,7 +442,7 @@ namespace Dialog
 	}
 
 
-	WDialog	DeleteQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&check, const FFetchInput&fetch, const FOnDelete&onDelete)
+	WDialog	DeleteQuery(const String&query, const String&initial, const Engine::Keyboard::FAllowed&allowChars, const FCheckState&check, const FFetchInput&fetch, const FOnDelete&onDelete)
 	{
 		WindowStack::VerifyIntegrity(CLOCATION);
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::Input | Detail::ComponentFlags::DeleteButton, "OK", false);
@@ -456,7 +456,7 @@ namespace Dialog
 		d->onDelete = onDelete;
 
 		d->userInput->SetText(initial);
-		d->userInput->SetAllowedAlphabet(allowChars);
+		d->userInput->SetAllowed(allowChars);
 
 		d->confirmButton->DetectEnabledState();
 
@@ -466,7 +466,7 @@ namespace Dialog
 		return d;
 	}
 
-	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&check, const FFetchInput&fetch)
+	WDialog	Query(const String&query, const String&initial, const Engine::Keyboard::FAllowed&allowChars, const FCheckInput&check, const FFetchInput&fetch)
 	{
 		WindowStack::VerifyIntegrity(CLOCATION);
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::Input, "OK", false);
@@ -479,7 +479,7 @@ namespace Dialog
 		d->checkInput = check;
 
 		d->userInput->SetText(initial);
-		d->userInput->SetAllowedAlphabet(allowChars);
+		d->userInput->SetAllowed(allowChars);
 
 		d->confirmButton->DetectEnabledState();
 
@@ -489,7 +489,7 @@ namespace Dialog
 		return d;
 	}
 
-	WDialog	CheckedQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&check, const FFetchInput&fetch)
+	WDialog	CheckedQuery(const String&query, const String&initial, const Engine::Keyboard::FAllowed&allowChars, const FCheckState&check, const FFetchInput&fetch)
 	{
 		WindowStack::VerifyIntegrity(CLOCATION);
 
@@ -503,7 +503,7 @@ namespace Dialog
 		d->check = check;
 
 		d->userInput->SetText(initial);
-		d->userInput->SetAllowedAlphabet(allowChars);
+		d->userInput->SetAllowed(allowChars);
 
 		d->confirmButton->DetectEnabledState();
 
@@ -902,11 +902,11 @@ namespace Dialog
 			return;
 		//if (Network::chosenNickname.IsEmpty())
 		{
-			static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
+			//static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
 
 			HUD::Dialog::Query("Please enter a nickname to continue (length 4-16)",::Network::chosenNickname,
-			allowed,
-				[](const String&candidate)->bool
+				[](char32_t c){return c != ' ';},
+				[](const UTF32StringRef&candidate)->bool
 				{
 					return Network::IsValidNickname(candidate);
 				},

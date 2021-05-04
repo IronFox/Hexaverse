@@ -21,7 +21,7 @@ namespace StatePanel
 {
 	//0.0135f;
 
-	float		OnTag(const float3&at, char tagChar, float scaleX, float scaleY)
+	float		OnTag(const float3&at, char32_t tagChar, float scaleX, float scaleY)
 	{
 		auto type = Objects::Resource::table.GetTypeByTag(tagChar);
 		if (type)

@@ -46,6 +46,7 @@ namespace Network
 
 
 	bool	IsValidNickname(const String&candidate);
+	bool	IsValidNickname(const UTF32StringRef&candidate);
 
 
 	class ServerAddress
@@ -435,8 +436,6 @@ namespace Network
 	extern HashTable<TUniqueID,index_t>	serverMap;
 
 	extern Time::Stamp		lastPing,lastServerTableUpdate;
-
-	extern const String		allowedChatCharacters;
 
 
 	void					SendChatMessage(const String&msg, const Objects::PFaction&receiver);

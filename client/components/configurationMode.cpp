@@ -816,10 +816,10 @@ namespace ConfigurationMode
 		{
 			static const String planetAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
 
-			HUD::Dialog::Query("Enter a name for the new planet type","My Planet",planetAlpha,
-				[](const String&candidate)->bool
+			HUD::Dialog::Query("Enter a name for the new planet type","My Planet",[](char32_t chr){return chr < 0x100 && planetAlpha.Contains((char)chr);},
+				[](const UTF32StringRef&candidate)->bool
 			{
-				auto trimmed = candidate.CopyToUpperCase().Trim();
+				auto trimmed = StringEncoding::UTF32::ToUTF8(candidate).ConvertToUpperCase().TrimThis();
 				if (trimmed == previousPlanetFileName)
 					return false;
 				if (trimmed.Length() < 2)
@@ -880,20 +880,24 @@ namespace ConfigurationMode
 				Important:
 				Keep this in sync with server/components/reflection.cpp
 				*/
-				char buffer[0x10000];
-				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)))
+				size_t len = System::GetClipboardTextLength(Engine::context.getWindow());
+				if (len > 0)
 				{
-					Configuration cfg;
-					StringFile file(CM_STRIP_COMMENTS|CM_RECORD_COMMENTS|CM_STRIP_LINE_START_COMMENTS);
-					
-					file.LinkSourceData(buffer,strlen(buffer));
-					if (cfg.LoadFromFile(file))
+					String clipboard{TStringLength(len)};
+					if (System::GetFromClipboardIfText(Engine::context.getWindow(),clipboard.mutablePointer(),len))
 					{
-						LoadPlanetFrom(cfg);
+						Configuration cfg;
+						StringFile file(CM_STRIP_COMMENTS|CM_RECORD_COMMENTS|CM_STRIP_LINE_START_COMMENTS);
+					
+						file.LinkSourceData(clipboard);
+						if (cfg.LoadFromFile(file))
+						{
+							LoadPlanetFrom(cfg);
 
+						}
+						else
+							HUD::Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
 					}
-					else
-						HUD::Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
 				}
 				else
 					HUD::Dialog::ShowMessage("Planet configuration could not be loaded from clipboard. Chances are, you did not copy it to clipboard first");
@@ -967,13 +971,13 @@ namespace ConfigurationMode
 			{
 				Objects::Command::PIconCommand cmd(new Objects::Command::IconCommand("Password",[]()
 				{
-					HUD::Dialog::CheckedQuery("Please specify a server password. Leave empty (no spaces) to disable.",Rules::password,HUD::Component::Input::GetStandardAlphabet(),[]()
+					HUD::Dialog::CheckedQuery("Please specify a server password. Leave empty (no spaces) to disable.",Rules::password,nullptr,[]()
 					{
 						if (!IsActive())
 							return HUD::Dialog::CheckResult::Abort;
 						return HUD::Dialog::CheckResult::OkayContinue;
 					},
-					[](const StringRef pwd)
+					[](const String&pwd)
 					{
 						Rules::password = pwd;
 						HUD::HexGrid::RefreshButtonState();

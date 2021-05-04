@@ -176,9 +176,9 @@ namespace Objects
 			String		ToString(char tag);
 			char		IDToTag(ID);
 			char		IndexToTag(index_t);
-			ID			TagToID(char);
-			index_t		TagToIndex(char);
-			bool		IsTag(char);
+			ID			TagToID(char32_t);
+			index_t		TagToIndex(char32_t);
+			bool		IsTag(char32_t);
 		}
 
 		/**
@@ -203,7 +203,7 @@ namespace Objects
 			bool		operator!=(const Table&other) const {return !operator==(other);}
 			bool		ResetChanged()	{bool old = changed; changed = false; return changed;}
 			const Type*	FindByName(const String&) const;
-			const Type*	GetTypeByTag(char tag) const
+			const Type*	GetTypeByTag(char32_t tag) const
 			{
 				index_t at = TagMap::TagToIndex(tag);
 				if (at >= Count())
@@ -658,8 +658,8 @@ namespace Objects
 	//static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
 	static inline char TimeResourceTag() {return (char)1;}
 	static inline char TrafficResourceTag() {return (char)2;}
-	static inline bool IsTag(char c) {return c == TimeResourceTag() || c == TrafficResourceTag() || Resource::table.GetTypeByTag(c) != nullptr;}
-	String GetTagName(char c);
+	static inline bool IsTag(char32_t c) {return c == TimeResourceTag() || c == TrafficResourceTag() || Resource::table.GetTypeByTag(c) != nullptr;}
+	String GetTagName(char32_t c);
 }
 
 

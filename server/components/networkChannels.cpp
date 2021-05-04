@@ -1313,7 +1313,12 @@ namespace Receiver
 			peer.DisconnectPeer();
 			return;
 		}
-		saveAs.EraseCharacters([](char c){return CharFunctions::isalnum(c) || c == ' ';},false);
+		if (saveAs.GetIndexOf("..") != InvalidIndex || saveAs.Contains("/") || saveAs.Contains("\\") || saveAs.Contains(":") || saveAs.Contains(";"))
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Given name is invalid");
+			return;
+		}
+
 		if (FileIO::CanSaveRightNow())
 		{
 			LogEvent(EventClass::Preset::important,"Saving game...");

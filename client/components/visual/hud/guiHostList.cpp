@@ -424,7 +424,7 @@ namespace HUD{namespace HostList{
 
 	static const String allowedHostChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.:";
 
-	bool CheckHostName(const String&url)
+	bool CheckHostName(const UTF32StringRef&url)
 	{
 		if (url.IsEmpty())
 			return false;
@@ -583,7 +583,7 @@ namespace HUD{namespace HostList{
 		{
 			PButton b(new Button("Add new host...","Queries for a host name or IP address to begin querying. Preserved across game restarts",[]()
 			{
-				HUD::Dialog::Query("Enter a new host address to attempt connection to.","",allowedHostChars,CheckHostName,
+				HUD::Dialog::Query("Enter a new host address to attempt connection to.","",nullptr,CheckHostName,
 				[](const String&url)
 				{
 					try

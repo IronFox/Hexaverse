@@ -294,14 +294,14 @@ namespace HUD
 						});
 
 						chatMessage = std::make_shared<Input>();
-						chatMessage->SetAllowedAlphabet(Network::allowedChatCharacters);
+						chatMessage->SetAllowed(nullptr);
 						PButton send{new Button{"Send",
 							Tooltip::FInfo{[](float t,float)->Tooltip::Info{if (t < TooltipDeclaration::delay) return nullptr; return sendToAlliance?"Send your message only to members of your alliance":"Send your message to all online factions";}},
 							[](){
 							if (sendToAlliance)
-								Network::SendChatMessage(chatMessage->GetText(),Objects::Faction::mine);
+								Network::SendChatMessage(chatMessage->GetTextUTF8(),Objects::Faction::mine);
 							else
-								Network::BroadcastChatMessage(chatMessage->GetText());
+								Network::BroadcastChatMessage(chatMessage->GetTextUTF8());
 							chatMessage->SetText("");
 						}}};
 						chatMessage->onSpecialKey = [](Key::Name k)

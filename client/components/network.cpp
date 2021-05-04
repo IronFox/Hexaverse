@@ -92,6 +92,14 @@ namespace Network
 		return rs;
 	}
 
+	bool	IsValidNickname(const UTF32StringRef&candidate)
+	{
+		if (candidate.GetLength() < 4)
+			return false;
+		bool rs = Package::IsValid(candidate,32);
+		return rs;
+	}
+
 
 	void RegisterVisited(const TUniqueID&worldID)
 	{
@@ -559,18 +567,18 @@ namespace Network
 	#ifdef HAS_WINDOW
 		void QueryPasswordAndLogin(bool forceNewFaction, UINT32 factionTypes)
 		{
-			HUD::Dialog::CheckedQuery("Please provide the configured server password","",HUD::Component::Input::GetStandardAlphabet(),[]()->HUD::Dialog::CheckResult
+			HUD::Dialog::QueryPassword("Please provide the configured server password",
+			[factionTypes,forceNewFaction](const UTF32StringRef&input)
+			{
+				StringEncoding::UTF32::ToUTF8(input, RuntimeConfig::serverPassword);
+				AttemptFactionLogin(forceNewFaction,factionTypes,RuntimeConfig::serverPassword);
+			},[]()->HUD::Dialog::CheckResult
 			{
 				if (!client.IsConnected())
 					return HUD::Dialog::CheckResult::Abort;
 				if (!RuntimeConfig::IsInAnyCommandPhase())
 					return HUD::Dialog::CheckResult::OkayNotRightNow;
 				return HUD::Dialog::CheckResult::OkayContinue;
-			},
-			[factionTypes,forceNewFaction](const StringRef&input)
-			{
-				RuntimeConfig::serverPassword = input;
-				AttemptFactionLogin(forceNewFaction,factionTypes,input);
 			});
 		}
 
@@ -2317,8 +2325,6 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 	return false;
 }
 
-
-const String Network::allowedChatCharacters = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-:; <>!'\"'$%^&*()=+.,/\\#@?";
 
 void	Network::SignalProtocolDisruption(const String&message)
 {

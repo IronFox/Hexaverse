@@ -16,9 +16,9 @@ namespace HUD
 		static const float tagIconSize = 50.f;
 		//0.0135f;
 
-		float		OnTag(const float3&at, char tagChar, float scaleX, float scaleY);
+		float		OnTag(const float3&at, char32_t tagChar, float scaleX, float scaleY);
 
-		inline float		TagWidth(char tagChar)
+		inline float		TagWidth(char32_t tagChar)
 		{
 			return tagIconSize;
 		}

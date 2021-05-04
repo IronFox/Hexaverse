@@ -2113,7 +2113,7 @@ int main( int argc, const char* argv[])
 
 						Engine::input.Bind(Key::F,[]()
 						{
-							HUD::Dialog::Query("Enter fatal message", "", HUD::Component::Input::GetStandardAlphabet(), [](const String&input){return input.IsNotEmpty();}, [](const String&input)
+							HUD::Dialog::Query("Enter fatal message", "", nullptr, [](const UTF32StringRef&input){return input.IsNotEmpty();}, [](const String&input)
 							{
 								if (input.IsNotEmpty())
 									FATAL__(input);

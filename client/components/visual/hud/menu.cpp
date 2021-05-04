@@ -446,7 +446,7 @@ namespace Menu
 		game->AddCommand("Show statistics","Shows statistics of the completed local game" ,Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Save game as...","Signals the server to save the game under a given name",[]()
 		{
-			Dialog::Query("Please specify a name","","ABCDEFGHIJKLMNOPQRSTUVWXZYabcdefghijklmnopqrstuvwxyz0123456789 ",[](const String&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ');},
+			Dialog::Query("Please specify a name","", [](char32_t c){return c != '/' && c != '\\';},[](const UTF32StringRef&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ') && candidate.GetIndexOf(U"..") == InvalidIndex;},
 				[](const String&name)
 			{
 				PathString location = RuntimeConfig::sharedConfig.Lookup("saves/"+name+RuntimeConfig::savFileExtension);
@@ -601,9 +601,9 @@ namespace Menu
 					Dialog::ShowMessage("Please connect to a server to continue");
 				else
 				{
-					Dialog::Query("Enter target documentation directory (must exist)","../documentation","abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_ ",[](const String&str)
+					Dialog::Query("Enter target documentation directory (must exist)","../documentation",nullptr,[](const UTF32StringRef&str)
 					{
-						return FileSystem::IsDirectory(PathString(str));
+						return FileSystem::IsDirectory(FileSystem::StringToPath(str));
 					},
 					[](const String&str)
 					{
@@ -642,7 +642,7 @@ namespace Menu
 				"Servers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation.\n"
 				"Make sure to not reuse the same profile for more than one open client instance at a time."
 				,"",
-				"abcdefghijklmnopqrstuvwxyz_0123456789",[](const StringRef&str){return true;},[](const String&str)
+				[](char32_t c){return StringFunctions::isalnum(c);},[](const UTF32StringRef&str){return true;},[](const String&str)
 			{
 				SetFullScreen(false);
 				PathString parameters = PathString("profile="+str);

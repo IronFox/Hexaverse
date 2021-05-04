@@ -2541,18 +2541,18 @@ namespace Component
 		if (IsActive())
 		{
 			ASSERT__(Detail::InputIsActive());
-			Engine::keyboard.FillInput(current);
+			Engine::keyboard.FillInputUTF8(current);
 		}
 		else
-			backup.SetTo(current);
+			backup.SetToUTF8(current);
 	}
 
 
-	void			Input::SetAllowedAlphabet(const String&allowed)
+	void			Input::SetAllowed(const Engine::Keyboard::FAllowed&allowed)
 	{
 		this->allowed = allowed;
 		if (Super::IsActive())
-			Engine::keyboard.Filter(allowed.c_str());
+			Engine::keyboard.SetFilter(GetAllowed());
 	}
 
 
@@ -2602,26 +2602,26 @@ namespace Component
 			Detail::DeactivateInput(&backup);
 	}
 
-	StringRef			Input::GetTextRef()
+	UTF32StringRef			Input::GetTextRef()
 	{
 		if (IsActive())
-			return StringRef(Engine::keyboard.GetInput(),Engine::keyboard.GetInputLen());
-		return StringRef(backup.GetCharacters(),backup.GetLength());
+			return Engine::keyboard.GetRawInput();
+		return backup.ToRef();
 	}
 
 
-	String			Input::GetText()
+	String			Input::GetTextUTF8()
 	{
-		if (IsActive())
-			return String(Engine::keyboard.GetInput(),Engine::keyboard.GetInputLen());
-		return String(backup.GetCharacters(),backup.GetLength());
+		String rs;
+		StringEncoding::UTF32::ToUTF8(GetTextRef(),rs);
+		return rs;
 	}
 
-	const char*		PasswordInput::GetText()
+	UTF32StringRef		PasswordInput::GetText()
 	{
 		if (IsActive())
-			return Engine::keyboard.GetInput();
-		return backup.GetCharacters();
+			return Engine::keyboard.GetRawInput();
+		return backup.ToRef();
 	}
 
 	void			PasswordInput::WipeInput()
@@ -2635,31 +2635,29 @@ namespace Component
 
 
 
-	/*virtual*/ StringRef BaseInput::GetTextRef()
+	/*virtual*/ UTF32StringRef BaseInput::GetTextRef()
 	{
 		const char*input;
 		size_t len;
 		bool active = IsActive();
-		input = active ? Engine::keyboard.GetInput() : backup.GetCharacters();
-		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
-		return StringRef(input,len);
+		return active ? Engine::keyboard.GetRawInput() : backup.ToRef();
 	}
 
 
-	/*static*/ StringBuffer	PasswordInput::placeholder;
+	/*static*/ PasswordInput::StringBuffer	PasswordInput::placeholder;
 
-	/*virtual override*/ StringRef PasswordInput::GetTextRef()
+	/*virtual override*/ UTF32StringRef PasswordInput::GetTextRef()
 	{
 		size_t len;
 		bool active = IsActive();
-		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
+		len = active ? Engine::keyboard.GetRawInputLen() : backup.GetLength();
 
 		while (placeholder.GetLength() < len)
 		{
 //			placeholder << "********";
-			placeholder << "........";
+			placeholder << U"........";
 		}
-		return StringRef(placeholder.pointer(),len);
+		return UTF32StringRef(placeholder.pointer(),len);
 	}
 
 
@@ -2673,11 +2671,11 @@ namespace Component
 
 		const auto child = Decoration::Render(relativeMouse,false,false,IsEnabled(),ctx);
 
-		StringRef text = GetTextRef();
+		UTF32StringRef text = GetTextRef();
 
 
-		static const char cursorChar = '<';
-		float cursorLen = textout.GetScaledWidth(StringRef(&cursorChar,1));
+		static const char32_t cursorChar = '<';
+		float cursorLen = textout.GetScaledWidth(UTF32StringRef(&cursorChar,1));
 		float visualLen = textout.GetScaledWidth(text) + cursorLen;
 
 

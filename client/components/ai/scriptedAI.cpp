@@ -60,12 +60,14 @@ namespace AI::Script
 
 		PathString	ScriptNameToPath(const String&scriptName)
 		{
-			PathString temp;
-			StringEncoding::UTF8::ToUTF16(scriptName, temp);
-			#if FOLDER_SLASH != '/'
-				temp.FindAndReplace('/',FOLDER_SLASH);
-			#endif
-			return temp+".lua";
+			if (scriptName.CountCharacters([](char c){return c == '\\' || c == ':' || c == ';';}) > 0)
+				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid characters: "+scriptName);
+			if (scriptName.GetIndexOf("..") != InvalidIndex)
+				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
+			if (scriptName.GetIndexOf("//") != InvalidIndex)
+				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
+
+			return FileSystem::StringToPath(scriptName)+".lua";
 		}
 
 		FileSystem::Folder	GetScriptFolder()
@@ -1301,7 +1303,7 @@ namespace AI::Script
 				ScanScriptFiles(f,outScripts,pathPrefix + FileSystem::PathToString(f.GetName())+"/");
 				continue;
 			}
-			if (f.IsExtension(".lua"))
+			if (f.IsExtension(".test"))
 			{
 				TScriptFile&sf = outScripts.Append();
 				sf.name = pathPrefix + FileSystem::PathToString(f.GetInnerName());
@@ -1361,31 +1363,41 @@ namespace AI::Script
 		aiCommands->Add(new GlobalCommand("Create new AI...",
 		[]()
 		{
-			static const String aiAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/ ";
-
-			HUD::Dialog::Query("Enter name for new AI script","debug",aiAlpha,[](const StringRef&str)->bool
+			//static const String aiAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/ ";
+			HUD::Dialog::Query("Enter name for new AI script","debug",[](char32_t c){return c != '\\' && c != ':' && c != ';';},[](const UTF32StringRef&str)->bool
 			{
-				return str.GetLength() > 3;
+				return str.GetLength() > 3 && !str.Contains(U"//") && !str.Contains(U"..");
 			},
 			[](String input)
 			{
-				FileSystem::Folder scripts = Details::GetScriptFolder();
-				if (!scripts.IsValidLocation())
-					FileSystem::CreateDirectory(scripts.GetLocation());
-				ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
-				FileSystem::File scriptAt;
-				const auto path = Details::ScriptNameToPath(input);
-				scripts.FindFile(path, scriptAt, false);
-				if (scriptAt.DoesExist())
-					HUD::Dialog::Confirm("The specified AI script '"+input+".lua' already exists. Replace?",[scriptAt,input]()
+				try
+				{
+					FileSystem::Folder scripts = Details::GetScriptFolder();
+					if (!scripts.IsValidLocation())
+						FileSystem::CreateDirectory(scripts.GetLocation());
+					ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
+					FileSystem::File scriptAt;
+					const auto path = Details::ScriptNameToPath(input);
+					index_t lastSlash = input.FindLast('/');
+					if (lastSlash != InvalidIndex)
 					{
+						PathString folders = FileSystem::StringToPath(input.SubStringRef(0,lastSlash));
+						if (!scripts.CreateDirectory(folders))
+							throw Except::IO::DriveAccess::GeneralFault(CLOCATION,"Unable to create directory for script '"+input+"'");
+					}
+					scripts.FindFile(path, scriptAt, false);
+					if (scriptAt.DoesExist())
+						HUD::Dialog::Confirm("The specified AI script '"+input+".lua' already exists. Replace?",[scriptAt,input]()
+						{
+							CreateAndLoad(scriptAt,input);
+						});
+					else
 						CreateAndLoad(scriptAt,input);
-					});
-				else
-					CreateAndLoad(scriptAt,input);
-
-
-					
+				}
+				catch (const std::exception&ex)
+				{
+					HUD::Dialog::ShowMessage("Failed to create new lua script file: "+String(ex.what()));
+				}
 			});
 		}));
 

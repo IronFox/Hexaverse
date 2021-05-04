@@ -30,7 +30,7 @@ namespace Detail
 	void	PopLoadView();
 	void	OnInput();
 	void	OnCharInput(char);
-	void	ActivateInput(const char*allowed, const std::function<void(Key::Name)>&onSpecialKey, Engine::Keyboard::CharacterBuffer&sourceBufferContent);
+	void	ActivateInput(const Engine::Keyboard::FAllowed&allowed, const std::function<void(Key::Name)>&onSpecialKey, Engine::Keyboard::CharacterBuffer&sourceBufferContent);
 	void	DeactivateInput(Engine::Keyboard::CharacterBuffer*destBufferContent);
 	bool	InputIsActive();
 

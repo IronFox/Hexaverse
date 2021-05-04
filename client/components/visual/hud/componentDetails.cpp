@@ -80,7 +80,7 @@ namespace Detail
 			}
 		}
 
-		void OnCharInput(char)
+		void OnCharInput(char32_t)
 		{
 			OnInput();
 		}
@@ -101,7 +101,7 @@ namespace Detail
 		}
 
 
-		void ActivateInput(const char*allowed, const std::function<void(Key::Name)>&onSpecialKey, Engine::Keyboard::CharacterBuffer&sourceBufferContent)
+		void ActivateInput(const Engine::Keyboard::FAllowed&allowed, const std::function<void(Key::Name)>&onSpecialKey, Engine::Keyboard::CharacterBuffer&sourceBufferContent)
 		{
 			if (InputIsActive())
 			{
@@ -161,16 +161,17 @@ namespace Detail
 			Engine::input.Bind(Key::Enter,onSpecialKey);
 
 			Engine::input.BindCtrl(Key::V,[](){
-				char buffer[0x100];
-				memset(buffer,0,sizeof(buffer));
-				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
+				size_t len = System::GetClipboardTextLength(Engine::context.getWindow());
+				if (len > 0)
 				{
-					Engine::keyboard.FilterAppend(buffer);	
+					String clipboard{TStringLength(len)};
+					if (System::GetFromClipboardIfText(Engine::context.getWindow(),clipboard.mutablePointer(),len))
+						Engine::keyboard.FilterAppendUTF8(clipboard);	
 				}
 			});
 
 			if (allowed)
-				Engine::keyboard.Filter(allowed);
+				Engine::keyboard.SetFilter(allowed);
 			else
 				Engine::keyboard.ResetTranslation();
 			Engine::keyboard.onCharHandled = OnCharInput;

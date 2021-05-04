@@ -12,7 +12,6 @@ On failure throws a Program::UnsupportedRequest exception, which may be handled 
 */
 namespace Expect
 {
-
 	template <typename T>
 		const T& SafeGet(const DeltaWorks::ArrayRef<T>&container, index_t index, const DeltaWorks::TCodeLocation&loc)
 		{

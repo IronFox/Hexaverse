@@ -5,6 +5,7 @@
 #include <io/xml.h>
 #include <image/converter/magic.h>
 #include <io/file_system.h>
+#include <string/encoding.h>
 
 namespace Engine
 {
@@ -108,7 +109,7 @@ namespace Engine
 					continue;
 			
 				BYTE id;
-				if (!get(xchar,"id",id))
+				if (!get(xchar,"id",id))	//<- CP1252/ANSI encoded character
 					continue;
 				unsigned left, right,bottom,top;
 				if (!get(xchar,"left",left))
@@ -158,28 +159,42 @@ namespace Engine
 		}
 
 
-		float TextureFont::CharWidth(char c)
+		float TextureFont::CharWidth(char32_t c32)
 		{
-			if (isTag && isTag(c))
+			if (!c32)
+				return 0;
+			if (isTag && isTag(c32))
 			{
-				return tagWidth(c);
+				return tagWidth(c32);
 			}
 
-			if (chars[(BYTE)c].isset)
+			char c;
+			if (StringEncoding::UTF32::ToCP1252(c32,c) && chars[(BYTE)c].isset)
 				return chars[(BYTE)c].width;
 
-			return 0.f;
+			return chars[(BYTE)'?'].width;
 		}
 
 
-		float TextureFont::GetWidth(const StringRef&str)
+		float TextureFont::GetWidth(const UTF32StringRef&str)
 		{
 			float rs = 0;
-			const char*c = str.pointer(),
+			const auto*c = str.pointer(),
 					*const end = c + str.GetLength();
 			for (;c != end; ++c)
 			{
 				rs += CharWidth(*c);
+			}
+			return rs*scale;
+		}
+
+		float TextureFont::GetWidth(const StringRef&str)
+		{
+			float rs = 0;
+			StringEncoding::UTF8::Scanner scanner(str);
+			while (scanner.HasNext())
+			{
+				rs += CharWidth(scanner.Next());
 			}
 			return rs*scale;
 		}
@@ -193,13 +208,13 @@ namespace Engine
 		{
 			Mat::Eye(m);
 			m.w.xyz = float3(state.left+state.indent,
-			state.top 
-			- 
-			//(state.line) * state.y_scale * height * scale
-			state.lineOffset 
-			- state.y_scale * height * scale
-			,
-			state.depth);
+				state.top 
+				- 
+				//(state.line) * state.y_scale * height * scale
+				state.lineOffset 
+				- state.y_scale * height * scale
+				,
+				state.depth);
 			//m.w.xyz = float3(state.left+state.indent,state.top - (state.line+1) * state.y_scale * height,state.depth);
 			m.x.x = state.x_scale*scale;
 			m.y.y = state.y_scale*scale;
@@ -225,54 +240,81 @@ namespace Engine
 			DirectX11::globalInstance->RenderVertices(instruction);
 		}
 
-		void TextureFont::Write(const StringRef&str)
+		count_t TextureFont::WriteChar(count_t written, char32_t c32)
 		{
-			index_t written = 0;
-			const char*c = str.pointer(),
-					*const end = c + str.GetLength();
-			for (;c != end; ++c)
+			if (written == MaxStream)
 			{
-				if (written == MaxStream)
+				Render(written);
+				written = 0;
+			}
+
+			if (isTag && isTag(c32))
+			{
+				if (written)
 				{
 					Render(written);
 					written = 0;
 				}
 
-				if (isTag && isTag(*c))
-				{
-					if (written)
-					{
-						Render(written);
-						written = 0;
-					}
+				m.w.x += m.x.x  * at;
+				DirectX11::globalInstance->SetObjectMatrix(m);
 
-					m.w.x += m.x.x  * at;
-					DirectX11::globalInstance->SetObjectMatrix(m);
+				m.w.x += onTag(m.w.xyz,c32,m.x.x,m.y.y);
 
-					m.w.x += onTag(m.w.xyz,*c,m.x.x,m.y.y);
+				at = 0;
 
-					at = 0;
-
-					DirectX11::globalInstance->SetObjectMatrix(m);
+				DirectX11::globalInstance->SetObjectMatrix(m);
 		
-					continue;
-				}
+				return written;
+			}
 
-				TVertex&vtx = vertices[written++];
-				const TCharacter&ch = chars[(BYTE)*c];
-				vtx.x = ch.texcoords.x.min - pixelOffset.x;
-				vtx.y = ch.texcoords.y.min - pixelOffset.y;
-				vtx.z = ch.texcoords.x.max - pixelOffset.x;
-				vtx.w = ch.texcoords.y.max - pixelOffset.y;
-				vtx.v[4] = ch.width;
-				vtx.v[5] = ch.height;
-				vtx.v[6] = at;
-				vtx.v[7] = ch.yoffset;
-				at += ch.width;// + 2;
+			char c1252;
+			if (!StringEncoding::UTF32::ToCP1252(c32,c1252) || !chars[(BYTE)c1252].isset)
+				c1252 = '?';
+
+			TVertex&vtx = vertices[written++];
+			const TCharacter&ch = chars[(BYTE)c1252];
+			vtx.x = ch.texcoords.x.min - pixelOffset.x;
+			vtx.y = ch.texcoords.y.min - pixelOffset.y;
+			vtx.z = ch.texcoords.x.max - pixelOffset.x;
+			vtx.w = ch.texcoords.y.max - pixelOffset.y;
+			vtx.v[4] = ch.width;
+			vtx.v[5] = ch.height;
+			vtx.v[6] = at;
+			vtx.v[7] = ch.yoffset;
+			at += ch.width;// + 2;
+			return written;
+		}
+
+		void TextureFont::Write(const StringRef&str)
+		{
+			count_t written = 0;
+			const char*current = str.pointer(),
+					*const end = current + str.GetLength();
+			while (current != end)
+			{
+				char32_t c32;
+				if (!StringEncoding::UTF8::ToUTF32(current, end, c32))
+					break;
+				written = WriteChar(written,c32);
 			}
 			if (written)
 				Render(written);
-				//glCallLists(GLuint(len),GL_UNSIGNED_BYTE,str);
+		}
+		
+		void TextureFont::Write(const UTF32StringRef&str)
+		{
+			index_t written = 0;
+			const char32_t*current = str.pointer(),
+					*const end = current + str.GetLength();
+			while (current != end)
+			{
+				char32_t c32 = *current;
+				written = WriteChar(written,c32);
+				current++;
+			}
+			if (written)
+				Render(written);
 		}
 
 		void TextureFont::End()
