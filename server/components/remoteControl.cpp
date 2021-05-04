@@ -31,19 +31,19 @@ namespace RemoteControl
 
 		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin, const String&exception)
 		{
-			LogEvent(EventClass::Preset::networkError,nullptr,"RemoteControl: "+origin.ToString()+": Deserialization failed on channel "+String(channel)+": "+exception);
+			LogEvent(EventClass::Preset::networkError,nullptr,"LocalhostControl: "+origin.ToString()+": Deserialization failed on channel "+String(channel)+": "+exception);
 		}
 
 
 
 		void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
 		{
-			LogEvent(EventClass::Preset::networkError,nullptr,"RemoteControl: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
+			LogEvent(EventClass::Preset::networkError,nullptr,"LocalhostControl: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
 		}
 
 		void OnSignal(UINT32 channel, TCP::Peer&origin)
 		{
-			LogEvent(EventSignificance::Debug,nullptr,"RemoteControl: "+origin.ToString()+": Signal on channel "+String(channel));
+			LogEvent(EventSignificance::Debug,nullptr,"LocalhostControl: "+origin.ToString()+": Signal on channel "+String(channel));
 		}
 
 
@@ -221,10 +221,10 @@ namespace RemoteControl
 		UINT16 port = serverBasePort + PortOffset::Control;
 		if (Detail::server.ExtStartService(port,proto, true))
 		{
-			LogEvent(EventClass::Preset::remoteControlCommand,"Remote control server online on port "+String(port));
+			LogEvent(EventClass::Preset::remoteControlCommand,"Localhost-only control server online on port "+String(port));
 		}
 		else
-			LogEvent(EventClass::Preset::remoteControlError,"Failed to register remote control server on port "+String(port));
+			LogEvent(EventClass::Preset::remoteControlError,"Failed to register localhost-only control server on port "+String(port));
 
 		if (Detail::eventKey == InvalidIndex)
 			Detail::eventKey = GlobalEvents::applicationTerminate.Register(Detail::Destroy);
