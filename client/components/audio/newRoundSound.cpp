@@ -50,7 +50,7 @@ namespace NewRoundSound
 		if (sound.IsEmpty())
 		{
 			DeltaWorks::String error;
-			sound = Engine::OpenAL::Load("resources/audio/newRound.wav",&error);
+			sound = Engine::OpenAL::Load(L"resources/audio/newRound.wav",&error);
 			if (sound.IsEmpty())
 			{
 				LogEvent(EventClass::Preset::fileError,"Unable to load new round sound: "+error);

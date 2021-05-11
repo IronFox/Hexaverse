@@ -46,7 +46,7 @@ namespace SurfaceRenderer
 			const Engine::DX11::Shader::Binding bindings[] = {
 				Engine::DX11::Shader::Binding(tint,"Tint")
 			};
-			triangles.shader.LoadFromFile("shaders/triangles.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			triangles.shader.LoadFromFile(L"shaders/triangles.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		}
 		triangles.UpdateLayout();
 		triangles.SetTriangles();

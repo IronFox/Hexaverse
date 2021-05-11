@@ -8,6 +8,7 @@
 //#include <DxErr.h>
 #include <io/cryptographic_hash.h>
 #include <engine/timing.h>
+#include <string/encoding.h>
 
 namespace Engine
 {
@@ -147,7 +148,7 @@ namespace Engine
 	{
 		errorCode = (int)rs;
 		_com_error err(rs);
-		errorString = err.ErrorMessage();
+		errorString = StringEncoding::UTF16::ToUTF8(err.ErrorMessage());
 		if (extInfo.IsNotEmpty())
 			errorString += " ("+extInfo+")";
 		
@@ -156,7 +157,7 @@ namespace Engine
 			errorCode = (int)dev->GetDeviceRemovedReason();
 			_com_error err(rs);
 			errorString += "\r\nGetDeviceRemovedReason():\r\n";
-			errorString += err.ErrorMessage();
+			errorString += StringEncoding::UTF16::ToUTF8(err.ErrorMessage());
 			throw Except::Renderer::DeviceConnectionLost(CLOCATION,errorString);
 		}
 
@@ -703,7 +704,7 @@ namespace Engine
 	BYTE		DirectX11::GetMSAARate(index_t mode) const
 	{
 		if (mode >= _msaaConfigs.Count())
-			throw Except::Program::ParameterFault("Chosen MSAA mode is out of bounds");
+			throw Except::Program::ParameterFault(CLOCATION,"Chosen MSAA mode is out of bounds");
 		return _msaaConfigs[mode].sampleCount;
 	}
 
@@ -712,7 +713,7 @@ namespace Engine
 		if (mode == _currentMSAAConfig)
 			return;
 		if (mode >= _msaaConfigs.Count())
-			throw Except::Program::ParameterFault("Chosen MSAA mode is out of bounds");
+			throw Except::Program::ParameterFault(CLOCATION,"Chosen MSAA mode is out of bounds");
 		_currentMSAAConfig = mode;
 		_nextBackbuffer.CreateMSAA(_currentResolution,DXGI_FORMAT_R8G8B8A8_UNORM,true,_CompileSampleDesc(_msaaConfigs[_currentMSAAConfig]));
 	}
@@ -949,16 +950,16 @@ namespace Engine
 		}
 
 		const BasicBuffer<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
-		Load<ID3D11VertexShader>(vertexStage,baseFilename+".vs.hlsl",vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
+		Load<ID3D11VertexShader>(vertexStage,baseFilename+ L".vs.hlsl",vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
 		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 		if (geometryShaderName.IsNotEmpty())
-			Load<ID3D11GeometryShader>(geometryStage,baseFilename+".gs.hlsl",geometryShaderName,"gs_5_0",[this](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
+			Load<ID3D11GeometryShader>(geometryStage,baseFilename+L".gs.hlsl",geometryShaderName,"gs_5_0",[this](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShader(data,size,NULL,shader);
 			},base.pointer(),base.Count(),b,numBindings,macros.pointer());
-		Load<ID3D11PixelShader>(pixelStage,baseFilename+".ps.hlsl",pixelShaderName,"ps_5_0",[this](const void*data, SIZE_T size, ID3D11PixelShader**shader)->HRESULT
+		Load<ID3D11PixelShader>(pixelStage,baseFilename+L".ps.hlsl",pixelShaderName,"ps_5_0",[this](const void*data, SIZE_T size, ID3D11PixelShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreatePixelShader(data,size,NULL,shader);
 		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
@@ -1045,7 +1046,7 @@ namespace Engine
 	{
 		path = FileSystem::ExtractFileDir(relativeTo);
 		if (relativeTo == path)	 //no slashes
-			path = ".";
+			path = L".";
 	}
 
 
@@ -1062,11 +1063,11 @@ namespace Engine
 
 	void DX11::Shader::_CompileBlob(Handle<ID3DBlob>&result, const PathString&filename, const String&functionName, const char*profile, const D3D_SHADER_MACRO*macros, bool forceRecompilation /*= false*/)
 	{
-		PathString compiledPath = FileSystem::ExtractFileDir(filename) + "/compiled/";
+		PathString compiledPath = FileSystem::ExtractFileDir(filename) + L"/compiled/";
 		if (!FileSystem::IsDirectory(compiledPath))
 			FileSystem::CreateDirectory(compiledPath);
 
-		String name = String(FileSystem::ExtractFileName(filename))+"."+functionName;
+		String name = FileSystem::PathToString(FileSystem::ExtractFileName(filename))+"."+functionName;
 		//compiledPath += FileSystem::ExtractFileName(filename)+"."+functionName;
 		if (macros != NULL)
 		{
@@ -1093,7 +1094,7 @@ namespace Engine
 			Handle<ID3DBlob> errors;
 			FILE*f = FOPEN(filename.c_str(),"rb");
 			if (!f)
-				throw Except::IO::DriveAccess::FileOpenFault("Unable to open '"+filename+"'");
+				throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to open '"+FileSystem::PathToString(filename)+"'");
 			fseek(f,0,SEEK_END);
 			long len = ftell(f);
 			fseek(f,0,SEEK_SET);
@@ -1114,7 +1115,7 @@ namespace Engine
 			if (hr != S_OK)
 			{
 				DirectX11::globalInstance->ReportError(hr, CLOCATION,extInfo);
-				throw Except::Renderer::ShaderRejected();
+				throw Except::Renderer::ShaderRejected(CLOCATION);
 			}
 
 			#ifdef _DEBUG
@@ -1129,7 +1130,7 @@ namespace Engine
 		}
 		FILE*f = FOPEN(compiledPath.c_str(),"rb");
 		if (!f)
-			throw Except::IO::DriveAccess::FileOpenFault("Unable to open '"+compiledPath+"'");
+			throw Except::IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to open '"+FileSystem::PathToString(compiledPath)+"'");
 		fseek(f,0,SEEK_END);
 		long len = ftell(f);
 		fseek(f,0,SEEK_SET);
@@ -1145,12 +1146,12 @@ namespace Engine
 		{
 			filename = path;
 			filename += '/';
-			filename += pFileName;
+			filename += FileSystem::StringToPath(pFileName);
 		}
 		else if(IncludeType == D3D_INCLUDE_SYSTEM)
 		{
-			filename = "include/";
-			filename += pFileName;
+			filename = L"include/";
+			filename += FileSystem::StringToPath(pFileName);
 		}
 		else
 		{

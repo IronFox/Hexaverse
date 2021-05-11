@@ -33,8 +33,8 @@ namespace HUD
 
 		void	Create()
 		{
-			Detail::buttonDown = AL::Load("resources/audio/buttonDown.wav");
-			//Detail::buttonUp = AL::Load("resources/audio/buttonUp.wav");
+			Detail::buttonDown = AL::Load(L"resources/audio/buttonDown.wav");
+			//Detail::buttonUp = AL::Load(L"resources/audio/buttonUp.wav");
 
 		}
 

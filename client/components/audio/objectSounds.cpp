@@ -2,6 +2,7 @@
 #include <objects/entity.h>
 #include <objects/entityType.h>
 #include <objects/vehicle.h>
+#include <io/file_system.h>
 
 namespace Objects
 {
@@ -19,7 +20,7 @@ namespace Objects
 		Engine::OpenAL::WaveBuffer result;
 		if (waveTable.Query(entityType,result))
 			return result;
-		result = Engine::OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
+		result = Engine::OpenAL::Load(FileSystem::StringToPath("resources/objectSounds/"+entityTypeName+".wav"));
 		waveTable.Set(entityType,result);	//don't care if it's empty
 		return result;
 	}

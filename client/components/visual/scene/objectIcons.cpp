@@ -45,11 +45,11 @@ namespace Objects
 
 		void					Setup(const PathString&sourceFileName, float worldScale, const float3&pulse, float forward = 0)
 		{
-			PathString cached = sourceFileName.EndsWithIgnoreCase(".png") ? sourceFileName : sourceFileName+".png";
+			PathString cached = sourceFileName.EndsWithIgnoreCase(L".png") ? sourceFileName : sourceFileName+L".png";
 			scale = worldScale;
 			this->pulse = pulse;
 			this->forward = forward;
-			renderer.CreateOrLoadFromIcon("resources/icons/"+sourceFileName,"resources/floaters/"+cached,false,1.f / worldScale);
+			renderer.CreateOrLoadFromIcon(L"resources/icons/"+sourceFileName,L"resources/floaters/"+cached,false,1.f / worldScale);
 		}
 
 		void					Render(const Prepared&p, const float size, const float locationHeightDelta)
@@ -197,17 +197,17 @@ namespace Objects
 			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 			{
 				const String&name = Objects::Resource::ID(i).GetIcon();
-				resourceFamily[i].Setup(PathString(::Icons::NameToFileName(name))+".png",0.75f,float3(0.5f,1.f,10));
+				resourceFamily[i].Setup(FileSystem::StringToPath(::Icons::NameToFileName(name)+".png"),0.75f,float3(0.5f,1.f,10));
 			}
 		}
 
 		void Create()
 		{
 			SpriteRenderer::StaticCreate();
-			sleepIcon.Setup("Sleep.png",1.f,float3(0.8f,1.f,1.f));
-			automationIcon.Setup("Automate.png",0.5f,float3(1));
-			questionIcon.Setup("Question-Mark.png",1.f / 1.5f,float3(0.5,1.5f,3));
-			t2LevelUp.Setup("Upgrade.png",0.5,float3(1.1,1.5,1),-0.1);
+			sleepIcon.Setup(L"Sleep.png",1.f,float3(0.8f,1.f,1.f));
+			automationIcon.Setup(L"Automate.png",0.5f,float3(1));
+			questionIcon.Setup(L"Question-Mark.png",1.f / 1.5f,float3(0.5,1.5f,3));
+			t2LevelUp.Setup(L"Upgrade.png",0.5,float3(1.1,1.5,1),-0.1);
 
 			RebuildResourceFamilies();
 

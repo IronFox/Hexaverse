@@ -72,7 +72,7 @@ namespace HUD{namespace HostList{
 
 		try
 		{
-			StringFile source("../changelog.txt",CM_RETURN_EMPTY_LINES);
+			StringFile source(L"../changelog.txt",CM_RETURN_EMPTY_LINES);
 			changelog = Window::Create();
 			changelog->canBeImplicitlyClosed = false;
 			changelog->isModal = false;

@@ -12,6 +12,7 @@
 #include <math/graph.h>
 #include "windowStack.h"
 #include "../../audio/hudAudio.h"
+#include <string/lineWrap.h>
 
 namespace DX11 = Engine::DX11; 
 
@@ -1619,7 +1620,7 @@ namespace Component
 				DX11::Shader::Binding(lineNormalScale,"LineNormalScale"),
 			};
 
-			lineShader.shader.LoadFromFile("shaders/guiShapeLine.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			lineShader.shader.LoadFromFile(L"shaders/guiShapeLine.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			lineShader.UpdateLayout();
 			lineShader.SetLines();
 		}
@@ -1642,7 +1643,7 @@ namespace Component
 			};
 
 			shader.quickSlots.SetSize(1);
-			shader.shader.LoadFromFile("shaders/guiShape.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			shader.shader.LoadFromFile(L"shaders/guiShape.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			shader.UpdateLayout();
 			shader.SetTriangles();
 		}
@@ -1666,7 +1667,7 @@ namespace Component
 			};
 
 
-			shrinkShader.shader.LoadFromFile("shaders/guiBackgroundShrink.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			shrinkShader.shader.LoadFromFile(L"shaders/guiBackgroundShrink.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			shrinkShader.UpdateLayout();
 			shrinkShader.SetTriangles();
 			shrinkShader.vbo = quadVBO;
@@ -1685,7 +1686,7 @@ namespace Component
 			};
 
 
-			hBlur.shader.LoadFromFile("shaders/guiBackgroundHBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			hBlur.shader.LoadFromFile(L"shaders/guiBackgroundHBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			hBlur.UpdateLayout();
 			hBlur.SetTriangles();
 			hBlur.vbo = quadVBO;
@@ -1704,7 +1705,7 @@ namespace Component
 			};
 
 
-			vBlur.shader.LoadFromFile("shaders/guiBackgroundVBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			vBlur.shader.LoadFromFile(L"shaders/guiBackgroundVBlur.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			vBlur.UpdateLayout();
 			vBlur.SetTriangles();
 			vBlur.vbo = quadVBO;
@@ -1721,7 +1722,7 @@ namespace Component
 			};
 
 
-			blend.shader.LoadFromFile("shaders/guiBackgroundBlend.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			blend.shader.LoadFromFile(L"shaders/guiBackgroundBlend.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			blend.UpdateLayout();
 			blend.SetTriangles();
 			blend.vbo = quadVBO;
@@ -2367,7 +2368,7 @@ namespace Component
 	
 	#endif /*0*/
 
-	static float CharWidth(char c)
+	static float CharWidth(char32_t c)
 	{
 		if (Objects::Resource::TagMap::IsTag(c))
 		{
@@ -2748,7 +2749,7 @@ namespace Component
 			};
 
 
-			texturedQuad.shader.LoadFromFile("shaders/guiImageField.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			texturedQuad.shader.LoadFromFile(L"shaders/guiImageField.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
 			texturedQuad.UpdateLayout();
 			texturedQuad.SetTriangles();
 
@@ -2897,7 +2898,7 @@ namespace Component
 		Array<StringRef>	wrapped;
 		for (const String&raw : rawText)
 		{
-			Wrap(raw,width,CharWidth,wrapped);
+			LineWrap::UTF8::Wrap(raw,width,CharWidth,wrapped);
 			#ifdef _DEBUG
 				if (width > CharWidth('X'))
 					foreach (wrapped,w)
@@ -2919,7 +2920,7 @@ namespace Component
 								const index_t atWord = w - wrapped.pointer();
 								const char*const word = w->begin();
 								Array<StringRef>	wrapped2;
-								Wrap(raw,width,CharWidth,wrapped2);
+								LineWrap::UTF8::Wrap(raw,width,CharWidth,wrapped2);
 							}
 						#endif
 						//ASSERT_LESS_OR_EQUAL__(accum,width);

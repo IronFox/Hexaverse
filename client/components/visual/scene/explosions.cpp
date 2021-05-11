@@ -275,7 +275,7 @@ namespace Explosions
 				DX11::Shader::Binding(ringTexture,"Texture"),
 				DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"Sampler")
 			};
-			Explosion::ringInstruction.shader.LoadFromFile("shaders/explosionRing.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings));
+			Explosion::ringInstruction.shader.LoadFromFile(L"shaders/explosionRing.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings));
 		}
 		Explosion::ringInstruction.UpdateLayout();
 
@@ -295,16 +295,16 @@ namespace Explosions
 				DX11::Shader::Binding(particleTexture,"Texture"),
 				DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"Sampler")
 			};
-			particleInstruction.shader.LoadFromFile("shaders/explosionParticle.hlsl","vsMain","gsMain","psMain",bindings,ARRAYSIZE(bindings));
+			particleInstruction.shader.LoadFromFile(L"shaders/explosionParticle.hlsl","vsMain","gsMain","psMain",bindings,ARRAYSIZE(bindings));
 		}
 		particleInstruction.UpdateLayout();
 
 		if (AudioInterface::IsActive())
 		{
-			explosionSound = Engine::OpenAL::Load("resources/explode.wav");
+			explosionSound = Engine::OpenAL::Load(L"resources/explode.wav");
 			if (explosionSound.IsEmpty())
 				ErrMessage("Warning: Failed to load required wave file.");
-			empExplosionSound = Engine::OpenAL::Load("resources/empExplode.wav");
+			empExplosionSound = Engine::OpenAL::Load(L"resources/empExplode.wav");
 			if (empExplosionSound.IsEmpty())
 				ErrMessage("Warning: Failed to load required wave file.");
 		}

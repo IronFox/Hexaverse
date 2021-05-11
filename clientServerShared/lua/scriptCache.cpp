@@ -16,7 +16,7 @@ namespace ScriptCache
 	HashTable<PathString,std::pair<PScript,FileSystem::ftime_t> >	map;
 	HashTable<SHA256::HashContainer,PScript>	hashMap;
 
-	static const PathString cacheFileExtension = ".script";
+	static const PathString cacheFileExtension = L".script";
 
 
 	bool	Script::Recompress()
@@ -111,7 +111,7 @@ namespace ScriptCache
 	static FileSystem::Folder	GetCacheDirectory()
 	{
 		FileSystem::File file;
-		RuntimeConfig::myConfig.Lookup("cache/",file);
+		RuntimeConfig::myConfig.Lookup(L"cache/",file);
 		FileSystem::ForceCreateDirectory(file);
 		return file;
 	}
@@ -120,7 +120,7 @@ namespace ScriptCache
 	{
 		FileSystem::File f;
 		if (!GetCacheDirectory().FindFile(PathString(Bin2Str::ConvertPOD(id,InvalidIndex))+cacheFileExtension,f,false))
-			return "";
+			return PathString();
 		return f.GetLocation();
 	}
 

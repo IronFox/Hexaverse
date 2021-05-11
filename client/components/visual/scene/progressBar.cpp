@@ -81,14 +81,14 @@ namespace ProgressBar
 	
 		const count_t cnt = DX11::Shader::macroDefinitions.Count();
 
-		DX11::Shader::macroDefinitions << DX11::Shader::Macro("BAR_SIZE",Grid::SingleMeanLayerHeight);
+		DX11::Shader::macroDefinitions << DX11::Shader::Macro("BAR_SIZE",String(Grid::SingleMeanLayerHeight));
 
 		instruction.vbo = vbo;
 		instruction.binding.Append("PositionMax",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 		instruction.binding.Append("ColorProgress",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 		instruction.binding.Append("LineProgress_Scale",0,DXGI_FORMAT_R32G32_FLOAT);
 
-		instruction.shader.LoadFromFile("shaders/entityProgressBar.hlsl","vsMain","gsMain","psMain");
+		instruction.shader.LoadFromFile(L"shaders/entityProgressBar.hlsl","vsMain","gsMain","psMain");
 		instruction.SetPoints();
 		instruction.UpdateLayout();
 

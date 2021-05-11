@@ -279,7 +279,7 @@ namespace Network
 
 	void SaveWorldAccessTokens()
 	{
-		FileSystem::CreateDirectory("config");
+		FileSystem::CreateDirectory(L"config");
 		FILE*f = FOPEN(AccessFilename().c_str(), "wb+");
 		if (!f)
 		{

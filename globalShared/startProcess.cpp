@@ -44,18 +44,18 @@ namespace Process
 	
 		#ifdef _DEBUG
 			#ifdef PLATFORM_X64
-				return baseDirectory+"\\.projector\\x64\\Debug\\"+baseExecutableName + PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				return baseDirectory+L"\\.projector\\x64\\Debug\\"+baseExecutableName + DeltaWorks::StringType::Cast(PLATFORM_TARGET_NAME_EXTENSION_STR ".exe");
 			#else
-				return baseDirectory+"\\.projector\\Debug\\"+baseExecutableName + PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				return baseDirectory+L"\\.projector\\Debug\\"+baseExecutableName + DeltaWorks::StringType::Cast(PLATFORM_TARGET_NAME_EXTENSION_STR ".exe");
 			#endif
 		#elif defined _OPTIMIZED_DEBUG
 			#ifdef PLATFORM_X64
-				return baseDirectory+"\\.projector\\x64\\OptimizedDebug\\"+baseExecutableName+ PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				return baseDirectory+L"\\.projector\\x64\\OptimizedDebug\\"+baseExecutableName+ DeltaWorks::StringType::Cast(PLATFORM_TARGET_NAME_EXTENSION_STR ".exe");
 			#else
-				return baseDirectory+"\\.projector\\OptimizedDebug\\"+baseExecutableName+PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+				return baseDirectory+L"\\.projector\\OptimizedDebug\\"+baseExecutableName+DeltaWorks::StringType::Cast(PLATFORM_TARGET_NAME_EXTENSION_STR ".exe");
 			#endif
 		#else
-			return baseDirectory+"\\"+baseExecutableName+ PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+			return baseDirectory+FOLDER_SLASH+baseExecutableName+ DeltaWorks::StringType::Cast(PLATFORM_TARGET_NAME_EXTENSION_STR ".exe");
 		#endif
 	}
 

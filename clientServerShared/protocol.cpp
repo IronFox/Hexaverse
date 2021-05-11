@@ -7,7 +7,7 @@ namespace Protocol
 	{
 		if (t.rightNow)
 			return "Now";
-		return t.atTime;
+		return String(t.atTime);
 	}
 	String ToString( const TimeWindow&t )
 	{

@@ -32,7 +32,7 @@ namespace ConfigurationMode
 		};
 
 		static const String		previousPlanetFileName = "Previous";
-		const PathString		sharedPlanetsSub = "config/myPlanets";
+		const PathString		sharedPlanetsSub = L"config/myPlanets";
 
 		HUD::Component::PWindow	empZoneButtonWindow;
 		HUD::Component::PButton	empZoneButton;
@@ -94,7 +94,7 @@ namespace ConfigurationMode
 				else if (ch->name == "variable" && ch->Query("name",str))
 				{
 					String base = ch->inner_content;
-					explode('\n',base,lines);
+					Explode('\n',base,lines);
 					foreach(lines,ln)
 						ln->TrimThis();
 					
@@ -796,7 +796,7 @@ namespace ConfigurationMode
 		{
 			if (!isActive)
 				return;
-			PathString file = RuntimeConfig::sharedConfig.Lookup(sharedPlanetsSub+FOLDER_SLASH+name+".ini");
+			PathString file = RuntimeConfig::sharedConfig.Lookup(sharedPlanetsSub+FOLDER_SLASH+ FileSystem::StringToPath(name+".ini"));
 			Configuration cfg;
 			SavePlanetTo(cfg);
 			if (cfg.SaveToFile(file,PRODUCT_NAME))
@@ -922,7 +922,7 @@ namespace ConfigurationMode
 			RebuildPlanetList();
 
 			XML::Container declarations;
-			declarations.LoadFromFile("../server/config/declaration.xml");
+			declarations.LoadFromFile(L"../server/config/declaration.xml");
 			ParseDeclarations(declarations.root_node,"");
 
 
@@ -1058,7 +1058,7 @@ namespace ConfigurationMode
 
 								
 
-									if (!ServerProcess::RunNow(" -g \""+Detail::outConfigPath.GetLocation()+"\""))
+									if (!ServerProcess::RunNow(L" -g \""+Detail::outConfigPath.GetLocation()+L"\""))
 									{
 										LogEvent(EventClass::Preset::fileError,"Unable to generate server configuration file at "+String(Detail::outConfigPath.GetLocation()));
 										return;
@@ -1088,7 +1088,7 @@ namespace ConfigurationMode
 										return;
 									}
 
-									ServerProcess::Begin(true,false,"-c \""+Detail::outConfigPath.GetLocation()+"\"");
+									ServerProcess::Begin(true,false,L"-c \""+Detail::outConfigPath.GetLocation()+L"\"");
 									SetActive(false);
 								}
 								catch (const std::exception&ex)
@@ -1173,7 +1173,7 @@ namespace ConfigurationMode
 				return;
 			}
 			FileSystem::File file;
-			while (folder.NextFile("ini",file))
+			while (folder.NextFile(L".ini",file))
 			{
 				auto&p = planetList.Append();
 				p.displayName = String(file.GetInnerName());
@@ -1186,22 +1186,12 @@ namespace ConfigurationMode
 
 		}
 
-		bool			IsPlanetIniFile(const String&filename)
-		{
-			if (!filename.EndsWith(".ini"))
-				return IsPlanetIniFile(filename+".ini");
-			return FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup(sharedPlanetsSub)).FindFile(PathString(filename)) != nullptr
-					||
-				FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(filename)) != nullptr;
-		}
-
-
 		void		ReScanPlanets()
 		{
 			planetList.Clear();
 		
 			AppendAvailablePlanetInitFilesFrom(false, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")));
-			AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory("../predefinedPlanets"));
+			AppendAvailablePlanetInitFilesFrom(true,FileSystem::Directory().FindDirectory(L"../predefinedPlanets"));
 		}
 	}
 

@@ -54,7 +54,7 @@ namespace Loading
 			void LoadResources()
 			{
 				Image image;
-				Magic::LoadFromFile(image,"resources/splash.png");
+				Magic::LoadFromFile(image,L"resources/splash.png");
 				imageAspect = image.GetPixelAspect();
 
 				{
@@ -67,7 +67,7 @@ namespace Loading
 						DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Trilinear,1,"SplashSampler")
 					};
 
-					instruction.shader.LoadFromFile("./shaders/splash.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings));
+					instruction.shader.LoadFromFile(L"./shaders/splash.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings));
 				}
 
 

@@ -276,7 +276,7 @@ namespace Objects
 		Clear();
 		CGS::Geometry<>	geo;
 		PathString baseName = FileSystem::ExtractFileDirName(filename);
-		PathString cgsName = baseName + ".cgs";
+		PathString cgsName = baseName + L".cgs";
 		if (!FileSystem::IsFile(cgsName) || FileSystem::GetModificationTime(cgsName) < FileSystem::GetModificationTime(filename) || !geo.LoadFromFile(cgsName))
 		{
 			LogEvent(EventSignificance::Uncommon, "Reconverting " + String(filename)+"...");

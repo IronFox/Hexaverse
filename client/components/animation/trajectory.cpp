@@ -32,13 +32,13 @@ namespace Animation
 				DX11::Shader::Binding(trajectoryProgression, "Progression"),
 			};
 			trajectoryVisualizationBase.binding = Objects::stdVehicleShader.binding;
-			trajectoryVisualizationBase.shader.LoadFromFile("shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			trajectoryVisualizationBase.shader.LoadFromFile(L"shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			trajectoryVisualizationBase.UpdateLayout();
 			trajectoryVisualizationBase.SetTriangles();
 
-			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
-			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
-			beamSound = OpenAL::Load("resources/objectSounds/beam.wav");
+			artilleryShot = OpenAL::Load(L"resources/objectSounds/artilleryShot.wav");
+			missileHiss = OpenAL::Load(L"resources/objectSounds/missileHiss.wav");
+			beamSound = OpenAL::Load(L"resources/objectSounds/beam.wav");
 		#endif
 	}
 

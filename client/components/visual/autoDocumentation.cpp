@@ -93,7 +93,7 @@ namespace AutoDocumentation
 		LogEvent(EventSignificance::Uncommon, "Documenting "+typeName);
 
 		PathString name = MakeValidFilename( typeName );
-		PathString outName = (name+".prefix").ConvertToLowerCase();
+		PathString outName = (name+L".prefix").ConvertToLowerCase();
 		StringFile file;
 		if (!outFolder.IsValidLocation())
 			FileSystem::CreateDirectory(outFolder.GetLocation());
@@ -118,7 +118,7 @@ namespace AutoDocumentation
 		image.ScaleHalf();
 		image.ScaleHalf();
 		image.TruncateToOpaque();
-		PathString outName = MakeValidFilename(typeName)+".png";
+		PathString outName = MakeValidFilename(typeName)+L".png";
 
 		png.SaveToFile(image, folder.FindFile(outName,false)->GetLocation().c_str());
 	}
@@ -127,7 +127,7 @@ namespace AutoDocumentation
 	{
 		ASSERT__(f.IsValidLocation());
 		{
-			FileSystem::Folder imageTarget = f.FindDirectory("images/units",false);
+			FileSystem::Folder imageTarget = f.FindDirectory(L"images/units",false);
 			if (!imageTarget.IsValidLocation())
 				FileSystem::CreateDirectory(imageTarget.GetLocation());
 			ASSERT__(imageTarget.IsValidLocation());
@@ -163,21 +163,21 @@ namespace AutoDocumentation
 			}
 		}
 		{
-			FileSystem::Folder documentationTarget = f.FindDirectory("documentation",false);
+			FileSystem::Folder documentationTarget = f.FindDirectory(L"documentation",false);
 			if (!documentationTarget.IsValidLocation())
 				FileSystem::CreateDirectory(documentationTarget.GetLocation());
 
 			ASSERT__(documentationTarget.IsValidLocation());
 
 			{
-				FileSystem::Folder rootFolder(documentationTarget.FindDirectory("units",false));
-				FileSystem::Folder structureFolder(rootFolder.FindDirectory("structures",false));
-				FileSystem::Folder planeFolder(rootFolder.FindDirectory("planes",false));
-				FileSystem::Folder turretFolder(rootFolder.FindDirectory("turrets",false));
-				FileSystem::Folder vbaseFolder(rootFolder.FindDirectory("vbases",false));
+				FileSystem::Folder rootFolder(documentationTarget.FindDirectory(L"units",false));
+				FileSystem::Folder structureFolder(rootFolder.FindDirectory(L"structures",false));
+				FileSystem::Folder planeFolder(rootFolder.FindDirectory(L"planes",false));
+				FileSystem::Folder turretFolder(rootFolder.FindDirectory(L"turrets",false));
+				FileSystem::Folder vbaseFolder(rootFolder.FindDirectory(L"vbases",false));
 
 				StringFile unitList;
-				unitList.Create(rootFolder.FindFile("list.prefix",false)->GetLocation());
+				unitList.Create(rootFolder.FindFile(L"list.prefix",false)->GetLocation());
 
 				unitList << "=Unit Types and Components="<<nl;
 

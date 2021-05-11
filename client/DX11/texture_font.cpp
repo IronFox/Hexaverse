@@ -59,7 +59,7 @@ namespace Engine
 				throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, Except::globalString("XML <font> attribute lacks 'image' parameter"));
 			
 			Image image;
-			Magic::LoadFromFile(image,root + imagefile);
+			Magic::LoadFromFile(image,root + FileSystem::StringToPath(imagefile));
 			if (image.GetChannels() == 4)
 				for (UINT32 x = 0; x < image.GetWidth(); x++)
 					for (UINT32 y = 0; y < image.GetHeight(); y++)
@@ -87,7 +87,7 @@ namespace Engine
 			{
 				auto macroCopy = DX11::Shader::macroDefinitions;
 				DX11::Shader::macroDefinitions.clear();
-				instruction.shader.LoadFromFile(root + shaderfile,"vsMain", "gsMain", "psMain",bindings,ARRAYSIZE(bindings));
+				instruction.shader.LoadFromFile(root + FileSystem::StringToPath(shaderfile),"vsMain", "gsMain", "psMain",bindings,ARRAYSIZE(bindings));
 				DX11::Shader::macroDefinitions = macroCopy;
 			}
 			instruction.binding.Append("Texcoords",0,DXGI_FORMAT_R32G32B32A32_FLOAT);

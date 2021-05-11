@@ -44,7 +44,7 @@ namespace LineRenderer
 			const Engine::DX11::Shader::Binding bindings[] = {
 				Engine::DX11::Shader::Binding(tint,"Tint")
 			};
-			lines.shader.LoadFromFile("shaders/lines.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			lines.shader.LoadFromFile(L"shaders/lines.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		}
 		lines.UpdateLayout();
 		lines.SetLines();

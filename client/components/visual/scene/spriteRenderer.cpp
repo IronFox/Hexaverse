@@ -276,7 +276,7 @@ namespace Objects
 				DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"Sampler")
 			};
 			DX11::Shader::macroDefinitions << DX11::Shader::Macro("CLIPPED","");
-			clippedInstruction.shader.LoadFromFile("shaders/sprite.hlsl","vsMain","gsMain","psMain",bindings,ARRAYSIZE(bindings));
+			clippedInstruction.shader.LoadFromFile(L"shaders/sprite.hlsl","vsMain","gsMain","psMain",bindings,ARRAYSIZE(bindings));
 			DX11::Shader::macroDefinitions.EraseLast();
 		}
 		clippedInstruction.UpdateLayout();
@@ -288,7 +288,7 @@ namespace Objects
 				DX11::Shader::Binding(0,"Texture"),
 				DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"Sampler")
 			};
-			blendedInstruction.shader.LoadFromFile("shaders/sprite.hlsl","vsMain","gsMain","psMain",bindings,ARRAYSIZE(bindings));
+			blendedInstruction.shader.LoadFromFile(L"shaders/sprite.hlsl","vsMain","gsMain","psMain",bindings,ARRAYSIZE(bindings));
 		}
 		blendedInstruction.UpdateLayout();
 

@@ -159,6 +159,26 @@ namespace Menu
 			config->SaveToFile(outConfigPath,PRODUCT_NAME);
 		}
 
+		void	Update(const String&path, bool value)
+		{
+			Update(path,String(value));
+		}
+
+		void	Update(const String&path, int value)
+		{
+			Update(path,String(value));
+		}
+
+		void	Update(const String&path, float value)
+		{
+			Update(path,String(value));
+		}
+
+		void	Update(const String&path, count_t value)
+		{
+			Update(path,String(value));
+		}
+		
 	}
 
 
@@ -366,7 +386,7 @@ namespace Menu
 			},
 			[]() -> String
 			{
-				return Explosions::maxConcurrentParticles;
+				return String(Explosions::maxConcurrentParticles);
 			}
 		);
 
@@ -449,7 +469,7 @@ namespace Menu
 			Dialog::Query("Please specify a name","", [](char32_t c){return c != '/' && c != '\\';},[](const UTF32StringRef&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ') && candidate.GetIndexOf(U"..") == InvalidIndex;},
 				[](const String&name)
 			{
-				PathString location = RuntimeConfig::sharedConfig.Lookup("saves/"+name+RuntimeConfig::savFileExtension);
+				PathString location = RuntimeConfig::sharedConfig.Lookup(FileSystem::StringToPath("saves/"+name)+RuntimeConfig::savFileExtension);
 				if (FileSystem::IsFile(location))
 				{
 					Dialog::Confirm("Savegame '"+name+"' already exists. Replace?",[name]()
@@ -478,7 +498,7 @@ namespace Menu
 		menu->Setup(0.3f,"Help",true);
 		menu->AddCommand("View Online Manual","Opens your installed browser to display the game documentation",[]()
 		{
-			OpenDocumentExternally("https://www.hexaverse.net/html.php");
+			OpenDocumentExternally(L"https://www.hexaverse.net/html.php");
 		});
 
 		menu->AddCommand("Show Basic Controls","Opens a dialog showing all main controls. For a full list open the online manual",
@@ -511,14 +531,14 @@ namespace Menu
 		menu->AddCommand("View Changelog","Opens the game changelog (txt file) in any associated external text viewer",[]()
 		{
 			FileSystem::File f;
-			if (FileSystem::Folder().FindFile("..\\changelog.txt",f))
+			if (FileSystem::Folder().FindFile(L"..\\changelog.txt",f))
 				OpenDocumentExternally(f.GetLocation());
 		});
 
 		menu->AddCommand("View Third Party Sources","Opens a text file describing all currently used third party sources (txt file) in any associated external text viewer",[]()
 		{
 			FileSystem::File f;
-			if (FileSystem::Folder().FindFile("..\\info.txt",f))
+			if (FileSystem::Folder().FindFile(L"..\\info.txt",f))
 				OpenDocumentExternally(f.GetLocation());
 		});
 
@@ -534,7 +554,7 @@ namespace Menu
 			try
 			{
 				StringFile info(CM_RETURN_EMPTY_LINES);
-				info.Open("../info.txt");
+				info.Open(L"../info.txt");
 
 				String line;
 				StringBuffer str;
@@ -631,9 +651,9 @@ namespace Menu
 		{
 			SetFullScreen(false);
 			if (Network::amOnline && Network::client.IsLocalhost())
-				Process::StartProject("../ControlConsole/","ControlConsole",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+				Process::StartProject(L"../ControlConsole/",L"ControlConsole",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
 			else
-				Process::StartProject("../ControlConsole/","ControlConsole","");	//start and abandon, without port parameter since we don't know any
+				Process::StartProject(L"../ControlConsole/",L"ControlConsole",L"");	//start and abandon, without port parameter since we don't know any
 		});
 
 		menu->AddCommand("New client with custom profile","Launches another instance of the local client under a different profile. Profiles allow control of each one faction per server",[]()
@@ -659,14 +679,14 @@ namespace Menu
 				}
 				while (len >= execPath.GetLength());
 
-				Process::Start("./",execPath.GetPointer(),parameters);
+				Process::Start(L"./",execPath.GetPointer(),parameters);
 			});
 		});
 
 		menu->AddCommand("Server Manager","Launches the server manager app to review and control locally running servers",[]()
 		{
 			SetFullScreen(false);
-			Process::Start("../ServerManager","ServerManager.exe");
+			Process::Start(L"../ServerManager",L"ServerManager.exe");
 		});
 
 
@@ -749,7 +769,7 @@ namespace Menu
 	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
 	{
 		FileSystem::File f;
-		while (scan.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
+		while (scan.NextFile(RuntimeConfig::savFileExtension,f))
 		{
 			String path2 = path.IsNotEmpty() ? path +"/" : "";
 			auto&e = saves.Append();
@@ -793,7 +813,7 @@ namespace Menu
 
 			menu->AddCommand(s->title+"\n"+date,"Start a new local server from this save game",[p]()
 			{
-				ServerProcess::Begin(true,false,"-l \""+p+"\"");
+				ServerProcess::Begin(true,false,L"-l \""+p+L"\"");
 				HUD::WindowStack::SignalSituationChange();
 			},[](){return !Network::amOnline;});
 		}

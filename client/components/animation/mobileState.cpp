@@ -23,7 +23,7 @@ namespace Animation
 	/*static*/ void MobileState::StaticCreate()
 	{
 		#ifdef HAS_WINDOW
-			constructSound = Engine::OpenAL::Load("resources/objectSounds/construct.wav");
+			constructSound = Engine::OpenAL::Load(L"resources/objectSounds/construct.wav");
 		#endif
 	}
 

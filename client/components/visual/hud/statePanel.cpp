@@ -12,6 +12,7 @@
 #include <objects/faction.h>
 #include "../display.h"
 #include "hexGrid.h"
+#include <string/lineWrap.h>
 
 namespace HUD
 {
@@ -78,9 +79,9 @@ namespace StatePanel
 			wrapped.swap(other.wrapped);
 		}
 
-		static float	CharLen(const char c)
+		static float	CharLen(const char32_t c)
 		{
-			return textout.GetScaledWidth(StringRef(&c,1));
+			return textout.GetScaledWidth(UTF32StringRef(&c,1));
 		}
 
 		void		Rewrap(float width)
@@ -90,7 +91,7 @@ namespace StatePanel
 				numSpaces++;
 			indent = textout.GetScaledWidth(text.SubStringRef(0,numSpaces));
 
-			Wrap(text.SubStringRef(numSpaces),width,CharLen,wrapped);
+			LineWrap::UTF8::Wrap(text.SubStringRef(numSpaces),width,CharLen,wrapped);
 		}
 
 

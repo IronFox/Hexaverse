@@ -5,6 +5,7 @@
 #include "resourceGauges.h"
 #include "surfaceRenderer.h"
 #include "guiComponents.h"
+#include <string/lineWrap.h>
 
 namespace HUD
 {
@@ -41,7 +42,7 @@ namespace HUD
 					return;
 				}
 				hoveringText = hoveringInfo;
-				Wrap(hoveringText,60,lines);
+				LineWrap::UTF8::Wrap(hoveringText,60,lines);
 				hoveringWidth = 0;
 			}
 

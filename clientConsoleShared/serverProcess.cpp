@@ -23,7 +23,7 @@ namespace ServerProcess
 		//CryptographicID	accessToken;
 
 		MonitoredProcess	process(false);
-		PathString			parameters = " -b";
+		PathString			parameters = L" -b";
 		bool				resumed=false;
 		index_t				shutdownRegistration=InvalidIndex;
 		std::function<void()> onEndAsync;
@@ -123,12 +123,12 @@ namespace ServerProcess
 
 		PathString	GetWorkingDirectory()
 		{
-			return "..\\server\\";
+			return L"..\\server\\";
 		}
 
 		PathString GetExecutablePath()
 		{
-			return Process::LocateProjectExecutable("..\\server","server");
+			return Process::LocateProjectExecutable(L"..\\server",L"server");
 		}
 
 		bool TryResume()
@@ -238,15 +238,15 @@ namespace ServerProcess
 		if (Detail::process.IsRunning())
 			return;
 
-		Detail::parameters = " -b";	//heartbeat
+		Detail::parameters = L" -b";	//heartbeat
 		if (!remoteControl)
-			Detail::parameters += " -r";
+			Detail::parameters += L" -r";
 		if (tutorialMode)
-			Detail::parameters += " -t";
+			Detail::parameters += L" -t";
 		if (basePort != DEFAULT_SERVER_BASE_PORT)
-			Detail::parameters += " -p "+PathString(basePort);
+			Detail::parameters += L" -p "+PathString(basePort);
 		if (customFlags.IsNotEmpty())
-			Detail::parameters += " "+customFlags;
+			Detail::parameters += L" "+customFlags;
 
 		Detail::Start(basePort);
 	}

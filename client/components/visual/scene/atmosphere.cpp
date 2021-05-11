@@ -80,7 +80,7 @@ namespace Atmosphere
 		bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
 		bindings.Append(DX11::Shader::Binding(Lighting::GPUResources::atmosphereConfig, "AtmosphereConfig"));
 
-		base.LoadQualitiesFromFile("shaders/atmosphere.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		base.LoadQualitiesFromFile(L"shaders/atmosphere.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		base.UpdateLayout();	
 
 

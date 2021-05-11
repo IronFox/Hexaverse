@@ -56,7 +56,7 @@ namespace Objects
 		};
 
 		paraboloidShader.binding = stdVehicleShader.binding;
-		paraboloidShader.shader.LoadFromFile("shaders/attackParaboloid.hlsl", "vsMain", "psMain", bindings2, ARRAYSIZE(bindings2));
+		paraboloidShader.shader.LoadFromFile(L"shaders/attackParaboloid.hlsl", "vsMain", "psMain", bindings2, ARRAYSIZE(bindings2));
 		paraboloidShader.UpdateLayout();
 		paraboloidShader.SetTriangles();
 	}
@@ -244,8 +244,8 @@ namespace Objects
 		Objects::Tower::foundationHeight = h;
 
 
-		Objects::Generator::reactorConnector.LoadFromObj("objects/reactorCoreConnector.obj");
-		Objects::VehicleStore::interConnector.LoadFromObj("objects/vehicleStoreConnector.obj");
+		Objects::Generator::reactorConnector.LoadFromObj(L"objects/reactorCoreConnector.obj");
+		Objects::VehicleStore::interConnector.LoadFromObj(L"objects/vehicleStoreConnector.obj");
 
 	}
 

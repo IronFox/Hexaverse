@@ -219,7 +219,8 @@ namespace Tutorial
 			{
 				for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
 					msg.FindAndReplaceIgnoreCase('%'+String(Objects::Resource::ID(i).ToString())+'%',Objects::Resource::ID(i).GetTagStr());
-				msg.FindAndReplace("%Time%",Objects::TimeResourceTag());
+				char c = Objects::TimeResourceTag();
+				msg.FindAndReplace("%Time%",StringRef(&c,1));
 			}
 
 			void	DisplayMessage(String msg, const String&img)
@@ -448,7 +449,7 @@ namespace Tutorial
 				scriptAPI.gameTable.SetFunction("ClearAllDelayed",API::ClearDelayed);
 				scriptAPI.gameTable.SetFunction("FocusCameraAt",API::FocusCameraAt);
 				scriptAPI.gameTable.SetFunction("SignalTaskStart",API::SignalTaskStart);
-				scriptAPI.program->ExecuteFile("../lua/tutorial.lua",nullptr);
+				scriptAPI.program->ExecuteFile(L"../lua/tutorial.lua",nullptr);
 
 				Trigger::begin = scriptAPI.program->RequireGlobal("OnBegin");
 				Trigger::checkTaskConditions = scriptAPI.program->RequireGlobal("CheckTaskConditions");
@@ -527,7 +528,7 @@ namespace Tutorial
 	void	Create()
 	{
 		XML::Container xtutorials;
-		xtutorials.LoadFromFile("resources/tutorial/messages.xml");
+		xtutorials.LoadFromFile(L"resources/tutorial/messages.xml");
 		for (const auto&xmessage : xtutorials.root_node.children)
 		{
 			if (xmessage.name == "message")
@@ -536,7 +537,7 @@ namespace Tutorial
 				ASSERT__(xmessage.Query("name",name));
 				Detail::Message*msg = Detail::messages.SetNew(name);
 				xmessage.Query("image",msg->image);	//optional
-				explode('\n',xmessage.inner_content,msg->lines);
+				Explode('\n',xmessage.inner_content,msg->lines);
 				for (auto&line : msg->lines)
 				{
 					line.TrimThis();
@@ -549,7 +550,7 @@ namespace Tutorial
 		
 		}
 
-		FileSystem::CreateDirectory("config");
+		FileSystem::CreateDirectory(L"config");
 
 		Detail::InitMemoryFile();
 	
@@ -683,7 +684,7 @@ namespace Tutorial
 
 			});
 			
-		ServerProcess::Begin(true,true,"",port);
+		ServerProcess::Begin(true,true,L"",port);
 	}
 
 }

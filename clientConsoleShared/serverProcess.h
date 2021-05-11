@@ -20,7 +20,7 @@ namespace ServerProcess
 	Starts server process.
 	If a process is already running, the function returns.
 	*/
-	void			Begin(bool remoteControl, bool tutorialMode,const PathString&customFlags="", USHORT basePort = DEFAULT_SERVER_BASE_PORT);
+	void			Begin(bool remoteControl, bool tutorialMode,const PathString&customFlags=PathString(), USHORT basePort = DEFAULT_SERVER_BASE_PORT);
 	void			End();
 	bool			IsRunning();
 	void			Destroy();

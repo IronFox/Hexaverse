@@ -343,7 +343,7 @@ namespace VehicleAccessibilityMesh
 		bindings << DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor");
 
 		mesh.SetTriangles();
-		mesh.shader.LoadFromFile("shaders/vehicleAccessibilityMesh.hlsl","vsMain","psMain",bindings.GetPointer(),bindings.Count());
+		mesh.shader.LoadFromFile(L"shaders/vehicleAccessibilityMesh.hlsl","vsMain","psMain",bindings.GetPointer(),bindings.Count());
 		mesh.UpdateLayout();
 
 		GlobalEvents::applicationTerminate << [](){mesh.Clear();};

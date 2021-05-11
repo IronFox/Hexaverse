@@ -900,7 +900,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().LoadFromObj("objects/terraformer.obj");
+				component.parts.First().LoadFromObj(L"objects/terraformer.obj");
 			#endif
 
 			component.typeName = "Terraformer";
@@ -958,7 +958,7 @@ namespace Objects
 
 				component.parts.SetSize(1);
 
-				component.parts.First().LoadFromObj("objects/bomb.obj");
+				component.parts.First().LoadFromObj(L"objects/bomb.obj");
 			#endif
 
 			component.typeName = "Bomb";
@@ -983,7 +983,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/tank.obj");
+				component.parts.First().LoadFromObj(L"objects/tank.obj");
 			#endif
 
 
@@ -1001,7 +1001,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/launcher.obj");
+				component.parts.First().LoadFromObj(L"objects/launcher.obj");
 			#endif
 
 			component.mountType = Turret::MountType::TowerOnly;
@@ -1021,7 +1021,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/rockets.obj");
+				component.parts.First().LoadFromObj(L"objects/rockets.obj");
 			#endif
 
 			component.mountType = Turret::MountType::TowerOnly;
@@ -1042,7 +1042,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/armored.obj");
+				component.parts.First().LoadFromObj(L"objects/armored.obj");
 			#endif
 
 
@@ -1061,7 +1061,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/antiAircraft.obj");
+				component.parts.First().LoadFromObj(L"objects/antiAircraft.obj");
 			#endif
 
 
@@ -1084,7 +1084,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/emp.obj");
+				component.parts.First().LoadFromObj(L"objects/emp.obj");
 			#endif
 
 
@@ -1105,7 +1105,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/mineralTransporter.obj");
+				component.parts.First().LoadFromObj(L"objects/mineralTransporter.obj");
 			#endif
 
 
@@ -1351,7 +1351,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/munitionTransporter.obj");
+				component.parts.First().LoadFromObj(L"objects/munitionTransporter.obj");
 			#endif
 
 
@@ -1368,7 +1368,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/constructor.obj");
+				component.parts.First().LoadFromObj(L"objects/constructor.obj");
 			#endif
 
 
@@ -1386,7 +1386,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/radar.obj");
+				component.parts.First().LoadFromObj(L"objects/radar.obj");
 			#endif
 
 
@@ -1405,7 +1405,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
-				component.parts.First().LoadFromObj("objects/resourceScanner.obj");
+				component.parts.First().LoadFromObj(L"objects/resourceScanner.obj");
 			#endif
 
 
@@ -1429,7 +1429,7 @@ namespace Objects
 				void	Configure(VehicleBase&component)
 				{
 					#ifdef HAS_WINDOW
-						component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/plane.wav");
+						component.ambientSound = Engine::OpenAL::Load(L"resources/objectSounds/plane.wav");
 					#endif
 					component.shortName = "Airborne";
 					component.constName = ConstName::VehicleBase_Plane;
@@ -1539,11 +1539,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().LoadFromObj("objects/hoverbase.obj");
+				component.parts.First().LoadFromObj(L"objects/hoverbase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/hoverbase.wav");
+				component.ambientSound = Engine::OpenAL::Load(L"resources/objectSounds/hoverbase.wav");
 
 			#else
 				component.height = staticHeight;
@@ -1580,11 +1580,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().LoadFromObj("objects/heavyBase.obj");
+				component.parts.First().LoadFromObj(L"objects/heavyBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/heavybase.wav");
+				component.ambientSound = Engine::OpenAL::Load(L"resources/objectSounds/heavybase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
@@ -1623,11 +1623,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				component.parts.SetSize(1);
 
-				component.parts.First().LoadFromObj("objects/catBase.obj");
+				component.parts.First().LoadFromObj(L"objects/catBase.obj");
 				component.height = component.parts.First().GetBoundingBox().z.max;
 				ASSERT2__(M::Similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = Engine::OpenAL::Load("resources/objectSounds/catbase.wav");
+				component.ambientSound = Engine::OpenAL::Load(L"resources/objectSounds/catbase.wav");
 			#else
 				component.height = staticHeight;
 			#endif

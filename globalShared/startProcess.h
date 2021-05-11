@@ -4,8 +4,8 @@
 
 namespace Process
 {
-	void					Start(const DeltaWorks::PathString&workingDirectory, const DeltaWorks::PathString&executable, const DeltaWorks::PathString&parameters="");
-	void					StartProject(const DeltaWorks::PathString&workingDirectory, const DeltaWorks::PathString&baseExecutableName, const DeltaWorks::PathString&parameters="");
+	void					Start(const DeltaWorks::PathString&workingDirectory, const DeltaWorks::PathString&executable, const DeltaWorks::PathString&parameters=DeltaWorks::PathString());
+	void					StartProject(const DeltaWorks::PathString&workingDirectory, const DeltaWorks::PathString&baseExecutableName, const DeltaWorks::PathString&parameters=DeltaWorks::PathString());
 
 	/**
 	Identifies the path to the executable as it would be compiled using the same configuration as the current selection.

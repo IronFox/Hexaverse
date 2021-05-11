@@ -121,7 +121,7 @@ namespace ResourceGauges
 
 	/*static*/ void Gauge::StaticCreate()
 	{
-		shader.shader.LoadFromFile("shaders/gauge.hlsl","vsMain", "psMain");
+		shader.shader.LoadFromFile(L"shaders/gauge.hlsl","vsMain", "psMain");
 		shader.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
 		shader.binding.Append("NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT);
 		shader.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
@@ -151,7 +151,7 @@ namespace ResourceGauges
 
 		count_t numSet = DX11::Shader::macroDefinitions.Count();
 		//DX11::Shader::RedefineMacro(DX11::Shader::Macro("ICON_SIZE",0.1f));
-		iconShader.shader.LoadFromFile("shaders/gaugeIcon.hlsl","vsMain", "gsMain", "psMain",bindings, ARRAYSIZE(bindings));
+		iconShader.shader.LoadFromFile(L"shaders/gaugeIcon.hlsl","vsMain", "gsMain", "psMain",bindings, ARRAYSIZE(bindings));
 
 		DX11::Shader::macroDefinitions.Truncate(numSet);
 		iconShader.UpdateLayout();

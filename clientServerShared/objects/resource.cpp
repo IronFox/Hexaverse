@@ -639,7 +639,7 @@ namespace Objects
 	String GetTagName(char32_t c)
 	{
 		if (!IsTag(c))
-			return c;
+			return StringEncoding::UTF32::ToUTF8(c).ToRef();
 		index_t idx = Resource::TagMap::TagToIndex(c);
 		if (idx != InvalidIndex)
 			return Resource::table[idx].name;

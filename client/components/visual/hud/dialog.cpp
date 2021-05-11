@@ -913,7 +913,7 @@ namespace Dialog
 				[](const String&name)
 				{
 					StringFile userName;
-					FileSystem::CreateDirectory("config");
+					FileSystem::CreateDirectory(L"config");
 					userName.Create(RuntimeConfig::GetUserNameFile());
 					userName << name;
 					Network::chosenNickname = name;

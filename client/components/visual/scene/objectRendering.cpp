@@ -261,7 +261,7 @@ namespace Objects
 		Engine::OpenAL::WaveBuffer result;
 		if (waveTable.Query(entityType,result))
 			return result;
-		result = Engine::OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
+		result = Engine::OpenAL::Load(FileSystem::StringToPath("resources/objectSounds/"+entityTypeName+".wav"));
 		waveTable.Set(entityType,result);	//don't care if it's empty
 		return result;
 	}
@@ -610,9 +610,9 @@ namespace Objects
 			#endif
 			DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Linear, 1, "ShadowSampler")
 		};
-		stdVehicleShader.LoadQualitiesFromFile("shaders/vehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		stdVehicleShader.LoadQualitiesFromFile( L"shaders/vehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		stdVehicleShader.UpdateLayout();
-		t2VehicleShader.LoadQualitiesFromFile("shaders/t2VehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		t2VehicleShader.LoadQualitiesFromFile( L"shaders/t2VehicleShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		t2VehicleShader.UpdateLayout();
 
 
@@ -646,7 +646,7 @@ namespace Objects
 				DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Linear, 1, "ShadowSampler")
 			};
 
-			skyPortBeam.shader.LoadFromFile("shaders/skyPortBeam.hlsl","vsMain","psMain", bindings, ARRAYSIZE(bindings));
+			skyPortBeam.shader.LoadFromFile( L"shaders/skyPortBeam.hlsl","vsMain","psMain", bindings, ARRAYSIZE(bindings));
 			skyPortBeam.UpdateLayout();
 			skyPortBeam.SetTriangles();
 			{
@@ -665,22 +665,22 @@ namespace Objects
 		}
 
 
-		seeThroughShader.shader.LoadFromFile("shaders/vehicleSeeThrough.hlsl","vsMain","psMain", bindings, ARRAYSIZE(bindings));
+		seeThroughShader.shader.LoadFromFile( L"shaders/vehicleSeeThrough.hlsl","vsMain","psMain", bindings, ARRAYSIZE(bindings));
 		seeThroughShader.UpdateLayout();
 		seeThroughShader.SetTriangles();
 
 		standardCompiledShader = stdVehicleShader;	//same for now
 
 		standardLocalizableShader.binding = stdVehicleShader.binding;
-		standardLocalizableShader.LoadQualitiesFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		standardLocalizableShader.LoadQualitiesFromFile( L"shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		standardLocalizableShader.UpdateLayout();
 		t2LocalizableShader.binding = stdVehicleShader.binding;
-		t2LocalizableShader.LoadQualitiesFromFile("shaders/t2StructureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+		t2LocalizableShader.LoadQualitiesFromFile( L"shaders/t2StructureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		t2LocalizableShader.UpdateLayout();
 
 		{
 			Image smoke;
-			Magic::LoadFromFile(smoke,"resources/textures/smoke.png");
+			Magic::LoadFromFile(smoke,L"resources/textures/smoke.png");
 			smokeTexture.Load(smoke);
 
 
@@ -693,7 +693,7 @@ namespace Objects
 				DX11::Shader::SamplerBinding(false,Engine::TextureFilter::Trilinear,1,"SmokeSampler")
 			};
 			smokeTrailShader.binding = stdVehicleShader.binding;
-			smokeTrailShader.shader.LoadFromFile("shaders/smokeTrail.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			smokeTrailShader.shader.LoadFromFile(L"shaders/smokeTrail.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			smokeTrailShader.UpdateLayout();
 			smokeTrailShader.SetTriangles();
 		}
@@ -708,17 +708,17 @@ namespace Objects
 				DX11::Shader::Binding(Lighting::GPUResources::sunColor,"SunColor"),
 			};
 			pathShader.binding = stdVehicleShader.binding;
-			pathShader.shader.LoadFromFile("shaders/vehiclePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			pathShader.shader.LoadFromFile(L"shaders/vehiclePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			pathShader.UpdateLayout();
 			pathShader.SetTriangles();
 
 			jobShader.binding = stdVehicleShader.binding;
-			jobShader.shader.LoadFromFile("shaders/vehicleJob.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			jobShader.shader.LoadFromFile(L"shaders/vehicleJob.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			jobShader.UpdateLayout();
 			jobShader.SetTriangles();
 
 			attackRingShader.binding = stdVehicleShader.binding;
-			attackRingShader.shader.LoadFromFile("shaders/attackRing.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			attackRingShader.shader.LoadFromFile(L"shaders/attackRing.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			attackRingShader.UpdateLayout();
 			attackRingShader.SetTriangles();
 
@@ -735,11 +735,11 @@ namespace Objects
 			};
 
 			cylinder.shader.binding = stdVehicleShader.binding;
-			cylinder.shader.shader.LoadFromFile("shaders/translucentCylinder.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			cylinder.shader.shader.LoadFromFile(L"shaders/translucentCylinder.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			cylinder.shader.UpdateLayout();
 			cylinder.shader.SetTriangles();
 			sphere.shader.binding = stdVehicleShader.binding;
-			sphere.shader.shader.LoadFromFile("shaders/translucentSphere.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			sphere.shader.shader.LoadFromFile(L"shaders/translucentSphere.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			sphere.shader.UpdateLayout();
 			sphere.shader.SetTriangles();
 		}
@@ -749,7 +749,7 @@ namespace Objects
 		arrowInstruction.vbo = arrowBuffer;
 		{
 			shadowInstruction.binding = stdVehicleShader.binding;
-			shadowInstruction.shader.LoadFromFile("shaders/objectShadow.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+			shadowInstruction.shader.LoadFromFile(L"shaders/objectShadow.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 			shadowInstruction.UpdateLayout();
 			shadowInstruction.SetTriangles();	
 		}
@@ -788,7 +788,7 @@ namespace Objects
 			attackRing.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 			attackRing.ibo.Create(geo.GetLOD(0).indices);
 
-			geo.LoadFromObj("objects/gatheringPoint.obj");
+			geo.LoadFromObj(L"objects/gatheringPoint.obj");
 
 			gatheringPoint = stdVehicleShader;
 			gatheringPoint.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
@@ -801,7 +801,7 @@ namespace Objects
 
 		{
 			Geometry geo;
-			geo.LoadFromObj("objects/cordon.obj");
+			geo.LoadFromObj(L"objects/cordon.obj");
 
 			geo.Scale(vehicleScale);
 			cordon = stdVehicleShader;
@@ -809,7 +809,7 @@ namespace Objects
 			cordon.ibo.Create(geo.GetLOD(0).indices);
 
 			geo.Clear();
-			geo.LoadFromObj("objects/foundation.obj");
+			geo.LoadFromObj(L"objects/foundation.obj");
 			//geo.Scale(vehicleScale);
 			foundation = stdVehicleShader;
 			foundation.vbo.CreateFromStructs(geo.GetLOD(0).vertices);

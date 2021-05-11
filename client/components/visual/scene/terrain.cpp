@@ -223,8 +223,8 @@ namespace VisualTerrain
 				DX11::Shader::SamplerBinding(true, Engine::TextureFilter::Trilinear, 1, "LineSampler")
 
 			};
-			Instruction::gridShader.LoadFromFile("shaders/sphereGrid.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
-			Instruction::transparentGridShader.LoadFromFile("shaders/transparentSphereGrid.hlsl", "vsMain", "psMain");
+			Instruction::gridShader.LoadFromFile(L"shaders/sphereGrid.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			Instruction::transparentGridShader.LoadFromFile(L"shaders/transparentSphereGrid.hlsl", "vsMain", "psMain");
 		}
 
 
@@ -333,7 +333,7 @@ namespace VisualTerrain
 		bindings.Append(DX11::Shader::Binding(Instruction::cubeHeightMap,"HeightMap"));
 		bindings.Append(DX11::Shader::Binding(Instruction::heightMapOrientation,"HeightMapOrientation"));
 		
-		Instruction::terrainBase.LoadQualitiesFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::terrainBase.LoadQualitiesFromFile(L"shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 
 		
 
@@ -353,13 +353,13 @@ namespace VisualTerrain
 
 			Instruction::terrainBase.UpdateLayout();
 		}
-		Instruction::terrainShadowBase.shader.LoadFromFile("shaders/gridTerrainShadow.hlsl", "vsMain", "psMain");
+		Instruction::terrainShadowBase.shader.LoadFromFile(L"shaders/gridTerrainShadow.hlsl", "vsMain", "psMain");
 		Instruction::terrainShadowBase.binding = Instruction::terrainBase.binding;
 		Instruction::terrainShadowBase.UpdateLayout();
 		Instruction::terrainShadowBase.SetTriangles();
 
 
-		Instruction::plantBase.LoadQualitiesFromFile("shaders/gridPlant.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::plantBase.LoadQualitiesFromFile(L"shaders/gridPlant.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		{
 			Instruction::plantBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
 			Instruction::plantBase.binding.Append("NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT);
@@ -374,7 +374,7 @@ namespace VisualTerrain
 
 			Instruction::plantBase.UpdateLayout();
 		}
-		Instruction::plantShadowBase.shader.LoadFromFile("shaders/gridPlantShadow.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::plantShadowBase.shader.LoadFromFile(L"shaders/gridPlantShadow.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		Instruction::plantShadowBase.prototype.vDesc = Instruction::plantBase.binding;
 		Instruction::plantShadowBase.instances.vDesc = Instruction::plantBase.instanceBinding;
 		Instruction::plantShadowBase.UpdateLayout();
@@ -416,13 +416,13 @@ namespace VisualTerrain
 			binding.floats_per_vertex = 9;
 
 			Instruction::orbitGridBase.binding = binding;
-			Instruction::orbitGridBase.LoadQualitiesFromFile("shaders/orbitalGrid.hlsl", "vsMain", "psMain");
+			Instruction::orbitGridBase.LoadQualitiesFromFile(L"shaders/orbitalGrid.hlsl", "vsMain", "psMain");
 			Instruction::orbitGridBase.UpdateLayout();
 		}
 	
 		{
 			ShadedInstruction&base = Instruction::waterBase;
-			base.LoadQualitiesFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+			base.LoadQualitiesFromFile(L"shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 
 			{
 				/*
@@ -453,14 +453,14 @@ namespace VisualTerrain
 			binding.floats_per_vertex = 4;
 			{
 				DX11::BaseInstructionBlock&base = Instruction::overlayBase;
-				base.shader.LoadFromFile("shaders/gridTerrainOverlay.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+				base.shader.LoadFromFile(L"shaders/gridTerrainOverlay.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 				base.binding = binding;
 				base.UpdateLayout();
 				base.SetTriangles();
 			}
 			{
 				DX11::BaseInstructionBlock&base = Instruction::overlayShadowBase;
-				base.shader.LoadFromFile("shaders/gridTerrainOverlayShadow.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+				base.shader.LoadFromFile(L"shaders/gridTerrainOverlayShadow.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 				base.binding = binding;
 				base.UpdateLayout();
 				base.SetTriangles();
@@ -469,7 +469,7 @@ namespace VisualTerrain
 
 		{
 			DX11::BaseInstructionBlock&base = Instruction::regularResourceBase;
-			base.shader.LoadFromFile("shaders/gridResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+			base.shader.LoadFromFile(L"shaders/gridResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 			{
 				Engine::VertexBinding binding;
 				binding.vertex.Set(0, 4);
@@ -483,7 +483,7 @@ namespace VisualTerrain
 		}
 		{
 			DX11::BaseInstructionBlock&base = Instruction::occupiedResourceBase;
-			base.shader.LoadFromFile("shaders/gridOccupiedResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
+			base.shader.LoadFromFile(L"shaders/gridOccupiedResourceVisualization.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 			{
 				Engine::VertexBinding binding;
 				binding.vertex.Set(0, 4);
@@ -505,7 +505,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
-		Instruction::terrainSphereBase.LoadQualitiesFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::terrainSphereBase.LoadQualitiesFromFile(L"shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::terrainSphereBase.UpdateLayout();
 		bindings.EraseLast();
@@ -515,7 +515,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
-		Instruction::terrainParaboloidBase.LoadQualitiesFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::terrainParaboloidBase.LoadQualitiesFromFile(L"shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::terrainParaboloidBase.UpdateLayout();
 		bindings.EraseLast();
@@ -526,7 +526,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
 		bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
-		Instruction::waterSphereBase.LoadQualitiesFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::waterSphereBase.LoadQualitiesFromFile(L"shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::waterSphereBase.UpdateLayout();
 		bindings.EraseLast();
@@ -536,7 +536,7 @@ namespace VisualTerrain
 		DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
 		bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
-		Instruction::waterParaboloidBase.LoadQualitiesFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+		Instruction::waterParaboloidBase.LoadQualitiesFromFile(L"shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 		DX11::Shader::macroDefinitions.Clear();
 		Instruction::waterParaboloidBase.UpdateLayout();
 		bindings.EraseLast();

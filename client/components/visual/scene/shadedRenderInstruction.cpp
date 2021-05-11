@@ -9,7 +9,7 @@ void					ShadedInstruction::LoadQualitiesFromFile(const PathString&filename, con
 	namespace DX11 = Engine::DX11;
 	typedef DX11::Shader	Shader;
 
-	Shader::macroDefinitions << Shader::Macro("SHADOW_FILTER_QUALITY",6);
+	Shader::macroDefinitions << Shader::Macro("SHADOW_FILTER_QUALITY",String(6));
 	quality[Quality::Filtered6x6].shader.LoadFromFile(filename,vsMain,psMain,b,numBindings);
 	Shader::macroDefinitions.Last().definition = 3;
 	quality[Quality::Filtered3x3].shader.LoadFromFile(filename,vsMain,psMain,b,numBindings);
@@ -25,7 +25,7 @@ void					ShadedInstruction::LoadQualitiesFromFile(const PathString&filename, con
 	namespace DX11 = Engine::DX11;
 	typedef DX11::Shader	Shader;
 
-	Shader::macroDefinitions << Shader::Macro("SHADOW_FILTER_QUALITY",6);
+	Shader::macroDefinitions << Shader::Macro("SHADOW_FILTER_QUALITY",String(6));
 	quality[Quality::Filtered6x6].shader.LoadFromFile(filename,vsMain,gsMain,psMain,b,numBindings);
 	Shader::macroDefinitions.Last().definition = 3;
 	quality[Quality::Filtered3x3].shader.LoadFromFile(filename,vsMain,gsMain,psMain,b,numBindings);

@@ -1848,11 +1848,11 @@ namespace Lua
 				{
 					content = content.SubStringRef(10).Trim();
 					if (content.BeginsWith('"') && content.EndsWith('"'))
-						importHandler(folder+FOLDER_SLASH+PathString(content.SubStringRef(1,content.Length()-2)),false);
+						importHandler(folder+FOLDER_SLASH+FileSystem::StringToPath(content.SubStringRef(1,content.Length()-2)),false);
 					elif (content.BeginsWith('<') && content.EndsWith('>'))
-						importHandler(PathString(content.SubStringRef(1,content.Length()-2)),true);
+						importHandler(FileSystem::StringToPath(content.SubStringRef(1,content.Length()-2)),true);
 					else
-						importHandler(folder+FOLDER_SLASH+PathString(content),false);
+						importHandler(folder+FOLDER_SLASH+FileSystem::StringToPath(content),false);
 				}
 				code << line << nl;
 			}
@@ -1934,7 +1934,7 @@ namespace Library
 	{
 		Lua::Table t = prog->CreateTable();
 		t.SetFunction("Test",Test2);
-		t.SetFunction("Test2",(std::function<String(float,float)>) [](float x, float y)->String {return x * y;});
+		t.SetFunction("Test2",(std::function<String(float,float)>) [](float x, float y)->String {return String(x * y);});
 
 		//t.SetMember("Hello",t);
 		//Lua::Reference ref = t.GetMember("Hello");
@@ -2126,7 +2126,7 @@ int LuaRun (int argc, const char *argv[]) {
 			float rsf = f(1,1);
 
 			Lua::Function<void(String)>	Print(prog,"print");
-			Print(rsf);
+			Print(String(rsf));
 		}
 		{
 			Lua::Function<Lua::Reference(float,float)>	f(prog,"norm");

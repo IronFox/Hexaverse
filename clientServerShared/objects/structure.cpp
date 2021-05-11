@@ -206,7 +206,7 @@ namespace Objects
 	void Structure::StaticSetup()
 	{
 		#ifdef HAS_WINDOW
-			standardConnector.LoadFromObj("objects/standardConnector.obj");
+			standardConnector.LoadFromObj(L"objects/standardConnector.obj");
 		#endif
 	}
 	

@@ -350,7 +350,7 @@ namespace Objects
 	/*static*/ Research::PTopic	Research::FindTopic(const StringRef&path)
 	{
 		Ctr::Array<StringRef>	components;
-		explode('/',path,components);
+		Explode('/',path,components);
 		Research::PTopic	current = globalState.rootResearch.Find(components.First());
 		for (index_t i = 1; i < components.Count(); i++)
 		{
@@ -410,7 +410,7 @@ namespace Objects
 	{
 		researchQueue.Clear();
 		Ctr::Array<StringRef> paths;
-		explode(';',source,paths);
+		Explode(';',source,paths);
 		foreach (paths,p)
 			AppendResearchTask(FindTopic(*p));
 		globalState.onQueueChange(owner);

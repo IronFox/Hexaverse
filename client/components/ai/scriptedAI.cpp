@@ -67,7 +67,7 @@ namespace AI::Script
 			if (scriptName.GetIndexOf("//") != InvalidIndex)
 				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
 
-			return FileSystem::StringToPath(scriptName)+".lua";
+			return FileSystem::StringToPath(scriptName+".lua");
 		}
 
 		FileSystem::Folder	GetScriptFolder()
@@ -849,7 +849,7 @@ namespace AI::Script
 			{
 				thread.DestroyAPI();
 				Details::UnregisterExecution();
-				Details::scriptPath = "";
+				Details::scriptPath.Clear();
 			});
 			return;
 		}
@@ -1188,7 +1188,7 @@ namespace AI::Script
 
 	D::PathString	GetDocumentationPath()
 	{
-		return FileSystem::Folder().FindFile("../Lua/General Lua API Documentation.txt")->GetLocation();
+		return FileSystem::Folder().FindFile(L"../Lua/General Lua API Documentation.txt")->GetLocation();
 	}
 
 
@@ -1375,7 +1375,7 @@ namespace AI::Script
 					FileSystem::Folder scripts = Details::GetScriptFolder();
 					if (!scripts.IsValidLocation())
 						FileSystem::CreateDirectory(scripts.GetLocation());
-					ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.IsValidLocation()));
+					ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.GetLocation()));
 					FileSystem::File scriptAt;
 					const auto path = Details::ScriptNameToPath(input);
 					index_t lastSlash = input.FindLast('/');

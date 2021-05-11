@@ -18,7 +18,7 @@ namespace StartConfig
 	void			Load(const PathString&userConfigPath)
 	{
 		configPath = userConfigPath;
-		baseConfig.LoadFromFile("game.ini");
+		baseConfig.LoadFromFile(L"game.ini");
 		if (!sourceConfig.LoadFromFile(userConfigPath))
 		{
 			LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+sourceConfig.Report()+"'. Attempting to load original config");
@@ -70,7 +70,7 @@ namespace StartConfig
 		bool rs;
 		if (attrib && convert(attrib->value.c_str(),rs))
 			return rs;
-		Fix(path,fallback);
+		Fix(path,String(fallback));
 		return fallback;
 	}
 	
@@ -80,7 +80,7 @@ namespace StartConfig
 		int rs;
 		if (attrib && convert(attrib->value.c_str(),rs))
 			return rs;
-		Fix(path,fallback);
+		Fix(path,String(fallback));
 		return fallback;
 	}
 	
@@ -90,7 +90,7 @@ namespace StartConfig
 		float rs;
 		if (attrib && convert(attrib->value.c_str(),rs))
 			return rs;
-		Fix(path,fallback);
+		Fix(path,String(fallback));
 		return fallback;
 	}
 

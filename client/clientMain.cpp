@@ -627,7 +627,7 @@ namespace ApplicationInterface
 						while (runningNumber.GetLength() < 4)
 							runningNumber = '0'+runningNumber;
 						String core = "capture"+runningNumber+".png";
-						PathString filename = TimeLapse::basePath + FOLDER_SLASH + core;
+						PathString filename = TimeLapse::basePath + FOLDER_SLASH + FileSystem::StringToPath(core);
 
 						if (TimeLapse::maxCompressionPNG)
 							png.SaveToFile(image,filename);
@@ -1849,7 +1849,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 bool	IsTargetWorkingDirectory(const PathString&dir)
 {
-	PathString test = dir + "/resources";
+	PathString test = dir + L"/resources";
 	bool rs = FileSystem::IsDirectory(test);
 	#ifdef _DEBUG
 		LogEvent(EventSignificance::Debug,"Checking client target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
@@ -2028,8 +2028,8 @@ int main( int argc, const char* argv[])
 
 			Loading::SetupDisplay(display);
 
-			display.ScanShaderHeader("shaders");
-			textout.GetActiveFont()->LoadFromFile("Font/font.xml");
+			display.ScanShaderHeader(L"shaders");
+			textout.GetActiveFont()->LoadFromFile(L"Font/font.xml");
 			UpdateFontScale();
 			textout.GetActiveFont()->BeginTagMode(Objects::Resource::TagMap::IsTag, HUD::StatePanel::OnTag,HUD::StatePanel::TagWidth);
 			GlobalEvents::uiScaleChanged += UpdateFontScale;

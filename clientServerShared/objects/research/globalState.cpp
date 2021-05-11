@@ -318,12 +318,12 @@ namespace Objects
 			if (filename.BeginsWith(instDir))
 			{
 				filename.EraseLeft(instDir.Length());
-				filename = "[InstallDir]" + filename;
+				filename = L"[InstallDir]" + filename;
 			}
 			elif (filename.BeginsWith(documents))
 			{
 				filename.EraseLeft(documents.Length());
-				filename = "[MyDocuments]" + filename;
+				filename = L"[MyDocuments]" + filename;
 			}
 
 
@@ -382,7 +382,7 @@ namespace Objects
 		#ifndef CLIENT
 			LoadDefaultProgram();
 		#else
-			RemapAttributes("");
+			RemapAttributes(L"");
 		#endif
 	}
 

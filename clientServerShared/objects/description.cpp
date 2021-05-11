@@ -1,5 +1,6 @@
 #include <global_root.h>
 #include "description.h"
+#include <string/lineWrap.h>
 
 
 namespace Objects
@@ -61,7 +62,7 @@ namespace Objects
 				continue;
 			}
 			Array<StringRef>	split;
-			Wrap(l->first,60,split);
+			LineWrap::UTF8::Wrap(l->first,60,split);
 			foreach (split,s)
 			{
 				wrappedLines.Append().first = *s;

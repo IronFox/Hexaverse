@@ -1219,7 +1219,7 @@ namespace HexGrid
 			DX11::Shader::Binding(visualCodeRGB_CellSize,"VisualCodeRGB_CellSize"),
 		};
 
-		instruction.shader.LoadFromFile("shaders/hexUI.hlsl","vsMain", "gsMain", "psMain",bindings, ARRAYSIZE(bindings));
+		instruction.shader.LoadFromFile(L"shaders/hexUI.hlsl","vsMain", "gsMain", "psMain",bindings, ARRAYSIZE(bindings));
 		instruction.UpdateLayout();
 		instruction.SetPoints();
 

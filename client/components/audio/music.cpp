@@ -8,7 +8,7 @@ namespace Music
 
 	static bool	lastShown = false;
 	static bool musicDuringGameplay = false;
-	static const DeltaWorks::PathString file = "resources/audio/Hexaverse Title M4.mp3";
+	static const DeltaWorks::PathString file = L"resources/audio/Hexaverse Title M4.mp3";
 
 	static bool playbackFailed = false;
 
