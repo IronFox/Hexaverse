@@ -1863,7 +1863,7 @@ namespace Lua
 			if (content[i] == 0)
 				throw Exception(CLOCATION,"Lua file contains zero characters: '"+FileSystem::PathToString(filename)+"'");
 		
-		Execute(content,String(FileSystem::ExtractFileNameExt(filename)));
+		Execute(content,FileSystem::PathToString(FileSystem::ExtractFileNameExt(filename)));
 	}
 
 

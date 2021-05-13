@@ -1176,10 +1176,10 @@ namespace ConfigurationMode
 			while (folder.NextFile(L".ini",file))
 			{
 				auto&p = planetList.Append();
-				p.displayName = String(file.GetInnerName());
+				p.displayName = FileSystem::PathToString(file.GetInnerName());
 				if (!isFactoryDefault)
 					p.displayName = '*'+p.displayName;
-				p.upperCaseName = String(file.GetInnerName()).CopyToUpperCase();
+				p.upperCaseName = FileSystem::PathToString(file.GetInnerName()).CopyToUpperCase();
 				p.file = file;
 				p.isFactoryDefault = isFactoryDefault;
 			}

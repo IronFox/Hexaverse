@@ -1852,7 +1852,7 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 	PathString test = dir + L"/resources";
 	bool rs = FileSystem::IsDirectory(test);
 	#ifdef _DEBUG
-		LogEvent(EventSignificance::Debug,"Checking client target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+		LogEvent(EventSignificance::Debug,"Checking client target directory candidate '"+FileSystem::PathToString(dir)+"'=>'"+FileSystem::PathToString(test)+"'. Result="+String(rs));
 	#endif
 
 
