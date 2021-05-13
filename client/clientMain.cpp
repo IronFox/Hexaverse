@@ -1929,6 +1929,9 @@ int main( int argc, const char* argv[])
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 
 			FileSystem::SetPathPrefix(FileSystem::GetWorkingDirectory(),"Client");
+			FileSystem::Folder up = FileSystem::GetWorkingDirectory();
+			if (up.Exit())
+				FileSystem::SetPathPrefix(up.GetLocation(),"Install");
 
 		}
 

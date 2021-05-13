@@ -874,6 +874,10 @@ int main( int argc, const char* argv[])
 			else
 				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 			FileSystem::SetPathPrefix(FileSystem::GetWorkingDirectory(),"Server");
+			FileSystem::Folder up = FileSystem::GetWorkingDirectory();
+			if (up.Exit())
+				FileSystem::SetPathPrefix(up.GetLocation(),"Install");
+
 		}
 
 		ParameterConfig::SetProgramName(argc > 0 ? argv[0] : "program");
