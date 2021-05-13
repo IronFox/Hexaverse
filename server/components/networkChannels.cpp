@@ -1313,7 +1313,7 @@ namespace Receiver
 			peer.DisconnectPeer();
 			return;
 		}
-		if (saveAs.GetIndexOf("..") != InvalidIndex || saveAs.Contains("/") || saveAs.Contains("\\") || saveAs.Contains(":") || saveAs.Contains(";"))
+		if (saveAs.Contains("..") || saveAs.Contains("/") || saveAs.Contains("\\") || saveAs.Contains(":") || saveAs.Contains(";"))
 		{
 			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Given name is invalid");
 			return;
