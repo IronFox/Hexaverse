@@ -234,10 +234,13 @@ namespace Lua
 
 		Lua::Table	AddOrGetType(Objects::EntityType type);
 		Lua::Table	AddType(Objects::EntityType t);
+		void		RefreshType(Lua::Table&t, Objects::EntityType type);
 		void		AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName, ConstName parameterCName=ConstName::Empty);
 		void		AddGridBatchJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode);
 		void		AddRoutedTerraformingJob(Lua::Table&t, const TUniqueID&id, const String&name, Objects::CursorMode cursorMode);
 		void		SetResearchProperties(Lua::Table&t, const Objects::Component::Base*component);
+		void		RefreshTypes();
+		void		RefreshType(Objects::EntityType t);
 
 
 		void	Setup();

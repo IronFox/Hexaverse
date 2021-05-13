@@ -721,6 +721,8 @@ namespace Lua
 		#endif
 
 		researchTable.SetField("maxQueueLength",Objects::Research::MaxResearchQueueLength);
+
+		RefreshTypes();
 	}
 
 
@@ -1269,13 +1271,22 @@ namespace Lua
 	}
 
 
+	static Lua::Table GetOrMakeTable(Lua::Table&parent, const char*name)
+	{
+		Lua::Reference ref = parent.GetField(name);
+		if (ref.IsTable())
+			return ref;
+		return parent.SetSubTable(name);
+	}
+
 	void			API::TFullResourceBalance::AllocateIn(Lua::Table&parent, const String&name)
 	{
-		auto t = table = parent.SetSubTable(name);
-		balanceTable = t.SetSubTable("balance");
-		storageTable = t.SetSubTable("storage");
-		demandTable = t.SetSubTable("demand");
-		supplyTable = t.SetSubTable("supply");
+
+		auto t = table = GetOrMakeTable(parent,name.c_str());
+		balanceTable = GetOrMakeTable(t,"balance");
+		storageTable = GetOrMakeTable(t,"storage");
+		demandTable = GetOrMakeTable(t,"demand");
+		supplyTable = GetOrMakeTable(t,"supply");
 	}
 
 	
@@ -2490,11 +2501,20 @@ namespace Lua
 
 	Lua::Table	API::AddType(Objects::EntityType type)
 	{
-		auto e = Objects::Prototypes::Find(type);
 		Lua::Table t = program->CreateTable();
+		ASSERT__(t);
 		typeTableMap.Set(Objects::ToString(type),t);
 		typeTableMap2.Set(type,t);
 		t.SetField("name",Objects::ToString(type));
+
+
+		RefreshType(t,type);
+		return t;
+	}
+
+	void API::RefreshType(Lua::Table&t, Objects::EntityType type)
+	{
+		auto e = Objects::Prototypes::Find(type);
 
 		if (e)
 			t.SetField("typeClass","Unit");
@@ -2522,6 +2542,7 @@ namespace Lua
 			t.SetField("isStructure",e->IsStructure());
 			t.SetField("isIndestructible", e->IsIndestructible());
 			t.SetField("scanningRange",e->GetScanningRange());
+
 			t.SetFunction("GetScanningRange",[e](const Lua::Table&luaFaction)
 			{
 				auto f = Detail::DecodeFaction(luaFaction,true,"GetMovementSpeed()","Faction parameter");
@@ -2598,7 +2619,6 @@ namespace Lua
 				Detail::UpdateResourceTable(full.storageTable,storage);
 				Detail::UpdateResourceTable(full.supplyTable,supply);
 				Detail::UpdateResourceTable(t.SetSubTable("maxStorage"),storageMax);
-
 			}
 		}
 		else if (type.IsVehicleBase())
@@ -2636,6 +2656,24 @@ namespace Lua
 				AddTypeAttrib(t,"damageLevel",turret->damageLevel);
 				t.SetField("dealsEMPDamage",turret->dealsEMPDamage);
 			}
+			else
+			{
+				t.UnsetField("trajectoryType");
+				t.UnsetField("ammoDemandPerShot");
+				t.UnsetField("GetAmmoDemandPerShot");
+				t.UnsetField("independentAttackAndMotion");
+				t.UnsetField("requiresStationaryVehicle");
+				t.UnsetField("attacksPerRound");
+				t.UnsetField("GetAttacksPerRound");
+				t.UnsetField("ammoType");
+				t.UnsetField("flatAttackRange");
+				t.UnsetField("GetFlatAttackRange");
+				t.UnsetField("explosionRadius");
+				t.UnsetField("GetExplosionRadius");
+				t.UnsetField("damageLevel");
+				t.UnsetField("GetDamageLevel");
+				t.UnsetField("dealsEMPDamage");
+			}
 			for (index_t op = 0; op < Objects::Component::OperationCount; op++)
 			{
 				const auto o = (Objects::Component::Operation)op;
@@ -2647,12 +2685,6 @@ namespace Lua
 
 
 		}
-
-
-
-
-
-		return t;
 	}
 
 	void	API::AddSimpleJob(Lua::Table&t, const TUniqueID&id, const String&name, ConstName jobCName, ConstName parameterCName)
@@ -2752,6 +2784,36 @@ namespace Lua
 			const String&uniqueName = (*b0)->typeName;
 			allTypes.SetField(uniqueName,t);	//AppendElement(t);
 			vbaseTypes.SetField(uniqueName,t); //AppendElement(t);
+		}
+	}
+
+	void	API::RefreshType(Objects::EntityType t)
+	{
+		Lua::Table tab;
+		if (typeTableMap2.Query(t,tab))
+		{
+			RefreshType(tab,t);
+		}
+	}
+
+
+	void	API::RefreshTypes()
+	{
+		foreach (Objects::Prototypes::all,p0)
+		{
+
+			const auto&p = **p0;
+			RefreshType( p.GetType());
+		}
+
+		foreach (Objects::Component::allTurretComponents,t0)
+		{
+			RefreshType((*t0)->constName);
+		}
+
+		foreach (Objects::Component::baseComponents,b0)
+		{
+			RefreshType((*b0)->constName);
 		}
 	}
 
