@@ -155,7 +155,7 @@ namespace StatePanel
 			if (split == InvalidIndex)
 				split = name.Find(' ');
 			cachedLines << name.subStringRef(0,split);
-			cachedLines << String(' ')+name.SubStringRef(split);
+			cachedLines << ' '+name.SubString(split);
 				
 			#ifdef _DEBUG
 				cachedLines << ' '+e.GetName();
