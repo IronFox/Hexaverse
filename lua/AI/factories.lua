@@ -140,6 +140,30 @@ function ProductionTable.GetRandomChoice(tab)
 	error("Should not be here");
 end;
 
+function EnableFactory(poleIndex--[[int]], port --[[Unit]], factories --[[ Unit[] ]], choice --[[UnitType]], enabled--[[unit->bool]]) --[[AiEst]]
+	
+	Game.Log('AI: Increasing production for ' .. port.name .. ', using type '..choice.name);
+
+	for _,p in pairs(factories) do
+	
+		if not p.productionQueue and not enabled[p] then
+		
+			Game.Log('AI: Enqueueing vehicle production job in '..p.name..' due to high threat level...');
+			p.BuildMobile(choice);
+			enabled[p] = true;
+			
+			return Game.AI.Estimate(poleIndex, choice, p.location, Game.myFaction);
+		end;
+		
+	end;
+	
+	Game.Log('AI: '..port.name .. ' no longer has idle plants capable of queueing jobs. Aborting');
+	
+	return nil;
+end;
+
+
+
 function ProcessFactories()
 
 	Game.Log("AI: Processing factories");
@@ -157,7 +181,8 @@ function ProcessFactories()
 
 	local ConstructorThreshold =  3.5;
 
-
+	local enabled = {};
+	
 	for i = 1,12 do
 		local port = Game.AI.GetNexusPort(i);
 		if port ~= nil and not Game.Grid.AffectedByEMP(port.location) and Game.AI.IsBase(i) then
@@ -217,10 +242,10 @@ function ProcessFactories()
 						if (ProductionTable.IsNotEmpty(tab)) then
 							local choice = ProductionTable.GetRandomChoice(tab);
 							if (choice.isSuborbitalPlane) then
-								support = support.Inc(EnableFactory(i,port,Game.AI.GetBasePlaneFactories(i),choice));
+								support = support.Inc(EnableFactory(i,port,Game.AI.GetBasePlaneFactories(i),choice,enabled));
 								airState.enabled = airState.enabled + 1;
 							else
-								support = support.Inc(EnableFactory(i,port,Game.AI.GetBaseVehiclePlants(i),choice));
+								support = support.Inc(EnableFactory(i,port,Game.AI.GetBaseVehiclePlants(i),choice,enabled));
 								groundState.enabled = groundState.enabled + 1;
 							end;
 							loop = true;
@@ -270,10 +295,10 @@ function ProcessFactories()
 						if (ProductionTable.IsNotEmpty(tab)) then
 							local choice = ProductionTable.GetRandomChoice(tab);
 							if (choice.isSuborbitalPlane) then
-								support = support.Inc(EnableFactory(i,port,Game.AI.GetBasePlaneFactories(i),choice));
+								support = support.Inc(EnableFactory(i,port,Game.AI.GetBasePlaneFactories(i),choice,enabled));
 								airState.enabled = airState.enabled + 1;
 							else
-								support = support.Inc(EnableFactory(i,port,Game.AI.GetBaseVehiclePlants(i),choice));
+								support = support.Inc(EnableFactory(i,port,Game.AI.GetBaseVehiclePlants(i),choice,enabled));
 								groundState.enabled = groundState.enabled + 1;
 							end;
 							loop = true;
@@ -293,16 +318,3 @@ function ProcessFactories()
 
 end;
 
-
-
-function ExportState()
-	return nil;
-end;
-
-function Init(state)
-end;
-
-
-function Execute()
-	ProcessFactories();
-end;

@@ -11,7 +11,7 @@ end;
 Util = {};
 
 function Util.RoundToInt(x)
-	return math.floor(num+.5);
+	return math.floor(x+.5);
 end;
 
 --[[
@@ -30,11 +30,11 @@ end;
 
 
 function Util.CanAttackSuborbital(u --[[Unit]]) --bool
-	return u.IsInRange(Util.ToSuborbit(u.location).world);
+	return u.turret.IsInRange(Util.ToSuborbit(u.location).world);
 end;
 
 function Util.CanAttackGround(u --[[Unit]], ref --[[Loc]]) --bool
-	return u.IsInRange(ToGround(u.location,ref).world);
+	return u.turret.IsInRange(Util.ToGround(u.location,ref).world);
 end;
 
 function Util.GetDamagePotentialPerRound(u --[[Unit]]) --float

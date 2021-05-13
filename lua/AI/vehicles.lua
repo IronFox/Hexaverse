@@ -312,10 +312,9 @@ end;
 
 
 
-function GetSameTurretBadness(myLoc, myUnit, theirUnit)
-	local isAA = theirUnit.turretType and theirUnit.turretType.trajectoryType == 'AAMissile';
+function GetSameTurretBadness(myLoc, theirLoc, myUnit, theirUnit, isAA)
 	if (isAA) then
-		local distance = QuadraticDistance(Util.ToSuborbit(myLoc).world,Util.ToSuborbit(theirUnit.location).world);
+		local distance = QuadraticDistance(Util.ToSuborbit(myLoc).world,Util.ToSuborbit(theirLoc).world);
 		local minDist = Sqr(math.max(myUnit.suborbitalScanningRange,theirUnit.suborbitalScanningRange));
 		if (distance > minDist) then
 			return 0.0;
@@ -323,7 +322,7 @@ function GetSameTurretBadness(myLoc, myUnit, theirUnit)
 		return 30.0 / (1.0 + distance * 0.2);
 	end;
 	
-	local distance = QuadraticDistance(myLoc.world,theirUnit.location.world);
+	local distance = QuadraticDistance(myLoc.world,theirLoc.world);
 	local minDist = Sqr(math.max(myUnit.scanningRange,theirUnit.scanningRange));
 	if (distance > minDist) then
 		return 0.0;
@@ -365,7 +364,7 @@ function ProcessMobile(v)
 	
 	local attacker = t.type.canAttack;
 	local attacksAirborne = attacker and ((v.type.isSuborbitalPlane and t.type.trajectoryType == 'Missile') or t.type.trajectoryType == 'AAMissile');
-	local detectesAirborne = v.type.isSuborbitalPlane or v.suborbitalScanningRange > 0;
+	local detectesAirborne = v.type.isSuborbitalPlane or (v.suborbitalScanningRange and v.suborbitalScanningRange > 0);
 	local attacksGroundUnits = attacker and
 		(
 		(not v.type.isSuborbitalPlane and t.type.trajectoryType ~= 'AAMissile')
@@ -376,7 +375,7 @@ function ProcessMobile(v)
 	local isAA = t.type.trajectoryType == 'AAMissile';
 	local isBomber = v.type.name == 'Bomber';
 	
-	local interestedInAirborne = attacksAirborne or v.suborbitalScanningRange > 0 or (v.type.isSuborbitalPlane and not attacksGroundUnits);
+	local interestedInAirborne = attacksAirborne or (v.suborbitalScanningRange and v.suborbitalScanningRange > 0) or (v.type.isSuborbitalPlane and not attacksGroundUnits);
 	local interestedInGroundTargets = attacksGroundUnits or not v.type.isSuborbitalPlane or v.groundScanningRange >= 0.5 * v.scanningRange;
 
 	if (attacker and t.ammoDemandPerShot > t.ammoAvailability) then
@@ -473,7 +472,7 @@ function ProcessMobile(v)
 				end;
 				aaProximity = aaProximity + 1;
 			
-			elseif u.turret.damageLevel > 0 then
+			elseif u.turret.damageLevel and u.turret.damageLevel > 0 then
 				proximityPresence = proximityPresence + 1;
 			else
 				if Util.IsGreater(v,u) then
@@ -510,13 +509,13 @@ function ProcessMobile(v)
 	local referenceThreat = EstimateThreatFromAll(ctx, v.location,true);
 	
 	
-	local reach = v.GetReach(BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat)
+	local reach = v.GetReach(BlockTest(ctx,referenceThreat)
 		,referenceSpeed,true,false,false,false);
 	
 	if (#reach == 0) then
 		--no chance to get out of danger, so try to reduce threat level
 		referenceThreat = EstimateThreatFromAll(ctx, v.location,false);
-		local test = BlockTest(overconfident,canIgnoreThreat,hunter,referenceThreat);
+		local test = BlockTest(ctx,referenceThreat);
 		reach = v.GetReach(test,referenceSpeed,true,false,false,false);
 		if (#reach == 0) then
 			--ignore reversible
@@ -555,7 +554,7 @@ function ProcessMobile(v)
 						and (e.location.isSuborbital or interestedInGroundTargets)
 					then
 						local distance = QuadraticInterestDistance(n.location,e,interestedInAirborne,interestedInGroundTargets);
-						local fc = EstimateInterest(t,e.constructionCost);
+						local fc = EstimateInterest(t,e.type.constructionCost);
 						if (distance < expR2) then
 							badWeight = badWeight + 20 / (1.0 + distance);
 						else
@@ -600,16 +599,16 @@ function ProcessMobile(v)
 			if not attacker or isAA then
 				for _,v2 in pairs(Work.processed) do
 					if v2.turret and v2.turret.type == v.turret.type then
-						badWeight = badWeight + SameTurretBadness(n.location,v2.location,v,v2,isAA);
+						badWeight = badWeight + GetSameTurretBadness(n.location,v2.location,v,v2,isAA);
 					end;
 					local directed = destHistory[v2.id];
 					if directed then
-						badWeight = badWeight + SameTurretBadness(n.location,directed,v,v2,isAA);
+						badWeight = badWeight + GetSameTurretBadness(n.location,directed,v,v2,isAA);
 					end;
 				end;
 			
 				Queue.Foreach(Work.pending, function(v2)
-					badWeight = badWeight + SameTurretBadness(n.location,v2.location,v,v2,isAA);
+					badWeight = badWeight + GetSameTurretBadness(n.location,v2.location,v,v2,isAA);
 				end);
 			end;
 				
@@ -683,7 +682,7 @@ function ProcessIgnorance(e)
 		end;
 	end;
 	local ref = e.location.world;
-	if (e.turret.type.canAttack and e.turret.damageLevel > 0) then
+	if (e.turret and e.turret.type.canAttack and e.turret.damageLevel > 0) then
 		local r = e.turret.flatAttackRange + e.turret.explosionRadius;
 		local damagePotentialPerRound = 0.0;
 		local participants = 0;
@@ -782,16 +781,7 @@ end;
 
 
 
-
-function ExportState()
-	return nil;
-end;
-
-function Init(state)
-end;
-
-
-function Execute()
+function ProcessVehicles()
 
 	ofInterestToAttacker = {};
 	
