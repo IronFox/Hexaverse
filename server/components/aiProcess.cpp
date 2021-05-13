@@ -4,6 +4,7 @@
 #include <uniqueID.h>
 #include <general/timer.h>
 #include <io/monitoredProcess.h>
+#include <io/file_system.h>
 #include <globalEvents.h>
 #include <logEvent.h>
 #include <startProcess.h>
@@ -43,7 +44,7 @@ namespace AIProcess
 				{
 					char parameterBuffer[32768];
 					sprintf_s(parameterBuffer,"aiAccessToken='%s' password='%s' udpListen=false serverURL=localhost:%u",accessToken.ToFullString().c_str(), asyncGetServerPassword().c_str(),serverBasePort);
-					return PathString(parameterBuffer);
+					return FileSystem::StringToPath(parameterBuffer);
 				},window);
 			}
 			catch (const std::exception&ex)
