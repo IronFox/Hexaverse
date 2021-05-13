@@ -39,7 +39,7 @@ String targetHost = "localhost";
 Buffer0<String>	history;
 index_t historyAt=InvalidIndex;
 
-Timer::Time connectionAttemptStarted = timer.Now();
+Time::Stamp connectionAttemptStarted;
 std::thread connectionRetryThread;
 void ConnectionRetry();
 void CompleteInput();
@@ -441,7 +441,7 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 		case TCP::Event::ConnectionEstablished:
 			if (Handler::interactive)
 			{
-				LogLine("Connection established to "+peer.ToString()+" after "+String(timer.GetSecondsSince(connectionAttemptStarted)));
+				LogLine("Connection established to "+peer.ToString()+" after "+String(connectionAttemptStarted.ElapsedSeconds()));
 				Channels::command.SendTo(peer,"/Server/describeStatus");
 				if (Console::context.IsNotEmpty())
 					Channels::command.SendTo(peer,"cd /"+Console::context);
@@ -500,7 +500,7 @@ void ConnectionRetry()
 		Sleep(1000);
 		if (!client.IsAttemptingToConnect() && !client.IsConnected())
 		{
-			connectionAttemptStarted = timer.Now();
+			connectionAttemptStarted.Update();
 			client.ConnectAsync(targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control));
 		}
 	}
@@ -648,10 +648,10 @@ int main(int argc, char* argv[])
 			onProgramEnd();
 			TerminateProcess(GetCurrentProcess(),0);
 		});
-		ServerProcess::Begin(true,false,"",ParameterConfig::basePort);
+		ServerProcess::Begin(true,false,L"",ParameterConfig::basePort);
 	}
 
-	connectionAttemptStarted = timer.Now();
+	connectionAttemptStarted.Update();
 	client.ConnectAsync(targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control));
 	std::cout << std::endl;
 

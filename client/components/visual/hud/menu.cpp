@@ -466,7 +466,7 @@ namespace Menu
 		game->AddCommand("Show statistics","Shows statistics of the completed local game" ,Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Save game as...","Signals the server to save the game under a given name",[]()
 		{
-			Dialog::Query("Please specify a name","", [](char32_t c){return c != '/' && c != '\\';},[](const UTF32StringRef&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ') && candidate.GetIndexOf(U"..") == InvalidIndex;},
+			Dialog::Query("Please specify a name","", [](char32_t c){return c != '/' && c != '\\';},[](const UTF32StringRef&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ') && !candidate.Contains(U"..");},
 				[](const String&name)
 			{
 				PathString location = RuntimeConfig::sharedConfig.Lookup(FileSystem::StringToPath("saves/"+name)+RuntimeConfig::savFileExtension);
@@ -630,7 +630,7 @@ namespace Menu
 						if (!Network::client.IsConnected() || !Network::gameHasBegun)
 							Dialog::ShowMessage("Please connect to a server to continue");
 						else
-							AutoDocumentation::Run(FileSystem::Folder().FindDirectory(PathString(str)));
+							AutoDocumentation::Run(FileSystem::Folder().FindDirectory(FileSystem::StringToPath(str)));
 					});
 				}
 
@@ -651,7 +651,7 @@ namespace Menu
 		{
 			SetFullScreen(false);
 			if (Network::amOnline && Network::client.IsLocalhost())
-				Process::StartProject(L"../ControlConsole/",L"ControlConsole",PathString(" -p "+String(Network::connectionBasePort)));	//start and abandon
+				Process::StartProject(L"../ControlConsole/",L"ControlConsole",FileSystem::StringToPath(" -p "+String(Network::connectionBasePort)));	//start and abandon
 			else
 				Process::StartProject(L"../ControlConsole/",L"ControlConsole",L"");	//start and abandon, without port parameter since we don't know any
 		});
@@ -665,9 +665,9 @@ namespace Menu
 				[](char32_t c){return StringFunctions::isalnum(c);},[](const UTF32StringRef&str){return true;},[](const String&str)
 			{
 				SetFullScreen(false);
-				PathString parameters = PathString("profile="+str);
+				PathString parameters = FileSystem::StringToPath("profile="+str);
 				if (Network::client.IsConnected())
-					parameters += PathString(" serverURL="+ToString(Network::lastServerAddress));
+					parameters += FileSystem::StringToPath(" serverURL="+ToString(Network::lastServerAddress));
 
 
 				count_t len = 0;
@@ -769,7 +769,7 @@ namespace Menu
 	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
 	{
 		FileSystem::File f;
-		while (scan.NextFile(RuntimeConfig::savFileExtension,f))
+		while (scan.NextFile(RuntimeConfig::savFileExtensionWithoutDot,f))
 		{
 			String path2 = path.IsNotEmpty() ? path +"/" : "";
 			auto&e = saves.Append();

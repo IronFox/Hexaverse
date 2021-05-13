@@ -300,7 +300,7 @@ namespace InputControl
 				}
 				else
 				{
-					PathString outDirName = PathString(Logging::TimeStamp(true));
+					PathString outDirName = FileSystem::StringToPath(Logging::TimeStamp(true));
 					if (TimeLapse::customBasePath.IsNotEmpty())
 					{
 						FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);

@@ -62,9 +62,9 @@ namespace AI::Script
 		{
 			if (scriptName.CountCharacters([](char c){return c == '\\' || c == ':' || c == ';';}) > 0)
 				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid characters: "+scriptName);
-			if (scriptName.GetIndexOf("..") != InvalidIndex)
+			if (scriptName.Contains(".."))
 				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
-			if (scriptName.GetIndexOf("//") != InvalidIndex)
+			if (scriptName.Contains("//"))
 				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
 
 			return FileSystem::StringToPath(scriptName+".lua");
@@ -1303,7 +1303,7 @@ namespace AI::Script
 				ScanScriptFiles(f,outScripts,pathPrefix + FileSystem::PathToString(f.GetName())+"/");
 				continue;
 			}
-			if (f.IsExtension(".test"))
+			if (f.IsExtension(".lua"))
 			{
 				TScriptFile&sf = outScripts.Append();
 				sf.name = pathPrefix + FileSystem::PathToString(f.GetInnerName());

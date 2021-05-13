@@ -506,7 +506,7 @@ void TerminateNow(bool isMain);
 void MyFatal(const FatalDescriptor&descriptor)
 {
 	String message = descriptor.ToString();
-	LogFile file("fatal.log",false);
+	LogFile file(L"fatal.log",false);
 	
 	file.Log(message+"\n",true);
 	file.Close();
@@ -642,7 +642,7 @@ namespace ParameterConfig
 	void	SetProgramName(const char*base)
 	{
 		const char*slashAt;
-		while (slashAt = CharFunctions::strchr(base,FOLDER_SLASH))
+		while (slashAt = CharFunctions::strchr(base,(char)FOLDER_SLASH))
 		{
 			base = slashAt+1;
 		}
@@ -709,7 +709,7 @@ namespace ParameterConfig
 			heartBeat = true;
 		elif (!strcmp(arg,"--tutorial") || !strcmp(arg,"-t"))
 		{
-			loadFile = "config/tutorial.hsf";
+			loadFile = L"config/tutorial.hsf";
 			startInTutorial = true;
 		}
 		elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
@@ -741,7 +741,7 @@ namespace ParameterConfig
 		{
 			onParam = [](const char*arg)
 			{
-				customConfigPath = arg;
+				customConfigPath = FileSystem::StringToPath(arg);
 				LogEvent(EventClass::Preset::configuration,"Loading configuration from custom path "+String(arg));
 			};
 		}
@@ -750,19 +750,19 @@ namespace ParameterConfig
 			eraseCustomConfigAfterLoad = true;
 		}
 		elif (!strcmp(arg,"-g") || !strcmp(arg,"--generate"))
-			onParam = [](const char*arg){ outConfigPath = arg;};
+			onParam = [](const char*arg){ outConfigPath = FileSystem::StringToPath(arg);};
 		elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
 			onParam = [](const char*arg)
 			{
-				loadFile = arg;
+				loadFile = FileSystem::StringToPath(arg);
 				LogEvent(EventClass::Preset::configuration,"Loading save game from "+String(arg));
 			};
 		else
 		{
-			PathString path = arg;
-			if (path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension) && FileSystem::IsFile(arg))
+			PathString path = FileSystem::StringToPath(arg);
+			if (path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension) && FileSystem::IsFile(path))
 			{
-				loadFile = arg;
+				loadFile = path;
 				return;
 			}
 			LogEvent(EventClass::Preset::configurationError, "Unsupported runtime parameter '"+String(arg)+"'");
@@ -799,7 +799,7 @@ public:
 
 	String					ConvertToString() const override
 	{
-		return checkIsOnline();
+		return String(checkIsOnline());
 	}
 
 
@@ -821,7 +821,7 @@ public:
 
 bool	IsTargetWorkingDirectory(const PathString&dir)
 {
-	PathString test = dir + "/config/declaration.xml";
+	PathString test = dir + L"/config/declaration.xml";
 	bool rs = FileSystem::IsFile(test);
 	#ifdef _DEBUG
 		LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"' => IsFile('"+String(test)+"'). Result="+String(rs));
@@ -880,9 +880,9 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		const auto logPath = RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log"));
+		const auto logPath = RuntimeConfig::myConfig.Lookup(FileSystem::StringToPath("logs/server "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log"));
 		Logging::Begin(logPath);
-		//Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/server "+Logging::TimeStamp(true)+".log")));
+		//Logging::Begin(RuntimeConfig::myConfig.Lookup(FileSystem::StringToPath("logs/server "+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 
@@ -943,7 +943,7 @@ int main( int argc, const char* argv[])
 					FileSystem::ForceCreateDirectory( saveDirPath );
 					FileSystem::Directory saveDir = saveDirPath;
 					FileSystem::File file;
-					PathString path = PathString(path0);
+					PathString path = FileSystem::StringToPath(path0);
 					if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
 						path += RuntimeConfig::savFileExtension;
 					if (!saveDir.FindFile(path,file,false))
@@ -960,7 +960,7 @@ int main( int argc, const char* argv[])
 					FileSystem::Directory saveDir = saveDirPath;
 				
 					FileSystem::File file;
-					PathString path = PathString(path0);
+					PathString path = FileSystem::StringToPath(path0);
 					if (!path.EndsWithIgnoreCase(RuntimeConfig::savFileExtension))
 						path += RuntimeConfig::savFileExtension;
 					if (!saveDir.FindFile(path,file,true))
@@ -981,7 +981,7 @@ int main( int argc, const char* argv[])
 						count_t numSaves = 0;
 						FileSystem::ftime_t mostRecent = 0;
 						FileSystem::File f;
-						while (inner.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
+						while (inner.NextFile(RuntimeConfig::savFileExtensionWithoutDot,f))
 						{
 							numSaves++;
 							mostRecent = std::max(mostRecent,f.GetModificationTime());
@@ -1028,7 +1028,7 @@ int main( int argc, const char* argv[])
 							count_t numSaves = 0;
 							FileSystem::ftime_t mostRecent = 0;
 							FileSystem::File f;
-							while (inner.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
+							while (inner.NextFile(RuntimeConfig::savFileExtensionWithoutDot,f))
 							{
 								numSaves++;
 								mostRecent = std::max(mostRecent,f.GetModificationTime());
@@ -1046,7 +1046,7 @@ int main( int argc, const char* argv[])
 							FileSystem::FolderScan inner = sub;
 							count_t numSaves = 0;
 							FileSystem::File f;
-							while (inner.NextFile(SAVE_FILE_EXT_WITHOUT_DOT,f))
+							while (inner.NextFile(RuntimeConfig::savFileExtensionWithoutDot,f))
 							{
 								numSaves++;
 							}
@@ -1060,7 +1060,7 @@ int main( int argc, const char* argv[])
 					{
 						while (scan.NextFolder(sub))
 						{
-							if (sub.GetInnerName().BeginsWithIgnoreCase(worldID))
+							if (sub.GetInnerName().BeginsWithIgnoreCase(FileSystem::StringToPath(worldID)))
 								erase << sub;
 						}
 					}
@@ -1242,13 +1242,13 @@ int main( int argc, const char* argv[])
 		{
 			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,nullptr);
 
-			FileIO::Save(PathString("test0"+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
-			FileIO::Load(PathString("test0"+RuntimeConfig::savFileExtension));
-			FileIO::Save(PathString("test1"+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
+			FileIO::Save(FileSystem::StringToPath("test0")+RuntimeConfig::savFileExtension,RuntimeConfig::phase);
+			FileIO::Load(FileSystem::StringToPath("test0")+RuntimeConfig::savFileExtension);
+			FileIO::Save(FileSystem::StringToPath("test1")+RuntimeConfig::savFileExtension,RuntimeConfig::phase);
 
 			Riff::File a,b;
-			ASSERT__(a.Open(PathString("test0"+RuntimeConfig::savFileExtension).c_str()));
-			ASSERT__(b.Open(PathString("test1"+RuntimeConfig::savFileExtension).c_str()));
+			ASSERT__(a.Open((FileSystem::StringToPath("test0")+RuntimeConfig::savFileExtension).c_str()));
+			ASSERT__(b.Open((FileSystem::StringToPath("test1")+RuntimeConfig::savFileExtension).c_str()));
 			Ctr::Buffer<Riff::TID>	stack;
 			FileIO::Compare(a,b,stack);
 

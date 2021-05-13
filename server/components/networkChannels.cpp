@@ -1322,7 +1322,7 @@ namespace Receiver
 		if (FileIO::CanSaveRightNow())
 		{
 			LogEvent(EventClass::Preset::important,"Saving game...");
-			FileIO::Save(RuntimeConfig::sharedConfig.Lookup("saves/"+saveAs+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
+			FileIO::Save(RuntimeConfig::sharedConfig.Lookup(FileSystem::StringToPath("saves/"+saveAs)+RuntimeConfig::savFileExtension),RuntimeConfig::phase);
 			LogEvent(EventClass::Preset::important,"Game saved");
 		}
 		else

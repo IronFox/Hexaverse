@@ -270,7 +270,7 @@ namespace Objects
 		name.Set(0, CharFunctions::tolower(name.FirstChar()));
 		name.FindAndReplace(' ',"");
 		staticGeometry.Clear();
-		staticGeometry.LoadFromObj(PathString("objects/"+name+".obj"));
+		staticGeometry.LoadFromObj(FileSystem::StringToPath("objects/"+name+".obj"));
 
 		if (scale != 1.f)
 			staticGeometry.Scale(scale);

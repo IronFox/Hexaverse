@@ -119,7 +119,7 @@ namespace ScriptCache
 	static PathString	GetFileCachePath(const SHA256::HashContainer&id)
 	{
 		FileSystem::File f;
-		if (!GetCacheDirectory().FindFile(PathString(Bin2Str::ConvertPOD(id,InvalidIndex))+cacheFileExtension,f,false))
+		if (!GetCacheDirectory().FindFile(FileSystem::StringToPath(Bin2Str::ConvertPOD(id,InvalidIndex))+cacheFileExtension,f,false))
 			return PathString();
 		return f.GetLocation();
 	}

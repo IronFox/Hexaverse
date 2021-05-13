@@ -22,12 +22,12 @@ namespace AIProcess
 		void	Start()
 		{
 			PathString	path,
-						workingDirectory = "..\\client\\";
+						workingDirectory = L"..\\client\\";
 				path = Process::LocateProjectExecutable(workingDirectory,
 					#ifdef _DEBUG
-						"Visual Client"
+						L"Visual Client"
 					#else
-						"Console Client"
+						L"Console Client"
 					#endif
 				);
 

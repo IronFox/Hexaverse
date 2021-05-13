@@ -471,8 +471,8 @@ namespace Game
 
 			bool		enableAI = false;
 			UINT32		roundsPerResearchPoint=10;
-			UINT32		minRoundForPlanes = 40, 
-						minRoundForHeavyVehicleBases = 20;
+			UINT32		minRoundForPlanes = 80, 
+						minRoundForHeavyVehicleBases = 40;
 			float		threatEstimationFactor = 1.f;
 			Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}

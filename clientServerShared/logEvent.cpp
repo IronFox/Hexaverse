@@ -135,7 +135,7 @@ namespace Logging
 
 	void	CallBugReporter(const String&message)
 	{
-		Process::Start(L"../BugReporter/",L"BugReporter.exe",L"\""+activePath+L"\" -m \""+PathString(message.Escape("\""))+L"\"");	//start and abandon
+		Process::Start(L"../BugReporter/",L"BugReporter.exe",L"\""+activePath+L"\" -m \""+FileSystem::StringToPath(message.Escape("\""))+L"\"");	//start and abandon
 	}
 
 	bool	HasBegun()
@@ -351,17 +351,38 @@ void		LogException(const Objects::WorldEntity*e, const std::exception&ex)
 }
 
 
-
-void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+static String Clean(const StringType::Sequence<char>&source)
 {
+	StringBuffer cleanBuffer;
+
+	StringEncoding::UTF8::TChar chr;
+	StringEncoding::UTF8::Scanner scanner(source);
+	while (scanner.HasNext())
+	{
+		char32_t c32 = scanner.Next();
+		if (!Package::IsValidChar(c32))
+			continue;
+
+		StringEncoding::UTF32::ToUTF8(c32,chr);
+		cleanBuffer.AppendAll(chr.ToRef());
+	}
+	return cleanBuffer.ToStringRef();
+}
+
+
+
+void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg0, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+{
+	String msg = Clean(msg0);
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,e,nullptr,msg,privacy);
 	#endif
 	Logging::WriteEvent(type,msg,nullptr,e,nullptr,origin);
 }
 
-void		LogEvent(const EventClass&type, const Objects::PConstFaction&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+void		LogEvent(const EventClass&type, const Objects::PConstFaction&owner, const String&msg0, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
+	String msg = Clean(msg0);
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg,privacy);
 	#endif

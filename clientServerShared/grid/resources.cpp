@@ -6,6 +6,7 @@
 #ifndef CLIENT
 	#include <lua/luaGameAPI.h>
 #endif
+#include <io/file_system.h>
 
 namespace Grid
 {
@@ -43,7 +44,7 @@ namespace Grid
 
 				LogEvent(EventClass::Preset::configurationPrint,"Executing resource distribution program '"+distribution+"'");
 				Time::Stamp t0;
-				api.program->ExecuteFile(PathString("../lua/distributions/"+distribution+".lua"),nullptr);
+				api.program->ExecuteFile(FileSystem::StringToPath("../lua/distributions/"+distribution+".lua"),nullptr);
 
 				Lua::Function<Lua::Table()> compute = api.program->RequireGlobal("Compute");
 				Lua::Table result = compute();

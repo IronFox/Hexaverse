@@ -271,12 +271,12 @@
 				The number of rounds necessary for the Nexus faction to gain one research point in every endless research topic.
 				Set 0 to disable Nexus research.
 			</variable>
-			<variable name="minRoundForPlanes" default="40">
+			<variable name="minRoundForPlanes" default="80">
 				Sets the game round beyond which the Nexus AI will start building planes. 
 				This value is passed on to AI scripts, if used, and may or may not be considered.
 				The built-in AI will always use this value.
 			</variable>
-			<variable name="minRoundForHeavyVehicleBases" default="20">
+			<variable name="minRoundForHeavyVehicleBases" default="40">
 				Sets the game round beyond which the Nexus AI will start building vehicles with heavy bases. 
 				This value is passed on to AI scripts, if used, and may or may not be considered.
 				The built-in AI will always use this value.

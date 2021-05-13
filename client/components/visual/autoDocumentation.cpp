@@ -32,7 +32,7 @@ namespace AutoDocumentation
 	PathString MakeValidFilename(String base)
 	{
 		base.EraseCharacters(IsValidFileChar,false);
-		return PathString(base);
+		return FileSystem::StringToPath(base);
 	}
 
 

@@ -930,6 +930,8 @@ namespace Lua
 				
 		rs.SetFunction("Inc",[this,threat](const Lua::Table&estTable)
 		{
+			if (!estTable)
+				return CreateThreatTable(threat);
 			Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
 			est.Scale(Objects::NexusThreat::GetEstimationFactor());
 			auto copy = threat;
@@ -956,6 +958,9 @@ namespace Lua
 				
 		rs.SetFunction("Inc",[this,supp](const Lua::Table&estTable)
 		{
+			if (!estTable)
+				return CreateSupportTable(supp);
+
 			Objects::NexusThreat::TEstimation est = Detail::EstimationFromTable(estTable);
 			auto copy = supp;
 			copy += est;
@@ -1378,6 +1383,8 @@ namespace Lua
 
 	Lua::Table	API::MapEntity( const Objects::PWorldEntity&e, bool actual, bool updateIfFound )
 	{
+		if (!e)
+			return Lua::nil;
 		auto found = loadedEntityTableMap.QueryPointer(e->id);
 		entityMap.Set(e->id,e);
 		Lua::Table t;

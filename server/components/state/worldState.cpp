@@ -592,7 +592,7 @@ namespace World
 			return;
 		}
 		FileSystem::File file;
-		while (folder.NextFile("ini",file))
+		while (folder.NextFile(L".ini",file))
 		{
 			outList.Append().name = String(file.GetInnerName());
 			if (isFactoryDefault)
@@ -607,7 +607,7 @@ namespace World
 	{
 		if (name.BeginsWith('*'))
 			return FileSystem::IsFile(RuntimeConfig::sharedConfig.Lookup("config/myPlanets/"+name.SubString(1)+".ini"));
-		return FileSystem::Folder().FindFile("../predefinedPlanets/"+PathString(name)+".ini") != nullptr;
+		return FileSystem::Folder().FindFile(FileSystem::StringToPath("../predefinedPlanets/"+name+".ini")) != nullptr;
 	}
 
 
@@ -616,7 +616,7 @@ namespace World
 		Ctr::Buffer0<TPlanetIniFile,Swap> files;
 		
 		AppendAvailablePlanetInitFilesFrom(false, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")),files);
-		AppendAvailablePlanetInitFilesFrom(true, FileSystem::Directory().FindDirectory("../predefinedPlanets"),files);
+		AppendAvailablePlanetInitFilesFrom(true, FileSystem::Directory().FindDirectory(L"../predefinedPlanets"),files);
 
 		HashTable<String,TPlanetIniFile,Ctr::StdHash,Swap,Swap>	merged;
 		foreach (files,f)

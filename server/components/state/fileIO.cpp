@@ -1570,7 +1570,7 @@ namespace FileIO
 											ASSERT_NOT_NULL__(chk);
 											String variables(chk->pointer(),chk->size());
 											Ctr::Array<String> lines;
-											explode('\n',variables,lines);
+											Explode('\n',variables,lines);
 											foreach (lines,line)
 											{
 												if (line->IsEmpty())

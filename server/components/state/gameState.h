@@ -191,7 +191,7 @@ namespace Game
 		{
 			factionSupportFlags = 0;
 			Ctr::Array<String>	segs;
-			explode(',',supp,segs);
+			Explode(',',supp,segs);
 			//bool allGood = true;
 			foreach (segs,seg)
 			{

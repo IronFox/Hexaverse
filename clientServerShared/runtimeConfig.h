@@ -13,6 +13,7 @@ namespace RuntimeConfig
 	#define SAVE_FILE_EXT_WITHOUT_DOT	"hsf"
 
 	static const PathString	savFileExtension = StringType::Cast("." SAVE_FILE_EXT_WITHOUT_DOT);	//hexaverse save file
+	static const PathString	savFileExtensionWithoutDot = StringType::Cast(SAVE_FILE_EXT_WITHOUT_DOT);	//hexaverse save file
 
 	CONSTRUCT_ENUMERATION2(GameGoal, None, ConquerNexus);
 	CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);
@@ -80,9 +81,9 @@ namespace RuntimeConfig
 		@return Absolute path
 		*/
 		PathString				Lookup(const PathString&base) const;
-		inline PathString		Lookup(const char*base)	const {return Lookup(PathString(base));}
+		inline PathString		Lookup(const char*base)	const {return Lookup(FileSystem::StringToPath(base));}
 		#ifdef _WIN32
-			inline PathString	Lookup(const String&base) const	{return Lookup(PathString(base));}
+			inline PathString	Lookup(const String&base) const	{return Lookup(FileSystem::StringToPath(base));}
 		#endif
 
 		/**
@@ -119,9 +120,9 @@ namespace RuntimeConfig
 	@return Absolute path
 	*/
 	PathString				ConfigLookup(const PathString&base, bool favorMyConfig);
-	inline PathString		ConfigLookup(const char*base, bool favorMyConfig)	{return ConfigLookup(PathString(base),favorMyConfig);}
+	inline PathString		ConfigLookup(const char*base, bool favorMyConfig)	{return ConfigLookup(FileSystem::StringToPath(base),favorMyConfig);}
 	#ifdef _WIN32
-		inline PathString	ConfigLookup(const String&base, bool favorMyConfig) {return ConfigLookup(PathString(base),favorMyConfig);}
+		inline PathString	ConfigLookup(const String&base, bool favorMyConfig) {return ConfigLookup(FileSystem::StringToPath(base),favorMyConfig);}
 	#endif
 
 	/**

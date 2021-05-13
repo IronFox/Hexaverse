@@ -449,9 +449,9 @@ namespace Objects
 		{
 			String name2 = Icons::NameToFileName(name);
 
-			PathString filename = PathString("resources/icons/"+name2+".png");
+			PathString filename = FileSystem::StringToPath("resources/icons/"+name2+".png");
 			if (!FileSystem::IsFile(filename))
-				filename = PathString("resources/icons/Question-Mark.png");
+				filename = FileSystem::StringToPath("resources/icons/Question-Mark.png");
 			if (textureMap.Query(filename,texture))
 				return;
 			try

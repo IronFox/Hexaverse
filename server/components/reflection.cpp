@@ -6,6 +6,7 @@
 #include "journalSaveGame.h"
 #include <io/config.h>
 #include <io/file_system.h>
+#include <string/lineWrap.h>
 #include "aiProcess.h"
 #include "networkChannels.h"
 
@@ -125,7 +126,7 @@ namespace Reflection
 				return RuntimeConfig::GameHasEnded();
 			}
 
-			virtual String	ConvertToString()		const	override	{return GetState();}
+			virtual String	ConvertToString()		const	override	{return String(GetState());}
 			virtual	bool	Set(const String&value)	override
 			{
 				bool b;
@@ -533,7 +534,7 @@ namespace Reflection
 			}
 			virtual String	GetDefault() const override
 			{
-				return defaultValue;
+				return String(defaultValue);
 			}
 			virtual void		SetCurrentToDefault() override
 			{
@@ -565,7 +566,7 @@ namespace Reflection
 				String old = ConvertToString();
 				static Ctr::Array<String>vehicleTurretNames;
 
-				explode(',', value, vehicleTurretNames);
+				Explode(',', value, vehicleTurretNames);
 				foreach (vehicleTurretNames,t)
 				{
 					t->TrimThis();
@@ -754,7 +755,7 @@ namespace Reflection
 			}
 			virtual String	GetDefault() const override
 			{
-				return defaultValue;
+				return String(defaultValue);
 			}
 			virtual void		SetCurrentToDefault() override
 			{
@@ -814,8 +815,8 @@ namespace Reflection
 					value.EraseLeft(1);
 
 				if (mode == FeedMode::Original || !prefixed)
-					return originalBase + FOLDER_SLASH + value + ".ini";
-				return RuntimeConfig::ConfigLookup(myDocumentsBase + FOLDER_SLASH+ value + ".ini",false);
+					return originalBase + FOLDER_SLASH + FileSystem::StringToPath(value + ".ini");
+				return RuntimeConfig::ConfigLookup(myDocumentsBase + FOLDER_SLASH+ FileSystem::StringToPath(value + ".ini"),false);
 			}
 		};
 
@@ -1016,7 +1017,7 @@ namespace Reflection
 			/**/				IsDead(const Objects::PFaction&f):CLI::Variable("isDead","bool",1,CLI::FullProtection),faction(f)
 			{}
 
-			virtual	String		ConvertToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return f->isDead; return "<null>";}
+			virtual	String		ConvertToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return String(f->isDead); return "<null>";}
 			virtual	bool		Set(const String&value)	{return false;}
 		};
 
@@ -1071,7 +1072,7 @@ namespace Reflection
 			static Ctr::Array<String>	lines;
 			static StringBuffer		fused;
 			fused.Clear();
-			explodeCallback(IsNewline<char>,help,lines);
+			ExplodeCallback(IsNewline<char>,help,lines);
 			//wrap(help,80,lines);
 			foreach (lines,line)
 			{
@@ -1212,7 +1213,7 @@ namespace Reflection
 		XML::Container xml;
 		xml.root_node.name = "declaration";
 		ExportFolder(xml.root_node,state->GetRoot());
-		xml.SaveToFile("./config/declaration.xml");
+		xml.SaveToFile(L"./config/declaration.xml");
 	}
 
 	//
@@ -1279,7 +1280,7 @@ namespace Reflection
 			parser->EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","PlanetName","LushGreen",Variable::Persistence::PlanetConfig);
 
-				parser->EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("../predefinedPlanets", "config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
+				parser->EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment(L"../predefinedPlanets", L"config/myPlanets",Variable::planetType,FeedMode::IgnoreIfMissing));
 				{
 					/*
 					Important:
@@ -1394,7 +1395,7 @@ namespace Reflection
 		SetupBase(state->GetRoot());
 
 		{
-			XML::Container xdecl("./config/declaration.xml");
+			XML::Container xdecl(L"./config/declaration.xml");
 			if (!DeclareFolder(xdecl.root_node,state->GetRoot()))
 			{
 				CreatePrototypeDeclaration();
@@ -1551,7 +1552,7 @@ namespace Reflection
 		}
 
 		static Ctr::Array<StringRef>	lines;
-		Wrap(outBuffer.ToRef(),80,lines);
+		LineWrap::UTF8::Wrap(outBuffer.ToRef(),80,lines);
 		foreach (lines,line)
 		{
 			String trimmed = line->Trim();
@@ -1713,9 +1714,9 @@ namespace Reflection
 	static FSourcePath ConstructRootFeedFunction( const PathString&customConfigPath )
 	{
 		#ifdef _DEBUG
-			static const PathString localServerINI = "config/debug_server.ini";
+			static const PathString localServerINI = L"config/debug_server.ini";
 		#else
-			static const PathString localServerINI = "config/server.ini";
+			static const PathString localServerINI = L"config/server.ini";
 		#endif
 
 		if (customConfigPath.IsEmpty())

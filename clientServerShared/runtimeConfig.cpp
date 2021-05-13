@@ -91,7 +91,7 @@ namespace RuntimeConfig
 		InitMyDocuments();
 
 		FileSystem::File file;
-		myDocuments.Find(L"./My Games/Hexaverse/"+PathString(subDir),file,FileSystem::FindFlags::None);
+		myDocuments.Find(FileSystem::StringToPath("./My Games/Hexaverse/"+subDir),file,FileSystem::FindFlags::None);
 		FileSystem::ForceCreateDirectory(file,file);	//returns if directory exists
 		actual = file;
 	}

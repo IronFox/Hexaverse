@@ -1280,13 +1280,13 @@ namespace Journal
 	void	Writer::InitNew(const PathString&root)
 	{
 		FileSystem::CreateDirectory(root);
-		Helper::WriteToFile(World::actual,root + FOLDER_SLASH+"actual.world");
-		Helper::WriteToFile(World::initial,root + FOLDER_SLASH+"visible.world");
+		Helper::WriteToFile(World::actual,root + FOLDER_SLASH+L"actual.world");
+		Helper::WriteToFile(World::initial,root + FOLDER_SLASH+L"visible.world");
 		foreach (Grid::Resource::all,res)
 		{
-			Helper::WriteToFile(*res,root+FOLDER_SLASH+res->GetName()+".coverage");
+			Helper::WriteToFile(*res,root+FOLDER_SLASH+FileSystem::StringToPath(res->GetName()+".coverage"));
 		}
-		PathString file = root+FOLDER_SLASH+"journal.txt";
+		PathString file = root+FOLDER_SLASH+L"journal.txt";
 		logStream.open(file.c_str(),std::ios::binary | std::ios::out | std::ios::trunc);
 		ASSERT__(logStream.is_open());
 
@@ -1319,16 +1319,16 @@ namespace Journal
 
 		LogEvent(EventSignificance::Important,"Restoring journal from "+String(root));
 
-		Helper::LoadFromFile(World::actual,root + FOLDER_SLASH+"actual.world");
-		Helper::LoadFromFile(World::initial,root + FOLDER_SLASH+"visible.world");
+		Helper::LoadFromFile(World::actual,root + FOLDER_SLASH+L"actual.world");
+		Helper::LoadFromFile(World::initial,root + FOLDER_SLASH+L"visible.world");
 
 		foreach (Grid::Resource::all,res)
 		{
-			Helper::LoadFromFile(*res,root+FOLDER_SLASH+res->GetName()+".coverage");
+			Helper::LoadFromFile(*res,root+FOLDER_SLASH+FileSystem::StringToPath(res->GetName()+".coverage"));
 		}
 
 
-		PathString file = root+FOLDER_SLASH+"journal.txt";
+		PathString file = root+FOLDER_SLASH+L"journal.txt";
 		Storage journal;
 		journal.Load(file);
 		bool ai = Game::Config::Nexus::enableAI;

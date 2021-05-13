@@ -586,7 +586,7 @@ namespace Dialog
 		try
 		{
 			Image image;
-			Magic::LoadFromFile(image, PathString("resources/tutorial/" + imageName));
+			Magic::LoadFromFile(image, FileSystem::StringToPath("resources/tutorial/" + imageName));
 			DX11::Texture setTexture;
 			setTexture.Load(image);
 			textureMap.Set(imageName, setTexture);

@@ -62,7 +62,7 @@ namespace ResourceGauges
 	void	IconItem::LoadTexture(const String&name)
 	{
 		Image image;
-		Magic::LoadFromFile(image,PathString("resources/icons/"+Icons::NameToFileName(name)+".png"));
+		Magic::LoadFromFile(image,FileSystem::StringToPath("resources/icons/"+Icons::NameToFileName(name)+".png"));
 		texture.Load(image);
 	}
 		

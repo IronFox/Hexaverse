@@ -612,11 +612,11 @@ namespace ApplicationInterface
 						PathString screenshotsAt = RuntimeConfig::myConfig.Lookup("screenshots");
 						FileSystem::CreateDirectory(screenshotsAt);
 						index_t counter = 0;
-						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
+						PathString filename = screenshotsAt + FOLDER_SLASH_STR + FileSystem::StringToPath("screenshot"+String(counter)+".png");
 						while (FileSystem::IsFile(filename))
 						{
 							counter++;
-							filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
+							filename = screenshotsAt + FOLDER_SLASH_STR + FileSystem::StringToPath("screenshot"+String(counter)+".png");
 						}
 						png.SaveToFile(image,filename);
 						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+FileSystem::PathToString(filename));
@@ -1759,7 +1759,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 	
 	try
 	{
-		String cmd = String(commandLine);
+		String cmd = StringEncoding::UTF16::ToUTF8(commandLine);
 		//ShowMessage(cmd);
 
 		StringList	tokenList;
@@ -1830,7 +1830,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
 		FileSystem::ForceCreateDirectory(RuntimeConfig::myConfig.Lookup("logs"));	//can't do this until 
-		Logging::Begin(RuntimeConfig::myConfig.Lookup(PathString("logs/client "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
+		Logging::Begin(RuntimeConfig::myConfig.Lookup(FileSystem::StringToPath("logs/client "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
 	}
 	catch (const std::exception&e)
 	{
@@ -1938,7 +1938,7 @@ int main( int argc, const char* argv[])
 
 			PathString userConfigPath = RuntimeConfig::myConfig.Lookup("game.ini");
 			if (!FileSystem::IsFile(userConfigPath))
-				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
+				FileSystem::CopyFile(FileSystem::StringToPath("./game.ini"),userConfigPath,false);
 			StartConfig::Load(userConfigPath);
 
 			#ifdef HAS_WINDOW
@@ -1964,7 +1964,7 @@ int main( int argc, const char* argv[])
 
 				HUD::ResourceGauges::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
-				TimeLapse::customBasePath = PathString(StartConfig::GetString("timelapse/outDirectory",""));
+				TimeLapse::customBasePath = FileSystem::StringToPath(StartConfig::GetString("timelapse/outDirectory",""));
 				TimeLapse::frameDelaySeconds = StartConfig::GetFloat("timelapse/frameDelaySeconds",0.2f);
 				TimeLapse::maxCompressionPNG = StartConfig::GetBool("timelapse/maxCompressionPNG");
 				

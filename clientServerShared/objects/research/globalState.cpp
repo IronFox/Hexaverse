@@ -407,7 +407,7 @@ namespace Objects
 		{
 			#define RESEARCH_SCRIPT_NAME "attributesAndResearch.lua"
 
-			PathString factoryDefault = "../lua/" RESEARCH_SCRIPT_NAME;
+			PathString factoryDefault = FileSystem::StringToPath( "../lua/" RESEARCH_SCRIPT_NAME);
 			#if 0 && defined _DEBUG
 				PathString final = factoryDefault;
 			#else
