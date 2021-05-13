@@ -1,5 +1,5 @@
---#require "util.lua" 
---#require "resvec.lua"
+--#require <util/util.lua>
+--#require <util/resvec.lua>
 
 function GroundTotal(threat)
 	return threat.groundMobile + threat.groundStationary;
@@ -154,7 +154,7 @@ function EnableFactory(poleIndex--[[int]], port --[[Unit]], factories --[[ Unit[
 		if not p.productionQueue and not enabled[p] then
 		
 			Game.Log('AI: Enqueueing vehicle production job to inactive '..p.name..' due to high threat level...');
-			--p.BuildMobile(choice);
+			p.BuildMobile(choice);
 			enabled[p] = true;
 			
 			local est = Game.AI.Estimate(poleIndex, choice, p.location, Game.myFaction);
