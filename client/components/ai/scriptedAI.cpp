@@ -79,6 +79,15 @@ namespace AI::Script
 			return rs;
 		}
 
+		FileSystem::Folder GetInstallScriptFolder()
+		{
+			FileSystem::Folder installFolder = FileSystem::WorkingDirectory();
+			const FileSystem::File* imp = installFolder.FindDirectory(L"../lua");
+			if (!imp)
+				throw Lua::Exception(CLOCATION,"Common install lua folder not found from "+FileSystem::PathToString(installFolder.GetLocation()));
+			return imp;
+		}
+
 
 		class Import
 		{
@@ -91,21 +100,29 @@ namespace AI::Script
 
 			void	operator()(const PathString&path, bool isGlobal)
 			{
-				const FileSystem::File*f;
 				FileSystem::Folder folder;
 				if (isGlobal)
 					folder = GetScriptFolder();
 			
-				f = folder.FindFile(path);
-				if (!f)
-					throw Lua::Exception(CLOCATION,"Required Lua sub script not found: "+FileSystem::PathToString(path));
+				FileSystem::File f;
+				if (!folder.FindFile(path,f))
+				{
+					if (isGlobal)
+					{
+						if (!GetInstallScriptFolder().FindFile(path,f))
+							throw Lua::Exception(CLOCATION,"Required Lua sub script not found in shared or install directory: "+FileSystem::PathToString(path));
+					}
+					else
+						throw Lua::Exception(CLOCATION,"Required Lua sub script not found: "+FileSystem::PathToString(path));
 
-				if (!f->GetFolder().BeginsWith(GetScriptFolder().GetLocation()))
-					throw Lua::Exception(CLOCATION,"Required Lua sub script file "+FileSystem::PathToString(path)+" is located outside permitted script folder "+FileSystem::PathToString(GetScriptFolder().GetLocation()));
+				}
 
-				if (!imported.SetNew(f->GetLocation()))
+				if (!f.GetFolder().BeginsWith(GetScriptFolder().GetLocation()) && !f.GetFolder().BeginsWith(GetInstallScriptFolder().GetLocation()))
+					throw Lua::Exception(CLOCATION,"Required Lua sub script file "+FileSystem::PathToString(path)+" ("+FileSystem::PathToString(f.GetLocation())+") is located outside permitted script folders "+FileSystem::PathToString(GetScriptFolder().GetLocation())+" and "+FileSystem::PathToString(GetInstallScriptFolder().GetLocation()));
+
+				if (!imported.SetNew(f.GetLocation()))
 					return;
-				program->ExecuteFile(f->GetLocation(),*this);
+				program->ExecuteFile(f.GetLocation(),*this);
 			}
 		};
 
