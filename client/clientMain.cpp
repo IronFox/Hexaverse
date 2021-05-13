@@ -2191,6 +2191,8 @@ int main( int argc, const char* argv[])
 		Loading::Stage("Animation", Animation::Create);
 		Loading::Stage("Network", Network::Setup);
 
+		
+
 
 		#ifdef HAS_WINDOW
 
@@ -2235,6 +2237,8 @@ int main( int argc, const char* argv[])
 				HUD::Dialog::QueryNicknameIfEmpty();
 			};
 
+			if (RuntimeConfig::aiMode)
+				AI::Script::Load(L"../lua/AI/ai.lua","",true);
 			
 
 
@@ -2243,6 +2247,10 @@ int main( int argc, const char* argv[])
 
 		#else
 			Loading::Finish();
+
+			if (RuntimeConfig::aiMode)
+				AI::Script::Load(L"../lua/AI/ai.lua","",true);
+
 			LogEvent(EventSignificance::Uncommon,"Entering main loop");
 			while (!application_shutting_down && loop())
 			{};

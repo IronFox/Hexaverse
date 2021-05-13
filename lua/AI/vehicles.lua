@@ -792,11 +792,15 @@ function ProcessVehicles()
 	end;
 	local bomberTurret = bomberType.turretType;
 	maxHostileBomberRange = bomberTurret.flatAttackRange;
-	for _,f in pairs(Game.factions) do
-		if f.alliance ~= Game.myFaction.alliance then
-			local r = bomberTurret.GetFlatAttackRange(f);
-			maxHostileBomberRange = math.max(maxHostileBomberRange,r);
+	if maxHostileBomberRange ~= nil then
+		for _,f in pairs(Game.factions) do
+			if f.alliance ~= Game.myFaction.alliance then
+				local r = bomberTurret.GetFlatAttackRange(f);
+				maxHostileBomberRange = math.max(maxHostileBomberRange,r);
+			end;
 		end;
+	else
+		Game.Log('Bomber range appears to be nil. This script will probably fail as a result');
 	end;
 	Game.Log("Max hostile bomber range determined to be "..maxHostileBomberRange);
 	UpdateAAProtection();

@@ -56,20 +56,7 @@ namespace AI::Script
 
 
 		typedef std::pair<String,std::function<void()> >	Job;
-
-
-		PathString	ScriptNameToPath(const String&scriptName)
-		{
-			if (scriptName.CountCharacters([](char c){return c == '\\' || c == ':' || c == ';';}) > 0)
-				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid characters: "+scriptName);
-			if (scriptName.Contains(".."))
-				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
-			if (scriptName.Contains("//"))
-				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
-
-			return FileSystem::StringToPath(scriptName+".lua");
-		}
-
+		
 		FileSystem::Folder	GetScriptFolder()
 		{
 			FileSystem::Folder rs = RuntimeConfig::sharedConfig.Lookup("AIScripts");
@@ -86,6 +73,30 @@ namespace AI::Script
 			if (!imp)
 				throw Lua::Exception(CLOCATION,"Common install lua folder not found from "+FileSystem::PathToString(installFolder.GetLocation()));
 			return imp;
+		}
+
+
+		PathString UserScriptNameToPath(const String&scriptName)
+		{
+			if (scriptName.CountCharacters([](char c){return c == '\\' || c == ':' || c == ';';}) > 0)
+				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid characters: "+scriptName);
+			if (scriptName.Contains(".."))
+				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
+			if (scriptName.Contains("//"))
+				throw Except::Program::ParameterFault(CLOCATION,"Given script name contains invalid sequences: "+scriptName);
+
+			return FileSystem::StringToPath(scriptName+".lua");
+		}
+
+		bool	ScriptNameToPath(const String&scriptName, FileSystem::File&outFile)
+		{
+			FileSystem::Folder scripts = GetScriptFolder();
+			FileSystem::Folder installScripts = GetInstallScriptFolder();
+		
+			if (scriptName.IsEmpty())
+				return installScripts.Find(L"AI/ai.lua",outFile);
+
+			return scripts.Find(UserScriptNameToPath(scriptName),outFile);
 		}
 
 
@@ -860,6 +871,7 @@ namespace AI::Script
 	{
 		using namespace Details;
 
+		/*
 		if (scriptName.IsEmpty())
 		{
 			SynchronizeWithThread(true,false,"End",[]()
@@ -869,12 +881,11 @@ namespace AI::Script
 				Details::scriptPath.Clear();
 			});
 			return;
-		}
+		}*/
 
-		FileSystem::Folder scripts = GetScriptFolder();
 		FileSystem::File scriptLocation;
 
-		if (!scripts.FindFile(ScriptNameToPath(scriptName)  ,scriptLocation))
+		if (!ScriptNameToPath(scriptName,scriptLocation))
 		{
 			LogEvent(EventClass::Preset::scriptError,"AI::Script: Unable to resume server-stored script '"+scriptName+"'. Cannot find file.");
 			#ifdef HAS_WINDOW
@@ -1394,7 +1405,7 @@ namespace AI::Script
 						FileSystem::CreateDirectory(scripts.GetLocation());
 					ASSERT1__(scripts.IsValidLocation(), FileSystem::PathToString(scripts.GetLocation()));
 					FileSystem::File scriptAt;
-					const auto path = Details::ScriptNameToPath(input);
+					const auto path = Details::UserScriptNameToPath(input);
 					index_t lastSlash = input.FindLast('/');
 					if (lastSlash != InvalidIndex)
 					{

@@ -1017,6 +1017,7 @@ namespace Network
 		void	ResearchFactionState(Protocol::ResearchFactionState&state)
 		{
 			Objects::PFaction f = ResolveFaction(state.ownerID);
+			LogEvent(EventSignificance::Common,"Received research state for faction "+f->GetLogName());
 			EXPECT_EQUAL(Objects::Research::globalState.allTopics.Count(),state.progressVector.Length());
 			f->researchState.topicProgressVector.adoptData(state.progressVector);
 			f->researchState.topicProgressChanged = true;
