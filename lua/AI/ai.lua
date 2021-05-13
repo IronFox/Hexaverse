@@ -18,6 +18,7 @@ end;
 
 function	Execute()
 	Game.Log('Executing');
+	
 	ProcessFactories();
 	ProcessVehicles();
 end;

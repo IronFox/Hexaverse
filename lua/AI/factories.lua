@@ -39,6 +39,11 @@ function AutoDeploy(plant --[[Unit]])
 		return State.New();
 	end;
 	local loc = plant.GetIdealDeploymentOption();
+	if plant.productionQueue then
+		Game.Log(plant.name..': '..#plant.productionQueue);
+	else
+		Game.Log(plant.name..': idle');
+	end;
 	if loc ~= nil then
 		plant.DeployProductionAt(loc);
 		if #plant.productionQueue > 1 then
@@ -148,11 +153,16 @@ function EnableFactory(poleIndex--[[int]], port --[[Unit]], factories --[[ Unit[
 	
 		if not p.productionQueue and not enabled[p] then
 		
-			Game.Log('AI: Enqueueing vehicle production job in '..p.name..' due to high threat level...');
-			p.BuildMobile(choice);
+			Game.Log('AI: Enqueueing vehicle production job to inactive '..p.name..' due to high threat level...');
+			--p.BuildMobile(choice);
 			enabled[p] = true;
 			
-			return Game.AI.Estimate(poleIndex, choice, p.location, Game.myFaction);
+			local est = Game.AI.Estimate(poleIndex, choice, p.location, Game.myFaction);
+			
+			Util.Log('Estimation of ['..choice.name..']',est);
+			
+			
+			return est;
 		end;
 		
 	end;
@@ -225,6 +235,7 @@ function ProcessFactories()
 
 				while (AirMobileTotal(support) < AirTotal(threat) or GroundMobileTotal(support) < GroundTotal(threat) or constructorViolation) do
 				
+					Game.Log(AirMobileTotal(support)..' < '.. AirTotal(threat)..' | '..GroundMobileTotal(support)..' < '..GroundTotal(threat)..' cv '.. tostring(constructorViolation));
 					local airDemand = AirTotal(threat) - AirMobileTotal(support);
 					local groundDemand = GroundTotal(threat) - GroundMobileTotal(support);
 					local tab = ProductionTable.New(i);
@@ -309,8 +320,10 @@ function ProcessFactories()
 						end;
 					end;
 				end;
+				Game.Log(AirMobileTotal(support)..' >= '.. AirTotal(threat)..' & '..GroundMobileTotal(support)..' >= '..GroundTotal(threat)..' & cv '.. tostring(constructorViolation));
 			end;
 		end;
+		
 		Game.Log('AI: Nothing left to do on pole '..i);
 
 	end;

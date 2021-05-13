@@ -14,6 +14,63 @@ function Util.RoundToInt(x)
 	return math.floor(x+.5);
 end;
 
+--[[ Util.Trim
+
+Returns a trimmed version of the given string.
+Argument must be a string
+]]
+function Util.Trim(s)
+   return string.match(s,'^()%s*$') and '' or string.match(s,'^%s*(.*%S)');
+end
+
+--[[ Util.Log
+Recursively logs an arbitrary object to Game.Log.
+
+@param name Name of the object to log. Must be a string
+@param var Object to print. May be anything, including nil and potentially looping table graphs.
+@param maxDepth Optional maximum tree depth. No effect iv the given object is not a table. 0 means the argument itself is not expanded, 1 that only the immediate sub-fields are printed, asf.
+@param indent Optional indentation string. Used to indent sub-tables but may be used to apply an indentation to the first printout
+@param history Should be nil: Map{table->string} to mark visited tables. Created automatically.
+@param path Should be nil: String path to the local variable, already including its name
+]]
+function Util.Log(name --[[string]], var --[[anything]], maxDepth--[[int default nil]], indent --[[string default nil]], history--[[ table[] default nil ]], path--[[string default nil]])
+	local t = type(var);
+	if maxDepth == nil then
+		maxDepth = 1000;
+	end;
+	if indent == nil then
+		indent = '';
+	end;
+	if t == 'number' or t == 'boolean' then
+		Game.Log(indent .. name..': '..tostring(var));
+	elseif t == 'string' then
+		Game.Log(indent .. name..': "'..tostring(var)..'"');
+	elseif t == 'table' then
+		if history ~= nil and history[var] then
+			Game.Log(indent .. name..': <recurring table '.. history[var].. '>');
+		else
+			if maxDepth < 1 then
+				Game.Log(indent .. name..': <table>');
+			else
+				if not path then
+					path = '[var]';
+				end;
+				if not history then
+					history = {};
+				end;
+				history[var] = path;
+				Game.Log(indent .. name..':');
+				for k,v in pairs(var) do
+					Util.Log(tostring(k),v, maxDepth-1, indent..'    ', history,path..'.'..tostring(k));
+				end;
+			end;
+		end;
+	else
+		Game.Log(indent ..name..': <'..t..'>');
+	end;
+end;
+
+
 --[[
 Projects a location to its suborbital height. No effect if the location already is suborbital
 ]]
