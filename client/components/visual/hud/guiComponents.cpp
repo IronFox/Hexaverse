@@ -2676,7 +2676,8 @@ namespace Component
 
 
 		static const char32_t cursorChar = '<';
-		float cursorLen = textout.GetScaledWidth(UTF32StringRef(&cursorChar,1));
+		static const auto cursorRef = UTF32StringRef(&cursorChar,1);
+		float cursorLen = textout.GetScaledWidth(cursorRef);
 		float visualLen = textout.GetScaledWidth(text) + cursorLen;
 
 
@@ -2712,7 +2713,7 @@ namespace Component
 			}
 		}
 		if (((UINT64)(Engine::timing.now*2.0))%2)
-			textout << cursorChar;
+			textout << cursorRef;
 
 
 		textout.PopState();
