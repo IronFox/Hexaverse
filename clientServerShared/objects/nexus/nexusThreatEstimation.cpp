@@ -112,14 +112,18 @@ namespace Objects
 				float entityRange;
 				if (turretBase)
 				{
+					rs.sensor.impact = baseImpact + M::Max(turretBase->GetSubOrbitalScanningRange(),e.GetScanningRange());
 					if (turretBase->turret->CanDealDamage())
 						rs.attack.impact = baseImpact + turretBase->GetDamagePotentialPerRound() + turretBase->GetFlatAttackRange();
-					rs.sensor.impact = baseImpact + M::Max(turretBase->GetSubOrbitalScanningRange(),e.GetScanningRange());
+					else
+						rs.attack.impact = baseImpact;
+
 					entityRange = M::Max(turretBase->GetFlatAttackRange(),e.GetScanningRange());
 				}
 				else
 				{
 					rs.sensor.impact = baseImpact + e.GetScanningRange();
+					rs.attack.impact = baseImpact;
 					entityRange = e.GetScanningRange();
 				}
 
@@ -225,10 +229,10 @@ namespace Objects
 			@param location Location of the entity. Either its own or of the producer it is queued in
 			@param[in,out] Port environments to add to. The specified entity may be added to multiple environments
 			*/
-			void AddPresence( const Objects::PFaction&nexus, const Objects::WorldEntity&e, const Grid::LCellIdI&location )
+			void AddPresence( const Objects::PFaction&nexus, const Objects::WorldEntity&e, const Objects::PFaction&owner, const Grid::LCellIdI&location )
 			{
 				#ifdef CLIENT
-					if (e.owner != nexus)
+					if (owner != nexus)
 						return;
 				#endif
 				const M::TVec3 < >&loc = Grid::low.cells[location.stackID].centerVertex.xyz;
@@ -247,7 +251,7 @@ namespace Objects
 					foreach (poles, at)
 					{
 						index_t poleIndex = at-poles.begin();
-						TEstimation est = _Estimate(nexus, e, location, e.owner, (int)poleIndex);
+						TEstimation est = _Estimate(nexus, e, location, owner, (int)poleIndex);
 				
 						if (est.isHostile)
 						{
@@ -295,7 +299,10 @@ namespace Objects
 				{
 					bool isMine = e->owner == nexus;
 
-					AddPresence(nexus, *e,e->location);
+					AddPresence(nexus, *e, e->owner, e->location);
+
+
+
 
 					if (isMine)
 					{
@@ -328,7 +335,9 @@ namespace Objects
 								poles[closest].associatedVehiclePlants << plant;
 
 								if (plant->queue.IsNotEmpty())
-									AddPresence(nexus,*plant->queue.First().GetPrototype(),plant->location);
+								{
+									AddPresence(nexus,*plant->queue.First().GetPrototype(), nexus, plant->location);
+								}
 							}
 
 							
