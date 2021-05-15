@@ -8,7 +8,7 @@
 
 int main( int argc, const char* argv[]);
 
-bool ConfigureClient(const wchar_t*commandLine);
+bool ConfigureClient();
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -18,7 +18,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	if (!ConfigureClient(lpCmdLine))
+	if (!ConfigureClient())
 		return -1;
 
 	return (int) main(0,nullptr);

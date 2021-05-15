@@ -1753,13 +1753,13 @@ void ParseKeyValue(const String&key, const String&value)
 }
 
 
-bool ConfigureClient(const wchar_t*commandLine)
+bool ConfigureClient()
 {
 	Except::onFatal = MyFatal;
 	
 	try
 	{
-		String cmd = StringEncoding::UTF16::ToUTF8(commandLine);
+		String cmd = StringEncoding::UTF16::ToUTF8(GetCommandLineW());
 		//ShowMessage(cmd);
 
 		StringList	tokenList;
@@ -1776,6 +1776,8 @@ bool ConfigureClient(const wchar_t*commandLine)
 		{
 			throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Unable to parse parameter line '"+cmd+"' (missing closing quotes perhaps?)");
 		}
+
+		tokenList.Erase(0);
 
 		String parameterName;
 		bool expectValue = false;
@@ -1868,10 +1870,7 @@ int main( int argc, const char* argv[])
 	RuntimeConfig::programStart.Update();
 	
 	#ifndef HAS_WINDOW
-		String cfg;
-		for (int i = 1; i < argc; i++)
-			cfg += " "+String(argv[i]);
-		ConfigureClient(StringW(cfg.c_str()).c_str());
+		ConfigureClient();
 
 	#endif
 
