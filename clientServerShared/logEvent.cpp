@@ -88,8 +88,12 @@ namespace Logging
 					foreach (pipe,line)
 						lines.MoveAppend(*line);
 				pipe.ExitRead();
+				StringW ws;
 				foreach (lines,line)
-					printf("%s",line->c_str());
+				{
+					StringEncoding::UTF8::ToUTF16(*line,ws);
+					printf("%ls",ws.c_str());
+				}
 				lines.Clear();
 			}
 		}
@@ -145,6 +149,8 @@ namespace Logging
 
 	void	Begin( const PathString&path )
 	{
+		std::locale::global(std::locale(""));
+
 		hasBegun = true;
 		activePath = path;
 		auto scan = FileSystem::Folder(FileSystem::ExtractFileDir(path)).Scan();
@@ -369,20 +375,41 @@ static String Clean(const StringType::Sequence<char>&source)
 	return cleanBuffer.ToStringRef();
 }
 
-
-
-void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg0, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+static bool ShouldClean(const StringType::Sequence<char>&source)
 {
-	String msg = Clean(msg0);
+	StringEncoding::UTF8::Scanner scanner(source);
+	while (scanner.HasNext())
+	{
+		char32_t c32 = scanner.Next();
+		if (!Package::IsValidChar(c32))
+			return true;
+	}
+	return false;
+}
+
+
+
+void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+{
+	if (ShouldClean(msg))
+	{
+		LogEvent(type,e,Clean(msg),origin,privacy);
+		return;
+	}
+
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,e,nullptr,msg,privacy);
 	#endif
 	Logging::WriteEvent(type,msg,nullptr,e,nullptr,origin);
 }
 
-void		LogEvent(const EventClass&type, const Objects::PConstFaction&owner, const String&msg0, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
+void		LogEvent(const EventClass&type, const Objects::PConstFaction&owner, const String&msg, Logging::Origin origin, Logging::Privacy privacy/*=Logging::Privacy::Auto*/)
 {
-	String msg = Clean(msg0);
+	if (ShouldClean(msg))
+	{
+		LogEvent(type,owner,Clean(msg),origin,privacy);
+		return;
+	}
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg,privacy);
 	#endif
