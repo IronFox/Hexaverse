@@ -1014,6 +1014,7 @@ namespace AI::Script
 		Details::exportedThisPhase = false;
 		Details::scriptPath = scriptPath;
 		Details::scriptName = scriptName;
+		LogEvent(EventSignificance::Common,"AI: Path set to '"+FileSystem::PathToString(scriptPath)+"' for script '"+scriptName+"'");
 		Details::scriptTime = FileSystem::GetModificationTime(scriptPath);
 		if (freshState)
 			thread.nonCompressedExportedState.Clear();
