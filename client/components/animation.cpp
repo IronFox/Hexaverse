@@ -58,7 +58,6 @@ namespace Animation
 					AI::AddVehicle(p);
 			});
 			DBG_ASSERT__(!Network::newRoundRequested);
-			AI::ProcessFactories();
 			AI::SignalStart("UpdateAutomation",loc);
 		}
 	}

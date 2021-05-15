@@ -7,6 +7,7 @@
 #include <objects/nexus/nexusThreatEstimation.h>
 #include "../gridControl.h"
 #include "aiCommon.h"
+#include "factories.h"
 
 namespace AI
 {
@@ -1010,6 +1011,9 @@ namespace AI
 
 	void	AddVehicle(const Objects::PVehicle&v)
 	{
+		if (AI::Script::IsLoaded())
+			return;
+
 		if (v->turret == &Objects::Component::antiAircraft)
 			Details::attackers << v;
 		elif (v->CanAttack())
@@ -1094,6 +1098,8 @@ namespace AI
 	{
 		if (AI::Script::IsLoaded())
 			return;
+		AI::ProcessFactories();
+	
 		Details::ofInterestToAttacker.Clear();
 		Details::awaitSensory = false;
 		Details::processed.Clear();
