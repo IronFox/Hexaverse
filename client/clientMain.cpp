@@ -1862,6 +1862,21 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 }
 
 
+void InitAI()
+{
+	LogEvent(EventSignificance::Uncommon,"Initializing AI");
+	FileSystem::Folder wd;
+	FileSystem::File f;
+
+	if (!wd.FindFile(L"../lua/AI/ai.lua",f))
+		LogEvent(EventSignificance::NonFatalError,"Unable to find default AI script from "+FileSystem::PathToString(wd.GetLocation()));
+	else
+	{
+		LogEvent(EventSignificance::Common,"Loading AI script from "+FileSystem::PathToString(f.GetLocation()));
+		AI::Script::Load(f.GetLocation(),"",true);
+	}
+	LogEvent(EventSignificance::Common,"AI initialization complete");
+}
 
 int main( int argc, const char* argv[])
 {
@@ -2236,8 +2251,9 @@ int main( int argc, const char* argv[])
 				HUD::Dialog::QueryNicknameIfEmpty();
 			};
 
+
 			if (RuntimeConfig::aiMode)
-				AI::Script::Load(L"../lua/AI/ai.lua","",true);
+				InitAI();
 			
 
 
@@ -2248,7 +2264,7 @@ int main( int argc, const char* argv[])
 			Loading::Finish();
 
 			if (RuntimeConfig::aiMode)
-				AI::Script::Load(L"../lua/AI/ai.lua","",true);
+				InitAI();
 
 			LogEvent(EventSignificance::Uncommon,"Entering main loop");
 			while (!application_shutting_down && loop())
