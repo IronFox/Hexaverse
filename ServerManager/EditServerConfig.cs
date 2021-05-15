@@ -510,12 +510,7 @@ namespace ServerManager
 										List<string> dists = new List<string>();
 										dists.Add("");
 										var dir = new DirectoryInfo(Path.Combine(Program.gameDir, "shared", "AIScripts"));
-										if (dir.Exists)
-										{
-											var files = dir.GetFiles("*.lua");
-											foreach (var f in files)
-												dists.Add(Path.GetFileNameWithoutExtension(f.Name));
-										}
+										ScanAIScripts(dir, dists);
 										scriptNames = dists.ToArray();
 									}
 									attrib = new EnumAttribute(ctx, name, scriptNames, comments.ToArray());
@@ -592,6 +587,18 @@ namespace ServerManager
 
 			foreach (Control c in attributePanel.Controls)
 				Tidy(c);
+		}
+
+		private void ScanAIScripts(DirectoryInfo dir, List<string> dists, string path = "")
+		{
+			if (dir.Exists)
+			{
+				var files = dir.GetFiles("*.lua");
+				foreach (var f in files)
+					dists.Add(path + Path.GetFileNameWithoutExtension(f.Name));
+				foreach (DirectoryInfo child in dir.GetDirectories())
+					ScanAIScripts(child, dists, path + child.Name + "/");
+			}
 		}
 
 		private static void Tidy(Control c)
