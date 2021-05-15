@@ -56,34 +56,35 @@ namespace Protocol
         }
 
 
-        private static SerialItem CompileArray(Type t0, bool derived)
+        private static SerialItem CompileArray(Type t0)
         {
             Type type = t0.GetElementType();
+
             if (typeof(byte) == type)
-                return derived ? (SerialItem)new Byte.Array.Derived() : (SerialItem)new Byte.Array.Embedded();
+                return new Byte.Array.Embedded();
             if (typeof(bool) == type)
-                return derived ? (SerialItem)new Bool.Array.Derived() : (SerialItem)new Bool.Array.Embedded();
+                return new Bool.Array.Embedded();
             if (typeof(char) == type)
-                return derived ? (SerialItem)new Char.Array.Derived() : (SerialItem)new Char.Array.Embedded();
+                return new Char.Array.Embedded();
             if (typeof(Int16) == type)
-                return derived ? (SerialItem)new TInt16.Array.Derived() : (SerialItem)new TInt16.Array.Embedded();
+                return new TInt16.Array.Embedded();
             if (typeof(UInt16) == type)
-                return derived ? (SerialItem)new TUInt16.Array.Derived() : (SerialItem)new TUInt16.Array.Embedded();
+                return new TUInt16.Array.Embedded();
             if (typeof(Int32) == type)
-                return derived ? (SerialItem)new TInt32.Array.Derived() : (SerialItem)new TInt32.Array.Embedded();
+                return new TInt32.Array.Embedded();
             if (typeof(UInt32) == type)
-                return derived ? (SerialItem)new TUInt32.Array.Derived() : (SerialItem)new TUInt32.Array.Embedded();
+                return new TUInt32.Array.Embedded();
             if (typeof(Int64) == type)
-                return derived ? (SerialItem)new TInt64.Array.Derived() : (SerialItem)new TInt64.Array.Embedded();
+                return new TInt64.Array.Embedded();
             if (typeof(UInt64) == type)
-                return derived ? (SerialItem)new TUInt64.Array.Derived() : (SerialItem)new TUInt64.Array.Embedded();
+                return new TUInt64.Array.Embedded();
 			
-            return derived ? (SerialItem)new Complex.Array.Derived(t0) : (SerialItem)new Complex.Array.Embedded(t0);
+            return new Complex.Array.Embedded(t0);
         }
-        private static SerialItem CompileField(Type type, bool derived)
+        private static SerialItem CompileField(Type type)
         {
             if (type.IsArray)
-                return CompileArray(type, derived);
+                return CompileArray(type);
             if (type.IsEnum)
                 return new Enum(type);
             if (typeof(byte) == type)
@@ -109,150 +110,37 @@ namespace Protocol
             if (typeof(double) == type)
                 return new Double();
             if (typeof(string) == type)
-                return derived ? (SerialItem)new String.Derived() : (SerialItem)new String.Embedded();
+                return new String.Embedded();
 
             if (type.IsPrimitive)
                 throw new Exception("Unpextected type for compilation: " + type);
-            return new Complex(type,derived);
+            return new Complex(type);
         }
 
 		/// <summary>
 		/// Creates a new SerialItem for the specified type
 		/// </summary>
 		/// <param name="type">Type to create the serial-item for</param>
-		/// <param name="derived">True, if contextual size information should be used to derive dynamic content size (specify false, to always read and write dynamic content length to/from the stream)</param>
-		/// <param name="offsetFromEnd">Value to write to SerialItem.DerivedOffsetFromEnd</param>
 		/// <returns>New serial item that sattisfies the specified type constraints</returns>
-		public static SerialItem Compile(Type type, bool derived, int offsetFromEnd)
+		public static SerialItem Compile(Type type)
         {
-            SerialItem result = CompileField(type, derived);
-            result.DerivedOffsetFromEnd = offsetFromEnd;
+            SerialItem result = CompileField(type);
             return result;
-        }
-
-        private static bool CompileDerived(System.Reflection.FieldInfo[] fields, SerialItem[] result)
-        {
-            int numDerived = 0;
-            int derivedAt = 0;
-            for (int i = 0; i < fields.Length; i++)
-            {
-                Type t = fields[i].FieldType;
-                if (BreaksDerivation(t))
-                    return false;
-                if (CanUtilizeDerivation(t))
-                {
-                    numDerived++;
-                    derivedAt = i;
-                }
-            }
-            if (numDerived != 1)
-                return false;
-
-            int derivationOffset = 0;
-            for (int i = derivedAt + 1; i < fields.Length; i++)
-                derivationOffset += GetConstantSize(fields[i].FieldType);
-            for (int i = 0; i < fields.Length; i++)
-            {
-                Type t = fields[i].FieldType;
-                if (derivedAt == i)
-                    result[i] = Compile(t, true, derivationOffset);
-                else
-                    result[i] = Compile(t, false, 0);
-            }
-
-            return true;
         }
 
         /// <summary>
         /// Auto-compiles a whole set of SerialItem derivates depending on the configuration of fields
-        /// For up to three fields, the method will attempt to find a derived composition. If no such could be identified,
-        /// or if more than three fields are provided, embedded overloads are used to all types.
         /// </summary>
         /// <param name="fields">Field composition to find a serial item solution for</param>
         /// <returns></returns>
         public static SerialItem[] Compile(System.Reflection.FieldInfo[] fields)
         {
             SerialItem[] result = new SerialItem[fields.Length];
-            if (fields.Length <= 3 && AllowSizeDerivation)
-            {
-                if (CompileDerived(fields, result))
-                    return result;
-            }
             for (int i = 0; i < result.Length; i++)
-                result[i] = Compile(fields[i].FieldType, false, 0);
+                result[i] = Compile(fields[i].FieldType);
             return result;
         }
 
-        /// <summary>
-        /// Identifies whether the specified type completely prevents derivation
-        /// </summary>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        public static bool BreaksDerivation(Type t)
-        {
-			if (!AllowSizeDerivation)
-				return true;
-			if (t.IsPrimitive)
-                return false;
-            if (t == typeof(string))
-                return false;
-			if (t.IsArray)
-			{
-				return !HasConstantSize(t.GetElementType());
-                //return true;
-			}
-
-            System.Reflection.FieldInfo[] fields = t.GetFields(System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-
-
-            int numDerived = 0;
-            for (int i = 0; i < fields.Length; i++)
-            {
-                Type subT = fields[i].FieldType;
-                if (BreaksDerivation(subT))
-                    return true;
-                if (CanUtilizeDerivation(subT))
-                {
-                    numDerived++;
-                }
-            }
-            if (fields.Length <= 3)
-                return numDerived > 1;
-            return numDerived > 0;
-        }
-
-        /// <summary>
-        /// Identifies whether the specified type could at all use derivation
-        /// </summary>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        public static bool CanUtilizeDerivation(Type t)
-        {
-            if (t.IsPrimitive || !AllowSizeDerivation)
-                return false;
-            if (t == typeof(string))
-                return true;
-            if (t.IsArray)
-                return HasConstantSize(t.GetElementType());
-
-            System.Reflection.FieldInfo[] fields = t.GetFields(System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-
-            if (fields.Length > 3)
-                return false;
-
-            int numDerived = 0;
-            for (int i = 0; i < fields.Length; i++)
-            {
-                Type subT = fields[i].FieldType;
-                if (BreaksDerivation(subT))
-                    return false;
-                if (CanUtilizeDerivation(subT))
-                {
-                    numDerived++;
-                }
-            }
-            return numDerived == 1;
-        }
         private static bool HasConstantSize(Type t)
         {
             if (t.IsArray)
@@ -328,12 +216,7 @@ namespace Protocol
         /// Retrieves the underlying type of the local serial item
         /// </summary>
         public Type VariableType { get; protected set; }
-        /// <summary>
-        /// Non-0 only for derived serial items. Describes by how much the packet size must be decremeneted to derive the
-        /// size of any dynamic content. Basically, for derived types this is the size of any following constant sized elements
-        /// in the local packet.
-        /// </summary>
-        public int DerivedOffsetFromEnd { get; private set; }
+
 		public bool HasFixedSize { get; private set; }
 		public int FixedSize { get; private set; }
 
@@ -342,7 +225,7 @@ namespace Protocol
 		/// </summary>
 		/// <param name="data">Binary data array that contains the entire package</param>
 		/// <param name="offset">Reference to the current offset in that array. Must be incremented whenever data is read from the stream</param>
-		/// <param name="data_size">Total remaining data size. This value should be decremented by DerivationOffsetFromEnd prior to calling this method</param>
+		/// <param name="data_size">Total remaining data size</param>
 		/// <returns>New deserialized object (may be primitive, class, or array of primitives/classes)</returns>
 		public abstract Object Deserialize(byte[] data, ref int offset, int data_size);
         /// <summary>
@@ -419,18 +302,15 @@ namespace Protocol
 
 
 
-			public Complex(Type t, bool derived)
+			public Complex(Type t)
 				: base(t)
 			{
 				List<System.Reflection.FieldInfo> info = new List<System.Reflection.FieldInfo>();
 				buildInto(ref info, t);
 				fields = info.ToArray();
 				items = new SerialItem[fields.Length];
-				if (!derived || !CompileDerived(fields, items))
-				{
-					for (int i = 0; i < items.Length; i++)
-						items[i] = Compile(fields[i].FieldType, false, 0);
-				}
+				for (int i = 0; i < items.Length; i++)
+					items[i] = Compile(fields[i].FieldType);
 				//var test = t.GetConstructors();
 				//constructor = t.GetConstructor(Type.EmptyTypes);
 				//Debug.Assert(constructor != null);
@@ -440,7 +320,7 @@ namespace Protocol
 				Object result = Activator.CreateInstance(VariableType);
 				//constructor.Invoke(null);
 				for (int i = 0; i < items.Length; i++)
-					fields[i].SetValue(result, items[i].Deserialize(data, ref offset, data_size - items[i].DerivedOffsetFromEnd));
+					fields[i].SetValue(result, items[i].Deserialize(data, ref offset, data_size));
 				return result;
 			}
 
@@ -472,7 +352,7 @@ namespace Protocol
 
 					protected Base(Type t) : base(t)
 					{
-						element = Compile(t.GetElementType(), false, 0);
+						element = Compile(t.GetElementType());
 					}
 					public override object CreateRandom(Random random)
 					{
@@ -520,33 +400,6 @@ namespace Protocol
 					}
 				}
 
-				public class Derived : Base
-				{
-
-					public Derived(Type t)
-						: base(t)
-					{ }
-
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-					{
-						int length;
-						int available = data_size - offset;
-						length = available / element.FixedSize;
-
-						System.Array ar = System.Array.CreateInstance(element.VariableType, length);
-						for (int i = 0; i < length; i++)
-							ar.SetValue(element.Deserialize(data, ref offset, data_size), i);
-						return ar;
-					}
-
-					public override void Serialize(Object item, ByteBuffer stream)
-					{
-						System.Array field = (System.Array)item;
-						for (int i = 0; i < field.Length; i++)
-							element.Serialize(field.GetValue(i), stream);
-					}
-				}
 
 			}
 		}
@@ -622,30 +475,7 @@ namespace Protocol
                         stream.Append(field, 0, field.Length);
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(byte[]))
-                    {
-						Debug.Assert(AllowSizeDerivation);
-					}
-
-
-                    public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset);
-                        byte[] result = new byte[length];
-                        System.Array.Copy(data, offset, result, 0, length);
-                        offset += length;
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        byte[] field = (byte[])item;
-                        stream.Append(field, 0, field.Length);
-                    }
-                }
+         
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -793,36 +623,6 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(bool[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
-
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset);
-                        bool[] result = new bool[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = data[offset++] != 0;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        bool[] field = (bool[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            stream.Append((byte)(field[i] ? 1 : 0));
-                        }
-                    }
-                }
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -884,63 +684,43 @@ namespace Protocol
                     {
                         int length = ReadSize(data, ref offset, data_size);
                         RequireBytes(length, data_size - offset);
+
+                        char[] result = Encoding.UTF8.GetString(data, offset, length).ToCharArray();
+                        offset += length;
+                        /*
                         char[] result = new char[length];
 
                         for (int i = 0; i < length; i++)
                             result[i] = (char)data[offset++];
+                        */
                         return result;
                     }
 
                     public override void Serialize(Object item, ByteBuffer stream)
                     {
-                        char[] field = (char[])item;
-                        stream.WriteSize(field.Length);
-                        for (int i = 0; i < field.Length; i++)
+                        byte[] outField = Encoding.UTF8.GetBytes(new string((char[])item));
+
+                        //char[] field = (char[])item;
+                        stream.WriteSize(outField.Length);
+                        for (int i = 0; i < outField.Length; i++)
                         {
-                            stream.Append((byte)field[i]);
+                            stream.Append(outField[i]);
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(char[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
-
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset);
-                        char[] result = new char[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = (char)data[offset++];
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        char[] field = (char[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            stream.Append((byte)field[i]);
-                        }
-                    }
-                }
+        
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
-                RequireBytes(1, data_size - offset);
-                return (char)(data[offset++]);
+                throw new ArgumentException("Deserializing a single character is probably not used and produces undesired effects");
+                //RequireBytes(1, data_size - offset);
+                //return (char)(data[offset++]);
             }
 
             public override void Serialize(Object item, ByteBuffer stream)
             {
-                stream.Append((byte)((char)item));
+                throw new ArgumentException("Serializing a single character is probably not used and produces undesired effects");
+                //stream.Append((byte)((char)item));
             }
 			public override object CreateRandom(Random random)
 			{
@@ -1007,37 +787,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(Int16[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
 
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 2;
-                        Int16[] result = new Int16[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToInt16(data, offset);
-                            offset += 2;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        Int16[] field = (Int16[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            stream.AppendU16((UInt16)field[i]);
-                        }
-                    }
-                }
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -1121,37 +871,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(UInt16[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
 
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 2;
-                        UInt16[] result = new UInt16[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToUInt16(data, offset);
-                            offset += 2;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        UInt16[] field = (UInt16[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            stream.AppendU16(field[i]);
-                        }
-                    }
-                }
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -1235,37 +955,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(Int32[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
 
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 4;
-                        Int32[] result = new Int32[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToInt32(data, offset);
-                            offset += 4;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        Int32[] field = (Int32[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            stream.AppendU32((UInt32)field[i]);
-                        }
-                    }
-                }
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -1349,37 +1039,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-				{
-                    public Derived()
-                        : base(typeof(UInt32[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
 
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 4;
-                        UInt32[] result = new UInt32[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToUInt32(data, offset);
-                            offset += 4;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        UInt32[] field = (UInt32[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            stream.AppendU32(field[i]);
-                        }
-                    }
-                }
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -1470,46 +1130,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-				{
-                    public Derived()
-                        : base(typeof(Int64[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
-
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 8;
-                        Int64[] result = new Int64[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToInt64(data, offset);
-                            offset += 8;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        Int64[] field = (Int64[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            UInt64 v = (UInt64)field[i];
-                            stream.Append((byte)(v & 0xFF),
-                                        (byte)((v >> 8) & 0xFF),
-                                        (byte)((v >> 16) & 0xFF),
-                                        (byte)((v >> 24) & 0xFF),
-                                        (byte)((v >> 32) & 0xFF),
-                                        (byte)((v >> 40) & 0xFF),
-                                        (byte)((v >> 48) & 0xFF),
-                                        (byte)((v >> 56) & 0xFF)
-                                        );
-                        }
-                    }
-                }
+          
             }
 
 
@@ -1608,38 +1229,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(UInt64[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
 
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 8;
-                        UInt64[] result = new UInt64[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToUInt64(data, offset);
-                            offset += 8;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        UInt64[] field = (UInt64[])item;
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            UInt64 v = field[i];
-                            stream.AppendU64(v);
-                        }
-                    }
-                }
 
             }
 
@@ -1736,39 +1326,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(float[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
 
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 4;
-                        float[] result = new float[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToSingle(data, offset);
-                            offset += 4;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        float[] field = (float[])item;
-                        BitCast cast = new BitCast();
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            cast.FloatValue = field[i];
-                            stream.AppendU32(cast.IntValue);
-                        }
-                    }
-                }
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -1875,39 +1433,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : Base
-                {
-                    public Derived()
-                        : base(typeof(double[]))
-					{
-						Debug.Assert(AllowSizeDerivation);
-					}
 
-
-					public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                    {
-                        int length = (data_size - offset) / 8;
-                        double[] result = new double[length];
-
-                        for (int i = 0; i < length; i++)
-                        {
-                            result[i] = BitConverter.ToDouble(data, offset);
-                            offset += 8;
-                        }
-                        return result;
-                    }
-
-                    public override void Serialize(Object item, ByteBuffer stream)
-                    {
-                        double[] field = (double[])item;
-                        BitCast cast = new BitCast();
-                        for (int i = 0; i < field.Length; i++)
-                        {
-                            cast.FloatValue = field[i];
-                            stream.AppendU64(cast.IntValue);
-                        }
-                    }
-                }
             }
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
@@ -1982,6 +1508,10 @@ namespace Protocol
                     {
                         throw new Exception("Streaming exception: Unable to deserialize variable. Expected at least " + length + " additional bytes to deserialize string but got " + remaining + " bytes left.");
                     }
+                    object rs = Encoding.UTF8.GetString(data, offset, length);
+                    offset += length;
+                    return rs;
+                    /*
 
                     char[] chars = new char[length];
                     for (int i = 0; i < length; i++)
@@ -1992,6 +1522,7 @@ namespace Protocol
                         chars[i] = c;
                     }
                     return new string(chars);
+                    */
                 }
 
                 public override void Serialize(Object item, ByteBuffer stream)
@@ -2002,46 +1533,18 @@ namespace Protocol
                         stream.WriteSize(0);
                         return;
                     }
-                    stream.WriteSize(v.Length);
 
-                    for (int i = 0; i < v.Length; i++)
-                        stream.Append((byte)v[i]);
+                    byte[] bytes = Encoding.UTF8.GetBytes(v);
+
+                    stream.WriteSize(bytes.Length);
+                    stream.Append(bytes, 0, bytes.Length);
+
+                    //for (int i = 0; i < bytes.Length; i++)
+                        //stream.Append((byte)v[i]);
                     return;
                 }
             }
-            public class Derived : Base
-			{
-				public Derived()
-				{
-					Debug.Assert(AllowSizeDerivation);
-				}
 
-				public override Object Deserialize(byte[] data, ref int offset, int data_size)
-                {
-                    int length = data_size - offset;
-
-                    char[] chars = new char[length];
-                    for (int i = 0; i < length; i++)
-                    {
-                        char c = (char)data[offset++];
-                        if (c == 0)
-                            c = ' ';
-                        chars[i] = c;
-                    }
-                    return new string(chars);
-                }
-
-                public override void Serialize(Object item, ByteBuffer stream)
-                {
-                    string v = (string)item;
-                    if (v == null)
-                        return;
- 
-                    for (int i = 0; i < v.Length; i++)
-                        stream.Append((byte)v[i]);
-                    return;
-                }
-            }
         }
 
     }
@@ -2066,14 +1569,14 @@ namespace Protocol
             if (isArray)
             {
                 items = new SerialItem[1];
-                items[0] = SerialItem.Compile(serializable, SerialItem.CanUtilizeDerivation(serializable), 0);
+                items[0] = SerialItem.Compile(serializable);
             }
             else
             {
                 if (isPrimitive)
                 {
                     items = new SerialItem[1];
-                    items[0] = SerialItem.Compile(serializable, SerialItem.AllowSizeDerivation, 0);
+                    items[0] = SerialItem.Compile(serializable);
                 }
                 else
                 {
@@ -2137,7 +1640,7 @@ namespace Protocol
                 item = Activator.CreateInstance(serializable);
 				for (int i = 0; i < items.Length; i++)
 					//fields[i].SetValueDirect(items[i].VariableType.ref, null);
-					fields[i].SetValue(item, items[i].Deserialize(data, ref offset, dataSize - items[i].DerivedOffsetFromEnd));
+					fields[i].SetValue(item, items[i].Deserialize(data, ref offset, dataSize));
             }
             if (offset != dataSize)
                 throw new Exception("Streaming exception: Unable to deserialize " + serializable.ToString() + ". Expected an object of size " + offset + " bytes, but remote end sent " + dataSize + " bytes");
