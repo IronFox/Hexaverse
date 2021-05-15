@@ -81,7 +81,7 @@ namespace ServerManager
 
 		static ServerInfoReceiver()
 		{
-			staticMap.Register<InfoPackage>(0, (client0, package) =>
+			staticMap.Register<InfoPackage>("ServerInfoReceiver", 0, (client0, package) =>
 			{
 				var client = (ServerInfoReceiver)client0;
 				client.LastUpdate = new Update(package);

@@ -28,25 +28,25 @@ namespace ServerManager
 
 		static ControlConnection()
 		{
-			staticMap.Register<string>((uint)Channel.Complete, (client0, package) =>
+			staticMap.Register<string>("Control.OnComplete",(uint)Channel.Complete, (client0, package) =>
 			{
 				var client = (ControlConnection)client0;
 			});
-			staticMap.Register<string>((uint)Channel.Error, (client0, package) =>
+			staticMap.Register<string>("Control.OnError", (uint)Channel.Error, (client0, package) =>
 			{
 				var client = (ControlConnection)client0;
 				client.OnError(package);
 			});
-			staticMap.Register<string>((uint)Channel.Context, (client0, package) =>
+			staticMap.Register<string>("Control.OnContext", (uint)Channel.Context, (client0, package) =>
 			{
 				var client = (ControlConnection)client0;
 			});
-			staticMap.Register<string>((uint)Channel.Response, (client0, package) =>
+			staticMap.Register<string>("Control.OnResponse", (uint)Channel.Response, (client0, package) =>
 			{
 				var client = (ControlConnection)client0;
 				client.OnResponse(package);
 			});
-			staticMap.RegisterSignal((uint)Channel.ExecutionDone, (client0) =>
+			staticMap.RegisterSignal("Control.OnExecutionDone", (uint)Channel.ExecutionDone, (client0) =>
 			{
 				var client = (ControlConnection)client0;
 				client.OnExecutionDone();

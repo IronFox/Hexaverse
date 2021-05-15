@@ -51,6 +51,7 @@ namespace Protocol
 	{
 		private SerialInterface processor;
 		public bool LoggedInOnly { get; private set; }
+		public string Label { get; }
 
 
 		virtual protected void OnReceive(Client sender, Object received) { throw new Exception("Expected signal but received object on channel " + ChannelID); }
@@ -58,8 +59,9 @@ namespace Protocol
 
 		public uint ChannelID { get; private set; }
 
-		public ChannelHandler(uint myChannel, Type Serializable, bool loggedInOnly)
+		public ChannelHandler(string label, uint myChannel, Type Serializable, bool loggedInOnly)
 		{
+			Label = label;
 			LoggedInOnly = loggedInOnly;
 			ChannelID = myChannel;
 			if (Serializable != typeof(void))
@@ -92,8 +94,8 @@ namespace Protocol
 			handler(sender, (T)received);
 		}
 
-		public GenericChannelHandler(uint id, Action<Client, T> action, bool loggedInOnly)
-			: base(id, typeof(T), loggedInOnly)
+		public GenericChannelHandler(string label, uint id, Action<Client, T> action, bool loggedInOnly)
+			: base(label, id, typeof(T), loggedInOnly)
 		{
 			handler = action;
 		}
@@ -108,8 +110,8 @@ namespace Protocol
 		{
 			handler(sender);
 		}
-		public SignalHandler(uint id, Action<Client> action, bool loggedInOnly)
-			: base(id, typeof(void), loggedInOnly)
+		public SignalHandler(string label, uint id, Action<Client> action, bool loggedInOnly)
+			: base(label, id, typeof(void), loggedInOnly)
 		{
 			handler = action;
 		}
@@ -207,15 +209,15 @@ namespace Protocol
 			return channels[channelID];
 		}
 
-		public void Register<T>(uint channelID, Action<Client, T> OnReceive, bool requireLogIn = true)
+		public void Register<T>(string label,  uint channelID, Action<Client, T> OnReceive, bool requireLogIn = true)
 		{
-			ChannelHandler channel = new GenericChannelHandler<T>(channelID, OnReceive, requireLogIn);
+			ChannelHandler channel = new GenericChannelHandler<T>(label, channelID, OnReceive, requireLogIn);
 			channels[channelID] = channel;
 		}
 
-		public void RegisterSignal(uint channelID, Action<Client> onReceive, bool requireLogIn = true)
+		public void RegisterSignal(string label, uint channelID, Action<Client> onReceive, bool requireLogIn = true)
 		{
-			ChannelHandler channel = new SignalHandler(channelID, onReceive, requireLogIn);
+			ChannelHandler channel = new SignalHandler(label, channelID, onReceive, requireLogIn);
 			channels[channelID] = channel;
 		}
 	}
