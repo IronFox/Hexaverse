@@ -32,6 +32,8 @@ server/config/tutorial.hsf
 predefinedPlanets/*.ini
 server/config/declaration.xml
 lua/*.lua
+lua/AI/*.lua
+lua/util/*.lua
 lua/*.txt
 lua/distributions/*.lua
 
