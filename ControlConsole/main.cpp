@@ -11,6 +11,7 @@
 #include <serverProcess.h>
 #include <container/production_pipe.h>
 #include "../client/version.h"
+#include <string/encoding.h>
 
 using namespace DeltaWorks;
 
@@ -76,9 +77,9 @@ namespace Console
 {
 	//std::recursive_mutex	mutex;
 	//StringBuffer	input;
-	String	context;
-	StringBuffer	input;
-	String	lastLine;
+	StringW	context;
+	UTF32StringBuffer	input;
+	StringW	lastLine;
 	HANDLE handle;
 	COORD lastCursorPosition;
 
@@ -111,12 +112,13 @@ namespace Console
 		bool brk = true;
 	}
 
-	StringRef Truncate(const StringRef&ref, count_t toChars)
-	{
-		if (ref.GetLength() <= toChars)
-			return ref;
-		return StringRef(ref.pointer() + (ref.GetLength() - toChars),toChars);
-	}
+	template <typename T>
+		StringType::Sequence<T> TruncateToEnd(const StringType::Sequence<T>&ref, count_t toChars)
+		{
+			if (ref.GetLength() <= toChars)
+				return ref;
+			return ref.SubStringRef(ref.GetLength()-toChars);
+		}
 
 	static void ClearLine()
 	{
@@ -130,11 +132,13 @@ namespace Console
 	}
 
 	
-	String AssembleLine()
+	StringW AssembleLine()
 	{
-		String rs = Truncate(context.ref(),30);
+		StringW rs = StringW(TruncateToEnd(context,30));
 		rs += '>';
-		rs += Truncate(input.ToStringRef(),Sys::getConsoleWidth() - rs.Length());
+		StringW inp;
+		StringEncoding::UTF32::ToUTF16(TruncateToEnd(input.ToStringRef(),Sys::getConsoleWidth() - rs.Length()), inp);
+		rs += inp;
 		return rs;
 	}
 
@@ -144,26 +148,26 @@ namespace Console
 	}
 
 	
-	bool	AddChar(char c)
+	bool	AddChar(char32_t c)
 	{
 		bool result = true;
 		switch (c)
 		{
-			case '\b':
+			case U'\b':
 				if (input.IsNotEmpty())
 				{
 					input.EraseLast();
 				}
 			break;
-			case '\t':
+			case U'\t':
 			{
 				CompleteInput();
 			}
 			break;
-			case '\n':
-			case '\r':
+			case U'\n':
+			case U'\r':
 				//std::cout << "\n" + lastLine;
-				result = Dispatch(input.ToStringRef());
+				result = Dispatch( StringEncoding::UTF32::ToUTF8(input.ToStringRef()));
 				input.Clear();
 			break;
 			default:
@@ -193,7 +197,7 @@ namespace Handler
 			updates << update;
 		}
 		else
-			std::cout << '='<<ctx<<std::endl;
+			std::wcout << '='<<StringEncoding::UTF8::ToUTF16(ctx)<<std::endl;
 	}
 
 
@@ -207,7 +211,7 @@ namespace Handler
 			updates << update;
 		}
 		else
-			std::cout << '+'<<output<<std::endl;
+			std::wcout << '+'<<StringEncoding::UTF8::ToUTF16(output)<<std::endl;
 	}
 
 	void	OnError(Package::NetString<1024>&error)
@@ -220,7 +224,7 @@ namespace Handler
 			updates << update;
 		}
 		else
-			std::cout << '-'<<error<<std::endl;;
+			std::wcout << '-'<<StringEncoding::UTF8::ToUTF16(error)<<std::endl;;
 	}
 
 	void	OnComplete(Package::NetString<1024>&input)
@@ -265,14 +269,14 @@ std::mutex	bufferedCommandsMutex;
 
 void	CompleteInput()
 {
-	StringRef line = Console::input.ToStringRef();
+	UTF32StringRef line = Console::input.ToStringRef();
 	//if (line.length() >= 2 && line.beginsWith("ex"))
 	//	Console::SetInput("exit");
 	//else
 	{
 		if (client.IsConnected())
 		{
-			Channels::complete.SendTo(client,line);
+			Channels::complete.SendTo(client, StringEncoding::UTF32::ToUTF8(line) );
 		}
 	}
 }
@@ -444,7 +448,7 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 				LogLine("Connection established to "+peer.ToString()+" after "+String(connectionAttemptStarted.ElapsedSeconds()));
 				Channels::command.SendTo(peer,"/Server/describeStatus");
 				if (Console::context.IsNotEmpty())
-					Channels::command.SendTo(peer,"cd /"+Console::context);
+					Channels::command.SendTo(peer,"cd /"+ StringEncoding::UTF16::ToUTF8(Console::context));
 			}
 			if (connectionRetryThread.joinable())
 			{
@@ -516,10 +520,10 @@ public:
 		while (!application_shutting_down)
 		{
 			//change _getch() -> _getwch() due to https://developercommunity.visualstudio.com/content/problem/245451/unbuffered-console-io-is-broken-only-in-release-bu.html
-			int ch = _getwch();
+			wint_t ch = _getwch();
 			if (ch == 0xE0 || ch == 0)
 			{
-				int next = _getwch();
+				wint_t next = _getwch();
 				switch(next)
 				{
 					case 72:
@@ -546,9 +550,18 @@ public:
 			}
 			else
 			{
-				char c = ((char)(BYTE)(unsigned)ch);
+				StringEncoding::UTF16::TChar c;
+				c.encoded[0] = ch;
+				c.numCharsUsed = StringEncoding::UTF16::GetLength((wchar_t)ch);
+				for (BYTE k = 1; k < c.numCharsUsed; k++)
+					c.encoded[k] = _getwch();
+				char32_t c32 = StringEncoding::UTF16::ToUTF32(c);
+
+				StringEncoding::UTF8::TChar c8;
+				StringEncoding::UTF32::ToUTF8(c32,c8);
+
 				TUpdate update;
-				update.content = c;
+				update.content = c8.ToRef();
 				update.type = TUpdate::AppendToInput;
 				updates << update;
 			}
@@ -614,6 +627,7 @@ int main(int argc, char* argv[])
 	
 	SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
 	Sys::DisableConsoleQuickEdit();
+	std::locale::global(std::locale(""));
 	Console::handle = GetStdHandle(STD_OUTPUT_HANDLE);
 	ASSERT__(DuplicateHandle(GetCurrentProcess(),GetCurrentThread(),GetCurrentProcess(),&mainThreadHandle,DUPLICATE_SAME_ACCESS,FALSE,0));
 
@@ -662,7 +676,7 @@ int main(int argc, char* argv[])
 		windowChecker.Start();
 		//Console::Refresh();
 		Console::_UpdateLastLine();
-		std::cout << Console::lastLine;
+		std::wcout << Console::lastLine;
 		Console::ScanCursorPosition();
 		Buffer0<String>	newLines;
 		while (!application_shutting_down)
@@ -692,23 +706,29 @@ int main(int argc, char* argv[])
 							newLines.MoveAppend(up->content);
 						break;
 						case TUpdate::NewContext:
-							Console::context.swap(up->content);
+							StringEncoding::UTF8::ToUTF16(up->content,Console::context);
 							contextUpdated = true;
 						break;
 						case TUpdate::SetInput:
-							Console::input = up->content;
+							Console::input = StringEncoding::UTF8::ToUTF32(up->content);
 							inputChanged = true;
 						break;
 						case TUpdate::AppendToInput:
-							foreach (up->content,c)
-								anyDispatchFailed |= !Console::AddChar(*c);
+						{
+							StringEncoding::UTF8::Scanner scanner(up->content);
+							while (scanner.HasNext())
+							{
+								char32_t c32 = scanner.Next();
+								anyDispatchFailed |= !Console::AddChar(c32);
+							}
 							inputChanged = true;
+						}
 						break;
 						case TUpdate::MoveHistoryDown:
 							if (historyAt < history.Count())
 							{
 								historyAt ++;
-								Console::input = (historyAt < history.Count() ? history[historyAt] : "");
+								Console::input = StringEncoding::UTF8::ToUTF32(historyAt < history.Count() ? history[historyAt] : "");
 								inputChanged = true;
 							}
 						break;
@@ -717,7 +737,7 @@ int main(int argc, char* argv[])
 							{
 								historyAt--;
 
-								Console::input = (history[historyAt]);
+								Console::input = StringEncoding::UTF8::ToUTF32(history[historyAt]);
 								inputChanged = true;
 							}
 							break;
@@ -737,11 +757,11 @@ int main(int argc, char* argv[])
 				Console::RestoreCursorPosition();
 				Console::ClearLine();
 				foreach (newLines,line)
-					printf("%s\n",line->c_str());
+					printf("%ls\n",  StringEncoding::UTF8::ToUTF16(*line).c_str());
 				newLines.Clear();
 				if (inputChanged || contextUpdated)
 					Console::_UpdateLastLine();
-				printf("%s",Console::lastLine.c_str());
+				printf("%ls",Console::lastLine.c_str());
 				Console::ScanCursorPosition();
 			}
 			else
@@ -749,7 +769,7 @@ int main(int argc, char* argv[])
 				if (inputChanged || contextUpdated)
 				{
 					Console::RestoreCursorPosition();
-					const String newLine = Console::AssembleLine();
+					const StringW newLine = Console::AssembleLine();
 					index_t match = 0;
 					while (match < Console::lastLine.Length() && match < newLine.Length() && newLine[match] == Console::lastLine[match])
 						match++;
@@ -758,14 +778,16 @@ int main(int argc, char* argv[])
 					{
 						Console::ClearLine();
 						Console::lastLine = newLine;
-						std::cout << Console::lastLine;
+						std::wcout << Console::lastLine;
 					}
 					else
 					{
 						const count_t eraseOld = Console::lastLine.Length() - match;
 						for (index_t i = 0; i < eraseOld; i++)
 							printf("\b \b");
-						printf("%s",newLine.GetPointer() + match);
+						//StringW ref = (newLine.GetPointer() + match);
+						//std::wcout << ref;
+						printf("%ls",newLine.GetPointer() + match);
 						if (newLine.Length() != Console::lastLine.Length())
 							forceChange = true;
 						Console::lastLine = newLine;
