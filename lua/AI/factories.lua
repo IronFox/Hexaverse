@@ -10,13 +10,16 @@ function AirTotal(threat)
 end;
 
 function GroundMobileTotal(support)
-	return math.min(support.attackGroundMobile,support.sensorGroundMobile);
+	return math.min(support.attackGroundMobile,support.sensorGroundMobile) * 0.8 + math.max(support.attackGroundMobile,support.sensorGroundMobile) * 0.2 + virtualBaseSupport;
 end;
 
 function AirMobileTotal(support)
 	return math.min(support.attackAirMobile,support.sensorAirMobile);
 end;
 
+
+
+virtualBaseSupport = 0; -- assures player doesn't immediately trigger production
 
 State = {};
 
@@ -177,6 +180,27 @@ end;
 function ProcessFactories()
 
 	Game.Log("AI: Processing factories");
+	
+	if virtualBaseSupport == 0 then
+		local count = 0;
+		local sum = 0;
+		local port0 = Game.AI.GetNexusPort(1);
+		if port0 then
+			local loc = port0.location;
+			for _,turret in pairs(Game.Type.turrets) do
+				if turret.mountType == 'Vehicle' then
+					for _,base in pairs(Game.Type.vehicleBases) do
+						count = count + 1;
+						sum = sum + Game.AI.Estimate(1, Game.Type.Vehicle(turret,base),loc,Game.myFaction).totalFriendlyImpact;
+					end;
+				end;
+			end;
+		end;
+		if count > 0 then
+			virtualBaseSupport = sum / count / 10;
+			Game.Log('Updated virtual base support to '..virtualBaseSupport..', iterating over '..count..' type(s)');
+		end;
+	end;
 
 
 	local vehiclePlantType = Game.Type.units['Vehicle Plant'];
