@@ -225,7 +225,7 @@ Table-Type: TurretType extends Type
 {
 	int		weight;						-- Weight affecting mobile entity speed (unresearched)
 	int		GetWeight(Faction);			-- Retrieves the researched weight for a given faction
-	string	mountType;					-- 'Vehicle', 'TowerOnly'
+	string	mountType;					-- 'Vehicle', 'TowerOnly', 'Satellite' (deprecated), 'Plane'
 	bool	canAttack;					-- True if offensive, false otherwise
 	bool	detectsResources;			-- True if this turret can detect resources and look vertically into the ground
 	bool	can[Operation];				-- True if the respective operation can be performed by this turret, where [Operation] may be: 
