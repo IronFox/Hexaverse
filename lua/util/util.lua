@@ -110,15 +110,15 @@ end;
 function Util.Vis(qDistance, unitSensorRange)
 	local qSensorRange = unitSensorRange * unitSensorRange;
 	return {
-			isVisibile = qDistance < qSensorRange,
+			isVisible = qDistance < qSensorRange,
 			sensorRange = unitSensorRange,
 			quadraticSensorRange = qSensorRange,
 			quadraticDistance = qDistance
-			};
+		};
 end;
 
 
-function Util.CheckVisibility(observer --[[Unit]], observed --[[Loc]]) --[[{isVisibile:bool, sensorRange:float, quadraticSensorRange:float, quadraticDistance:float}]]
+function Util.CheckVisibility(observer --[[Unit]], observed --[[Loc]]) --[[{isVisible:bool, sensorRange:float, quadraticSensorRange:float, quadraticDistance:float}]]
 	if (observed.isSuborbital) then
 		if (observer.location.isSuborbital) then
 			local dist = QuadraticDistance(observer.location.world, observed.world);
@@ -135,7 +135,7 @@ function Util.CheckVisibility(observer --[[Unit]], observed --[[Loc]]) --[[{isVi
 			
 			local distance = QuadraticDistance(observer.location.world, observed.world);
 			local rs = Util.Vis(distance,observer.scanningRange);
-			if rs.isVisibile then
+			if rs.isVisible then
 				return rs;
 			end;
 			if (observer.groundScanningRange ~= nil) then
