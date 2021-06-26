@@ -817,7 +817,7 @@ function ProcessVehicles()
 		elseif (m.type == 'EntityDeath') then
 			local ctx = Context.New(m.unitReference,false,false);
 			local estimation = EstimateThreatFromAll(ctx,m.location,false);
-			if (estimation.damageThreat > 0) then	--knowing cause, dropping ghost
+			if (estimation.damageThreat > 0 and estimation.beingSeen) then	--knowing cause, dropping ghost
 				Game.Log("Deleting marker "..m.id.." because cause of destruction is considered known");
 				m.Destroy();
 			end;
