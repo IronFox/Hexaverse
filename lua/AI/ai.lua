@@ -23,3 +23,8 @@ function	Execute()
 	ProcessVehicles();
 end;
 
+function OnMessage(sender--[[faction]], message--[[string]])
+	if message == 'AI: Respond' then
+		Game.SendMessage(sender,'Here');
+	end;
+end;
