@@ -39,6 +39,10 @@ namespace Objects
 					associatedVehiclePlants.Clear();
 					associatedPlaneFactories.Clear();
 					associatedMobiles.Clear();
+					support = TSupport();
+					#ifndef CLIENT
+						threatLevel = TLevel();
+					#endif
 				}
 
 
@@ -442,6 +446,11 @@ namespace Objects
 		}
 
 
+		void					UpdateSupport()
+		{
+			Detail::UpdateAssociatedEntitiesAndLevels();
+		}
+
 		void					Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases)
 		{
 			LogEvent(EventSignificance::Common,"AI: Updating threat/support presence");
@@ -465,8 +474,6 @@ namespace Objects
 				auto&pole = Detail::poles[s->location.stackID];
 				pole.port = To<Objects::NexusPort>::Cast(s);
 				pole.BuildDistanceField(s->location.stackID);
-
-				pole.support = TSupport();
 				#ifndef CLIENT
 					pole.threatLevel = TLevel();
 				#endif

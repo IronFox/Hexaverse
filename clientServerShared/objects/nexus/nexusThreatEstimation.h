@@ -254,6 +254,12 @@ namespace Objects
 		@param deployHeavyVehicleBase Function to determine whether heavy vehicle bases should be used on a pole. May be null (on client)
 		*/
 		void					Update(const std::function<bool(UINT32)>&poleHasBase, const std::function<bool(const Objects::PNexusPort&)>&deployHeavyVehicleBases);
+
+		/**
+		Updates the support vector based on currently registered entities.
+		Automatically called by Update();
+		*/
+		void					UpdateSupport();
 	}
 
 }
