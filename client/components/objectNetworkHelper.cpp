@@ -236,7 +236,9 @@ namespace ObjectHelper
 	{
 		if (!v)
 			return false;
-		DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
+		#ifndef HAS_WINDOW
+			DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
+		#endif
 		const bool moveTo = mode == Objects::CursorMode::Idle && !(flags & Protocol::DirectFlags::LeftClick);
 
 		if (!Objects::ShouldQueueCommands() && v->SupportsTaskQueue())
