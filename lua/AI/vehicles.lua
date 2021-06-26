@@ -784,6 +784,8 @@ end;
 function ProcessVehicles()
 
 	ofInterestToAttacker = {};
+	threatCache = {};	--Loc -> Estimation
+	destHistory = {};
 	
 	local bomberType = Game.Type.units['Bomber'];
 	if not bomberType then
