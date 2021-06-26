@@ -392,7 +392,13 @@ namespace World
 		ChangeLock				LockOnChange() {return this;}
 
 		bool					SensoryIsInvalid()const	{return !sensoryValid;}
-
+		
+		/**
+		Starts or contiunes sensor painting and does not return until the operation is completed.
+		If sensory is already valid, the method returns immediately.
+		If sensor painting is aborted while a thread is waiting here, an exception is thrown
+		*/
+		void					AwaitValidSensors();
 
 		/**
 		Checks whether concurrent background sensor painting is currently in progress

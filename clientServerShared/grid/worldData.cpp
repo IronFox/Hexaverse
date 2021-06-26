@@ -1791,6 +1791,13 @@ namespace World
 		#endif
 	}
 
+	void					Data::AwaitValidSensors()
+	{
+		if (!PaintingSensorsConcurrently())
+			return;
+		concurrentPainting.onComplete.Wait();
+	}
+
 	void					Data::PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors)
 	{
 		ASSERT__(!PaintingSensorsConcurrently());

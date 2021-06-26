@@ -2337,6 +2337,7 @@ namespace Lua
 		terrainTable.SetFunction("GetLowestSensorStrength",[this](const Lua::Table&locTable, int height)
 		{
 			Grid::LCellIdI loc = Detail::ToLGridCell(locTable,"Location parameter #1");
+			onRequireGridSensory();
 			return World::actual.GetLowestSensorStrength(loc,height,true);
 		});
 		#endif

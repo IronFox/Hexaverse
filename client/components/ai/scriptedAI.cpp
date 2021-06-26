@@ -13,6 +13,7 @@
 #include "../io.h"
 #include "../playerControlBegin.h"
 #include "../clientRuntimeConfig.h"
+#include "../gridControl.h"
 #include <objects/nexus/nexusThreatEstimation.h>
 
 namespace AI::Script
@@ -360,6 +361,35 @@ namespace AI::Script
 				Network::Channels::signalTerrainMod.SendTo(Network::client,job);
 			}
 
+			static Sys::Semaphore gridCheckSem(0);
+			void	CheckGridSensory()
+			{
+				if (!World::actual.SensoryIsInvalid())
+					return;
+
+				LogEvent(EventSignificance::Uncommon,"ScriptedAI: Causing main thread to validate sensory");
+				mainThreadExecute << Job("Validate sensory",[]()
+				{
+					for (int tries = 0; tries < 10; tries++)
+					{
+						ClientGrid::CheckSensory();
+						World::actual.AwaitValidSensors();
+						if (World::actual.SensoryIsInvalid())
+						{
+							Sleep(100);
+							continue;
+						}
+						break;
+					}
+					gridCheckSem.grant();
+				});
+				gridCheckSem.request();
+				LogEvent(EventSignificance::Uncommon,"ScriptedAI: Main thread completed validation");
+				if (World::actual.SensoryIsInvalid())
+					throw new Lua::Exception(CLOCATION,"Unable to validate senory in time");
+				LogEvent(EventSignificance::Uncommon,"ScriptedAI: Main thread validated sensory");
+			}
+
 			void	DropAllTasks(const TUniqueID&entityID)
 			{
 				Protocol::DropTasks cmd;
@@ -605,6 +635,9 @@ namespace AI::Script
 			#ifdef HAS_WINDOW
 				thread.api.SetSelectedUnit(Objects::selectedEntity,false);
 			#endif
+
+			Objects::NexusThreat::UpdateSupport();
+
 			LogEvent(EventSignificance::PerformanceMeasurement,"AI::Script: Rebuilt entities in "+String(t0.ElapsedSeconds())+" seconds");
 		}
 
@@ -1005,6 +1038,7 @@ namespace AI::Script
 
 		api.onSimpleJobStart = Callback::SimpleJobStart;
 		api.onGridBatchJobStart = Callback::GridBatchJobStart;
+		api.onRequireGridSensory = Callback::CheckGridSensory;
 
 
 		api.Create("AI:"+FileSystem::PathToString(FileSystem::ExtractFileName(scriptPath)));
