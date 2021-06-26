@@ -117,7 +117,7 @@ namespace Objects
 		String		Type::GetTagStr() const
 		{
 			if (tag != 0)
-				return String(tag);
+				return String(StringType::CastExpression<char>(StringRef(&tag,1)));
 			return '('+name+") ";
 		}
 

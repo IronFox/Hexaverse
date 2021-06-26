@@ -120,7 +120,7 @@ namespace Objects
 				{
 					label.MarkBriefEnd();
 					label << "Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of "
-					+Resource::Minerals.GetTagStr()+" and "+String(TimeResourceTag())+"."
+					+Resource::Minerals.GetTagStr()+" and "+TimeResourceString()+"."
 					" A vehicle plant that does not have access to the necessary resources switches off immediately."
 					" Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure."
 					;

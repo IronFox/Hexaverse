@@ -657,6 +657,7 @@ namespace Objects
 	//static_assert((index_t)TextoutResourceTagOffset + Resource::table.GetSize()+2 < (index_t)'\n',"Relocate tag offset");
 	//static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
 	static inline char TimeResourceTag() {return (char)1;}
+	static inline String TimeResourceString() {char t = TimeResourceTag(); return StringType::CastExpression<char>(StringRef(&t,1));}
 	static inline char TrafficResourceTag() {return (char)2;}
 	static inline bool IsTag(char32_t c) {return c == TimeResourceTag() || c == TrafficResourceTag() || Resource::table.GetTypeByTag(c) != nullptr;}
 	String GetTagName(char32_t c);

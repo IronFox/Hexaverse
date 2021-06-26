@@ -360,7 +360,7 @@ namespace Objects
 					outResult.GetLastLine() += "/"+String(rawPrice);
 				if (rounds)
 				{
-					outResult.GetLastLine() += "  "+String(TimeResourceTag()) + String(rounds);
+					outResult.GetLastLine() += "  "+TimeResourceString() + String(rounds);
 					if (rounds != rawRounds)
 						outResult.GetLastLine() += "/"+String(rawRounds);
 				}
