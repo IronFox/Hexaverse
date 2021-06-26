@@ -465,7 +465,7 @@ function ProcessMobile(v)
 	local primaryAA = true;
 	
 	for _,u in pairs(Game.myUnits) do
-		if u ~= v and u.turret and QuadraticDistance(v.location.world,u.location.world) < 25.0 then
+		if u.type.isMobile and u ~= v and u.turret and QuadraticDistance(v.location.world,u.location.world) < 25.0 then
 			if u.turret.trajectoryType == 'AAMissile' then
 				if Util.IsGreater(v,u) then
 					primaryAA = false;
