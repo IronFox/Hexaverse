@@ -268,6 +268,27 @@ namespace Lua
 			return f;
 		}
 
+		Objects::PAlliance DecodeAlliance(const Lua::Table&luaAlliance, bool allowNull, const String&ctx, const String&pname)
+		{
+			if (!luaAlliance)
+			{
+				if (allowNull)
+					return nullptr;
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" is nil");
+			}
+			TUniqueID id;
+			String sid;
+			if (!luaAlliance.GetField("id",sid))
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" is not a faction");
+			if (!id.Decode(sid))
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" is not a faction");
+
+			Objects::PAlliance f = Objects::Alliance::FindByID(id);
+			if (!f)
+				throw Lua::Exception(CLOCATION,ctx+": "+pname+" does not point to an existing alliance");
+			return f;
+		}
+
 	}
 
 
@@ -1006,6 +1027,30 @@ namespace Lua
 		gameTable.SetFunction("Log",[this](const String&msg)
 		{
 			LogEvent(EventClass::Preset::scriptMessage,program->GetName()+"(Lua): "+msg);
+		});
+
+		gameTable.SetFunction("SendMessage",[this](const Lua::Table&target, const String&msg)
+		{
+			if (!target)
+			{
+				if (!onMessageBroadcast)
+					throw Lua::Exception(CLOCATION,"Game.SendMessage(): onMessageBroadcast not set");
+				onMessageBroadcast(msg);
+				return;
+			}
+			if (!target.HasField("alliance"))
+			{
+				Objects::PAlliance a = Detail::DecodeAlliance(target,false,"Game.SendMessage()","target");
+				if (!onMessageToAlliance)
+					throw Lua::Exception(CLOCATION,"Game.SendMessage(): onMessageToAlliance not set");
+				onMessageToAlliance(a,msg);
+				return;
+			}
+
+			Objects::PFaction f = Detail::DecodeFaction(target, false,"Game.SendMessage()","target");
+			if (!onMessageToFaction)
+				throw Lua::Exception(CLOCATION,"Game.SendMessage(): onMessageToFaction not set");
+			onMessageToFaction(f,msg);
 		});
 
 
@@ -2337,6 +2382,8 @@ namespace Lua
 		terrainTable.SetFunction("GetLowestSensorStrength",[this](const Lua::Table&locTable, int height)
 		{
 			Grid::LCellIdI loc = Detail::ToLGridCell(locTable,"Location parameter #1");
+			if (!onRequireGridSensory)
+				throw Lua::Exception(CLOCATION,"Game.Terrain.GetLowestSensorStrength(): onRequireGridSensory is not set");
 			onRequireGridSensory();
 			return World::actual.GetLowestSensorStrength(loc,height,true);
 		});

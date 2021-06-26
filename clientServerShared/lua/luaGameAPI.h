@@ -140,6 +140,10 @@ namespace Lua
 		std::function<void(index_t)>			onVisualMarkerDelete;
 		std::function<void()>					onVisualMarkerFlush;
 
+		std::function<void(const String&)>		onMessageBroadcast;
+		std::function<void(const Objects::PFaction&, const String&)>		onMessageToFaction;
+		std::function<void(const Objects::PAlliance&, const String&)>		onMessageToAlliance;
+
 		std::function<void(const TUniqueID&, bool)>	onEnableWorkingStructure,
 													onUpdateMobileAutomation,
 													onUpdateSleep;

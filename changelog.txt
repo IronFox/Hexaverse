@@ -1,4 +1,5 @@
 v0.9.13
+	+ AI: Scripts can now send and receive messages
 	> Bottom left resource display will now always show own compound status, regardless of unit selection
 	> Health and progress bars are no longer see-through
 	> Current entity health is now auto-adjusted when researching max health

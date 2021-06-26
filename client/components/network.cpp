@@ -757,10 +757,13 @@ namespace Network
 			else
 				LogEvent(cls ,e.get(),msg.message,origin);
 
-			#ifdef HAS_WINDOW
-				if (cls.flavor == EventFlavor::ChatMessage)
+			if (cls.flavor == EventFlavor::ChatMessage)
+			{
+				#ifdef HAS_WINDOW
 					HUD::FactionTable::SignalChatMessage(f,msg.message);
-			#endif
+				#endif
+				AI::Script::SignalChatMessage(f,msg.message);
+			}
 
 		}
 

@@ -148,6 +148,7 @@ namespace AI::Script
 			Lua::Function<void(Lua::Reference)> init;
 			Lua::Function<String(Lua::Reference)> checkStateIsLoopFree;
 			Lua::Function<void()> execute,selectionChanged;
+			Lua::Function<void(Lua::Table,const String&)> onMessage;
 
 			bool			disallowEnqueue = false;
 
@@ -568,6 +569,24 @@ namespace AI::Script
 					rs.error = Lua::API::TExportResult::ErrorType::Other;
 				}
 				return rs;
+			}
+
+			namespace Message
+			{
+				void	Broadcast(const String&msg)
+				{
+					Network::Channels::ChatMessage.SendTo(Network::client,Protocol::ChatMessage(msg,TUniqueID::Empty()));
+				}
+
+				void	ToFaction(const Objects::PFaction&f, const String&msg)
+				{
+					Network::Channels::ChatMessage.SendTo(Network::client,Protocol::ChatMessage(msg,f->id));
+				}
+
+				void	ToAlliance(const Objects::PAlliance&a, const String&msg)
+				{
+					Network::Channels::ChatMessage.SendTo(Network::client,Protocol::ChatMessage(msg,a->id));
+				}
 			}
 
 
@@ -1026,6 +1045,10 @@ namespace AI::Script
 			api.onVisualMarkerFlush = Callback::VisualMarkers::FlushAll;
 		#endif
 
+		api.onMessageBroadcast = Callback::Message::Broadcast;
+		api.onMessageToFaction = Callback::Message::ToFaction;
+		api.onMessageToAlliance = Callback::Message::ToAlliance;
+
 		api.onRemoveEntity =Callback::RemoveEntity;
 		api.onDropLastTask = Callback::DropLastTask;
 		api.onBeginProduction = Callback::BeginConstruction;
@@ -1130,6 +1153,7 @@ namespace AI::Script
 					thread.init = api.program->RequireGlobal("Init");
 					thread.execute = api.program->RequireGlobal("Execute");
 					thread.selectionChanged = api.program->FindGlobal("OnSelectionChanged");
+					thread.onMessage = api.program->FindGlobal("OnMessage");
 
 					#define LOOP_CHECK_FUNCTION_NAME "_hexaverse_export_loop_check__"
 
@@ -1187,6 +1211,26 @@ namespace AI::Script
 		//thread.Start();
 	}
 
+
+	void			SignalChatMessage(const Objects::PFaction&sender, const String&msg)
+	{
+		if (!IsLoaded())
+			return;
+		auto fid = sender ? sender->id : TUniqueID::Empty();
+		Details::ThreadEnqueue("onMessage callback",[fid,msg](Details::Thread&thread)
+		{
+			if (!thread.onMessage)
+				return;
+
+			auto ptr = fid.IsNotEmpty() ? thread.api.loadedFactionTableMap.QueryPointer(fid) : nullptr;
+			if (ptr)
+				thread.onMessage(ptr->table,msg);
+			else
+				thread.onMessage(Lua::nil,msg);
+		});
+
+
+	}
 
 
 	void			SignalAppearance(const Objects::PWorldEntity&e)
@@ -1311,6 +1355,15 @@ namespace AI::Script
 			<< "\t-- Your AI goes here" << nl
 			<< "\t-- Again, check API documentation in " <<
 			FileSystem::PathToString(GetDocumentationPath()) << nl
+			<< "end;" << nl << nl
+
+
+			<< "--[[" << nl
+			<< "@brief Message responder" << nl << nl
+			<< "This function is triggered whenever the local client receives a message." << nl
+			<< "This may occur before or after regular operation, never at the same time." << nl
+			<< "]]" << nl
+			<< "function OnMessage(sender--[[faction]], message--[[string]])" << nl
 			<< "end;" << nl << nl
 
 			;

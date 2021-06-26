@@ -70,6 +70,7 @@ namespace AI::Script
 
 	void			SignalAppearance(const Objects::PWorldEntity&e);
 	void			SignalChoiceResponse(const TUniqueID&requestID, const TUniqueID&entityID);
+	void			SignalChatMessage(const Objects::PFaction&sender, const String&msg);
 
 	void			CreateTemplateAt(const D::PathString&);
 
