@@ -187,7 +187,7 @@ Table-Type: Faction
 	string		name;				-- Player chosen name
 	string		id;					-- Unique ID
 	Alliance	alliance;			-- Alliance this faction is a member of. Never nil, although the referenced alliance may have only this member
-	Unit[]		units;				-- 
+	Unit[]		units;				-- Table of all units of this faction
 	ResBalance	currentResources,	-- Resources of enabled working structures, current storage. balance >= 0
 				maxResources;		-- Resources of all working structures, max storage. Balance may be negative
 }
