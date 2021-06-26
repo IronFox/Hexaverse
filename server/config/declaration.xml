@@ -263,7 +263,7 @@
 				Defines a custom script for the AI to run instead of the build-in AI functionality.
 				For any value X, [My Games]/AIScripts/X.lua must exist.
 			</variable>
-			<variable name="threatEstimationFactor" default="0.5">
+			<variable name="threatEstimationFactor" default="1.0">
 				Linearly affects density of nexus vehicles.
 				If density is saturated, vehicle production/spawning halts.
 			</variable>
