@@ -12,9 +12,11 @@ namespace Objects
 
 		Properties::Properties()
 		{
+			/*
 			#ifdef _DEBUG
 				experience = 1000;
 			#endif
+			*/
 		}
 
 
