@@ -82,6 +82,7 @@ namespace ResourceGauges
 		else
 			IconItem::LoadTexture(res.name);
 		myTag = res.tag;
+		myTagStr = res.GetTagStr();
 		color = float3(res.color) / 255.f;
 	}
 
@@ -370,10 +371,10 @@ namespace ResourceGauges
 					tooltip += "+";
 				
 				tooltip += String(changePerRound);
-				tooltip += String(myTag)+ myResource.ToString()+" per round";
+				tooltip += myTagStr+ myResource.ToString()+" per round";
 			}
 			else
-				tooltip += " "+String(myTag)+ myResource.ToString();
+				tooltip += " "+myTagStr+ myResource.ToString();
 		}
 		return tooltip.c_str();
 	}

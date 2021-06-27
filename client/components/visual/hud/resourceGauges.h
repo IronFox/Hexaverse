@@ -53,7 +53,6 @@ namespace HUD
 			float3	base,projectedTop, projectedDelta,projectedBottom,projectedMax;
 			bool	changed,enabled;
 			float	ftop,hScale;
-			char	myTag;
 			M::TFloatRect	lastPosition;
 			mutable String	tooltip;
 			#ifndef NO_HIBERNATION
@@ -109,6 +108,9 @@ namespace HUD
 			void	ConstructPart(float radius, float lower, float upper, const float4&lowerColor, const float4&upperColor, Objects::Geometry&geo);
 			void	Construct();
 			Tooltip::Info	ResolveTooltip(float hoverSeconds, float lastCall) const override;
+		private:
+			char	myTag;
+			String	myTagStr;
 
 		};
 
