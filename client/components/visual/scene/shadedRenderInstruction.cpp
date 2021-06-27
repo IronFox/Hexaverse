@@ -11,11 +11,11 @@ void					ShadedInstruction::LoadQualitiesFromFile(const PathString&filename, con
 
 	Shader::macroDefinitions << Shader::Macro("SHADOW_FILTER_QUALITY",String(6));
 	quality[Quality::Filtered6x6].shader.LoadFromFile(filename,vsMain,psMain,b,numBindings);
-	Shader::macroDefinitions.Last().definition = 3;
+	Shader::macroDefinitions.Last().definition = String(3);
 	quality[Quality::Filtered3x3].shader.LoadFromFile(filename,vsMain,psMain,b,numBindings);
-	Shader::macroDefinitions.Last().definition = 1;
+	Shader::macroDefinitions.Last().definition = String(1);
 	quality[Quality::Unfiltered].shader.LoadFromFile(filename,vsMain,psMain,b,numBindings);
-	Shader::macroDefinitions.Last().definition = 0;
+	Shader::macroDefinitions.Last().definition = String(0);
 	quality[Quality::Off].shader.LoadFromFile(filename,vsMain,psMain,b,numBindings);
 	Shader::macroDefinitions.EraseLast();
 }
@@ -27,11 +27,11 @@ void					ShadedInstruction::LoadQualitiesFromFile(const PathString&filename, con
 
 	Shader::macroDefinitions << Shader::Macro("SHADOW_FILTER_QUALITY",String(6));
 	quality[Quality::Filtered6x6].shader.LoadFromFile(filename,vsMain,gsMain,psMain,b,numBindings);
-	Shader::macroDefinitions.Last().definition = 3;
+	Shader::macroDefinitions.Last().definition = String(3);
 	quality[Quality::Filtered3x3].shader.LoadFromFile(filename,vsMain,gsMain,psMain,b,numBindings);
-	Shader::macroDefinitions.Last().definition = 1;
+	Shader::macroDefinitions.Last().definition = String(1);
 	quality[Quality::Unfiltered].shader.LoadFromFile(filename,vsMain,gsMain,psMain,b,numBindings);
-	Shader::macroDefinitions.Last().definition = 0;
+	Shader::macroDefinitions.Last().definition = String(0);
 	quality[Quality::Off].shader.LoadFromFile(filename,vsMain,gsMain,psMain,b,numBindings);
 	Shader::macroDefinitions.EraseLast();
 }
