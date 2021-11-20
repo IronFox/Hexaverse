@@ -19,6 +19,14 @@ namespace Objects
 
 
 
+	namespace Events
+	{
+		DeltaWorks::Observable<const PWorldEntity&, bool>	onInsert;
+		DeltaWorks::Observable<const PWorldEntity&, RemovalType>	onRemove;
+	}
+
+
+
 
 	#ifdef CLIENT
 
@@ -917,6 +925,7 @@ namespace Objects
 			#endif
 		#endif
 		
+		Events::onInsert(e,setHealthToFull);
 
 		bool restored = idMap.IsSet(e->id);
 		if (restored)
@@ -995,6 +1004,8 @@ namespace Objects
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		ASSERT1__(!v->isInserted,v->GetName());
 		DBG_ASSERT__(!storedMobileEntities.Contains(v));
+
+		Events::onInsert(v,setHealthToFull);
 
 		storedMobileEntities << v;
 
@@ -1120,7 +1131,7 @@ namespace Objects
 			*/
 			auto lock = e-> owner->LockSensorUpdates();
 		#endif
-
+		Events::onRemove(e,t);
 		e->SyncTime(timestamp);
 		ASSERT_NOT_EQUAL1__(e->isInserted, ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT

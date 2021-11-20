@@ -10,6 +10,8 @@ using namespace DeltaWorks;
 
 namespace Objects
 {
+	
+
 	namespace T2
 	{
 		struct TModifier;
@@ -80,8 +82,12 @@ namespace Objects
 	namespace Component
 	{
 		class Base;
-		class Turret;
 		class VehicleBase;
+
+
+		DECLARE_POINTER_CLASS(Turret);
+		DECLARE_POINTER_CLASS(VehicleBase);
+
 	}
 	DECLARE_POINTER_CLASS(TurretBase);
 	//typedef std::shared_ptr<Base>	PVehicleComponent;

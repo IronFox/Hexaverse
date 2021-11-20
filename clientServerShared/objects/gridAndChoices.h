@@ -4,6 +4,7 @@
 #include "types.h"
 #include "mobileEntity.h"
 #include "volumeGrid.h"
+#include <structure/observable.h>
 
 namespace Objects
 {
@@ -24,6 +25,24 @@ namespace Objects
 
 
 
+
+	namespace Events
+	{
+		/**
+		The entity is in the process of being inserted into the grid for the first time.
+		Arguments are: (entity, isNewEntity (i.e. not restored from savegame or storage)).
+		The event is fired before actually inserting the entity, however after the destination location
+		is already set (if any).
+		*/
+		extern DeltaWorks::Observable<const PWorldEntity&, bool>	onInsert;
+		/**
+		The entity is in the process of being removed from the grid.
+		This may or may not be the consequence of destruction.
+		The event is fired before actually removing the entity, however after the destination location
+		is already set (if any).
+		*/
+		extern DeltaWorks::Observable<const PWorldEntity&, RemovalType>	onRemove;
+	}
 
 
 

@@ -70,7 +70,7 @@ namespace Objects
 		virtual EntityType			GetType() const override {return ConstName::Type_Mine;}
 
 
-		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
+		virtual void				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
 		{
 			#ifndef CLIENT
 				bool linked = IsLinkedToCore();
@@ -85,7 +85,7 @@ namespace Objects
 					isLinkedToCore = linked;
 				}
 			#endif
-			return Super::SignalEnvironmentChange(neighborhood,atTime);
+			Super::SignalEnvironmentChange(neighborhood,atTime);
 
 		}
 

@@ -575,7 +575,7 @@ namespace Lua
 		*/
 		void			Execute(const String&luaCode, const String&context="");
 		/**
-		Attempts to exdecute a script file from disk.
+		Attempts to execute a script file from disk.
 		Throws file open faults or Lua::Exception in case of errors
 		*/
 		void			ExecuteFile(const PathString&filename, const std::function<void(const PathString&, bool isGlobal)>&importHandler);
@@ -869,6 +869,38 @@ namespace Lua
 				rs = Detail::StackedT<T,false>::Get(GetProgram(),-1);
 				Pop(2);
 				return true;
+			}
+
+		/**
+		Fetches the value of the specified field in the local table.
+		Throws Lua::Exception() if not found or not convertible.
+		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
+		@return Stored value
+		*/
+		template <typename T>
+			T		RequireField(const char*name) const
+			{
+				if (!PushField(name))
+					throw Lua::Exception(CLOCATION,"'"+String(name)+"' does not exist in the local table");
+				T rs = Detail::StackedT<T,false>::Get(GetProgram(),-1);
+				Pop(2);
+				return rs;
+			}
+
+		/**
+		Fetches the value of the specified field in the local table.
+		Throws Lua::Exception() if not found or not convertible.
+		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
+		@return Stored value
+		*/
+		template <typename T>
+			T		RequireField(const String&name) const
+			{
+				if (!PushField(name))
+					throw Lua::Exception(CLOCATION,"'"+name+"' does not exist in the local table");
+				T rs = Detail::StackedT<T,false>::Get(GetProgram(),-1);
+				Pop(2);
+				return rs;
 			}
 
 		/**

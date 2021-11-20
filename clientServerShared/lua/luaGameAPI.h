@@ -220,6 +220,13 @@ namespace Lua
 		void		AddAllFactionsAndAlliances();
 		void		AddAllAlliances();
 		void		SignalDeployment(const TUniqueID&deploymentID, const Objects::PWorldEntity&e);
+
+		static String LuaResourceName(const Objects::Resource::ID&id);
+		static void ResourceVectorToLua(const Objects::Resource::Vector&v, Lua::Table&t);
+		static void ResourceVectorToLua(Lua::Table&t, const Objects::Resource::Vector&v) {ResourceVectorToLua(v,t);}
+		static void ResourceVectorToLuaCopy(Lua::Table t, const Objects::Resource::Vector&v) {ResourceVectorToLua(v,t);}
+		static void LuaToResourceVector(const Lua::Table&t, Objects::Resource::Vector&v);
+
 	private:
 		Lua::Table	CreateThreatTable(Objects::NexusThreat::TLevel);
 		Lua::Table	CreateSupportTable(Objects::NexusThreat::TSupport);

@@ -241,10 +241,10 @@ namespace Objects
 	namespace Component
 	{
 		template <typename T>
-			class Collection : public GenericCollection<T*,ConstName>
+			class Collection : public GenericCollection<T*,TTypeComponent>
 			{
-				typedef GenericCollection<T*,ConstName> Super;
-				typedef Collection<T>	Self;
+				typedef GenericCollection<T*,TTypeComponent> Super;
+				typedef Collection<T>		Self;
 				typedef T*					Item;
 			public:
 				void	Add(const Item&item)

@@ -36,6 +36,7 @@
 #include <objects/prototypes.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/laboratory.h>
+#include <lua/mod/module.h>
 #include <objects/nexus/nexusThreatEstimation.h>
 #include <boot.h>
 
@@ -2156,6 +2157,9 @@ int main( int argc, const char* argv[])
 
 		Loading::Stage("Marker Check",ObjectHelper::MarkerCheck::Create);
 		Loading::Stage("Client Grid",ClientGrid::Create);
+		Loading::Stage("ResourceRelay (mod)",[](){Lua::globalModLibrary.AddMod(L"../lua/objects",L"../lua/objects/structure/ResourceRelay.lua");});
+
+
 		Loading::Stage("Server Process",[]()
 		{
 			ServerProcess::Setup(GlobalEvents::applicationTerminate,

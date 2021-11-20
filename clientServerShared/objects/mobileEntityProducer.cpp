@@ -653,8 +653,8 @@ namespace Objects
 			{
 				base = Component::baseComponents.Find(type.baseType);
 				turret = Component::vehicleTurretComponents.Find(type.turretType);
-				ASSERT_NOT_NULL1__(turret, (int)type.turretType);
-				ASSERT_NOT_NULL1__(base, (int)type.baseType);
+				ASSERT_NOT_NULL1__(turret, type.turretType.ToNumericString());
+				ASSERT_NOT_NULL1__(base, type.baseType.ToNumericString());
 
 				price = Vehicle::GetPrice(base,turret,parent->GetResearchState());
 				name = Vehicle::GetTypeName(base,turret);
@@ -706,8 +706,8 @@ namespace Objects
 		{
 			base = Component::baseComponents.Find(type.baseType);
 			turret = Component::vehicleTurretComponents.Find(type.turretType);
-			ASSERT_NOT_NULL1__(turret, (int)type.turretType);
-			ASSERT_NOT_NULL1__(base, (int)type.baseType);
+			ASSERT_NOT_NULL1__(turret, type.turretType.ToNumericString());
+			ASSERT_NOT_NULL1__(base, type.baseType.ToNumericString());
 
 			price = Vehicle::GetPrice(base,turret,owner->GetAttributeTable());
 		}

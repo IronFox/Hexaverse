@@ -218,7 +218,7 @@ namespace Objects
 
 			
 			String							typeName,shortName;
-			ConstName						constName;
+			TTypeComponent					constName;
 			AttributeWithDefault<int,100>	initiative;
 			Research::Attribute<int>		productionCosts /*=1*/;
 			AttributeWithDefault<bool,true>	isUnlocked;
@@ -615,8 +615,9 @@ namespace Objects
 						mineralTransporter,
 						munitionTransporter,
 						radar,resourceScanner
+						,skyHubTurret
 						#ifndef NO_SATELLITES
-							,protonCannon,skyHubTurret,ragnarok,starPort
+							,protonCannon,ragnarok,starPort
 						#endif
 						;
 
@@ -661,24 +662,21 @@ namespace Objects
 				void		Configure(Turret&);
 			};
 
-			/**
-			Used only by the SkyHub satellite. Provides its logic
-			*/
-			namespace SkyHubTurret
-			{
-				void		Configure(Turret&);
-			};
-
 			namespace Ragnarok
 			{
 				void		Configure(Turret&);
 			};
-
-			namespace StarPort
-			{
-				void		Configure(Turret&);
-			};
 		#endif
+
+		/**
+		Used only by the SkyHub satellite. Provides its logic
+		*/
+		namespace SkyHubTurret
+		{
+			void		Configure(Turret&);
+		};
+
+
 
 		namespace Armored
 		{

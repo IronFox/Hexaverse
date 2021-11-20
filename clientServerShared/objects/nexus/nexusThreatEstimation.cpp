@@ -466,7 +466,7 @@ namespace Objects
 			Objects::structures.Foreach([poleHasBase,deployHeavyVehicleBases,&oldPorts](const Objects::PStructure&s)
 			{
 				if (   s->location.stackID >= 12					//structure is not located on pole (there are 12 poles and they are the first 12 cell stacks)
-					|| s->GetType() != ConstName::Type_NexusPort	//we're looking at something else
+					|| !s->IsNexusPort()	//we're looking at something else
 					|| !s->owner
 					|| !s->owner->IsNexus()			//the port no longer belongs to the nexus faction
 					)

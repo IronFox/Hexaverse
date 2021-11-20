@@ -608,7 +608,7 @@ namespace Objects
 					visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
 				}
 				else
-					LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)refEntityType.baseType));
+					LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type "+refEntityType.baseType.ToNumericString());
 			}
 
 			if (visualization)

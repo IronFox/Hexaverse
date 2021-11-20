@@ -503,7 +503,7 @@ namespace Objects
 	}
 
 
-	/*virtual*/ bool				Structure::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime)
+	/*virtual*/ void				Structure::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime)
 	{
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
@@ -568,7 +568,6 @@ namespace Objects
 
 			}
 		}
-		return true;
 	}
 
 

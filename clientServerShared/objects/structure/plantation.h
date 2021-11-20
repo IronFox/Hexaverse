@@ -111,9 +111,9 @@ namespace Objects
 			maxStorage.Set(Resource::OrganicCompounds, CompoundStorage);
 		};
 
-		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
+		virtual void				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime) override
 		{
-			return Super::SignalEnvironmentChange(neighborhood,atTime);
+			Super::SignalEnvironmentChange(neighborhood,atTime);
 		}
 		virtual Category			GetCategory() const override {return Category::Resources;}
 

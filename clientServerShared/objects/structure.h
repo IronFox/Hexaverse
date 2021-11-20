@@ -200,7 +200,7 @@ namespace Objects
 		/**
 		Updates possible connections, and checks if the building survives the terra-forming operation
 		*/
-		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime);
+		virtual void				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime);
 		/**
 		Checks whether or not the local structure instance can create a link to the specified second structure instance.
 		@param other Pointer to the neighboring structure. Must be an immediate neighbor, but can be one level above or below the local instance
@@ -214,6 +214,7 @@ namespace Objects
 		*/
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const {return false;}
 
+		virtual bool				IsNexusPort() const {return false;}
 
 		/**
 		Checks whether or not the local structure is an instance of SkyPort.
@@ -545,7 +546,6 @@ namespace Objects
 		@param vec Storage vector to apply. All values must be non-negative
 		*/
 		virtual void				SetResourceStorage(const Resource::Vector&vec)	{};
-		virtual bool				IsNexusPort() const {return false;}
 		virtual bool				IsLaboratory() const {return false;}
 
 

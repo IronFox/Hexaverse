@@ -133,17 +133,6 @@ namespace Lua
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}
 
-		void UpdateResourceTable(Lua::Table t,const Objects::Resource::Vector&v)
-		{
-			for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
-			{
-				String name = Objects::Resource::ID(i).ToString();
-				name.Set(0,CharFunctions::tolower(name.GetFirstChar()));
-				name.EraseCharacter(' ');
-				t.SetField(name,v[i]);
-			}
-		}
-
 		bool NaturalResourcesSurveyedAt(Lua::Table cellTable)
 		{
 			const auto stackID = LuaCellToStack(cellTable,"NaturalResourcesSurveyedAt(): cell (parameter #1)",Grid::LowSetup::GridType::CellCount);
@@ -192,7 +181,7 @@ namespace Lua
 			if (!vec.SampleWorld(stackID) || vec.IsEmpty())
 				return Lua::nil;
 			Lua::Table rs = cellTable.GetProgram()->CreateTable();
-			UpdateResourceTable(rs,vec);
+			API::ResourceVectorToLua(vec,rs);
 			return rs;
 		}
 
@@ -1334,6 +1323,39 @@ namespace Lua
 		supplyTable = GetOrMakeTable(t,"supply");
 	}
 
+
+	/*static*/ String API::LuaResourceName(const Objects::Resource::ID&id)
+	{
+		String name = id.ToString();
+		name.Set(0,CharFunctions::tolower(name.GetFirstChar()));
+		name.EraseCharacter(' ');
+		return name;
+	}
+	
+	/*static*/ void API::LuaToResourceVector(const Lua::Table&t, Objects::Resource::Vector&v)
+	{
+		for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
+		{
+			auto id = Objects::Resource::ID(i);
+			int value;
+			auto resName = LuaResourceName(id);
+			if (!t.GetField(resName,value))
+				throw Lua::Exception(CLOCATION,"Resource table does not contain '"+resName+"'");
+			v.Set(id, value);
+		}
+	}
+
+
+	
+	/*static*/ void API::ResourceVectorToLua(const Objects::Resource::Vector&v, Lua::Table&t)
+	{
+		for (index_t i = 0; i < Objects::Resource::table.GetSize(); i++)
+		{
+			t.SetField(LuaResourceName(Objects::Resource::ID(i)),v[i]);
+		}
+	}
+
+
 	
 
 	API::TFaction*	API::AddFaction( const Objects::PFaction&f, bool updateIfFound )
@@ -1390,16 +1412,16 @@ namespace Lua
 			t.SetField("alliance",alliance->table);
 
 		auto vec = f->compound.GetVector();
-		Detail::UpdateResourceTable(found->current.balanceTable,vec.balance);
-		Detail::UpdateResourceTable(found->current.demandTable,vec.demand);
-		Detail::UpdateResourceTable(found->current.storageTable,vec.storage);
-		Detail::UpdateResourceTable(found->current.supplyTable,vec.supply);
+		ResourceVectorToLua(found->current.balanceTable,vec.balance);
+		ResourceVectorToLua(found->current.demandTable,vec.demand);
+		ResourceVectorToLua(found->current.storageTable,vec.storage);
+		ResourceVectorToLua(found->current.supplyTable,vec.supply);
 
 		vec = f->compound.GetAllEnabledVector();
-		Detail::UpdateResourceTable(found->max.balanceTable,vec.balance);
-		Detail::UpdateResourceTable(found->max.demandTable,vec.demand);
-		Detail::UpdateResourceTable(found->max.supplyTable,vec.supply);
-		Detail::UpdateResourceTable(found->max.storageTable,vec.storageMax);
+		ResourceVectorToLua(found->max.balanceTable,vec.balance);
+		ResourceVectorToLua(found->max.demandTable,vec.demand);
+		ResourceVectorToLua(found->max.supplyTable,vec.supply);
+		ResourceVectorToLua(found->max.storageTable,vec.storageMax);
 
 		return found;
 	}
@@ -1754,11 +1776,11 @@ namespace Lua
 			balance += storage;
 			TFullResourceBalance full;
 			full.AllocateIn(t,"balance");
-			Detail::UpdateResourceTable(full.balanceTable,balance);
-			Detail::UpdateResourceTable(full.demandTable,demand);
-			Detail::UpdateResourceTable(full.storageTable,storage);
-			Detail::UpdateResourceTable(full.supplyTable,supply);
-			Detail::UpdateResourceTable(t.SetSubTable("maxStorage"),storageMax);
+			ResourceVectorToLua(full.balanceTable,balance);
+			ResourceVectorToLua(full.demandTable,demand);
+			ResourceVectorToLua(full.storageTable,storage);
+			ResourceVectorToLua(full.supplyTable,supply);
+			ResourceVectorToLuaCopy(t.SetSubTable("maxStorage"),storageMax);
 
 			t.SetField("isEnabled",ws->IsEnabled());
 			if (actual)
@@ -2120,7 +2142,7 @@ namespace Lua
 						Objects::Resource::Vector vec;
 						vec.Set(Objects::Research::globalState.t2.upgradeCostType,Objects::Research::globalState.t2.upgradeCostQuantity);
 						auto rs = program->CreateTable();
-						Detail::UpdateResourceTable(rs,vec);
+						ResourceVectorToLua(rs,vec);
 						return rs;
 					});
 					
@@ -2662,11 +2684,11 @@ namespace Lua
 				balance += storage;
 				TFullResourceBalance full;
 				full.AllocateIn(t,"balance");
-				Detail::UpdateResourceTable(full.balanceTable,balance);
-				Detail::UpdateResourceTable(full.demandTable,demand);
-				Detail::UpdateResourceTable(full.storageTable,storage);
-				Detail::UpdateResourceTable(full.supplyTable,supply);
-				Detail::UpdateResourceTable(t.SetSubTable("maxStorage"),storageMax);
+				ResourceVectorToLua(full.balanceTable,balance);
+				ResourceVectorToLua(full.demandTable,demand);
+				ResourceVectorToLua(full.storageTable,storage);
+				ResourceVectorToLua(full.supplyTable,supply);
+				ResourceVectorToLuaCopy(t.SetSubTable("maxStorage"),storageMax);
 			}
 		}
 		else if (type.IsVehicleBase())

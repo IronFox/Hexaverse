@@ -34,11 +34,13 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Turret_Bomber,
 	Turret_CargoPlane,
 	Turret_SensorDrone,
+	Turret_Mod,
 	
 	VehicleBase_HeavyBase,
 	VehicleBase_HoverBase,
 	VehicleBase_CatBase,
 	VehicleBase_Plane,
+	VehicleBase_Mod,
 
 	Job_BuildHorizontalWall,
 	Job_BuildWallUp,
@@ -54,6 +56,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Job_Sequence,
 	Job_SelfDetonate,
 	Job_DoomsdayBeamAttack,
+	Job_Mod,
 
 	DetonationSize_Regular,	//Used in conjunction with Job_SelfDetonate
 	DetonationSize_Doomsday,	//Used in conjunction with Job_SelfDetonate
@@ -74,6 +77,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_UraniumStorage,
 	Type_MunitionStorage,
 	Type_Tower,
+	Type_Tower_Mod,
 	Type_VehicleStore,
 	Type_SkyPort,
 	Type_SkyHub,
@@ -91,6 +95,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_OrganicCompoundFactory,
 	Type_CrystallineCompoundFactory,
 	Type_CompositeMaterialFactory,
+	Type_Mod,
 
 	NumTypes,
 };
