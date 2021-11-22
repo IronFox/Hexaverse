@@ -12,7 +12,7 @@ namespace Objects
 
 
 		friend class WorkingStructureT<Mine>;
-		/**/						Mine(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						Mine(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Minerals, MineralStorage); isLinkedToCore = LinkToCore(atTime);}
 		/**/						Mine()	{
 			maxStorage.Set(Resource::Minerals, MineralStorage);

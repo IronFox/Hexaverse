@@ -2,6 +2,7 @@
 #include "../../objects/resource.h"
 #include <objects/gridAndChoices.h>
 
+
 namespace Lua
 {
 
@@ -42,6 +43,41 @@ namespace Lua
 			rs = result;
 		});
 		return rs;
+	}
+
+
+
+	
+
+	/**/	StructureType::StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table):Super(api,type,name,table)
+	{
+		hasFoundation = table.RequireField<bool>("hasFoundation");
+
+		String rawCategory = table.RequireField<String>("category");
+		if (!category.Decode(rawCategory.c_str()))
+		{
+			StringBuffer builder;
+			for (index_t i = 0; i < Objects::Structure::Category::N; i++)
+			{
+				if (i > 0)
+					builder << ",";
+				builder << Objects::Structure::Category::Reinterpret(i).GetName();
+			}
+
+			throw Lua::Exception(CLOCATION,"Structure category '"+rawCategory+"' does not exist. Supported categories are "+builder.ToStringRef());
+		}
+
+		onLostNeighbor = table.GetField("OnLostNeighbor");
+		onNewConnection = table.GetField("OnNewConnection");
+		onConnectionLost = table.GetField("OnConnectionLost");
+		onEnvironmentChange = table.GetField("OnEnvironmentChange");
+		connectionPossibleTo = table.GetField("ConnectionPossibleTo");
+
+		#ifdef HAS_WINDOW
+		//LoadVisualStructureHull(const String&geometryName, Objects::Geometry&staticGeometry, PClientAttachment&staticShape);
+			ApplicationInterface::LoadVisualStructureHull(table.RequireField<String>("meshName"),geometry,shape);
+		#endif
+
 	}
 
 

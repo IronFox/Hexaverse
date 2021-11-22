@@ -665,7 +665,8 @@ namespace Lua
 
 			const auto&st = Objects::Faction::mine->researchState.topicProgressVector;
 			Array<UINT32> q;
-			Objects::Faction::mine->researchState.ExportResearchQueue(q);
+			if (Objects::Faction::mine)
+				Objects::Faction::mine->researchState.ExportResearchQueue(q);
 		#endif
 
 		Array<Lua::Table> res (Objects::Research::globalState.allTopics.Count());

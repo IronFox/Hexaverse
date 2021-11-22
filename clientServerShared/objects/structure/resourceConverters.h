@@ -11,7 +11,7 @@ namespace Objects
 
 		friend class WorkingStructureT<OrganicCompoundFactory>;
 
-		/**/						OrganicCompoundFactory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						OrganicCompoundFactory(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
 									: Super(table,owner,location,atTime)
 		{}
 		/**/						OrganicCompoundFactory()
@@ -51,7 +51,7 @@ namespace Objects
 
 		friend class WorkingStructureT<CrystallineCompoundFactory>;
 
-		/**/						CrystallineCompoundFactory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						CrystallineCompoundFactory(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
 									: Super(table,owner,location,atTime)
 		{}
 		/**/						CrystallineCompoundFactory()
@@ -90,7 +90,7 @@ namespace Objects
 
 		friend class WorkingStructureT<CompositeMaterialFactory>;
 
-		/**/						CompositeMaterialFactory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						CompositeMaterialFactory(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
 									: Super(table,owner,location,atTime)
 		{}
 		/**/						CompositeMaterialFactory()

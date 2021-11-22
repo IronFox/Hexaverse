@@ -271,6 +271,7 @@ namespace Objects
 		static const count_t	MaxResearchQueueLength = 4;
 
 		void					StaticCreate();
+		void					SignalNewStructureType(const PStructure&prototype);
 		#ifndef CLIENT
 			void				ActivateProgram(const ScriptCache::PScript&script);
 			void				LoadDefaultProgram();

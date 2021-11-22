@@ -25,9 +25,10 @@ function ScriptedType:Instantiate (o, unit)
 	return o
 end;
 
-function ScriptedType:New (name--[[string]])
+function ScriptedType:New (name--[[string]], height--[[int]])
 	o = {}
 	o.typeName = name;
+	o.height = height;
 	setmetatable(o, self)
 	self.__index = self
 	return o

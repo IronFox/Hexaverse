@@ -147,6 +147,8 @@ namespace Objects
 	};
 
 
+	DECLARE_POINTER_CLASS(BaseAttributeTable);
+
 	class BaseAttributeTable
 	{
 	public:
@@ -202,7 +204,7 @@ namespace Objects
 		static const Research::Attributes::Table& GetResearchState(const OwnerParameter&owner);
 		const Research::Attributes::Table&GetResearchState() const;
 
-		virtual BaseAttributeTable*	GetTable() const {FATAL__("Attempting to query attribute table on "+GetTypeName());  return nullptr;}
+		virtual const PBaseAttributeTable&	GetTable() const {throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Attempting to query attribute table on "+GetTypeName());  }
 
 		
 		inline void				SyncTime(float&remoteTime)

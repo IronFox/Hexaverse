@@ -145,7 +145,7 @@ namespace Objects
 	#endif
 
 
-	Structure::Structure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time) :Super(owner,at), table(table)
+	Structure::Structure(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time) :Super(owner,at), table(table)
 	{
 		if (buildSystem)	//makesystem createsystem
 		{
@@ -333,7 +333,7 @@ namespace Objects
 	//}
 
 
-	Connector::Connector(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
+	Connector::Connector(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
 	{}
 
 

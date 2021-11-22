@@ -12,7 +12,7 @@ namespace Objects
 		Ctr::Buffer0<WLaboratory>	labNeighbors;
 
 
-        /**/						Laboratory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};
+        /**/						Laboratory(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime)	{};
 		/**/						Laboratory() {}//global prototype
 	protected:
 		//virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}

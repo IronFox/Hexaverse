@@ -776,3 +776,15 @@ namespace Objects
 	}
 
 }
+
+
+namespace ApplicationInterface
+{
+	void	LoadVisualStructureHull(const String&geometryName, Objects::Geometry&staticGeometry, Objects::PClientAttachment&staticShape)
+	{
+		Objects::StructureHull::LoadFor(geometryName,1,staticGeometry,staticShape);
+	}
+
+
+}
+

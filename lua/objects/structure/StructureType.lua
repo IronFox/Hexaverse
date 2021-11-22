@@ -1,13 +1,14 @@
---#require <../ScriptedType.lua>
+--#require "../ScriptedType.lua"
 
 
 StructureType = ScriptedType:New('Structure');
 
-function StructureType:New(name --[[string]], hasFoundation --[[bool]], category --[[string]], meshName --[[string]])
-	o = ScriptedType.New(self,name);
+function StructureType:New(name --[[string]], height--[[int]], hasFoundation --[[bool]], isBroad --[[bool]], category --[[string]], meshName --[[string]])
+	o = ScriptedType.New(self,name,height);
 	o.hasFoundation = hasFoundation;
 	o.category = category;
 	o.meshName = meshName;
+	o.isBroad = isBroad;
 	return o;
 end;
 

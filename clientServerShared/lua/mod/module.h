@@ -40,10 +40,13 @@ namespace Lua
 
 	private:
 		Objects::PWorldEntity CreateLuaWorkingStructure(index_t typeId, const Lua::Table&table) const;
+		void MakeImportHandler(const ArrayRef<PathString>&includeRoots, const PathString&gate, HashSet<PathString>&included);
 
 		Buffer0<Objects::PWorldEntity> prototypes;
 		Buffer0<Objects::Component::PTurret> turrets;
 		Buffer0<Objects::Component::PVehicleBase> vehicleBases;
+
+		Lua::FImportHandler importHandler;
 
 		PProgram program;
 		std::shared_ptr<API>		api;

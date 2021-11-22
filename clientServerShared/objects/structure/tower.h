@@ -194,7 +194,7 @@ namespace Objects
 				Super::shape = staticShape;
 			#endif
 		}
-		/**/						Tower(BaseAttributeTable*table, const Prototype*proto, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) 
+		/**/						Tower(const PBaseAttributeTable&table, const Prototype*proto, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) 
 									: Super(table,owner,location,true,time),TurretBase(proto->turret),prototype(proto)
 		{
 			#ifdef HAS_WINDOW

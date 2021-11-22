@@ -25,6 +25,12 @@ namespace Lua
 	typedef std::shared_ptr<Program> PProgram;
 	typedef std::weak_ptr<Program> WProgram;
 
+	/**
+	Import handler reacting to --#require ...<br />
+	*/
+	typedef std::function<void(const PathString&sourceScriptFolderPath, const StringRef&declaredRequirePath, bool isGlobal)> FImportHandler;
+
+
 
 	///**
 	//Capsuled lua-state. Must use special delete-function upon destruction
@@ -578,7 +584,7 @@ namespace Lua
 		Attempts to execute a script file from disk.
 		Throws file open faults or Lua::Exception in case of errors
 		*/
-		void			ExecuteFile(const PathString&filename, const std::function<void(const PathString&, bool isGlobal)>&importHandler);
+		void			ExecuteFile(const PathString&filename, const FImportHandler&importHandler);
 		/**
 		Deserializes binary host data to a new lua reference
 		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())

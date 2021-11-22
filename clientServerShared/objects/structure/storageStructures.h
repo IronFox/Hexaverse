@@ -21,7 +21,7 @@ namespace Objects
 	protected:
 		typedef WorkingStructureT<Derivative>			Super;
 		friend class Super;
-		/**/						StorageStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+		/**/						StorageStructure(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
 									: Super(table,owner,location,atTime)
 		{
 			tableRegId = GlobalEvents::resourceTableUpdated.Register([this](){this->OnResourceTableUpdate();});
@@ -143,7 +143,7 @@ namespace Objects
 		typedef StorageStructure<FuelContainer>	Super;
 		friend class Super;
 		friend class WorkingStructureT<FuelContainer>;
-		/**/						FuelContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+		/**/						FuelContainer(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Fuel, MaxStorage);}
 		/**/						FuelContainer()	{maxStorage.Set(Resource::Fuel, MaxStorage); }	//global prototype
 	public:
@@ -167,7 +167,7 @@ namespace Objects
 
 		static const constexpr EntityType mobileType = EntityType(ConstName::VehicleBase_HoverBase,ConstName::Turret_MineralTransporter);
 
-		/**/						MineralContainer(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+		/**/						MineralContainer(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Minerals, MaxStorage);}
 		/**/						MineralContainer()	{maxStorage.Set(Resource::Minerals, MaxStorage); }	//global prototype
 	public:
@@ -197,7 +197,7 @@ namespace Objects
 		typedef StorageStructure<UraniumStorage>	Super;
 		friend class Super;
 		friend class WorkingStructureT<UraniumStorage>;
-		/**/						UraniumStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+		/**/						UraniumStorage(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::Uranium, MaxStorage);}
 		/**/						UraniumStorage()	{maxStorage.Set(Resource::Uranium, MaxStorage);}	//global prototype
 	public:
@@ -218,7 +218,7 @@ namespace Objects
 		typedef StorageStructure<CrystalStorage>	Super;
 		friend class Super;
 		friend class WorkingStructureT<CrystalStorage>;
-		/**/						CrystalStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+		/**/						CrystalStorage(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::CrystallineCompounds, MaxStorage);}
 		/**/						CrystalStorage()	{maxStorage.Set(Resource::CrystallineCompounds, MaxStorage);}	//global prototype
 	public:
@@ -238,7 +238,7 @@ namespace Objects
 		typedef StorageStructure<OrganicStorage>	Super;
 		friend class Super;
 		friend class WorkingStructureT<OrganicStorage>;
-		/**/						OrganicStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+		/**/						OrganicStorage(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::OrganicCompounds, MaxStorage);}
 		/**/						OrganicStorage()	{maxStorage.Set(Resource::OrganicCompounds, MaxStorage);}	//global prototype
 	public:
@@ -258,7 +258,7 @@ namespace Objects
 		typedef StorageStructure<CompositeMaterialStorage>	Super;
 		friend class Super;
 		friend class WorkingStructureT<CompositeMaterialStorage>;
-		/**/						CompositeMaterialStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
+		/**/						CompositeMaterialStorage(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) 
 									: Super(table,owner,location,atTime)	{maxStorage.Set(Resource::CompositeMaterials, MaxStorage);}
 		/**/						CompositeMaterialStorage()	{maxStorage.Set(Resource::CompositeMaterials, MaxStorage);}	//global prototype
 	public:
@@ -280,7 +280,7 @@ namespace Objects
 		typedef StorageStructure<Self>	Super;
 		friend class Super;
 		friend class WorkingStructureT<Self>;
-		/**/						MunitionStorage(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime)
+		/**/						MunitionStorage(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime)
 									: Super(table,owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
@@ -318,7 +318,7 @@ namespace Objects
 
 
 		static const int LocalMunitionStorage = 4;
-		/**/						MunitionFactory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+		/**/						MunitionFactory(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
 									: Super(table,owner,location,atTime)
 		{
 			#ifndef NO_MUNITION

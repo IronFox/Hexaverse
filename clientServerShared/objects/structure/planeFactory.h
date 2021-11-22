@@ -12,7 +12,7 @@ namespace Objects
 
 		friend class Super;
 		/**/						PlaneFactory():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
-		/**/						PlaneFactory(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(table,owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
+		/**/						PlaneFactory(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(table,owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
 	public:
 		virtual bool				CanEnable() const override { return MobileEntityProducer::queue.IsNotEmpty(); }
 		static const int			ConstructionSpeed = 20;

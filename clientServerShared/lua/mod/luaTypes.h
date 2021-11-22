@@ -34,7 +34,7 @@ namespace Lua
 		{
 			targetFunction = self.GetField(name);
 			if (!targetFunction)
-				throw Lua::Exception("Type table '"+String(name)+"' does not provide required function/method '"+String(name)+"'");
+				throw Lua::Exception(CLOCATION,"Missing function '"+String(this->name)+"."+name+"'");
 		}
 
 		/**/	RootType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table);
@@ -120,37 +120,7 @@ namespace Lua
 		Lua::Function<void(Lua::Reference,Lua::Table)> onEnvironmentChange;
 
 
-		/**/	StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table):Super(api,type,name,table)
-		{
-			hasFoundation = table.RequireField<bool>("hasFoundation");
-
-			String rawCategory = table.RequireField<String>("category");
-			if (!category.Decode(rawCategory.c_str()))
-			{
-				StringBuffer builder;
-				for (index_t i = 0; i < Objects::Structure::Category::N; i++)
-				{
-					if (i > 0)
-						builder << ",";
-					builder << Objects::Structure::Category::Reinterpret(i).GetName();
-				}
-
-				throw Lua::Exception(CLOCATION,"Structure category '"+rawCategory+"' does not exist. Supported categories are "+builder.ToStringRef());
-			}
-
-			onLostNeighbor = table.GetField("OnLostNeighbor");
-			onNewConnection = table.GetField("OnNewConnection");
-			onConnectionLost = table.GetField("OnConnectionLost");
-			onEnvironmentChange = table.GetField("OnEnvironmentChange");
-			connectionPossibleTo = table.GetField("ConnectionPossibleTo");
-
-			#ifdef HAS_WINDOW
-				
-
-
-			#endif
-
-		}
+		/**/	StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table);
 
 
 
@@ -243,7 +213,7 @@ namespace Lua
 			#endif
 		}
 
-		/**/	WorkingStructure(const PWorkingStructureType&type, Objects::BaseAttributeTable*table, const Objects::OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):
+		/**/	WorkingStructure(const PWorkingStructureType&type, const Objects::PBaseAttributeTable&table, const Objects::OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):
 			Super(table,owner,location,true,atTime),
 			Objects::MobileEntityProducer(type->mobileProductionPerRound),
 			type(type)

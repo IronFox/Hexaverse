@@ -42,7 +42,7 @@ namespace Objects
 	}
 
 
-	VehicleStore::VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true,atTime)
+	VehicleStore::VehicleStore(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true,atTime)
 	{}
 
 

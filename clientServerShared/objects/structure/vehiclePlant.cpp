@@ -131,7 +131,7 @@ namespace Objects
 	#endif
 
 
-	VehiclePlant::VehiclePlant(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime),
+	VehiclePlant::VehiclePlant(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner, location, atTime),
 		MobileEntityProducer(DefaultProductionPerRound)
 	{
 		#ifdef CLIENT

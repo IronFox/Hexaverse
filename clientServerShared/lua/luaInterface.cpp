@@ -1817,7 +1817,8 @@ namespace Lua
 	}
 
 
-	void	Program::ExecuteFile(const PathString&filename, const std::function<void(const PathString&, bool isGlobal)>&importHandler)
+
+	void	Program::ExecuteFile(const PathString&filename, const FImportHandler&importHandler)
 	{
 		String content;
 		if (!importHandler)
@@ -1844,15 +1845,21 @@ namespace Lua
 			{
 				lineIndex++;
 				StringRef content = line.TrimRef();
-				if (content.BeginsWith("--#require"))
+				if (content.BeginsWith("--#require") && importHandler)
 				{
 					content = content.SubStringRef(10).Trim();
-					if (content.BeginsWith('"') && content.EndsWith('"'))
-						importHandler(folder+FOLDER_SLASH+FileSystem::StringToPath(content.SubStringRef(1,content.Length()-2)),false);
-					elif (content.BeginsWith('<') && content.EndsWith('>'))
-						importHandler(FileSystem::StringToPath(content.SubStringRef(1,content.Length()-2)),true);
+					if (content.BeginsWith('<') && content.EndsWith('>'))
+					{
+						//FileSystem::
+						importHandler(folder, content.SubStringRef(1,content.Length()-2),true);
+					}
 					else
-						importHandler(folder+FOLDER_SLASH+FileSystem::StringToPath(content),false);
+					{
+						if (content.BeginsWith('"') && content.EndsWith('"'))
+							importHandler(folder, content.SubStringRef(1,content.Length()-2), false);
+						else
+							importHandler(folder, content, false);
+					}
 				}
 				code << line << nl;
 			}

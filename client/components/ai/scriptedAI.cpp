@@ -110,12 +110,14 @@ namespace AI::Script
 			/**/			Import(const Lua::PProgram&program):program(program)
 			{}
 
-			void	operator()(const PathString&path, bool isGlobal)
+			void	operator()(const PathString&sourceScriptFolderPath, const StringRef&declaredRequirePath, bool isGlobal)
 			{
 				FileSystem::Folder folder;
 				if (isGlobal)
 					folder = GetScriptFolder();
-			
+				else
+					folder = sourceScriptFolderPath;
+				PathString path = FileSystem::StringToPath(declaredRequirePath);
 				FileSystem::File f;
 				if (!folder.FindFile(path,f))
 				{

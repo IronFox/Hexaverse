@@ -16,7 +16,7 @@ namespace Objects
 
 
 		friend class WorkingStructureT<Plantation>;
-		/**/						Plantation(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						Plantation(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
 									: Super(table,owner,location,atTime)
 		{
 			maxStorage.Set(Resource::CrystallineCompounds, CompoundStorage);

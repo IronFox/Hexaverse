@@ -8,6 +8,12 @@
 #include "../fileVersion.h"
 #include "../roundNumber.h"
 
+#ifdef HAS_WINDOW
+	#include "objects/geometry.h"
+	#include "objects/clientAttachment.h"
+
+#endif
+
 /*
 #ifdef HAS_WINDOW
 	#include <engine/display.h>
@@ -65,6 +71,7 @@ namespace ApplicationInterface
 
 	#ifdef HAS_WINDOW
 		void	SignalUserMessage(const String&message);
+		void	LoadVisualStructureHull(const String&geometryName, Objects::Geometry&staticGeometry, Objects::PClientAttachment&staticShape);
 	#endif
 	void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t, bool wasGhost);
 	void	OnAppear(const Objects::PWorldEntity&e);

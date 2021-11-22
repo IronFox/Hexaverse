@@ -63,7 +63,7 @@ namespace Objects
 
 		friend class Super;
 		/**/						VehicleStore() {}
-		/**/						VehicleStore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+		/**/						VehicleStore(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
 
 		/**

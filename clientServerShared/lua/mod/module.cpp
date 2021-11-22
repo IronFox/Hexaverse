@@ -4,6 +4,7 @@
 #include "../../runtimeConfig.h"
 #include <objects/prototypes.h>
 #include <objects/structure/tower.h>
+#include <objects/research/globalState.h>
 
 using namespace DeltaWorks;
 
@@ -60,7 +61,7 @@ namespace Lua
 		}
 		catch (const Except::Exception&ex)
 		{
-			throw Lua::Exception(ex.hasLocation ? ex.location : CLOCATION,"Unable to create working structure type '"+typeName+"': "+String(ex.what()));
+			throw Lua::Exception(ex.hasLocation ? ex.location : CLOCATION,ex.what());
 		}
 		catch (const std::exception&ex)
 		{
@@ -83,6 +84,47 @@ namespace Lua
 		{
 			return Objects::PWorldEntity(new WorkingStructure(PWorkingStructureType(new WorkingStructureType(api,Objects::EntityType(Objects::TTypeComponent(ConstName::Type_Mod,typeId)),  typeName,table))));
 		});
+	}
+
+	void Mod::MakeImportHandler(const ArrayRef<PathString>&includeRoots, const PathString&gate0, HashSet<PathString>&included)
+	{
+		FileSystem::File gateFile;
+		FileSystem::Folder().FindDirectory(gate0,gateFile,false);
+
+		importHandler = [&includeRoots, &included,gateFile,this](const PathString&sourceScriptFolderPath, const StringRef&declaredRequirePath, bool isGlobal)
+		{
+			FileSystem::File f;
+			bool found = false;
+			PathString find = FileSystem::StringToPath(declaredRequirePath);
+			if (isGlobal)
+			{
+				foreach (includeRoots, root)
+				{
+					if (FileSystem::Folder(*root).FindFile(find,f))
+					{
+						if (f.GetLocation().BeginsWith(*root))
+						{
+							found = true;
+							break;
+						}
+						else
+							LogEvent(EventClass::Preset::scriptError,"Omitting "+FileSystem::PathToString(f.GetLocation())+" since it lies outside the global include directory");
+					}
+				}
+			}
+			else
+			{
+				FileSystem::Folder folder(sourceScriptFolderPath);
+				found = folder.FindFile(find,f);
+				if (found && !f.GetLocation().BeginsWith(gateFile.GetLocation()))
+					throw Lua::Exception("Targeted relative include path '"+FileSystem::PathToString(find)+"' is not allowed");
+			}
+
+			if (!found)
+				throw Lua::Exception("Unable to find include path '"+FileSystem::PathToString(find)+"'");
+			if (included.SetNew(f.GetLocation()))
+				program->ExecuteFile(f.GetLocation(),importHandler);
+		};
 	}
 
 	Mod::Mod(const PathString&gate, const ArrayRef<PathString>&includeRoots, const PathString&scriptPath, index_t&typeIdCounter)
@@ -114,36 +156,8 @@ namespace Lua
 
 		HashSet<PathString> included;
 
-		std::function<void(const PathString&,bool)> importHandler;
-
-		importHandler = [&includeRoots, &included,folder,gate,this,&importHandler](const PathString&include, bool isGlobal)
-		{
-			FileSystem::File f;
-			bool found = false;
-			if (isGlobal)
-			{
-				foreach (includeRoots, root)
-				{
-					if (FileSystem::Folder(*root).FindFile(include,f))
-					{
-						found = true;
-						break;
-					}
-				}
-			}
-			else
-			{
-				found = folder.FindFile(include,f);
-				if (found && !f.GetLocation().BeginsWith(gate))
-					throw Lua::Exception("Targeted relative include path '"+FileSystem::PathToString(include)+"' is not allowed");
-			}
-
-			if (!found)
-				throw Lua::Exception("Unable to find include path '"+FileSystem::PathToString(include)+"'");
-			if (included.SetNew(f.GetLocation()))
-				program->ExecuteFile(f.GetLocation(),importHandler);
-		};
-
+		
+		MakeImportHandler(includeRoots, gate, included);
 		program->ExecuteFile(scriptPath,importHandler);
 
 
@@ -158,6 +172,7 @@ namespace Lua
 				{
 					throw Lua::Exception(CLOCATION,"Not supporting mod-driven towers for now");
 				}
+				Objects::Research::SignalNewStructureType(To<Objects::Structure>::Cast(*p));
 			}
 			else if ((*p)->IsPlane())
 				Objects::Prototypes::planes << To<Objects::SubOrbital::Plane>::Cast(*p);

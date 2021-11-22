@@ -53,17 +53,17 @@ namespace Objects
 
 
 	protected:
-		BaseAttributeTable*			table;
+		PBaseAttributeTable			table;
 		typedef WorldEntity			Super;
 		/**/						Structure():Super(OwnerParameter(),Grid::LCellIdI(0, 0))
 				{}
 
-		/**/						Structure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time);
+		/**/						Structure(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time);
 
 
 
 	public:
-		void						DefineAttributeTable(BaseAttributeTable*t)	{table = t;}
+		void						DefineAttributeTable(const PBaseAttributeTable&t)	{table = t;}
 
 		CONSTRUCT_ENUMERATION5(Category, Resources, Defense, Factories, Infrastructure, Miscellaneous);
 
@@ -266,9 +266,9 @@ namespace Objects
 		virtual void				OnDestroy(RemovalType, float&atTime) override;
 		virtual void				OnInsert(float&atTime, bool freshConstruction) override;
 		virtual void				PrototypeSetup() override;
-		virtual BaseAttributeTable*	GetTable() const override
+		virtual const PBaseAttributeTable&	GetTable() const override
 		{
-			ASSERT_NOT_NULL1__(table,GetTypeName());
+			ASSERT1__(table,GetTypeName());
 			return table;
 		}
 
@@ -326,7 +326,7 @@ namespace Objects
 		{
 			typedef Structure Super;
 		protected:
-			/**/					OtherStructure<Derivative>(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(table,owner,location,buildSystem,atTime)
+			/**/					OtherStructure<Derivative>(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(table,owner,location,buildSystem,atTime)
 			{ 
 				#ifdef HAS_WINDOW
 					Super::shape = staticShape;
@@ -386,7 +386,7 @@ namespace Objects
 
 		friend class Super;
 		/**/						Connector() {}
-		/**/						Connector(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+		/**/						Connector(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
 
 
@@ -440,7 +440,7 @@ namespace Objects
 	protected:
 		/**/						WorkingStructure() : isEnabled(false)
 		{}	//global prototype
-		/**/						WorkingStructure(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) 
+		/**/						WorkingStructure(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) 
 									: Super(table,owner,location,buildSystem,atTime),isEnabled(false)
 		{};
 
@@ -571,7 +571,7 @@ namespace Objects
 		{
 			typedef WorkingStructure	Super;
 		protected:
-			/**/						WorkingStructureT(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+			/**/						WorkingStructureT(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 			/**/						WorkingStructureT()
 			{
 				#ifdef HAS_WINDOW
@@ -630,7 +630,7 @@ namespace Objects
 
 			friend class Super;
 			/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
-			/**/						SkyPort(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+			/**/						SkyPort(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
 											:Super(table,owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
 		public:
 			static const int			ConstructionSpeed = 5;
@@ -721,7 +721,7 @@ namespace Objects
 		typedef WorkingStructureT<NexusPort>			Super;
 		typedef NexusPort		Self;
 		friend class Super;
-		/**/						NexusPort(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
+		/**/						NexusPort(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime)
 									: Super(table,owner,location,atTime),resistance(-1)	{}
 		/**/						NexusPort()	{ }	//global prototype
 
@@ -813,7 +813,7 @@ namespace Objects
 	class Generator : public WorkingStructureT<Generator>
 	{
 		friend class WorkingStructureT<Generator>;
-		/**/						Generator(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						Generator(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
 									: Super(table,owner,location,atTime)	{}
 		/**/						Generator()	{ }	//global prototype
 	public:
@@ -858,7 +858,7 @@ namespace Objects
 	{
 		typedef WorkingStructureT<ReactorCore>	Super;
 		friend class Super;
-		/**/						ReactorCore(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
+		/**/						ReactorCore(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) 
 									: Super(table,owner,location,atTime)	{}
 		/**/						ReactorCore()	{ }	//global prototype
 	public:
@@ -978,7 +978,7 @@ namespace Objects
 		}
 	
 	template <typename Derivative>
-		WorkingStructureT<Derivative>::WorkingStructureT(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
+		WorkingStructureT<Derivative>::WorkingStructureT(const Objects::PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(table,owner,location, true, atTime)
 		{
 			#ifdef HAS_WINDOW
 				Super::shape = staticShape;

@@ -7,7 +7,7 @@ namespace Objects
 	{
 		friend class WorkingStructureT<VehiclePlant>;
 
-        /**/						VehiclePlant(BaseAttributeTable*table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+        /**/						VehiclePlant(const PBaseAttributeTable&table, const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 		/**/						VehiclePlant():  MobileEntityProducer(DefaultProductionPerRound) {}//global prototype
 	protected:
 

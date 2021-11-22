@@ -109,8 +109,19 @@ namespace Objects
 	namespace Research
 	{
 
-		static Array<BaseAttributeTable>	structureTables;
+		static HashTable<EntityType,PBaseAttributeTable>	structureTables;
+		static bool created = false;
 	
+		PBaseAttributeTable GetTableOf(const EntityType&t)
+		{
+			auto ptr = structureTables.QueryPointer(t);
+			if (ptr)
+				return *ptr;
+			PBaseAttributeTable rs(new BaseAttributeTable());
+			structureTables.Set(t,rs);
+			return rs;
+		}
+
 
 		#ifndef CLIENT
 
@@ -335,8 +346,7 @@ namespace Objects
 			for (index_t i = 0; i < Prototypes::structures.Count(); i++)
 			{
 				const PStructure&s = Prototypes::structures[i];
-				auto&t = structureTables[i];
-				InitStructureTable(s->GetTypeName(),t);
+				InitStructureTable(s->GetTypeName(),*GetTableOf(s->GetType()));
 			}
 
 			foreach (Component::allTurretComponents,turret)
@@ -368,22 +378,28 @@ namespace Objects
 		}
 	}
 
+	/*static*/ void		Research::SignalNewStructureType(const PStructure&prototype)
+	{
+		if (created)
+		{
+			auto table = GetTableOf(prototype->GetType());
+			prototype->DefineAttributeTable(table);
+			InitStructureTable(prototype->GetTypeName(),*table);
+		}
+	}
 
 	/*static*/ void		Research::StaticCreate()
 	{
-		structureTables.SetSize(Prototypes::structures.Count());
 		for (index_t i = 0; i < Prototypes::structures.Count(); i++)
-		{
-			const PStructure&s = Prototypes::structures[i];
-			BaseAttributeTable&t = structureTables[i];
-			s->DefineAttributeTable(&t);
-		}
+			Prototypes::structures[i]->DefineAttributeTable(GetTableOf(Prototypes::structures[i]->GetType()));
 
 		#ifndef CLIENT
 			LoadDefaultProgram();
 		#else
 			RemapAttributes(L"");
 		#endif
+
+		created = true;
 	}
 
 
