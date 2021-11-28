@@ -257,11 +257,19 @@ namespace InputControl
 
 
 
-		bool saveScreenshot= false,saveTransparentScreenshot = false;
+		bool saveScreenshot= false,
+			saveLargeScreenshot = false,
+			saveTransparentScreenshot = false;
 
 		void SaveScreenshot()
 		{
-			saveScreenshot =true;
+			saveScreenshot = true;
+			saveTransparentScreenshot = Engine::input.pressed[Key::Shift];
+		}
+
+		void SaveLargeScreenshot()
+		{
+			saveLargeScreenshot = true;
 			saveTransparentScreenshot = Engine::input.pressed[Key::Shift];
 		}
 

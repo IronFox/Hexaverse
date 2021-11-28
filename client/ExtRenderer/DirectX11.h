@@ -1221,6 +1221,7 @@ namespace Engine
 
 		void						NextFrameNoClr();																				//!< Swaps buffers
 		void						NextFrame();																					//!< Swaps buffers and clears the back buffer
+		void						ClearBackbuffer();
 
 		//static String				renderState();																					//!< Queries the current render state \return String containing the current OpenGL render state
 

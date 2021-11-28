@@ -15,6 +15,7 @@ Handler functions reacting to user input
 namespace InputControl
 {
 	void	SaveScreenshot();
+	void	SaveLargeScreenshot();
 	void	ToggleCameraLock();
 	void	ToggleTimeLapse();
 	void	ToggleSeeThrough();
@@ -48,6 +49,7 @@ namespace InputControl
 
 
 		extern bool saveScreenshot,
+					saveLargeScreenshot,
 					saveTransparentScreenshot;
 
 		extern Time::Stamp rightMouseDragBegun;

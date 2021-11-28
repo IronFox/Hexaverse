@@ -754,6 +754,11 @@ namespace Engine
 	void		DirectX11::NextFrame()
 	{
 		NextFrameNoClr();
+		ClearBackbuffer();
+	}
+
+	void		DirectX11::ClearBackbuffer()
+	{
 		devcon->ClearRenderTargetView(_backbuffer.colorTarget[0].rtView, clearColor.v); // Next frame
 			//D3DXCOLOR(clearColor.r,clearColor.g,clearColor.b,clearColor.a)); // Next frame
 		devcon->ClearDepthStencilView(_backbuffer.depthStencilTarget.dsView,  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0);

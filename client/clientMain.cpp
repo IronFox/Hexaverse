@@ -1102,6 +1102,211 @@ namespace ApplicationInterface
 #endif
 
 
+#ifdef HAS_WINDOW
+
+void RenderScene()
+{
+	display.Pick(Camera::scene);
+	static Engine::Frustum<> frustum;
+	Camera::scene.GetFrustum(frustum);
+
+
+	//rendere scene here
+
+	display.SetRasterizer(true, true);
+
+
+	{
+		//Atmosphere::Build(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
+		Atmosphere::Render(Camera::scene);
+
+//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
+
+		#if 0
+			for (int i = 0; i < 20; i++)
+				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+				{
+					Grid::TFamily::TData&dat = Grid::high.family[k].normal;
+					dat.outdated = false;
+					familiesRebuilt++;
+					if (Grid::SeeThrough::IsEnabled())
+					{
+						Grid::high.BakeBlockInstruction(Grid::cellStack, k, Grid::SeeThrough::ClipHeight);
+					}
+					else
+					{
+						Grid::high.BakeBlockInstruction(Grid::cellStack, k, Grid::Clip::NoClip);
+					}
+				}
+
+
+		#else
+			World::Render(frustum);
+
+
+		#endif
+	//display.SetDepthTest(false,false);
+
+
+
+		if (Objects::selectedEntity)
+		{
+			display.SetDepthTest(true,true);
+			display.SetBlendMode(Engine::BlendMode::None);
+			VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::selectedEntity->location.height)+0.1f));
+			VisualTerrain::RenderLowCell(Objects::selectedEntity->location.stackID);
+
+			//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(Objects::selectedEntity);
+			if (Objects::selectedMobileEntity)
+			{
+				if (Objects::selectedMobileEntity->myTasks.IsNotEmpty())
+				{
+					foreach (Objects::selectedMobileEntity->myTasks.Peek().foci,f)
+					{
+						VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->target.height)+0.1f));
+						VisualTerrain::RenderLowCell(f->target.stackID);
+					}
+				}
+			}
+			display.SetDepthTest(true,true);
+		}
+
+
+		Objects::Renderer::RefreshFactionColors(!InputControl::saveScreenshot);
+		Objects::Renderer::RenderScene();
+		Objects::VisualMarkers::Render();
+
+		display.SetDepthTest(true,false);
+		display.SetRasterizer(true,false);
+		display.SetBlendMode(Engine::BlendMode::FlareBlend);
+			Animation::RenderActiveEvents();
+
+		display.SetDepthTest(true, true);
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		display.SetRasterizer(true,true);
+
+
+
+		World::RenderWater(frustum);
+
+		VehicleAccessibilityMesh::Render(frustum);
+			
+		Objects::Icons::Render();
+
+		Objects::Renderer::RenderProgressBars();
+
+		Objects::Renderer::RenderTranslucent(false);
+
+		if (Objects::resourceView)
+			World::RenderResources(frustum);
+
+		#ifndef NO_SATELLITES
+		if (Camera::SkyGridIsVisible())
+			Grid::visibleOrbitGrid.Build(frustum);
+		#endif
+
+			
+		if (Camera::SubOrbitalGridIsVisible())
+		{
+			if (!VisualTerrain::visibleSubOrbitGrid.valid)
+				VisualTerrain::visibleSubOrbitGrid.ForceRecompileNow();
+			VisualTerrain::visibleSubOrbitGrid.Render(frustum);
+		}
+
+		Objects::Renderer::RenderTranslucent(true);
+
+		Objects::Renderer::RenderTranslucentBeams();
+		Objects::VisualMarkers::RenderTranslucentBeams();
+
+		World::RenderOverlay(frustum);
+
+		World::RenderBuildBlocks();
+
+		Explosions::Render(Camera::scene);
+
+
+
+
+
+
+
+		if (Objects::choiceVis.showArrow && !HUD::WindowStack::IsModal())
+		{
+//			display.SetDepthTest(false, false);
+			bool includeWater = false;
+			if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
+				includeWater = true;
+			else
+				if (Objects::selectedVehicle /*&& Objects::selectedVehicle->base->moveOnWater*/)
+					includeWater = true;
+			Grid::LCellIdI loc;
+			Objects::choiceVis.hasArrowCellTarget = InputControl::GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
+			if (Objects::choiceVis.hasArrowCellTarget && loc != Objects::choiceVis.arrowCellTarget.cellLocation)
+				Objects::choiceVis.arrowCellTarget = Objects::TrajectoryEndPoint(loc);
+			if (Objects::choiceVis.hasArrowCellTarget)
+			{
+				
+				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode
+					&& 
+					(
+						(Objects::selectedMobileEntity && !Objects::selectedMobileEntity->CanHitFrom(Objects::selectedMobileEntity->GetLastPointOfOrigin(),Objects::choiceVis.arrowCellTarget))
+						||
+						(!Objects::selectedMobileEntity && Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::choiceVis.arrowCellTarget))
+					)
+					//!Objects::Turret::CanHit(Objects::selectedVehicle->GetFlatAttackRange(),Objects::selectedVehicle->GetLastPointOfOrigin(),Objects::arrowCellTarget)
+					)
+					Objects::choiceVis.hasArrowCellTarget = false;
+			}
+
+		}
+		
+	}
+	display.Pick(Camera::hud);
+		Objects::VisualMarkers::RenderText();
+
+	display.Pick(Camera::scene);
+
+
+	display.ClearDepth();
+
+	{
+		
+		float3 b, d;
+		Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f, b, d);
+		index_t choice = InvalidIndex;
+		if (!Vec::zero(d))
+		{
+			Vec::normalize(d);
+
+			float distance = std::numeric_limits<float>::max();
+			choice = Objects::DetectChoiceIntersection(b, d, distance);
+		}
+
+
+
+
+		foreach(Objects::movementChoices, choice)
+		{
+			VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
+			VisualTerrain::RenderTransparentLowCell(choice->location.stackID);
+		}
+		if (choice != InvalidIndex)
+		{
+			const Objects::Choice&ch = Objects::movementChoices[choice];
+			VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
+			VisualTerrain::RenderLowCell(ch.location.stackID);
+		}
+	}
+
+
+
+	LineRenderer::Flush();
+}
+
+
+#endif
+
+
 
 
 
@@ -1190,201 +1395,46 @@ bool loop()
 			}
 		}
 
-		display.Pick(Camera::scene);
-		static Engine::Frustum<> frustum;
-		Camera::scene.GetFrustum(frustum);
-
-
-		//rendere scene here
-
-		display.SetRasterizer(true, true);
-
-
-		{
-			//Atmosphere::Build(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
-			Atmosphere::Render(Camera::scene);
-
-	//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
-
-			#if 0
-				for (int i = 0; i < 20; i++)
-					for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-					{
-						Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-						dat.outdated = false;
-						familiesRebuilt++;
-						if (Grid::SeeThrough::IsEnabled())
-						{
-							Grid::high.BakeBlockInstruction(Grid::cellStack, k, Grid::SeeThrough::ClipHeight);
-						}
-						else
-						{
-							Grid::high.BakeBlockInstruction(Grid::cellStack, k, Grid::Clip::NoClip);
-						}
-					}
-
-
-			#else
-				World::Render(frustum);
-
-
-			#endif
-		//display.SetDepthTest(false,false);
-
-
-
-			if (Objects::selectedEntity)
-			{
-				display.SetDepthTest(true,true);
-				display.SetBlendMode(Engine::BlendMode::None);
-				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::selectedEntity->location.height)+0.1f));
-				VisualTerrain::RenderLowCell(Objects::selectedEntity->location.stackID);
-
-				//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(Objects::selectedEntity);
-				if (Objects::selectedMobileEntity)
-				{
-					if (Objects::selectedMobileEntity->myTasks.IsNotEmpty())
-					{
-						foreach (Objects::selectedMobileEntity->myTasks.Peek().foci,f)
-						{
-							VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->target.height)+0.1f));
-							VisualTerrain::RenderLowCell(f->target.stackID);
-						}
-					}
-				}
-				display.SetDepthTest(true,true);
-			}
-
-
-			Objects::Renderer::RefreshFactionColors(!InputControl::saveScreenshot);
-			Objects::Renderer::RenderScene();
-			Objects::VisualMarkers::Render();
-
-			display.SetDepthTest(true,false);
-			display.SetRasterizer(true,false);
-			display.SetBlendMode(Engine::BlendMode::FlareBlend);
-				Animation::RenderActiveEvents();
-
-			display.SetDepthTest(true, true);
-			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-			display.SetRasterizer(true,true);
-
-
-
-			World::RenderWater(frustum);
-
-			VehicleAccessibilityMesh::Render(frustum);
-			
-			Objects::Icons::Render();
-
-			Objects::Renderer::RenderProgressBars();
-
-			Objects::Renderer::RenderTranslucent(false);
-
-			if (Objects::resourceView)
-				World::RenderResources(frustum);
-
-			#ifndef NO_SATELLITES
-			if (Camera::SkyGridIsVisible())
-				Grid::visibleOrbitGrid.Build(frustum);
-			#endif
-
-			
-			if (Camera::SubOrbitalGridIsVisible())
-			{
-				if (!VisualTerrain::visibleSubOrbitGrid.valid)
-					VisualTerrain::visibleSubOrbitGrid.ForceRecompileNow();
-				VisualTerrain::visibleSubOrbitGrid.Render(frustum);
-			}
-
-			Objects::Renderer::RenderTranslucent(true);
-
-			Objects::Renderer::RenderTranslucentBeams();
-			Objects::VisualMarkers::RenderTranslucentBeams();
-
-			World::RenderOverlay(frustum);
-
-			World::RenderBuildBlocks();
-
-			Explosions::Render(Camera::scene);
-
-
-
-
-
-
-
-			if (Objects::choiceVis.showArrow && !HUD::WindowStack::IsModal())
-			{
-	//			display.SetDepthTest(false, false);
-				bool includeWater = false;
-				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-					includeWater = true;
-				else
-					if (Objects::selectedVehicle /*&& Objects::selectedVehicle->base->moveOnWater*/)
-						includeWater = true;
-				Grid::LCellIdI loc;
-				Objects::choiceVis.hasArrowCellTarget = InputControl::GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
-				if (Objects::choiceVis.hasArrowCellTarget && loc != Objects::choiceVis.arrowCellTarget.cellLocation)
-					Objects::choiceVis.arrowCellTarget = Objects::TrajectoryEndPoint(loc);
-				if (Objects::choiceVis.hasArrowCellTarget)
-				{
-				
-					if (Objects::activeCursorMode == Objects::CursorMode::AttackMode
-					 && 
-						(
-							(Objects::selectedMobileEntity && !Objects::selectedMobileEntity->CanHitFrom(Objects::selectedMobileEntity->GetLastPointOfOrigin(),Objects::choiceVis.arrowCellTarget))
-							||
-							(!Objects::selectedMobileEntity && Objects::selectedEntity && !Objects::selectedEntity->CanHit(Objects::choiceVis.arrowCellTarget))
-						)
-					 //!Objects::Turret::CanHit(Objects::selectedVehicle->GetFlatAttackRange(),Objects::selectedVehicle->GetLastPointOfOrigin(),Objects::arrowCellTarget)
-					 )
-						Objects::choiceVis.hasArrowCellTarget = false;
-				}
-
-			}
 		
-		}
-		display.Pick(Camera::hud);
-			Objects::VisualMarkers::RenderText();
-
-		display.Pick(Camera::scene);
-
-
-		display.ClearDepth();
-
-		{
 		
-			float3 b, d;
-			Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f, b, d);
-			index_t choice = InvalidIndex;
-			if (!Vec::zero(d))
+		if (InputControl::saveLargeScreenshot)
+		{
+			
+			InputControl::saveLargeScreenshot = false;
+
+			count_t res = 4;
+
+			std::shared_ptr<std::pair<Image,bool> > capture(new std::pair<Image,bool>());
+			capture->first.SetSize(display.GetClientWidth() * res, display.GetClientHeight() * res,4);
+				Image part;
+
+			for (index_t x = 0; x < res; x++)
+			for (index_t y = 0; y < res; y++)
 			{
-				Vec::normalize(d);
+				display.ClearBackbuffer();
+				float fx = float(x) / res;
+				float fy = float(y) / res;
+				float w = 1.0f / res;
+				Camera::scene.UpdateProjectionSegment(display.GetPixelAspect(), fx,fy,w,w, 0.1f,1000.f);
 
-				float distance = std::numeric_limits<float>::max();
-				choice = Objects::DetectChoiceIntersection(b, d, distance);
+				RenderScene();
+				display.Capture(part);
+				capture->first.Paint(&part,x * display.GetClientWidth(), y * display.GetClientHeight(),BaseImage::Copy);
+
 			}
+			capture->second = InputControl::saveTransparentScreenshot;
 
+			storageThread.Run(capture);
+			Camera::scene.UpdateProjection2(display.GetPixelAspect(), 0.1f,1000.f);
 
-
-
-			foreach(Objects::movementChoices, choice)
-			{
-				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
-				VisualTerrain::RenderTransparentLowCell(choice->location.stackID);
-			}
-			if (choice != InvalidIndex)
-			{
-				const Objects::Choice&ch = Objects::movementChoices[choice];
-				VisualTerrain::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
-				VisualTerrain::RenderLowCell(ch.location.stackID);
-			}
 		}
+		
+		
+		RenderScene();
 
 
 
-		LineRenderer::Flush();
+
 
 		//#ifdef _DEBUG
 		//if (!saveScreenshot)
@@ -2112,6 +2162,7 @@ int main( int argc, const char* argv[])
 
 					Engine::input.Bind(Key::F4, InputControl::ToggleCameraLock);
 					Engine::input.Bind(Key::F3, InputControl::SaveScreenshot);
+					Engine::input.Bind(Key::F8, InputControl::SaveLargeScreenshot);
 					Engine::input.Bind(Key::F2, InputControl::ToggleTimeLapse);
 
 					#ifdef RAYTRACE
