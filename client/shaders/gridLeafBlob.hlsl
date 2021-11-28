@@ -117,6 +117,9 @@ float4 psMain(G2P input, out float outDepth: SV_Depth) : SV_TARGET
 	float4 projected = TransformAndProject(p);
 	outDepth = projected.z / projected.w;
 
+
+	clip(-1);
+
 	return float4(light*0.1,light*0.8,light*0.2,opacity);
 	
 }

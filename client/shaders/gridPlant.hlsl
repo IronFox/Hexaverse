@@ -119,6 +119,12 @@ float4 psMain(V2P input) : SV_TARGET
 	float3 baseAmbient = lerp((float3)MaxAmbient,BlueAmbient,input.blueshift);
 	float3 baseDiffuse = (float3)1.0 - baseAmbient;
 
+	float fresnel = (((1.0 - abs(dot(WorldCamera[2].xyz,input.normal)))));
+	fresnel *= fresnel;
+
+	return float4(lerp((float3)0,float3(0.5,0.75,0.5),(fresnel) ),1.0);
+
+
 	float4 rs = float4(/*tone **/ input.color.rgb * ((baseDiffuse*diffuse *light + baseAmbient)), 1.0);
 	rs.rgb += input.glowColor;
 	rs.rgb = lerp(rs.rgb,input.atmosphere.rgb,input.atmosphere.a);

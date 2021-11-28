@@ -101,8 +101,8 @@ void vsMain(A2V input, out V2P output)
 	output.world = input.position.xyz;
 	output.position = TransformAndProject(output.world);
 	output.intensity = input.position.w;
-	output.color = max(input.color,(float4)0.0);
-	output.glowColor = max(-input.color.rgb,(float3)0.0)*0.5;
+	output.color = (float4)0.0;// max(input.color,(float4)0.0);
+	output.glowColor =(float3)0.0;//  max(-input.color.rgb,(float3)0.0)*0.5;
 
 	//lava glow:
 	float3 seed = 

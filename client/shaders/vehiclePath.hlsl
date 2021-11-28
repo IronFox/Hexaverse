@@ -37,6 +37,7 @@ void vsMain(A2V input, out V2P output)
 
 float4 psMain(V2P input) : SV_TARGET
 {
+	clip(-1);
 //lerp(float3(0.4,1.0,0.5), Tint.rgb, Tint.a)
 	float white = sqr(sqr(sqr(input.color.g)));
 	return float4(lerp((float3)white, Tint.rgb, Tint.a), sqr(input.color.r));

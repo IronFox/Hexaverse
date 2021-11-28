@@ -77,6 +77,7 @@ void gsMain(inout TriangleStream<G2P> stream, point A2G input[1])
 
 float4 psMain(G2P input) : SV_TARGET
 {
+	clip(-1);
 	float texel = Texture.SampleBias(Sampler,input.uv,0.5);
 	float4 result;
 	result.rgb = input.color * lerp(input.pulse.x,input.pulse.y,0.5 + 0.5 * sin(input.pulse.z*Time ) );

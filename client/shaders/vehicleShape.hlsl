@@ -43,7 +43,7 @@ void vsMain(A2V input, out V2P output)
 	output.world = mul(ObjectMatrix,float4(input.position,1.0)).xyz;
 	//input.position;
 	output.position = TransformAndProject(output.world);
-	output.color = input.color;
+	output.color = float4(0,0,0,1);// input.color;
 	output.atmosphere = CalculatePositionFog(output.world);
 
 }
@@ -61,8 +61,9 @@ float4 psMain(V2P input) : SV_TARGET
 	float3 color = input.color.rgb * (diffuse*0.65 + ambient*0.35) * SunColor.rgb/* * Color.a * input.color.a*/;
 
 	float fresnel = (((1.0 - abs(dot(WorldCamera[2].xyz,input.normal)))));
+	fresnel *= fresnel;
 
-	color = lerp(color,Tint.rgb*input.color.rgb,(0.25 + 0.75 * fresnel) * Tint.a);
+	color = lerp(color,float3(0.5,0.75,0.5),(fresnel) );
 
 //	color.rgb = CalculatePositionFog(input.world, color.rgb);
 

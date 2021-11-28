@@ -76,6 +76,8 @@ void gsMain(inout TriangleStream<G2P> stream, point V2G input[1])
 
 float4 psMain(G2P input) : SV_TARGET
 {
+	clip(-1);
+
 	float3 rs = input.colorProgress.rgb;
 
 	float edge = sqr(smoothstep(0.0,0.5,abs(input.uv.y-0.5)));

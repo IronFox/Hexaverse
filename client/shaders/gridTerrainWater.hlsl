@@ -104,6 +104,8 @@ void vsMain(A2V input, out V2P output)
 
 float4 psMain(V2P input) : SV_TARGET
 {
+	clip(-1);
+
 	float step = max(abs(ddx(input.intensity)), abs(ddy(input.intensity)));
 	float intensity = (1.0 - smoothstep(0.07 - step, 0.07 + step, abs(input.intensity))) / (1.0 + 10.0 * step * step);
 	intensity = (1.0 - intensity)*0.5 + 0.5;	//overlay intensity
