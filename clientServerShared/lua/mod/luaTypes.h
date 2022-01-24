@@ -9,6 +9,21 @@ namespace Lua
 	typedef std::shared_ptr<API> PAPI;
 	typedef std::weak_ptr<API> WAPI;
 
+
+	typedef std::function<void()> FCommandOnClick;
+	typedef std::function<void(int&costOut, Objects::Resource::ID&costTypeOut, int&timeCostOut)> FCommandGetCost;
+	typedef std::function<void(Objects::Command::Base::Label&outResult)> FCommandGetLabel;
+	typedef std::function<Objects::Command::Base::Flags()> FCommandGetStatus;
+
+
+	typedef std::function<Objects::Command::PBase(const String&name, const String&customLabel, 
+			const FCommandOnClick&onClick, 
+			const FCommandGetCost&getCost,
+			const FCommandGetLabel&getLabel,
+			const FCommandGetStatus&getStatus
+		)>
+		FCompileCommand;
+
 	
 	DECLARE_POINTER_CLASS(RootType);
 	DECLARE_POINTER_CLASS(StructureType);
@@ -27,7 +42,10 @@ namespace Lua
 		Lua::Function<void(Lua::Table)> destroyFunction;
 		Lua::Function<void(Lua::Table)> onSelect;
 		Lua::Function<void(Lua::Table)> onDeselect;
+		Lua::Function<Lua::Table(Lua::Reference)> getCommands;
 		String briefDescription, textDescription;
+
+		FCompileCommand compileCommand;
 
 		template<typename F>
 		void	RequireFunction(const char*name, Lua::Function<F>&targetFunction) const
@@ -37,7 +55,7 @@ namespace Lua
 				throw Lua::Exception(CLOCATION,"Missing function '"+String(this->name)+"."+name+"'");
 		}
 
-		/**/	RootType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table);
+		/**/	RootType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table, const FCompileCommand&compileCommand);
 
 		Lua::Reference Instantiate(const Objects::WorldEntity*entity) const;
 
@@ -91,6 +109,10 @@ namespace Lua
 				LogEvent(EventClass::Preset::scriptError,ex.what());
 			}
 		}
+
+
+		const Objects::CC* GetCommands(const Lua::Reference&instance, Objects::CC&dynamicStorage) const;
+
 	};
 
 
@@ -99,8 +121,6 @@ namespace Lua
 		typedef RootType	Super;
 	public:
 		#ifdef HAS_WINDOW
-			Objects::CommandContainer	commands;
-
 			/**
 			Build-ready, object-space instruction to be used for all instances of this structure type
 			*/
@@ -120,16 +140,10 @@ namespace Lua
 		Lua::Function<void(Lua::Reference,Lua::Table)> onEnvironmentChange;
 
 
-		/**/	StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table);
+		/**/	StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table, const FCompileCommand&compileCommand);
 
 
 
-		#ifdef HAS_WINDOW
-			const Objects::CC*	GetCommands(Objects::CC&dynamicStorage) const 
-			{
-				return &commands;
-			}
-		#endif
 
 
 
@@ -183,7 +197,7 @@ namespace Lua
 		void GetResourceVector(const Lua::Reference&instance, Objects::Resource::Vector&balance, Objects::Resource::Vector&storageCurrent, Objects::Resource::Vector&storageMax) const;
 		void SetResourceStorage(const Lua::Reference&instance, const Objects::Resource::Vector&vec) const;
 
-		/**/	WorkingStructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&sourceTable):Super(api,type,name,sourceTable)
+		/**/	WorkingStructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&sourceTable, const FCompileCommand&compileCommand):Super(api,type,name,sourceTable, compileCommand)
 		{
 			isMobileEntityProducer = false;	//placeholder
 			mobileProductionPerRound = 1;
@@ -204,6 +218,11 @@ namespace Lua
 		typedef Objects::WorkingStructure Super;
 	public:
 		Lua::Reference instance;
+
+		#ifdef HAS_WINDOW
+			Objects::CommandContainer	commands;
+		#endif
+
 
 		/**/	WorkingStructure(const PWorkingStructureType&type):Objects::MobileEntityProducer(type->mobileProductionPerRound),type(type)
 		{
@@ -226,7 +245,7 @@ namespace Lua
 		
 		#ifdef HAS_WINDOW
 			virtual bool				TestIntersection(const M::TVec3<>&b, const M::TVec3<>&d, float & distance) const override {return Super::TestIntersection(type->geometry,b,d,distance);}
-			virtual const Objects::CC*	GetCommands(Objects::CC&dynamicStorage) const override {return type->GetCommands(dynamicStorage);}
+			virtual const Objects::CC*	GetCommands(Objects::CC&dynamicStorage) const override {return type->GetCommands(instance,dynamicStorage);}
 		#endif
 
 
@@ -240,7 +259,8 @@ namespace Lua
 		//WorldEntity overrides:
 		virtual Objects::PWorldEntity		CreateNewInstance(const Objects::OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override
 		{
-			return Objects::PWorldEntity(new WorkingStructure(type, table, owner,location,atTime));
+			auto rs = new WorkingStructure(type, table, owner,location,atTime);
+			return Objects::PWorldEntity(rs);
 		}
 
 		virtual void					OnDestroy(Objects::RemovalType type, float&atTime) override

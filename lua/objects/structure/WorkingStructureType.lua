@@ -25,3 +25,19 @@ end;
 function WorkingStructureType:SetResourceStorage(newStorage --[[ResVec]])
 	
 end;
+
+
+WorkingStructureType:AddCommand('Enable',nil, 
+	function(self)
+		self.unit.Enable(not self.unit.isEnabled);
+	end,
+	function(self)
+		return {opCount=0, resCount=0, resType='Minerals'};
+	end,
+	function(self)
+		return {brief = Ternary(self.unit.isEnabled,'Disable','Enable')};
+	end,
+	function(self)
+		return {CommandFlags.IsEnabled, Ternary(self.unit.isEnabled, CommandFlags.IsPermaActive, CommandFlags.None)};
+	end
+);

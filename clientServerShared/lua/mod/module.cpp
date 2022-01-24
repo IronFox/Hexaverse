@@ -82,7 +82,18 @@ namespace Lua
 	{
 		return CreateLuaType(table,[&table,typeId,this](const String&typeName)
 		{
-			return Objects::PWorldEntity(new WorkingStructure(PWorkingStructureType(new WorkingStructureType(api,Objects::EntityType(Objects::TTypeComponent(ConstName::Type_Mod,typeId)),  typeName,table))));
+			return Objects::PWorldEntity(
+				new WorkingStructure(
+					PWorkingStructureType(
+						new WorkingStructureType(
+							api,
+							Objects::EntityType(Objects::TTypeComponent(ConstName::Type_Mod,typeId)),
+							typeName,
+							table
+						)
+					)
+				)
+			);
 		});
 	}
 
