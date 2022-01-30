@@ -29,7 +29,27 @@ The client application must implement these somewhere
 */
 namespace ApplicationInterface
 {
+#ifdef HAS_WINDOW
+	typedef std::function<void()> FCommandOnClick;
+	typedef std::function<void(int&costOut, Objects::Resource::ID&costTypeOut, int&timeCostOut)> FCommandGetCost;
+	typedef std::function<void(Objects::Description&outResult)> FCommandGetLabel;
+	typedef std::function<Objects::CommandFlags()> FCommandGetStatus;
+
+	struct TCompileCommandArguments
+	{
+		String name;
+		String customIconName; 
+		FCommandOnClick onClick;
+		FCommandGetCost getCost;
+		FCommandGetLabel getLabel;
+		FCommandGetStatus getStatus;
+	};
+
+	Objects::Command::PBase CreateScriptedCommand(const TCompileCommandArguments&);
+#endif
+
 #ifdef CLIENT
+
 	
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<const Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode mode, const Objects::PMobileEntity&deployingWhat);

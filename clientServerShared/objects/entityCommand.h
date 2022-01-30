@@ -25,15 +25,7 @@ namespace Objects
 		class Base : public std::enable_shared_from_this<Base>
 		{
 		public:
-			enum class Flags
-			{
-				None = 0,
-				IsEnabled=0x1,
-				IsPermaActive=0x2,
-				IsFlashing=0x4,
-				SoftFlashing=0x8,
-				IsInvisible=0x10
-			};
+			typedef Objects::CommandFlags Flags;
 
 
 			String			name;
@@ -71,29 +63,6 @@ namespace Objects
 
 		};
 
-		inline Base::Flags operator|(Base::Flags a, Base::Flags b)
-		{
-			using T = std::underlying_type_t <Base::Flags>;
-			return (Base::Flags)(((T)a)|((T)b));
-		}
-	
-		inline void operator|=(Base::Flags&a, Base::Flags b)
-		{
-			using T = std::underlying_type_t <Base::Flags>;
-			a = (Base::Flags)(((T)a)|((T)b));
-		}
-
-		inline bool operator&(Base::Flags a, Base::Flags b)
-		{
-			using T = std::underlying_type_t <Base::Flags>;
-			return (((T)a)&((T)b)) != 0;
-		}
-
-		inline void operator-=(Base::Flags&a, Base::Flags b)
-		{
-			using T = std::underlying_type_t <Base::Flags>;
-			a = (Base::Flags)(((T)a)&(~((T)b)));
-		}
 
 
 		typedef std::shared_ptr<Base>	PBase;
@@ -166,6 +135,31 @@ namespace Objects
 	}
 
 	typedef Command::Container	CommandContainer,CC;
-	typedef Command::Base::Flags CommandFlags;
+
+
+	inline CommandFlags operator|(CommandFlags a, CommandFlags b)
+	{
+		using T = std::underlying_type_t <CommandFlags>;
+		return (CommandFlags)(((T)a)|((T)b));
+	}
+	
+	inline void operator|=(CommandFlags&a, CommandFlags b)
+	{
+		using T = std::underlying_type_t <CommandFlags>;
+		a = (CommandFlags)(((T)a)|((T)b));
+	}
+
+	inline bool operator&(CommandFlags a, CommandFlags b)
+	{
+		using T = std::underlying_type_t <CommandFlags>;
+		return (((T)a)&((T)b)) != 0;
+	}
+
+	inline void operator-=(CommandFlags&a, CommandFlags b)
+	{
+		using T = std::underlying_type_t <CommandFlags>;
+		a = (CommandFlags)(((T)a)&(~((T)b)));
+	}
+
 
 }

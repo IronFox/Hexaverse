@@ -9,7 +9,6 @@
 #include "../luaGameAPI.h"
 
 
-
 namespace Lua
 {
 	DECLARE_POINTER_CLASS(Mod);

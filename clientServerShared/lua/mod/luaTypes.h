@@ -10,19 +10,6 @@ namespace Lua
 	typedef std::weak_ptr<API> WAPI;
 
 
-	typedef std::function<void()> FCommandOnClick;
-	typedef std::function<void(int&costOut, Objects::Resource::ID&costTypeOut, int&timeCostOut)> FCommandGetCost;
-	typedef std::function<void(Objects::Command::Base::Label&outResult)> FCommandGetLabel;
-	typedef std::function<Objects::Command::Base::Flags()> FCommandGetStatus;
-
-
-	typedef std::function<Objects::Command::PBase(const String&name, const String&customLabel, 
-			const FCommandOnClick&onClick, 
-			const FCommandGetCost&getCost,
-			const FCommandGetLabel&getLabel,
-			const FCommandGetStatus&getStatus
-		)>
-		FCompileCommand;
 
 	
 	DECLARE_POINTER_CLASS(RootType);
@@ -45,8 +32,6 @@ namespace Lua
 		Lua::Function<Lua::Table(Lua::Reference)> getCommands;
 		String briefDescription, textDescription;
 
-		FCompileCommand compileCommand;
-
 		template<typename F>
 		void	RequireFunction(const char*name, Lua::Function<F>&targetFunction) const
 		{
@@ -55,7 +40,7 @@ namespace Lua
 				throw Lua::Exception(CLOCATION,"Missing function '"+String(this->name)+"."+name+"'");
 		}
 
-		/**/	RootType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table, const FCompileCommand&compileCommand);
+		/**/	RootType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table);
 
 		Lua::Reference Instantiate(const Objects::WorldEntity*entity) const;
 
@@ -140,7 +125,7 @@ namespace Lua
 		Lua::Function<void(Lua::Reference,Lua::Table)> onEnvironmentChange;
 
 
-		/**/	StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table, const FCompileCommand&compileCommand);
+		/**/	StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table);
 
 
 
@@ -197,7 +182,7 @@ namespace Lua
 		void GetResourceVector(const Lua::Reference&instance, Objects::Resource::Vector&balance, Objects::Resource::Vector&storageCurrent, Objects::Resource::Vector&storageMax) const;
 		void SetResourceStorage(const Lua::Reference&instance, const Objects::Resource::Vector&vec) const;
 
-		/**/	WorkingStructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&sourceTable, const FCompileCommand&compileCommand):Super(api,type,name,sourceTable, compileCommand)
+		/**/	WorkingStructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&sourceTable):Super(api,type,name,sourceTable)
 		{
 			isMobileEntityProducer = false;	//placeholder
 			mobileProductionPerRound = 1;

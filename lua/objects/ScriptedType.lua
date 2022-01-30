@@ -86,11 +86,11 @@ function ScriptedType:GetCommands()
 end;
 
 
-function ScriptedType:AddCommand( name--[[string]], customLabel --[[string/nil]], onClick --[[void(instance)]], getCost --[[CmdCost(instance)]], createLabel --[[CmdLabel(instance)]], getFlags --[[CommandFlags[](instance)]]) -- void
+function ScriptedType:AddCommand( name--[[string]], customIconName --[[string/nil]], onClick --[[void(instance)]], getCost --[[CmdCost(instance)]], createLabel --[[CmdLabel(instance)]], getFlags --[[CommandFlags[](instance)]]) -- void
 	table.insert(self.commands, 
 		{
 			name = name,
-			customLabel = customLabel,
+			customIconName = customIconName,
 			onClick = onClick,
 			getCost = getCost,
 			createLabel = createLabel,

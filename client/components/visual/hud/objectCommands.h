@@ -16,6 +16,7 @@
 #include <stringTable.h>
 #include <objects/entityCommand.h>
 
+
 namespace Objects
 {
 	namespace Command

@@ -17,8 +17,8 @@ namespace Lua
 
 	}
 
-	/**/	RootType::RootType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table, const FCompileCommand&compileCommand)
-		:name(name),type(type),api(api),self(table),compileCommand(compileCommand)
+	/**/	RootType::RootType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table)
+		:name(name),type(type),api(api),self(table)
 	{
 		height = table.RequireField<int>("height");
 		isBroad = table.RequireField<bool>("isBroad");
@@ -39,38 +39,40 @@ namespace Lua
 
 	const Objects::CC* RootType::GetCommands(const Lua::Reference&instance, Objects::CC&dynamicStorage) const
 	{
-		if (!getCommands)
-			return nullptr;
+		#ifdef HAS_WINDOW	
+			if (!getCommands)
+				return nullptr;
 
 
-		Lua::Table t = getCommands(instance);
+			Lua::Table t = getCommands(instance);
 
-		if (!t || t.GetLength() == 0)
-			return nullptr;
+			if (!t || t.GetLength() == 0)
+				return nullptr;
 
 
-		for (index_t i = 1; i <= t.GetLength(); i++)
-		{
-			Lua::Table cmdTable = t.GetElement(i);
-			//Objects::Command::PBase cmd(new Objects::Command::Base());
-			Lua::Function<void(Lua::Reference)> onClick = cmdTable.GetField("onClick");
-			Lua::Function<Lua::Table(Lua::Reference)> getCost = cmdTable.GetField("getCost");
-			Lua::Function<Lua::Table(Lua::Reference)> createLabel = cmdTable.GetField("createLabel");
-			Lua::Function<int(Lua::Reference)> getStatus = cmdTable.GetField("getFlags");
-			String cmdName = cmdTable.RequireField<String>("name");
+			for (index_t i = 1; i <= t.GetLength(); i++)
+			{
+				Lua::Table cmdTable = t.GetElement(i);
+				//Objects::Command::PBase cmd(new Objects::Command::Base());
+				Lua::Function<void(Lua::Reference)> onClick = cmdTable.GetField("onClick");
+				Lua::Function<Lua::Table(Lua::Reference)> getCost = cmdTable.GetField("getCost");
+				Lua::Function<Lua::Table(Lua::Reference)> createLabel = cmdTable.GetField("createLabel");
+				Lua::Function<int(Lua::Reference)> getStatus = cmdTable.GetField("getFlags");
+				String cmdName = cmdTable.RequireField<String>("name");
 
-			if (!getStatus)
-				throw Lua::Exception(CLOCATION, name+ " Command '"+cmdName+"' does not define getFlags");
+				if (!getStatus)
+					throw Lua::Exception(CLOCATION, name+ " Command '"+cmdName+"' does not define getFlags");
 
-			auto cmd = compileCommand(
-				 cmdName
-				,cmdTable.RequireField<String>("customLabel")
-				,[onClick, instance]() 
+
+				ApplicationInterface::TCompileCommandArguments args;
+				args.name = cmdName;
+				args.customIconName = cmdTable.RequireField<String>("customIcon");
+				args.onClick = [onClick, instance]() 
 				{
 					if (onClick)
 						onClick(instance);
-				}
-				,[getCost, instance,this,cmdName](int&costOut, Objects::Resource::ID&costTypeOut, int&timeCostOut)
+				};
+				args.getCost = [getCost, instance,this,cmdName](int&costOut, Objects::Resource::ID&costTypeOut, int&timeCostOut)
 				{
 					if (getCost)
 					{
@@ -89,10 +91,8 @@ namespace Lua
 						costOut = 0;
 						timeCostOut = 0;
 					}
-
-
-				}
-				,[createLabel, instance](Objects::Command::Base::Label&outResult)
+				};
+				args.getLabel = [createLabel, instance](Objects::Command::Base::Label&outResult)
 				{
 					if (createLabel)
 					{
@@ -116,29 +116,21 @@ namespace Lua
 						}
 
 					}
-				}
-				,[getStatus, instance]()
+				};
+				args.getStatus = [getStatus, instance]()
 				{
 					return (Objects::Command::Base::Flags)getStatus(instance);
-				}
-				);
-			dynamicStorage.Add(cmd);
-
-
-			/*
-			name = name,
-			customLabel = customLabel,
-			onClick = onClick,
-			getCost = getCost,
-			createLabel = createLabel,
-			getFlags = getFlags
-			*/ 
+				};
 			
+				auto cmd = ApplicationInterface::CreateScriptedCommand(args);
+				if (cmd)
+					dynamicStorage.Add(cmd);
+			}
 
-		}
-
-
-		return &dynamicStorage;
+			return &dynamicStorage;
+		#else
+			return nullptr;
+		#endif
 	}
 
 
@@ -159,7 +151,7 @@ namespace Lua
 
 	
 
-	/**/	StructureType::StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table, const FCompileCommand&compileCommand):Super(api,type,name,table, compileCommand)
+	/**/	StructureType::StructureType(const PAPI&api, const Objects::EntityType&type, const String&name, const Lua::Table&table):Super(api,type,name,table)
 	{
 		hasFoundation = table.RequireField<bool>("hasFoundation");
 

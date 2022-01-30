@@ -23,6 +23,18 @@
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
 
+
+
+namespace ApplicationInterface
+{
+	Objects::Command::PBase CreateScriptedCommand(const TCompileCommandArguments&args)
+	{
+		return Objects::Command::PBase{new Objects::Command::CustomIconCommand(args.name, args.customIconName, args.onClick, [args](bool){return args.getStatus();}, args.getCost) };
+	}
+
+}
+
+
 namespace Objects
 {
 	Command::Container		globalCommands;
