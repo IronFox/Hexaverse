@@ -1361,7 +1361,7 @@ namespace Reflection
 					{
 						String key = c->typeName;
 						key.FindAndReplace(' ','_');
-						parser->SetVariable(CLI::PVariable(new Variable::UnitLimit(key,c->constName)));
+						parser->SetVariable(CLI::PVariable(new Variable::UnitLimit(key,c->typeComponent)));
 					}
 				parser->ExitFolder();
 			parser->ExitFolder();

@@ -445,7 +445,7 @@ namespace Objects
 					#endif
 					else
 						FATAL__("Unexpected mobile entity type: "+GetTypeName());
-					limit = RuntimeConfig::UnitLimits::Get(t->constName);
+					limit = RuntimeConfig::UnitLimits::Get(t->typeComponent);
 				}
 				elif (IsStructure())
 				{

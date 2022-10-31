@@ -74,7 +74,7 @@ namespace Objects
 			{
 				auto c = Component::allComponents.FindByName(combined);
 				if (c)
-					rs = c->constName;
+					rs = c->typeComponent;
 				else
 					throw Except::Program::ParameterFault(CLOCATION,"No type declaration found for '"+combined+"'");
 			}

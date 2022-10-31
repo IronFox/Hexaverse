@@ -145,6 +145,9 @@ namespace Lua
 		typedef StructureType Super;
 
 		Lua::Function<bool(Lua::Table)> canEnable;
+		Lua::Function<void(Lua::Table)> onSleepChange;
+		Lua::Function<void(Lua::Table)> onEnabledChange;
+		Lua::Function<void(Lua::Table, Lua::Table)> tick;
 		Lua::Function<bool(Lua::Table, Lua::Table)> canProduce;
 		Lua::Function<bool(Lua::Table)> wouldLikeToEnable;
 		Lua::Function<bool(Lua::Table, Lua::Table, Lua::Table, Lua::Table)> getResourceVector;
@@ -154,6 +157,34 @@ namespace Lua
 		UINT32	mobileProductionPerRound;
 		bool	isMobileEntityProducer;
 
+
+		void OnSleepChange(const Lua::Reference& ref) const
+		{
+			if (onSleepChange)
+				Try([&ref, this]() {onSleepChange(ref); });
+		}
+
+		
+
+		void OnEnabledChange(const Lua::Reference& ref) const
+		{
+			if (onEnabledChange)
+				Try([&ref, this]() {onEnabledChange(ref); });
+		}
+		
+		
+
+		void Tick(const Lua::Reference& ref, Objects::Resource::Vector&rvec) const
+		{
+			if (tick)
+				TryWithAPI([&ref, &rvec, this](const Lua::API&api) 
+				{
+					auto t = api.program->CreateTable();
+					Lua::API::ResourceVectorToLua(t, rvec);
+					tick(ref,t);
+					Lua::API::LuaToResourceVector(t, rvec);
+				});
+		}
 
 
 		bool CanEnable(const Lua::Reference&ref)	const
@@ -191,6 +222,9 @@ namespace Lua
 			awaitsUserInteraction = self.GetField("AwaitsUserInteraction");
 			RequireFunction("GetResourceVector",getResourceVector);
 			RequireFunction("SetResourceStorage",setResourceStorage);
+			onSleepChange = self.GetField("OnSleepChange");
+			onEnabledChange = self.GetField("OnEnabledChange");
+			tick = self.GetField("Tick");
 		}
 
 
@@ -257,6 +291,11 @@ namespace Lua
 					this->type->OnDestroy(instance);
 				instance = Lua::nil;
 			}
+
+			this->type->TryWithAPI([this](Lua::API& api)
+			{
+				api.UnmapEntity(shared_from_this());
+			});
 		};	
 
 		virtual void					OnInsert(float&atTime, bool freshConstruction) override
@@ -264,16 +303,38 @@ namespace Lua
 			Super::OnInsert(atTime,freshConstruction);
 
 			instance = type->Instantiate(this);
+			type->TryWithAPI([this](Lua::API& api)
+			{
+				api.MapEntity(shared_from_this(), true, true);
+			});
 		}
 
 		virtual int						GetHeight() const override {return type->height;}
 		virtual bool					AwaitsUserInteraction() const {return type->AwaitsUserInteraction(instance);}
 
 		#ifndef CLIENT
-			virtual void			OnSleepChange(float&t) override;
-			virtual void			OnEnabledChange() override;
+			virtual void			OnSleepChange(float&t) override
+			{
+				type->TryWithAPI([this](Lua::API& api)
+				{
+					api.MapEntity(shared_from_this(), true, true);
+				});
+				type->OnSleepChange(instance);
 
-			virtual void			Tick(Resource::Vector&) override;
+			}
+			virtual void			OnEnabledChange() override
+			{
+				type->TryWithAPI([this](Lua::API& api)
+					{
+						api.MapEntity(shared_from_this(), true, true);
+					});
+				type->OnEnabledChange(instance);
+			}
+
+			virtual void			Tick(Objects::Resource::Vector&vec) override
+			{
+				type->Tick(instance, vec);
+			}
 		#endif
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(Objects::Description&label, UINT32 descFlags, const Objects::OwnerParameter&owner, const Objects::T2::PConstProperties&t2) override

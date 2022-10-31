@@ -33,7 +33,7 @@ namespace AI
 			{
 				if (fullPrototype)
 					return fullPrototype->GetType();
-				return Objects::EntityType(base->constName,turret->constName);
+				return Objects::EntityType(base->typeComponent,turret->typeComponent);
 			}
 
 			friend String					ToString(const TChoice&choice)

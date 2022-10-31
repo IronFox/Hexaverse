@@ -287,7 +287,7 @@ namespace Protocol
 	NETSTRUCT7(VagueAttackTrajectory
 		, TimeWindow, time
 		, NET(M::TVec3<>), sourcePosition
-		, NET(ConstName), turretType
+		, Objects::TTypeComponent, turretType
 		, NET(float), turretRange
 		, NET(float), attackAngle
 		, NET(float), explosionRadius

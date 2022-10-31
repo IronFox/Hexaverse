@@ -100,7 +100,7 @@ namespace ApplicationInterface
 		}
 
 		if (v.GetOperationSpeed(Objects::Component::Operation::Construct))
-			Game::RegisterClassGain(_v, Objects::Faction::UnitClass::Terraformer, "terraformer");
+			Game::RegisterClassGain(_v, Objects::UnitClass::Terraformer, "terraformer");
 	}
 
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime)
@@ -449,7 +449,7 @@ namespace ApplicationInterface
 			float zOffset;
 			Objects::PTurretBase base = attack.attackFrom->GetTurretBase(zOffset);
 			ASSERT__(base);
-			roughAttack.turretType = base->turret->constName;
+			roughAttack.turretType = base->turret->typeComponent;
 			roughAttack.traceTo = attack.traceTo;
 
 			roughAttack.time.begin.rightNow = false;

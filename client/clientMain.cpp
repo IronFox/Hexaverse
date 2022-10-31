@@ -258,7 +258,7 @@ namespace ApplicationInterface
 	{
 		Protocol::ConstructionBegin	cb;
 		cb.plantID = towerID;
-		cb.type = newTurret->constName;
+		cb.type = newTurret->typeComponent;
 		Network::Channels::constructionBegin.SendTo(Network::client,cb);
 	}
 

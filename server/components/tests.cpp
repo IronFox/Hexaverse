@@ -477,8 +477,8 @@ namespace Test
 			return;
 		}
 		//vehicle assembly:
-		t.baseType = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->constName;
-		t.turretType = Objects::Component::vehicleTurretComponents[random.NextIndex(Objects::Component::vehicleTurretComponents.Count())]->constName;
+		t.baseType = Objects::Component::baseComponents[random.NextIndex(Objects::Component::baseComponents.Count())]->typeComponent;
+		t.turretType = Objects::Component::vehicleTurretComponents[random.NextIndex(Objects::Component::vehicleTurretComponents.Count())]->typeComponent;
 	}
 
 	/*static*/ void		Serialization::RandomFill(Objects::Resource::PositiveVector&vec, Random&random)

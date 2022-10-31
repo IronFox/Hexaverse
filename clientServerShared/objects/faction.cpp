@@ -1690,7 +1690,7 @@ namespace Objects
 					}
 				}
 				const Component::Turret*turret = To<MobileEntity>::Cast(e)->turret;
-				ConstName type = turret->constName;
+				auto type = turret->typeComponent;
 				if (!CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut))
 					return false;
 				if (!turret->isUnlocked.GetValue(researchState.attributeTable))
@@ -1721,19 +1721,19 @@ namespace Objects
 			//return CanSpawnType(e,errorOut);	we count all units. no exception for stored units, therefore deployment will always succeed from storage
 		}
 
-		count_t		Faction::CountMobileType(ConstName turretType) const
+		count_t		Faction::CountMobileType(const Objects::TTypeComponent&turretType) const
 		{
 			count_t rs = 0;
 			foreach (this->activeMobiles, v0)
 			{
 				PMobileEntity m = v0->lock();
-				if (m->turret->constName == turretType)
+				if (m->turret->typeComponent == turretType)
 					rs ++;
 			}
 			foreach (this->storedMobiles, v0)
 			{
 				PMobileEntity m = v0->lock();
-				if (m->turret->constName == turretType)
+				if (m->turret->typeComponent == turretType)
 					rs ++;
 			}
 			return rs;
@@ -1750,17 +1750,6 @@ namespace Objects
 			return rs;
 		}
 
-
-		count_t		Faction::CountTurretType(ConstName turretType) const
-		{
-			count_t rs = 0;
-			foreach (this->allTurretBases, t0)
-			{
-				if (t0->lock()->turret->constName == turretType)
-					rs ++;
-			}
-			return rs;
-		}
 
 
 
@@ -1838,6 +1827,17 @@ namespace Objects
 		//	CheckChanges(t);
 		//}
 
+
+		count_t		Faction::CountTurretType(const TTypeComponent& turretType) const
+		{
+			count_t rs = 0;
+			foreach(this->allTurretBases, t0)
+			{
+				if (t0->lock()->turret->typeComponent == turretType)
+					rs++;
+			}
+			return rs;
+		}
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
 		/*static*/ HashTable<TUniqueID,PFaction>	Faction::idMap;
@@ -1915,6 +1915,9 @@ namespace Objects
 
 
 	#endif
+
+
+
 
 	void	Faction::ChangeAlliance(const PAlliance&a)
 	{

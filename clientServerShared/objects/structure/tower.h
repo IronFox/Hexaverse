@@ -123,7 +123,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
-		virtual EntityType			GetType() const override {DBG_ASSERT__(turret && turret->constName != ConstName::Empty); return EntityType(ConstName::Type_Tower, turret->constName);}
+		virtual EntityType			GetType() const override {DBG_ASSERT__(turret && turret->typeComponent != ConstName::Empty); return EntityType(ConstName::Type_Tower, turret->typeComponent);}
 
 		//WorldEntity overrides:
 		#ifndef CLIENT

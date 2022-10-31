@@ -154,7 +154,9 @@ namespace Lua
 		api->UpdateResearch();
 		api->AddAllFactionsAndAlliances();
 		api->AddAllEntities();
-		api->AddMyMarkers();
+		#ifdef CLIENT
+			api->AddMyMarkers();
+		#endif
 		api->AddObjectAndPathfindingFunctions(false);
 
 

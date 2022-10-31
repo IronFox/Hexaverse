@@ -387,7 +387,7 @@ namespace Game
 	bool			AIIsActive();
 
 
-	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass, const String&debugName);
+	void			RegisterClassGain(const Objects::PWorldEntity&e, Objects::UnitClass, const String&debugName);
 	count_t			CountLivingPlayerFactions();
 	count_t			CountLivingPlayerAlliances();
 

@@ -149,7 +149,7 @@ namespace AI
 						)
 					);
 			const bool isAA = t->trajectoryType == Objects::TrajectoryType::AAMissile;
-			const bool isBomber = t->constName == ConstName::Turret_Bomber;
+			const bool isBomber = t->typeComponent == ConstName::Turret_Bomber;
 
 			const bool interestedInAirborne = attacksAirborne || v->GetSubOrbitalScanningRange() > 0 || (v->IsPlane() && !attacksGroundEntities);
 			const bool interestedInGroundTargets = attacksGroundEntities || !v->IsPlane() || v->turret->groundScanningRange.GetValue(v->GetResearchState()) >= 0.5f * v->GetScanningRange();

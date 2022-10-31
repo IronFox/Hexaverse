@@ -1126,7 +1126,7 @@ namespace Game
 	}
 
 
-	void RegisterClassGain(const Objects::PWorldEntity&e, Objects::Faction::UnitClass cl, const String&debugName)
+	void RegisterClassGain(const Objects::PWorldEntity&e, Objects::UnitClass cl, const String&debugName)
 	{
 		if (Config::basesRequired && !(e->owner->hasUnitClasses & cl))
 		{
@@ -1488,7 +1488,7 @@ namespace Game
 			foreach (Objects::Faction::all,_f)
 			{
 				const Objects::PFaction&faction = *_f;
-				faction->hasUnitClasses = Objects::Faction::UnitClass::None;
+				faction->hasUnitClasses = Objects::UnitClass::None;
 			}
 
 			Objects::RefreshCompoundCoverageIfNeeded(atTime);
@@ -1497,7 +1497,7 @@ namespace Game
 			{
 				if (c.workingStructures.IsEmpty())
 					return;	//pure technite factions don't have units. Also, depending on server settings, some factions might not either
-				typedef Objects::Faction::UnitClass	UC;
+				typedef Objects::UnitClass	UC;
 
 				UC	uc = UC::None;
 				if (Objects::Mine::MineralStorage > 0)
@@ -1523,14 +1523,14 @@ namespace Game
 					if (mine && mine->IsLinkedToCore())
 					{
 						if (mine->naturalResources.fuel >= 10)
-							uc |= Objects::Faction::UnitClass::FuelMine;
+							uc |= Objects::UnitClass::FuelMine;
 						if (mine->naturalResources.minerals >= 5)
-							uc |= Objects::Faction::UnitClass::MineralMine;
+							uc |= Objects::UnitClass::MineralMine;
 					}
 					if (s->IsNexusPort())
-						uc |= Objects::Faction::UnitClass::NexusPort;
+						uc |= Objects::UnitClass::NexusPort;
 					if (To<Objects::Generator>::DynamicCast(s))
-						uc |= Objects::Faction::UnitClass::Generator;
+						uc |= Objects::UnitClass::Generator;
 
 					#ifndef ONE_COMPOUND_PER_FACTION
 						s->GetResourceVector(dummy,dummy,storage);
@@ -1538,7 +1538,7 @@ namespace Game
 							hasMineralContainer = true;
 					#endif
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
-						uc |= Objects::Faction::UnitClass::VehiclePlant;
+						uc |= Objects::UnitClass::VehiclePlant;
 				}
 				Objects::PFaction f = o;//c.workingStructures.First().lock()->owner;
 				if (f)
@@ -1548,7 +1548,7 @@ namespace Game
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
 			{
 				if (v->GetOperationSpeed(Objects::Component::Operation::Construct))
-					v->owner->hasUnitClasses |= Objects::Faction::UnitClass::Terraformer;
+					v->owner->hasUnitClasses |= Objects::UnitClass::Terraformer;
 			});
 
 

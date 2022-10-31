@@ -58,7 +58,7 @@ namespace Animation
 	Trajectory::Trajectory(Protocol::VagueAttackTrajectory&a):Super(TUniqueID::Empty())
 	{
 		attackerTurret = Objects::Component::allTurretComponents.Find(a.turretType);
-		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType);
+		ASSERT_NOT_NULL1__(attackerTurret,a.turretType);
 		attackRange = a.turretRange;
 		attackAngle = a.attackAngle,
 		attackerPosition = a.sourcePosition;

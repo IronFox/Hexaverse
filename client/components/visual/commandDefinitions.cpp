@@ -107,7 +107,7 @@ namespace Objects
 					Objects::GetProductionChoices(&plant,plant.GetSelectionPrototype(),choices);
 					static bool ignoreWarnings = false;
 					if (choices.IsNotEmpty() || ignoreWarnings)
-						ApplicationInterface::SignalConstructionBegin(plant.id, {plant.selectedBase->constName, plant.selectedTurret->constName});
+						ApplicationInterface::SignalConstructionBegin(plant.id, {plant.selectedBase->typeComponent, plant.selectedTurret->typeComponent});
 					else
 					{
 
@@ -117,7 +117,7 @@ namespace Objects
 							if (!plant.selectedBase->moveOnWater)
 								waterNotice = " Note that this vehicle type cannot stand on water. ";
 							TUniqueID myID = plant.id;
-							EntityType type = {plant.selectedBase->constName,plant.selectedTurret->constName};
+							EntityType type = {plant.selectedBase->typeComponent,plant.selectedTurret->typeComponent};
 							HUD::Dialog::Confirm("Cannot find valid spawning locations around '"+plant.GetNiceName()+"' for '"+Vehicle::GetTypeName(plant.selectedBase,plant.selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
 									[type,myID]()
 									{
@@ -136,7 +136,7 @@ namespace Objects
 									}
 								);
 						#else
-							ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
+							ApplicationInterface::SignalConstructionBegin(id, selectedBase->typeComponent, selectedTurret->typeComponent);
 						#endif
 					}
 				}

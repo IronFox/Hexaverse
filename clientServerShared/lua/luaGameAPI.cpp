@@ -344,7 +344,7 @@ namespace Lua
 
 		Lua::Table t = program->CreateTable();
 		//b.
-		t.SetField("type",AddOrGetType(b.turret->constName));
+		t.SetField("type",AddOrGetType(b.turret->typeComponent));
 		t.SetField("weight",b.turret->weight.GetValue(researchState));
 		if (b.turret->CanAttack())
 		{
@@ -1459,6 +1459,14 @@ namespace Lua
 		return e;
 	}
 
+
+	void	API::UnmapEntity(const Objects::PWorldEntity& e)
+	{
+		if (!e)
+			return;
+		entityMap.Unset(e->id);
+		loadedEntityTableMap.Unset(e->id);
+	}
 
 	Lua::Table	API::MapEntity( const Objects::PWorldEntity&e, bool actual, bool updateIfFound )
 	{
@@ -2665,13 +2673,13 @@ namespace Lua
 			{
 				auto b = e->GetTurretBase();
 				if (b)
-					t.SetField("turretType",AddOrGetType(b->turret->constName));
+					t.SetField("turretType",AddOrGetType(b->turret->typeComponent));
 			}
 
 			if (e->IsPureVehicle())
 			{
 				auto b = To<Objects::Vehicle>::Cast(e)->base;
-				t.SetField("vehicleBaseType",AddOrGetType(b->constName));
+				t.SetField("vehicleBaseType",AddOrGetType(b->typeComponent));
 			}
 
 			if (e->IsWorkingStructure())
@@ -2827,7 +2835,7 @@ namespace Lua
 			if (!bt)
 				throw Lua::Exception(CLOCATION,"Vehicle(): Vehicle base component '"+baseName+"' not found");
 
-			return AddOrGetType(Objects::EntityType(bt->constName,tt->constName));
+			return AddOrGetType(Objects::EntityType(bt->typeComponent,tt->typeComponent));
 		});
 
 		ASSERT__(allTypes.GetLength() == 0);
@@ -2843,7 +2851,7 @@ namespace Lua
 
 		foreach (Objects::Component::allTurretComponents,t0)
 		{
-			auto t = AddType((*t0)->constName);
+			auto t = AddType((*t0)->typeComponent);
 			const String&uniqueName = (*t0)->typeName;
 			allTypes.SetField(uniqueName,t);	//AppendElement(t);
 			turretTypes.SetField(uniqueName,t); //AppendElement(t);
@@ -2851,7 +2859,7 @@ namespace Lua
 
 		foreach (Objects::Component::baseComponents,b0)
 		{
-			auto t = AddType((*b0)->constName);
+			auto t = AddType((*b0)->typeComponent);
 			const String&uniqueName = (*b0)->typeName;
 			allTypes.SetField(uniqueName,t);	//AppendElement(t);
 			vbaseTypes.SetField(uniqueName,t); //AppendElement(t);
@@ -2879,12 +2887,12 @@ namespace Lua
 
 		foreach (Objects::Component::allTurretComponents,t0)
 		{
-			RefreshType((*t0)->constName);
+			RefreshType((*t0)->typeComponent);
 		}
 
 		foreach (Objects::Component::baseComponents,b0)
 		{
-			RefreshType((*b0)->constName);
+			RefreshType((*b0)->typeComponent);
 		}
 	}
 

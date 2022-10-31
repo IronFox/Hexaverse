@@ -218,7 +218,7 @@ namespace Objects
 
 			
 			String							typeName,shortName;
-			TTypeComponent					constName;
+			TTypeComponent					typeComponent;
 			AttributeWithDefault<int,100>	initiative;
 			Research::Attribute<int>		productionCosts /*=1*/;
 			AttributeWithDefault<bool,true>	isUnlocked;

@@ -90,7 +90,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return GetTypeName(base,turret);}
-		virtual EntityType		GetType() const override {return EntityType(base->constName,turret->constName);}
+		virtual EntityType		GetType() const override {return EntityType(base->typeComponent,turret->typeComponent);}
 
 		//WorldEntity overrides:
 		virtual int				GetConstructionCost(const PFaction&owner) const override {return GetPrice(owner);}

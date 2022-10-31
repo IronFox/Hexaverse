@@ -96,6 +96,37 @@ namespace Objects
 	};
 
 
+	enum class UnitClass
+	{
+		None = 0x0,
+		FuelMine = 0x1,
+		MineralMine = 0x2,
+		MineralContainer = 0x4,
+		Generator = 0x8,
+		VehiclePlant = 0x10,
+		Terraformer = 0x20,
+		NexusPort = 0x40,
+	};
+
+
+	inline UnitClass	operator|(UnitClass a, UnitClass b)
+	{
+		typedef std::underlying_type<UnitClass>::type	T;
+		return static_cast<UnitClass>(static_cast<T>(a) | static_cast<T>(b));
+	}
+
+	inline void	operator|=(UnitClass& a, UnitClass b)
+	{
+		a = a | b;
+	}
+
+	inline bool	operator&(UnitClass a, UnitClass b)
+	{
+		typedef std::underlying_type<UnitClass>::type	T;
+		return (static_cast<T>(a) & static_cast<T>(b)) != 0;
+	}
+
+
 
 	class Faction : public std::enable_shared_from_this<Faction>
 	{
@@ -331,17 +362,7 @@ namespace Objects
 
 
 
-			enum class UnitClass
-			{
-				None = 0x0,
-				FuelMine = 0x1,
-				MineralMine = 0x2,
-				MineralContainer = 0x4,
-				Generator = 0x8,
-				VehiclePlant = 0x10,
-				Terraformer = 0x20,
-				NexusPort = 0x40,
-			};
+
 
 			UnitClass			hasUnitClasses = UnitClass::None;
 
@@ -410,7 +431,7 @@ namespace Objects
 			Counts the number of mobile entities (stored or active) owned by the local faction that share the specified turret type.
 			Operates in O(n), n = number of active mobile entities owned by the local faction
 			*/
-			count_t		CountMobileType(ConstName turretType) const;
+			count_t		CountMobileType(const Objects::TTypeComponent& turretType) const;
 			/**
 			Counts the number of structures owned by the local faction that share the specified type
 			Operates in O(n), n = number of structures owned by the local faction
@@ -421,7 +442,7 @@ namespace Objects
 			Includes stored mobile entities
 			Operates in O(n), n = number of units with turrets owned by the local faction
 			*/
-			count_t		CountTurretType(ConstName turretType) const;
+			count_t		CountTurretType(const TTypeComponent&turretType) const;
 
 			//void		SignalCoverageChange(const bool*familiesChanges, float atTime);
 
@@ -580,29 +601,8 @@ namespace Objects
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts include = IncludeGhosts::None);
 }
 
-#ifndef CLIENT
 
 
-inline Objects::Faction::UnitClass	operator|(Objects::Faction::UnitClass a,Objects::Faction::UnitClass b)
-{
-	typedef Objects::Faction::UnitClass UnitClass;
-	typedef std::underlying_type<UnitClass>::type	T;
-	return static_cast<UnitClass>( static_cast<T>(a) | static_cast<T>(b) );
-}
 
-inline void	operator|=(Objects::Faction::UnitClass&a,Objects::Faction::UnitClass b)
-{
-	a = a | b;
-}
-
-inline bool	operator&(Objects::Faction::UnitClass a,Objects::Faction::UnitClass b)
-{
-	typedef Objects::Faction::UnitClass UnitClass;
-	typedef std::underlying_type<UnitClass>::type	T;
-	return (static_cast<T>(a) & static_cast<T>(b) ) != 0;
-}
-		
-
-#endif
 
 #endif

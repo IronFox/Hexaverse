@@ -905,7 +905,7 @@ namespace Objects
 
 			component.typeName = "Terraformer";
 			component.shortName = "former";
-			component.constName = ConstName::Turret_Terraformer;
+			component.typeComponent = ConstName::Turret_Terraformer;
 
 			//component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
@@ -963,7 +963,7 @@ namespace Objects
 
 			component.typeName = "Bomb";
 			component.shortName = "bomb";
-			component.constName = ConstName::Turret_Bomb;
+			component.typeComponent = ConstName::Turret_Bomb;
 			component.hasDoomsdayFunctionality = true;
 
 			//component.productionCosts = 40;
@@ -989,7 +989,7 @@ namespace Objects
 
 			component.typeName = "Artillery";
 			component.shortName = " Artillery";
-			component.constName = ConstName::Turret_Artillery;
+			component.typeComponent = ConstName::Turret_Artillery;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity[Resource::Munitions] = 24;
@@ -1007,7 +1007,7 @@ namespace Objects
 			component.mountType = Turret::MountType::TowerOnly;
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
-			component.constName = ConstName::Turret_Launcher;
+			component.typeComponent = ConstName::Turret_Launcher;
 			component.attacksMovingHostilesDuringMotionPhase = true;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
@@ -1027,7 +1027,7 @@ namespace Objects
 			component.mountType = Turret::MountType::TowerOnly;
 			component.typeName = "Rocket Launcher";
 			component.shortName = " Rockets";
-			component.constName = ConstName::Turret_Rockets;
+			component.typeComponent = ConstName::Turret_Rockets;
 			component.attacksMovingHostilesDuringMotionPhase = true;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
@@ -1048,7 +1048,7 @@ namespace Objects
 
 			component.typeName = "Cannon";
 			component.shortName = "tank";
-			component.constName = ConstName::Turret_Cannon;
+			component.typeComponent = ConstName::Turret_Cannon;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity[Resource::Munitions] = 20;
@@ -1067,7 +1067,7 @@ namespace Objects
 
 			component.typeName = "Anti Aircraft";
 			component.shortName = " AA";
-			component.constName = ConstName::Turret_AntiAircraft;
+			component.typeComponent = ConstName::Turret_AntiAircraft;
 			component.isScanner = true;
 			component.trajectoryType = TrajectoryType::AAMissile;
 
@@ -1090,7 +1090,7 @@ namespace Objects
 
 			component.typeName = "EMP";
 			component.shortName = " EMP";
-			component.constName = ConstName::Turret_EMP;
+			component.typeComponent = ConstName::Turret_EMP;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity[Resource::Uranium] = 150;
@@ -1111,7 +1111,7 @@ namespace Objects
 
 			component.typeName = "Mineral Transporter";
 			component.shortName = "truck";
-			component.constName = ConstName::Turret_MineralTransporter;
+			component.typeComponent = ConstName::Turret_MineralTransporter;
 			component.settledStructureType = ConstName::Type_MineralContainer;
 
 
@@ -1154,7 +1154,7 @@ namespace Objects
 
 				component.typeName = "Ragnarök";
 				component.shortName = " Ragnarök";
-				component.constName = ConstName::Turret_Ragnarok;
+				component.typeComponent = ConstName::Turret_Ragnarok;
 				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Satellite;
@@ -1218,7 +1218,7 @@ namespace Objects
 
 				component.typeName = "Sky Guardian";
 				component.shortName = " Guardian";
-				component.constName = ConstName::Turret_ProtonCannon;
+				component.typeComponent = ConstName::Turret_ProtonCannon;
 				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Satellite;
@@ -1272,7 +1272,7 @@ namespace Objects
 
 				component.typeName = "Sky Hub";
 				component.shortName = " Hub";
-				component.constName = ConstName::Turret_SkyHub;
+				component.typeComponent = ConstName::Turret_SkyHub;
 				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Satellite;
@@ -1317,7 +1317,7 @@ namespace Objects
 
 				component.typeName = "Star Port";
 				component.shortName = " Port";
-				component.constName = ConstName::Turret_StarPort;
+				component.typeComponent = ConstName::Turret_StarPort;
 				component.constTowerName = ConstName::Empty;	//not used
 
 				component.mountType = Turret::MountType::Satellite;
@@ -1357,7 +1357,7 @@ namespace Objects
 
 			component.typeName = "Munition Transporter";
 			component.shortName = " Ammo Truck";
-			component.constName = ConstName::Turret_MunitionTransporter;
+			component.typeComponent = ConstName::Turret_MunitionTransporter;
 
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity[Resource::Munitions] = 100;
@@ -1374,7 +1374,7 @@ namespace Objects
 
 			component.typeName = "Mechanic";
 			component.shortName = "mechanic";
-			component.constName = ConstName::Turret_Mechanic;
+			component.typeComponent = ConstName::Turret_Mechanic;
 
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity[Resource::Minerals] = 100;
@@ -1392,7 +1392,7 @@ namespace Objects
 
 			component.typeName = "Radar";
 			component.shortName = "radar";
-			component.constName = ConstName::Turret_Radar;
+			component.typeComponent = ConstName::Turret_Radar;
 
 			component.isScanner = true;
 			component.continuousRotation = true;
@@ -1411,7 +1411,7 @@ namespace Objects
 
 			component.typeName = "Surveyor";
 			component.shortName = "surveyor";
-			component.constName = ConstName::Turret_Surveyor;
+			component.typeComponent = ConstName::Turret_Surveyor;
 
 			component.isScanner = true;
 			component.continuousRotation = true;
@@ -1432,7 +1432,7 @@ namespace Objects
 						component.ambientSound = Engine::OpenAL::Load(L"resources/objectSounds/plane.wav");
 					#endif
 					component.shortName = "Airborne";
-					component.constName = ConstName::VehicleBase_Plane;
+					component.typeComponent = ConstName::VehicleBase_Plane;
 
 					component.carryingCapacity.SetInvariant(100);
 					component.requirements = VehicleBase::Requirement::AnyBlock;
@@ -1453,7 +1453,7 @@ namespace Objects
 
 				component.typeName = "Raptor";
 				component.shortName = " Raptor";
-				component.constName = ConstName::Turret_Raptor;	//let's see if i can use the same name here. nope!
+				component.typeComponent = ConstName::Turret_Raptor;	//let's see if i can use the same name here. nope!
 
 				component.mountType = Turret::MountType::Plane;
 
@@ -1491,7 +1491,7 @@ namespace Objects
 
 				component.typeName = "Bomber";
 				component.shortName = " Bomber";
-				component.constName = ConstName::Turret_Bomber;
+				component.typeComponent = ConstName::Turret_Bomber;
 				component.hasDoomsdayFunctionality = true;
 
 				component.mountType = Turret::MountType::Plane;
@@ -1509,7 +1509,7 @@ namespace Objects
 			{
 				component.typeName = "Sensor Drone";
 				component.shortName = " Sensor";
-				component.constName = ConstName::Turret_SensorDrone;
+				component.typeComponent = ConstName::Turret_SensorDrone;
 
 				component.mountType = Turret::MountType::Plane;
 			}
@@ -1521,7 +1521,7 @@ namespace Objects
 			{
 				component.typeName = "Cargo Plane";
 				component.shortName = " Cargo";
-				component.constName = ConstName::Turret_CargoPlane;
+				component.typeComponent = ConstName::Turret_CargoPlane;
 
 				component.mountType = Turret::MountType::Plane;
 			}
@@ -1552,7 +1552,7 @@ namespace Objects
 			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Hoverbase";
 			component.shortName = "Hover";
-			component.constName = ConstName::VehicleBase_HoverBase;
+			component.typeComponent = ConstName::VehicleBase_HoverBase;
 
 			//component.productionCosts = 40;
 			component.requirements = VehicleBase::Requirement::AnyBlock;
@@ -1593,7 +1593,7 @@ namespace Objects
 			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Heavy Base";
 			component.shortName = "Heavy";
-			component.constName = ConstName::VehicleBase_HeavyBase;
+			component.typeComponent = ConstName::VehicleBase_HeavyBase;
 
 			//component.productionCosts = 80;
 			component.requirements = VehicleBase::Requirement::AnyBlock;	//none is broken...
@@ -1636,7 +1636,7 @@ namespace Objects
 			//MakeBox(component.parts.First().first, M::Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Catamaran Base";
 			component.shortName = "Cat";
-			component.constName = ConstName::VehicleBase_CatBase;
+			component.typeComponent = ConstName::VehicleBase_CatBase;
 
 			//component.productionCosts = 100;
 			component.requirements = VehicleBase::Requirement::Water;	//none is broken...
@@ -1751,7 +1751,7 @@ namespace Objects
 						Satellite::CountTurretOccurrences(owner,this)
 						#endif
 						;
-					limit = RuntimeConfig::UnitLimits::Get(constName);
+					limit = RuntimeConfig::UnitLimits::Get(typeComponent);
 					if (limit != 0xFFFF)
 						outResult <<"Deployed: "+String(cnt)+"/"+String(limit);
 				}

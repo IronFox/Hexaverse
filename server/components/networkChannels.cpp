@@ -1769,7 +1769,7 @@ namespace Receiver
 			break;
 			case ConstName::Job_SelfDetonate:
 			{
-				job.reset(new VehicleJob::SelfDetonate(*v,jobLocation,sjob.parameterName.baseType));
+				job.reset(new VehicleJob::SelfDetonate(*v,jobLocation,sjob.parameterName.baseType.constType));
 				target = v->GetLastPointOfOrigin();
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());

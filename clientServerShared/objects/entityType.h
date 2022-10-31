@@ -20,6 +20,10 @@ namespace Objects
 		constexpr bool		operator==(const TTypeComponent&other) const {return constType == other.constType && modDerivedIndex == other.modDerivedIndex;}
 		constexpr bool		operator!=(const TTypeComponent&other) const {return !operator==(other);}
 
+		friend String ToString(const TTypeComponent& component)
+		{
+			return component.ToNumericString();
+		}
 
 
 		friend hash_t	Hash(const TTypeComponent&t)

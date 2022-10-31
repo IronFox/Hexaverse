@@ -249,7 +249,7 @@ namespace Objects
 			public:
 				void	Add(const Item&item)
 				{
-					Super::Add(item,item->constName,item->typeName);
+					Super::Add(item,item->typeComponent,item->typeName);
 				}
 
 				Self&	operator<<(const Item&item)

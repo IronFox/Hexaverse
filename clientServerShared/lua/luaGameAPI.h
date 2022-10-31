@@ -199,6 +199,7 @@ namespace Lua
 		void		FlushAllObjects(bool clearCaches=false);
 		void		AddEntity(const Objects::PWorldEntity&e);
 		Lua::Table	MapEntity(const Objects::PWorldEntity&e, bool isReal, bool updateIfFound);
+		void		UnmapEntity(const Objects::PWorldEntity&e);
 		TFaction*	AddFaction(const Objects::PFaction&f, bool updateIfFound);
 		TAlliance*	AddAlliance(const Objects::PAlliance&a, bool updateIfFound, bool updateMembers);
 		void		AddObjectAndPathfindingFunctions(bool priveleged);
