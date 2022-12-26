@@ -84,7 +84,7 @@ namespace ClientGrid
 				World::actual.FlushAndValidateSensory(1);
 			else
 			{
-				static Buffer0<World::Sensor>	sensors;
+				static Vector<World::Sensor>	sensors;
 				Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 				{
 					if (e->owner->SharesSensorsWithMe())

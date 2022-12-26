@@ -21,7 +21,7 @@ namespace Animation
 	private:
 		struct Path
 		{
-			Buffer0<std::pair<Grid::LCellIdI,float> >	rawPath;
+			Vector<std::pair<Grid::LCellIdI,float> >	rawPath;
 			bool				changed;
 
 			struct TNode

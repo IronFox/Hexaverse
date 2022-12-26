@@ -4,16 +4,16 @@
 
 #include <grid/setup.h>
 #include <objects/types.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 
 namespace Objects
 {
 	struct Choice;
 
-	extern Ctr::Buffer0<Choice>			movementChoices;
+	extern Ctr::Vector<Choice>			movementChoices;
 	extern TChoiceVisualization		choiceVis;
-	extern Ctr::Buffer0<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
-	extern Ctr::Buffer0<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
+	extern Ctr::Vector<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
+	extern Ctr::Vector<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
 
 
 

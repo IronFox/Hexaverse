@@ -88,7 +88,7 @@ namespace Component
 		struct TGroup
 		{
 			const char*title = nullptr;
-			Buffer0<TChange>	changes;
+			Vector<TChange>	changes;
 
 			friend void swap(TGroup&a, TGroup&b)
 			{
@@ -113,7 +113,7 @@ namespace Component
 
 	private:
 
-		Buffer0<TGroup>	groups;
+		Vector<TGroup>	groups;
 		bool			any = false;
 	};
 
@@ -286,7 +286,7 @@ namespace Component
 	*/
 	struct Anchor
 	{
-		typedef Buffer0<WComponent>	Components;
+		typedef Vector<WComponent>	Components;
 
 		/**
 		Disables the local anchor.
@@ -949,7 +949,7 @@ namespace Component
 			LineRenderer::Baked		lines;
 			float3					color;
 			index_t					start = InvalidIndex;
-			Buffer0<TPoint>			data;
+			Vector<TPoint>			data;
 			bool					changed = true;
 
 		};
@@ -1025,14 +1025,14 @@ namespace Component
 			String		caption;
 			float2		coords;
 		};
-		Buffer0<TLabel>	labels;
+		Vector<TLabel>	labels;
 
 		bool			axesChanged = false;
 		LineRenderer::Baked	axes;
 		M::Rect<>			GetPlotScope() const;
 		M::Rect<>			GetPlotRect() const;
 		float			rightSpace = 0.1f;
-		Buffer0<Plot>	plots;
+		Vector<Plot>	plots;
 		bool			isStack = false;
 		M::TIntRange<index_t>	xRange = M::TIntRange<index_t>::Invalid;
 		M::TFloatRange<>		stackedYRange = M::TFloatRange<>::Invalid,
@@ -1115,7 +1115,7 @@ namespace Component
 		#endif
 
 		Array<String>	rawText;
-		Buffer0<StringRef>	wrappedText;
+		Vector<StringRef>	wrappedText;
 		Array<float2>	lineAt;
 		float4			color = float4(1,1,1,1);
 		float			textHeight = 1.f;
@@ -1693,7 +1693,7 @@ namespace Component
 				(*c)->Render(ctx);
 		}
 
-		Buffer0<PComponent>	components;
+		Vector<PComponent>	components;
 		Array<PComponent>	order[2];
 
 		/**
@@ -1769,7 +1769,7 @@ namespace Component
 		virtual void		VerifyAnchorIntegrity(const TCodeLocation&sender) override;
 
 
-		virtual const Buffer0<PComponent>&		GetReferences() const { return components; }
+		virtual const Vector<PComponent>&		GetReferences() const { return components; }
 
 		virtual bool		HasComponents() const
 		{
@@ -2153,7 +2153,7 @@ namespace Component
 		PTabBar			tabBar;
 
 		FOnTabChange	onTabChange;
-		Buffer0<TTab>	tabs;
+		Vector<TTab>	tabs;
 		TTab			active;
 		index_t			activeIndex = InvalidIndex;
 

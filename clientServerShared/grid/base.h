@@ -886,7 +886,7 @@ template <unsigned Exponent>
 	void		GridSetup<Exponent>::Construct(Ctr::Array<TCellVertex>&vertices, Ctr::Array<TNetCell>&cells)
 	{
 		cells.SetSize(CellCount);
-		Ctr::Buffer<TCellVertex>	vtx;
+		Ctr::PreAllocVector<TCellVertex, CellCount>	vtx;
 		Ctr::HashTable<TriangleKey, UINT32>	vtxMap;
 		for (index_t i = 0; i < CellCount; i++)
 		{

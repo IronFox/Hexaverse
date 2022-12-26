@@ -198,7 +198,7 @@ namespace Tutorial
 				Lua::Function<void()>	trigger;
 			};
 
-			Buffer0<TTrigger>	activeTriggers;
+			Vector<TTrigger>	activeTriggers;
 
 			void	EnableWorkingStructure(const TUniqueID&entityID, bool doEnable)
 			{

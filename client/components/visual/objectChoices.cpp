@@ -14,11 +14,11 @@
 namespace Objects
 {
 
-	Buffer0<Choice>				movementChoices;
+	Vector<Choice>				movementChoices;
 	TChoiceVisualization		choiceVis;
-	Buffer0<Grid::HCellIdU>		buildCandidates, 
+	Vector<Grid::HCellIdU>		buildCandidates, 
 								removeCandidates;
-	Buffer0<Grid::HCellIdI>		cellSelection;
+	Vector<Grid::HCellIdI>		cellSelection;
 
 
 

@@ -141,12 +141,12 @@ namespace Network
 		Queries all connection attempts that have so far not successfully connected.
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListFailedAttempts(Buffer0<ServerAddress,Adopt>&outList);
+		void	ListFailedAttempts(Vector<ServerAddress,Adopt>&outList);
 		/**
 		Queries all connection attempts (successful or not).
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListNonAutoAttempts(Buffer0<ServerAddress>&outList);
+		void	ListNonAutoAttempts(Vector<ServerAddress>&outList);
 
 		bool	RegisterNewHost(const ServerAddress&, bool probablyRightVersion, bool automaticallyDiscovered);
 
@@ -383,7 +383,7 @@ namespace Network
 
 
 
-		Buffer0<Host>			addresses;
+		Vector<Host>			addresses;
 		
 		//float					top, bottom;
 		bool					selected, haveToken;
@@ -432,7 +432,7 @@ namespace Network
 		}
 	};
 
-	extern Buffer0<ServerInfo,Swap>	servers;
+	extern Vector<ServerInfo,Swap>	servers;
 	extern HashTable<TUniqueID,index_t>	serverMap;
 
 	extern Time::Stamp		lastPing,lastServerTableUpdate;

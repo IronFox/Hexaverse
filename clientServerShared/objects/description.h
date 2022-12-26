@@ -1,7 +1,7 @@
 #pragma once
 
 #include <global_string.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 
 using namespace DeltaWorks;
 
@@ -17,7 +17,7 @@ namespace Objects
 	{
 	public:
 		typedef std::pair<String, bool>		Line;
-		typedef Ctr::Buffer0<Line>	Storage;
+		typedef Ctr::Vector<Line>	Storage;
 	private:
 		Storage			rawLines;
 		friend class WrappedDescription;
@@ -64,7 +64,7 @@ namespace Objects
 		Finished (wrapped) lines, ready for visualization.
 		The boolean is true for brief lines, false for extended lines
 		*/
-		Ctr::Buffer0<std::pair<String, bool> >		wrappedLines;
+		Ctr::Vector<std::pair<String, bool> >		wrappedLines;
 
 		/**/				WrappedDescription()	{}
 		/**/				WrappedDescription(const Description&desc);

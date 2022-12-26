@@ -335,7 +335,7 @@ namespace VehicleAccessibilityMesh
 			mesh.binding = bnd;
 		}
 
-		Buffer0<DX11::Shader::Binding> bindings;
+		Vector<DX11::Shader::Binding> bindings;
 
 		//bindings;
 		

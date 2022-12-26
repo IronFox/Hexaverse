@@ -79,7 +79,7 @@ namespace Objects
 
 		#else
 
-		/*static*/ Ctr::Buffer0<PVehicleJob>			BaseJob::allJobPrototypes;
+		/*static*/ Ctr::Vector<PVehicleJob>			BaseJob::allJobPrototypes;
 		
 		BaseJob::continue_t BaseJob::Continue(MobileEntity&v, const Grid::LCellIdI&focus, bool isNewRound)
 		{

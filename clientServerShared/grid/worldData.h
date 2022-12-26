@@ -408,7 +408,7 @@ namespace World
 		Initiates concurrent background sensor painting using the specified sensor storage.
 		The content will be swapped out before painting begins.
 		*/
-		void					PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors);
+		void					PaintSensorsConcurrently(BasicVector<Sensor>&sensors);
 
 		/**
 		Stops any ongoing sensor painting, and returns the concurrent thread(s) at the earliest possibility.
@@ -424,7 +424,7 @@ namespace World
 		class ConcurrentPainting : public Sys::ThreadObject, public Sys::ParallelLoop::Operator
 		{
 		public:
-			Buffer0<Sensor>	sensors;
+			Vector<Sensor>	sensors;
 			Data			*owner = nullptr;
 			Sys::ParallelLoop	workers;
 			volatile bool	done = false, abort=false;
@@ -542,7 +542,7 @@ namespace World
 			Grid::LowSetup::TVolumeDescriptor::Operator lowOp;
 			Grid::HighSetup::TVolumeDescriptor	volume;
 			Array2D<BYTE>				shadedSphereHelper;
-			Buffer0<Grid::HCellIdU>		shadedSphereMarked;
+			Vector<Grid::HCellIdU>		shadedSphereMarked;
 		};
 		static Array<TPerProcessor>	perProcessor;
 

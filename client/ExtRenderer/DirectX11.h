@@ -91,7 +91,7 @@ namespace Engine
 		class VertexDescription
 		{
 		private:
-			Buffer<D3D11_INPUT_ELEMENT_DESC,0>	desc;
+			Vector<D3D11_INPUT_ELEMENT_DESC>	desc;
 			UINT	stride[4];
 			UINT	atStream;
 
@@ -261,9 +261,9 @@ namespace Engine
 			{
 				Handle<ID3D11ShaderReflection>	reflection;
 				//StandardBindPoints				bindPoints;
-				Buffer<ResolvedBufferBinding,0>	bindPoints;
-				Buffer<ResolvedTextureBinding,0>texBindPoints;
-				Buffer<ResolvedSamplerBinding,0>samplerBindPoints;
+				Vector<ResolvedBufferBinding>	bindPoints;
+				Vector<ResolvedTextureBinding>	texBindPoints;
+				Vector<ResolvedSamplerBinding>	samplerBindPoints;
 				
 				Handle<ID3DBlob>				blob;
 
@@ -335,7 +335,7 @@ namespace Engine
 				/**/			Macro(const String&name, const String&def):name(name),definition(def)	{}
 				void			swap(Macro&other)	{name.swap(other.name); definition.swap(other.definition);}
 			};
-			static Buffer<Macro,0,Strategy::Swap>	macroDefinitions;
+			static Vector<Macro,Strategy::Swap>	macroDefinitions;
 			static bool			RedefineMacro(const Macro&, bool forceExists = false);
 
 			bool				IsSet() const	{return vertexStage.shaderHandle.IsSet() || geometryStage.shaderHandle.IsSet() || pixelStage.shaderHandle.IsSet();}
@@ -483,7 +483,7 @@ namespace Engine
 
 				void			Update(const T*data, count_t numEntries)	{Super::Update(data,sizeof(T)*numEntries);}
 				void			Update(const ArrayRef<T>&data)	{Update(data.pointer(),data.GetLength());}
-				void			Update(const BasicBuffer<T>&data)	{Update(data.pointer(),data.GetLength());}
+				void			Update(const BasicVector<T>&data)	{Update(data.pointer(),data.GetLength());}
 				String			ToString() const { return Super::ToString()+", esize=" + String(sizeof(T)); }
 
 				friend void		swap(Self&a, Self&b)
@@ -511,7 +511,7 @@ namespace Engine
 			template <typename T>
 				void			CreateFromStructs(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
 			template <typename T>
-				void			CreateFromStructs(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
+				void			CreateFromStructs(const BasicVector<T>&data, BufferAccess access = BufferAccess::Immutable) {CreateFromStructs(data.pointer(),data.GetLength(),access);}
 			template <typename T>
 				void			CreateFromStructs(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{CreateFromStructs(&*data.begin(),data.size(),access);}
 			template <typename T0>
@@ -519,7 +519,7 @@ namespace Engine
 			template <typename T0>
 				void			UpdateStructs(const ArrayRef<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
 			template <typename T0>
-				void			UpdateStructs(const BasicBuffer<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
+				void			UpdateStructs(const BasicVector<T0>&data) {UpdateStructs(data.pointer(),data.GetLength());}
 
 
 			void				swap(VBO&other)	{Super::swap(other); std::swap(vertexCount,other.vertexCount);}
@@ -547,7 +547,7 @@ namespace Engine
 
 				void			Create(const T*data, count_t numEntries, BufferAccess access = BufferAccess::Immutable)	{Super::Create(data,sizeof(T)*numEntries,numEntries,access,D3D11_BIND_INDEX_BUFFER);}
 				void			Create(const ArrayRef<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
-				void			Create(const BasicBuffer<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
+				void			Create(const BasicVector<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(data.pointer(),data.GetLength(),access);}
 				void			Create(const std::initializer_list<T>&data, BufferAccess access = BufferAccess::Immutable)	{Create(&*data.begin(),data.size(),access);}
 
 				friend void		swap(Self&a, Self&b)
@@ -1165,7 +1165,7 @@ namespace Engine
 		DX11::ObjectBuffer<M::TMatrix4<> >		objectBuffer;
 		DX11::ObjectBuffer<M::TVec4<> >			objectPositionBuffer;	//quicker version
 		DX11::ObjectBuffer<float>				timeBuffer;
-		Buffer<DX11::Shader::Binding,0,Swap>	baseBindings;
+		Vector<DX11::Shader::Binding,Swap>		baseBindings;
 		float4				clearColor;
 
 		//DXGI_SAMPLE_DESC	fsaa;
@@ -1231,7 +1231,7 @@ namespace Engine
 
 		/**/						DirectX11();
 
-		const BasicBuffer<DX11::Shader::Binding,Swap>&	GetBaseBindings()	{return baseBindings;}
+		const BasicVector<DX11::Shader::Binding,Swap>&	GetBaseBindings()	{return baseBindings;}
 
 		const char*					GetVertexShaderProfile() const;
 		const char*					GetPixelShaderProfile() const;
@@ -1340,7 +1340,7 @@ namespace Engine
 
 		Resolution					_currentResolution;
 		index_t						_currentMSAAConfig;
-		Buffer0<MSAAConfig>			_msaaConfigs;
+		Vector<MSAAConfig>			_msaaConfigs;
 		DX11::FBO					_backbuffer,_nextBackbuffer;	//deferred output
 
 

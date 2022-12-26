@@ -221,12 +221,12 @@ namespace Objects
 
 
 			
-				static Buffer0<Attribute,Swap>	list;
+				static Vector<Attribute,Swap>	list;
 
 			};
 
 		template <typename T>
-			/*static*/ Buffer0<typename LuaAttributes<T>::Attribute,Swap>	LuaAttributes<T>::list;
+			/*static*/ Vector<typename LuaAttributes<T>::Attribute,Swap>	LuaAttributes<T>::list;
 
 		template <typename T>
 			static void InitAttrib(const Lua::Table&source, const String&path, const String&name, Attribute<T>&a, OnAttributeNotFound onAttributeNotFound = OnAttributeNotFound::Fail)

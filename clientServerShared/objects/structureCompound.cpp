@@ -6,7 +6,7 @@
 namespace Objects
 {
 	#ifndef ONE_COMPOUND_PER_FACTION
-		Buffer0<Compound,Swap>		compounds;
+		Vector<Compound,Swap>		compounds;
 	#endif
 
 
@@ -234,7 +234,7 @@ namespace Objects
 			{
 				#ifdef _DEBUG
 					typedef std::pair<PStructure, Resource::Vector>	EventResult;
-					static Ctr::Buffer0<EventResult>	events;
+					static Ctr::Vector<EventResult>	events;
 					events.Clear();
 				#endif
 				Resource::Vector vector;

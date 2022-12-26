@@ -263,7 +263,7 @@ namespace Receiver
 						String members;
 						if (alliance->CountLivingMembers() > 1)
 						{
-							Buffer0<String> names;
+							Vector<String> names;
 							alliance->VisitMembers([&names](const Objects::PFaction&f){names << f->GetName();});
 							members = " ("+implode(',',names.ToRef())+")";
 						}
@@ -1011,7 +1011,7 @@ namespace Receiver
 			Protocol::Timestamp	timestamp;
 			timestamp.rightNow = true;
 
-			static Ctr::Buffer0<UINT32>	final;
+			static Ctr::Vector<UINT32>	final;
 			final.Clear();
 			auto&discovered = client->faction->knownResources.resourcesDiscovered;
 			for (index_t i = 0; i < discovered.Count(); i++)

@@ -110,7 +110,7 @@ namespace Objects
 				virtual PJob		Instantiate() const =0;
 				virtual ConstName	GetCTypeName() const = 0;
 
-				static Ctr::Buffer0<PJob>allJobPrototypes;
+				static Ctr::Vector<PJob>allJobPrototypes;
 
 
 			#endif
@@ -125,7 +125,7 @@ namespace Objects
 		public:
 			typedef BaseJob	Super;
 
-			Buffer0<Grid::LCellIdI>		path;
+			Vector<Grid::LCellIdI>		path;
 			bool						pathChanged;
 
 			/**/						PathJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):Super(jobAutoCompletion, movesToFocusWhenDone)	{}

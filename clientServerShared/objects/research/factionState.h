@@ -1,7 +1,7 @@
 #pragma once
 
 #include <functional>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "globalState.h"
 
 namespace Objects
@@ -27,7 +27,7 @@ namespace Objects
 
 		private:
 			int						totalContribution = 0,	lastSpeed = 0;
-			Buffer0<PTopic>			researchQueue;
+			Vector<PTopic>			researchQueue;
 			bool					factionIsNexus;
 			index_t					resourceTableEntry;
 			static void				LogLua(const String&msg);

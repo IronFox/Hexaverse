@@ -3,7 +3,7 @@
 
 #include <global_root.h>
 #include <container/array.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <global_string.h>
 
 /**
@@ -29,7 +29,7 @@ namespace Expect
 		}
 
 	template <typename T, typename S>
-		const T& SafeGet(const DeltaWorks::BasicBuffer<T,S>&container, index_t index, const DeltaWorks::TCodeLocation&loc)
+		const T& SafeGet(const DeltaWorks::BasicVector<T,S>&container, index_t index, const DeltaWorks::TCodeLocation&loc)
 		{
 			if (index < container.Count())
 				return container[index];

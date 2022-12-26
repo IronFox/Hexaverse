@@ -88,7 +88,7 @@ namespace Objects
 			Faction*	rawPointer;
 		};
 
-		Buffer0<TMember>						members,invited;
+		Vector<TMember>						members,invited;
 		static HashTable<TUniqueID,WAlliance>	all;
 
 		void				RefreshSensors(bool force);
@@ -176,7 +176,7 @@ namespace Objects
 		virtual			~Faction();
 	
 		void			AddEntitySensory(World::Data&worldData, float&t) const;
-		void			CollectSensors(Buffer0<World::Sensor>&outSensors, float&t) const;
+		void			CollectSensors(Vector<World::Sensor>&outSensors, float&t) const;
 		
 		/**
 		Checks whether or not units of the other faction are considered friendly (invalid auto-targets).
@@ -243,7 +243,7 @@ namespace Objects
 
 
 		#ifdef CLIENT
-			static Buffer0<PFaction>	allKnown;
+			static Vector<PFaction>	allKnown;
 			static HashTable<TUniqueID,PFaction>	idMap;
 
 			static PFaction				mine;
@@ -294,23 +294,23 @@ namespace Objects
 
 			};
 
-			Buffer0<WMobileEntity>		activeMobiles,		//!< All active mobiles registered in the world
+			Vector<WMobileEntity>		activeMobiles,		//!< All active mobiles registered in the world
 										storedMobiles;		//!< All mobile entities registered stored in some other entity. activeMobiles and storedMobiles are exclusive of each other
-			Buffer0<SubOrbital::WPlane>	planes;
+			Vector<SubOrbital::WPlane>	planes;
 
 			typedef std::pair<WTurretBase,WWorldEntity>	TSubOrbitalSensor;
-			Buffer0<TSubOrbitalSensor>	subOrbitalSensors;	//!< Lists all entities that have sub orbital scanning capability
+			Vector<TSubOrbitalSensor>	subOrbitalSensors;	//!< Lists all entities that have sub orbital scanning capability
 
 			#ifndef NO_SATELLITES
-				Buffer0<WSatellite>		satellites;
-				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
+				Vector<WSatellite>		satellites;
+				Vector<WSkyHub>		skyHubs;	//overlaps with satellites
 			#endif
-			Buffer0<WStructure>			structures;
-			Buffer0<WTurretBase>		allTurretBases;		//!< All (stored or otherwise) entities (structures or mobiles) that have a turret
-			Buffer0<WTurretBase>		autoFiringTurrets;	//!< All active entities (structures or mobiles) that are towers, or feature a turret with attacksMovingHostilesDuringMotionPhase set true
+			Vector<WStructure>			structures;
+			Vector<WTurretBase>		allTurretBases;		//!< All (stored or otherwise) entities (structures or mobiles) that have a turret
+			Vector<WTurretBase>		autoFiringTurrets;	//!< All active entities (structures or mobiles) that are towers, or feature a turret with attacksMovingHostilesDuringMotionPhase set true
 			PointerTable<SeeingReference, Swap>	seeing;
 		public:
-			static Buffer0<PFaction>	all;
+			static Vector<PFaction>	all;
 			static PFaction				nexus;
 
 			static PFaction				FindByID(const TUniqueID&);
@@ -452,7 +452,7 @@ namespace Objects
 			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorCreation(const World::Sensor&, int sensorHeight, float&t, Ctr::Vector<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const World::Sensor&, int sensorHeight, float&t);
 			void		RegisterSensorMotion(const World::Sensor&from, const World::Sensor&to, float&t);
 
@@ -518,7 +518,7 @@ namespace Objects
 
 	};
 
-		//extern Buffer0<POwner>	owners;
+		//extern Vector<POwner>	owners;
 
 
 

@@ -396,8 +396,8 @@ namespace ApplicationInterface
 		explosion.timestamp.rightNow = false;
 
 		//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
-		static Ctr::Buffer0<Objects::OwnerParameter>	canSee;
-		static Ctr::Buffer0<Network::PClient>	clientsCanSee;
+		static Ctr::Vector<Objects::OwnerParameter>	canSee;
+		static Ctr::Vector<Network::PClient>	clientsCanSee;
 
 		bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
@@ -1008,7 +1008,7 @@ int main( int argc, const char* argv[])
 				parser->DefineCommand("deleteAutoWorld worldID",(CLI::Command::full_function_t)[](const CLI::PParser&parser, const CLI::PCommand&, CLI::Command::ArgumentList arguments)
 				{
 					auto scan = FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup(String("saves/auto/"))).Scan();
-					Buffer0<FileSystem::File> erase;
+					Vector<FileSystem::File> erase;
 
 					if (arguments.Count() <= 1)
 					{
@@ -1253,7 +1253,7 @@ int main( int argc, const char* argv[])
 			Riff::File a,b;
 			ASSERT__(a.Open((FileSystem::StringToPath("test0")+RuntimeConfig::savFileExtension).c_str()));
 			ASSERT__(b.Open((FileSystem::StringToPath("test1")+RuntimeConfig::savFileExtension).c_str()));
-			Ctr::Buffer<Riff::TID>	stack;
+			Ctr::Vector<Riff::TID>	stack;
 			FileIO::Compare(a,b,stack);
 
 		}
@@ -1436,7 +1436,7 @@ int main( int argc, const char* argv[])
 
 			//#ifndef _DEBUG
 			{
-				static Ctr::Buffer0<TCP::PPeer>	disconnect;
+				static Ctr::Vector<TCP::PPeer>	disconnect;
 				Network::server.VisitAllPeers([](const TCP::PPeer&peer)
 				{
 					if (peer->GetLastPackageTime().ElapsedSeconds() > 30.f)
@@ -1450,7 +1450,7 @@ int main( int argc, const char* argv[])
 				disconnect.Clear();
 
 
-				static Ctr::Buffer0<Network::PClient>	clientDump;
+				static Ctr::Vector<Network::PClient>	clientDump;
 				for (const auto&p : Network::activePlayersAndSpectators)
 				{
 					if (p->peer.expired())

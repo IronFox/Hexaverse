@@ -130,7 +130,7 @@ namespace ApplicationInterface
 
 namespace Network
 {
-	Buffer0<PClient>	activePlayersAndSpectators,spectators;
+	Vector<PClient>	activePlayersAndSpectators,spectators;
 	HashTable<Objects::PConstFaction,PClient,Objects::OwnerHash>	playerMap;
 
 
@@ -709,7 +709,7 @@ namespace Network
 			if (preserveSpectators)
 			{
 				Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
-				Ctr::Buffer0<TCP::PPeer>	dump;
+				Ctr::Vector<TCP::PPeer>	dump;
 				server.VisitAllPeers([&dump](const TCP::PPeer&p)
 				{
 					if (p->userLevel < (UINT32)UserLevel::Spectator)
@@ -821,7 +821,7 @@ namespace Network
 
 		LogEvent(EventSignificance::Common,Objects::Faction::nexus,"Transferring Nexus AI hints to AI client");
 
-		Buffer<Protocol::NexusBaseHint,12> presences;
+		PreAllocVector<Protocol::NexusBaseHint,12> presences;
 		for (int i = 0; i < 12; i++)
 		{
 			if (Objects::NexusThreat::GetPort(i))

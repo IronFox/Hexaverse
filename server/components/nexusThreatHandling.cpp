@@ -63,7 +63,7 @@ namespace Nexus
 				airborne = false;
 
 			Grid::LCellIdI location = Grid::LCellIdI::Invalid;
-			static Buffer0<UINT32> neighborField;
+			static Vector<UINT32> neighborField;
 			Grid::low.GetExtendedNeighborhood(poleIndex, 3, neighborField);
 			foreach(neighborField, n)
 			{

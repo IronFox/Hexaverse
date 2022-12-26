@@ -248,7 +248,7 @@ namespace Objects
 		//persistent data:
 		PointerTable<FactionInteraction>	interactionMap;
 		HashTable<Objects::EntityType,EntityType>	entityTypes;
-		Buffer0<Round>				history;
+		Vector<Round>				history;
 
 
 		//access helpers:

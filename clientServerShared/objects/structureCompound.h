@@ -3,7 +3,7 @@
 
 #include "../config.h"
 #include "types.h"
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "resource.h"
 #include <functional>
 
@@ -30,8 +30,8 @@ namespace Objects
 			float4					color;
 		#endif
 
-		Ctr::Buffer0<WWorkingStructure>	workingStructures;
-		Ctr::Buffer0<WStructure>		allStructures;
+		Ctr::Vector<WWorkingStructure>	workingStructures;
+		Ctr::Vector<WStructure>		allStructures;
 		Resource::FullVector			total;
 
 		bool							stable;
@@ -106,7 +106,7 @@ namespace Objects
 		are detected or at least assumed.
 		The contained objects are reconstructed each time, and referencable only by integer
 		*/
-		extern Buffer0<Compound,Swap>		compounds;
+		extern Vector<Compound,Swap>		compounds;
 	#endif
 
 	void RefreshCompoundStates(float atTime);

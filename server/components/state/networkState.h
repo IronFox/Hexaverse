@@ -70,7 +70,7 @@ namespace Network
 	};
 	
 
-	extern Buffer0<PClient>	activePlayersAndSpectators,spectators;
+	extern Vector<PClient>	activePlayersAndSpectators,spectators;
 	/**
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/

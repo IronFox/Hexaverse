@@ -17,10 +17,10 @@ namespace Objects
 	List of all known tower types (one for each tower turret type).
 	Tower types that are not contained in this list can not be constructed cleanly
 	*/
-	Ctr::Buffer0<Tower::PProto>			Tower::globalPrototypes;
+	Ctr::Vector<Tower::PProto>			Tower::globalPrototypes;
 
 	#ifndef CLIENT
-		Ctr::Buffer0<PTower>			towers;	//only used by server ... so far
+		Ctr::Vector<PTower>			towers;	//only used by server ... so far
 	#endif
 
 
@@ -59,7 +59,7 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			static Ctr::Buffer0<M::TVec4<> > trajectory;
+			static Ctr::Vector<M::TVec4<> > trajectory;
 
 			bool abort = false;
 			auto rs = TraceTrajectory(TrajectoryEndPoint( target.target ),true,trajectory);

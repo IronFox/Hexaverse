@@ -165,7 +165,7 @@ namespace VisualTerrain
 		#endif
 
 
-		Buffer0<DX11::Shader::Binding> bindings;
+		Vector<DX11::Shader::Binding> bindings;
 
 
 
@@ -274,7 +274,7 @@ namespace VisualTerrain
 			verticesToLoad[i] = float4(Grid::low.cellVertices[i].centerDirection,float(Grid::low.cellVertices[i].ownerCount > 1));
 		Instruction::lowGridInstruction.vbo.CreateFromStructs(verticesToLoad);
 		{
-			Buffer<UINT32>	ibo;
+			Vector<UINT32>	ibo;
 			foreach(Grid::low.cells, cell)
 			{
 				cell->voffset = (UINT32)ibo.Count();

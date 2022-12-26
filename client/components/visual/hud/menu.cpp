@@ -671,7 +671,7 @@ namespace Menu
 
 
 				count_t len = 0;
-				Buffer<PathString::char_t> execPath; 
+				Vector<PathString::char_t> execPath; 
 				do
 				{
 					execPath.AppendRow(MAX_PATH);
@@ -766,7 +766,7 @@ namespace Menu
 		}
 	};
 
-	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
+	static void LookupSaveGames(Vector<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
 	{
 		FileSystem::File f;
 		while (scan.NextFile(RuntimeConfig::savFileExtensionWithoutDot,f))
@@ -794,7 +794,7 @@ namespace Menu
 		auto menu = saveGames;
 		menu->Setup(0.25f,"Start server from savegame",true);
 
-		Buffer0<TSaveGame> saves;
+		Vector<TSaveGame> saves;
 		LookupSaveGames(saves, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("saves")), "");
 		if (saves.IsEmpty())
 			return false;

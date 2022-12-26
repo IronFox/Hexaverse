@@ -82,7 +82,7 @@ namespace NexusPresence
 	private:
 		Array<int>	heights;
 		index_t		ownerPole, destinationPole;
-		Buffer0<Objects::PathNode> path;
+		Vector<Objects::PathNode> path;
 		const Presence*start,*end;
 
 	};
@@ -98,7 +98,7 @@ namespace NexusPresence
 	class Ring : public Array<RingSegment>
 	{
 	public:
-		/**/				Ring(UINT32 pole, const Buffer0<Grid::TNeighborCellID>&domain, UINT32 radius)
+		/**/				Ring(UINT32 pole, const Vector<Grid::TNeighborCellID>&domain, UINT32 radius)
 		{
 			SetSize(5);
 			foreach (*this,seg)
@@ -432,9 +432,9 @@ namespace NexusPresence
 		index_t				GetPole() const {return pole;}
 		bool				IsBase() const {return isBase;}
 
-		void				TracePoleRoutes(const World::Data&world, const ArrayRef<Presence>&others, BasicBuffer<Pathway>&outPathways)
+		void				TracePoleRoutes(const World::Data&world, const ArrayRef<Presence>&others, BasicVector<Pathway>&outPathways)
 		{
-			Buffer0<index_t> neighborPoles;
+			Vector<index_t> neighborPoles;
 			const auto&edgeField = Grid::low.grid.GetGeometry().edgeField;
 			for (index_t e = 0; e < edgeField.Count(); e+=2)
 			{
@@ -462,7 +462,7 @@ namespace NexusPresence
 
 	private:
 		bool				hasPort, isBase;
-		Buffer0<Grid::TNeighborCellID>
+		Vector<Grid::TNeighborCellID>
 							lowDomain,highDomain;
 		M::TIntRange<>		terrainRange;
 		INT64				heightSum;
@@ -706,7 +706,7 @@ namespace NexusPresence
 	void	Pathway::RenderFoundation(World::Data::ChangeSequence&seq)	const
 	{
 		BitSet mask,m_1,m0,m1;
-		Buffer0<Grid::TNeighborCellID> extNeighborhood;
+		Vector<Grid::TNeighborCellID> extNeighborhood;
 		for (index_t i = 0; i < path.Count(); i++)
 		{
 			const auto h = heights[i];
@@ -837,7 +837,7 @@ namespace NexusPresence
 
 			M::TIntRange<> hRange = M::TIntRange<>::Invalid;
 
-			Buffer0<Presence>	presences;
+			Vector<Presence>	presences;
 
 			for (int pole = 0; pole < 12; pole++)
 			{
@@ -853,7 +853,7 @@ namespace NexusPresence
 			int avgHeight = M::RoundToInt(double(heightSum) / presences.Count());
 			const int maxHeightDifference = (Grid::low.grid.CellsPerEdge-2 - 4)/2;
 
-			Buffer0<Pathway> poleRoutes;
+			Vector<Pathway> poleRoutes;
 
 			foreach (presences,p)
 			{

@@ -78,7 +78,7 @@ namespace Logging
 
 		virtual void ThreadMain() override
 		{
-			Buffer0<String> lines;
+			Vector<String> lines;
 			while (!doEnd)
 			{
 				pipe.WaitForContent();
@@ -157,7 +157,7 @@ namespace Logging
 		FileSystem::File file;
 		PathString ext = FileSystem::ExtractFileExt(path);
 		typedef std::pair<FileSystem::ftime_t,PathString>  Entry;
-		Ctr::Buffer0<Entry>	entries;
+		Ctr::Vector<Entry>	entries;
 		while (scan.NextFile(ext,file))
 		{
 			entries << std::make_pair(file.GetModificationTime(), file.GetLocation());

@@ -584,7 +584,7 @@ namespace World
 	}
 
 
-	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::FolderScan folder, Ctr::Buffer0<TPlanetIniFile,Swap>&outList)
+	void		AppendAvailablePlanetInitFilesFrom(bool isFactoryDefault, FileSystem::FolderScan folder, Ctr::Vector<TPlanetIniFile,Swap>&outList)
 	{
 		if (!folder.IsValidLocation())
 		{
@@ -613,7 +613,7 @@ namespace World
 
 	void		GetAvailablePlanetIniFiles(Ctr::Array<TPlanetIniFile>&rsOut)
 	{
-		Ctr::Buffer0<TPlanetIniFile,Swap> files;
+		Ctr::Vector<TPlanetIniFile,Swap> files;
 		
 		AppendAvailablePlanetInitFilesFrom(false, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("config/myPlanets")),files);
 		AppendAvailablePlanetInitFilesFrom(true, FileSystem::Directory().FindDirectory(L"../predefinedPlanets"),files);

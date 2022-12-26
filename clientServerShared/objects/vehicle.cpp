@@ -507,7 +507,7 @@ namespace Objects
 					{
 						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-						Buffer0<PathNode> path;
+						Vector<PathNode> path;
 						Pathfinding::TWays	possibilities;
 						if (detailedPath)
 						{

@@ -46,7 +46,7 @@ namespace HUD
 				}
 			};
 
-			Buffer0<TEntry>	entries;
+			Vector<TEntry>	entries;
 
 			
 

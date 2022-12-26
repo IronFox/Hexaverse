@@ -191,7 +191,7 @@ namespace Objects
 		LODGeometry					sphere, cylinder;
 
 		SelectionPrimitive			generalPurposePrimitive(sphere);
-		Buffer0<SelectionPrimitive>	selectionPrimitives;
+		Vector<SelectionPrimitive>	selectionPrimitives;
 
 		void	AddSensorsOf(const Objects::PWorldEntity&e);
 
@@ -220,11 +220,11 @@ namespace Objects
 		class SmokeTrailCollection
 		{
 		public:
-			Buffer0<DX11::InstructionBlock32>	smokeTrails;
+			Vector<DX11::InstructionBlock32>	smokeTrails;
 			index_t								selectedSmokeTrail = InvalidIndex;
 
 			void	Render();
-			index_t	RegisterSmokeTrail(const Buffer0<M::TVec4<> >&trajectory)
+			index_t	RegisterSmokeTrail(const Vector<M::TVec4<> >&trajectory)
 			{
 				index_t result = smokeTrails.Count();
 				DX11::InstructionBlock32&trail = smokeTrails.Append();
@@ -267,7 +267,7 @@ namespace Objects
 	}
 
 
-	Renderer::SmokeTrailIndex	Renderer::RegisterSmokeTrail(const Buffer0<M::TVec4<> >&trajectory, bool aboveGrid)
+	Renderer::SmokeTrailIndex	Renderer::RegisterSmokeTrail(const Vector<M::TVec4<> >&trajectory, bool aboveGrid)
 	{
 		return SmokeTrailIndex(smokeTrails[aboveGrid].RegisterSmokeTrail(trajectory), aboveGrid);
 	}
@@ -2189,7 +2189,7 @@ namespace Objects
 				const float3&arrowTo = choiceVis.arrowCellTarget.worldLocation;
 				float d2 = Vec::quadraticDistance(arrowTo,choiceVis.arrowFrom.worldLocation);
 
-				static Buffer0<Vertex>	vertices;
+				static Vector<Vertex>	vertices;
 				vertices.Clear();
 
 
@@ -2684,8 +2684,8 @@ namespace Objects
 
 
 
-	Buffer0<PTurretBase>	Renderer::animatedTurrets;
-	Buffer0<PWorldEntity>	Renderer::attackers;	//!< everything that has a base and can attack goes in here
+	Vector<PTurretBase>	Renderer::animatedTurrets;
+	Vector<PWorldEntity>	Renderer::attackers;	//!< everything that has a base and can attack goes in here
 	
 
 	void			Renderer::AdvanceTurretAnimations()

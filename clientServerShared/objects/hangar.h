@@ -32,7 +32,7 @@ namespace Objects
 
 			bool			operator==(const PMobileEntity&e) const {return entity.lock() == e;}
 		};
-		Buffer0<TStored>	stored;
+		Vector<TStored>	stored;
 		static Observable<Hangar&,TStored&>	onStored;
 
 		virtual			~Hangar()	{}
