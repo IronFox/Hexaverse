@@ -169,7 +169,7 @@ namespace VisualTerrain
 			}
 
 		private:
-			Buffer0<Vtx>	vertices;
+			Vector<Vtx>	vertices;
 		};
 
 	template <typename Vtx> 
@@ -308,7 +308,7 @@ namespace VisualTerrain
 			}
 
 		private:
-			Buffer<UINT32, 0>	indices;
+			Vector<UINT32>	indices;
 		};
 
 
@@ -471,8 +471,8 @@ namespace VisualTerrain
 		class DynamicMesh
 		{
 		public:
-			Buffer<Vtx>	vertices;
-			Buffer<UINT32>	indices;
+			Vector<Vtx>		vertices;
+			Vector<UINT32>	indices;
 			//std::vector<Vtx>	vertices;
 			//std::vector<UINT32>	indices;
 			UINT32		offset;

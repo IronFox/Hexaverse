@@ -91,7 +91,7 @@ namespace HUD
 			}
 		}
 
-		D::Buffer0<FGet,D::Swap>	tooltipQuery;
+		D::Vector<FGet,D::Swap>	tooltipQuery;
 
 
 		void	Create()

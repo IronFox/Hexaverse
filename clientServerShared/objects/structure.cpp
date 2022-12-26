@@ -37,7 +37,7 @@ namespace Objects
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
 		*/
-		Buffer0<TLinkReference>		skyLinks;
+		Vector<TLinkReference>		skyLinks;
 	#endif
 
 
@@ -50,7 +50,7 @@ namespace Objects
 
 		/*static*/ Geometry			Structure::standardConnector;
 
-//		/*static*/ Buffer0<IconCommand>		Connector::commands;
+//		/*static*/ Vector<IconCommand>		Connector::commands;
 		///*static*/ DX11::InstructionBlock32	Connector::shape;
 		///*static*/ Geometry					Connector::geometry;
 

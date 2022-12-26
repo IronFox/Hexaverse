@@ -16,7 +16,7 @@ namespace HUD
 						metricPanel,
 						statsPanel;
 		PMultiPlot			overviewGraph;
-		//Buffer0<PButton>	overviewMetrics, overviewFactions;
+		//Vector<PButton>	overviewMetrics, overviewFactions;
 		PointerTable<PButton>	factionButtonMap;
 		PCheckbox				excludeNexusFromOverview;
 		PButton					closeButton;

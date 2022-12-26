@@ -506,7 +506,7 @@ namespace Game
 
 		static void		_UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 		{
-			static Ctr::Buffer0<UINT32>	changed;
+			static Ctr::Vector<UINT32>	changed;
 			if (!f)
 				return;
 			f->knownResources.Update(center,range,changed);
@@ -1342,7 +1342,7 @@ namespace Game
 		void UpdateHibernation()
 		{
 
-			static Buffer0<TSortItem>	entityList;
+			static Vector<TSortItem>	entityList;
 			foreach (Objects::Faction::all,_f)
 			{
 				Objects::PFaction faction = _f->lock();
@@ -1461,7 +1461,7 @@ namespace Game
 		postEvolutionWinner.reset();
 		LogEvent(EventClass{EventSignificance::Important,EventFlavor::ServerPrivate},"Declared winning alliance: "+w->id.ConvertToString()+" ("+reason+")");
 
-		Buffer0<String> winners;
+		Vector<String> winners;
 		w->ForeachMember([&winners](const Objects::PFaction&f)
 		{
 			winners << f->GetName();

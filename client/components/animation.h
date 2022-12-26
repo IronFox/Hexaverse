@@ -1,7 +1,7 @@
 #ifndef animationComponentH
 #define animationComponentH
 
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <math/vclasses.h>
 #include <objects.h>
 #include <protocol.h>
@@ -45,7 +45,7 @@ namespace Animation
 			DestroyEntity,
 			ResourceUpdate,
 		}						type;
-		typedef Buffer0<Protocol::WorldDelta,Swap>	DeltaField;
+		typedef Vector<Protocol::WorldDelta,Swap>	DeltaField;
 		std::shared_ptr<DeltaField >	worldDelta;
 		Objects::PWorldEntity		allocatedTarget;	//for construction and motion. not to be used for other purposes as the original reference by id may change during animation
 		std::shared_ptr<Protocol::MobileState>		vehicleState;

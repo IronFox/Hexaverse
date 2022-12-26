@@ -886,7 +886,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	
-	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/, bool constrainVerticalMotion/*=true*/)
+	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicVector<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/, bool constrainVerticalMotion/*=true*/)
 	{
 		//Timer::Time t0 = timer.Now();
 
@@ -933,7 +933,7 @@ namespace Objects{ namespace Pathfinding
 
 			if (cellID == to)
 			{
-				static Ctr::Buffer<PathNode>	outPath;
+				static Ctr::Vector<PathNode>	outPath;
 				outPath.Clear();
 
 				while (current < cellCount)
@@ -990,7 +990,7 @@ namespace Objects{ namespace Pathfinding
 	}
 
 	
-	bool AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 to, Ctr::BasicBuffer<PathNode>&oPath)
+	bool AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 to, Ctr::BasicVector<PathNode>&oPath)
 	{
 		//Timer::Time t0 = timer.Now();
 
@@ -1030,7 +1030,7 @@ namespace Objects{ namespace Pathfinding
 
 			if (current == to)
 			{
-				static Ctr::Buffer<PathNode>	outPath;
+				static Ctr::Vector<PathNode>	outPath;
 				outPath.Clear();
 
 				while (current < cellCount)

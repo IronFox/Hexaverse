@@ -201,8 +201,8 @@ namespace Objects
 		TrajectoryEndPoint	arrowCellTarget;
 	};
 
-	void			GetChoices(const WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(const WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicVector<Choice>&movementChoices, TChoiceVisualization&vis);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicVector<Choice>&movementChoices, TChoiceVisualization&vis);
 
 
 
@@ -224,7 +224,7 @@ namespace Objects
 	@param production Base type of the vehicle that was produced
 	*/
 	void			GetProductionChoices(const WorldEntity*producer,const PVehicle&production,
-							BasicBuffer<Choice>&choices);
+							BasicVector<Choice>&choices);
 
 
 

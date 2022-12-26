@@ -65,7 +65,7 @@ namespace Objects
 			}
 
 
-		/*static*/ Buffer0<WCommandGroup>		CommandGroup::activeGroupPath;
+		/*static*/ Vector<WCommandGroup>		CommandGroup::activeGroupPath;
 
 
 		/*static*/ HashTable<PathString, DX11::Texture>	VisualCommand::textureMap;

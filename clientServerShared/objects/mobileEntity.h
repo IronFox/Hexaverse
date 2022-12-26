@@ -122,7 +122,7 @@ namespace Objects
 
 			Ctr::Queue<Focus>		foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
 			
-			Ctr::Buffer0<PathNode>	path;
+			Ctr::Vector<PathNode>	path;
 			PClientAttachment		visualization;
 
 			String					name;

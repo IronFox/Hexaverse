@@ -80,7 +80,7 @@ namespace Objects
 				return false;
 			const World::Data&world = source.owner->knownWorld;
 
-			Buffer0<PWorldEntity>	candidates;
+			Vector<PWorldEntity>	candidates;
 
 			source.owner->VisitVisibleForeignEntities([&source,&candidates](const PWorldEntity&e)
 			{
@@ -144,9 +144,9 @@ namespace Objects
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
 			float outerRadius = explosionRadius*explosionRadius;
-			static Buffer0<PWorldEntity>	allLivingAffected;
-			static Buffer0<PStructure>		affectedStructures;
-			static Buffer0<PMobileEntity>	potentiallyFalling;
+			static Vector<PWorldEntity>	allLivingAffected;
+			static Vector<PStructure>		affectedStructures;
+			static Vector<PMobileEntity>	potentiallyFalling;
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime,attack](const PWorldEntity e)
 			{
 				if (e->IsIndestructible())
@@ -254,7 +254,7 @@ namespace Objects
 					Objects::GetNeighborhood((*s)->owner,(*s)->ConnectsToDifferentOwnership(),(*s)->location, env);
 					(*s)->SignalEnvironmentChange(env,atTime);
 				}
-				//static Buffer0<PVehicle>	copy;
+				//static Vector<PVehicle>	copy;
 				//copy = vehicles;	//in case they get whooped by falling
 				for (const auto&m : potentiallyFalling)
 				{
@@ -287,7 +287,7 @@ namespace Objects
 							center,explosionRadius,true,false,atTime);
 
 			float outerRadius = explosionRadius*explosionRadius;
-			static Ctr::Buffer0<PWorldEntity>	toDisable;
+			static Ctr::Vector<PWorldEntity>	toDisable;
 
 			currentExplosionAttack = &attack;
 
@@ -527,7 +527,7 @@ namespace Objects
 	}
 
 	void	GetProductionChoices( const WorldEntity*producer,const PVehicle&production,
-									BasicBuffer<Choice>&choices)
+									BasicVector<Choice>&choices)
 	{
 		choices.Clear();	
 		if (!production)
@@ -594,7 +594,7 @@ namespace Objects
 
 
 	
-	void		GetChoices( const WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis )
+	void		GetChoices( const WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicVector<Choice>&movementChoices, TChoiceVisualization&vis )
 	{
 		const World::Data&world = 
 		#ifdef CLIENT
@@ -885,7 +885,7 @@ namespace Objects
 	}
 
 
-	void					GetChoices( const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicBuffer<Choice>&movementChoices, TChoiceVisualization&vis )
+	void					GetChoices( const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, Ctr::BasicVector<Choice>&movementChoices, TChoiceVisualization&vis )
 	{
 
 		if (entity)
@@ -1570,7 +1570,7 @@ namespace Objects
 				return false;
 			}
 
-			Ctr::Buffer0<Choice>	movementChoices;
+			Ctr::Vector<Choice>	movementChoices;
 			TChoiceVisualization vis;
 			GetChoices(e,deployWhat,mode,movementChoices,vis);
 

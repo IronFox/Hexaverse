@@ -13,7 +13,7 @@ namespace Objects
 	class MobilePark
 	{
 	public:
-		Buffer0<WVehicleStore>	members;	//!< All VehicleStore instances that share this Park
+		Vector<WVehicleStore>	members;	//!< All VehicleStore instances that share this Park
 		count_t					vehiclesStored = 0;	//!< Total number of vehicles stored in this park
 
 		/**
@@ -52,7 +52,7 @@ namespace Objects
 		/**
 		Store-neigbors - directly adjacent VehicleStore instances
 		*/
-		Ctr::Buffer0<WVehicleStore>	sneighbors;
+		Ctr::Vector<WVehicleStore>	sneighbors;
 
 		
 

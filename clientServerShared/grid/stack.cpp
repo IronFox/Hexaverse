@@ -511,7 +511,7 @@ namespace Grid
 		
 			};
 
-			static Buffer0<TSensor> sensors;
+			static Vector<TSensor> sensors;
 
 
 		#endif

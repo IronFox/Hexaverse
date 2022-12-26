@@ -310,7 +310,7 @@ namespace HexGrid
 	struct Group
 	{
 		String		name;
-		Buffer0<Objects::WWorldEntity>	entries;
+		Vector<Objects::WWorldEntity>	entries;
 		index_t		currentSelection = InvalidIndex;
 		float		significance = 0;
 			
@@ -447,7 +447,7 @@ namespace HexGrid
 	class DynamicRow
 	{
 	private:
-		Buffer0<Objects::Command::PVisualCommand>		lastVisible;
+		Vector<Objects::Command::PVisualCommand>		lastVisible;
 		std::shared_ptr<Custom::ArrowCommand>	leftCommand,rightCommand;
 		index_t									offset=0;
 		M::TIntRange<index_t>						visibleRange;
@@ -461,7 +461,7 @@ namespace HexGrid
 		Call Refresh() when done to make changes visible.
 		Only elements addressed by @a visibleRange will be shown on screen.
 		*/
-		Buffer0<Objects::Command::PVisualCommand>		commands;
+		Vector<Objects::Command::PVisualCommand>		commands;
 
 		/**
 		Vertical position of this row with 0 being the top-most, and positive values iterating downwards
@@ -500,7 +500,7 @@ namespace HexGrid
 		{
 			typedef DynamicRow		Super;
 		public:
-			StringTable<Buffer0<T>,Swap>			collection;
+			StringTable<Vector<T>,Swap>			collection;
 
 			/**/					CollectionTemplateRow(int rowIndex) : Super(rowIndex)	{}
 			void					Clear()	{commands.Clear(); collection.Clear();}

@@ -29,13 +29,13 @@ namespace Grid
 		@param range Sphere radius to detect resources within
 		@param[inout] outNewDiscoveries Buffer to add newly discovered cell stacks to. Cleared automatically
 		*/
-		void				Update(const Grid::LCellIdI&center,float range, Ctr::BasicBuffer<UINT32>&outNewDiscoveries);
+		void				Update(const Grid::LCellIdI&center,float range, Ctr::BasicVector<UINT32>&outNewDiscoveries);
 		/**
 		Determines the set of visible stacks in the given radius around the given location.
 		Clears the result set before appending new stack IDs.
 		Do not call in parallel.
 		*/
-		static void			DetermineCoverage(const Grid::LCellIdI&center,float range,BasicBuffer<UINT32>&outCoveredStacks);
+		static void			DetermineCoverage(const Grid::LCellIdI&center,float range,BasicVector<UINT32>&outCoveredStacks);
 
 		
 		/**

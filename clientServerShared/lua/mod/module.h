@@ -2,7 +2,7 @@
 #include <global_root.h>
 #include <objects/types.h>
 #include <container/array.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <lua/luaInterface.h>
 //#include "../entityCommand.h"
 #include <objects/components.h>
@@ -41,9 +41,9 @@ namespace Lua
 		Objects::PWorldEntity CreateLuaWorkingStructure(index_t typeId, const Lua::Table&table) const;
 		void MakeImportHandler(const ArrayRef<PathString>&includeRoots, const PathString&gate, HashSet<PathString>&included);
 
-		Buffer0<Objects::PWorldEntity> prototypes;
-		Buffer0<Objects::Component::PTurret> turrets;
-		Buffer0<Objects::Component::PVehicleBase> vehicleBases;
+		Vector<Objects::PWorldEntity> prototypes;
+		Vector<Objects::Component::PTurret> turrets;
+		Vector<Objects::Component::PVehicleBase> vehicleBases;
 
 		Lua::FImportHandler importHandler;
 
@@ -65,8 +65,8 @@ namespace Lua
 
 
 	private:
-		Buffer0<PathString> includes;
-		Buffer0<PMod>	mods;
+		Vector<PathString> includes;
+		Vector<PMod>	mods;
 		index_t			typeIdCounter = 0;
 	};
 

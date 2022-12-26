@@ -13,7 +13,7 @@ namespace Detail
 		Resolution						lastClientSpace;
 
 
-		Buffer0<Viewport>	viewportStack;
+		Vector<Viewport>	viewportStack;
 		float2	totalOffset;
 
 		DX11::ObjectBuffer<float4>	viewportVector;
@@ -85,7 +85,7 @@ namespace Detail
 			OnInput();
 		}
 
-		Buffer<Component*>	allComponents;
+		Vector<Component*>		allComponents;
 		Engine::InputProfile	profile;
 		bool	inputIsActive = false;
 

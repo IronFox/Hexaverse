@@ -60,7 +60,7 @@ namespace Atmosphere
 		ShadedInstruction base;
 		base.binding.Append("POSITION",0,DXGI_FORMAT_R32G32_FLOAT);
 
-		Buffer0<DX11::Shader::Binding> bindings;
+		Vector<DX11::Shader::Binding> bindings;
 
 		//bindings;
 		

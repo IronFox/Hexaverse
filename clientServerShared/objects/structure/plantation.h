@@ -48,7 +48,7 @@ namespace Objects
 		CONSTRUCT_ENUMERATION2(Triggers, 
 			PlantTrees,
 			PlantCrystals);
-		Buffer0<UINT32>				plantStackIDs;
+		Vector<UINT32>				plantStackIDs;
 
 		UINT32						crystalPresence=0,
 									treePresence=0;

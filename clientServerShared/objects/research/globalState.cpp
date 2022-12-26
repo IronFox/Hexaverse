@@ -517,7 +517,7 @@ namespace Objects
 			LogEvent(EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),"Attempting to activate research program "+Bin2Str::ConvertPOD(script->identifier));
 
 
-			Ctr::Buffer0<TSerialState,Swap> taskLists;
+			Ctr::Vector<TSerialState,Swap> taskLists;
 			ForeachFaction([&taskLists](const PFaction&f)
 			{
 				auto&entry = taskLists.Append();

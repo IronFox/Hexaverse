@@ -8,8 +8,8 @@ namespace Objects
 {
 	
 
-	/*static*/ Ctr::Buffer0<Component::VehicleBase*>		VehiclePlant::baseComponents;
-	/*static*/ Ctr::Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
+	/*static*/ Ctr::Vector<Component::VehicleBase*>		VehiclePlant::baseComponents;
+	/*static*/ Ctr::Vector<Component::Turret*>			VehiclePlant::turretComponents;
 	
 	#ifndef CLIENT
 		/*virtual override*/ void				VehiclePlant::Tick(Resource::Vector&v)

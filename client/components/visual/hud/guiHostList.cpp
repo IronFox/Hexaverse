@@ -489,7 +489,7 @@ namespace HUD{namespace HostList{
 		serverChoice->AddComponent( serverListPanel,CLOCATION );
 
 
-		static Buffer0<Network::ServerAddress>	list;
+		static Vector<Network::ServerAddress>	list;
 		Network::ServerDiscovery::ListFailedAttempts(list);
 		foreach (list,failed)
 		{

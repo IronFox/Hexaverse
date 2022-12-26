@@ -63,8 +63,8 @@ namespace LineRenderer
 
 	private:
 		DX11::InstructionBlock32	instruction;
-		Buffer0<TVertex>			vertices;
-		Buffer0<UINT32>				indices;
+		Vector<TVertex>			vertices;
+		Vector<UINT32>				indices;
 		count_t						indexOffset=0;
 	};
 }

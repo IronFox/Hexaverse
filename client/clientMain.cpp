@@ -2157,7 +2157,7 @@ int main( int argc, const char* argv[])
 
 		Loading::Stage("Marker Check",ObjectHelper::MarkerCheck::Create);
 		Loading::Stage("Client Grid",ClientGrid::Create);
-		Loading::Stage("ResourceRelay (mod)",[](){Lua::globalModLibrary.AddMod(L"../lua/objects",L"../lua/objects/structure/ResourceRelay.lua");});
+		//Loading::Stage("ResourceRelay (mod)",[](){Lua::globalModLibrary.AddMod(L"../lua/objects",L"../lua/objects/structure/ResourceRelay.lua");});
 
 
 		Loading::Stage("Server Process",[]()

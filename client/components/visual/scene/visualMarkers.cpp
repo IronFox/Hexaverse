@@ -35,7 +35,7 @@ namespace Objects { namespace VisualMarkers
 			index_t counter = 0;
 			HashTable<index_t,index_t> indexMap;
 			HashTable<Grid::LCellIdI,index_t> locationMap;
-			Buffer0<LocalMarker>  markers;
+			Vector<LocalMarker>  markers;
 
 
 			index_t NextID()

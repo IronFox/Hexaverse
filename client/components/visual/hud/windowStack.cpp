@@ -2,7 +2,7 @@
 
 #include "componentDetails.h"
 #include "../display.h"
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "../../clientEvents.h"
 #include <logEvent.h>
 #include "../../cameraControl.h"
@@ -54,7 +54,7 @@ namespace HUD
 			};
 
 
-			Buffer0<TWindowEntry,Swap>		visibleWindows;
+			Vector<TWindowEntry,Swap>		visibleWindows;
 
 			//void	HideNow(index_t index)
 			//{

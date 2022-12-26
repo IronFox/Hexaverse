@@ -3,7 +3,7 @@
 
 #include <global_string.h>
 #include <interface/write_stream.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <functional>
 
 using namespace DeltaWorks;

@@ -94,7 +94,7 @@ namespace Reflection
 				if (!w)
 					return "<None>";
 
-				Buffer0<String> winners;
+				Vector<String> winners;
 				w->ForeachMember([&winners](const Objects::PFaction&f)
 				{
 					winners << f->GetName()+" ("+ToString(f->id)+")";

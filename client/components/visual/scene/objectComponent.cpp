@@ -178,7 +178,7 @@ namespace Objects
 	}
 	void TowerAttackVisualization::Recompile(const Tower & t, const Grid::LCellIdI & attackTarget)
 	{
-		static Buffer0<M::TVec4<> > trajectory;
+		static Vector<M::TVec4<> > trajectory;
 		trajectory.Clear();
 		//if (Turret::TraceTrajectory(Turret::MaxRangeToVelocity(GetFlatAttackRange()),World::actual, location,foundationHeight,attackTarget,trajectory,impactAt,dummy1))
 		if (t.TraceTrajectory(TrajectoryEndPoint( attackTarget,0),true,trajectory) != TraceResult::InvalidTrajectory)
@@ -658,7 +658,7 @@ namespace Objects
 				{
 					case CursorMode::AttackMode:
 					{
-						static Buffer0<M::TVec4<> > trajectory;
+						static Vector<M::TVec4<> > trajectory;
 						Geometry geo;
 						attach.localizableShapes.Clear();
 						foreach (t.foci,f)

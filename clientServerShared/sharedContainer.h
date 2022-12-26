@@ -1,6 +1,6 @@
 #pragma once
 
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <functional>
 #include <memory>
 #include <limits>
@@ -12,9 +12,9 @@ The container is currently not thread-safe but allows insert and removal operati
 When appending while iteration is in progress, the iteration will also iterate over the new elements
 */
 template <typename T>
-	class SharedContainer : private Ctr::Buffer0<std::shared_ptr<T> >
+	class SharedContainer : private Ctr::Vector<std::shared_ptr<T> >
 	{
-		typedef Ctr::Buffer0<std::shared_ptr<T> >	Super;
+		typedef Ctr::Vector<std::shared_ptr<T> >	Super;
 		typedef std::shared_ptr<T>				PT;
 
 		static_assert(sizeof(sindex_t) == sizeof(index_t),"Type size error");
@@ -116,7 +116,7 @@ template <typename T>
 			}
 
 		template <typename T2>
-			void	CastAppendAllTo(BasicBuffer<std::shared_ptr<T2> >&outTarget) const
+			void	CastAppendAllTo(BasicVector<std::shared_ptr<T2> >&outTarget) const
 			{
 				outTarget.AppendAll((const Super&)*this);
 			}

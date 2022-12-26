@@ -129,7 +129,7 @@ namespace AI
 			}
 
 		private:
-			Buffer0<TChoice>	choices;
+			Vector<TChoice>	choices;
 			const int			pole;
 			count_t				totalMobiles=0;
 			HashTable<Objects::EntityType,TCounter>	typeCounter;

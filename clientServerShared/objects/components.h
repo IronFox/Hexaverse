@@ -193,10 +193,10 @@ namespace Objects
 
 			struct Detail
 			{
-				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outSteps);
-				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
-				static ImpactDetails		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
-				static ImpactDetails		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Vector<M::TVec4<> >&outSteps);
+				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Vector<M::TVec4<> >&outSteps);
+				static ImpactDetails		TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Ctr::Vector<M::TVec4<> >&outSteps);
+				static ImpactDetails		TraceMissileTrajectory(float range, const World::Data&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Vector<M::TVec4<> >&outSteps);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
@@ -319,15 +319,15 @@ namespace Objects
 
 			static int						GetGroundHeight(const World::Data&world, const Grid::LCellIdI&location);
 			static int						GetCeilingHeight(const World::Data&world, const Grid::LCellIdI&location);
-			//static void						TraceTrajectory(TrajectoryType, float flatRange, const M::TVec3<>&source, const M::TVec3<>&dest, Buffer0<M::TVec4<> >&outSteps);
-			static ImpactDetails			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps);
+			//static void						TraceTrajectory(TrajectoryType, float flatRange, const M::TVec3<>&source, const M::TVec3<>&dest, Vector<M::TVec4<> >&outSteps);
+			static ImpactDetails			TraceTrajectory(TrajectoryType, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Vector<M::TVec4<> >&outSteps);
 			static ImpactDetails			TraceTrajectory(TrajectoryType type, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest)
 			{
-				Ctr::Buffer0<M::TVec4<> > outSteps;
+				Ctr::Vector<M::TVec4<> > outSteps;
 				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,traceInActualWorld,source,dest,outSteps);
 			}
 			virtual bool					IsTurret() const override {return true;}
-			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Buffer0<M::TVec4<> >&outTrajectory);
+			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Ctr::Vector<M::TVec4<> >&outTrajectory);
 
 
 			float							GetOperationSpeed(Operation op, const Research::Attributes::Table&researchState) const;
@@ -457,7 +457,7 @@ namespace Objects
 				SmokeTrail
 			};
 
-			static float					CompileTrajectory(const Ctr::Buffer0<M::TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
+			static float					CompileTrajectory(const Ctr::Vector<M::TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 
 			/**
 			Checks whether or not the local turret could ever possibly consume resources

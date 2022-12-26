@@ -8,12 +8,12 @@
 namespace Objects
 {
 
-	/*static*/ Buffer0<ConstName>	SkyHub::supportsProduction;
+	/*static*/ Vector<ConstName>	SkyHub::supportsProduction;
 	SharedContainer<Satellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
 	#ifndef ONE_COMPOUND_PER_FACTION
-		/*static*/ Buffer0<Satellite::THub>	Satellite::hubs;
+		/*static*/ Vector<Satellite::THub>	Satellite::hubs;
 	#endif
 
 	/*static*/ count_t			Satellite::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
@@ -106,7 +106,7 @@ namespace Objects
 	//}
 
 
-	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Vector<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->baseGroundScanningRange <= 0, newContacts);
 		#ifdef CLIENT
@@ -617,7 +617,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
-		/*virtual override*/ void		Satellite::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		/*virtual override*/ void		Satellite::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Vector<PWorldEntity>*newContacts/* = nullptr*/)
 		{
 			if (oldLocation == newLocation)
 				return;
@@ -1030,7 +1030,7 @@ namespace Objects
 				return false;
 			}
 
-			static Buffer0<M::TVec4<> > trajectory;
+			static Vector<M::TVec4<> > trajectory;
 
 			M::TVec3<> iat;
 			Grid::HCellIdI ic;

@@ -63,7 +63,7 @@ namespace Evolver
 			bool		operator<(const TAttackReference&other) const {return GetInitiative() < other.GetInitiative();}
 		};
 
-		Ctr::Buffer<TAttackReference>	attackingEntities;
+		Ctr::Vector<TAttackReference>	attackingEntities;
 		//float						attackTime = 0.f;
 
 
@@ -104,7 +104,7 @@ namespace Evolver
 		}
 
 
-		Ctr::Buffer<TMovementReference>	movingVehicles,movingVehicles2;
+		Ctr::Vector<TMovementReference>	movingVehicles,movingVehicles2;
 
 		void		SignalMotionPhase()
 		{
@@ -361,7 +361,7 @@ namespace Evolver
 			#ifndef NO_SATELLITES
 				Objects::RefreshSkyHubConnections();
 			
-				static Buffer0<Objects::PSatellite>	waste;
+				static Vector<Objects::PSatellite>	waste;
 				for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
 				{
 					Objects::PSatellite sat = Objects::satellites[i];

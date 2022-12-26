@@ -113,7 +113,7 @@ namespace Lua
 		HashTable<Grid::LCellIdI,Lua::Table>	locationMap;
 		HashTable<TUniqueID,LFOnDeploy>			onDeployedCallbacks;
 		Time::Stamp								lastDeploymentCallbackRegistered;
-		Buffer0<TSharedHangar>					sharedHangars;
+		Vector<TSharedHangar>					sharedHangars;
 
 		HashTable<TUniqueID,TAlliance>			loadedAllianceTableMap;
 		HashTable<TUniqueID,TFaction>			loadedFactionTableMap;

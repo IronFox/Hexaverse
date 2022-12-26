@@ -1,6 +1,6 @@
 #pragma once
 
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <container/hashtable.h>
 #include <global_string.h>
 #include "../../lua/luaInterface.h"
@@ -31,7 +31,7 @@ namespace Objects
 		class TopicGroup
 		{
 		public:
-			typedef D::Buffer0<PTopic>	List;
+			typedef D::Vector<PTopic>	List;
 			typedef List::iterator			iterator;
 			typedef List::const_iterator	const_iterator;
 
@@ -248,7 +248,7 @@ namespace Objects
 										factoryDefault;	//program defined in install directory. Must load or server execution fails
 			#endif
 			T2Globals			t2;
-			Buffer0<PTopic>		allTopics;
+			Vector<PTopic>		allTopics;
 			TopicGroup			rootResearch;
 			#ifndef CLIENT
 				Lua::API			researchAPI;

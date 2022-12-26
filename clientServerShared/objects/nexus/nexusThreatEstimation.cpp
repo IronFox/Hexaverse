@@ -28,10 +28,10 @@ namespace Objects
 				Array<UINT32>distanceField;
 
 
-				Buffer0<Objects::PWorkingStructure>	associatedWorkingStructures;
-				Buffer0<Objects::PVehiclePlant> associatedVehiclePlants;
-				Buffer0<Objects::PPlaneFactory> associatedPlaneFactories;
-				Buffer0<Objects::PMobileEntity> associatedMobiles;
+				Vector<Objects::PWorkingStructure>	associatedWorkingStructures;
+				Vector<Objects::PVehiclePlant> associatedVehiclePlants;
+				Vector<Objects::PPlaneFactory> associatedPlaneFactories;
+				Vector<Objects::PMobileEntity> associatedMobiles;
 
 				void	Reset()
 				{
@@ -52,7 +52,7 @@ namespace Objects
 						return;
 					Time::Stamp t0;
 
-					Buffer0<Grid::TNeighborCellID>	neighborhood;
+					Vector<Grid::TNeighborCellID>	neighborhood;
 					Grid::low.GetExtendedNeighborhood(poleIdx,Grid::LowSetup::GridType::CellsPerEdge,neighborhood);
 					distanceField.SetSize(Grid::LowSetup::GridType::CellCount);
 					distanceField.Fill(std::numeric_limits<UINT32>::max());

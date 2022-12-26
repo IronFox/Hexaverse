@@ -88,7 +88,7 @@ namespace VisualTerrain
 
 	struct TResourceCover
 	{
-		Buffer0<TStackInstance>				regularStacks, occupiedStacks;
+		Vector<TStackInstance>				regularStacks, occupiedStacks;
 
 
 		void								Clear()
@@ -201,7 +201,7 @@ namespace VisualTerrain
 
 	private:
 		HashTable<StackKey,index_t>			stackMap;
-		Buffer0<ResourceStack>				stacks;
+		Vector<ResourceStack>				stacks;
 		index_t								newFrom = 0;
 	};
 

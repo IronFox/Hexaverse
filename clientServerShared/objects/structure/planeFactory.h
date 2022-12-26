@@ -19,7 +19,7 @@ namespace Objects
 		static const int			FuelDemand = 20;
 		static const int			EnergyConsumption = 0;
 
-		static Buffer0<EntityType>	prototypes;
+		static Vector<EntityType>	prototypes;
 
 
 		//BaseEntity overrides:

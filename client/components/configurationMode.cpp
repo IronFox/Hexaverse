@@ -43,14 +43,14 @@ namespace ConfigurationMode
 		UINT32					seed = 0;
 		Random					rng;
 		StringTable<String>		declarations;
-		Buffer0<TPlanetFile>	planetList;
+		Vector<TPlanetFile>	planetList;
 		Time::Stamp				lastLocalChange;
 		Grid::WorldDiscovery	showingDiscovery;	//currently selected discovery (interpreted as FullWorld if showDiscovery is false)
 		bool					showDiscovery= false;
 		Objects::PFaction		myNexus;
 		FileSystem::TempFile	outConfigPath;
 
-		Buffer0<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
+		Vector<Objects::Command::PVisualCommand>	numberCommands;	//!< All commands rendering numbers
 
 		using namespace HUD::Component;
 		PWindow			planetListWindow;
@@ -151,14 +151,14 @@ namespace ConfigurationMode
 				flashUploadButton = false;
 		bool	anyWorldLoaded = false;
 		Objects::Command::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup,copyPasteGroup;
-		Buffer0<std::pair<int2,Objects::Command::PBase> > buttons; 
+		Vector<std::pair<int2,Objects::Command::PBase> > buttons; 
 
 		class MaterialDialog
 		{
 		public:
 			PWindow	window;
 			std::function<void(BYTE)>	onSelect;
-			Buffer0<std::pair<index_t, PButton> >	materialButtons;
+			Vector<std::pair<index_t, PButton> >	materialButtons;
 			
 			void				Create(bool allowUnknown, bool allowLiquids);
 			void				SetText(BYTE type);

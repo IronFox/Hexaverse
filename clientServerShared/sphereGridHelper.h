@@ -153,7 +153,7 @@ namespace Grid
 			};
 
 			const Grid::HCellIdU center(Grid::high.Locate(worldCenter),Grid::CellStack::ToLayer( Grid::HeightFromRadius(Vec::length( worldCenter )) ));
-			Buffer0<Grid::HCellIdU>	marked;
+			Vector<Grid::HCellIdU>	marked;
 			{
 				auto&cell = cellStack[center.stackID].volumeCell[center.layer];
 				cell.user = Visited | Visible | Translucent;	//is visible
