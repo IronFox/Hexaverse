@@ -2,7 +2,7 @@
 
 The game itself (all C++, C#, Lua, shaders, assets and the in-game wiki) was written by Stefan Elsen (IronFox) between 2014 and 2022. In October 2026, Claude, an AI assistant made by Anthropic, used through Claude Code, prepared the repository for publication at IronFox's request: documentation, a CMake build, CI and release automation, and the license. IronFox reviewed and merged the changes.
 
-No game source code was changed. Every file the AI created or modified is listed below.
+The game code itself was left as it was, except for one header that needed includes to build against the current DeltaWorks. Every file the AI created or modified is listed below.
 
 ## Created
 
@@ -36,6 +36,7 @@ No game source code was changed. Every file the AI created or modified is listed
 
 | File | Change |
 |---|---|
+| `clientServerShared/grid/base.h` | Include the DeltaWorks headers that `<fractal/geometry.h>` no longer pulls in, so the game builds against the current DeltaWorks |
 | `.gitignore` | Ignore CMake build folders, `CMakeUserPresets.json`, `BuildCounter/.projector/` and the CI DeltaWorks checkout |
 | `mainBakeRecipe.txt` | Package `LICENSE` with the game |
 | `serverBakeRecipe.txt` | Package `LICENSE`, plus the AI scripts (`lua/AI/`, `lua/util/`) the dedicated server's AI clients need |

@@ -3,6 +3,20 @@
 #include <math/vclasses.h>
 #include <fractal/segment_map.h>
 #include <fractal/geometry.h>
+// DeltaWorks no longer includes these from <fractal/geometry.h> (c4ec0ed).
+#include <math/object.h>
+#include <math/object_def.h>
+#include <general/timer.h>
+#include <general/system.h>
+#include <general/thread_system.h>
+#include <general/random.h>
+#include <container/production_pipe.h>
+#include <container/sorter.h>
+#include <container/vectorList.h>
+#include <io/mutex_log.h>
+#include <io/delta_crc32.h>
+#include <general/auto.h>
+#include <io/log_stream.h>
 
 using namespace DeltaWorks;
 

@@ -148,7 +148,7 @@ The full Lua API reference is [`lua/General Lua API Documentation.txt`](lua/Gene
 
 ## AI contribution
 
-The game was written by IronFox. The documentation in this README and `docs/`, the CMake build, the CI and release workflows and the Markdown conversion of the player wiki were created with Claude (Anthropic's AI assistant) at IronFox's request; no game code was changed. [docs/ai-contribution.md](docs/ai-contribution.md) lists every file that was created or modified.
+The game was written by IronFox. The documentation in this README and `docs/`, the CMake build, the CI and release workflows and the Markdown conversion of the player wiki were created with Claude (Anthropic's AI assistant) at IronFox's request. Apart from one header adjusted to build against the current DeltaWorks, the game code is unchanged. [docs/ai-contribution.md](docs/ai-contribution.md) lists every file that was created or modified.
 
 ## License
 
