@@ -11,6 +11,7 @@
 #include "../../../client/version.h"
 #include <objects/structure/tower.h>
 #include <grid/resources.h>
+#include <vector>
 
 namespace FileIO
 {
@@ -266,11 +267,20 @@ namespace FileIO
 		}
 	}
 
-	static Riff::Chunk* CreateNamedList(Riff::Chunk&parent, ChunkName name)
+	static ChunkName ChunkNameOfListType(const Riff::TID&listType)
 	{
-		Riff::Chunk*list = parent.AppendNamedList(name);
-		list->SetListType(ListTypeOf(name));
-		return list;
+		static const ChunkName all[] =
+		{
+			ChunkName::WorldInfoGroup, ChunkName::ObjectGroup, ChunkName::VehicleTaskSection, ChunkName::WorldGroup,
+			ChunkName::InitialWorldGroup, ChunkName::ResourceSection, ChunkName::FactionSection,
+			ChunkName::FactionStatisticsSection, ChunkName::FactionMarkers, ChunkName::AllianceSection,
+		};
+		if (listType.value == 0)
+			return ChunkName::None;
+		for (ChunkName n : all)
+			if (ListTypeOf(n) == listType)
+				return n;
+		return ChunkName::None;
 	}
 
 	static Riff::Chunk* CreateList(Riff::Chunk&parent, const Riff::TID&listType)
@@ -280,23 +290,60 @@ namespace FileIO
 		return list;
 	}
 
+	/**
+	Appends a list that loading identifies by @a name.
+	Standard RIFF files (Config::writeRiffFormType) identify it by its list type alone.
+	Legacy files (no form type, so no list types) put a NAME chunk with the 2-byte key in front of it.
+	*/
+	static Riff::Chunk* CreateNamedList(Riff::Chunk&parent, ChunkName name)
+	{
+		if (Config::writeRiffFormType)
+			return CreateList(parent,ListTypeOf(name));
+		Riff::Chunk*list = parent.AppendNamedList(name);
+		list->SetListType(ListTypeOf(name));
+		return list;
+	}
+
+	struct KeyedList
+	{
+		ChunkName		key;
+		Riff::Chunk*	list;
+	};
+
+	/**
+	Collects the lists of @a parent that have a ChunkName, in file order.
+	A list's name is the 2-byte key of a NAME chunk right in front of it (files before version 1051),
+	otherwise its list type (version 1051 and later). Lists with neither are skipped.
+	Does not move the cursor of @a parent.
+	*/
+	static std::vector<KeyedList> CollectKeyedLists(Riff::Chunk&parent)
+	{
+		std::vector<KeyedList> rs;
+		Riff::Chunk*previous = nullptr;
+		for (Riff::Chunk*c = parent.GetFirstChild(); c; previous = c, c = c->GetNextSibling())
+		{
+			if (!c->IsID(RIFF_LIST))
+				continue;
+			ChunkName key = ChunkName::None;
+			if (previous && previous->IsID(Riff::RIFF_NAME_CHUNK) && previous->size() == 2)
+			{
+				UINT16 k;
+				previous->Get(&k);
+				key = (ChunkName)k;
+			}
+			else
+				key = ChunkNameOfListType(c->GetListType());
+			if (key != ChunkName::None)
+				rs.push_back(KeyedList{key,c});
+		}
+		return rs;
+	}
+
 	static Riff::Chunk* FindNamedList(Riff::Chunk&parent, ChunkName name)
 	{
-		Riff::Chunk*a,*b;
-		if (parent.FindFirstNamedList(a,b))
-			do
-			{
-				UINT16 key;
-				if (a->size() == 2)
-				{
-					a->Get(&key);
-					if (name == (ChunkName)key)
-						return b;
-				}
-
-			}
-			while (parent.FindNextNamedList(a,b));
-
+		for (const KeyedList&k : CollectKeyedLists(parent))
+			if (k.key == name)
+				return k.list;
 		return nullptr;
 	}
 
@@ -1052,23 +1099,20 @@ namespace FileIO
 		ImportJob(parent,v->completeOnMove);
 		if (v->completeOnMove)
 			v->completeOnMove->UpdateLocationAndEstimations(*v,v->location);
-		Riff::Chunk *name,*data;
-		if (parent->FindFirstNamedList(name,data))
-			do
+		for (const KeyedList&k : CollectKeyedLists(*parent))
+		{
+			if (k.key == ChunkName::VehicleTaskSection)
 			{
-				if (name->DataMatch(ChunkName::VehicleTaskSection))
-				{
-					ImportTask(data,v->myTasks.Push());
-					auto job = v->myTasks.GetNewest().job;
-					if (job)
-						job->UpdateLocationAndEstimations(*v,v->GetLastPointOfOrigin());
-				}
-				else
-				{
-					FATAL__("key mismatch");
-				}
+				ImportTask(k.list,v->myTasks.Push());
+				auto job = v->myTasks.GetNewest().job;
+				if (job)
+					job->UpdateLocationAndEstimations(*v,v->GetLastPointOfOrigin());
 			}
-			while (parent->FindNextNamedList(name,data));
+			else
+			{
+				FATAL__("key mismatch");
+			}
+		}
 		foreach (v->myTasks,t)
 			if (t->job && t->job->ioParentID)
 			{
@@ -1501,13 +1545,10 @@ namespace FileIO
 
 			for (int round = 0; round < 3; round++)
 			{
-				Riff::Chunk*name,*list;
-				if (file.FindFirstNamedList(name,list))
-					do
+				for (const KeyedList&keyed : CollectKeyedLists(file))
 					{
-						ASSERT_EQUAL__(name->size(),2);
-						UINT16 nameID;
-						name->Get(&nameID);
+						const UINT16 nameID = (UINT16)keyed.key;
+						Riff::Chunk*list = keyed.list;
 						try
 						{
 							switch ((ChunkName)nameID)
@@ -1881,7 +1922,7 @@ namespace FileIO
 										{
 											if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersAreSerialized)
 											{
-												auto markerChunk = list->FindFirstNamedListMatch(ChunkName::FactionMarkers);
+												auto markerChunk = FindNamedList(*list,ChunkName::FactionMarkers);
 												if (markerChunk)
 												{
 													Riff::Chunk*markerTypeName,*list,*markerState;
@@ -2016,7 +2057,6 @@ namespace FileIO
 						}
 
 					}
-					while (file.FindNextNamedList(name,list));
 			}
 
 

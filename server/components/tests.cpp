@@ -74,7 +74,29 @@ namespace Test
 	Two trees with the same description hold the same chunks, possibly with siblings in a different order
 	(save files list factions in hash set order, which can change after loading).
 	*/
-	static std::string	Describe(const Riff::Chunk&chunk, bool isRoot)
+	static bool			IsListKey(const Riff::Chunk&chunk)	//2-byte NAME chunk naming the following LIST (files before version 1051)
+	{
+		const Riff::Chunk*next = chunk.GetNextSibling();
+		return chunk.IsID(Riff::RIFF_NAME_CHUNK) && chunk.size() == 2 && next && next->IsID(RIFF_LIST);
+	}
+
+	static count_t		CountListKeys(const Riff::Chunk&chunk)
+	{
+		count_t rs = 0;
+		for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
+		{
+			if (IsListKey(*c))
+				rs++;
+			if (c->IsID(RIFF_LIST))
+				rs += CountListKeys(*c);
+		}
+		return rs;
+	}
+
+	/**
+	@param dropListKeys Leave out 2-byte NAME chunks that name the following LIST, so trees of both layouts compare equal
+	*/
+	static std::string	Describe(const Riff::Chunk&chunk, bool isRoot, bool dropListKeys=false)
 	{
 		char id[4];
 		chunk.GetID().CopyTo(id);
@@ -83,7 +105,8 @@ namespace Test
 		{
 			std::vector<std::string> children;
 			for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
-				children.push_back(Describe(*c,false));
+				if (!dropListKeys || !IsListKey(*c))
+					children.push_back(Describe(*c,false,dropListKeys));
 			std::sort(children.begin(),children.end());
 			rs += "{";
 			for (const auto&c : children)
@@ -170,8 +193,10 @@ namespace Test
 	{
 		const PathString typedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff.hsf");
 		const PathString legacyPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy.hsf");
-		const PathString typedReloadedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff-reloaded.hsf");
-		const PathString legacyReloadedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy-reloaded.hsf");
+		const PathString typedFromTypedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff-from-riff.hsf");
+		const PathString legacyFromTypedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy-from-riff.hsf");
+		const PathString typedFromLegacyPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff-from-legacy.hsf");
+		const PathString legacyFromLegacyPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy-from-legacy.hsf");
 		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(typedPath));
 		const bool wasWritingFormType = FileIO::Config::writeRiffFormType;
 
@@ -225,16 +250,24 @@ namespace Test
 			Fail(CLOCATION,"Form type of the typed file not detected");
 		if (legacyTree.HasFormType())
 			Fail(CLOCATION,"Legacy file detected as typed");
-		if (Describe(typedTree,true) != Describe(legacyTree,true))
-			Fail(CLOCATION,"Both layouts should hold the same chunks");
+		//the layouts differ only in form type, list types and the 2-byte list keys, none of which Describe() includes once keys are dropped
+		if (Describe(typedTree,true,true) != Describe(legacyTree,true,true))
+			Fail(CLOCATION,"Both layouts should hold the same chunks apart from list keys");
+		if (CountListKeys(typedTree) != 0)
+			Fail(CLOCATION,"Typed file still has 2-byte NAME list keys");
+		if (CountListKeys(legacyTree) == 0)
+			Fail(CLOCATION,"Legacy file has no 2-byte NAME list keys");
 		{
-			const count_t lists = CountLists(legacyTree);
-			if (typed.size() != legacy.size() + 4 * (1 + lists))
-				Fail(CLOCATION,"Typed save file should be 4 bytes longer than the legacy one for the form type and for each of the "+String(lists)+" lists. Got "+String(typed.size())+" and "+String(legacy.size()));
-			UINT16 worldInfoKey = 1;	//ChunkName::WorldInfoGroup
-			const Riff::Chunk*worldInfo = typedTree.FindFirstNamedListMatch(worldInfoKey);
-			if (!worldInfo || worldInfo->GetListType() != Riff::TID("WINF"))
-				Fail(CLOCATION,"World info list missing or without list type WINF");
+			const Riff::Chunk*worldInfo = nullptr;
+			for (const Riff::Chunk*c = typedTree.GetFirstChild(); c; c = c->GetNextSibling())
+				if (c->IsID(RIFF_LIST) && c->GetListType() == Riff::TID("WINF"))
+					worldInfo = c;
+			if (!worldInfo || !worldInfo->GetFirstChild())
+				Fail(CLOCATION,"Typed file has no world info list (WINF)");
+			const count_t lists = CountLists(legacyTree), keys = CountListKeys(legacyTree);
+			//typed: +4 form type, +4 per list type, -10 per NAME key (8 header + 2 data)
+			if (typed.size() + 10 * keys != legacy.size() + 4 * (1 + lists))
+				Fail(CLOCATION,"Unexpected size difference between layouts: "+String(typed.size())+" and "+String(legacy.size())+" bytes, "+String(lists)+" lists, "+String(keys)+" keys");
 		}
 		{
 			//memory loading must agree with file loading
@@ -245,24 +278,31 @@ namespace Test
 				Fail(CLOCATION,"LoadFromData() disagrees with LoadFromFile() on the legacy file");
 		}
 
-		BeginSection("Cross-load: typed file saved as legacy, legacy file saved as typed");
+		BeginSection("Cross-load: load each file and save it in both layouts");
 		FileIO::Load(typedPath);
+		FileIO::Config::writeRiffFormType = true;
+		FileIO::Save(typedFromTypedPath, RuntimeConfig::Phase::CommandPhase);
 		FileIO::Config::writeRiffFormType = false;
-		FileIO::Save(typedReloadedPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Save(legacyFromTypedPath, RuntimeConfig::Phase::CommandPhase);
 		FileIO::Load(legacyPath);
 		FileIO::Config::writeRiffFormType = true;
-		FileIO::Save(legacyReloadedPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Save(typedFromLegacyPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Config::writeRiffFormType = false;
+		FileIO::Save(legacyFromLegacyPath, RuntimeConfig::Phase::CommandPhase);
 
-		Riff::Container typedReloaded, legacyReloaded;
-		if (!typedReloaded.LoadFromFile(typedReloadedPath.c_str()) || !legacyReloaded.LoadFromFile(legacyReloadedPath.c_str()))
+		Riff::Container typedFromTyped, legacyFromTyped, typedFromLegacy, legacyFromLegacy;
+		if (!typedFromTyped.LoadFromFile(typedFromTypedPath.c_str()) || !legacyFromTyped.LoadFromFile(legacyFromTypedPath.c_str())
+			|| !typedFromLegacy.LoadFromFile(typedFromLegacyPath.c_str()) || !legacyFromLegacy.LoadFromFile(legacyFromLegacyPath.c_str()))
 			Fail(CLOCATION,"Unable to read the re-saved files");
-		if (typedReloaded.HasFormType())
-			Fail(CLOCATION,"Typed file re-saved as legacy still has a form type");
-		if (!legacyReloaded.HasFormType())
-			Fail(CLOCATION,"Legacy file re-saved as typed has no form type");
-		//both loads must produce the same game state
-		if (Describe(typedReloaded,true) != Describe(legacyReloaded,true))
-			Fail(CLOCATION,"Loading the typed and the legacy file produced different game states");
+		if (!typedFromTyped.HasFormType() || !typedFromLegacy.HasFormType() || legacyFromTyped.HasFormType() || legacyFromLegacy.HasFormType())
+			Fail(CLOCATION,"A re-saved file has the wrong layout");
+		//loading either layout must produce the same game state, so the same files when saved again
+		if (Describe(typedFromTyped,true) != Describe(typedFromLegacy,true))
+			Fail(CLOCATION,"Typed and legacy file loaded to different game states (compared as typed saves)");
+		if (Describe(legacyFromTyped,true) != Describe(legacyFromLegacy,true))
+			Fail(CLOCATION,"Typed and legacy file loaded to different game states (compared as legacy saves)");
+		if (Describe(typedFromTyped,true,true) != Describe(legacyFromTyped,true,true))
+			Fail(CLOCATION,"The same game state saved in both layouts holds different chunks");
 		std::cout << "    files left in " << FileSystem::PathToString(FileSystem::ExtractFileDir(typedPath)) << std::endl;
 	}
 
