@@ -5,7 +5,7 @@ This page covers playing a local game, hosting dedicated servers, and the runtim
 ## 1. The processes involved
 
 ```
-          ┌──────────────────┐   TCP base+0 (info), base+1 (session)   ┌──────────────┐
+          ┌──────────────────┐   TCP base+0 (info), base+1 (session)    ┌──────────────┐
           │  Visual Client   │◄────────────────────────────────────────►│    Server    │
           └──────────────────┘                                          │ (Server.exe) │
           ┌──────────────────┐   same protocol, started by the server   │              │
