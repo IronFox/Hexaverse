@@ -1,6 +1,6 @@
 # Building Hexaverse
 
-Hexaverse is a Windows-only C++ code base, plus a few C# tools. The C++ programs aren't described by `.vcxproj` files in the repository. Instead they use small XML **`.solution` / `.project`** files that [Projector](https://github.com/IronFox/Projector) turns into Visual Studio solutions. The game depends on IronFox's base library [DeltaWorks](https://github.com/IronFox/DeltaWorks).
+Hexaverse is a Windows-only C++ code base, plus a few C# tools. **It currently builds only on Windows with Visual Studio**; there is no CMake, Linux or macOS build. The C++ programs aren't described by `.vcxproj` files in the repository. Instead they use small XML **`.solution` / `.project`** files that [Projector](https://github.com/IronFox/Projector) turns into Visual Studio solutions. The game depends on IronFox's base library [DeltaWorks](https://github.com/IronFox/DeltaWorks).
 
 ## 1. Prerequisites
 

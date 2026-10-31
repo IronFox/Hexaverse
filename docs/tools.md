@@ -22,7 +22,7 @@ Besides the client and the server, the repository contains several helper progra
 - `-c "cmd1; cmd2"` for scripts. Output lines start with `=`, `+` or `-`.
 - `-s` starts and supervises a server, with heartbeats in both directions. `-p` picks the base port.
 
-The full command reference is in [running.md §6](running.md#6-control-console) and [`control console.txt`](../documentation/documentation/config/control%20console.txt).
+The full command reference is in [running.md §6](running.md#6-control-console) and [`control console.txt`](game/config/control-console.md).
 
 ## Server Manager
 
@@ -57,7 +57,7 @@ Servers it starts are *dependent* and run without a console window. Only one Ser
 
 ## DocumentationEditor and the wiki
 
-The in-game and website documentation is a tree of DokuWiki-syntax `.txt` pages in `documentation/documentation/` (home, controls, terrain, server start, `concepts/`, `config/`, `units/`). Images are in `documentation/images/`.
+The in-game and website documentation is a tree of DokuWiki-syntax `.txt` pages in `documentation/documentation/` (home, controls, terrain, server start, `concepts/`, `config/`, `units/`). Images are in `documentation/images/`. `documentation/wiki2md.py` converts the whole tree to Markdown in [`docs/game/`](game/README.md); run it from the repo root after editing the wiki.
 
 - **`DocumentationEditor/`** (C#) browses that tree and edits pages: new document, new folder, delete, text editor.
 - **Unit pages** combine a hand-written `<unit>.txt` with a `<unit>.prefix` that the visual client generates (`client/components/visual/autoDocumentation.cpp`: health, price, ranges …), so the stats always match the current attributes.

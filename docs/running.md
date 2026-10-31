@@ -1,6 +1,6 @@
 # Running Hexaverse
 
-This page covers playing a local game, hosting dedicated servers, and the runtime files and command lines of every program. The player-oriented originals of most of this live in the in-game wiki under [`documentation/documentation/config/`](../documentation/documentation/config/) and [`server start.txt`](../documentation/documentation/server%20start.txt).
+This page covers playing a local game, hosting dedicated servers, and the runtime files and command lines of every program. The player-oriented originals of most of this live in the in-game wiki under the [game documentation](game/README.md) (configuration pages) and [`server start.txt`](game/server-start.md).
 
 ## 1. The processes involved
 
@@ -28,7 +28,7 @@ There is always a server, even in a single-player-looking game. A client that "s
 1. Start `client/Visual Client.exe`, with `client/` as the working directory.
 2. On the server selection screen, click **Start local server…** and choose one of:
    - **current configuration**: uses `server.ini` from the game folder (see §5),
-   - **visual configuration**: the [interactive configuration mode](../documentation/documentation/config/interactive%20configuration%20mode.txt), where you design the planet and rules in the client and then start the server,
+   - **visual configuration**: the [interactive configuration mode](game/config/interactive-configuration-mode.md), where you design the planet and rules in the client and then start the server,
    - **load save game**: resumes a `.hsf` file.
 3. The new server appears in the list within a few seconds. Click it to connect, then create your faction.
 4. Each round, issue orders, then press **End round** (or Return). The round continues once every connected player has ended it, or when the round timer runs out.
@@ -186,4 +186,4 @@ Useful commands:
 
 ## 8. Server Manager
 
-`ServerManager/ServerManager.exe` (C#) lists every server running locally (it listens on UDP 10245). It can start new ones, edit the global server configuration, attach a control console, save, open logs, and resume, stop or terminate servers. Only one instance can run at a time. Servers it starts are "dependent" and don't open a console window. Details are in [`server manager.txt`](../documentation/documentation/config/server%20manager.txt).
+`ServerManager/ServerManager.exe` (C#) lists every server running locally (it listens on UDP 10245). It can start new ones, edit the global server configuration, attach a control console, save, open logs, and resume, stop or terminate servers. Only one instance can run at a time. Servers it starts are "dependent" and don't open a console window. Details are in [`server manager.txt`](game/config/server-manager.md).

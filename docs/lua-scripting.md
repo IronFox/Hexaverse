@@ -126,7 +126,7 @@ This is the shipped `lua/AI/ai.lua`. It's used when no custom script is set. `fa
 
 ### Debugging in the visual client
 
-Turn on **Main Menu → Options → Debug Tools for Scripted AI**. The *Auto End Round* hex button then becomes an AI menu with: Auto New Round, **Load AI…**, **Create new AI…** (writes a template), **Reload and run AI** (hold Shift to also flush the state), **Edit Loaded AI** and **Open AI Documentation**. `Game.DebugMarkers.Put/Remove/RemoveAll` draw colored markers on the map for visual debugging. See [`concepts/ai development.txt`](../documentation/documentation/concepts/ai%20development.txt).
+Turn on **Main Menu → Options → Debug Tools for Scripted AI**. The *Auto End Round* hex button then becomes an AI menu with: Auto New Round, **Load AI…**, **Create new AI…** (writes a template), **Reload and run AI** (hold Shift to also flush the state), **Edit Loaded AI** and **Open AI Documentation**. `Game.DebugMarkers.Put/Remove/RemoveAll` draw colored markers on the map for visual debugging. See [`concepts/ai development.txt`](game/concepts/ai-development.md).
 
 ### API overview
 

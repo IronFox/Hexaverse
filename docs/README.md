@@ -13,7 +13,7 @@
 
 Other sources in the repository:
 
-- **Player wiki:** [`../documentation/documentation/`](../documentation/documentation/home.txt) (DokuWiki syntax). Controls, every unit, concepts, configuration. Shown in-game and on the original website.
+- **Game documentation:** [game/README.md](game/README.md). The in-game player wiki converted to Markdown: controls, every unit, concepts, configuration. The DokuWiki originals stay in `documentation/documentation/` (shown in-game and on the original website). Regenerate the Markdown with `python3 documentation/wiki2md.py` from the repo root.
 - **Lua API reference:** [`../lua/General Lua API Documentation.txt`](../lua/General%20Lua%20API%20Documentation.txt).
 - **Server variables:** [`../server/config/declaration.xml`](../server/config/declaration.xml). Every configurable variable, with help text.
 - **Protocol walkthrough:** [`../protocol documentation.txt`](../protocol%20documentation.txt). Server discovery and connection handshake.

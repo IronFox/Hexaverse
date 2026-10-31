@@ -1,6 +1,6 @@
 # Gameplay concepts
 
-This is a compact overview of the rules, aimed at people working on the code. The full player wiki, with every unit, its stats and the controls, is in [`documentation/documentation/`](../documentation/documentation/home.txt). That wiki is also rendered in-game. Links below point into it.
+This is a compact overview of the rules, aimed at people working on the code. The full player wiki, with every unit, its stats and the controls, is in the [game documentation](game/README.md). That wiki is also rendered in-game. Links below point into it.
 
 ## The pitch
 
@@ -20,7 +20,7 @@ The game runs in rounds, and every player acts **at the same time**. Each round 
 | `AnimationPhase` | Clients animate everything that happened (at most ~10 s, sped up if needed). Then the next command phase starts. |
 | `EndOfGame` | The game is over (for example, the Nexus was conquered). |
 
-Attacks come before movement: *you can't run if you're dead.* Every unit has an **action pool** (100% attack, 100% movement). Each operation uses part of it, and an operation that would take it below zero is postponed to the next round. See [round](../documentation/documentation/concepts/round.txt), [initiative](../documentation/documentation/concepts/initiative.txt) and [action pool](../documentation/documentation/concepts/action%20pool.txt).
+Attacks come before movement: *you can't run if you're dead.* Every unit has an **action pool** (100% attack, 100% movement). Each operation uses part of it, and an operation that would take it below zero is postponed to the next round. See [round](game/concepts/round.md), [initiative](game/concepts/initiative.md) and [action pool](game/concepts/action-pool.md).
 
 ## Terrain
 
@@ -31,7 +31,7 @@ Attacks come before movement: *you can't run if you're dead.* Every unit has an 
 - Planet types are defined by `.ini` templates (`predefinedPlanets/`). The template sets the noise layers (mountains, extended core, inner core), oceans and vegetation. A random seed creates the actual layout.
 - **EMP zones** can leave lasting EMP fields on the map.
 
-Details: [terrain](../documentation/documentation/terrain.txt).
+Details: [terrain](game/terrain.md).
 
 ## Resources and compounds
 
@@ -41,7 +41,7 @@ Details: [terrain](../documentation/documentation/terrain.txt).
 - Structures form **compounds** that balance supply and demand automatically. In current versions all of a faction's structures form one implicit compound. Enabling a structure may automatically enable the generators or mines it needs.
 - The **advanced resources** work (merged in 2021) added a data-driven resource table, composite materials and the **plantation**, which harvests plants growing on the terrain (bio conversion).
 
-Details: [resources](../documentation/documentation/concepts/resources.txt) and [compound](../documentation/documentation/concepts/compound.txt).
+Details: [resources](game/concepts/resources.md) and [compound](game/concepts/compound.md).
 
 ## Units
 
@@ -54,7 +54,7 @@ Details: [resources](../documentation/documentation/concepts/resources.txt) and 
 
 **T2 upgrades** (merged in 2021) let existing units and turrets gain XP and be upgraded to a second tier with better stats.
 
-Unit pages: [`documentation/documentation/units/`](../documentation/documentation/units/).
+Unit pages: see the *Units* sections of the [game documentation index](game/README.md).
 
 ## Sensors, ghosts and EMP
 
@@ -62,7 +62,7 @@ Unit pages: [`documentation/documentation/units/`](../documentation/documentatio
 - When contact is lost, a unit leaves a **ghost** at its last known position for up to 10 rounds.
 - **EMP damage** slows units down, cuts attack and scanning range sharply, and blocks operations. It doesn't stack, and it heals by one level per round.
 
-Details: [scanning range](../documentation/documentation/concepts/scanning%20range.txt), [ghost](../documentation/documentation/concepts/ghost.txt) and [EMP damage](../documentation/documentation/concepts/emp%20damage.txt).
+Details: [scanning range](game/concepts/scanning-range.md), [ghost](game/concepts/ghost.md) and [EMP damage](game/concepts/emp-damage.md).
 
 ## Research
 
