@@ -14,6 +14,11 @@ namespace FileIO
 	{
 		extern int		saveEveryNRounds /*= 10*/;
 		extern bool		saveWhenAllQuit /*= true*/;
+		/**
+		Write the RIFF form type "HSF " after the file header (standard RIFF layout).
+		False writes the legacy layout without form type. Both layouts load. Used by the save file format test.
+		*/
+		extern bool		writeRiffFormType /*= true*/;
 	}
 
 	extern RuntimeConfig::RoundNumber	lastSaveRound /*= 0*/;

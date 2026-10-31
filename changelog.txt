@@ -1,3 +1,8 @@
+v0.9.14
+	> Save files are now standard RIFF files (form type "HSF ", list types instead of numeric list names, zeroed pad bytes). See docs/save-file-format.md
+	> Older save files still load. Save files written by this version cannot be loaded by older versions
+	+ Server: Added save file format self-test (--test)
+
 v0.9.13
 	+ AI: Added Game.Terrain.GetLowestSensorStrength()
 	+ AI: Scripts can now send and receive messages

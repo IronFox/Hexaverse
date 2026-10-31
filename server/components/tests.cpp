@@ -9,6 +9,12 @@
 #include <io/byte_stream.h>
 
 #include "state/worldState.h"
+#include "state/fileIO.h"
+#include <io/file_system.h>
+#include <fstream>
+#include <algorithm>
+#include <string>
+#include <vector>
 
 
 namespace Objects
@@ -54,6 +60,276 @@ namespace Test
 	void Test::BeginSection(const String&name)	const
 	{
 		std::cout << "    ->"<<name<<std::endl;
+	}
+
+
+	static std::string	ReadAllBytes(const PathString&path)
+	{
+		std::ifstream in(path.c_str(), std::ios::binary);
+		return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+	}
+
+	/**
+	Order-independent description of a chunk tree: id, then either the data bytes or the sorted descriptions of all children.
+	Two trees with the same description hold the same chunks, possibly with siblings in a different order
+	(save files list factions in hash set order, which can change after loading).
+	*/
+	static bool			IsListKey(const Riff::Chunk&chunk)	//2-byte NAME chunk naming the following LIST (files before version 1051)
+	{
+		const Riff::Chunk*next = chunk.GetNextSibling();
+		return chunk.IsID(Riff::RIFF_NAME_CHUNK) && chunk.size() == 2 && next && next->IsID(RIFF_LIST);
+	}
+
+	static count_t		CountListKeys(const Riff::Chunk&chunk)
+	{
+		count_t rs = 0;
+		for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
+		{
+			if (IsListKey(*c))
+				rs++;
+			if (c->IsID(RIFF_LIST))
+				rs += CountListKeys(*c);
+		}
+		return rs;
+	}
+
+	/**
+	@param dropListKeys Leave out 2-byte NAME chunks that name the following LIST, so trees of both layouts compare equal
+	@param dropAllianceIDs Leave out the ALID chunks of alliance lists (the lists that also hold ALFL).
+		Loading recreates the Nexus alliance with a new random id (Faction::RecreateNexus), so these differ after every load
+	*/
+	static std::string	Describe(const Riff::Chunk&chunk, bool isRoot, bool dropListKeys=false, bool dropAllianceIDs=false)
+	{
+		char id[4];
+		chunk.GetID().CopyTo(id);
+		std::string rs(id,4);
+		if (isRoot || chunk.IsID(RIFF_LIST))
+		{
+			bool isAllianceList = false;
+			for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
+				if (c->IsID(Riff::TID("ALFL")))
+					isAllianceList = true;
+			std::vector<std::string> children;
+			for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
+				if ((!dropListKeys || !IsListKey(*c)) && (!dropAllianceIDs || !isAllianceList || !c->IsID(Riff::TID("ALID"))))
+					children.push_back(Describe(*c,false,dropListKeys,dropAllianceIDs));
+			std::sort(children.begin(),children.end());
+			rs += "{";
+			for (const auto&c : children)
+				rs += std::to_string(c.size()) + ":" + c;
+			rs += "}";
+		}
+		else
+		{
+			rs += std::to_string(chunk.size()) + ":";
+			rs.append((const char*)chunk.pointer(), chunk.size());
+		}
+		return rs;
+	}
+
+	static UINT32		ReadU32(const std::string&bytes, size_t at)
+	{
+		UINT32 rs;
+		memcpy(&rs,bytes.data()+at,4);
+		return rs;
+	}
+
+	static bool			IsIdChar(char c)	//character test the DeltaWorks RIFF reader uses to detect a form type
+	{
+		return isupper((BYTE)c) || isdigit((BYTE)c) || c == ' ';
+	}
+
+	static count_t		CountLists(const Riff::Chunk&chunk)
+	{
+		count_t rs = 0;
+		for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
+			if (c->IsID(RIFF_LIST))
+				rs += 1 + CountLists(*c);
+		return rs;
+	}
+
+	/**
+	Walks raw file bytes the way a generic RIFF reader would.
+	@param typed True: the root has a form type and every LIST starts with a list type (standard RIFF). False: legacy DeltaWorks layout
+	@return Empty string if the structure is valid, otherwise a description of the first problem
+	*/
+	static std::string	CheckRiffStructure(const std::string&bytes, size_t begin, size_t end, bool typed)
+	{
+		size_t at = begin;
+		while (at < end)
+		{
+			if (end - at < 8)
+				return "Truncated chunk header at offset "+std::to_string(at);
+			const UINT32 size = ReadU32(bytes,at+4);
+			const size_t dataEnd = at + 8 + size;
+			if (dataEnd > end)
+				return "Chunk at offset "+std::to_string(at)+" overruns its parent";
+			if (bytes.compare(at,4,"LIST") == 0)
+			{
+				size_t first = at + 8;
+				if (typed)
+				{
+					if (size < 4)
+						return "LIST at offset "+std::to_string(at)+" has no list type";
+					for (int i = 0; i < 4; i++)
+						if (!IsIdChar(bytes[first+i]))
+							return "LIST at offset "+std::to_string(at)+" has an invalid list type";
+					first += 4;
+				}
+				std::string inner = CheckRiffStructure(bytes,first,dataEnd,typed);
+				if (!inner.empty())
+					return inner;
+				at = dataEnd;
+			}
+			else
+			{
+				at = dataEnd;
+				if (size % 2)
+				{
+					if (at >= end || bytes[at] != 0)
+						return "Missing or non-zero pad byte at offset "+std::to_string(at);
+					at++;
+				}
+			}
+		}
+		return std::string();
+	}
+
+	/*virtual override*/ void	SaveFileFormats::Run(Random&random)
+	{
+		const bool wasWritingFormType = FileIO::Config::writeRiffFormType;
+		struct Restore
+		{
+			bool value;
+			~Restore()	{FileIO::Config::writeRiffFormType = value;}
+		} restore{wasWritingFormType};
+
+		//the generated test world has only the Nexus faction and no entities
+		CheckLayouts("test world", "test-format");
+
+		//the tutorial map (an old, version 1047 file) has player and Nexus factions, vehicles and structures
+		const PathString tutorialPath = L"config/tutorial.hsf";
+		if (ReadAllBytes(tutorialPath).empty())
+			std::cout << "    config/tutorial.hsf not found in the working directory, skipping the tutorial pass" << std::endl;
+		else
+		{
+			BeginSection("Load config/tutorial.hsf");
+			FileIO::Load(tutorialPath);
+			CheckLayouts("tutorial", "test-format-tutorial");
+		}
+	}
+
+	void	SaveFileFormats::CheckLayouts(const String&label, const char*filePrefix)
+	{
+		const auto path = [filePrefix](const char*suffix)
+		{
+			return RuntimeConfig::sharedConfig.Lookup(FileSystem::StringToPath(String("saves/")+filePrefix+suffix+".hsf"));
+		};
+		const PathString typedPath = path("-riff");
+		const PathString legacyPath = path("-legacy");
+		const PathString typedFromTypedPath = path("-riff-from-riff");
+		const PathString legacyFromTypedPath = path("-legacy-from-riff");
+		const PathString typedFromLegacyPath = path("-riff-from-legacy");
+		const PathString legacyFromLegacyPath = path("-legacy-from-legacy");
+		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(typedPath));
+
+		BeginSection("["+label+"] Write the current world in both layouts");
+		FileIO::Config::writeRiffFormType = true;
+		FileIO::Save(typedPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Config::writeRiffFormType = false;
+		FileIO::Save(legacyPath, RuntimeConfig::Phase::CommandPhase);
+
+		const std::string typed = ReadAllBytes(typedPath);
+		const std::string legacy = ReadAllBytes(legacyPath);
+		if (legacy.size() < 20)
+			Fail(CLOCATION,"Legacy save file missing or too short");
+
+		BeginSection("["+label+"] "+String("Byte layout"));
+		if (typed.compare(0,4,"RIFF") != 0 || legacy.compare(0,4,"RIFF") != 0)
+			Fail(CLOCATION,"Save file does not start with RIFF");
+		if (ReadU32(typed,4) != typed.size() - 8)
+			Fail(CLOCATION,"Typed root size is "+String(ReadU32(typed,4))+", expected file size - 8 = "+String(typed.size()-8));
+		if (ReadU32(legacy,4) != legacy.size() - 8)
+			Fail(CLOCATION,"Legacy root size is "+String(ReadU32(legacy,4))+", expected file size - 8 = "+String(legacy.size()-8));
+		if (typed.compare(8,4,"HSF ") != 0)
+			Fail(CLOCATION,"Typed save file has no 'HSF ' form type at offset 8");
+		if (legacy.compare(8,4,"VERS") != 0)
+			Fail(CLOCATION,"Legacy save file does not start its first chunk (VERS) at offset 8");
+		//the reader assumes a form type only if bytes 12-15 look like a chunk id. In legacy files they are the size of VERS (4)
+		if (IsIdChar(legacy[12]) && IsIdChar(legacy[13]) && IsIdChar(legacy[14]) && IsIdChar(legacy[15]))
+			Fail(CLOCATION,"The legacy file would be mistaken for a typed file");
+		{
+			const std::string typedProblem = CheckRiffStructure(typed,12,typed.size(),true);
+			if (!typedProblem.empty())
+				Fail(CLOCATION,"Typed save file is not valid RIFF: "+String(typedProblem.c_str()));
+			const std::string legacyProblem = CheckRiffStructure(legacy,8,legacy.size(),false);
+			if (!legacyProblem.empty())
+				Fail(CLOCATION,"Legacy save file is not valid: "+String(legacyProblem.c_str()));
+		}
+
+		BeginSection("["+label+"] "+String("Container reads both layouts"));
+		Riff::Container typedTree, legacyTree;
+		if (!typedTree.LoadFromFile(typedPath.c_str()) || !legacyTree.LoadFromFile(legacyPath.c_str()))
+			Fail(CLOCATION,"Unable to load a save file into a RIFF container");
+		if (!typedTree.HasFormType() || typedTree.GetFormType() != Riff::TID("HSF "))
+			Fail(CLOCATION,"Form type of the typed file not detected");
+		if (legacyTree.HasFormType())
+			Fail(CLOCATION,"Legacy file detected as typed");
+		//the layouts differ only in form type, list types and the 2-byte list keys, none of which Describe() includes once keys are dropped
+		if (Describe(typedTree,true,true) != Describe(legacyTree,true,true))
+			Fail(CLOCATION,"Both layouts should hold the same chunks apart from list keys");
+		if (CountListKeys(typedTree) != 0)
+			Fail(CLOCATION,"Typed file still has 2-byte NAME list keys");
+		if (CountListKeys(legacyTree) == 0)
+			Fail(CLOCATION,"Legacy file has no 2-byte NAME list keys");
+		{
+			const Riff::Chunk*worldInfo = nullptr;
+			for (const Riff::Chunk*c = typedTree.GetFirstChild(); c; c = c->GetNextSibling())
+				if (c->IsID(RIFF_LIST) && c->GetListType() == Riff::TID("WINF"))
+					worldInfo = c;
+			if (!worldInfo || !worldInfo->GetFirstChild())
+				Fail(CLOCATION,"Typed file has no world info list (WINF)");
+			const count_t lists = CountLists(legacyTree), keys = CountListKeys(legacyTree);
+			//typed: +4 form type, +4 per list type, -10 per NAME key (8 header + 2 data)
+			if (typed.size() + 10 * keys != legacy.size() + 4 * (1 + lists))
+				Fail(CLOCATION,"Unexpected size difference between layouts: "+String(typed.size())+" and "+String(legacy.size())+" bytes, "+String(lists)+" lists, "+String(keys)+" keys");
+		}
+		{
+			//memory loading must agree with file loading
+			Riff::Container fromMemory;
+			if (!fromMemory.LoadFromData(typed.data(),typed.size()) || !fromMemory.HasFormType() || Describe(fromMemory,true) != Describe(typedTree,true))
+				Fail(CLOCATION,"LoadFromData() disagrees with LoadFromFile() on the typed file");
+			if (!fromMemory.LoadFromData(legacy.data(),legacy.size()) || fromMemory.HasFormType() || Describe(fromMemory,true) != Describe(legacyTree,true))
+				Fail(CLOCATION,"LoadFromData() disagrees with LoadFromFile() on the legacy file");
+		}
+
+		BeginSection("["+label+"] "+String("Cross-load: load each file and save it in both layouts"));
+		FileIO::Load(typedPath);
+		FileIO::Config::writeRiffFormType = true;
+		FileIO::Save(typedFromTypedPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Config::writeRiffFormType = false;
+		FileIO::Save(legacyFromTypedPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Load(legacyPath);
+		FileIO::Config::writeRiffFormType = true;
+		FileIO::Save(typedFromLegacyPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Config::writeRiffFormType = false;
+		FileIO::Save(legacyFromLegacyPath, RuntimeConfig::Phase::CommandPhase);
+
+		Riff::Container typedFromTyped, legacyFromTyped, typedFromLegacy, legacyFromLegacy;
+		if (!typedFromTyped.LoadFromFile(typedFromTypedPath.c_str()) || !legacyFromTyped.LoadFromFile(legacyFromTypedPath.c_str())
+			|| !typedFromLegacy.LoadFromFile(typedFromLegacyPath.c_str()) || !legacyFromLegacy.LoadFromFile(legacyFromLegacyPath.c_str()))
+			Fail(CLOCATION,"Unable to read the re-saved files");
+		if (!typedFromTyped.HasFormType() || !typedFromLegacy.HasFormType() || legacyFromTyped.HasFormType() || legacyFromLegacy.HasFormType())
+			Fail(CLOCATION,"A re-saved file has the wrong layout");
+		//loading either layout must produce the same game state, so the same files when saved again.
+		//Alliance ids are left out: the Nexus alliance gets a new id on every load, with either layout
+		if (Describe(typedFromTyped,true,false,true) != Describe(typedFromLegacy,true,false,true))
+			Fail(CLOCATION,"Typed and legacy file loaded to different game states (compared as typed saves)");
+		if (Describe(legacyFromTyped,true,false,true) != Describe(legacyFromLegacy,true,false,true))
+			Fail(CLOCATION,"Typed and legacy file loaded to different game states (compared as legacy saves)");
+		if (Describe(typedFromTyped,true,true) != Describe(legacyFromTyped,true,true))
+			Fail(CLOCATION,"The same game state saved in both layouts holds different chunks");
+		std::cout << "    files left in " << FileSystem::PathToString(FileSystem::ExtractFileDir(typedPath)) << std::endl;
 	}
 
 
