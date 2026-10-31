@@ -201,6 +201,18 @@ namespace Test
 	};
 
 
+	/**
+	Saves the current world with and without the RIFF form type ("HSF "), loads each file, and checks that both
+	layouts hold the same data and load to the same state. Replaces the current game state, so run it last.
+	*/
+	class SaveFileFormats : public Test
+	{
+	public:
+		/**/			SaveFileFormats() : Test("SaveFileFormats")
+		{}
+		virtual void	Run(Random&random) override;
+	};
+
 	class Routing : public Test
 	{
 	public:

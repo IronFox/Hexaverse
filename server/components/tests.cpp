@@ -9,6 +9,12 @@
 #include <io/byte_stream.h>
 
 #include "state/worldState.h"
+#include "state/fileIO.h"
+#include <io/file_system.h>
+#include <fstream>
+#include <algorithm>
+#include <string>
+#include <vector>
 
 
 namespace Objects
@@ -54,6 +60,210 @@ namespace Test
 	void Test::BeginSection(const String&name)	const
 	{
 		std::cout << "    ->"<<name<<std::endl;
+	}
+
+
+	static std::string	ReadAllBytes(const PathString&path)
+	{
+		std::ifstream in(path.c_str(), std::ios::binary);
+		return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+	}
+
+	/**
+	Order-independent description of a chunk tree: id, then either the data bytes or the sorted descriptions of all children.
+	Two trees with the same description hold the same chunks, possibly with siblings in a different order
+	(save files list factions in hash set order, which can change after loading).
+	*/
+	static std::string	Describe(const Riff::Chunk&chunk, bool isRoot)
+	{
+		char id[4];
+		chunk.GetID().CopyTo(id);
+		std::string rs(id,4);
+		if (isRoot || chunk.IsID(RIFF_LIST))
+		{
+			std::vector<std::string> children;
+			for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
+				children.push_back(Describe(*c,false));
+			std::sort(children.begin(),children.end());
+			rs += "{";
+			for (const auto&c : children)
+				rs += std::to_string(c.size()) + ":" + c;
+			rs += "}";
+		}
+		else
+		{
+			rs += std::to_string(chunk.size()) + ":";
+			rs.append((const char*)chunk.pointer(), chunk.size());
+		}
+		return rs;
+	}
+
+	static UINT32		ReadU32(const std::string&bytes, size_t at)
+	{
+		UINT32 rs;
+		memcpy(&rs,bytes.data()+at,4);
+		return rs;
+	}
+
+	static bool			IsIdChar(char c)	//character test the DeltaWorks RIFF reader uses to detect a form type
+	{
+		return isupper((BYTE)c) || isdigit((BYTE)c) || c == ' ';
+	}
+
+	static count_t		CountLists(const Riff::Chunk&chunk)
+	{
+		count_t rs = 0;
+		for (const Riff::Chunk*c = chunk.GetFirstChild(); c; c = c->GetNextSibling())
+			if (c->IsID(RIFF_LIST))
+				rs += 1 + CountLists(*c);
+		return rs;
+	}
+
+	/**
+	Walks raw file bytes the way a generic RIFF reader would.
+	@param typed True: the root has a form type and every LIST starts with a list type (standard RIFF). False: legacy DeltaWorks layout
+	@return Empty string if the structure is valid, otherwise a description of the first problem
+	*/
+	static std::string	CheckRiffStructure(const std::string&bytes, size_t begin, size_t end, bool typed)
+	{
+		size_t at = begin;
+		while (at < end)
+		{
+			if (end - at < 8)
+				return "Truncated chunk header at offset "+std::to_string(at);
+			const UINT32 size = ReadU32(bytes,at+4);
+			const size_t dataEnd = at + 8 + size;
+			if (dataEnd > end)
+				return "Chunk at offset "+std::to_string(at)+" overruns its parent";
+			if (bytes.compare(at,4,"LIST") == 0)
+			{
+				size_t first = at + 8;
+				if (typed)
+				{
+					if (size < 4)
+						return "LIST at offset "+std::to_string(at)+" has no list type";
+					for (int i = 0; i < 4; i++)
+						if (!IsIdChar(bytes[first+i]))
+							return "LIST at offset "+std::to_string(at)+" has an invalid list type";
+					first += 4;
+				}
+				std::string inner = CheckRiffStructure(bytes,first,dataEnd,typed);
+				if (!inner.empty())
+					return inner;
+				at = dataEnd;
+			}
+			else
+			{
+				at = dataEnd;
+				if (size % 2)
+				{
+					if (at >= end || bytes[at] != 0)
+						return "Missing or non-zero pad byte at offset "+std::to_string(at);
+					at++;
+				}
+			}
+		}
+		return std::string();
+	}
+
+	/*virtual override*/ void	SaveFileFormats::Run(Random&random)
+	{
+		const PathString typedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff.hsf");
+		const PathString legacyPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy.hsf");
+		const PathString typedReloadedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff-reloaded.hsf");
+		const PathString legacyReloadedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy-reloaded.hsf");
+		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(typedPath));
+		const bool wasWritingFormType = FileIO::Config::writeRiffFormType;
+
+		struct Restore
+		{
+			bool value;
+			~Restore()	{FileIO::Config::writeRiffFormType = value;}
+		} restore{wasWritingFormType};
+
+		BeginSection("Write the current world in both layouts");
+		FileIO::Config::writeRiffFormType = true;
+		FileIO::Save(typedPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Config::writeRiffFormType = false;
+		FileIO::Save(legacyPath, RuntimeConfig::Phase::CommandPhase);
+
+		const std::string typed = ReadAllBytes(typedPath);
+		const std::string legacy = ReadAllBytes(legacyPath);
+		if (legacy.size() < 20)
+			Fail(CLOCATION,"Legacy save file missing or too short");
+		if (typed.size() <= legacy.size())
+			Fail(CLOCATION,"Typed save file should be longer than the legacy one. Got "+String(typed.size())+" and "+String(legacy.size()));
+
+		BeginSection("Byte layout");
+		if (typed.compare(0,4,"RIFF") != 0 || legacy.compare(0,4,"RIFF") != 0)
+			Fail(CLOCATION,"Save file does not start with RIFF");
+		if (ReadU32(typed,4) != typed.size() - 8)
+			Fail(CLOCATION,"Typed root size is "+String(ReadU32(typed,4))+", expected file size - 8 = "+String(typed.size()-8));
+		if (ReadU32(legacy,4) != legacy.size() - 8)
+			Fail(CLOCATION,"Legacy root size is "+String(ReadU32(legacy,4))+", expected file size - 8 = "+String(legacy.size()-8));
+		if (typed.compare(8,4,"HSF ") != 0)
+			Fail(CLOCATION,"Typed save file has no 'HSF ' form type at offset 8");
+		if (legacy.compare(8,4,"VERS") != 0)
+			Fail(CLOCATION,"Legacy save file does not start its first chunk (VERS) at offset 8");
+		//the reader assumes a form type only if bytes 12-15 look like a chunk id. In legacy files they are the size of VERS (4)
+		if (IsIdChar(legacy[12]) && IsIdChar(legacy[13]) && IsIdChar(legacy[14]) && IsIdChar(legacy[15]))
+			Fail(CLOCATION,"The legacy file would be mistaken for a typed file");
+		{
+			const std::string typedProblem = CheckRiffStructure(typed,12,typed.size(),true);
+			if (!typedProblem.empty())
+				Fail(CLOCATION,"Typed save file is not valid RIFF: "+String(typedProblem.c_str()));
+			const std::string legacyProblem = CheckRiffStructure(legacy,8,legacy.size(),false);
+			if (!legacyProblem.empty())
+				Fail(CLOCATION,"Legacy save file is not valid: "+String(legacyProblem.c_str()));
+		}
+
+		BeginSection("Container reads both layouts");
+		Riff::Container typedTree, legacyTree;
+		if (!typedTree.LoadFromFile(typedPath.c_str()) || !legacyTree.LoadFromFile(legacyPath.c_str()))
+			Fail(CLOCATION,"Unable to load a save file into a RIFF container");
+		if (!typedTree.HasFormType() || typedTree.GetFormType() != Riff::TID("HSF "))
+			Fail(CLOCATION,"Form type of the typed file not detected");
+		if (legacyTree.HasFormType())
+			Fail(CLOCATION,"Legacy file detected as typed");
+		if (Describe(typedTree,true) != Describe(legacyTree,true))
+			Fail(CLOCATION,"Both layouts should hold the same chunks");
+		{
+			const count_t lists = CountLists(legacyTree);
+			if (typed.size() != legacy.size() + 4 * (1 + lists))
+				Fail(CLOCATION,"Typed save file should be 4 bytes longer than the legacy one for the form type and for each of the "+String(lists)+" lists. Got "+String(typed.size())+" and "+String(legacy.size()));
+			UINT16 worldInfoKey = 1;	//ChunkName::WorldInfoGroup
+			const Riff::Chunk*worldInfo = typedTree.FindFirstNamedListMatch(worldInfoKey);
+			if (!worldInfo || worldInfo->GetListType() != Riff::TID("WINF"))
+				Fail(CLOCATION,"World info list missing or without list type WINF");
+		}
+		{
+			//memory loading must agree with file loading
+			Riff::Container fromMemory;
+			if (!fromMemory.LoadFromData(typed.data(),typed.size()) || !fromMemory.HasFormType() || Describe(fromMemory,true) != Describe(typedTree,true))
+				Fail(CLOCATION,"LoadFromData() disagrees with LoadFromFile() on the typed file");
+			if (!fromMemory.LoadFromData(legacy.data(),legacy.size()) || fromMemory.HasFormType() || Describe(fromMemory,true) != Describe(legacyTree,true))
+				Fail(CLOCATION,"LoadFromData() disagrees with LoadFromFile() on the legacy file");
+		}
+
+		BeginSection("Cross-load: typed file saved as legacy, legacy file saved as typed");
+		FileIO::Load(typedPath);
+		FileIO::Config::writeRiffFormType = false;
+		FileIO::Save(typedReloadedPath, RuntimeConfig::Phase::CommandPhase);
+		FileIO::Load(legacyPath);
+		FileIO::Config::writeRiffFormType = true;
+		FileIO::Save(legacyReloadedPath, RuntimeConfig::Phase::CommandPhase);
+
+		Riff::Container typedReloaded, legacyReloaded;
+		if (!typedReloaded.LoadFromFile(typedReloadedPath.c_str()) || !legacyReloaded.LoadFromFile(legacyReloadedPath.c_str()))
+			Fail(CLOCATION,"Unable to read the re-saved files");
+		if (typedReloaded.HasFormType())
+			Fail(CLOCATION,"Typed file re-saved as legacy still has a form type");
+		if (!legacyReloaded.HasFormType())
+			Fail(CLOCATION,"Legacy file re-saved as typed has no form type");
+		//both loads must produce the same game state
+		if (Describe(typedReloaded,true) != Describe(legacyReloaded,true))
+			Fail(CLOCATION,"Loading the typed and the legacy file produced different game states");
+		std::cout << "    files left in " << FileSystem::PathToString(FileSystem::ExtractFileDir(typedPath)) << std::endl;
 	}
 
 

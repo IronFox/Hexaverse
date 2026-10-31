@@ -1219,6 +1219,7 @@ int main( int argc, const char* argv[])
 				Test::Run<Test::VehiclePlant>();
 				IF_SATELLITES(Test::Run<Test::SkyPort>());
 				Test::Run<Test::StorageUnits>();
+				Test::Run<Test::SaveFileFormats>();	//replaces the game state, keep last
 			}
 			std::cout << "Tests completed. Press enter to quit" << std::endl;
 			char c;

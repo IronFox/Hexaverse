@@ -21,6 +21,7 @@ namespace FileIO
 	{
 		int			saveEveryNRounds = 10;
 		bool		saveWhenAllQuit = true;
+		bool		writeRiffFormType = true;
 	}
 
 	namespace Network
@@ -243,9 +244,40 @@ namespace FileIO
 
 
 	static_assert(sizeof(ChunkName) == 2, "Alignment fault");
+	/**
+	RIFF list type of a named list. Save files have a RIFF form type, so every LIST is written with a list type.
+	Loading identifies lists by their preceding NAME chunk, not by the list type, so older files without list types load the same way.
+	*/
+	static Riff::TID ListTypeOf(ChunkName name)
+	{
+		switch (name)
+		{
+			case ChunkName::WorldInfoGroup:				return Riff::TID("WINF");
+			case ChunkName::ObjectGroup:				return Riff::TID("OBJS");
+			case ChunkName::VehicleTaskSection:			return Riff::TID("TASK");
+			case ChunkName::WorldGroup:					return Riff::TID("WRLD");
+			case ChunkName::InitialWorldGroup:			return Riff::TID("IWLD");
+			case ChunkName::ResourceSection:			return Riff::TID("RESO");
+			case ChunkName::FactionSection:				return Riff::TID("FACT");
+			case ChunkName::FactionStatisticsSection:	return Riff::TID("FSTA");
+			case ChunkName::FactionMarkers:				return Riff::TID("MRKS");
+			case ChunkName::AllianceSection:			return Riff::TID("ALLI");
+			default:									return Riff::TID();
+		}
+	}
+
 	static Riff::Chunk* CreateNamedList(Riff::Chunk&parent, ChunkName name)
 	{
-		return parent.AppendNamedList(name);
+		Riff::Chunk*list = parent.AppendNamedList(name);
+		list->SetListType(ListTypeOf(name));
+		return list;
+	}
+
+	static Riff::Chunk* CreateList(Riff::Chunk&parent, const Riff::TID&listType)
+	{
+		Riff::Chunk*list = parent.AppendBlock(RIFF_LIST);
+		list->SetListType(listType);
+		return list;
 	}
 
 	static Riff::Chunk* FindNamedList(Riff::Chunk&parent, ChunkName name)
@@ -325,6 +357,7 @@ namespace FileIO
 								vehicleBase("VEHB"),
 								vehicleTurret("VEHT"),
 								fileVersion("VERS"),
+								formType("HSF "),	//RIFF form type of save files
 								baseJob("VHBJ"),
 								factionWorldCounterChunk("WCCK"),
 								gamePhase("GAMP"),
@@ -862,7 +895,7 @@ namespace FileIO
 			parent->AppendBlock(RID::vehiclePlantGatheringPoint)->SetPODData(p.gatheringPoint.current);
 		if (p.queue.IsNotEmpty())
 		{
-			Riff::Chunk*jobList = parent->AppendBlock(RIFF_LIST);
+			Riff::Chunk*jobList = CreateList(*parent,Riff::TID("PQUE"));	//production queue
 			foreach (p.queue,job)
 				Export(jobList,*job);
 		}
@@ -960,7 +993,7 @@ namespace FileIO
 		}
 		foreach (v.myTasks,task)
 		{
-			Riff::Chunk*t = parent->AppendNamedList(ChunkName::VehicleTaskSection);
+			Riff::Chunk*t = CreateNamedList(*parent,ChunkName::VehicleTaskSection);
 			Export(t,*task);
 		}
 
@@ -1130,7 +1163,7 @@ namespace FileIO
 				parent->AppendBlock(RID::towerActionLeft)->SetPODData(t->attackActionLeft);
 				if (t->attackQueue.IsNotEmpty())
 				{
-					Riff::Chunk*jobList = parent->AppendBlock(RIFF_LIST);
+					Riff::Chunk*jobList = CreateList(*parent,Riff::TID("AQUE"));	//attack queue
 					foreach (t->attackQueue,job)
 						Export(jobList,*job);
 				}
@@ -2132,6 +2165,8 @@ namespace FileIO
 		Time::Stamp t0;
 
 		Riff::Container container;
+		if (Config::writeRiffFormType)
+			container.SetFormType(RID::formType);
 		UINT32 vid = ApplicationInterface::SupportedFileVersion;
 		container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 		container.AppendBlock(RID::terrainExponent)->SetPODData((UINT32)Grid::HighExponent);
@@ -2206,14 +2241,14 @@ namespace FileIO
 		Objects::ForeachMobileEntityIncludingStored([objects,&allFactions](const Objects::PMobileEntity&_v)
 		{
 			Objects::MobileEntity&v = *_v;
-			Export(objects->AppendBlock(RIFF_LIST),v,allFactions);
+			Export(CreateList(*objects,Riff::TID("MENT")),v,allFactions);	//mobile entity
 		});
 
 
 		Objects::structures.Foreach([&objects,&allFactions](const Objects::PStructure&_s)
 		{
 			Objects::Structure&s = *_s;
-			Export(objects->AppendBlock(RIFF_LIST),s,allFactions);
+			Export(CreateList(*objects,Riff::TID("STRC")),s,allFactions);	//structure
 		});
 
 
@@ -2277,7 +2312,7 @@ namespace FileIO
 
 				if (faction->markers.IsNotEmpty())
 				{
-					Riff::Chunk*markerList = factionSection->AppendNamedList(ChunkName::FactionMarkers);
+					Riff::Chunk*markerList = CreateNamedList(*factionSection,ChunkName::FactionMarkers);
 					for (index_t i = 0; i < Objects::MarkerType::N; i++)
 					{
 						const Objects::MarkerType type = Objects::MarkerType::Reinterpret(i);
@@ -2285,6 +2320,7 @@ namespace FileIO
 						if (faction->markers.HasAnyOfType(type))
 						{
 							Riff::Chunk*typedList = markerList->AppendNamedList(typeName.c_str(), typeName.Length());
+							typedList->SetListType(Riff::TID("MRKT"));
 							faction->markers.Foreach(type,[typedList](const Objects::PMarker&marker)
 							{
 								Riff::Chunk*markerState = typedList->AppendBlock(RID::factionMarkerState);

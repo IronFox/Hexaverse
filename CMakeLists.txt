@@ -15,7 +15,7 @@ endif()
 # ---------------------------------------------------------------------------
 set(HEXAVERSE_DELTAWORKS_DIR "" CACHE PATH
 	"DeltaWorks checkout. Empty: use ../DeltaWorks if it has a CMakeLists.txt, otherwise download it")
-set(HEXAVERSE_DELTAWORKS_GIT_TAG "c4ec0ed049e4e879df66b9e6448c41df0becdd4f" CACHE STRING
+set(HEXAVERSE_DELTAWORKS_GIT_TAG "0abb292318cc2b275d471ccd7820c3c00a66ca94" CACHE STRING
 	"DeltaWorks commit to download when no local checkout is used")
 option(HEXAVERSE_BUILD_CLIENT        "Build the Visual Client and the Console Client" ON)
 option(HEXAVERSE_BUILD_SERVER        "Build the dedicated server" ON)
