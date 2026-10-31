@@ -36,7 +36,7 @@ Details: [terrain](game/terrain.md).
 ## Resources and compounds
 
 - **Natural resources** (fuel, minerals, uranium) never run out. **Mines** extract whatever lies beneath them every round, as long as nothing lower blocks the path to the core. Undermining an enemy base cuts off its supply.
-- **Energy** is produced by generators (from fuel) and reactor cores (from uranium). Most structures need it. **Munitions** are made by munition factories.
+- **Energy** is produced by generators (from fuel) and reactor cores (from uranium). Most structures need it. Weapons need no ammunition: the munition resource is compiled out (`NO_MUNITION` in `clientServerShared/config.h`).
 - Resource coverage is unknown until a **surveyor** scans it.
 - Structures form **compounds** that balance supply and demand automatically. In current versions all of a faction's structures form one implicit compound. Enabling a structure may automatically enable the generators or mines it needs.
 - The **advanced resources** work (merged in 2021) added a data-driven resource table, composite materials and the **plantation**, which harvests plants growing on the terrain (bio conversion).
@@ -49,8 +49,9 @@ Details: [resources](game/concepts/resources.md) and [compound](game/concepts/co
 |---|---|---|
 | **Vehicles** | a vehicle *base* (hoverbase, heavy base, catamaran base) plus a *turret* (cannon, artillery, rocket/missile launcher, anti-air, EMP, radar, surveyor, terraformer, mechanic, bomb) | Built by vehicle plants. If the turret is too heavy for the base, the vehicle slows down. Catamarans stay on water, and heavy bases prefer flat solid ground. |
 | **Planes** | bomber, raptor, sensor drone, cargo plane | Built by plane factories. They fly at sub-orbital height and land in vehicle stores. |
-| **Structures** | mine, generator, reactor core, storage, laboratory, vehicle plant, vehicle store, plane factory, munition factory, plantation, towers (cannon, rocket, missile, anti-air, radar, surveyor), Nexus port | Towers behave like immobile turrets that can also fire during the movement phase. |
-| **Satellites** | scanning, colonizing, defending, orbital strikes | They orbit high above the terrain, and most need fuel. |
+| **Structures** | mine, generator, reactor core, storage, laboratory, vehicle plant, vehicle store, plane factory, plantation, towers (cannon, rocket, missile, anti-air, radar, surveyor), Nexus port | Towers behave like immobile turrets that can also fire during the movement phase. |
+
+Planes took over the role that satellites used to have (scouting from above, strikes from the air). The satellite code is still in the repository but compiled out (`NO_SATELLITES` in `clientServerShared/config.h`), and re-enabling it would need major rework.
 
 **T2 upgrades** (merged in 2021) let existing units and turrets gain XP and be upgraded to a second tier with better stats.
 
@@ -81,4 +82,4 @@ The **Nexus** is a built-in AI faction with bases and **Nexus ports** at up to 1
 
 ## Game rules worth knowing in code
 
-`clientServerShared/runtimeConfig.h` holds the switches that change the rules: `gameGoal`, `doomsdayWeapons` (`Expose`/`Conceal`/`Disallow`), `empZones`, `autoNewRound`, `autoSpawnFromVehiclePlants`, `hibernationSystemEnabled`, `bombsExplodeWhenDestroyed`, `storagesExplodeWhenDestroyed`, `tutorialMode` and the per-type unit limits. All of them can be set from the server configuration (see [running.md](running.md)).
+`clientServerShared/runtimeConfig.h` holds the switches that change the rules: `gameGoal`, `doomsdayWeapons` (`Expose`/`Conceal`/`Disallow`), `empZones`, `autoNewRound`, `autoSpawnFromVehiclePlants`, `bombsExplodeWhenDestroyed`, `storagesExplodeWhenDestroyed`, `tutorialMode` and the per-type unit limits. All of them can be set from the server configuration (see [running.md](running.md)).

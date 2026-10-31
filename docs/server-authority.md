@@ -12,7 +12,7 @@ This page describes how the code does that, with references to the source.
   - the game is in the command phase (`CheckCommandMode()`),
   - the entity exists (ghosts, markers and remembered contacts can't be commanded),
   - the requesting client's faction **owns** it and is still alive (`Network::CanControl()` in `server/components/state/networkState.cpp`),
-  - the entity is placed in the world and isn't hibernating.
+  - the entity is placed in the world.
 
   Each handler then checks the specific command: whether the unit can perform the operation at all, the task queue limit (`Objects::MaxTasks`), the terrain layer bounds for digging and building, and so on. A rejected command is logged as `commandRejected` and changes nothing.
 - **AI players get no special access.** Lua AIs run in a separate Console Client that the server starts with an access token for its faction (`server/components/aiProcess.cpp`). It connects over the normal protocol, so it receives the same filtered view as a human player and its commands pass the same checks.
@@ -27,7 +27,7 @@ Each faction (`clientServerShared/objects/faction.h`) carries its own view of th
 | `seeing` | For every foreign entity the faction has spotted: whether it is visible **now**, plus a timeline of when it appeared and disappeared during the current round (`SeeingReference::reverseVisibilityChange`). |
 | `knownResources` | Which natural-resource deposits the faction has found with surveyors. |
 
-The sensors that feed this are the faction's own structures and units, plus its allies' if the alliance shares sensors (`Faction::CollectSensors()`, `Faction::CheckSensory()`). Units below ground, on the surface and in the air are checked differently: ground units against the visible cells of `knownWorld` (`Faction::GridCanSee()`), and aircraft and satellites against sensor spheres (`CountOffGridCoverage()`).
+The sensors that feed this are the faction's own structures and units, plus its allies' if the alliance shares sensors (`Faction::CollectSensors()`, `Faction::CheckSensory()`). Units below ground, on the surface and in the air are checked differently: ground units against the visible cells of `knownWorld` (`Faction::GridCanSee()`), and aircraft against sensor spheres (`CountOffGridCoverage()`).
 
 Whenever something moves, is built or sensors change, the server calls `HandlePotentialAppearance()` and `HandlePotentialDisappearance()`. A change in visibility is recorded with the exact time inside the round (`SignalAppearance()` / `SignalDisappearance()` in `faction.cpp`). That timing matters: during the movement phase a unit can drive into view and out again, and the server knows exactly which part of the motion each faction may see (`Faction::CanSee(entity, time)`).
 

@@ -1,6 +1,6 @@
 # Hexaverse
 
-Hexaverse is a turn-based, multiplayer 4X strategy game played on **volumetric planets**. A hexagonal grid covers each planet and is stacked into 32 layers, so terrain can be dug out, built up, flooded or blasted away. All players act **at the same time** each round. They expand across the globe, mine resources that never run out but can be cut off, research upgrades, and fight with ground vehicles, planes, towers and satellites. The AI-controlled **Nexus** faction defends bases at up to 12 poles around the planet.
+Hexaverse is a turn-based, multiplayer 4X strategy game played on **volumetric planets**. A hexagonal grid covers each planet and is stacked into 32 layers, so terrain can be dug out, built up, flooded or blasted away. All players act **at the same time** each round. They expand across the globe, mine resources that never run out but can be cut off, research upgrades, and fight with ground vehicles, planes and towers. The AI-controlled **Nexus** faction defends bases at up to 12 poles around the planet.
 
 <p align="center"><img src="ArtWork/screenshot16.png" width="720" alt="Hexaverse screenshot"></p>
 
@@ -9,7 +9,7 @@ Hexaverse is a turn-based, multiplayer 4X strategy game played on **volumetric p
 
 ## Purpose
 
-IronFox developed Hexaverse between 2015 and 2022, and it was briefly available in Steam Early Access. This repository holds the complete game: the Windows client, the dedicated server, the Lua game scripts, the player documentation and the supporting tools. Development has stopped.
+IronFox developed Hexaverse between 2015 and 2022, and it was briefly available in Steam Early Access. This repository holds the complete game: the Windows client, the dedicated server, the Lua game scripts, the player documentation and the supporting tools. Development has stopped, and the full source is available here under the MIT License.
 
 The last tagged release is `v0.9.12` (Feb 2021). `master` is at v0.9.13, which was never released.
 
@@ -107,7 +107,7 @@ Both builds write the executables into the project folders, where the game expec
 | `master` | The complete game, with every finished feature merged (aerial units, T2 upgrades, plants and advanced resources, alliances, statistics, the reworked Lua AI …). This is the branch to build. |
 | `master-resource_bridge` | `master` plus the work-in-progress Lua **modding** framework (scripted structure types, first example: a Resource Relay). |
 | `master-styled_highres` | `master` plus styled dark rendering and very large screenshot rendering. |
-| `steam` | `master` from June 2021 plus the Steamworks integration. It contains the **Steamworks SDK, which must not be published.** |
+| `steam` | `master` from June 2021 plus the Steamworks integration. Kept private: it contains the Steamworks SDK, whose license doesn't allow redistribution, so it isn't part of the public repository. |
 
 Releases are tagged `v0.3.19` to `v0.9.12`. Older experiments that were never merged (technite, pylons, orbital stations, a GUI renderer rework and more) are kept as `archive/*` tags. The full list, with dates and history notes, is in [docs/repository.md](docs/repository.md).
 
@@ -143,4 +143,4 @@ The full Lua API reference is [`lua/General Lua API Documentation.txt`](lua/Gene
 
 ## License
 
-No license has been chosen yet. Until a `LICENSE` file is added, all rights are reserved by the author. Third-party components keep their own licenses (see [docs/third-party.md](docs/third-party.md)).
+Hexaverse is released under the [MIT License](LICENSE). Bundled third-party components keep their own licenses, listed in [docs/third-party.md](docs/third-party.md).

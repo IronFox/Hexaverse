@@ -20,7 +20,7 @@ Hexaverse links DeltaWorks statically. DeltaWorks bundles or fetches (through vc
 | OpenAL 1.1 SDK | installed separately | Supplies `OpenAL32.lib` for the Visual Client. Required by the Projector build; the CMake build can generate the import library from `cmake/OpenAL32.def` instead |
 | `OpenAL32.dll`, `oalinst.exe` | `client/` | OpenAL redistributable and installer, committed for convenience |
 | `D3DCompiler_43.dll`, `D3DCompiler_47.dll`, `dxwebsetup.exe` | `client/` | Microsoft DirectX redistributables, committed for convenience |
-| Steamworks SDK | **only on the `steam` branch** (`steam_sdk/`) | Its license doesn't allow public redistribution. It isn't in `master`, any `archive/*` tag or any version tag. Keep the `steam` branch out of any public copy of the repository. |
+| Steamworks SDK | **only on the `steam` branch** (`steam_sdk/`) | Its license doesn't allow public redistribution. It isn't in `master`, any `archive/*` tag or any version tag. The `steam` branch is therefore kept private. |
 
 The Microsoft and OpenAL redistributables are committed so the game runs straight from a build. Their redistribution terms allow shipping them with an application.
 
@@ -35,7 +35,7 @@ The Microsoft and OpenAL redistributables are committed so the game runs straigh
 | `buttonDown.wav` | "Click Tick.wav" by malle99 (freesound 384187) | CC0 1.0 |
 | Console Client icon | "TERMINAL ICON", GitHub Octicons | MIT |
 
-The CC BY 3.0 sounds need attribution in any redistribution. `info.txt` provides it. The other sounds (explosions, units, turret rotation, music `Hexaverse Title M4.mp3`), the 3D models (`client/objects/*.obj/.blend/.max`), textures, icons, the font and `ArtWork/` aren't listed as third-party. `sources.txt` in `client/resources/audio/` and `objectSounds/` only says "declare in info.txt". They have no explicit asset license yet.
+The CC BY 3.0 sounds need attribution in any redistribution. `info.txt` provides it. The other sounds (explosions, units, turret rotation, music `Hexaverse Title M4.mp3`), the 3D models (`client/objects/*.obj/.blend/.max`), textures, icons, the font and `ArtWork/` aren't listed as third-party. `sources.txt` in `client/resources/audio/` and `objectSounds/` only says "declare in info.txt". They are original work and fall under the repository's [MIT License](../LICENSE).
 
 ## Online services referenced in code
 
@@ -44,8 +44,11 @@ The CC BY 3.0 sounds need attribution in any redistribution. `info.txt` provides
 | `BugReporter/MainForm.cs` | `https://www.hexaverse.net/bugReport/store.php` and `privacyNotice.php` | Original bug-report upload |
 | `info.txt`, docs | `https://www.hexaverse.net` | Original website |
 
-## Open points
+## Other committed files
 
-- `MetaServer.C#/Runtime/certificate.pfx`: a committed certificate (possibly with a private key) for the experimental meta-server.
-- Committed binaries: `Bake/Bake.exe`, `ServerManager/ServerManager.exe`, `ServerManager/Protocol.dll`, `BugReporter/BugReporter.exe`, `BuildCounter/BuildCounter.exe`, and the client DLLs and installers above.
-- No top-level `LICENSE` exists yet.
+- Prebuilt tools, so the game can be packaged without building them: `Bake/Bake.exe`, `ServerManager/ServerManager.exe`, `ServerManager/Protocol.dll`, `BugReporter/BugReporter.exe`, `BuildCounter/BuildCounter.exe`.
+- `MetaServer.C#/Runtime/certificate.pfx`: a test certificate for the experimental meta-server. Don't use it for anything real.
+
+## License
+
+Everything in this repository that isn't listed above as third-party is covered by the [MIT License](../LICENSE).
