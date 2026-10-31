@@ -63,6 +63,17 @@ jobs:
         shell: pwsh
         run: Get-ChildItem -Recurse -Include *.exe -Path client, server, ControlConsole, BuildCounter | Sort-Object LastWriteTime | Select-Object -Last 10 FullName, Length, LastWriteTime
 
+  server-manager:
+    name: ServerManager
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build
+        run: dotnet publish ServerManager/ServerManager.csproj -c Release -r win-x64 -o ServerManager
+
   bug-reporter:
     name: BugReporter
     runs-on: windows-latest

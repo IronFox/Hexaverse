@@ -77,6 +77,8 @@ namespace ServerManager
 				NiceName.Load();
 				Application.EnableVisualStyles();
 				Application.SetCompatibleTextRenderingDefault(false);
+				//Keep the .NET Framework default font, which the forms were designed with (.NET uses Segoe UI 9pt)
+				Application.SetDefaultFont(new Font("Microsoft Sans Serif", 8.25f));
 				Application.Run(new ServerTable());
 			}
 			catch (Exception ex)
@@ -109,8 +111,7 @@ namespace ServerManager
 			ProcessStartInfo info = new ProcessStartInfo();
 			info.Arguments = parameters;
 			info.CreateNoWindow = hideWindow;
-			if (hideWindow)
-				info.UseShellExecute = false;
+			info.UseShellExecute = !hideWindow;	//.NET Framework defaulted to true, .NET to false
 			path = Path.Combine(Directory.GetCurrentDirectory(), path);
 			info.FileName = Environment.Is64BitOperatingSystem ? Path.Combine(path, executableBaseName + ".exe") : Path.Combine(path, executableBaseName+ " x86.exe");
 			info.WorkingDirectory = path;

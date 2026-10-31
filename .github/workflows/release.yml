@@ -52,6 +52,14 @@ jobs:
       - name: Build (Release, x64)
         run: cmake --build build --config Release --parallel
 
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # Single framework-dependent ServerManager.exe, picked up by both Bake recipes.
+      - name: Build ServerManager
+        run: dotnet publish ServerManager/ServerManager.csproj -c Release -r win-x64 -o ServerManager
+
       - name: Package
         shell: pwsh
         run: |
@@ -84,7 +92,7 @@ jobs:
             "- ``Hexaverse-$env:TAG-win64.zip``: the game (Visual Client, Console Client, server, ControlConsole, ServerManager). Unzip and start ``client\Visual Client.exe``.",
             "- ``Hexaverse-Server-$env:TAG-win64.zip``: dedicated server only.",
             '',
-            'Requires 64-bit Windows and a Direct3D 11 capable graphics card. For audio, run ``client\oalinst.exe`` once if OpenAL is not installed.',
+            'Requires 64-bit Windows and a Direct3D 11 capable graphics card. For audio, run ``client\oalinst.exe`` once if OpenAL is not installed. The Server Manager needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).',
             '',
             '**Changes**',
             '```'
