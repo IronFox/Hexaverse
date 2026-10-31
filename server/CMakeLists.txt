@@ -12,8 +12,9 @@ target_compile_definitions(Server PRIVATE _SCL_SECURE_NO_WARNINGS)
 target_include_directories(Server PRIVATE
 	"${hexaverse_root}/clientServerShared"
 	"${hexaverse_root}/globalShared")
-target_link_libraries(Server PRIVATE DeltaWorks::Core lua)
+target_link_libraries(Server PRIVATE DeltaWorks::Core lua Steamworks::Steamworks)
 hexaverse_set_output(Server "Server")
+hexaverse_copy_steam_dlls(Server)
 
 source_group(TREE "${hexaverse_root}" FILES ${server_sources} ${server_shared} ${server_global})
 set_target_properties(Server PROPERTIES FOLDER "Hexaverse")

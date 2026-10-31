@@ -7,6 +7,9 @@ Hexaverse is a turn-based, multiplayer 4X strategy game played on **volumetric p
 > [!IMPORTANT]
 > **Hexaverse currently builds only on Windows, with the Visual Studio compiler (MSVC).** The code uses Direct3D 11, OpenAL, the Win32 API and MSVC extensions. You can build it with CMake or with Projector, but both need Windows and Visual Studio 2022 or newer. There is no Linux or macOS build. (The dedicated server has been run under Wine, but it is still built on Windows.)
 
+> [!NOTE]
+> **This is the `steam-public` branch:** `master` plus the Steamworks integration. It needs the Steamworks SDK, which isn't included. See [Steam build](#steam-build) and [Steam networking](#steam-networking).
+
 ## Purpose
 
 IronFox developed Hexaverse between 2014 and 2022, and it was briefly available in Steam Early Access. This repository holds the complete game: the Windows client, the dedicated server, the Lua game scripts, the player documentation and the supporting tools. Development has stopped, and the full source is available here under the MIT License.
@@ -68,6 +71,7 @@ How this works in the code, and which host settings deliberately share more, is 
 | OpenAL 1.1 SDK (Creative Labs) | Visual Client, optional with CMake | Only its import library `OpenAL32.lib` is used; the headers are bundled with DeltaWorks. CMake generates the import library itself if the SDK isn't installed. Projector needs the SDK. The runtime DLL and installer are committed in `client/`. |
 | Lua 5.3.3 | client and server | Bundled in `ThirdParty/lua/`, nothing to install. |
 | .NET Framework 4.x developer packs | C# tools | Plain `.sln`/`.csproj` files. Prebuilt copies of most tools are committed. |
+| **Steamworks SDK** (Valve) | Visual Client and Server on this branch | Not included and not redistributable. Download it from Steamworks, see [Steam build](#steam-build). |
 | Git LFS | cloning | `ArtWork/*.psd` is stored in LFS. |
 
 Third-party code, assets and their licenses are listed in [docs/third-party.md](docs/third-party.md).
@@ -105,6 +109,176 @@ CMake uses a DeltaWorks checkout in `../DeltaWorks` if there is one, or download
 
 Both builds write the executables into the project folders, where the game expects them: `client/Visual Client.exe`, `client/Console Client.exe`, `server/Server.exe`, `ControlConsole/ControlConsole.exe` (Win32 builds are named `<Name> x86.exe`). Start `client/Visual Client.exe` and choose **Start local server…**, or start `server/Server.exe` first and join it from the server list. Running servers, ports and command lines are covered in [docs/running.md](docs/running.md).
 
+## Steam build
+
+This branch (`steam-public`) is `master` plus the Steamworks integration used for the Steam Early Access release: Steam authentication, Steam P2P networking, lobby-based server lookup, friend invites and the Steam upload scripts. Everything else in this README applies unchanged. The Steamworks SDK itself is **not** in the repository, because Valve's license doesn't allow redistributing it. You have to download it and copy it in yourself, and you must never commit it (`.gitignore` already excludes it).
+
+### 1. Get the Steamworks SDK
+
+1. Sign in at [partner.steamgames.com](https://partner.steamgames.com/) with a Steamworks account (anyone can create one, but shipping a game needs a paid app).
+2. Download the SDK from [Steamworks SDK downloads](https://partner.steamgames.com/downloads/list) and unzip it. You need its `sdk` folder.
+
+The code was written against a mid-2017 SDK (interface `SteamUser019`, roughly SDK 1.41). It uses the old `ISteamNetworking` P2P API, which newer SDKs still ship but mark as deprecated. With a much newer SDK, expect to fix a few renamed constants.
+
+### 2. Put the SDK where the build finds it
+
+There are two options:
+
+- **Point CMake at the unzipped SDK.** Pass `-DHEXAVERSE_STEAMWORKS_SDK_DIR=C:/path/to/steamworks/sdk`. CMake then takes the headers from `public/steam/`, the import libraries from `redistributable_bin/` and `public/steam/lib/`, and copies `steam_api(64).dll` and `sdkencryptedappticket(64).dll` next to the executables after each build.
+- **Copy it into `steam_sdk/`**, the layout the original branch and the Projector `.project` files use:
+
+  | From the SDK (`sdk/…`) | To |
+  |---|---|
+  | `public/steam/*` | `steam_sdk/steam/` |
+  | `redistributable_bin/steam_api.lib` | `steam_sdk/lib/win32/steam_api.lib` |
+  | `public/steam/lib/win32/sdkencryptedappticket.lib` | `steam_sdk/lib/win32/sdkencryptedappticket.lib` |
+  | `redistributable_bin/win64/steam_api64.lib` | `steam_sdk/lib/win64/steam_api.lib` (renamed) |
+  | `public/steam/lib/win64/sdkencryptedappticket64.lib` | `steam_sdk/lib/win64/sdkencryptedappticket.lib` (renamed) |
+  | `steam_api.dll`, `steam_api64.dll`, `sdkencryptedappticket.dll`, `sdkencryptedappticket64.dll` | `client/` and `server/` |
+  | `tools/ContentBuilder/` | `steam_sdk/ContentBuilder/` (only for uploading, see below) |
+
+  The 64-bit import libraries are renamed because the projects link `steam_api.lib` and `sdkencryptedappticket.lib` on both platforms. They still load the `…64.dll` files.
+
+### 3. Build
+
+Build exactly as described in [Building](#building). With CMake, the Steam SDK is picked up automatically (`cmake/HexaverseSteam.cmake`), and configuring fails with a clear message if it's missing. With Projector, the `Visual Client.project` and `Server.project` files already list `steam_sdk/` as the *Steam SDK* library.
+
+Only the **Visual Client** and the **Server** use Steam. `clientServerShared/network/steamInterface.h` defines `HAS_STEAM_API` for them (`HAS_WINDOW` or not `CLIENT`). The **Console Client** builds without it and has no Steam features.
+
+### 4. Run
+
+- **Steam must be running and signed in.** Both the Visual Client and the Server call `SteamAPI_Init()` at startup and quit if it fails.
+- **App ID.** The code uses Hexaverse's Steam app ID **468350** (`SteamInterface::Create(468350, …)` in `client/clientMain.cpp`, `SteamInterface::CreateServer(468350, …)` in `server/server.cpp`). `client/steam_appid.txt` and `server/steam_appid.txt` hold the same ID, so the programs can be started outside Steam during development. Without that file, `SteamAPI_RestartAppIfNecessary()` makes Steam restart the game through the Steam client. Your Steam account has to own the app, or be a developer of it, for `SteamAPI_Init()` to succeed. To run under your own app, change the ID in those two source files and in both `steam_appid.txt` files.
+- **Dedicated server app.** The standalone server was published as a separate Steam app, **815050** ("Hexaverse Dedicated Server"). `server/dedicated_app_id/steam_appid.txt` holds that ID.
+- **Ports.** In addition to the normal ports (base port `10247` by default: info `+0`, session `+1`, control `+2`), the server initializes a Steam game server on base port `+3` (Steam), `+4` (game) and `+5` (query). See `globalShared/ports.h`.
+- **Steam overlay.** Notifications appear at the bottom right. *Invite friend* in the in-game menu opens the overlay invite dialog.
+
+### 5. Upload to Steam
+
+`repackAndUpload.bat.template` builds the release packages and uploads them with the SDK's ContentBuilder (`steamcmd`):
+
+1. Copy `repackAndUpload.bat.template` to `repackAndUpload.bat` (it's ignored by Git) and put your Steam build account's user name and password into it. **Never commit those credentials.**
+2. Copy the SDK's `tools/ContentBuilder/` into `steam_sdk/ContentBuilder/`, and add the four files below.
+3. Run `repackAndUpload.bat`. It runs `repack.bat` (Bake with `mainBakeRecipe.txt` and `serverBakeRecipe.txt`, 7-Zip into `game.7z` and `server.7z`). It unpacks those into `ContentBuilder/content/` and `ContentBuilder/server_content/` and runs `steamcmd` with both app build scripts. Afterwards, set the new builds live on the Steamworks site.
+
+`steam_sdk/ContentBuilder/full_build.bat`:
+
+```bat
+CALL recursive_rm.bat .\content
+CALL recursive_rm.bat .\server_content
+
+PUSHD ..\..
+IF "%errorlevel%" NEQ "0" goto failed
+CALL repack.bat
+IF "%errorlevel%" NEQ "0" goto failed
+%zip% x %rs1% -o.\steam_sdk\ContentBuilder\content -r
+IF "%errorlevel%" NEQ "0" goto failed
+%zip% x %rs2% -o.\steam_sdk\ContentBuilder\server_content -r
+IF "%errorlevel%" NEQ "0" goto failed
+POPD
+CALL run_build.bat
+
+CALL recursive_rm.bat .\content
+CALL recursive_rm.bat .\server_content
+exit /b 0
+
+:failed
+POPD
+echo FAILURE
+exit /b 1
+```
+
+`steam_sdk/ContentBuilder/run_build.bat` (the `user` and `password` variables come from `repackAndUpload.bat`):
+
+```bat
+builder\steamcmd.exe +login %user% %password% +run_app_build_http ..\scripts\app_build_468350.vdf +run_app_build_http ..\scripts\app_build_815050.vdf +quit
+```
+
+`steam_sdk/ContentBuilder/scripts/app_build_468350.vdf` (the game). For the dedicated server, create `app_build_815050.vdf` the same way, with app `815050`, depot `815051` and `"contentroot" "..\server_content\"`:
+
+```
+"appbuild"
+{
+	"appid"       "468350"
+	"desc"        "Hexaverse Game Build"
+	"buildoutput" "..\output\"
+	"contentroot" "..\content\"
+	"setlive"     ""
+	"preview"     "0"
+	"local"       ""
+	"depots"
+	{
+		"468351" "depot_build_468351.vdf"
+	}
+}
+```
+
+`steam_sdk/ContentBuilder/scripts/depot_build_468351.vdf` (and `depot_build_815051.vdf` with depot `815051`):
+
+```
+"DepotBuildConfig"
+{
+	"DepotID"     "468351"
+	"ContentRoot" "."
+	"FileMapping"
+	{
+		"LocalPath" "*"
+		"DepotPath" "."
+		"recursive" "1"
+	}
+	"FileExclusion" "*.pdb"
+	"FileExclusion" "*.hlsl"
+	"FileExclusion" "*.psd"
+	"FileExclusion" "*.exp"
+	"FileExclusion" "*.iobj"
+	"FileExclusion" "*.ipdb"
+	"FileExclusion" "*.log"
+	"FileExclusion" "*.cpp"
+	"FileExclusion" "*.c"
+	"FileExclusion" "*.h"
+	"FileExclusion" "*.hpp"
+	"FileExclusion" "*.lib"
+	"FileExclusion" "*.project"
+	"FileExclusion" "*.solution"
+	"FileExclusion" "*.vcxproj"
+	"FileExclusion" "*.filter"
+	"FileExclusion" "*.user"
+	"FileExclusion" "*.suo"
+	"FileExclusion" "*.manifest"
+}
+```
+
+## Steam networking
+
+On `master`, clients find servers through LAN UDP broadcasts, `hosts.txt` and manually entered addresses. They connect over plain TCP, and a player is identified only by the nickname in the `Hello` message, with factions protected by a password challenge. The Steam build keeps all of that, but adds a second transport, Steam-based identities and lobby-based session lookup. The code is in `clientServerShared/network/steamInterface.*` (Steam API wrapper), `clientServerShared/network/net.*` (hybrid transport), `client/components/network.*` (server list, connecting) and `server/components/networkChannels.cpp` (login).
+
+### Transport: Steam P2P next to TCP
+
+`SteamNetwork::Server` and `SteamNetwork::HybridClient` (`net.h`) extend DeltaWorks' `TCP::Server` and `TCP::Client`. The server keeps listening on its TCP ports, and in addition it accepts Steam P2P traffic through `ISteamNetworking` (`SteamGameServerNetworking()` in the server, `SteamNetworking()` in the client).
+
+- **Same packages, different pipe.** A Steam peer (`SteamPeer`) sends exactly the bytes of a `TCP::Package` with `SendP2PPacket(…, k_EP2PSendReliable, steamChannel)`. The game protocol and channels above it are unchanged, so the rest of the code doesn't care whether a peer is TCP or Steam.
+- **Handshake.** Steam P2P has no connection, so `net.cpp` adds one. The client sends `Hello` (255) on the session channel, and the server echoes it. The client then sends `HelloAck` (254). The server echoes that too, creates a `SteamPeer`, registers it by Steam ID and raises `ConnectionEstablished`. The client counts as connected when the echoed `HelloAck` arrives. Control messages are resent every second, and the client gives up after 10 tries. `Bye` (256) followed by `CloseP2PChannelWithUser()` ends a connection.
+- **NAT traversal and relay** come from Steam: the server accepts every incoming P2P session request (`P2PSessionRequest_t`), and Steam routes the traffic through its relays when needed, so no port forwarding is needed.
+- **Choosing a transport.** When a server-list entry has a Steam ID, the client connects through Steam (`client.ConnectToSteam(steamID)`). Otherwise, or with **Force TCP connections** checked in the server list, it connects over TCP to `host:basePort+1` as on `master`.
+- All Steam callbacks are pumped from the network loop: `SteamNetwork::ResolveGlobalEvents()` calls `SteamGameServer_RunCallbacks()`, and `SteamInterface::Resolve()` calls `SteamAPI_RunCallbacks()`.
+
+### Authentication
+
+- **Client.** `Protocol::Hello` gains `steamID` and `ticket`. The client fills them with `SteamUser()->GetSteamID()` and a ticket from `SteamUser()->GetAuthSessionTicket()` (`SteamInterface::GenerateNewAccessToken`). A new ticket is requested for each login, and the previous one is cancelled.
+- **Server.** `Hello()` in `networkChannels.cpp` puts the peer into `PreAuthentication` and calls `SteamInterface::Authenticate()`. That calls `BeginAuthSession()` through `ISteamUser`, because the server process is signed in to Steam too, or through `ISteamGameServer` if it isn't. Steam answers asynchronously with `ValidateAuthTicketResponse_t`. `OK` is accepted, and so are `VACBanned` and `NoLicenseOrExpired`, which Steam sometimes reports for valid players. On success, the Steam ID becomes the client's account ID (`client->accountID.steamID`) and the peer moves on to `PreFaction`.
+- **Identity.** Factions belong to a Steam account (`faction->steamID`), so a player who reconnects, from any address, gets their faction back without a faction password (`HelloResponse::hasFaction`). The client sends its chosen nickname, and Steam persona names are used to show other players (`GetFriendPersonaName`).
+- **Disconnect.** `SignalConnectionLoss()` calls `EndAuthSession()` for the Steam ID.
+- **AI clients** don't use Steam. A scripted AI client logs in with `clientType = AIClient` and the server's random `aiAccessToken` in place of the ticket.
+- **Optional: encrypted app tickets** (off). With `USE_CRYPTOGRAPHIC_LOGIN` and `CRYPTOGRAPHIC_SECRET` in `networkChannels.cpp`, the client sends an encrypted app ticket (`RequestEncryptedAppTicket`). The server decrypts it with the app's *encrypted app ticket key* from the Steamworks site and checks the app ID, the issue time (±180 s) and the Steam ID. That key is a secret: pass it in at runtime, and never commit it. By default `CRYPTOGRAPHIC_SECRET` is `nullptr` and the normal auth session ticket is used.
+- **Optional: server owner check** (off). With `USE_STEAM_OWNER_AUTHENTICATION`, the client asks a server over P2P which Steam user runs it (`ServerAuthRequest`, 257) and compares the answer with the lobby owner before trusting the lobby's data.
+
+### Session lookup
+
+- **Lobby per server.** When a session starts, the server initializes a Steam game server (`SteamGameServer_Init`, authentication mode, anonymous logon, heartbeats on) and creates a Steam lobby. It ties the lobby to itself with `SetLobbyGameServer(publicIP, port, serverSteamID)` and publishes its state as lobby data: `version` (`SERVER_NAME`, the protocol version), `stamp` (Steam server time, refreshed every 10 s), `worldID`, `gameGoal`, `gameFlags`, `roundNumber`, `numFactionsOnline` and `numFactionsCreated`. The lobby is public, unless the game is configured as a private server (`GameFlag::PrivateServer`), in which case it is private. On shutdown the server clears `version`, makes the lobby private and leaves it.
+- **Polling.** While not connected, and with **Poll Servers from Steam** checked in the server list, the client searches every 30 s (`SteamInterface::ProbeServers`). It calls `RequestLobbyList()` with these filters: `stamp` no older than 60 s, `version` equal to its own `SERVER_NAME`, and `numFactionsOnline` near 2. It also calls `RequestLobbyData()` for every lobby it already knows about. For each match, it reads the server's address and Steam ID with `GetLobbyGameServer()` and the game state from the lobby data, and adds or updates a server-list entry. Lobbies with an outdated stamp or another version are dropped. If the user was trying to join that lobby, the reason is shown.
+- **Known lobbies** come from three places. The LAN UDP broadcast carries the server's lobby ID. Joining through the Steam friends list or an invitation starts the game with `+connect_lobby <id>`. *Invite friend* sends that same lobby. A client that is in a match sets the rich presence key `connect` to `+connect_lobby <id>`, so friends can join from Steam, and `+connect_lobby` on the command line makes the client connect to that lobby as soon as it appears.
+- **Merging entries.** A server found by TCP and through Steam is a single entry with several addresses (`ServerInfo::addresses`). Entries are matched by address, or by lobby owner and world ID.
+
 ## Branches
 
 | Branch | Content |
@@ -112,7 +286,7 @@ Both builds write the executables into the project folders, where the game expec
 | `master` | The complete game, with every finished feature merged (aerial units, T2 upgrades, plants and advanced resources, alliances, statistics, the reworked Lua AI …). This is the branch to build. |
 | `master-resource_bridge` | `master` plus the work-in-progress Lua **modding** framework (scripted structure types, first example: a Resource Relay). |
 | `master-styled_highres` | `master` plus styled dark rendering and very large screenshot rendering. |
-| `steam-public` | `master` from June 2021 plus the Steamworks integration, as one commit. The Steamworks SDK is removed because its license doesn't allow redistribution, so this branch doesn't compile until you add the SDK yourself (see `steam_sdk/README.md` on the branch). |
+| `steam-public` | `master` plus the Steamworks integration (Steam login, P2P networking, lobby-based server lookup, upload scripts). The Steamworks SDK is not included, so it needs the SDK to build; see [Steam build](#steam-build). This is the branch you're reading. |
 
 Releases are tagged `v0.3.19` to `v0.9.12`. Older experiments that were never merged (technite, pylons, orbital stations, a GUI renderer rework and more) are kept as `archive/*` tags. The full list, with dates and history notes, is in [docs/repository.md](docs/repository.md).
 

@@ -56,7 +56,7 @@ namespace Network
 		UINT64 ownerID,lobbyID;
 	};
 
-	Buffer0<SteamServer>
+	Vector<SteamServer>
 					steamServers;
 
 	bool			haveFactionLoaded = false,

@@ -64,6 +64,9 @@ set(DELTAWORKS_BUILD_TERRAIN OFF CACHE BOOL "Hexaverse does not use DeltaWorksTe
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(HexaverseHelpers)
+if(HEXAVERSE_BUILD_CLIENT OR HEXAVERSE_BUILD_SERVER)
+	include(HexaverseSteam)
+endif()
 
 # ---------------------------------------------------------------------------
 # DeltaWorks

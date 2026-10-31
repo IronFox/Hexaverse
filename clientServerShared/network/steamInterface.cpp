@@ -303,7 +303,7 @@ namespace SteamInterface
 	HashTable<UINT64, FAuthResult>	ticketCallbacks;
 	Queue<FAppTicketResponse>				appTicketResponseCallbacks;
 
-	HashTable<UINT64,Buffer0<FOnSessionConnectionFailure> > failureMap;
+	HashTable<UINT64,Vector<FOnSessionConnectionFailure> > failureMap;
 	IndexTable<FOnSocketStatusChange> socketMonitor;
 
 	Queue<UINT64>		lobbyJoinQueue;
@@ -438,7 +438,7 @@ namespace SteamInterface
 
 	void Callback::OnConnectionFailed(P2PSessionConnectFail_t*p)
 	{
-		Buffer0<FOnSessionConnectionFailure>*list = failureMap.QueryPointer(p->m_steamIDRemote.ConvertToUint64());
+		Vector<FOnSessionConnectionFailure>*list = failureMap.QueryPointer(p->m_steamIDRemote.ConvertToUint64());
 		if (list)
 		{
 			String err = ToString((EP2PSessionError)p->m_eP2PSessionError);
@@ -770,7 +770,7 @@ namespace SteamInterface
 		#endif
 	}
 
-	Buffer0<UINT64>	externalLobbies;
+	Vector<UINT64>	externalLobbies;
 	FOnServerMatch	externalCallback;
 
 	bool LobbyIsRegistered(UINT64 id)
@@ -878,7 +878,7 @@ namespace SteamInterface
 			callback->lobbyMatchList.Set( rc, callback, &Callback::OnLobbyMatchList );
 
 			count_t dispatchedRequests = 0;
-			Buffer0<UINT64> drop;
+			Vector<UINT64> drop;
 			foreach (externalLobbies,l)
 				if (SteamMatchmaking()->RequestLobbyData(CSteamID(*l)))
 					dispatchedRequests ++;

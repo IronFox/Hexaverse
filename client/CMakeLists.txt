@@ -37,11 +37,12 @@ add_executable(VisualClient WIN32
 hexaverse_apply_common_settings(VisualClient SUBSYSTEM Windows)
 target_compile_definitions(VisualClient PRIVATE CLIENT HAS_WINDOW _SCL_SECURE_NO_WARNINGS)
 target_include_directories(VisualClient PRIVATE ${client_shared_includes})
-target_link_libraries(VisualClient PRIVATE DeltaWorks::Core DeltaWorks::Engine lua d3d11 d3dcompiler)
+target_link_libraries(VisualClient PRIVATE DeltaWorks::Core DeltaWorks::Engine lua d3d11 d3dcompiler Steamworks::Steamworks)
 # <al/openal.h> pulls in OpenAL32.lib through #pragma comment(lib).
 target_link_directories(VisualClient PRIVATE "${HEXAVERSE_OPENAL_LIBRARY_DIR}")
 target_link_options(VisualClient PRIVATE /STACK:4000000)
 hexaverse_set_output(VisualClient "Visual Client")
+hexaverse_copy_steam_dlls(VisualClient)
 if(HEXAVERSE_INCREMENT_BUILD_COUNTER)
 	add_dependencies(VisualClient IncrementBuildCounter)
 endif()
