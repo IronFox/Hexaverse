@@ -12,6 +12,8 @@
 | `lua/` | `attributesAndResearch.lua`, `tutorial.lua`, `AI/`, `distributions/`, `util/`, `General Lua API Documentation.txt` |
 | `predefinedPlanets/` | Planet templates (`*.ini`) |
 | `ThirdParty/lua/` | Lua 5.3.3 |
+| `CMakeLists.txt`, `CMakePresets.json`, `vcpkg.json`, `cmake/`, `*/CMakeLists.txt` | CMake build (see [building.md](building.md)) |
+| `.github/workflows/cmake.yml` | CI: compiles the CMake build on Windows |
 | `ControlConsole/`, `ServerManager/`, `Bake/`, `BugReporter/`, `BuildCounter/`, `IncreaseVersion/`, `DocumentationEditor/`, `MetaServer.C#/` | Tools, see [tools.md](tools.md) |
 | `documentation/` | In-game/website wiki (`documentation/`), images, PHP renderer |
 | `ArtWork/` | Logos, Steam store art, screenshots (`*.psd` in Git LFS) |
@@ -71,4 +73,5 @@ To pick one up again: `git switch -c my-branch archive/<name>`. Most of these ar
 - Branch from `master`. Name feature branches `master-<feature>` (the historical convention) or anything descriptive.
 - Prefix commit messages with the area (`Objects:`, `GUI:`, `Server:`, `Client:`, `LuaAPI:`, `LuaAI:`, `Rendering:`, `Protocol:`, `IO:`, `General:` …).
 - Add player-visible changes to the top section of `changelog.txt` (`+` new, `>` changed).
-- Don't commit generated `.projector/` folders or local `.sln`/`.vcxproj` files.
+- Don't commit generated `.projector/` folders, local `.sln`/`.vcxproj` files or CMake `build/` folders.
+- When you add or move source folders, update both the `.project` file and the matching `CMakeLists.txt`.

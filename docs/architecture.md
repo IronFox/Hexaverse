@@ -65,7 +65,7 @@ Ports come from `globalShared/ports.h`: base+0 info, base+1 session, base+2 loca
 - The handshake and server discovery are described step by step in [`protocol documentation.txt`](../protocol%20documentation.txt).
 - Message structs serialize through `clientServerShared/protocol/serialBaseTypes.h` and `multi_serializable.inc.h`. Save games use the same serialization.
 
-**Visibility is enforced on the server.** `Game::Network::Describe(…)` builds per-faction views with an `Expose` level, so clients only get what their sensors (or their alliance's) cover. Terrain the client hasn't discovered is sent as `Clear`/`Unknown`, depending on `World/worldDiscovery`.
+**Visibility is enforced on the server** (details in [server-authority.md](server-authority.md)). `Game::Network::Describe(…)` builds per-faction views with an `Expose` level, so clients only get what their sensors (or their alliance's) cover. Terrain the client hasn't discovered is sent as `Clear`/`Unknown`, depending on `World/worldDiscovery`.
 
 ## 4. The world model (`clientServerShared/grid/`)
 
