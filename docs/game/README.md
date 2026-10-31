@@ -42,8 +42,8 @@ A keyboard (at least an emulated one) is necessary to enter your name, possibly 
 ## Error Reporting
 
 Surprisingly, Hexaverse has bugs.
-If you do encounter some, ideally the respective application automatically starts the [bug reporter](config/bug-reporter.md), allowing you to kindly submit a bug report.
-Alternatively, you may manually start the bug reporter from the visual client menu (Main->Help->Report Bug).
+If you encounter one, please report it on the project page at https://github.com/IronFox/Hexaverse . The visual client menu (Main->Help->Report Bug) opens that page.
+Attaching the related log files helps a lot (see [bug reporter](config/bug-reporter.md) for where they are).
 
 ---
 

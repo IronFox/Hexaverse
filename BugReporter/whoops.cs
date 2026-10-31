@@ -1,11 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace BugReporter
@@ -33,11 +26,17 @@ namespace BugReporter
 			Application.Exit();
 		}
 
-		private void emailLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+		private void projectLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
-			string path = "mailto:bugs@hexaverse.net?subject=Bug-Reporter won't work&body="+ problem;
-
-			System.Diagnostics.Process.Start(path);
+			string url = Program.Settings?.ProjectUrl;
+			if (string.IsNullOrWhiteSpace(url))
+				url = new ReporterSettings().ProjectUrl;
+			try
+			{
+				Program.OpenExternally(url);
+			}
+			catch
+			{ }
 			Application.Exit();
 		}
 

@@ -6,7 +6,7 @@ Besides the client and the server, the repository contains several helper progra
 |---|---|---|:-:|---|
 | ControlConsole | C++ | `ControlConsole/` | ✓ | Command-line remote control of local servers |
 | Server Manager | C# (WinForms) | `ServerManager/` | ✓ | GUI to start, configure, monitor and stop local servers |
-| BugReporter | C# (WinForms) | `BugReporter/` | ✓ | Collects logs after a crash and uploads a bug report |
+| BugReporter | C# (WinForms, .NET 10) | `BugReporter/` | ✗ | Optional crash reporter: collects logs and uploads them to your own server or saves them as a .zip. Not in the default packages |
 | Bake | C# (console) | `Bake/` | – | Copies release files by recipe (packaging) |
 | BuildCounter | C++ | `BuildCounter/` | – | Increments the client build number before each build |
 | IncreaseVersion | C++ | `IncreaseVersion/` | – | Bumps the version number (hand-made `.vcxproj`) |
@@ -37,7 +37,7 @@ Servers it starts are *dependent* and run without a console window. Only one Ser
 
 ## BugReporter
 
-`BugReporter/` (C#) is started after a crash. It gathers the relevant log files (`LogFile.cs`), shows them to the user, and uploads them over HTTPS to `https://www.hexaverse.net/bugReport/store.php`, linking to a privacy notice on the same site. Those endpoints belong to the original website. A fork should point them elsewhere or turn the upload off.
+`BugReporter/` (C#, .NET 10) is an optional crash reporter. It gathers the relevant log files (`LogFile.cs`), shows them to the user, and either uploads them to the HTTPS address set in `BugReporter.json` or saves them as a `.zip`. No address is built in, and it isn't part of the default packages: the game starts it after a fatal error only if `BugReporter/BugReporter.exe` is installed. Configuration, the upload protocol and how to add it to a release are described in [bug-reporter.md](bug-reporter.md).
 
 ## Bake
 
@@ -45,8 +45,8 @@ Servers it starts are *dependent* and run without a console window. Only one Ser
 
 | Recipe | Produces |
 |---|---|
-| `mainBakeRecipe.txt` | The full game: client exes, shaders, fonts, objects, resources, server, ControlConsole, ServerManager, BugReporter, Lua, planets, info and changelog |
-| `serverBakeRecipe.txt` | A dedicated-server package: server, console client (for AI), BugReporter, Lua, planets, declaration, tutorial save, ControlConsole, ServerManager |
+| `mainBakeRecipe.txt` | The full game: client exes, shaders, fonts, objects, resources, server, ControlConsole, ServerManager, Lua, planets, license, info and changelog |
+| `serverBakeRecipe.txt` | A dedicated-server package: server, console client (for AI), Lua, planets, declaration, tutorial save, ControlConsole, ServerManager |
 
 `repack.bat` runs both recipes and zips the results into `game.7z` and `server.7z` with `7z.exe`.
 

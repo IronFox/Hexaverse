@@ -132,13 +132,26 @@ namespace Logging
 
 
 
+	/*
+	The bug reporter is optional and not part of the default packages (see docs/bug-reporter.md).
+	It is only started if a release ships it in BugReporter/ next to client/ and server/.
+	*/
+	static bool	BugReporterIsInstalled()
+	{
+		return FileSystem::IsFile(L"../BugReporter/BugReporter.exe");
+	}
+
 	void	CallBugReporter()
 	{
+		if (!BugReporterIsInstalled())
+			return;
 		Process::Start(L"../BugReporter/",L"BugReporter.exe",L"\""+activePath+L"\"");	//start and abandon
 	}
 
 	void	CallBugReporter(const String&message)
 	{
+		if (!BugReporterIsInstalled())
+			return;
 		Process::Start(L"../BugReporter/",L"BugReporter.exe",L"\""+activePath+L"\" -m \""+FileSystem::StringToPath(message.Escape("\""))+L"\"");	//start and abandon
 	}
 

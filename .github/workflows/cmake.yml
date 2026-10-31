@@ -61,3 +61,22 @@ jobs:
       - name: List executables
         shell: pwsh
         run: Get-ChildItem -Recurse -Include *.exe -Path client, server, ControlConsole, BuildCounter | Sort-Object LastWriteTime | Select-Object -Last 10 FullName, Length, LastWriteTime
+
+  bug-reporter:
+    name: BugReporter
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      # Compile check only. The bug reporter isn't part of the game packages (docs/bug-reporter.md).
+      - name: Build
+        run: dotnet build BugReporter/BugReporter.csproj -c Release
+      - name: Check that no report address is built in
+        shell: pwsh
+        run: |
+          $hits = Select-String -Path BugReporter/*.cs, BugReporter/*.json -Pattern 'hexaverse\.net' -SimpleMatch:$false
+          if ($hits) { $hits; throw 'BugReporter must not contain a hexaverse.net address' }
+          $url = (Get-Content BugReporter/BugReporter.json -Raw | ConvertFrom-Json).reportUrl
+          if ($url) { throw "BugReporter.json must ship with an empty reportUrl (found '$url')" }

@@ -5,7 +5,6 @@ client/game.ini
 client/Console Client*.exe
 client/resources/nice/*.txt
 
-BugReporter/BugReporter.exe
 
 server/Server*.exe
 server/config/tutorial.hsf

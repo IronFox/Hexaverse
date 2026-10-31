@@ -2,7 +2,7 @@
 
 The game itself (all C++, C#, Lua, shaders, assets and the in-game wiki) was written by Stefan Elsen (IronFox) between 2014 and 2022. In October 2026, Claude, an AI assistant made by Anthropic, used through Claude Code, prepared the repository for publication at IronFox's request: documentation, a CMake build, CI and release automation, and the license. IronFox reviewed and merged the changes.
 
-The game code itself was left as it was, except for a few small fixes it needed to build against the current DeltaWorks and the current Visual Studio compiler. Every file the AI created or modified is listed below.
+The game code itself was left as it was, except for a few small fixes it needed to build against the current DeltaWorks and the current Visual Studio compiler, and links that now point to GitHub instead of the original hexaverse.net website. The optional bug reporter was modernized and taken out of the default packages. Every file the AI created, modified or removed is listed below.
 
 ## Created
 
@@ -29,7 +29,9 @@ The game code itself was left as it was, except for a few small fixes it needed 
 | `cmake/HexaverseOpenAL.cmake`, `cmake/OpenAL32.def` | Provide `OpenAL32.lib` from the OpenAL SDK, or generate it from the router DLL's export list |
 | `CMakePresets.json` | Visual Studio and Ninja presets |
 | `vcpkg.json` | vcpkg manifest for zlib, libpng, libjpeg-turbo and bzip2 |
-| `.github/workflows/cmake.yml` | CI: compiles the CMake build on Windows |
+| `.github/workflows/cmake.yml` | CI: compiles the CMake build and the bug reporter on Windows |
+| `docs/bug-reporter.md` | The optional bug reporter: building, configuration, upload protocol, adding it to a release |
+| `BugReporter/ReporterSettings.cs`, `BugReporter/BugReporter.json` | Bug reporter settings, with no report address by default |
 | `.github/workflows/release.yml` | Builds, packages and publishes GitHub releases |
 
 ## Modified
@@ -42,8 +44,20 @@ The game code itself was left as it was, except for a few small fixes it needed 
 | `ControlConsole/main.cpp` | `Buffer0` → `Vector`, the DeltaWorks container rename (dc4e4d0) that the rest of the game had already been adapted to |
 | `BuildCounter/BuildCounter.cpp` | Adapt to current DeltaWorks string functions (`Explode`, `PathString` file names) |
 | `.gitignore` | Ignore CMake build folders, `CMakeUserPresets.json`, `BuildCounter/.projector/` and the CI DeltaWorks checkout |
-| `mainBakeRecipe.txt` | Package `LICENSE` with the game |
-| `serverBakeRecipe.txt` | Package `LICENSE`, plus the AI scripts (`lua/AI/`, `lua/util/`) the dedicated server's AI clients need |
+| `mainBakeRecipe.txt` | Package `LICENSE` with the game; leave out the bug reporter |
+| `serverBakeRecipe.txt` | Package `LICENSE`, plus the AI scripts (`lua/AI/`, `lua/util/`) the dedicated server's AI clients need; leave out the bug reporter |
+| `client/components/visual/hud/menu.cpp` | *Help* menu: online manual, *Report Bug* and *About* point to GitHub instead of hexaverse.net |
+| `clientServerShared/logEvent.cpp` | Start the bug reporter after a fatal error only if it is installed |
+| `info.txt` | Project link points to GitHub |
+| `documentation/documentation/home.txt`, `documentation/documentation/config/bug reporter.txt` | Bug reports go to the GitHub project page; where the log files are |
+| `BugReporter/BugReporter.csproj`, `Program.cs`, `MainForm.cs`, `MainForm.Designer.cs`, `MainForm.resx`, `LogFile.cs`, `whoops.cs`, `whoops.Designer.cs` | Modernized: SDK-style .NET 10 project, `HttpClient` with standard certificate validation, upload address and token from `BugReporter.json` instead of built in, saving reports to a .zip, no hexaverse.net addresses |
+
+## Removed
+
+| File | Reason |
+|---|---|
+| `BugReporter/BugReporter.exe` | Prebuilt copy that uploaded to hexaverse.net |
+| `BugReporter/App.config`, `app.manifest`, `BugReporter.csproj.user`, `Properties/*` | .NET Framework project files, replaced by the SDK-style project |
 
 ## Repository maintenance
 

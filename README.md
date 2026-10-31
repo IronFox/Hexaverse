@@ -23,7 +23,8 @@ Hexaverse is a networked game. Even a single-player game runs a local server tha
 | **Console Client** | C++ | `client/` (without the visual and audio parts) | Headless client the server launches to run Lua AI players. |
 | **Server** | C++ | `server/` | Dedicated server: simulates rounds, terrain and units, stores save games, hosts the Nexus. |
 | **ControlConsole** | C++ | `ControlConsole/` | Command-line remote control for local servers. |
-| ServerManager, Bake, BugReporter, DocumentationEditor | C# | own folders | GUI server manager, packaging tool, bug report uploader, wiki editor. |
+| ServerManager, Bake, DocumentationEditor | C# | own folders | GUI server manager, packaging tool, wiki editor. |
+| BugReporter | C# (.NET 10) | `BugReporter/` | Optional crash reporter for your own releases. Not in the default packages, no report address built in ([docs/bug-reporter.md](docs/bug-reporter.md)). |
 | BuildCounter, IncreaseVersion | C++ | own folders | Build-number and version bump helpers. |
 | MetaServer | C# | `MetaServer.C#/` | Experimental, unfinished meta-server for a multi-planet universe. |
 
@@ -140,6 +141,7 @@ The originals are the DokuWiki pages in `documentation/documentation/`, which th
 | [docs/lua-scripting.md](docs/lua-scripting.md) | Research script, AI scripts, resource distributions, tutorial, Lua API |
 | [docs/extending.md](docs/extending.md) | Adding unit and structure types, commands, protocol channels, server variables |
 | [docs/tools.md](docs/tools.md) | Server Manager, Control Console, Bake, BugReporter, DocumentationEditor, BuildCounter, MetaServer |
+| [docs/bug-reporter.md](docs/bug-reporter.md) | The optional bug reporter: configuration, upload protocol, adding it to a release |
 | [docs/repository.md](docs/repository.md) | Repository layout, branches, tags, LFS and history notes |
 | [docs/third-party.md](docs/third-party.md) | Bundled third-party code and assets, with their licenses |
 | [docs/ai-contribution.md](docs/ai-contribution.md) | Which files were created or modified with AI assistance |
