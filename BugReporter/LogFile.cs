@@ -150,7 +150,7 @@ namespace BugReporter
 
 		public void OpenInDefaultViewer()
 		{
-			Process.Start(Path);
+			Program.OpenExternally(Path);
 		}
 
 		public override string ToString()
@@ -216,7 +216,7 @@ namespace BugReporter
 				{
 					using (DeflateStream compressionStream = new DeflateStream(ms, CompressionLevel.Optimal))
 					{
-						var fs = new FileStream(File.Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+						using var fs = new FileStream(File.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 						fs.CopyTo(compressionStream);
 					}
 					compressed = ms.ToArray();

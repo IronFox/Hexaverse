@@ -41,12 +41,14 @@ The CC BY 3.0 sounds need attribution in any redistribution. `info.txt` provides
 
 | Where | Endpoint | Note |
 |---|---|---|
-| `BugReporter/MainForm.cs` | `https://www.hexaverse.net/bugReport/store.php` and `privacyNotice.php` | Original bug-report upload |
-| `info.txt`, docs | `https://www.hexaverse.net` | Original website |
+| `client/components/visual/hud/menu.cpp` | `https://github.com/IronFox/Hexaverse` and `docs/game/README.md` there | *Help* menu: online manual, *Report Bug*, *About* |
+| `BugReporter/BugReporter.json` | Empty by default | Optional report upload, see [bug-reporter.md](bug-reporter.md) |
+
+`documentation/visual/site.php` is the template of the original hexaverse.net website, which rendered the player wiki online. It isn't part of the game.
 
 ## Other committed files
 
-- Prebuilt tools, so the game can be packaged without building them: `Bake/Bake.exe`, `ServerManager/ServerManager.exe`, `ServerManager/Protocol.dll`, `BugReporter/BugReporter.exe`, `BuildCounter/BuildCounter.exe`.
+- Prebuilt tools, so the game can be packaged without building them: `Bake/Bake.exe`, `ServerManager/ServerManager.exe`, `ServerManager/Protocol.dll`, `BuildCounter/BuildCounter.exe`. The bug reporter has no prebuilt copy; build it yourself if you need it.
 - `MetaServer.C#/Runtime/certificate.pfx`: a test certificate for the experimental meta-server. Don't use it for anything real.
 
 ## License

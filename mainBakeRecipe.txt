@@ -26,7 +26,6 @@ client/OpenAL32.dll
 client/D3DCompiler_43.dll
 client/D3DCompiler_47.dll
 
-BugReporter/BugReporter.exe
 
 server/Server*.exe
 server/config/tutorial.hsf

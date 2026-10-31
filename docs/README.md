@@ -10,6 +10,7 @@
 | write research, AI, map or tutorial scripts | [lua-scripting.md](lua-scripting.md) |
 | add units, structures, commands or settings | [extending.md](extending.md) |
 | use or change the helper tools | [tools.md](tools.md) |
+| build, configure or ship the optional bug reporter | [bug-reporter.md](bug-reporter.md) |
 | check licenses and bundled components | [third-party.md](third-party.md) |
 | see which files were created with AI assistance | [ai-contribution.md](ai-contribution.md) |
 

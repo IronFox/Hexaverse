@@ -21,7 +21,8 @@ Both compile the same files with the same settings, and both put the executables
 | [Projector](https://github.com/IronFox/Projector) 1.5 or newer | Projector build | .NET 10 WinForms app. Build it with `dotnet build Projector.sln -c Release`. |
 | [DeltaWorks](https://github.com/IronFox/DeltaWorks) | all C++ projects | Provides `DeltaWorksCore` and `DeltaWorksEngine`. CMake downloads it if needed. |
 | OpenAL 1.1 SDK (Creative Labs) | Visual Client: required for Projector, optional for CMake | Only its import library `OpenAL32.lib` is needed; the OpenAL headers are bundled in DeltaWorks (`Engine/al`). Projector finds it through the registry key `HKLM\SOFTWARE\Wow6432Node\Creative Labs\OpenAL 1.1 Software Development Kit\3.05` (or `3.03`) `InstallDir`. |
-| .NET Framework 4.0–4.6.1 developer packs | C# tools | ServerManager, Bake, BugReporter, DocumentationEditor, MetaServer. These are plain `.sln`/`.csproj` files that open directly in Visual Studio. |
+| .NET Framework 4.0–4.6.1 developer packs | C# tools | ServerManager, Bake, DocumentationEditor, MetaServer. These are plain `.sln`/`.csproj` files that open directly in Visual Studio. |
+| .NET 10 SDK | Bug reporter, optional | Only for the optional bug reporter, see [bug-reporter.md](bug-reporter.md). |
 | Git LFS | repository | `ArtWork/*.psd` is stored in LFS. Run `git lfs install` before cloning. |
 
 ## 2. Building with CMake
@@ -160,7 +161,7 @@ These locations matter: the programs find each other through them (`globalShared
 
 ## 5. C# tools
 
-Build the C# tools by opening their `.sln` files directly (`ServerManager/ServerManager.sln`, `BugReporter/BugReporter.sln`, `Bake/Bake.sln`, `DocumentationEditor/DocumentationEditor.sln`). Prebuilt copies of `ServerManager.exe`, `Bake.exe` and `BugReporter.exe` are committed next to their sources. They aren't part of the CMake build.
+Build the C# tools by opening their `.sln` files directly (`ServerManager/ServerManager.sln`, `BugReporter/BugReporter.sln`, `Bake/Bake.sln`, `DocumentationEditor/DocumentationEditor.sln`). Prebuilt copies of `ServerManager.exe` and `Bake.exe` are committed next to their sources. They aren't part of the CMake build. The optional bug reporter is an SDK-style .NET 10 project (`dotnet build BugReporter\BugReporter.csproj`); it isn't packaged by default, see [bug-reporter.md](bug-reporter.md).
 
 ### Shaders and binary data
 
@@ -184,7 +185,7 @@ repack.bat
 2. The result is zipped into `game.7z` with `7z.exe`, which must be on `PATH`.
 3. The same is repeated with `serverBakeRecipe.txt` to produce `server.7z`, a dedicated-server-only package.
 
-Recipe syntax: one path or wildcard pattern per line, relative to the repository root. The folder structure is kept in the output.
+Recipe syntax: one path or wildcard pattern per line, relative to the repository root. The folder structure is kept in the output. `source/*.* -> target/*.*` copies matching files into a different folder (used to add the [bug reporter](bug-reporter.md#adding-it-to-a-release)).
 
 ### GitHub releases
 
