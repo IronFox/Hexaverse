@@ -155,3 +155,11 @@ The game was written by IronFox. The documentation in this README and `docs/`, t
 ## License
 
 Hexaverse is released under the [MIT License](LICENSE). Bundled third-party components keep their own licenses, listed in [docs/third-party.md](docs/third-party.md).
+
+## Use, forks and the Steam release
+
+- **You may do anything the MIT License allows.** That includes forking Hexaverse, modifying it, redistributing it and selling it, commercially or not, as long as you keep the copyright and license notice. Bundled third-party components keep their own terms.
+- **Hexaverse stays on Steam as a free game.** IronFox keeps the Steam app registration and publishes the official Steam build for free. It is built from this repository: `master`, plus the Steam integration on `steam-public`, plus the Steamworks SDK, which can't be published here.
+- **To get a change into the Steam release, open a pull request on [IronFox/Hexaverse](https://github.com/IronFox/Hexaverse).** Target `master` for game changes, and `steam-public` for changes to the Steam integration itself. Merged changes flow into the official Steam build. There is no other route into it. Forks are welcome, but a fork is not the official Steam release, and it can't use its app registration.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit changes.
