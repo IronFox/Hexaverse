@@ -5,6 +5,8 @@
 
 #include <general/enumeration.h>
 #include <functional>
+#include <type_traits>
+#include <utility>
 #include <global_string.h>
 #include "windowStack.h"
 #include <cast.h>
@@ -149,6 +151,16 @@ namespace Dialog
 	*/
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check, bool failIfModalWindowExists=false);
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, bool failIfModalWindowExists=false);
+	/**
+	Passes a check lambda on as FCheckState. Current MSVC versions consider a
+	captureless lambda convertible to bool (through its function pointer) as well,
+	which makes Confirm(query,onConfirm,[](){...}) ambiguous between the two overloads above.
+	*/
+	template <typename F, typename = std::enable_if_t<!std::is_same_v<std::decay_t<F>,FCheckState> && std::is_invocable_r_v<CheckResult,F&>>>
+		WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, F&&check, bool failIfModalWindowExists=false)
+		{
+			return Confirm(query,onConfirm,FCheckState(std::forward<F>(check)),failIfModalWindowExists);
+		}
 
 	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check);
 

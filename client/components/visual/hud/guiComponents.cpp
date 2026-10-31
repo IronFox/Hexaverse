@@ -2697,7 +2697,7 @@ namespace Component
 		if (visualLen < core.x.GetExtent())
 		{
 		//	textout.write(input,len);
-			textout << text;
+			textout << static_cast<const UTF32StringRef&>(text);
 		}
 		else
 		{
@@ -2706,7 +2706,7 @@ namespace Component
 				visualLen = textout.QueryScaledWidth(text) + cursorLen;
 				if (visualLen < core.x.GetExtent())
 				{
-					textout << text;
+					textout << static_cast<const UTF32StringRef&>(text);
 					//textout.write(input,len);
 					break;
 				}
