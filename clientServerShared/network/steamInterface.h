@@ -11,6 +11,14 @@
 	#define HAS_STEAM_API
 #endif
 
+/**
+Steam app ID the game runs as. Set it when building (CMake: HEXAVERSE_STEAM_APP_ID).
+480 is Valve's public "Spacewar" test app, which any Steam account can use for development.
+*/
+#ifndef STEAM_APP_ID
+	#define STEAM_APP_ID 480
+#endif
+
 namespace SteamInterface
 {
 	using namespace DeltaWorks;

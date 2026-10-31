@@ -903,7 +903,7 @@ namespace SteamInterface
 			//LogEvent(EventSignificance::Uncommon,"Starting steam server search for app ID "+String(SteamUtils()->GetAppID()));
 			//SteamMatchmakingServers()->RequestInternetServerList(SteamUtils()->GetAppID(),pairs,0,&serverListSink);
 
-			//SteamMatchmakingServers()->RequestLANServerList(468350,&serverListSink);
+			//SteamMatchmakingServers()->RequestLANServerList(STEAM_APP_ID,&serverListSink);
 		#endif
 
 

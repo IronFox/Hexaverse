@@ -64,3 +64,4 @@ sdkencryptedappticket*.dll
 CMakeUserPresets.json
 BuildCounter/.projector/
 /_deps/
+steam_appid.txt

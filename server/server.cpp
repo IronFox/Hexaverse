@@ -908,7 +908,7 @@ int main( int argc, const char* argv[])
 		World::worldID.Generate();
 
 		Network::serverID.Generate();
-		if (!SteamInterface::CreateServer(468350, ParameterConfig::basePort))
+		if (!SteamInterface::CreateServer(STEAM_APP_ID, ParameterConfig::basePort))
 		{
 			FATAL__("Failed to initialize steam");
 			return -1;
