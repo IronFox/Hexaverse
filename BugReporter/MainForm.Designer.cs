@@ -29,7 +29,6 @@
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
 			this.label1 = new System.Windows.Forms.Label();
 			this.bugDescription = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -44,7 +43,6 @@
 			this.gameVersion = new System.Windows.Forms.TextBox();
 			this.statusStrip = new System.Windows.Forms.StatusStrip();
 			this.toolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-			this.connectionTimer = new System.Windows.Forms.Timer(this.components);
 			this.mainBody = new System.Windows.Forms.Panel();
 			this.viewPrimaryButton = new System.Windows.Forms.Button();
 			this.whoAmI = new System.Windows.Forms.TextBox();
@@ -62,7 +60,7 @@
 			this.label1.Name = "label1";
 			this.label1.Size = new System.Drawing.Size(84, 13);
 			this.label1.TabIndex = 0;
-			this.label1.Text = "What happend?";
+			this.label1.Text = "What happened?";
 			// 
 			// bugDescription
 			// 
@@ -194,11 +192,6 @@
 			this.toolStripStatusLabel.Spring = true;
 			this.toolStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
-			// connectionTimer
-			// 
-			this.connectionTimer.Enabled = true;
-			this.connectionTimer.Tick += new System.EventHandler(this.connectionTimer_Tick);
-			// 
 			// mainBody
 			// 
 			this.mainBody.Controls.Add(this.privacyNotice);
@@ -276,7 +269,6 @@
 			this.ClientSize = new System.Drawing.Size(501, 630);
 			this.Controls.Add(this.mainBody);
 			this.Controls.Add(this.statusStrip);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MinimumSize = new System.Drawing.Size(513, 652);
 			this.Name = "MainForm";
 			this.Text = "Hexaverse Bug Reporter";
@@ -306,7 +298,6 @@
 		private System.Windows.Forms.Label label5;
 		private System.Windows.Forms.TextBox gameVersion;
 		private System.Windows.Forms.StatusStrip statusStrip;
-		private System.Windows.Forms.Timer connectionTimer;
 		private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel;
 		private System.Windows.Forms.Panel mainBody;
 		private System.Windows.Forms.Timer loadTimer;

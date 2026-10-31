@@ -103,7 +103,7 @@ namespace Objects
 			{
 				if (plant.selectedBase && plant.selectedTurret)
 				{
-					static Buffer0<Objects::Choice>	choices;
+					static Vector<Objects::Choice>	choices;
 					Objects::GetProductionChoices(&plant,plant.GetSelectionPrototype(),choices);
 					static bool ignoreWarnings = false;
 					if (choices.IsNotEmpty() || ignoreWarnings)

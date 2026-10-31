@@ -5,7 +5,7 @@
 #include <math/vclasses.h>
 #include <image/img_generators.h>
 #include <al/openal.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 
 #include "../../../ExtRenderer/DirectX11.h"
 #include <engine/aspect.h>
@@ -47,7 +47,7 @@ namespace Explosions
 
 
 
-	class Particles : public Container::Vector0<Particle>
+	class Particles : public Container::Vector<Particle>
 	{
 	public:
 		M::TVec3<>				particleColor;
@@ -139,7 +139,7 @@ namespace Explosions
 	//extern EXMP
 	extern DX11::Texture				ringTexture,
 										particleTexture;
-	extern Container::Vector0<Explosion,Swappable>	
+	extern Container::Vector<Explosion,Swappable>	
 										explosions;
 	extern DX11::BaseInstructionBlock	particleInstruction;
 	extern DX11::StreamVBO				particleBuffer;

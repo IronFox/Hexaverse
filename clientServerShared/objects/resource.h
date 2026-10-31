@@ -2,7 +2,7 @@
 #define objectResourceH
 
 #include <math/vclasses.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "../config.h"
 #include "types.h"
 #include <container/hashtable.h>
@@ -184,9 +184,9 @@ namespace Objects
 		/**
 		Serializable resource definition.
 		*/
-		class Table : private Buffer0<Type,Swap>
+		class Table : private Ctr::Vector<Type,Swap>
 		{
-			typedef Buffer0<Type,Swap> Super;
+			typedef Ctr::Vector<Type,Swap> Super;
 		public:
 			/**/		Table(){};
 			/**/		Table(const std::initializer_list<const char*>&names, const std::initializer_list<float3>&colors);
@@ -457,7 +457,7 @@ namespace Objects
 			friend String ToString(const Self&v) {return v.ToString();}
 			/*
 			{
-				Ctr::Buffer0<String> rs;
+				Ctr::Vector<String> rs;
 				for (index_t i = 0; i < Resource::table.GetSize(); i++)
 					if (level[i] != 0)
 						rs << Resource::ID(i).ToString()+String(": ")+String(level[i]);

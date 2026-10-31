@@ -58,7 +58,7 @@ namespace SteamNetwork
 	{
 		typedef TCP::Server Super;
 
-		Buffer0<PSteamPeer>	steamPeers;
+		Vector<PSteamPeer>	steamPeers;
 		HashTable<UINT64,PSteamPeer> steamMap;
 		int	steamChannel=-1;
 		bool				ignoreDisconnection = false;

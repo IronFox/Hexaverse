@@ -37,7 +37,7 @@ namespace Objects
 		};
 		typedef std::shared_ptr<Prototype> PProto;
 
-		static Ctr::Buffer0<PProto>	globalPrototypes;
+		static Ctr::Vector<PProto>	globalPrototypes;
 		
 		const Prototype*const		prototype;
 
@@ -66,7 +66,7 @@ namespace Objects
 		float						attackActionLeft=1.f;
 
 		#ifdef CLIENT
-			Buffer0<AttackTask>			attackQueue;
+			Vector<AttackTask>			attackQueue;
 
 			#ifdef HAS_WINDOW
 				/**

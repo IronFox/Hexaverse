@@ -1,0 +1,103 @@
+name: Release
+
+# Builds the game on Windows, packages it with Bake (mainBakeRecipe.txt and
+# serverBakeRecipe.txt, like repack.bat) and publishes a GitHub release.
+#
+# Start it by pushing a version tag (git tag v0.9.13 && git push origin v0.9.13),
+# or from the Actions tab with "Run workflow", which creates the tag on the
+# selected commit.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, for example v0.9.13'
+        required: true
+        default: 'v0.9.13'
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: false
+
+      - name: Check out DeltaWorks
+        uses: actions/checkout@v5
+        with:
+          repository: IronFox/DeltaWorks
+          ref: c4ec0ed049e4e879df66b9e6448c41df0becdd4f
+          path: _deps/DeltaWorks
+          token: ${{ secrets.DELTAWORKS_TOKEN || github.token }}
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -A x64
+          -DDELTAWORKS_THIRD_PARTY=BUNDLED
+          -DHEXAVERSE_INCREMENT_BUILD_COUNTER=OFF
+          "-DHEXAVERSE_DELTAWORKS_DIR=${{ github.workspace }}/_deps/DeltaWorks"
+
+      - name: Build (Release, x64)
+        run: cmake --build build --config Release --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force dist | Out-Null
+
+          & .\Bake\Bake.exe mainBakeRecipe baked
+          if ($LASTEXITCODE -ne 0) { throw "Bake failed for mainBakeRecipe" }
+          Compress-Archive -Path baked\* -DestinationPath "dist\Hexaverse-$env:TAG-win64.zip"
+
+          & .\Bake\Bake.exe serverBakeRecipe baked
+          if ($LASTEXITCODE -ne 0) { throw "Bake failed for serverBakeRecipe" }
+          Compress-Archive -Path baked\* -DestinationPath "dist\Hexaverse-Server-$env:TAG-win64.zip"
+
+          Get-ChildItem dist | Select-Object Name, Length
+
+      - name: Write release notes
+        shell: pwsh
+        run: |
+          $lines = Get-Content changelog.txt
+          $section = @()
+          foreach ($line in $lines) {
+            if ($line -match '^v\d' -and $section.Count -gt 0) { break }
+            $section += $line
+          }
+          $notes = @(
+            'Hexaverse is a turn-based multiplayer 4X strategy game on volumetric planets.',
+            '',
+            '**Downloads**',
+            "- ``Hexaverse-$env:TAG-win64.zip``: the game (Visual Client, Console Client, server, ControlConsole, ServerManager). Unzip and start ``client\Visual Client.exe``.",
+            "- ``Hexaverse-Server-$env:TAG-win64.zip``: dedicated server only.",
+            '',
+            'Requires 64-bit Windows and a Direct3D 11 capable graphics card. For audio, run ``client\oalinst.exe`` once if OpenAL is not installed.',
+            '',
+            '**Changes**',
+            '```'
+          ) + $section + @('```')
+          $notes | Set-Content -Encoding utf8 release-notes.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Hexaverse ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          body_path: release-notes.md
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          files: dist/*.zip
+          fail_on_unmatched_files: true

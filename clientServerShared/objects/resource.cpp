@@ -482,7 +482,7 @@ namespace Objects
 
 		String	Vector::ToString() const
 		{
-			Ctr::Buffer0<String> rs;
+			Ctr::Vector<String> rs;
 			for (index_t i = 0; i < Resource::table.Count(); i++)
 				if (Get(i) != 0)
 					rs << Resource::table[i].name+": "+String(Get(i));

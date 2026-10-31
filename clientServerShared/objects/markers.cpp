@@ -205,7 +205,7 @@ namespace Objects
 
 
 
-	bool				MarkerStore::GetOutdated(BasicBuffer<PMarker>&outOutdated, const RuntimeConfig::RoundNumber& currentRoundNumber)
+	bool				MarkerStore::GetOutdated(BasicVector<PMarker>&outOutdated, const RuntimeConfig::RoundNumber& currentRoundNumber)
 	{
 		outOutdated.Clear();
 		bool fail = false;
@@ -373,7 +373,7 @@ namespace Objects
 		return nullptr;
 	}
 
-	void				MarkerStore::GetDeletionCandidates(BasicBuffer<TCandidate>&candidates) const
+	void				MarkerStore::GetDeletionCandidates(BasicVector<TCandidate>&candidates) const
 	{
 		candidates.Clear();
 

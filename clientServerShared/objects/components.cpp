@@ -213,7 +213,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			/*static*/ float			Turret::CompileTrajectory(const Buffer0<M::TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
+			/*static*/ float			Turret::CompileTrajectory(const Vector<M::TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
 			{
 				bool schematic = type == Schematic;
 				bool smoke = type == SmokeTrail;
@@ -462,7 +462,7 @@ namespace Objects
 
 
 		
-		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Ctr::Vector<M::TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
 
@@ -491,7 +491,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Ctr::Vector<M::TVec4<> >&outSteps)
 		{
 			float d2 = Vec::quadraticDistance(here.worldLocation,there.worldLocation);
 			const float3 up = (here.worldLocation + there.worldLocation).Normalized0();
@@ -520,7 +520,7 @@ namespace Objects
 		}
 
 
-		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Ctr::Vector<M::TVec4<> >&outSteps)
 		{
 			const float sn = sin(angle),
 						cs = cos(angle);
@@ -553,7 +553,7 @@ namespace Objects
 		}
 
 
-		/*static*/ ImpactDetails			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ ImpactDetails			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const World::Data&visibleWorld, const World::Data&actualWorld, bool traceInActualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Vector<M::TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
 			if (!Turret::CanHit(t,flatRange,source,dest))
@@ -637,7 +637,7 @@ namespace Objects
 			return 0;
 		}
 
-		/*static*/ ImpactDetails			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps)
+		/*static*/ ImpactDetails			Turret::Detail::TraceArtilleryTrajectory(float velocity, const World::Data&decisionWorld, const World::Data&actualWorld, bool traceInDecisionWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Vector<M::TVec4<> >&outSteps)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
@@ -790,7 +790,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ ImpactDetails			Turret::Detail::TraceMissileTrajectory( float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Buffer0<M::TVec4<> >&outSteps )
+		/*static*/ ImpactDetails			Turret::Detail::TraceMissileTrajectory( float range, const World::Data&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Ctr::Vector<M::TVec4<> >&outSteps )
 		{
 		/*
 

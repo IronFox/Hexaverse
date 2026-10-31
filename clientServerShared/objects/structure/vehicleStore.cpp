@@ -305,7 +305,7 @@ namespace Objects
 
 	/*virtual override*/ void				VehicleStore::OnDestroy(RemovalType t, float&atTime)
 	{
-		//Buffer0<WVehicleStore>	copy = sneighbors;
+		//Vector<WVehicleStore>	copy = sneighbors;
 		Super::OnDestroy(t, atTime);	//disconnects from neighborhood. sneighbors should be empty now
 
 

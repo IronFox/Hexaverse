@@ -187,7 +187,7 @@ namespace Objects
 		bool						upgrading = false;
 
 	public:
-		typedef Buffer0<World::Sensor>		RegisteredSensorStorage;
+		typedef Vector<World::Sensor>		RegisteredSensorStorage;
 
 		#ifndef CLIENT
 			float					entityTime=0.f;		//!< Time (in seconds) into the animation phase to calculate event times
@@ -481,9 +481,9 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Vector<M::TVec4<> >&outSteps) const;
 		ImpactDetails				TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld) const;
-		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const;
+		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Vector<M::TVec4<> >&outSteps) const;
 		ImpactDetails				TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
@@ -597,9 +597,9 @@ namespace Objects
 		Inserts the all local sensors into the specified target world around the local entity location
 		*/
 		void					InsertSensoryInto(World::Data&target, float&atTime);
-		void					RegisterSensory(RegisteredSensorStorage&, const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					RegisterSensory(RegisteredSensorStorage&, const Grid::LCellIdI&loc, float&atTime, Vector<PWorldEntity>*newContacts = nullptr);
 		void					UnregisterSensory(RegisteredSensorStorage&, float&atTime);
-		void					MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts = nullptr);
+		void					MoveSensoryToCurrentLocation(float&atTime, Vector<PWorldEntity>*newContacts = nullptr);
 
 		#ifdef HAS_WINDOW
 			/**

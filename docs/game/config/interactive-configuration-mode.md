@@ -1,0 +1,33 @@
+<!-- Generated from documentation/documentation/config/interactive configuration mode.txt (DokuWiki syntax). -->
+
+# Interactive Visual Configuration
+
+The configurator is run by the client, and allows interactively [configuring the server](server.md) before starting it.
+The client is presented with a custom user-interface which allows altering most server settings and planet configurations.
+
+![Interactive Configuration Mode on a lush green planet with Nexus bases and EMP zones](../../../documentation/images/ICM.png)
+From left to right, the main commands are:
+
+- **Commit**: Finishes editing, and starts the server in regular mode. The chosen configuration is applied, but the fractal planet layout is re-randomized.
+- **Randomize**: Re-randomizes the fractal planet layout based on the current configuration. This has no impact on the final configuration, but allows to view alternate versions of the local configuration.
+- **Load Planet Preset**: Presents a list of all currently known planet types. Clicking on any of them will load that configuration, completely replacing the current planet composition. Non-planet settings are not affected. Planet names with a preceeding * are locally created. The special planet type `*Previous` denotes the planet type used when last completing configuration mode and starting a server (if any).
+- **Mountain Layer**: Configures the outermost planetary layer. This layer reaches from the core to the height-level as defined by the layer configuration.
+- **Extended Core Layer**: Configures the lower planetary layer that overwrites the mountain layer, where the two intersect. Can be used to carve out caves, or place an extended magma core.
+- **Inner Core**: Configures the material of the inner planet core. Under normal circumstances the inner planet core is not visible without digging.
+
+- **Oceans**: Defines the height and material to fill empty space with, as well as what terrain material to place near ocean liquids. May be disabled by choosing the Clear material type.
+- **Rules**: Defines non-planet server settings.
+- **Copy/Paste**: Allows copying planet configurations to and from clipboard. The copied content is text, and can be stored in text-files.
+- **Save Planet as...**: Allows to preserve your current planet configuration as a new planet type.
+
+Locally created planets are stored in *[game folder](game-folder.md)\\shared\\config\\myPlanets\\...*
+
+The configuration mode runs entirely on the client, emulating the behavior of the server.
+Upon completion, the planet configuration `*Previous` is updated, a temporary, updated configuration file is created from the current [server configuration](server.md), and finally the server is started.
+
+The client is dropped back to the server list, where a new server should show up momentarily.
+A connection to that server must be established manually.
+
+---
+
+[Game documentation index](../README.md)

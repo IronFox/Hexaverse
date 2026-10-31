@@ -47,7 +47,7 @@ namespace StatePanel
 
 	static float4	currentColor;
 
-	static Buffer0<float4>	pushedColors;
+	static Vector<float4>	pushedColors;
 	static void PushCurrentColor()
 	{
 		pushedColors << currentColor;
@@ -117,7 +117,7 @@ namespace StatePanel
 		Array<StringRef>	wrapped;
 
 	};
-	static Buffer0<TCachedLine,Swap>	cachedLines;
+	static Vector<TCachedLine,Swap>	cachedLines;
 	static bool doRewrap = false;
 
 	void		SignalChange()

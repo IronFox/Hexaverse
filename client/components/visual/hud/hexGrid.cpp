@@ -399,7 +399,7 @@ namespace HexGrid
 	{
 		bool moreRight;
 		{
-			//Buffer0<Group>&groups = hostileGroups.groups;
+			//Vector<Group>&groups = hostileGroups.groups;
 			index_t newOffset = this->offset;
 
 			const count_t scopeWidth = this->commands.Count();
@@ -475,7 +475,7 @@ namespace HexGrid
 	namespace BottomRightPanel
 	{
 		typedef std::shared_ptr<Icon>	PIcon;
-		Buffer0<PIcon>				commands;
+		Vector<PIcon>				commands;
 		PIcon						menuCommand,tutorialCommand;
 
 		/**/						Icon::Icon(const String&name) : Super(name)
@@ -701,7 +701,7 @@ namespace HexGrid
 			command->CompileLabel(desc);
 			const bool wantLong = t > 1.5f;
 
-			Buffer0<StringRef> lines;
+			Vector<StringRef> lines;
 			foreach(desc,line)
 			{
 				if (wantLong || line->second)
@@ -901,7 +901,7 @@ namespace HexGrid
 		/**
 		Linear list of all hex-grid cells
 		*/
-		Buffer<GridCell>			allGuiCells;
+		Vector<GridCell>			allGuiCells;
 		M::Rect<>					unscaledCellRegion;
 
 
@@ -1196,7 +1196,7 @@ namespace HexGrid
 	DX11::BaseInstructionBlock	instruction;
 	DX11::ObjectBuffer<float4>	center,visualCodeRGB_CellSize;
 	Engine::OrthographicAspect<> camera;
-	//Buffer0<Group>	friendlyGroups,hostileGroups;
+	//Vector<Group>	friendlyGroups,hostileGroups;
 
 
 
@@ -1456,7 +1456,7 @@ namespace HexGrid
 	static void CollectionToCommands(const TGridConfig&cfg, CollectionTemplateRow<Objects::WWorldEntity>&context)
 	{
 		context.commands.Clear();
-		context.collection.VisitAllValues([&context](Buffer0<Objects::WWorldEntity>&entries)
+		context.collection.VisitAllValues([&context](Vector<Objects::WWorldEntity>&entries)
 		{
 			Objects::PWorldEntity e = entries.First().lock();
 			if (e)

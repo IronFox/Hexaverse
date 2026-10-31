@@ -125,4 +125,4 @@ void			Vote::Close(const TOutcome&outcome)
 
 
 /*static*/ HashTable<TUniqueID,PVote>	Vote::all;
-/*static*/ Buffer0<PVote>	Vote::voteQueue;
+/*static*/ Vector<PVote>	Vote::voteQueue;

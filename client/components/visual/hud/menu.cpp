@@ -498,9 +498,9 @@ namespace Menu
 	{
 		auto menu = help = Menu::Create();
 		menu->Setup(0.3f,"Help",true);
-		menu->AddCommand("View Online Manual","Opens your installed browser to display the game documentation",[]()
+		menu->AddCommand("View Online Manual","Opens your installed browser to display the game documentation on GitHub",[]()
 		{
-			OpenDocumentExternally(L"https://www.hexaverse.net/html.php");
+			OpenDocumentExternally(L"https://github.com/IronFox/Hexaverse/blob/master/docs/game/README.md");
 		});
 
 		menu->AddCommand("Show Basic Controls","Opens a dialog showing all main controls. For a full list open the online manual",
@@ -522,11 +522,11 @@ namespace Menu
 			Tutorial::StartTutorialServer,
 			[](){return !Network::client.IsConnected() && !Network::client.IsAttemptingToConnect();});
 		
-		menu->AddCommand("Report Bug","Opens the bug reporter externally",
+		menu->AddCommand("Report Bug","Opens the Hexaverse project page on GitHub in your installed browser",
 			[]()
 			{
 				SetFullScreen(false);
-				Logging::CallBugReporter();
+				OpenDocumentExternally(L"https://github.com/IronFox/Hexaverse");
 			}	
 		);
 
@@ -549,7 +549,7 @@ namespace Menu
 			String text = PRODUCT_NAME " v" PRODUCT_VERSION "\n"
 				"Compiled "+String(__DATE__)+" "+String(__TIME__) +  "\n"
 				"(c) 2014-"+String(__DATE__).GetLastWord()+" Stefan Elsen\n"
-				"www.hexaverse.net"
+				"https://github.com/IronFox/Hexaverse"
 			;
 			//static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__DATE__)+" "+String(__TIME__);
 
@@ -736,7 +736,7 @@ namespace Menu
 		}
 	};
 
-	static void LookupSaveGames(Buffer0<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
+	static void LookupSaveGames(Vector<TSaveGame>&saves,FileSystem::FolderScan scan, const String&path)
 	{
 		FileSystem::File f;
 		while (scan.NextFile(RuntimeConfig::savFileExtensionWithoutDot,f))
@@ -764,7 +764,7 @@ namespace Menu
 		auto menu = saveGames;
 		menu->Setup(0.25f,"Start server from savegame",true);
 
-		Buffer0<TSaveGame> saves;
+		Vector<TSaveGame> saves;
 		LookupSaveGames(saves, FileSystem::Folder(RuntimeConfig::sharedConfig.Lookup("saves")), "");
 		if (saves.IsEmpty())
 			return false;

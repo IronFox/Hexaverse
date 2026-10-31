@@ -1,0 +1,65 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+	"configurePresets": [
+		{
+			"name": "vcpkg-base",
+			"hidden": true,
+			"toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+			"cacheVariables": { "DELTAWORKS_THIRD_PARTY": "PACKAGES" }
+		},
+		{
+			"name": "vs-x64",
+			"displayName": "Visual Studio, x64, vcpkg packages",
+			"description": "Uses the newest installed Visual Studio. zlib, libpng, libjpeg and bzip2 come from vcpkg.",
+			"inherits": [ "vcpkg-base" ],
+			"architecture": "x64",
+			"binaryDir": "${sourceDir}/build/vs-x64",
+			"cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-windows-static" }
+		},
+		{
+			"name": "vs-win32",
+			"displayName": "Visual Studio, Win32, vcpkg packages",
+			"inherits": [ "vcpkg-base" ],
+			"architecture": "Win32",
+			"binaryDir": "${sourceDir}/build/vs-win32",
+			"cacheVariables": { "VCPKG_TARGET_TRIPLET": "x86-windows-static" }
+		},
+		{
+			"name": "vs-x64-bundled",
+			"displayName": "Visual Studio, x64, bundled third-party copies (no vcpkg)",
+			"architecture": "x64",
+			"binaryDir": "${sourceDir}/build/vs-x64-bundled",
+			"cacheVariables": { "DELTAWORKS_THIRD_PARTY": "BUNDLED" }
+		},
+		{
+			"name": "vs-win32-bundled",
+			"displayName": "Visual Studio, Win32, bundled third-party copies (no vcpkg)",
+			"architecture": "Win32",
+			"binaryDir": "${sourceDir}/build/vs-win32-bundled",
+			"cacheVariables": { "DELTAWORKS_THIRD_PARTY": "BUNDLED" }
+		},
+		{
+			"name": "ninja-msvc",
+			"displayName": "Ninja + MSVC, x64, vcpkg packages (run from a VS developer prompt)",
+			"inherits": [ "vcpkg-base" ],
+			"generator": "Ninja Multi-Config",
+			"binaryDir": "${sourceDir}/build/ninja-msvc",
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "cl",
+				"CMAKE_CXX_COMPILER": "cl",
+				"VCPKG_TARGET_TRIPLET": "x64-windows-static"
+			}
+		}
+	],
+	"buildPresets": [
+		{ "name": "vs-x64-debug",            "configurePreset": "vs-x64",           "configuration": "Debug" },
+		{ "name": "vs-x64-optimizeddebug",   "configurePreset": "vs-x64",           "configuration": "OptimizedDebug" },
+		{ "name": "vs-x64-release",          "configurePreset": "vs-x64",           "configuration": "Release" },
+		{ "name": "vs-win32-debug",          "configurePreset": "vs-win32",         "configuration": "Debug" },
+		{ "name": "vs-win32-release",        "configurePreset": "vs-win32",         "configuration": "Release" },
+		{ "name": "vs-x64-bundled-release",  "configurePreset": "vs-x64-bundled",   "configuration": "Release" },
+		{ "name": "vs-win32-bundled-release","configurePreset": "vs-win32-bundled", "configuration": "Release" },
+		{ "name": "ninja-msvc-release",      "configurePreset": "ninja-msvc",       "configuration": "Release" }
+	]
+}

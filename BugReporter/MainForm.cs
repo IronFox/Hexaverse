@@ -1,19 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
-using System.Net;
-using System.Net.Security;
-using System.Net.Sockets;
-using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
+using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -21,131 +13,108 @@ namespace BugReporter
 {
 	public partial class MainForm : Form
 	{
-		public static readonly Uri ServerUri = new Uri("https://www.hexaverse.net/bugReport/store.php");
-		//public static readonly Uri ServerUri = new Uri("https://www.hexaverse_nope.net/bugReport/store.php");
+		/// <summary>
+		/// Shared client. Uses the system's certificate validation (chain, host name)
+		/// and also checks certificate revocation.
+		/// </summary>
+		static readonly HttpClient http = new HttpClient(new HttpClientHandler { CheckCertificateRevocationList = true })
+		{
+			Timeout = TimeSpan.FromMinutes(2),
+		};
 
+		static MainForm()
+		{
+			http.DefaultRequestHeaders.UserAgent.ParseAdd("HexaverseBugReporter/2.0");
+		}
 
+		readonly ReporterSettings settings = Program.Settings ?? ReporterSettings.Load();
+
+		/// <summary>True while reports are uploaded to the configured server, false when they are saved to a file.</summary>
+		bool uploadMode;
 
 		public MainForm()
 		{
 			InitializeComponent();
-		}
-
-		static void PutParam(StringBuilder builder, string name, string value)
-		{
-			if (builder.Length > 0)
-				builder.Append('&');
-			EscapeDataString(builder, name);
-			builder.Append('=');
-			EscapeDataString(builder, value);
-		}
-
-		private static void EscapeDataString(StringBuilder builder, string str)
-		{
-			int maxCharacters = 2000;
-
-			int numFullSteps = str.Length / maxCharacters;
-
-			int numTotalSteps = (str.Length + maxCharacters - 1) / maxCharacters;
-			StringBuilder escaped = new StringBuilder();
-			for (int i = 0; i < numFullSteps; i++)
-				escaped.Append(Uri.EscapeDataString(str.Substring(maxCharacters * i, maxCharacters)));
-			if (numTotalSteps > numFullSteps)
-				escaped.Append(Uri.EscapeDataString(str.Substring(maxCharacters * numFullSteps)));
-			bool nonEqual = escaped.ToString() != str;
-			
-			builder.Append(escaped);
-		}
-
-		static async Task<string> ContactServerAsync(IEnumerable<Tuple<string, string>> parameters, int delayMS, bool validateCertificate)
-		{
-			//https://stackoverflow.com/questions/26389899/how-do-i-disable-ssl-fallback-and-use-only-tls-for-outbound-connections-in-net/26392698#26392698
-			System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
-			if (delayMS > 0)
+			try
 			{
-				await Task.Delay(delayMS);
+				Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+			}
+			catch
+			{ }
+			privacyNotice.Visible = settings.PrivacyNoticeUrl.Length > 0;
+		}
+
+		/// <summary>
+		/// Posts the given fields, plus the configured token if any, to the configured report URL
+		/// and returns the server's reply.
+		/// </summary>
+		async Task<string> PostAsync(IEnumerable<KeyValuePair<string, string>> fields)
+		{
+			var all = new List<KeyValuePair<string, string>>();
+			if (settings.Token.Length > 0)
+				all.Add(new KeyValuePair<string, string>("token", settings.Token));
+			all.AddRange(fields);
+
+			using var content = new FormUrlEncodedContent(all);
+			using HttpResponseMessage response = await http.PostAsync(settings.UploadUri, content);
+			response.EnsureSuccessStatusCode();
+			return (await response.Content.ReadAsStringAsync()).Trim();
+		}
+
+		static KeyValuePair<string, string> Field(string name, string value) => new KeyValuePair<string, string>(name, value ?? "");
+
+		void SetStatus(string text)
+		{
+			toolStripStatusLabel.Text = text.Replace("\n", " ").Replace("\r", "");
+		}
+
+		void UseSaveMode(string reason)
+		{
+			uploadMode = false;
+			sendButton.Text = "Save report...";
+			sendButton.Enabled = true;
+			SetStatus(reason);
+		}
+
+		/// <summary>
+		/// Without a configured report URL, reports are only saved to files. Otherwise the server
+		/// is asked to respond first (up to three attempts), so the user knows whether sending will work.
+		/// </summary>
+		async void StartServerCheck()
+		{
+			if (settings.UploadUri == null)
+			{
+				UseSaveMode(settings.Problem ?? "No report server is configured. Save the report to a file and attach it to an issue on the project page.");
+				return;
 			}
 
-
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(ServerUri);
-
-			StringBuilder postString = new StringBuilder();
-			PutParam(postString, "token", "REMOVED_TOKEN");
-			foreach (var p in parameters)
-				PutParam(postString, p.Item1, p.Item2);
-
-			const string contentType = "application/x-www-form-urlencoded";
-			ServicePointManager.Expect100Continue = false;
-
-			CookieContainer cookies = new CookieContainer();
-			request.Method = "POST";
-			request.ContentType = contentType;
-			request.CookieContainer = cookies;
-			request.ContentLength = postString.Length;
-			request.UserAgent = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.1) Gecko/2008070208 Firefox/3.0.1";
-			request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
-
-			StreamWriter requestWriter = new StreamWriter(request.GetRequestStream());
-			await requestWriter.WriteAsync(postString.ToString());
-			requestWriter.Close();
-
-			HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync();
-			Stream resStream = response.GetResponseStream();
-
-			StreamReader responseReader = new StreamReader(resStream);
-
-			string rs = await responseReader.ReadToEndAsync();
-
-			X509Certificate cert1 = request.ServicePoint.Certificate;
-			X509Certificate2 serverCertificate = new X509Certificate2(cert1);
-
-			string host2 = ServerUri.Host;
-			if (host2.StartsWith("www."))
-				host2 = host2.Substring(4);
-
-			if (serverCertificate.Subject != "CN=" + ServerUri.Host && serverCertificate.Subject != "CN=" + host2)
-				throw new Exception("Server certificate mismatch");
-			if (validateCertificate)
-				await ValidateSslCertificateAsync(serverCertificate);
-
-			return rs;
-		}
-
-
-		//https://stackoverflow.com/questions/6497040/how-do-i-validate-that-a-certificate-was-created-by-a-particular-certification-a
-		async static Task ValidateSslCertificateAsync(X509Certificate2 certificateToValidate)
-		{
-			X509Chain chain = new X509Chain();
-			chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
-			chain.ChainPolicy.RevocationFlag = X509RevocationFlag.EntireChain;
-			chain.ChainPolicy.VerificationFlags = X509VerificationFlags.NoFlag;
-			chain.ChainPolicy.VerificationTime = DateTime.Now;
-			chain.ChainPolicy.UrlRetrievalTimeout = new TimeSpan(0, 1, 0);
-
-			bool isChainValid = await Task.Run<bool>(() => chain.Build(certificateToValidate));
-
-			if (!isChainValid)
+			uploadMode = true;
+			sendButton.Text = "Send";
+			sendButton.Enabled = false;
+			SetStatus("Contacting " + settings.UploadUri.Host + "...");
+			string problem = null;
+			for (int attempt = 0; attempt < 3; attempt++)
 			{
-				string[] errors = chain.ChainStatus
-					.Select(x => String.Format("{0} ({1})", x.StatusInformation.Trim(), x.Status))
-					.ToArray();
-				string certificateErrorsString = "Unknown errors.";
-
-				if (errors != null && errors.Length > 0)
+				if (attempt > 0)
+					await Task.Delay(1000);
+				try
 				{
-					certificateErrorsString = String.Join(", ", errors);
+					string reply = await PostAsync(new[] { Field("action", "respond") });
+					if (reply == "ok")
+					{
+						SetStatus(settings.UploadUri.Host + " is ready to receive your report");
+						sendButton.Enabled = true;
+						return;
+					}
+					problem = "unexpected reply '" + reply + "'";
 				}
-
-				throw new Exception("Trust chain did not complete to the known authority anchor. Errors: " + certificateErrorsString);
+				catch (Exception ex)
+				{
+					problem = ex.GetBaseException().Message;
+				}
 			}
-
-			if (chain.ChainElements.Count > 1)
-				await ValidateSslCertificateAsync(chain.ChainElements[1].Certificate);
+			UseSaveMode("Unable to reach " + settings.UploadUri.Host + " (" + problem + "). You can save the report to a file instead.");
 		}
-
-		Task<string> helloTask, uploadTask;
-
 
 		public IEnumerable<FileID> FetchLogFileList()
 		{
@@ -155,48 +124,6 @@ namespace BugReporter
 				yield return f;
 
 		}
-		public float FontScaleFactor
-		{
-			get
-			{
-				Graphics graphics = this.CreateGraphics();
-				float dpiX = graphics.DpiX;
-				return dpiX / 96.0f;
-			}
-
-		}
-
-
-		private int helloStarted = 0;
-		private void RestartHelloTask(int delayMS = 0, string issue = "")
-		{
-			try
-			{
-				if (++helloStarted == 3)
-				{
-					Program.Abort(issue);
-				}
-
-				helloTask = ContactServerAsync(new Tuple<string, string>[] { new Tuple<string, string>("action", "respond") }, delayMS, true);
-			}
-			catch (Exception ex)
-			{
-				Program.Abort(ex.Message);
-			}
-		}
-
-		private void ResizeFont(Control.ControlCollection coll, float scaleFactor)
-		{
-			foreach (Control c in coll)
-			{
-				if (c.HasChildren)
-				{
-					ResizeFont(c.Controls, scaleFactor);
-				}
-				c.Font = new Font(c.Font.FontFamily.Name, c.Font.Size * scaleFactor);
-			}
-		}
-
 		List<FileID> logFiles = new List<FileID>();
 		enum CommandMode
 		{
@@ -207,16 +134,14 @@ namespace BugReporter
 
 		private void MainForm_Load(object sender, EventArgs e)
 		{
-			ResizeFont(this.Controls, FontScaleFactor);
-
 			try
 			{
-				ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine("..", "server", "server.exe"));
+				ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "..", "server", "Server.exe"));
 				startInfo.CreateNoWindow = true;
 				startInfo.UseShellExecute = false;
 				startInfo.Arguments = "--version";
 				startInfo.RedirectStandardOutput = true;
-				startInfo.WorkingDirectory = Path.Combine("..", "server");
+				startInfo.WorkingDirectory = Path.Combine(AppContext.BaseDirectory, "..", "server");
 				Process server = Process.Start(startInfo);
 				string version = server.StandardOutput.ReadToEnd();
 				if (version.StartsWith("Hexaverse "))
@@ -233,7 +158,7 @@ namespace BugReporter
 				//don't care, server not there, just leave empty
 			}
 
-			RestartHelloTask();
+			StartServerCheck();
 			logFiles = FetchLogFileList().ToList();
 			logFiles.Sort();
 
@@ -472,52 +397,6 @@ namespace BugReporter
 
 
 
-		private void connectionTimer_Tick(object sender, EventArgs e)
-		{
-			if (uploadTask != null && helloTask == null)
-			{
-				if (uploadTask.IsFaulted)
-				{
-					Exception ex = uploadTask.Exception;
-					while (ex.InnerException != null)
-						ex = ex.InnerException;
-					toolStripStatusLabel.Text = "Unable to upload to server: " + ex.Message.Replace("\n", "").Replace("\r", "");
-					uploadTask = null;
-					Program.Abort(ex.Message);
-					//ActivateInput(true);
-				}
-				else if (uploadTask.IsCompleted)
-				{
-					if (uploadTask.Result == "ok")
-					{
-						uploadTask = null;
-						MessageBox.Show("Upload succeeded. Thank you!");
-						Application.Exit();
-						return;
-					}
-					toolStripStatusLabel.Text = "Server said something unexpected: '" + uploadTask.Result + "'";
-					uploadTask = null;
-					ActivateInput(true);
-				}
-			}
-
-			if (helloTask != null)
-			{
-				if (helloTask.IsFaulted)
-				{
-					toolStripStatusLabel.Text = "Unable to ping server: " + helloTask.Exception.InnerException.Message.Replace("\n", "").Replace("\r", "");
-					RestartHelloTask(1000,helloTask.Exception.InnerException.Message);
-				}
-				else if (helloTask.IsCompleted)
-				{
-					toolStripStatusLabel.Text = helloTask.Result == "ok" ? "Server says hello" : "Server said something unexpected: '" + helloTask.Result + "'";
-					helloTask = null;
-					sendButton.Enabled = true;
-				}
-			}
-			
-		}
-
 		private void abortButton_Click(object sender, EventArgs e)
 		{
 			Application.Exit();
@@ -594,49 +473,152 @@ namespace BugReporter
 		private void privacyNotice_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
 		{
 			TopMost = false;
-			Process.Start("https://www.hexaverse.net/bugReport/privacyNotice.php");
+			Program.OpenExternally(settings.PrivacyNoticeUrl);
 		}
 
-		private void sendButton_Click(object sender, EventArgs e)
+		/// <summary>The selected primary log file, if any, and the checked related ones.</summary>
+		async Task<(LogFile primary, List<LogFile> related)> CollectLogsAsync()
 		{
+			LogFile primary = null;
+			var related = new List<LogFile>();
+			if (logFile.SelectedItem is FileID id)
+			{
+				primary = await id.LoadFileAsync();
+				foreach (var item in logFileList.CheckedItems)
+					related.Add((LogFile)item);
+			}
+			return (primary, related);
+		}
+
+		private async void sendButton_Click(object sender, EventArgs e)
+		{
+			if (bugDescription.Text.Trim().Length == 0)
+			{
+				MessageBox.Show("Please describe the problem in the top-most text field. Thank you");
+				return;
+			}
+			ActivateInput(false);
 			try
 			{
-				if (bugDescription.Text.Trim().Length == 0)
-				{
-					MessageBox.Show("Please describe the problem in the top-most text field. Thank you");
-					return;
-				}
-				ActivateInput(false);
-				List<Tuple<string, string>> parameters = new List<Tuple<string, string>>();
-				parameters.Add(new Tuple<string, string>("action", "store"));
-				parameters.Add(new Tuple<string, string>("description", bugDescription.Text));
-				parameters.Add(new Tuple<string, string>("reproduction", reproductionDesc.Text));
-				parameters.Add(new Tuple<string, string>("contact", whoAmI.Text));
-				parameters.Add(new Tuple<string, string>("gameVersion", gameVersion.Text));
-				if (logFile.SelectedItem != null && logFile.SelectedItem is FileID)
-				{
-					var id = ((FileID)logFile.SelectedItem);
-					var log = id.LoadFileAsync().Result;
-					if (log.Fatal != null)
-						parameters.Add(new Tuple<string, string>("fatalMessage", log.Fatal));
-
-					parameters.Add(new Tuple<string, string>("primaryLogFileName", log.ToString()));
-					parameters.Add(new Tuple<string, string>("primaryLogFileData", Convert.ToBase64String(log.Compress())));
-
-					foreach (var item in logFileList.CheckedItems)
-					{
-						LogFile f = (LogFile)item;
-						parameters.Add(new Tuple<string, string>("logFileName[]", f.ToString()));
-						parameters.Add(new Tuple<string, string>("logFileData[]", Convert.ToBase64String( f.Compress())));
-					}
-				}
-				uploadTask = ContactServerAsync(parameters, 0, false);
+				if (uploadMode)
+					await UploadAsync();
+				else
+					await SaveAsync();
 			}
 			catch (Exception ex)
 			{
 				Program.Abort(ex.Message);
 			}
+		}
 
+		async Task UploadAsync()
+		{
+			var (primary, related) = await CollectLogsAsync();
+			var fields = new List<KeyValuePair<string, string>>
+			{
+				Field("action", "store"),
+				Field("description", bugDescription.Text),
+				Field("reproduction", reproductionDesc.Text),
+				Field("contact", whoAmI.Text),
+				Field("gameVersion", gameVersion.Text),
+			};
+			if (primary != null)
+			{
+				if (primary.Fatal != null)
+					fields.Add(Field("fatalMessage", primary.Fatal));
+				fields.Add(Field("primaryLogFileName", primary.ToString()));
+				fields.Add(Field("primaryLogFileData", Convert.ToBase64String(primary.Compress())));
+				foreach (var f in related)
+				{
+					fields.Add(Field("logFileName[]", f.ToString()));
+					fields.Add(Field("logFileData[]", Convert.ToBase64String(f.Compress())));
+				}
+			}
+
+			SetStatus("Uploading...");
+			string reply;
+			try
+			{
+				reply = await PostAsync(fields);
+			}
+			catch (Exception ex)
+			{
+				ActivateInput(true);
+				UseSaveMode("Unable to upload to " + settings.UploadUri.Host + " (" + ex.GetBaseException().Message + "). You can save the report to a file instead.");
+				return;
+			}
+			if (reply == "ok")
+			{
+				MessageBox.Show("Upload succeeded. Thank you!");
+				Application.Exit();
+				return;
+			}
+			SetStatus("Server said something unexpected: '" + reply + "'");
+			ActivateInput(true);
+		}
+
+		/// <summary>
+		/// Writes the description and the selected log files into a .zip the user can attach to an issue.
+		/// </summary>
+		async Task SaveAsync()
+		{
+			var (primary, related) = await CollectLogsAsync();
+
+			using var dialog = new SaveFileDialog
+			{
+				Title = "Save bug report",
+				Filter = "Zip archive (*.zip)|*.zip",
+				FileName = "Hexaverse bug report " + DateTime.Now.ToString("yyyy-MM-dd HHmmss") + ".zip",
+				InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+			};
+			TopMost = false;
+			if (dialog.ShowDialog(this) != DialogResult.OK)
+			{
+				ActivateInput(true);
+				return;
+			}
+
+			var report = new StringBuilder();
+			report.AppendLine("Hexaverse bug report");
+			report.AppendLine("Created: " + DateTime.Now.ToString("u"));
+			report.AppendLine("Game version: " + gameVersion.Text);
+			if (whoAmI.Text.Trim().Length > 0)
+				report.AppendLine("Contact: " + whoAmI.Text.Trim());
+			if (primary?.Fatal != null)
+				report.AppendLine().AppendLine("Fatal error:").AppendLine(primary.Fatal);
+			report.AppendLine().AppendLine("What happened:").AppendLine(bugDescription.Text.Trim());
+			if (reproductionDesc.Text.Trim().Length > 0)
+				report.AppendLine().AppendLine("What happened before:").AppendLine(reproductionDesc.Text.Trim());
+
+			await Task.Run(() =>
+			{
+				using var zip = ZipFile.Open(dialog.FileName, ZipArchiveMode.Create);
+				using (var writer = new StreamWriter(zip.CreateEntry("report.txt").Open(), new UTF8Encoding(false)))
+					writer.Write(report.ToString());
+				var added = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+				foreach (var log in new[] { primary }.Concat(related))
+				{
+					if (log == null)
+						continue;
+					string name = log.File.Group + "/" + Path.GetFileName(log.File.Path);
+					if (!added.Add(name))
+						continue;
+					using var source = new FileStream(log.File.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+					using var target = zip.CreateEntry(name, CompressionLevel.Optimal).Open();
+					source.CopyTo(target);
+				}
+			});
+
+			string message = "The report was saved to\n" + dialog.FileName;
+			if (settings.ProjectUrl.Length > 0)
+			{
+				message += "\n\nWould you like to open " + settings.ProjectUrl + " to report the problem there? Please attach the saved file.";
+				if (MessageBox.Show(message, "Bug report saved", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+					Program.OpenExternally(settings.ProjectUrl);
+			}
+			else
+				MessageBox.Show(message, "Bug report saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			Application.Exit();
 		}
 	}
 }

@@ -119,8 +119,8 @@ namespace Animation
 		return UpdateResult::Continue;
 	}
 	
-	Buffer0<PEvent>				whenDone;
-	Buffer0<TTimedEvent>		primitives,actives;
+	Vector<PEvent>				whenDone;
+	Vector<TTimedEvent>		primitives,actives;
 
 	count_t		CountScheduledEvents(const std::function<bool(const PEvent&, const TTime&t)>&predicate)
 	{
@@ -240,7 +240,7 @@ namespace Animation
 					}
 				}
 
-				static Buffer0<TSortItem>	items;
+				static Vector<TSortItem>	items;
 				items.Clear();
 				for (index_t i = 0; i < Animation::primitives.Count(); i++)
 				{

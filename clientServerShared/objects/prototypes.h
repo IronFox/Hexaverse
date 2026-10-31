@@ -3,7 +3,7 @@
 
 #include "types.h"
 #include "../stringTable.h"
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <global_string.h>
 #include <functional>
 #include <container/hashtable.h>
@@ -18,7 +18,7 @@ namespace Objects
 		class GenericCollectionStore
 		{
 		public:
-			Buffer0<Item>				list;
+			Vector<Item>				list;
 			StringTable<Item>			stringTable;
 			HashTable<ItemType,Item>	typeTable;
 			HashTable<ItemType,String>	typeToStringTable;
@@ -94,7 +94,7 @@ namespace Objects
 				store.Add(item,t,name);
 			}
 		public:
-			typedef typename Buffer0<Item>::const_iterator	const_iterator;
+			typedef typename Vector<Item>::const_iterator	const_iterator;
 
 
 			const Store&	GetStore() const {return store;}
@@ -213,7 +213,7 @@ namespace Objects
 
 
 				template <typename Item2>
-					void	IncludeList(const BasicBuffer<Item2>&elements)
+					void	IncludeList(const BasicVector<Item2>&elements)
 					{
 						foreach (elements,el)
 							Add(*el);
@@ -265,7 +265,7 @@ namespace Objects
 		extern Collection<Base>			allComponents;
 	}
 	#ifndef NO_SATELLITES
-		extern Buffer0<PSatellite>		satellitePrototypes;
+		extern Vector<PSatellite>		satellitePrototypes;
 	#endif
 
 	String			ToString(const EntityType&);

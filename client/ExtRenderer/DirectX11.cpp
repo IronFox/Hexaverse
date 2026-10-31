@@ -864,7 +864,7 @@ namespace Engine
 		}
 
 
-		const BasicBuffer<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
+		const BasicVector<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
 		if (vertexShaderName.IsNotEmpty())
 			Load<ID3D11VertexShader>(vertexStage,filename,vertexShaderName,DirectX11::globalInstance->GetVertexShaderProfile(),[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 			{
@@ -899,7 +899,7 @@ namespace Engine
 		}
 
 
-		const BasicBuffer<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
+		const BasicVector<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
 		Load<ID3D11VertexShader>(vertexStage,filename,vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
@@ -949,7 +949,7 @@ namespace Engine
 			macros[macroDefinitions.Count()].Definition = macros[macroDefinitions.Count()].Name = NULL;
 		}
 
-		const BasicBuffer<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
+		const BasicVector<Binding,Swap>&base = DirectX11::globalInstance->GetBaseBindings();
 		Load<ID3D11VertexShader>(vertexStage,baseFilename+ L".vs.hlsl",vertexShaderName,"vs_5_0",[this](const void*data, SIZE_T size, ID3D11VertexShader**shader)->HRESULT
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
@@ -965,7 +965,7 @@ namespace Engine
 		},base.pointer(),base.Count(),b,numBindings,macros.pointer());
 	}
 
-	/*static*/ Buffer<DX11::Shader::Macro,0,Strategy::Swap>	DX11::Shader::macroDefinitions;
+	/*static*/ Vector<DX11::Shader::Macro,Strategy::Swap>	DX11::Shader::macroDefinitions;
 	/*static*/ bool			DX11::Shader::RedefineMacro(const Macro&m, bool forceExists /*= false*/)
 	{
 		foreach (macroDefinitions,def)

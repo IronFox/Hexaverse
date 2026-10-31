@@ -158,7 +158,7 @@ namespace SteamNetwork
 		}
 
 		
-		Buffer0<SteamEventHandler*>	globalDispatch;
+		Vector<SteamEventHandler*>	globalDispatch;
 		Sys::SpinLock dispatchLock;
 
 		void	RegisterHandler(SteamEventHandler*h)
@@ -281,7 +281,7 @@ namespace SteamNetwork
 		Super::SendPackage(object,minUserLevel);
 
 		#ifdef HAS_STEAM_API
-			Buffer0<PSteamPeer> dump;
+			Vector<PSteamPeer> dump;
 			for (const auto&p : steamPeers)
 			{
 				if (p->userLevel < minUserLevel)
@@ -304,7 +304,7 @@ namespace SteamNetwork
 		Super::SendPackage(exclude,object,minUserLevel);
 
 		#ifdef HAS_STEAM_API
-			Buffer0<PSteamPeer> dump;
+			Vector<PSteamPeer> dump;
 			for (const auto&p : steamPeers)
 			{
 				if (p->userLevel < minUserLevel || p == exclude)
@@ -783,7 +783,7 @@ namespace SteamNetwork
 				static Timer::Time lastCheck = timer.Now();
 				if (timer.CheckIfOutdatedAndUpdate(lastCheck,10))
 				{
-					static Buffer0<UINT64> toUnset;
+					static Vector<UINT64> toUnset;
 					Timer::Time now = timer.Now();
 					authenticationRecords.VisitAllEntries([now](UINT64 id, TAuthRec&rec)
 					{

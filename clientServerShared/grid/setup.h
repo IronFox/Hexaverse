@@ -56,7 +56,7 @@ namespace Grid
 				M::TIntRange<UINT32>range;		//range.end is one higher than actual limit
 			};
 
-			Ctr::Buffer0<TStack>		coverage;
+			Ctr::Vector<TStack>		coverage;
 
 			void					Clear()
 			{
@@ -102,7 +102,7 @@ namespace Grid
 		Determines the extended neighborhood around the given center cell.
 		Will utilize internal bit set beyond max distance 4
 		*/
-		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors) const
+		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicVector<UINT32>&outNeighbors) const
 		{
 			if (maxDistance > 4)
 			{
@@ -130,7 +130,7 @@ namespace Grid
 		/**
 		Determines the extended neighborhood around the given center cell
 		*/
-		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicBuffer<UINT32>&outNeighbors, Ctr::BitSet&inOutVisitedCells) const
+		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicVector<UINT32>&outNeighbors, Ctr::BitSet&inOutVisitedCells) const
 		{
 			Ctr::Queue<std::pair<UINT32, UINT32> >	queue;
 			queue << std::make_pair(centerCell, 0);
@@ -176,7 +176,7 @@ namespace Grid
 		/**
 		Determines the extended neighborhood around the given center cell, including distances
 		*/
-		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicBuffer<TNeighborCellID>&outNeighbors) const
+		void						GetExtendedNeighborhood(UINT32 centerCell, UINT32 maxDistance, Ctr::BasicVector<TNeighborCellID>&outNeighbors) const
 		{
 			Ctr::Queue<std::pair<UINT32, UINT32> >	queue;
 			queue << std::make_pair(centerCell, 0);
@@ -187,7 +187,7 @@ namespace Grid
 			const constexpr auto Unset = std::numeric_limits<UINT32>::max();
 			distances.SetSize(GridType::CellCount);
 			distances.Fill(Unset);
-			Buffer0<UINT32> set;
+			Vector<UINT32> set;
 			while (queue >> current)
 			{
 				auto oldDist = distances[current.first];

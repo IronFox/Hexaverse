@@ -36,8 +36,8 @@ namespace Objects
 		};
 
 
-		Buffer0<Prepared>		prepared;
-		Buffer0<ExtPrepared>	extPrepared;
+		Vector<Prepared>		prepared;
+		Vector<ExtPrepared>	extPrepared;
 		float3					pulse;
 		float					scale,
 								forward;

@@ -45,7 +45,7 @@ namespace Objects
 	{
 		SharedContainer<Structure>		deadStructureGhosts,livingStructureGhosts;
 		SharedContainer<MobileEntity>	deadMobileGhosts,livingMobileGhosts;
-		Buffer0<TAllianceDef>			allianceDefs;
+		Vector<TAllianceDef>			allianceDefs;
 
 		void							ForeachMobileGhost(const std::function<void(const PMobileEntity&)>&func, IncludeGhosts) const;
 		void							ForeachStructureGhost(const std::function<void(const PStructure&)>&func, IncludeGhosts) const;
@@ -319,7 +319,7 @@ namespace Objects
 		PMarker						FindByLocation(const Grid::LCellIdI&)	const;
 		PMarker						FindByLocation(MarkerType type, const Grid::LCellIdI&)	const;
 		PMarker						FindByLocation(MarkerType type, const TUniqueID& ownerFactionID, const Grid::LCellIdI&)	const;
-		void						GetDeletionCandidates(BasicBuffer<TCandidate>&candidates) const;
+		void						GetDeletionCandidates(BasicVector<TCandidate>&candidates) const;
 		void						Clear();
 		count_t						Count() const {return all.Count();}
 		bool						IsEmpty() const {return all.IsEmpty();}
@@ -335,7 +335,7 @@ namespace Objects
 		@param currentRoundNumber Round number to use for age checks
 		@return True if a list could be produced, false otherwise. Unavailable grid sensory can cause this method to fail
 		*/
-		bool						GetOutdated(BasicBuffer<PMarker>&outOutdated, const RoundNumber&currentRoundNumber);
+		bool						GetOutdated(BasicVector<PMarker>&outOutdated, const RoundNumber&currentRoundNumber);
 
 
 		bool						HasAnyOfType(MarkerType t) const {return typed.IsSet(t);}

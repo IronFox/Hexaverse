@@ -1637,7 +1637,7 @@ namespace Lua
 							{
 								throw Lua::Exception(CLOCATION,"GetDeploymentOptionsFor(): Unit "+m->GetName()+" is not stored in "+e->GetName());
 							}
-							Buffer0<Objects::Choice> choices;
+							Vector<Objects::Choice> choices;
 							Objects::TChoiceVisualization dummy;
 							Objects::GetChoices(e,m,Objects::CursorMode::Idle,choices,dummy);
 							Lua::Table rs = program->CreateTable();
@@ -1671,7 +1671,7 @@ namespace Lua
 							}
 
 							const auto loc = Detail::ToLGridCell(luaLocation,"DeployStoredAt(): Location parameter #2");
-							Buffer0<Objects::Choice> choices;
+							Vector<Objects::Choice> choices;
 							Objects::TChoiceVisualization dummy;
 							Objects::GetChoices(e,m,Objects::CursorMode::Idle,choices,dummy);
 							bool found = false;
@@ -1840,7 +1840,7 @@ namespace Lua
 			if (prod->queue.IsNotEmpty() && prod->productionRoundsLeft == 0)
 			{
 				ASSERT__(prod->AwaitsUserInteraction());	//let's check that the assumptions match
-				static Buffer0<Objects::Choice>	choices;
+				static Vector<Objects::Choice>	choices;
 				static Objects::TChoiceVisualization vis;
 				Objects::GetChoices(e,nullptr,Objects::CursorMode::Idle,choices,vis);
 				Lua::Table deploymentOptions = t.SetSubTable("deploymentOptions");
@@ -2078,7 +2078,7 @@ namespace Lua
 					auto v = w.lock();
 					if (!v)
 						throw Lua::Exception("DirectTo(): Vehicle has expired");
-					Buffer0<Grid::LCellIdI>	path;
+					Vector<Grid::LCellIdI>	path;
 					Lua::Table at = luaReachable;
 					while (at.IsSet())
 					{
@@ -2751,7 +2751,7 @@ namespace Lua
 		t.SetFunction(name,[this,id,name,cursorMode](const Lua::Table&cellField)
 		{
 
-			Buffer0<Grid::HCellIdI> cells;
+			Vector<Grid::HCellIdI> cells;
 			for (index_t i = 1; i <= cellField.GetLength(); i++)
 			{
 				int packed = cellField.GetElement(i).GetAs<int>();
@@ -2769,7 +2769,7 @@ namespace Lua
 	{
 		t.SetFunction(name,[this,id,name,cursorMode](const Lua::Table&luaReachable)
 		{
-			Buffer0<Grid::LCellIdI>	path;
+			Vector<Grid::LCellIdI>	path;
 			Lua::Table at = luaReachable;
 			while (at.IsSet())
 			{

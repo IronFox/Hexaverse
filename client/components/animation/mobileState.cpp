@@ -322,7 +322,7 @@ namespace Animation
 
 
 	static float sensorRange =0;
-	static Buffer0<UINT32> stacks;
+	static Vector<UINT32> stacks;
 	static void SearchCostModifier( const Grid::LCellIdI&loc, int&cost )
 	{
 		AI::CostModifier(loc,cost);

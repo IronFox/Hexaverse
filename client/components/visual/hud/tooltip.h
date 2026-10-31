@@ -4,7 +4,7 @@
 
 #include <global_string.h>
 #include <functional>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 
 namespace HUD
 {
@@ -38,7 +38,7 @@ namespace HUD
 		Returned pointers are kept for pointer-comparison. Methods are queried right after invokation only if at all.
 		Unless as an immediate response to tooltipQuery querying, returned pointers may be discarded independently without risk of access violations
 		*/
-		extern D::Buffer0<FGet,D::Swap>	tooltipQuery;
+		extern D::Vector<FGet,D::Swap>	tooltipQuery;
 
 		void	Create();
 		void	Render();

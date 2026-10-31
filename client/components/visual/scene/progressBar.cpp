@@ -20,7 +20,7 @@ namespace ProgressBar
 		float2	lineProgress_scale;
 	};
 
-	Buffer0<TVertex>	vertices;
+	Vector<TVertex>	vertices;
 	int					lineProgress = 0;
 
 	void	SetLocation(const float3&worldCenter, float scale/*=1.f*/)

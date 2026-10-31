@@ -155,7 +155,7 @@ namespace World
 		}
 		if (cnt < 512)
 		{
-			static Buffer<UINT32>	ids;
+			static Vector<UINT32>	ids;
 			ids.Clear();
 
 			foreach (cellStack,stack)
@@ -1591,7 +1591,7 @@ namespace World
 	template <typename T0, typename T1>
 		static void Compress(const Ctr::Array<T0>&dts, Ctr::ArrayData<T1>&dest)
 		{
-			static Ctr::Buffer<T1>	blocks;
+			static Ctr::Vector<T1>	blocks;
 			blocks.Clear();
 			foreach(dts,dt)
 			{
@@ -1609,7 +1609,7 @@ namespace World
 	template <typename T0, typename T1>
 		static void Compress(const Ctr::Array<T0>&dts, Ctr::ArrayData<T1>&dest, bool assertNotNull)
 		{
-			static Ctr::Buffer<T1>	blocks;
+			static Ctr::Vector<T1>	blocks;
 			blocks.Clear();
 			foreach(dts,dt)
 			{
@@ -1798,7 +1798,7 @@ namespace World
 		concurrentPainting.onComplete.Wait();
 	}
 
-	void					Data::PaintSensorsConcurrently(BasicBuffer<Sensor>&sensors)
+	void					Data::PaintSensorsConcurrently(BasicVector<Sensor>&sensors)
 	{
 		ASSERT__(!PaintingSensorsConcurrently());
 
@@ -2093,7 +2093,7 @@ namespace World
 
 		//static Ctr::Array2D<BYTE> user(Grid::HighSetup::GridType::CellCount,Grid::CellStack::Range,0);
 
-		//static Ctr::Buffer0<Grid::HCellIdU>	marked;
+		//static Ctr::Vector<Grid::HCellIdU>	marked;
 		auto&user = perProcessor[processorIndex].shadedSphereHelper;
 		auto&marked = perProcessor[processorIndex].shadedSphereMarked;
 		marked.Clear();

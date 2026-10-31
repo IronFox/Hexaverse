@@ -639,14 +639,14 @@ namespace Objects
 			{
 
 				//static HashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
-				//static Buffer0<PWorldEntity> checkCanStillSee;
+				//static Vector<PWorldEntity> checkCanStillSee;
 				//checkCanStillSee.Clear();
 				//checkStillBeeingSeenBy.Clear();
 
 				float oldTime = entityTime;
 				entityTime += timeCost;
 
-				static Ctr::Buffer0<PWorldEntity> newContacts;
+				static Ctr::Vector<PWorldEntity> newContacts;
 				newContacts.Clear();
 				this->MoveSensoryToCurrentLocation(entityTime,&newContacts);
 
@@ -1541,7 +1541,7 @@ namespace Objects
 			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
-			Buffer0<M::TVec4<> > trajectory;
+			Vector<M::TVec4<> > trajectory;
 
 			const auto rs = TraceTrajectory(TrajectoryEndPoint(target),true,trajectory);
 			if (rs != TraceResult::InvalidTrajectory)

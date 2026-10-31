@@ -71,7 +71,7 @@ namespace Objects
 			}
 		};
 		#ifndef ONE_COMPOUND_PER_FACTION
-			static Buffer0<THub>hubs;	//ordered for references, closest first
+			static Vector<THub>hubs;	//ordered for references, closest first
 
 			/**
 			Updates @hubs to the local configuration. Since all suppliers provide the same in connector-less mode
@@ -148,7 +148,7 @@ namespace Objects
 			*/
 			bool				RefreshGroundSensor(float&atTime);
 			bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
-			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
+			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Vector<PWorldEntity>*newContacts/* = nullptr*/) override;
 		#endif
 
 		#ifdef HAS_WINDOW
@@ -216,7 +216,7 @@ namespace Objects
 		#endif
 
 		//#ifndef CLIENT
-			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
+			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Vector<PWorldEntity>*newContacts = nullptr) override;
 			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
 		//#endif
 
@@ -365,7 +365,7 @@ namespace Objects
 
 	class SkyHub : public SatelliteTemplate<SkyHub>, public MobileEntityProducer
 	{
-		static Buffer0<ConstName>	supportsProduction;
+		static Vector<ConstName>	supportsProduction;
 	protected:
 		typedef SatelliteTemplate<SkyHub>	Super;
 		friend class Super;

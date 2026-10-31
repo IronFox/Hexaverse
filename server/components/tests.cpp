@@ -17,7 +17,7 @@ namespace Objects
 	Extracts all possible user choices for the current state of a given entity, and an active cursor mode.
 	Usually this function is not required to be called manually.
 	*/
-//	void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+//	void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicVector<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 
 }
@@ -637,7 +637,7 @@ namespace Test
 		const Time::Delta startT = Objects::Component::Turret::timeSpentTracing;
 		const count_t startC = Objects::Component::Turret::traceCount;
 
-		Ctr::Buffer0<M::TVec4<> > trajectory;
+		Ctr::Vector<M::TVec4<> > trajectory;
 		auto turret = &Objects::Component::artillery;
 		count_t outOfScanning = 0;
 		count_t outOfRange = 0;
@@ -1076,7 +1076,7 @@ namespace Test
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
 
-		Ctr::Buffer0<Objects::Choice> choices;
+		Ctr::Vector<Objects::Choice> choices;
 		Objects::TChoiceVisualization vis;
 
 		for (int i = 0; i < 100; i++)
@@ -1094,7 +1094,7 @@ namespace Test
 				net.TickEnd(t);
 				if (plant->AwaitsUserInteraction())
 				{
-					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicVector<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, vis);
 					ASSERT__(choices.IsNotEmpty());
@@ -1194,7 +1194,7 @@ namespace Test
 			ASSERT__(mine->IsEnabled());
 			ASSERT__(!plant->IsEnabled());
 
-			Buffer0<Objects::Choice> choices;
+			Vector<Objects::Choice> choices;
 			bool showArrow, hasArrowCellTarget;
 			M::TVec3<> arrowFrom;
 			Grid::LCellIdI arrowFromCell;
@@ -1240,7 +1240,7 @@ namespace Test
 
 					if (plant->AwaitsUserInteraction())
 					{
-						//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+						//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicVector<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, M::TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 						Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
 						if (choices.IsEmpty())

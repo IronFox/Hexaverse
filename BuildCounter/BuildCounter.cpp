@@ -24,7 +24,7 @@ int main(int argc, const char* argv[])
 	StringFile file;
 	try
 	{
-		file.Open(argv[1]);
+		file.Open(PathString(String(argv[1])));
 	}
 	catch (const std::exception&ex)
 	{
@@ -45,7 +45,7 @@ int main(int argc, const char* argv[])
 		line.FindAndReplace("  "," ");
 
 	Array<String> parts;
-	explode(' ',line,parts);
+	Explode(' ',line,parts);
 	
 	if (parts.Count() != 3)
 	{
@@ -68,7 +68,7 @@ int main(int argc, const char* argv[])
 	current++;
 	try
 	{
-		file.Create(argv[1]);
+		file.Create(PathString(String(argv[1])));
 		file << "#define BUILD_COUNTER "<<current<<nl;
 		file << "#define BUILD_COUNTER_STR \""<<current<<'"' << nl;
 		file.Close();

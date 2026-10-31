@@ -197,7 +197,7 @@ namespace AI::Script
 			{
 				if (errorQueue.IsEmpty())
 					return "";
-				Buffer0<String> localErrorQueue;
+				Vector<String> localErrorQueue;
 				errorQueue.FlushContentTo(localErrorQueue);
 				StringBuffer rs;
 				foreach (localErrorQueue,err)
@@ -218,7 +218,7 @@ namespace AI::Script
 
 			virtual void ThreadMain() override
 			{
-				Buffer0<Event,Swap>	workItems;
+				Vector<Event,Swap>	workItems;
 				while (!quit)
 				{
 					workItems.Clear();
@@ -277,7 +277,7 @@ namespace AI::Script
 				Super::Start();
 			}
 
-			void	FlushQueue(BasicBuffer<Event,Swap>&destBuffer)
+			void	FlushQueue(BasicVector<Event,Swap>&destBuffer)
 			{
 				queueLock.lock();
 				queue.FlushContentTo(destBuffer);
@@ -305,11 +305,11 @@ namespace AI::Script
 		/**
 		Instructions queued for execution by the main thread, following the next synchronization completion.
 		*/
-		MT Buffer0<Job,Swap> onSynchronized;
+		MT Vector<Job,Swap> onSynchronized;
 		/**
 		Instructions queued for LT-enqueueing by the main thread, following the next synchronization completion.
 		*/
-		MT Buffer0<Thread::Event,Swap> onSynchronizedEnqueue;	//MT -> LT
+		MT Vector<Thread::Event,Swap> onSynchronizedEnqueue;	//MT -> LT
 		/**
 		Temporarily held binary import state.
 		Moved to the Lua thread and state during subsequent synchronization
@@ -432,8 +432,8 @@ namespace AI::Script
 				Network::Channels::enableStructure.SendTo(Network::client, cmd);
 			}
 
-			Buffer0<Protocol::Marker> createdMarkers;
-			Buffer0<TUniqueID> destroyedMarkers,touchedMarkers;
+			Vector<Protocol::Marker> createdMarkers;
+			Vector<TUniqueID> destroyedMarkers,touchedMarkers;
 
 			void	Submit()
 			{
@@ -625,7 +625,7 @@ namespace AI::Script
 		*/
 		MT void	ExecuteMainThreadEvents()
 		{
-			static Buffer0<Job>	jobs;
+			static Vector<Job>	jobs;
 			mainThreadExecute.FlushContentTo(jobs);
 			foreach (jobs,job)
 			{
@@ -712,7 +712,7 @@ namespace AI::Script
 		MT void			SynchronizeWithThread(bool flushQueued, bool flushAndRebuildEntitiesOnSynchronize, const String&name, const std::function<void()>&exec)
 		{
 			stopAndSynchronize = true;
-			Buffer0<Thread::Event,Swap>	buffer;
+			Vector<Thread::Event,Swap>	buffer;
 			thread.FlushQueue(onSynchronizedEnqueue);
 
 			if (flushQueued)
@@ -1408,7 +1408,7 @@ namespace AI::Script
 		FileSystem::File file;
 	};
 
-	static void ScanScriptFiles(const FileSystem::Folder&folder, Buffer0<TScriptFile>&outScripts, const String&pathPrefix)
+	static void ScanScriptFiles(const FileSystem::Folder&folder, Vector<TScriptFile>&outScripts, const String&pathPrefix)
 	{
 		FileSystem::FolderScan scan = folder;
 		FileSystem::File f;
@@ -1445,13 +1445,13 @@ namespace AI::Script
 			if (!scriptRoot.IsValidLocation())
 				FileSystem::ForceCreateDirectory(scriptRoot.GetLocation());
 
-			Buffer0<TScriptFile>	scripts;
+			Vector<TScriptFile>	scripts;
 			ScanScriptFiles(scriptRoot,scripts,"");
 
 
 			FileSystem::File file;
 			WWindow w = window;
-			Buffer0<PButton> buttons;
+			Vector<PButton> buttons;
 			for (const auto&file:scripts)
 			{
 				PButton button {new Button{file.name,"Load this AI script",[file,w]()

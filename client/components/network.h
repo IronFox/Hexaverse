@@ -190,12 +190,12 @@ namespace Network
 		Queries all connection attempts that have so far not successfully connected.
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListFailedAttempts(Buffer0<ServerIPAddress,Swap>&outList);
+		void	ListFailedAttempts(Vector<ServerIPAddress,Swap>&outList);
 		/**
 		Queries all connection attempts (successful or not).
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListNonAutoAttempts(Buffer0<ServerIPAddress>&outList);
+		void	ListNonAutoAttempts(Vector<ServerIPAddress>&outList);
 
 		bool	RegisterNewHost(UINT64 lobbyID, UINT64 ownerID,const ServerAddress&, bool probablyRightVersion, bool automaticallyDiscovered, bool makePersistent=false);
 
@@ -428,7 +428,7 @@ namespace Network
 		bool					rightVersion = false,
 								protocolIncompatible = false;
 		
-		Buffer0<ServerAddress>	addresses;
+		Vector<ServerAddress>	addresses;
 		float					lastPing=0;
 		UINT64					ownerID=0,lobbyID=0;
 		#ifdef USE_STEAM_OWNER_AUTHENTICATION
@@ -574,7 +574,8 @@ namespace Network
 		}
 	};
 
-	extern Buffer0<ServerInfo,Swap>	servers;
+	extern Vector<ServerInfo,Swap>	servers;
+	extern HashTable<TUniqueID,index_t>	serverMap;
 
 	extern Time::Stamp		lastPing,lastServerTableUpdate;
 

@@ -16,7 +16,7 @@ namespace UDPBroadCast
 	SOCKET	broadcastSocket = INVALID_SOCKET;
 
 
-	Ctr::Buffer0<sockaddr_in>	everyone;
+	Ctr::Vector<sockaddr_in>	everyone;
 	Time::Stamp		lastAdapterQuery, lastBroadcast;
 
 	Protocol::THostBroadcastPacket	packet;
@@ -26,7 +26,7 @@ namespace UDPBroadCast
 
 
 	#if 0
-	void UpdateOutAdapters(Ctr::BasicBuffer<sockaddr_in>&out)
+	void UpdateOutAdapters(Ctr::BasicVector<sockaddr_in>&out)
 	{
 		out.Clear();
 

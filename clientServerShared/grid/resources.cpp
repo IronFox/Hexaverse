@@ -253,7 +253,7 @@ namespace Grid
 				r->coverage[i] = 0;
 	}
 
-	/*static*/ void			ResourceDiscovery::DetermineCoverage(const Grid::LCellIdI&center,float range,BasicBuffer<UINT32>&outCoveredStacks)
+	/*static*/ void			ResourceDiscovery::DetermineCoverage(const Grid::LCellIdI&center,float range,BasicVector<UINT32>&outCoveredStacks)
 	{
 		static Ctr::IndexSet covered;
 		static Ctr::Queue<UINT32>	stacks;
@@ -288,9 +288,9 @@ namespace Grid
 
 
 
-	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, Ctr::BasicBuffer<UINT32>&outNewDiscoveries)
+	void		ResourceDiscovery::Update(const Grid::LCellIdI&center,float range, Ctr::BasicVector<UINT32>&outNewDiscoveries)
 	{
-		static Ctr::Buffer0<UINT32>	coverage;
+		static Ctr::Vector<UINT32>	coverage;
 		outNewDiscoveries.Clear();
 
 		DetermineCoverage(center,range,coverage);

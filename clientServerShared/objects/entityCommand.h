@@ -3,7 +3,7 @@
 #include <functional>
 #include <math/vclasses.h>
 #include "types.h"
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "description.h"
 
 namespace Objects
@@ -103,9 +103,9 @@ namespace Objects
 		class Container
 		{
 		public:
-			typedef Ctr::Buffer0<PBase>	Row;
+			typedef Ctr::Vector<PBase>	Row;
 		protected:
-			Ctr::Buffer0<Row>		rows;
+			Ctr::Vector<Row>		rows;
 			const Container			*parent = nullptr;	//!< Must not access members
 		public:
 			/**

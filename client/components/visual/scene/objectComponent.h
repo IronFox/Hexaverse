@@ -138,7 +138,7 @@ namespace Objects
 										selectedOnly = false;	//This shape should only be rendered for selected units
 		};
 
-		Buffer0<Shape>					localizableShapes;
+		Vector<Shape>					localizableShapes;
 		bool							wasJob=false;
 
 		void							SetLocalizableShape(EntityType structureIdentifier, const Grid::LCellIdI&location, const Research::Attributes::Table&researchState);

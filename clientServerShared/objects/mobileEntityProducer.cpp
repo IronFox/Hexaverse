@@ -177,7 +177,7 @@ namespace Objects
 
 	bool						MobileEntityProducer::GetIdealSpawningPoint(const WorldEntity&self, const PMobileEntity&production, Random&rand, Grid::LCellIdI&outLoc) const
 	{
-		Ctr::Buffer0<Choice>	movementChoices;
+		Ctr::Vector<Choice>	movementChoices;
 		TChoiceVisualization vis;
 		GetChoices(self,production,CursorMode::Idle,movementChoices,vis);
 
@@ -213,7 +213,7 @@ namespace Objects
 			return true;
 		}
 
-		Buffer0<Choice>	highChoices;
+		Vector<Choice>	highChoices;
 		foreach (movementChoices,c)
 		if (WorldEntity::IsAboveTerrain(c->location))
 			highChoices << *c;
