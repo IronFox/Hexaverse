@@ -11,6 +11,7 @@
 | add units, structures, commands or settings | [extending.md](extending.md) |
 | use or change the helper tools | [tools.md](tools.md) |
 | check licenses and bundled components | [third-party.md](third-party.md) |
+| see which files were created with AI assistance | [ai-contribution.md](ai-contribution.md) |
 
 Other sources in the repository:
 

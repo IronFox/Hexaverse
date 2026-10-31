@@ -186,6 +186,14 @@ repack.bat
 
 Recipe syntax: one path or wildcard pattern per line, relative to the repository root. The folder structure is kept in the output.
 
+### GitHub releases
+
+`.github/workflows/release.yml` does the same on GitHub Actions and publishes the result as a GitHub release. It builds Release x64 with CMake, runs Bake with both recipes, zips the output as `Hexaverse-<tag>-win64.zip` and `Hexaverse-Server-<tag>-win64.zip`, and creates the release with the newest `changelog.txt` section as its notes. It starts when a `v*` tag is pushed (`git tag v0.9.14 && git push origin v0.9.14`), or from the Actions tab (*Release → Run workflow*), which creates the tag on the chosen commit.
+
+### CI
+
+`.github/workflows/cmake.yml` compiles every pull request and every push to `master` on Windows: x64 Release with vcpkg, x64 Debug and Win32 Release with the bundled libraries. Both workflows check out DeltaWorks with `actions/checkout`; if DeltaWorks is private, add a `DELTAWORKS_TOKEN` secret with read access to it.
+
 ## 8. Version numbers
 
 - `client/buildCounter.h` is bumped automatically on every client build by `Increment Build Counter`/`BuildCounter.exe` (CMake: the `IncrementBuildCounter` target, unless `HEXAVERSE_INCREMENT_BUILD_COUNTER` is off).

@@ -9,7 +9,7 @@ Hexaverse is a turn-based, multiplayer 4X strategy game played on **volumetric p
 
 ## Purpose
 
-IronFox developed Hexaverse between 2015 and 2022, and it was briefly available in Steam Early Access. This repository holds the complete game: the Windows client, the dedicated server, the Lua game scripts, the player documentation and the supporting tools. Development has stopped, and the full source is available here under the MIT License.
+IronFox developed Hexaverse between 2014 and 2022, and it was briefly available in Steam Early Access. This repository holds the complete game: the Windows client, the dedicated server, the Lua game scripts, the player documentation and the supporting tools. Development has stopped, and the full source is available here under the MIT License.
 
 The last tagged release is `v0.9.12` (Feb 2021). `master` is at v0.9.13, which was never released.
 
@@ -70,6 +70,10 @@ How this works in the code, and which host settings deliberately share more, is 
 | Git LFS | cloning | `ArtWork/*.psd` is stored in LFS. |
 
 Third-party code, assets and their licenses are listed in [docs/third-party.md](docs/third-party.md).
+
+## Downloads
+
+Prebuilt Windows packages are on the [Releases](../../releases) page: the full game, and a dedicated-server-only package. Unzip and start `client\Visual Client.exe`. Releases are built and published by GitHub Actions (see [docs/building.md](docs/building.md#github-releases)).
 
 ## Building
 
@@ -138,8 +142,13 @@ The originals are the DokuWiki pages in `documentation/documentation/`, which th
 | [docs/tools.md](docs/tools.md) | Server Manager, Control Console, Bake, BugReporter, DocumentationEditor, BuildCounter, MetaServer |
 | [docs/repository.md](docs/repository.md) | Repository layout, branches, tags, LFS and history notes |
 | [docs/third-party.md](docs/third-party.md) | Bundled third-party code and assets, with their licenses |
+| [docs/ai-contribution.md](docs/ai-contribution.md) | Which files were created or modified with AI assistance |
 
 The full Lua API reference is [`lua/General Lua API Documentation.txt`](lua/General%20Lua%20API%20Documentation.txt).
+
+## AI contribution
+
+The game was written by IronFox. The documentation in this README and `docs/`, the CMake build, the CI and release workflows and the Markdown conversion of the player wiki were created with Claude (Anthropic's AI assistant) at IronFox's request; no game code was changed. [docs/ai-contribution.md](docs/ai-contribution.md) lists every file that was created or modified.
 
 ## License
 
