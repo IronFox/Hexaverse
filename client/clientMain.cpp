@@ -1952,7 +1952,7 @@ int main( int argc, const char* argv[])
 				FATAL__("Something is wrong. Unable to locate client executable, or config/declaration.xml is missing.");
 
 
-			if (!SteamInterface::Create(468350,Network::SteamLobbyLost))
+			if (!SteamInterface::Create(STEAM_APP_ID,Network::SteamLobbyLost))
 				return -1;
 
 			if (RuntimeConfig::serverAddress.host.IsNotEmpty())

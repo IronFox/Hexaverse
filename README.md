@@ -148,8 +148,8 @@ Only the **Visual Client** and the **Server** use Steam. `clientServerShared/net
 ### 4. Run
 
 - **Steam must be running and signed in.** Both the Visual Client and the Server call `SteamAPI_Init()` at startup and quit if it fails.
-- **App ID.** The code uses Hexaverse's Steam app ID **468350** (`SteamInterface::Create(468350, …)` in `client/clientMain.cpp`, `SteamInterface::CreateServer(468350, …)` in `server/server.cpp`). `client/steam_appid.txt` and `server/steam_appid.txt` hold the same ID, so the programs can be started outside Steam during development. Without that file, `SteamAPI_RestartAppIfNecessary()` makes Steam restart the game through the Steam client. Your Steam account has to own the app, or be a developer of it, for `SteamAPI_Init()` to succeed. To run under your own app, change the ID in those two source files and in both `steam_appid.txt` files.
-- **Dedicated server app.** The standalone server was published as a separate Steam app, **815050** ("Hexaverse Dedicated Server"). `server/dedicated_app_id/steam_appid.txt` holds that ID.
+- **App ID.** The repository contains no Steam app ID. Use your own app's ID from the Steamworks site, or `480` (Valve's public *Spacewar* test app, which any Steam account can run) for trying things out. With CMake, set it when configuring: `cmake --preset vs-x64 -DHEXAVERSE_STEAM_APP_ID=<your app ID>`. CMake passes it to the code as `STEAM_APP_ID` and writes a matching `steam_appid.txt` next to `Visual Client.exe` and `Server.exe` after each build. With Projector, change the default `STEAM_APP_ID` in `clientServerShared/network/steamInterface.h` and put a `steam_appid.txt` containing just the ID into `client/` and `server/` yourself. `steam_appid.txt` lets you start the programs outside the Steam client during development. Without it, `SteamAPI_RestartAppIfNecessary()` has Steam restart the game through the Steam client. Don't ship it in a Steam depot, and don't commit it (`.gitignore` excludes it). Your Steam account has to own the app, or be one of its developers, for `SteamAPI_Init()` to succeed.
+- **Dedicated server app.** Steam lets you publish the standalone server as a separate (free) app, so server hosts don't need to own the game. If you do that, build the server package with that app's ID in its `steam_appid.txt`.
 - **Ports.** In addition to the normal ports (base port `10247` by default: info `+0`, session `+1`, control `+2`), the server initializes a Steam game server on base port `+3` (Steam), `+4` (game) and `+5` (query). See `globalShared/ports.h`.
 - **Steam overlay.** Notifications appear at the bottom right. *Invite friend* in the in-game menu opens the overlay invite dialog.
 
@@ -191,15 +191,15 @@ exit /b 1
 `steam_sdk/ContentBuilder/run_build.bat` (the `user` and `password` variables come from `repackAndUpload.bat`):
 
 ```bat
-builder\steamcmd.exe +login %user% %password% +run_app_build_http ..\scripts\app_build_468350.vdf +run_app_build_http ..\scripts\app_build_815050.vdf +quit
+builder\steamcmd.exe +login %user% %password% +run_app_build_http ..\scripts\app_build_game.vdf +run_app_build_http ..\scripts\app_build_server.vdf +quit
 ```
 
-`steam_sdk/ContentBuilder/scripts/app_build_468350.vdf` (the game). For the dedicated server, create `app_build_815050.vdf` the same way, with app `815050`, depot `815051` and `"contentroot" "..\server_content\"`:
+`steam_sdk/ContentBuilder/scripts/app_build_game.vdf` (the game). Replace `<GAME_APP_ID>` and `<GAME_DEPOT_ID>` with your app's ID and its depot ID from the Steamworks site. For the dedicated server, create `app_build_server.vdf` the same way, with the server app's and depot's IDs and `"contentroot" "..\server_content\"`. If you don't publish a separate server app, drop the second `+run_app_build_http` from `run_build.bat`.
 
 ```
 "appbuild"
 {
-	"appid"       "468350"
+	"appid"       "<GAME_APP_ID>"
 	"desc"        "Hexaverse Game Build"
 	"buildoutput" "..\output\"
 	"contentroot" "..\content\"
@@ -208,17 +208,17 @@ builder\steamcmd.exe +login %user% %password% +run_app_build_http ..\scripts\app
 	"local"       ""
 	"depots"
 	{
-		"468351" "depot_build_468351.vdf"
+		"<GAME_DEPOT_ID>" "depot_build_game.vdf"
 	}
 }
 ```
 
-`steam_sdk/ContentBuilder/scripts/depot_build_468351.vdf` (and `depot_build_815051.vdf` with depot `815051`):
+`steam_sdk/ContentBuilder/scripts/depot_build_game.vdf` (and `depot_build_server.vdf` with the server's depot ID):
 
 ```
 "DepotBuildConfig"
 {
-	"DepotID"     "468351"
+	"DepotID"     "<GAME_DEPOT_ID>"
 	"ContentRoot" "."
 	"FileMapping"
 	{
