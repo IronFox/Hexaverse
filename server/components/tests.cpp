@@ -197,22 +197,43 @@ namespace Test
 
 	/*virtual override*/ void	SaveFileFormats::Run(Random&random)
 	{
-		const PathString typedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff.hsf");
-		const PathString legacyPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy.hsf");
-		const PathString typedFromTypedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff-from-riff.hsf");
-		const PathString legacyFromTypedPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy-from-riff.hsf");
-		const PathString typedFromLegacyPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-riff-from-legacy.hsf");
-		const PathString legacyFromLegacyPath = RuntimeConfig::sharedConfig.Lookup("saves/test-format-legacy-from-legacy.hsf");
-		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(typedPath));
 		const bool wasWritingFormType = FileIO::Config::writeRiffFormType;
-
 		struct Restore
 		{
 			bool value;
 			~Restore()	{FileIO::Config::writeRiffFormType = value;}
 		} restore{wasWritingFormType};
 
-		BeginSection("Write the current world in both layouts");
+		//the generated test world has only the Nexus faction and no entities
+		CheckLayouts("test world", "test-format");
+
+		//the tutorial map (an old, version 1047 file) has player and Nexus factions, vehicles and structures
+		const PathString tutorialPath = L"config/tutorial.hsf";
+		if (ReadAllBytes(tutorialPath).empty())
+			std::cout << "    config/tutorial.hsf not found in the working directory, skipping the tutorial pass" << std::endl;
+		else
+		{
+			BeginSection("Load config/tutorial.hsf");
+			FileIO::Load(tutorialPath);
+			CheckLayouts("tutorial", "test-format-tutorial");
+		}
+	}
+
+	void	SaveFileFormats::CheckLayouts(const String&label, const char*filePrefix)
+	{
+		const auto path = [filePrefix](const char*suffix)
+		{
+			return RuntimeConfig::sharedConfig.Lookup(FileSystem::StringToPath(String("saves/")+filePrefix+suffix+".hsf"));
+		};
+		const PathString typedPath = path("-riff");
+		const PathString legacyPath = path("-legacy");
+		const PathString typedFromTypedPath = path("-riff-from-riff");
+		const PathString legacyFromTypedPath = path("-legacy-from-riff");
+		const PathString typedFromLegacyPath = path("-riff-from-legacy");
+		const PathString legacyFromLegacyPath = path("-legacy-from-legacy");
+		FileSystem::CreateDirectory(FileSystem::ExtractFileDir(typedPath));
+
+		BeginSection("["+label+"] Write the current world in both layouts");
 		FileIO::Config::writeRiffFormType = true;
 		FileIO::Save(typedPath, RuntimeConfig::Phase::CommandPhase);
 		FileIO::Config::writeRiffFormType = false;
@@ -223,7 +244,7 @@ namespace Test
 		if (legacy.size() < 20)
 			Fail(CLOCATION,"Legacy save file missing or too short");
 
-		BeginSection("Byte layout");
+		BeginSection("["+label+"] "+String("Byte layout"));
 		if (typed.compare(0,4,"RIFF") != 0 || legacy.compare(0,4,"RIFF") != 0)
 			Fail(CLOCATION,"Save file does not start with RIFF");
 		if (ReadU32(typed,4) != typed.size() - 8)
@@ -246,7 +267,7 @@ namespace Test
 				Fail(CLOCATION,"Legacy save file is not valid: "+String(legacyProblem.c_str()));
 		}
 
-		BeginSection("Container reads both layouts");
+		BeginSection("["+label+"] "+String("Container reads both layouts"));
 		Riff::Container typedTree, legacyTree;
 		if (!typedTree.LoadFromFile(typedPath.c_str()) || !legacyTree.LoadFromFile(legacyPath.c_str()))
 			Fail(CLOCATION,"Unable to load a save file into a RIFF container");
@@ -282,7 +303,7 @@ namespace Test
 				Fail(CLOCATION,"LoadFromData() disagrees with LoadFromFile() on the legacy file");
 		}
 
-		BeginSection("Cross-load: load each file and save it in both layouts");
+		BeginSection("["+label+"] "+String("Cross-load: load each file and save it in both layouts"));
 		FileIO::Load(typedPath);
 		FileIO::Config::writeRiffFormType = true;
 		FileIO::Save(typedFromTypedPath, RuntimeConfig::Phase::CommandPhase);
