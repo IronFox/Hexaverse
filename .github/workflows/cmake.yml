@@ -1,9 +1,10 @@
 name: CMake
 
+# Builds only on pushes to master and on manual runs, not on pull requests,
+# because a full MSVC build takes about 20 minutes.
 on:
   push:
     branches: [master]
-  pull_request:
   workflow_dispatch:
 
 jobs:
