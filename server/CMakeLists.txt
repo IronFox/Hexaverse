@@ -1,0 +1,19 @@
+# Mirrors Server.project.
+
+set(hexaverse_root "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
+hexaverse_collect_sources(server_shared  "${hexaverse_root}/clientServerShared")
+hexaverse_collect_sources(server_global  "${hexaverse_root}/globalShared")
+hexaverse_collect_sources(server_sources "${CMAKE_CURRENT_SOURCE_DIR}")
+
+add_executable(Server ${server_sources} ${server_shared} ${server_global})
+hexaverse_apply_common_settings(Server SUBSYSTEM Console)
+target_compile_definitions(Server PRIVATE _SCL_SECURE_NO_WARNINGS)
+target_include_directories(Server PRIVATE
+	"${hexaverse_root}/clientServerShared"
+	"${hexaverse_root}/globalShared")
+target_link_libraries(Server PRIVATE DeltaWorks::Core lua)
+hexaverse_set_output(Server "Server")
+
+source_group(TREE "${hexaverse_root}" FILES ${server_sources} ${server_shared} ${server_global})
+set_target_properties(Server PROPERTIES FOLDER "Hexaverse")
