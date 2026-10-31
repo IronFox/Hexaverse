@@ -139,21 +139,29 @@ There are two options:
 
   The 64-bit import libraries are renamed because the projects link `steam_api.lib` and `sdkencryptedappticket.lib` on both platforms. They still load the `…64.dll` files.
 
-### 3. Build
+### 3. Set your app ID
+
+The app ID is compiled in, so choose it before you build. The repository contains no Steam app ID. Use your own app's ID from the Steamworks site, or `480` (Valve's public *Spacewar* test app, which any Steam account can run) for trying things out. `480` is also the default.
+
+- **CMake:** pass it when configuring, for example `cmake --preset vs-x64 -DHEXAVERSE_STEAM_APP_ID=<your app ID>`. CMake hands it to the code as `STEAM_APP_ID`, and after each build it writes a matching `steam_appid.txt` next to `Visual Client.exe` and `Server.exe`.
+- **Projector:** change the default `STEAM_APP_ID` in `clientServerShared/network/steamInterface.h`, and put a `steam_appid.txt` that contains just the ID into `client/` and `server/`.
+- **Separate dedicated server app:** Steam lets you publish the standalone server as its own (free) app, so server hosts don't need to own the game. In that case, build the Server a second time, in its own build folder, with the server app's ID.
+
+### 4. Build
 
 Build exactly as described in [Building](#building). With CMake, the Steam SDK is picked up automatically (`cmake/HexaverseSteam.cmake`), and configuring fails with a clear message if it's missing. With Projector, the `Visual Client.project` and `Server.project` files already list `steam_sdk/` as the *Steam SDK* library.
 
 Only the **Visual Client** and the **Server** use Steam. `clientServerShared/network/steamInterface.h` defines `HAS_STEAM_API` for them (`HAS_WINDOW` or not `CLIENT`). The **Console Client** builds without it and has no Steam features.
 
-### 4. Run
+### 5. Run
 
 - **Steam must be running and signed in.** Both the Visual Client and the Server call `SteamAPI_Init()` at startup and quit if it fails.
-- **App ID.** The repository contains no Steam app ID. Use your own app's ID from the Steamworks site, or `480` (Valve's public *Spacewar* test app, which any Steam account can run) for trying things out. With CMake, set it when configuring: `cmake --preset vs-x64 -DHEXAVERSE_STEAM_APP_ID=<your app ID>`. CMake passes it to the code as `STEAM_APP_ID` and writes a matching `steam_appid.txt` next to `Visual Client.exe` and `Server.exe` after each build. With Projector, change the default `STEAM_APP_ID` in `clientServerShared/network/steamInterface.h` and put a `steam_appid.txt` containing just the ID into `client/` and `server/` yourself. `steam_appid.txt` lets you start the programs outside the Steam client during development. Without it, `SteamAPI_RestartAppIfNecessary()` has Steam restart the game through the Steam client. Don't ship it in a Steam depot, and don't commit it (`.gitignore` excludes it). Your Steam account has to own the app, or be one of its developers, for `SteamAPI_Init()` to succeed.
-- **Dedicated server app.** Steam lets you publish the standalone server as a separate (free) app, so server hosts don't need to own the game. If you do that, build the server package with that app's ID in its `steam_appid.txt`.
+- **`steam_appid.txt`.** CMake writes it next to `Visual Client.exe` and `Server.exe` (with Projector you add it yourself, see step 3). It lets you start the programs outside the Steam client during development. Without it, `SteamAPI_RestartAppIfNecessary()` has Steam restart the game through the Steam client. Don't ship it in a Steam depot, and don't commit it (`.gitignore` excludes it).
+- **Ownership.** Your Steam account has to own the app, or be one of its developers, for `SteamAPI_Init()` to succeed. Any account can run `480`.
 - **Ports.** In addition to the normal ports (base port `10247` by default: info `+0`, session `+1`, control `+2`), the server initializes a Steam game server on base port `+3` (Steam), `+4` (game) and `+5` (query). See `globalShared/ports.h`.
 - **Steam overlay.** Notifications appear at the bottom right. *Invite friend* in the in-game menu opens the overlay invite dialog.
 
-### 5. Upload to Steam
+### 6. Upload to Steam
 
 `repackAndUpload.bat.template` builds the release packages and uploads them with the SDK's ContentBuilder (`steamcmd`):
 
