@@ -1,0 +1,35 @@
+<!-- Generated from documentation/documentation/config/save games.txt (DokuWiki syntax). -->
+
+# Save Games
+
+Save games are stored as binary `.hsf` (Hexaverse Save File) files, and managed exclusively by the server.
+The files contain all data necessary to restore a previous game at the moment of its creation.
+Past rounds are not part of a save game.
+Currently, if a history is desired, you will have to create save games manually to capture intermediate game states.
+
+## Creation
+
+### Automatic
+
+Unless [configured](server.md) differently, automatic saves are created every 10 rounds, or when all players have disconnected.
+Up to 10 automatic savegames are preserved per world ID in *[game folder](game-folder.md)\\server\\saves\\auto\\[world ID]\\snapshot[index].hsf*, where `snapshot0.hsf` is always the newest savegame, and `snapshot9.hsf` (if existing) is always the oldest.
+
+### Manually
+
+Autosaves may be created manually using the [control console](control-console.md) command `/IO/autoSaveNow`.
+
+The command `/IO/saveTo [X]` can be used to create a new save file [X] anywhere.
+[X] is evaluted relative to *[game folder](game-folder.md)\\server\\saves*.
+
+## Loading
+
+Save games may be loaded via the `-l [X]` server command line parameter, where `[X]` is a full path to a save file.
+A more convenient solution is to do so via the [control console](control-console.md) command `/IO/loadFrom [X]`.
+If the filename is located in the auto-save folder, using the described naming convention, then it may also be loaded using `/IO/loadAutoSave [index] [world ID]`.
+[index] defaults to 0 if not specified, [world ID] to the current world.
+
+Loading save games while a game session is currently active flushes the current game state and forcefully disconnects all clients.
+
+---
+
+[Game documentation index](../README.md)

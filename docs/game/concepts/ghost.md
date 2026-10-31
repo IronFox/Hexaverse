@@ -1,0 +1,15 @@
+<!-- Generated from documentation/documentation/concepts/ghost.txt (DokuWiki syntax). -->
+
+# Ghost
+
+![Ghost of a hostile unit out of scanning range](../../../documentation/images/hostileGhost.png)
+![Ghost of a lost unit](../../../documentation/images/friendlyGhost.png)
+A ghost is a preserved memory of a unit that is currently not in sensor range.
+Ghosts are created of lost friendly units (black), and hostile units to which contact has been lost (red).
+They are preserved for up to 10 [rounds](round.md).
+
+Hostile ghosts also disappear if sensor contact to the actual unit or its ghost location is restored, or the ghost is (blindly) fired upon.
+
+---
+
+[Game documentation index](../README.md)
