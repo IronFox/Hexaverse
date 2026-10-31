@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: IronFox/DeltaWorks
-          ref: c4ec0ed049e4e879df66b9e6448c41df0becdd4f
+          ref: 0abb292318cc2b275d471ccd7820c3c00a66ca94
           path: _deps/DeltaWorks
           token: ${{ secrets.DELTAWORKS_TOKEN || github.token }}
 
