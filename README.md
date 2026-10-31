@@ -111,7 +111,7 @@ Both builds write the executables into the project folders, where the game expec
 | `master` | The complete game, with every finished feature merged (aerial units, T2 upgrades, plants and advanced resources, alliances, statistics, the reworked Lua AI …). This is the branch to build. |
 | `master-resource_bridge` | `master` plus the work-in-progress Lua **modding** framework (scripted structure types, first example: a Resource Relay). |
 | `master-styled_highres` | `master` plus styled dark rendering and very large screenshot rendering. |
-| `steam` | `master` from June 2021 plus the Steamworks integration. Kept private: it contains the Steamworks SDK, whose license doesn't allow redistribution, so it isn't part of the public repository. |
+| `steam-public` | `master` from June 2021 plus the Steamworks integration, as one commit. The Steamworks SDK is removed because its license doesn't allow redistribution, so this branch doesn't compile until you add the SDK yourself (see `steam_sdk/README.md` on the branch). |
 
 Releases are tagged `v0.3.19` to `v0.9.12`. Older experiments that were never merged (technite, pylons, orbital stations, a GUI renderer rework and more) are kept as `archive/*` tags. The full list, with dates and history notes, is in [docs/repository.md](docs/repository.md).
 
