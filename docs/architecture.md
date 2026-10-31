@@ -168,5 +168,5 @@ Rendering goes through `client/ExtRenderer/DirectX11.*` on top of the DeltaWorks
 ## 11. Optional and legacy subsystems
 
 - `MetaServer.C#/` ("Consensus") is an unfinished C# meta-server for a persistent multi-planet universe (solar systems, factions across planets, TLS certificate authentication). The game does not use it.
-- `steam` branch (private): the Steamworks integration (lobbies, auth tickets, upload artifacts). Not part of `master` or the public repository.
+- `steam-public` branch: the Steamworks integration (lobbies, auth tickets, upload artifacts), without the Steamworks SDK. Not part of `master`. See [repository.md](repository.md).
 - `master-resource_bridge` branch: the Lua **modding** framework (scripted structure types, command callbacks). See [repository.md](repository.md).

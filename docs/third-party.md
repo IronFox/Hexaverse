@@ -20,7 +20,7 @@ Hexaverse links DeltaWorks statically. DeltaWorks bundles or fetches (through vc
 | OpenAL 1.1 SDK | installed separately | Supplies `OpenAL32.lib` for the Visual Client. Required by the Projector build; the CMake build can generate the import library from `cmake/OpenAL32.def` instead |
 | `OpenAL32.dll`, `oalinst.exe` | `client/` | OpenAL redistributable and installer, committed for convenience |
 | `D3DCompiler_43.dll`, `D3DCompiler_47.dll`, `dxwebsetup.exe` | `client/` | Microsoft DirectX redistributables, committed for convenience |
-| Steamworks SDK | **only on the `steam` branch** (`steam_sdk/`) | Its license doesn't allow public redistribution. It isn't in `master`, any `archive/*` tag or any version tag. The `steam` branch is therefore kept private. |
+| Steamworks SDK | **not included** | Its license doesn't allow public redistribution. It isn't in `master`, `steam-public`, any `archive/*` tag or any version tag. `steam-public` needs it to compile; see `steam_sdk/README.md` there. The original `steam` branch, which contains it, is kept private and isn't part of the public repository. |
 
 The Microsoft and OpenAL redistributables are committed so the game runs straight from a build. Their redistribution terms allow shipping them with an application.
 
