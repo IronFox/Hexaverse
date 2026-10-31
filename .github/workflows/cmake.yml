@@ -1,0 +1,63 @@
+name: CMake
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  msvc:
+    name: MSVC ${{ matrix.arch }} ${{ matrix.config }} (${{ matrix.deps }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64,   config: Release, deps: vcpkg }
+          - { arch: x64,   config: Debug,   deps: bundled }
+          - { arch: Win32, config: Release, deps: bundled }
+    steps:
+      - uses: actions/checkout@v4
+
+      # DeltaWorks is checked out next to the sources. If it is private, add a
+      # DELTAWORKS_TOKEN secret (a token with read access to IronFox/DeltaWorks).
+      - name: Check out DeltaWorks
+        uses: actions/checkout@v4
+        with:
+          repository: IronFox/DeltaWorks
+          ref: c4ec0ed049e4e879df66b9e6448c41df0becdd4f
+          path: _deps/DeltaWorks
+          token: ${{ secrets.DELTAWORKS_TOKEN || github.token }}
+
+      - name: Update vcpkg
+        if: matrix.deps == 'vcpkg'
+        shell: pwsh
+        run: |
+          git -C "$env:VCPKG_INSTALLATION_ROOT" fetch --quiet origin
+          git -C "$env:VCPKG_INSTALLATION_ROOT" checkout --quiet origin/master
+          & "$env:VCPKG_INSTALLATION_ROOT\bootstrap-vcpkg.bat" -disableMetrics
+
+      # The build counter is left alone so CI does not modify tracked files.
+      - name: Configure (vcpkg)
+        if: matrix.deps == 'vcpkg'
+        shell: pwsh
+        run: |
+          $triplet = if ('${{ matrix.arch }}' -eq 'Win32') { 'x86-windows-static' } else { 'x64-windows-static' }
+          cmake -S . -B build -A ${{ matrix.arch }} `
+            "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            "-DVCPKG_TARGET_TRIPLET=$triplet" `
+            -DDELTAWORKS_THIRD_PARTY=PACKAGES `
+            -DHEXAVERSE_INCREMENT_BUILD_COUNTER=OFF `
+            "-DHEXAVERSE_DELTAWORKS_DIR=$env:GITHUB_WORKSPACE/_deps/DeltaWorks"
+
+      - name: Configure (bundled)
+        if: matrix.deps == 'bundled'
+        run: cmake -S . -B build -A ${{ matrix.arch }} -DDELTAWORKS_THIRD_PARTY=BUNDLED -DHEXAVERSE_INCREMENT_BUILD_COUNTER=OFF "-DHEXAVERSE_DELTAWORKS_DIR=${{ github.workspace }}/_deps/DeltaWorks"
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.config }} --parallel
+
+      - name: List executables
+        shell: pwsh
+        run: Get-ChildItem -Recurse -Include *.exe -Path client, server, ControlConsole, BuildCounter | Sort-Object LastWriteTime | Select-Object -Last 10 FullName, Length, LastWriteTime

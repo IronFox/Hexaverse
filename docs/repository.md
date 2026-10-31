@@ -12,6 +12,8 @@
 | `lua/` | `attributesAndResearch.lua`, `tutorial.lua`, `AI/`, `distributions/`, `util/`, `General Lua API Documentation.txt` |
 | `predefinedPlanets/` | Planet templates (`*.ini`) |
 | `ThirdParty/lua/` | Lua 5.3.3 |
+| `CMakeLists.txt`, `CMakePresets.json`, `vcpkg.json`, `cmake/`, `*/CMakeLists.txt` | CMake build (see [building.md](building.md)) |
+| `.github/workflows/cmake.yml` | CI: compiles the CMake build on Windows |
 | `ControlConsole/`, `ServerManager/`, `Bake/`, `BugReporter/`, `BuildCounter/`, `IncreaseVersion/`, `DocumentationEditor/`, `MetaServer.C#/` | Tools, see [tools.md](tools.md) |
 | `documentation/` | In-game/website wiki (`documentation/`), images, PHP renderer |
 | `ArtWork/` | Logos, Steam store art, screenshots (`*.psd` in Git LFS) |
@@ -20,14 +22,14 @@
 
 ## Branches
 
-Cleaned up on 2026-10-31. Four branches remain:
+The repository has three public branches, plus one private branch:
 
 | Branch | Last change | Content |
 |---|---|---|
 | `master` | 2022-12-26 | The complete game. Every finished feature branch is merged: aerial units, T2 upgrades, plants, dynamic and advanced resources (plantation, composite materials), alliances, statistics, sensor rework, GUI refactoring, new Nexus presence, reworked Lua AI. |
 | `master-resource_bridge` | 2022-12-26 | `master` + the Lua **modding** framework (scripted structure types, command callbacks, first example "Resource Relay"). Work in progress. |
 | `master-styled_highres` | 2021-11-28 | `master` + styled dark rendering and super-large screenshot rendering. |
-| `steam` | 2021-11-20 | `master` (June 2021) + the Steamworks integration and Steam upload artifacts. **Contains the Steamworks SDK. Do not publish.** |
+| `steam` (private) | 2021-11-20 | `master` (June 2021) + the Steamworks integration and Steam upload artifacts. Contains the Steamworks SDK, so it isn't part of the public repository. |
 
 Feature branches were kept small and adjusted so they merge into `master` without conflicts (commits like *"Reduced merge conflicts"*). Prototype branches (`main_prototype`, `main_steam_prototype`) used to collect several features at once and were recreated from time to time.
 
@@ -71,4 +73,5 @@ To pick one up again: `git switch -c my-branch archive/<name>`. Most of these ar
 - Branch from `master`. Name feature branches `master-<feature>` (the historical convention) or anything descriptive.
 - Prefix commit messages with the area (`Objects:`, `GUI:`, `Server:`, `Client:`, `LuaAPI:`, `LuaAI:`, `Rendering:`, `Protocol:`, `IO:`, `General:` …).
 - Add player-visible changes to the top section of `changelog.txt` (`+` new, `>` changed).
-- Don't commit generated `.projector/` folders or local `.sln`/`.vcxproj` files.
+- Don't commit generated `.projector/` folders, local `.sln`/`.vcxproj` files or CMake `build/` folders.
+- When you add or move source folders, update both the `.project` file and the matching `CMakeLists.txt`.

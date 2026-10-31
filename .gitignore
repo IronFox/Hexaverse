@@ -51,3 +51,10 @@ BugReporter/BugReporter.exe.config
 .vs
 /server.7z
 /ServerManager/ServerManager.exe.config
+
+# CMake
+/build/
+/out/
+CMakeUserPresets.json
+BuildCounter/.projector/
+/_deps/

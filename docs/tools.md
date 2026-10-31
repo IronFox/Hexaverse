@@ -1,6 +1,6 @@
 # Tools
 
-Besides the client and the server, the repository contains several helper programs. The C++ ones are built with Projector (see [building.md](building.md)). The C# ones are plain Visual Studio solutions for .NET Framework 4.x.
+Besides the client and the server, the repository contains several helper programs. The C++ ones are built with CMake or Projector (see [building.md](building.md)). The C# ones are plain Visual Studio solutions for .NET Framework 4.x.
 
 | Tool | Language | Folder | Shipped to players | Purpose |
 |---|---|---|:-:|---|
@@ -66,4 +66,4 @@ The in-game and website documentation is a tree of DokuWiki-syntax `.txt` pages 
 
 ## MetaServer ("Consensus")
 
-`MetaServer.C#/Consensus.sln` is an experiment from 2015–2016 for a persistent universe of many planets. It models solar systems, planets, factions and regions, and authenticates clients over TLS with certificates. `MetaServer.C#/Runtime/` holds sample config, world files and a committed `certificate.pfx`, which should be replaced or removed before a public release. It contains sub-projects for `Protocol`, `Serialization`, `Math3D`, `Logging`, `UnitTests`, a `Probe` test client and `LogDisplay` (`ServerLog.sln`) for viewing logs. The game doesn't use it. It's related to the archived `consensus` and `ft_social` branches (see [repository.md](repository.md)).
+`MetaServer.C#/Consensus.sln` is an experiment from 2015–2016 for a persistent universe of many planets. It models solar systems, planets, factions and regions, and authenticates clients over TLS with certificates. `MetaServer.C#/Runtime/` holds sample config, world files and a committed `certificate.pfx`. It should not be used for anything real. It contains sub-projects for `Protocol`, `Serialization`, `Math3D`, `Logging`, `UnitTests`, a `Probe` test client and `LogDisplay` (`ServerLog.sln`) for viewing logs. The game doesn't use it. It's related to the archived `consensus` and `ft_social` branches (see [repository.md](repository.md)).

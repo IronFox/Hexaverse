@@ -5,7 +5,7 @@ Hexaverse is a client/server game. The **server is authoritative**: it owns the 
 ```
                     ┌───────────────────────────── clientServerShared/ ─────────────────────────────┐
                     │ grid/      planet geometry, cell stacks, terrain content, resources coverage  │
-                    │ objects/   entities, structures, vehicles, planes, satellites, components,    │
+                    │ objects/   entities, structures, vehicles, planes, components,               │
                     │            jobs, pathfinding, compounds, research, T2, Nexus estimation       │
                     │ lua/       Lua interface, Game API bindings, script cache                     │
                     │ protocol*  channel IDs, message structs, serialization                        │
@@ -65,7 +65,7 @@ Ports come from `globalShared/ports.h`: base+0 info, base+1 session, base+2 loca
 - The handshake and server discovery are described step by step in [`protocol documentation.txt`](../protocol%20documentation.txt).
 - Message structs serialize through `clientServerShared/protocol/serialBaseTypes.h` and `multi_serializable.inc.h`. Save games use the same serialization.
 
-**Visibility is enforced on the server.** `Game::Network::Describe(…)` builds per-faction views with an `Expose` level, so clients only get what their sensors (or their alliance's) cover. Terrain the client hasn't discovered is sent as `Clear`/`Unknown`, depending on `World/worldDiscovery`.
+**Visibility is enforced on the server** (details in [server-authority.md](server-authority.md)). `Game::Network::Describe(…)` builds per-faction views with an `Expose` level, so clients only get what their sensors (or their alliance's) cover. Terrain the client hasn't discovered is sent as `Clear`/`Unknown`, depending on `World/worldDiscovery`.
 
 ## 4. The world model (`clientServerShared/grid/`)
 
@@ -93,8 +93,10 @@ WorldEntity (entity.h)
  └─ MobileEntity (mobileEntity.h, also a TurretBase)
       ├─ Vehicle (vehicle.h)    = vehicle base + turret component
       │    └─ Plane (subOrbital.h): Raptor, Bomber, CargoPlane (+Hangar), SensorDrone
-      └─ Satellite (satellite.h): SkyHub, SkyGuardian, Ragnarok, StarPort
+      └─ Satellite (satellite.h): SkyHub, SkyGuardian, Ragnarok, StarPort  [compiled out]
 ```
+
+`clientServerShared/config.h` switches whole subsystems off at compile time. In the current game `NO_SATELLITES` (planes replaced satellites), `NO_MUNITION` (weapons need no ammunition) and `NO_HIBERNATION` (a per-type unit limit replaces hibernation) are defined, and `ONE_COMPOUND_PER_FACTION` makes all of a faction's structures share one compound.
 
 Supporting pieces:
 
@@ -111,7 +113,7 @@ Supporting pieces:
 | `research/*` | Research global state (from Lua), per-faction state, attribute details |
 | `t2.*` | Tier-2 upgrades and XP |
 | `nexus/*` | Nexus presence and threat estimation per pole (also exposed to Lua) |
-| `hibernating.*` | Structures shutting down when uplink bandwidth runs short |
+| `hibernating.*` | Structures shutting down when uplink bandwidth runs short (compiled out by `NO_HIBERNATION`) |
 | `packable.*` | Converting structures to and from mobile units (`MobilizeStructure` / `SettleMobile`) |
 | `markers.*`, `statistics.*` | Map markers, per-faction statistics |
 | `gridAndChoices.*`, `cursorMode.*`, `description.*` | Placement choices, client cursor modes, the text descriptions shown in the UI |
@@ -166,5 +168,5 @@ Rendering goes through `client/ExtRenderer/DirectX11.*` on top of the DeltaWorks
 ## 11. Optional and legacy subsystems
 
 - `MetaServer.C#/` ("Consensus") is an unfinished C# meta-server for a persistent multi-planet universe (solar systems, factions across planets, TLS certificate authentication). The game does not use it.
-- `steam` branch: the Steamworks integration (lobbies, auth tickets, upload artifacts). Not part of `master`.
+- `steam` branch (private): the Steamworks integration (lobbies, auth tickets, upload artifacts). Not part of `master` or the public repository.
 - `master-resource_bridge` branch: the Lua **modding** framework (scripted structure types, command callbacks). See [repository.md](repository.md).
