@@ -155,7 +155,7 @@ Rendering goes through `client/ExtRenderer/DirectX11.*` on top of the DeltaWorks
 
 ## 9. Persistence
 
-- `server/components/state/fileIO.*` reads and writes `.hsf` save games (world, entities, factions, alliances, research state, AI name and state, statistics), and handles auto-saves.
+- `server/components/state/fileIO.*` reads and writes `.hsf` save games (world, entities, factions, alliances, research state, AI name and state, statistics), and handles auto-saves. The files use DeltaWorks' RIFF-like chunk container; see [save-file-format.md](save-file-format.md).
 - `server/components/journalSaveGame.*` implements the **journal**. Every player action that reaches the server (entity commands, triggers, construction, faction creation and destruction …) is a `Journal::Round::*` entry with `Decode`/`Compile`/`Execute`. Each round records its entries plus an entity verification. The design goal, documented at the top of the header, is save games that can be rebuilt from an initial state plus the command log with repeatable random numbers, and eventually merged. Today the entries are mainly used to apply commands consistently and to verify state. Committing the journal to disk is commented out in the main loop.
 - `clientServerShared/fileVersion.h` versions the formats. Loaders keep backward compatibility with older saves where they can.
 
