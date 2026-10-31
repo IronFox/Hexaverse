@@ -54,6 +54,17 @@ namespace SteamNetwork
 		*/
 		static const UINT32 MaxAssembledSize = 256*1024*1024;
 		static const int SendFlags = k_nSteamNetworkingSend_ReliableNoNagle;
+		/**
+		Per-connection limit of queued outgoing bytes (k_ESteamNetworkingConfig_SendBufferSize).
+		Must hold several worst case world map updates (several MB each)
+		*/
+		static const int SendBufferSize = 64*1024*1024;
+		/**
+		Per-connection send rate clamp in bytes/sec (k_ESteamNetworkingConfig_SendRateMin/Max).
+		The library default of 256 KB/s would take many seconds to deliver a large world map update
+		*/
+		static const int SendRateMin = 512*1024,
+						SendRateMax = 16*1024*1024;
 
 		class Network
 		{
@@ -142,7 +153,7 @@ namespace SteamNetwork
 		static HashTable<UINT32,HybridClient*>	clientConnections;	//outgoing game connection -> client
 		static HashTable<UINT32,UINT64>			authConnections;	//outgoing authentication query -> server Steam ID
 
-		static const int NumConnectionOptions = 2;
+		static const int NumConnectionOptions = 4;
 		/**
 		Fills @a options with the configuration of all Steam listen sockets and connections.
 		Sets the status change callback, which Steam invokes during SteamAPI_RunCallbacks() or SteamGameServer_RunCallbacks()
@@ -218,12 +229,40 @@ namespace SteamNetwork
 			Network net(steamServerSide);
 			if (!net)
 				return false;
+			if (dataSize > MaxSteamMessageSize)
+			{
+				//A package is split into several messages. It must be queued completely or not at all:
+				//the receiver would otherwise take the next message as the missing remainder
+				SteamNetConnectionRealTimeStatus_t status;
+				if (net->GetConnectionRealTimeStatus(steamConnection,&status,0,nullptr) != k_EResultOK)
+					return false;
+				const size_t pending = (size_t)status.m_cbPendingReliable + (size_t)status.m_cbPendingUnreliable;
+				const size_t headroom = 64*1024;	//per-message overhead
+				if (pending + dataSize + headroom > (size_t)SendBufferSize)
+				{
+					LogEvent(EventClass::Preset::networkError,"Steam: Refusing to send "+String((UINT64)dataSize)+" bytes to "+String(CSteamID(steamID).Render())+": "+String((UINT64)pending)+" bytes are still queued (limit "+String(SendBufferSize)+")");
+					return false;
+				}
+			}
 			const BYTE*at = (const BYTE*)data;
+			bool first = true;
 			do
 			{
 				const UINT32 chunk = (UINT32)(dataSize < MaxSteamMessageSize ? dataSize : MaxSteamMessageSize);
-				if (net->SendMessageToConnection(steamConnection,at,chunk,SendFlags,nullptr) != k_EResultOK)
+				const EResult rs = net->SendMessageToConnection(steamConnection,at,chunk,SendFlags,nullptr);
+				if (rs != k_EResultOK)
+				{
+					if (!first)
+					{
+						//Part of the package is queued already. The stream cannot be recovered
+						LogEvent(EventClass::Preset::networkError,"Steam: Sending a split package to "+String(CSteamID(steamID).Render())+" failed midway ("+SteamInterface::ToString(rs)+"). Closing the connection");
+						net->CloseConnection(steamConnection,0,"Split package could not be sent completely",false);
+						clientConnections.Unset(steamConnection);
+						steamConnection = k_HSteamNetConnection_Invalid;
+					}
 					return false;
+				}
+				first = false;
 				at += chunk;
 				dataSize -= chunk;
 			}
@@ -918,7 +957,9 @@ namespace SteamNetwork
 		static void	GetConnectionOptions(SteamNetworkingConfigValue_t (&options)[NumConnectionOptions])
 		{
 			options[0].SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged,(void*)&SteamConnectionDispatch::OnStatusChanged);
-			options[1].SetInt32(k_ESteamNetworkingConfig_SendBufferSize,32*1024*1024);	//room for large packages, which are queued as several messages
+			options[1].SetInt32(k_ESteamNetworkingConfig_SendBufferSize,SendBufferSize);	//room for large packages, which are queued as several messages
+			options[2].SetInt32(k_ESteamNetworkingConfig_SendRateMin,SendRateMin);
+			options[3].SetInt32(k_ESteamNetworkingConfig_SendRateMax,SendRateMax);
 		}
 
 	#endif
