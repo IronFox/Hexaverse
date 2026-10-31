@@ -161,7 +161,7 @@ These locations matter: the programs find each other through them (`globalShared
 
 ## 5. C# tools
 
-Build the C# tools by opening their `.sln` files directly (`ServerManager/ServerManager.sln`, `BugReporter/BugReporter.sln`, `Bake/Bake.sln`, `DocumentationEditor/DocumentationEditor.sln`). A prebuilt `Bake.exe` is committed next to its sources. The Server Manager is an SDK-style .NET 10 project; `repack.bat` and the release workflow publish it as a single `ServerManager\ServerManager.exe` (`dotnet publish ServerManager\ServerManager.csproj -c Release -r win-x64 -o ServerManager`). None of the C# tools are part of the CMake build. The optional bug reporter is an SDK-style .NET 10 project (`dotnet build BugReporter\BugReporter.csproj`); it isn't packaged by default, see [bug-reporter.md](bug-reporter.md).
+Build the C# tools by opening their `.sln` files directly (`ServerManager/ServerManager.sln`, `BugReporter/BugReporter.sln`, `Bake/Bake.sln`, `DocumentationEditor/DocumentationEditor.sln`). A prebuilt `Bake.exe` is committed next to its sources. The Server Manager is an SDK-style .NET 10 project; `repack.bat` and the release workflow publish it as a single self-contained `ServerManager\ServerManager.exe` that runs without an installed .NET runtime (`dotnet publish ServerManager\ServerManager.csproj -c Release -r win-x64 -o ServerManager`). None of the C# tools are part of the CMake build. The optional bug reporter is an SDK-style .NET 10 project (`dotnet build BugReporter\BugReporter.csproj`); it isn't packaged by default, see [bug-reporter.md](bug-reporter.md).
 
 ### Shaders and binary data
 

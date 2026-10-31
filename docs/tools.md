@@ -33,7 +33,7 @@ The full command reference is in [running.md §6](running.md#6-control-console) 
 - connect a control console, save the game, open the log, or resume, stop or terminate a server,
 - start the client (**Launch Client**).
 
-Servers it starts are *dependent* and run without a console window. Only one Server Manager can run per machine. The `Protocol` sub-project (`ServerManager/Protocol/`, `Protocol.dll`) holds the message definitions it shares with the server. It needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). `ServerManager.exe` isn't committed: `repack.bat` and the release workflow publish it with `dotnet publish ServerManager\ServerManager.csproj -c Release -r win-x64 -o ServerManager`.
+Servers it starts are *dependent* and run without a console window. Only one Server Manager can run per machine. The `Protocol` sub-project (`ServerManager/Protocol/`, `Protocol.dll`) holds the message definitions it shares with the server. `ServerManager.exe` isn't committed: `repack.bat` and the release workflow publish it as a single self-contained exe (about 50 MB, no .NET runtime needed on the player's machine) with `dotnet publish ServerManager\ServerManager.csproj -c Release -r win-x64 -o ServerManager`.
 
 ## BugReporter
 

@@ -2,8 +2,8 @@
 
   <!--
     Hexaverse Server Manager. See docs/tools.md.
-    The release workflow publishes it as a single framework-dependent ServerManager.exe
-    (it needs the .NET 10 Desktop Runtime):
+    The release workflow publishes it as a single self-contained ServerManager.exe,
+    so players don't need to install the .NET runtime:
       dotnet publish ServerManager/ServerManager.csproj -c Release -r win-x64 -o ServerManager
   -->
   <PropertyGroup>
@@ -24,8 +24,11 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
-    <SelfContained>false</SelfContained>
+    <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
+    <!-- WinForms doesn't support trimming, so the bundle is compressed instead. -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 

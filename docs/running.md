@@ -186,4 +186,4 @@ Useful commands:
 
 ## 8. Server Manager
 
-`ServerManager/ServerManager.exe` (C#, needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)) lists every server running locally (it listens on UDP 10245). It can start new ones, edit the global server configuration, attach a control console, save, open logs, and resume, stop or terminate servers. Only one instance can run at a time. Servers it starts are "dependent" and don't open a console window. Details are in [`server manager.txt`](game/config/server-manager.md).
+`ServerManager/ServerManager.exe` (C#) lists every server running locally (it listens on UDP 10245). It can start new ones, edit the global server configuration, attach a control console, save, open logs, and resume, stop or terminate servers. Only one instance can run at a time. Servers it starts are "dependent" and don't open a console window. Details are in [`server manager.txt`](game/config/server-manager.md).
