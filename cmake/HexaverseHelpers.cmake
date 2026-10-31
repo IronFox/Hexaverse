@@ -95,9 +95,12 @@ function(hexaverse_apply_common_settings target)
 
 	if(MSVC)
 		# Same as the Projector output: /W3 /sdl /MP, noexcept warning off.
+		# Projector's projects don't enable conformance mode, so Visual Studio
+		# passes /permissive. Without it, /std:c++latest implies /permissive-
+		# (two-phase name lookup), which the Hexaverse sources don't compile with.
 		target_compile_options(${target} PRIVATE
 			/W3 /sdl /MP /wd26439
-			$<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>)
+			$<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus /permissive>)
 	endif()
 endfunction()
 
