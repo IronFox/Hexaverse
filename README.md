@@ -118,7 +118,7 @@ This branch (`steam-public`) is `master` plus the Steamworks integration used fo
 1. Sign in at [partner.steamgames.com](https://partner.steamgames.com/) with a Steamworks account (anyone can create one, but shipping a game needs a paid app).
 2. Download the SDK from [Steamworks SDK downloads](https://partner.steamgames.com/downloads/list) and unzip it. You need its `sdk` folder.
 
-The code was written against a mid-2017 SDK (interface `SteamUser019`, roughly SDK 1.41). It uses the old `ISteamNetworking` P2P API, which newer SDKs still ship but mark as deprecated. With a much newer SDK, expect to fix a few renamed constants.
+The code targets Steamworks SDK 1.65. It still uses the old `ISteamNetworking` API (P2P packets and `CreateListenSocket`, via `SteamNetworking()` and `SteamGameServerNetworking()`), which SDK 1.65 still ships but marks as deprecated in favour of `ISteamNetworkingSockets` and `ISteamNetworkingMessages`. Other SDK versions may need small fixes for renamed constants or changed signatures.
 
 ### 2. Put the SDK where the build finds it
 

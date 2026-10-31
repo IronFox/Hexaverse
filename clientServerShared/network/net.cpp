@@ -375,7 +375,7 @@ namespace SteamNetwork
 			{
 				LogEvent(EventSignificance::Common,"Steam: SetupServer("+String(basePort)+")");
 				Network::Lock(/*CLOCATION*/);
-				if ( !SteamGameServer_Init( INADDR_ANY, basePort + PortOffset::Steam, basePort + PortOffset::SteamGame, basePort + PortOffset::SteamInfo, eServerModeAuthentication, PRODUCT_VERSION ) )
+				if ( !SteamGameServer_Init( INADDR_ANY, basePort + PortOffset::SteamGame, basePort + PortOffset::SteamInfo, eServerModeAuthentication, PRODUCT_VERSION ) )
 				{
 					FATAL__( "SteamGameServer_Init() failed" );
 				//	Alert( "Fatal Error", "Steam must be running to play this game (SteamAPI_Init() failed).\n" );
@@ -390,7 +390,7 @@ namespace SteamNetwork
 				SteamGameServer()->SetModDir(PRODUCT_NAME);
 				//SteamGameServer()->SetGameData("123445489153871");
 				SteamGameServer()->LogOnAnonymous();
-				SteamGameServer()->EnableHeartbeats(true);
+				SteamGameServer()->SetAdvertiseServerActive(true);
 
 				Network::Unlock();
 			}
@@ -413,7 +413,7 @@ namespace SteamNetwork
 				{
 					callback.reset();
 
-					SteamGameServer()->EnableHeartbeats(false);
+					SteamGameServer()->SetAdvertiseServerActive(false);
 					SteamGameServer()->LogOff();
 					LeaveLobby();
 					SteamGameServer_Shutdown( );
@@ -520,7 +520,9 @@ namespace SteamNetwork
 				UINT32 ip=0;
 				for (int i = 0; i < 1000;i++)
 				{
-					ip = SteamGameServer()->GetPublicIP();
+					const SteamIPAddress_t publicIP = SteamGameServer()->GetPublicIP();
+					if (publicIP.m_eType == k_ESteamIPTypeIPv4)
+						ip = publicIP.m_unIPv4;
 					if (ip)
 						break;
 					Sleep(10);

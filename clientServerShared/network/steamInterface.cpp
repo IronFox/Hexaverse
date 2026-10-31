@@ -134,9 +134,9 @@ namespace SteamInterface
 			switch (err)
 			{
 				CASE(k_EP2PSessionErrorNone)
-				CASE(k_EP2PSessionErrorNotRunningApp)
+				CASE(k_EP2PSessionErrorNotRunningApp_DELETED)
 				CASE(k_EP2PSessionErrorNoRightsToApp)
-				CASE(k_EP2PSessionErrorDestinationNotLoggedIn)
+				CASE(k_EP2PSessionErrorDestinationNotLoggedIn_DELETED)
 				CASE(k_EP2PSessionErrorTimeout)
 			}
 			return "Unknown EP2PSessionError ("+String((unsigned)err)+")";
@@ -358,7 +358,7 @@ namespace SteamInterface
 			int cnt = 0;
 			for(;;)
 			{
-				currentTicket = SteamUser()->GetAuthSessionTicket(out.pointer(),(int)out.size(),&actualSize);
+				currentTicket = SteamUser()->GetAuthSessionTicket(out.pointer(),(int)out.size(),&actualSize,nullptr);
 				if (currentTicket != k_HAuthTicketInvalid)
 					break;
 				if (++cnt > 10)
