@@ -4,7 +4,7 @@
 #include "guiComponents.h"
 #include <engine/display.h>
 #include "../../../DX11/texture_font.h"
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <engine/aspect.h>
 #include <objects.h>
 #include "../../clientEvents.h"
@@ -1036,7 +1036,7 @@ namespace Component
 
 			void		CutCorner(const Plane&plane)
 			{
-				static Buffer0<TNode> newPoints;
+				static Vector<TNode> newPoints;
 				if (corners.IsEmpty())
 					return;
 				TNode at;
@@ -1118,7 +1118,7 @@ namespace Component
 				*/
 			}
 			bool			loop=true;
-			Buffer0<TNode>	corners;
+			Vector<TNode>	corners;
 			M::Rect<>		boundingBox;
 		};
 
@@ -1130,8 +1130,8 @@ namespace Component
 			{
 
 
-				Buffer0<UINT16> indices;
-				Buffer0<TVertex> vertices;
+				Vector<UINT16> indices;
+				Vector<TVertex> vertices;
 				UINT16 vOffset = 0;
 
 				void	Reset()
@@ -1401,7 +1401,7 @@ namespace Component
 
 				if (shape.corners.IsNotEmpty())
 				{
-					static Buffer0<TLineVertex> vtx;
+					static Vector<TLineVertex> vtx;
 					vtx.Clear();
 					count_t cnt = shape.corners.Count();
 					if (!shape.loop)
@@ -1464,7 +1464,7 @@ namespace Component
 				recompileEdges = false;
 
 				const auto cut = includeEdges && cutCorners;
-				static Buffer0<index_t> indexes, outIndexes;
+				static Vector<index_t> indexes, outIndexes;
 				for (index_t i = 0; i < 4; i++)
 				{
 					if (includeEdges.value[i])
@@ -1779,7 +1779,7 @@ namespace Component
 			foreach (a.upper.GetReferences(),ref)
 				g.AddEdge(nodeMap.Require(ref->lock().get()),myNode);
 		}
-		Buffer<M::Graph::PNode>	finalOrder(components.Count());
+		BasicVector<M::Graph::PNode>	finalOrder(components.Count());
 		if (!g.CreateTopologicalOrder(finalOrder))
 			FATAL__("Failed to create topological order of component along axis "+String(axis.ToString()));
 		for (index_t i = 0; i < components.Count(); i++)
@@ -2697,7 +2697,7 @@ namespace Component
 		if (visualLen < core.x.GetExtent())
 		{
 		//	textout.write(input,len);
-			textout << text;
+			textout << static_cast<const UTF32StringRef&>(text);
 		}
 		else
 		{
@@ -2706,7 +2706,7 @@ namespace Component
 				visualLen = textout.QueryScaledWidth(text) + cursorLen;
 				if (visualLen < core.x.GetExtent())
 				{
-					textout << text;
+					textout << static_cast<const UTF32StringRef&>(text);
 					//textout.write(input,len);
 					break;
 				}
@@ -2905,7 +2905,7 @@ namespace Component
 					foreach (wrapped,w)
 					{
 							float accum = 0;
-						Buffer0<float> widths,lengths;
+						Vector<float> widths,lengths;
 						foreach (*w, c)
 						{
 							float w = CharWidth(*c);

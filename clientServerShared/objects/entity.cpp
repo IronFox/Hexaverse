@@ -77,7 +77,7 @@ namespace Objects
 	#endif
 
 
-	String	ToString(const BasicBuffer<World::Sensor>&sensors)
+	String	ToString(const BasicVector<World::Sensor>&sensors)
 	{
 		static StringBuffer buffer;
 		buffer.Clear();
@@ -185,7 +185,7 @@ namespace Objects
 		#endif
 	}
 
-	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const
+	ImpactDetails		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, bool traceInActualWorld, Vector<M::TVec4<> >&outSteps) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -228,7 +228,7 @@ namespace Objects
 
 	
 
-	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Buffer0<M::TVec4<> >&outSteps) const
+	ImpactDetails		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, bool traceInActualWorld, Vector<M::TVec4<> >&outSteps) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -707,7 +707,7 @@ namespace Objects
 	}
 	
 
-	void		WorldEntity::MoveSensoryToCurrentLocation(float&atTime, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+	void		WorldEntity::MoveSensoryToCurrentLocation(float&atTime, Vector<PWorldEntity>*newContacts/* = nullptr*/)
 	{
 		#ifdef CLIENT
 			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))
@@ -766,7 +766,7 @@ namespace Objects
 		});
 	}
 
-	void WorldEntity::RegisterSensory(RegisteredSensorStorage&sensors, const Grid::LCellIdI&loc, float&atTime, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	void WorldEntity::RegisterSensory(RegisteredSensorStorage&sensors, const Grid::LCellIdI&loc, float&atTime, Vector<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		#ifdef CLIENT	//special constraint applied by client: strict register->unregister->register... order
 			if (!isOwnedByMe && !owner->SharingSensorWith(Faction::mine))

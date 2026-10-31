@@ -13,9 +13,9 @@ namespace AI
 {
 	namespace Details
 	{
-		Buffer0<Objects::PVehicle>	attackers,scanners,aa, processed, pending;
+		Vector<Objects::PVehicle>	attackers,scanners,aa, processed, pending;
 		HashSet<TUniqueID>		ofInterestToAttacker;
-		Buffer0<M::TVec3<> >	tempMarkers;
+		Vector<M::TVec3<> >	tempMarkers;
 		HashTable<TUniqueID,Grid::LCellIdI>	 destHistory;
 
 		struct TAA;
@@ -23,7 +23,7 @@ namespace AI
 		struct TAAProtection
 		{
 			Objects::PWorldEntity			target;
-			Buffer0<index_t>				effectiveProtectors,	//links to aaEntities
+			Vector<index_t>				effectiveProtectors,	//links to aaEntities
 											theoreticalProtectors;	//links to aaEntities. AAs that cannot fire right now
 		};
 
@@ -36,15 +36,15 @@ namespace AI
 											effectiveProtectionRangeSqr;
 			bool							canAttack;
 
-			Buffer0<index_t>				protectedEntities;	//links to aaProtected
+			Vector<index_t>				protectedEntities;	//links to aaProtected
 		};
 
-		Buffer0<TAAProtection>				aaProtected;
-		Buffer0<Objects::PWorldEntity>		aaUnprotected;
-		Buffer0<TAA>						aaEntities;
+		Vector<TAAProtection>				aaProtected;
+		Vector<Objects::PWorldEntity>		aaUnprotected;
+		Vector<TAA>						aaEntities;
 		HashTable<TUniqueID,index_t>		aaEntityMap;
 
-		//Buffer0<
+		//Vector<
 
 		UINT32	minRoundForHeavyVehicleBases = 10,
 				minRoundForPlanes = 10;
@@ -113,9 +113,9 @@ namespace AI
 			}
 		};
 
-		Buffer0<TAttackTarget>	attackTarget;
+		Vector<TAttackTarget>	attackTarget;
 
-		void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicBuffer<TAttackTarget>&attackTarget, bool attacksAirborne, bool attacksGroundEntities);
+		void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicVector<TAttackTarget>&attackTarget, bool attacksAirborne, bool attacksGroundEntities);
 		float QuadraticInterestDistance(const Objects::TrajectoryEndPoint&self, const Objects::WorldEntity&other, bool interestedInAirborne, bool interestedInGround);
 		float EstimateInterest(const Objects::PTurretBase&base, int baseAtHeight, float constructionCost, float distance2);
 		bool Seeing(const Objects::WorldEntity&e, const Objects::TrajectoryEndPoint&loc, float&effectiveSensoryRange);
@@ -726,7 +726,7 @@ namespace AI
 			return rs / health;
 		}
 
-		void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicBuffer<TAttackTarget>&attackTarget, bool attacksAirborne, bool attacksGroundEntities)
+		void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicVector<TAttackTarget>&attackTarget, bool attacksAirborne, bool attacksGroundEntities)
 		{
 			if (candidate.isOwnedByMe || candidate.IsIndestructible())
 				return;
@@ -872,7 +872,7 @@ namespace AI
 				float r = b->GetFlatAttackRange() + b->GetAttackExplosionRadius();
 				float damagePotentialPerRound = 0.f;
 				//count_t participants = 0;
-				Buffer0<Objects::PWorldEntity> participants;
+				Vector<Objects::PWorldEntity> participants;
 				Objects::ForeachMobileWorldEntity([ref,r,&damagePotentialPerRound,&participants,&e](const Objects::PMobileEntity&e1)
 				{
 					if (!e1->isOwnedByMe || !e1->CanAttack() || e1->turret->dealsEMPDamage 
@@ -937,7 +937,7 @@ namespace AI
 			aaUnprotected.Clear();
 			aaEntities.Clear();
 			aaEntityMap.Clear();
-			static Buffer0<Objects::PWorldEntity> allEntities;
+			static Vector<Objects::PWorldEntity> allEntities;
 			allEntities.Clear();
 
 			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
@@ -1072,7 +1072,7 @@ namespace AI
 	}
 
 
-	void AssemblePath(const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult)
+	void AssemblePath(const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current, BasicVector<Grid::LCellIdI>&outResult)
 	{
 		if (current->predecessor != InvalidIndex)	//if invalidindex, means this is a cell neighboring the point of origin
 			AssemblePath(mapper, mapper.result + current->predecessor,outResult);
@@ -1087,7 +1087,7 @@ namespace AI
 
 	void IssuePath(const Objects::PVehicle&v, const Objects::Pathfinding::ReachabilityMapper&mapper, const Objects::Pathfinding::ReachabilityMapper::MapNode*current)
 	{
-		static Buffer0<Grid::LCellIdI> path;
+		static Vector<Grid::LCellIdI> path;
 		path.Clear();
 		AssemblePath(mapper, current,path);
 		ObjectHelper::DirectTo(v,path.ToRef(),ObjectHelper::AssembleMotionFlags(true,false,false),Objects::CursorMode::Idle);

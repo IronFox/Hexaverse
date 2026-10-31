@@ -162,7 +162,7 @@ namespace Objects
 	
 		void					Research::FactionState::ExportLuaState(Array<BYTE>&outSerializedState) const
 		{
-			//Buffer0<BYTE> data;
+			//Vector<BYTE> data;
 			if (globalState.exportState.IsEmpty() || luaResearchState.IsEmpty())
 			{
 				outSerializedState.Clear();

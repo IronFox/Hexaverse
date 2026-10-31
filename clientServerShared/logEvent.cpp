@@ -78,7 +78,7 @@ namespace Logging
 
 		virtual void ThreadMain() override
 		{
-			Buffer0<String> lines;
+			Vector<String> lines;
 			while (!doEnd)
 			{
 				pipe.WaitForContent();
@@ -132,13 +132,26 @@ namespace Logging
 
 
 
+	/*
+	The bug reporter is optional and not part of the default packages (see docs/bug-reporter.md).
+	It is only started if a release ships it in BugReporter/ next to client/ and server/.
+	*/
+	static bool	BugReporterIsInstalled()
+	{
+		return FileSystem::IsFile(L"../BugReporter/BugReporter.exe");
+	}
+
 	void	CallBugReporter()
 	{
+		if (!BugReporterIsInstalled())
+			return;
 		Process::Start(L"../BugReporter/",L"BugReporter.exe",L"\""+activePath+L"\"");	//start and abandon
 	}
 
 	void	CallBugReporter(const String&message)
 	{
+		if (!BugReporterIsInstalled())
+			return;
 		Process::Start(L"../BugReporter/",L"BugReporter.exe",L"\""+activePath+L"\" -m \""+FileSystem::StringToPath(message.Escape("\""))+L"\"");	//start and abandon
 	}
 
@@ -157,7 +170,7 @@ namespace Logging
 		FileSystem::File file;
 		PathString ext = FileSystem::ExtractFileExt(path);
 		typedef std::pair<FileSystem::ftime_t,PathString>  Entry;
-		Ctr::Buffer0<Entry>	entries;
+		Ctr::Vector<Entry>	entries;
 		while (scan.NextFile(ext,file))
 		{
 			entries << std::make_pair(file.GetModificationTime(), file.GetLocation());

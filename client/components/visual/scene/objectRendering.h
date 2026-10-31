@@ -108,8 +108,8 @@ namespace Objects
 			/**/	SmokeTrailIndex(index_t trailIndex, bool isOrbital):trailIndex(trailIndex),isOrbital(isOrbital)	{}
 		};
 
-		extern Buffer0<PTurretBase>		animatedTurrets;
-		extern Buffer0<PWorldEntity>	attackers;	//!< everything that has a base and can attack goes in here
+		extern Vector<PTurretBase>		animatedTurrets;
+		extern Vector<PWorldEntity>	attackers;	//!< everything that has a base and can attack goes in here
 		extern double					now; //double-precision seconds since program start. Updated during RefreshFactionColors()
 
 		/**
@@ -255,7 +255,7 @@ namespace Objects
 		Registers a new smoke trail as created by a weapon discharge
 		@return Index to the newly created smoke trail. Valid until ClearSmokeTrails() is called.
 		*/
-		SmokeTrailIndex	RegisterSmokeTrail(const Buffer0<M::TVec4<> >&trajectory, bool aboveGrid);
+		SmokeTrailIndex	RegisterSmokeTrail(const Vector<M::TVec4<> >&trajectory, bool aboveGrid);
 
 		/**
 		Tints the specified smoke trail in pulsing red.

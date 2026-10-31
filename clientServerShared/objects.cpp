@@ -339,7 +339,7 @@ namespace Objects
 	#endif
 
 
-	//bool FindShortestPath(const Vehicle*v, Grid::LCellIdI destination, BasicBuffer<Grid::LCellIdI>&outPath);
+	//bool FindShortestPath(const Vehicle*v, Grid::LCellIdI destination, BasicVector<Grid::LCellIdI>&outPath);
 	
 
 

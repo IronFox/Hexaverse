@@ -2,7 +2,7 @@
 #include "dialog.h"
 #include <engine/display.h>
 #include "common.h"
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "surfaceRenderer.h"
 #include <engine/aspect.h>
 #include <image/converter/magic.h>
@@ -104,7 +104,7 @@ namespace Dialog
 			HUD::Component::PInput	inputField;
 			HUD::Component::PPasswordInput passwordInputField;
 			HUD::Component::PImage	imageField;
-			Buffer0<std::pair<float,HUD::Component::PButton> > buttons;
+			Vector<std::pair<float,HUD::Component::PButton> > buttons;
 
 
 			

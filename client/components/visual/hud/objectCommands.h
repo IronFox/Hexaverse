@@ -176,7 +176,7 @@ namespace Objects
 		{
 			typedef CustomLabel<VisualCommand> Super;
 
-			static Buffer0<WCommandGroup>		activeGroupPath;
+			static Vector<WCommandGroup>		activeGroupPath;
 
 			void	Collapse()
 			{

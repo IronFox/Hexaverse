@@ -5,7 +5,7 @@
 #include <io/random_access_file.h>
 #include <third_party/bz2/bz2.h>
 #include <container/sorter.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "logEvent.h"
 #include "uniqueID.h"
 #include "runtimeConfig.h"
@@ -270,8 +270,8 @@ namespace ScriptCache
 			{
 				const FileSystem::ftime_t baseTime = (FileSystem::ftime_t)time(NULL);
 
-				Buffer0<TCacheSortEntry,Swap> entries;
-				Buffer0<FileSystem::File,Swap> toDelete;
+				Vector<TCacheSortEntry,Swap> entries;
+				Vector<FileSystem::File,Swap> toDelete;
 				while (f.NextFile(cacheFileExtension, file))
 				{
 					FileSystem::ftime_t t = file.GetModificationTime();

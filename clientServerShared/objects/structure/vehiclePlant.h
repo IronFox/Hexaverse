@@ -29,14 +29,14 @@ namespace Objects
 		All base components known to VehiclePlant.
 		Vehicle may use these as bases
 		*/
-		static Ctr::Buffer0<Component::VehicleBase*>
+		static Ctr::Vector<Component::VehicleBase*>
 									baseComponents;
 		/**
 		All turret components known to VehiclePlant.
 		Effectively a subset of all turret types available.
 		Vehicle may use these as turrets.
 		*/
-		static Ctr::Buffer0<Component::Turret*>
+		static Ctr::Vector<Component::Turret*>
 									turretComponents;
 
 

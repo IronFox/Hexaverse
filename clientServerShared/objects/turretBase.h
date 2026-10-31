@@ -35,7 +35,7 @@ namespace Objects
 		public:
 			Grid::LCellIdI		cellTarget;
 			ImpactDetails		impact;
-			Buffer0<M::TVec4<> > trajectory;
+			Vector<M::TVec4<> > trajectory;
 
 			#ifdef _DEBUG
 				struct TField
@@ -45,7 +45,7 @@ namespace Objects
 					bool	friendlyFound=false;
 				};
 
-				Buffer0<TField>	fieldsChecked;
+				Vector<TField>	fieldsChecked;
 				M::TVec3<>		explosionCenter;
 				float			explosionRadius;
 			#endif

@@ -23,7 +23,7 @@ namespace FileIO
 	*/
 	extern bool		postEvolutionAutoSave;
 
-	void			Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="");
+	void			Compare(Riff::File&a, Riff::File&b, Ctr::Vector<Riff::TID>&idStack, const String&indent="");
 
 
 	typedef std::function<BYTE(BYTE)> TerrainTypeTranslator;

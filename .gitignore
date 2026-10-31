@@ -57,3 +57,10 @@ steam_sdk/*
 !steam_sdk/README.md
 steam_api*.dll
 sdkencryptedappticket*.dll
+
+# CMake
+/build/
+/out/
+CMakeUserPresets.json
+BuildCounter/.projector/
+/_deps/

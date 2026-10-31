@@ -43,7 +43,7 @@ namespace ObjectHelper
 	
 		bool HandleOutdatedMarkers()
 		{
-			static Buffer0<Objects::PMarker> outdated;
+			static Vector<Objects::PMarker> outdated;
 			ClientGrid::CheckSensory();
 			Objects::EntityDeathMarker::outdatedAboveAge = RuntimeConfig::aiMode ? 100 : 10;
 			if (!Objects::MarkerStore::client.GetOutdated(outdated,RuntimeConfig::roundNumber))
@@ -389,7 +389,7 @@ namespace ObjectHelper
 			else
 			{
 				LogEvent(EventSignificance::Common,v.get(),"Splitting long path into parts");
-				static Buffer0<Grid::LCellIdI>	waypoints;
+				static Vector<Grid::LCellIdI>	waypoints;
 				waypoints.Clear();
 				bool open = true;
 				const auto&path = Objects::Pathfinding::shortestPath.result;

@@ -122,7 +122,7 @@ namespace Objects
 		/**
 		List of all structures, the local structure is connected to. Symmetric. The connected structures must have a link back to the local structure.
 		*/
-		Ctr::Buffer0<WStructure>				connectedTo;
+		Ctr::Vector<WStructure>				connectedTo;
 		#ifdef HAS_WINDOW
 			/**
 			Indicates whether or not the local structure has changed since the last shape recompilation. Cleared by StructureShape::RecompileConnectors()
@@ -902,7 +902,7 @@ namespace Objects
 	extern SharedContainer<Structure>		structures;
 	#ifdef CLIENT
 		typedef std::pair<WSkyLinkStructure,WWorkingStructure>	TLinkReference;
-		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
+		extern Vector<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 	#endif
 
 

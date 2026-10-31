@@ -36,7 +36,7 @@ namespace Animation
 
 	/*virtual override*/ D::String		WorldDelta::Describe() const
 	{
-		Buffer0<String> deltaIDs;
+		Vector<String> deltaIDs;
 		foreach (deltas,d)
 		{
 			BaseGrid::family_t family = d->familyAndLastFlag & 0x7F;

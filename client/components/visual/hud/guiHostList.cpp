@@ -529,7 +529,7 @@ namespace HUD{namespace HostList{
 		serverChoice->AddComponent( serverListPanel,CLOCATION );
 
 
-		static Buffer0<Network::ServerIPAddress>	list;
+		static Vector<Network::ServerIPAddress>	list;
 		Network::ServerDiscovery::ListFailedAttempts(list);
 		foreach (list,failed)
 		{

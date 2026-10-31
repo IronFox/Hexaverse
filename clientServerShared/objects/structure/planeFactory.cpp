@@ -5,7 +5,7 @@
 
 namespace Objects
 {
-	Buffer0<EntityType>			PlaneFactory::prototypes;
+	Vector<EntityType>			PlaneFactory::prototypes;
 
 
 	/*virtual override*/ void		PlaneFactory::GetResourceVector(Resource::Vector&v,Resource::Vector&, Resource::Vector&)	const

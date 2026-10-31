@@ -1,0 +1,37 @@
+<!-- Generated from documentation/documentation/config/server manager.txt (DokuWiki syntax). -->
+
+# Server Manager
+
+The server manager provides an overview of all locally running servers.
+It enables GUI configuration, starting, manipulation, and termination of local servers.
+The application can be started from *`[install dir]\ServerManager\ServerManager.exe`*, or alternatively from the visual client main menu.
+Only one instance of the Server Manager can run at any given time on the local system.
+
+![serverManager](../../../documentation/images/serverManager.png)
+The big `Launch Client` button in the top left window section can be used to start the client, while the opposing `Add Server...` button allows interactive [instantiation of a new server](../server-start.md).
+
+The top middle section lists global game attributes.
+Most attributes can be opened/edited via a double click.
+Particularly, the general [server configuration](server.md) can be visually edited by double clicking the path of **`Server Cfg`**.
+
+The main section lists any found, locally running server.
+Use the context menu to connect a [control console](control-console.md), create [save games](save-games.md), view the respective log file, or resume/stop/terminate the respective server session.
+Shown attributes are updated once every couple seconds.
+
+## Dependence
+
+New servers will (by default) depend on the server manager, and not create a visible console window.
+Those are listed with a trailing (dep) in the Status column.
+If you try to close the server manager while dependent servers are detected, a confirmation dialog will appear.
+Servers started by the client will also be listed as dependent, however close when the client closes regularly or otherwise shuts down its server.
+To preserve the game beyond client-enforced closure, use the context menu to [save the game](save-games.md), shut down the server, and add a new server with the created save game.
+
+## NAT, Routers, etc.
+
+When clients should be able to connect from behind a router, you must forward the first two ports shown in the port range of a server to be reachable.
+The third has no consequence, as the server will reject non-localhost connection attempts anyway.
+See [server start](../server-start.md) for details.
+
+---
+
+[Game documentation index](../README.md)

@@ -33,7 +33,7 @@ namespace Explosions
 	EMPParticles				empParticles;
 	DX11::Texture				ringTexture,
 								particleTexture;
-	Container::Vector0<Explosion,Swappable>	
+	Container::Vector<Explosion,Swappable>	
 								explosions,empExplosions;
 	DX11::BaseInstructionBlock	particleInstruction;
 	DX11::StreamVBO				particleBuffer;
@@ -372,7 +372,7 @@ namespace Explosions
 
 		if (any_died)
 		{
-			static Buffer<Particle>	updated_particles;
+			static Vector<Particle>	updated_particles;
 			updated_particles.reset();
 			for (index_t i = 0; i < Count(); i++)
 				if (at(i).ttl > 0 && (!shiftDustTo || at(i).ttl >= at(i).maxTTL * threshold))

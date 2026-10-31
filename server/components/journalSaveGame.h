@@ -125,7 +125,7 @@ namespace Journal
 				}
 
 			};
-			Ctr::Buffer0<TEntry,Adopt>	entries;
+			Ctr::Vector<TEntry,Adopt>	entries;
 
 			void	Set(const String&key, const T&value)
 			{
@@ -227,7 +227,7 @@ namespace Journal
 		ParameterStore<Grid::LCellIdI>		locationParameters;
 		ParameterStore<int>					intParameters;
 		ParameterStore<Ctr::Array<BYTE> >	binaryParameters;
-		Ctr::Buffer0<Entry,Swap>			children;
+		Ctr::Vector<Entry,Swap>			children;
 
 		//CONSTRUCT_ENUMERATION22(Type,
 		//	None,
@@ -520,7 +520,7 @@ namespace Journal
 			//CryptographicID	accessToken;
 			UINT64			steamAccountID;
 			TUniqueID		factionID,allianceID;
-//			Buffer0<PEntityConstructor>	newEntities;
+//			Vector<PEntityConstructor>	newEntities;
 			virtual void	Decode(const Entry&e) override;
 			virtual Event*	Instantiate() const override {return new CreateFaction();};
 			virtual void	Execute() const override;
@@ -841,9 +841,9 @@ namespace Journal
 		General-purpose storage for round events
 		*/
 		template <typename EventType>
-		class EventStorage : public Ctr::Buffer0<std::shared_ptr<EventType> >
+		class EventStorage : public Ctr::Vector<std::shared_ptr<EventType> >
 		{
-			typedef Ctr::Buffer0<std::shared_ptr<EventType> >	Super;
+			typedef Ctr::Vector<std::shared_ptr<EventType> >	Super;
 		public:
 			index_t				FindLast(const std::type_info&t) const
 			{
@@ -1018,7 +1018,7 @@ namespace Journal
 	{
 	public:
 
-		Ctr::Buffer0<Entry,Swap>	entries;
+		Ctr::Vector<Entry,Swap>	entries;
 
 
 		void	Load(const PathString&);

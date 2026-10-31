@@ -59,8 +59,8 @@ namespace VisualTerrain
 		}
 
 	protected:
-		Buffer0<TVertex>	vertices;
-		Buffer0<UINT32>		indices;
+		Vector<TVertex>	vertices;
+		Vector<UINT32>		indices;
 		index_t				indexOffset = 0;
 
 
@@ -180,7 +180,7 @@ namespace VisualTerrain
 
 
 	private:
-		Buffer0<TVertex>	rawVertices;
+		Vector<TVertex>	rawVertices;
 
 		TVertex&		Index(index_t i)
 		{
@@ -317,7 +317,7 @@ namespace VisualTerrain
 			this->clipHeight = clipHeight;
 			wasEmpty = true;
 		}
-		void	Compile(const index_t offset, const index_t end,BasicBuffer<TExtPlantInstance>&plants,Sys::SpinLock&plantLock);
+		void	Compile(const index_t offset, const index_t end,BasicVector<TExtPlantInstance>&plants,Sys::SpinLock&plantLock);
 	};
 
 
@@ -365,7 +365,7 @@ namespace VisualTerrain
 			instances.Last().type = PlantType::InvisibleCrystal;
 	}
 	
-	void	PlantCompiler::Compile( const index_t offset, const index_t end,BasicBuffer<TExtPlantInstance>&plants,Sys::SpinLock&lock )
+	void	PlantCompiler::Compile( const index_t offset, const index_t end,BasicVector<TExtPlantInstance>&plants,Sys::SpinLock&lock )
 	{
 		for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 		{
@@ -509,7 +509,7 @@ namespace VisualTerrain
 	{
 		const index_t end = offset + count;
 		Sys::SpinLock lock;
-		static Buffer<TExtPlantInstance> plants;
+		static Vector<TExtPlantInstance> plants;
 		Concurrency::parallel_for(offset, end, BatchSize,[end,&lock, &stacks, clipHeight](index_t i)	//looks good - at least in release
 		{
 			BYTE data[sizeof(PlantCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...

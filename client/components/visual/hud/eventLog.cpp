@@ -3,7 +3,7 @@
 #include <general/thread_system.h>
 #include <global_string.h>
 #include <math/vclasses.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <objects/entity.h>
 #include <objects/faction.h>
 #include "../../clientEvents.h"
@@ -24,7 +24,7 @@ namespace VisualEventLog
 	
 
 
-	Buffer0<VisualEvent,Adopt>	events;
+	Vector<VisualEvent,Adopt>	events;
 	
 	struct VisualEvent
 	{
@@ -43,7 +43,7 @@ namespace VisualEventLog
 			}
 		};
 
-		Buffer0<TSegment>	segments;
+		Vector<TSegment>	segments;
 		float		age=0.f,scale=1.f;
 		static const float MaxAge;
 

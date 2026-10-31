@@ -241,7 +241,7 @@ namespace Network
 		{
 			StringFile hosts;
 			hosts.Create(RuntimeConfig::myConfig.Lookup("hosts.txt"));
-			static Buffer0<Network::ServerIPAddress>	 urls;
+			static Vector<Network::ServerIPAddress>	 urls;
 			ServerDiscovery::ListNonAutoAttempts(urls);
 			foreach (urls,url)
 				hosts << url->host << ':' << url->basePort << nl;
@@ -453,9 +453,9 @@ namespace Network
 		};
 		typedef std::shared_ptr<HostContactAttempt>	PHostContactAttempt;
 
-		Buffer0<PHostContactAttempt>	attempts,waste;
+		Vector<PHostContactAttempt>	attempts,waste;
 
-		void	ListFailedAttempts( Buffer0<ServerIPAddress,Swap>&outList )
+		void	ListFailedAttempts( Vector<ServerIPAddress,Swap>&outList )
 		{
 			outList.Clear();
 			foreach (attempts,a)
@@ -466,7 +466,7 @@ namespace Network
 
 		}
 
-		void	ListNonAutoAttempts(Buffer0<ServerIPAddress>&outList)
+		void	ListNonAutoAttempts(Vector<ServerIPAddress>&outList)
 		{
 			outList.Clear();
 			foreach (attempts,a)
@@ -1456,7 +1456,7 @@ namespace Network
 					}
 					else
 					{
-						Buffer0<String> names;
+						Vector<String> names;
 						winningAlliance->VisitMembers([&names](const Objects::PFaction&f)
 						{
 							names << f->GetName();
@@ -2179,7 +2179,7 @@ namespace Network
 	//};
 
 
-	//Buffer0<ServerAddress>	servers;
+	//Vector<ServerAddress>	servers;
 
 
 	/*explicit*/			ServerAddress::ServerAddress(const String&url,UINT64 steamID, const Protocol::ServerInfo&info)
@@ -2204,8 +2204,8 @@ namespace Network
 	}
 
 
-	Buffer0<ServerInfo,Swap>	servers;
-	
+	Vector<ServerInfo,Swap>	servers;
+	HashTable<TUniqueID,index_t>	serverMap;
 
 	Time::Stamp		lastPing,lastServerTableUpdate;
 	Time::Stamp		lastServerProbe = Time::Stamp() - 50_s;
@@ -2605,7 +2605,7 @@ void	Network::Receiver::IdentifyFaction(Protocol::IdentifyFaction&id)
 void	Network::Receiver::MarkerCreationFailedLimitReached(Protocol::Marker&marker)
 {
 	bool anyDeleted = false;
-	Buffer0<Objects::MarkerStore::TCandidate>	candidates;
+	Vector<Objects::MarkerStore::TCandidate>	candidates;
 	Objects::MarkerStore::client.GetDeletionCandidates(candidates);
 	ASSERT__(candidates.IsNotEmpty());
 	foreach(candidates,m)

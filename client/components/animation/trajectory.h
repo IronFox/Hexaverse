@@ -35,7 +35,7 @@ namespace Animation
 		virtual D::String		Describe() const override;
 	private:
 		#ifdef HAS_WINDOW
-			typedef Buffer0<M::TVec4<> >	TTrajectory;
+			typedef Vector<M::TVec4<> >	TTrajectory;
 			struct TTrajectoryAnimation
 			{
 				TTrajectory					activeTrajectory;

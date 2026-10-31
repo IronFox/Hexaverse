@@ -97,7 +97,7 @@ namespace Objects
 			PMobileEntity			GetPrototype() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
-		Ctr::Buffer0<WorkItem>		queue;	//must use buffer here, because elements can be erased and changes are rare
+		Ctr::Vector<WorkItem>		queue;	//must use buffer here, because elements can be erased and changes are rare
 
 		UINT32						productionPerRound,	//!< Amount of minerals converted per round. Effectively the production speed of the local instance
 									productionDone=0,	//!< Total amount of minerals invested into the current production. Reset to 0 upon completion

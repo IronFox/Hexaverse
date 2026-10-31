@@ -1,23 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace BugReporter
 {
 	static class Program
 	{
-		[System.Runtime.InteropServices.DllImport("user32.dll")]
-		private static extern bool SetProcessDPIAware();
-
 		static Whoops whoops;
+
+		public static ReporterSettings Settings { get; private set; }
 
 		public static void Abort(string problem)
 		{
-			if (whoops == null)
-				whoops = new Whoops();
+			whoops ??= new Whoops();
 			whoops.Raise(problem);
+		}
+
+		/// <summary>Opens a URL or file with its associated application.</summary>
+		public static void OpenExternally(string target)
+		{
+			if (string.IsNullOrWhiteSpace(target))
+				return;
+			Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
 		}
 
 		/// <summary>
@@ -28,11 +32,8 @@ namespace BugReporter
 		{
 			try
 			{
-				if (Environment.OSVersion.Version.Major >= 6)
-					SetProcessDPIAware();
-
-				Application.EnableVisualStyles();
-				Application.SetCompatibleTextRenderingDefault(false);
+				ApplicationConfiguration.Initialize();
+				Settings = ReporterSettings.Load();
 				Application.Run(new MainForm());
 			}
 			catch (Exception ex)

@@ -3,7 +3,7 @@
 
 #include <global_string.h>
 #include <memory>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 
 #include <protocol.h>
 
@@ -48,7 +48,7 @@ namespace Test
 
 	typedef std::shared_ptr<Test>	PTest;
 	
-	extern Ctr::Buffer0<PTest>	all;
+	extern Ctr::Vector<PTest>	all;
 
 	void Run(Test&test);
 

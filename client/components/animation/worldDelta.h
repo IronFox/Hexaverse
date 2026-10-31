@@ -16,7 +16,7 @@ namespace Animation
 
 		void					Append(Protocol::WorldDelta&&delta);
 	private:
-		Buffer0<Protocol::WorldDelta,Swap>	deltas;
+		Vector<Protocol::WorldDelta,Swap>	deltas;
 		bool					isComplete=false;
 	};
 

@@ -21,7 +21,7 @@ namespace Detail
 
 
 	};
-	extern Buffer0<Viewport>	viewportStack;
+	extern Vector<Viewport>	viewportStack;
 	extern float2	totalOffset;
 	extern DX11::ObjectBuffer<float4>	viewportVector;
 
@@ -38,7 +38,7 @@ namespace Detail
 	UINT	ViewPortHeight();
 	float	ViewPortAspect();
 
-	extern Buffer<Component*>	allComponents;
+	extern Vector<Component*>	allComponents;
 }
 }}
 

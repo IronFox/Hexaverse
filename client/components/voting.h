@@ -99,5 +99,5 @@ private:
 						hidden = false;
 
 	static HashTable<TUniqueID,PVote>	all;
-	static Buffer0<PVote>	voteQueue;	//in order of creation
+	static Vector<PVote>	voteQueue;	//in order of creation
 };

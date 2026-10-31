@@ -1,7 +1,7 @@
 #pragma once
 
 #include <container/array.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <global_string.h>
 #include "../../lua/luaInterface.h"
 #include "../../expectedBehavior.h"
@@ -99,7 +99,7 @@ namespace Objects
 						}
 					};
 					D::Array<Attrib>	attributes;
-					D::Buffer0<index_t>	changedSinceLastRound;
+					D::Vector<index_t>	changedSinceLastRound;
 
 					void				ClearChanges()
 					{

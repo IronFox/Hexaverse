@@ -457,7 +457,7 @@ namespace Objects
 	
 	#ifndef CLIENT
 
-		/*static*/ Ctr::Buffer0<PFaction>	Faction::all;
+		/*static*/ Ctr::Vector<PFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus;
 
 
@@ -741,7 +741,7 @@ namespace Objects
 
 
 		template <typename T, typename S, typename F>
-			static bool	FindAndEraseF(BasicBuffer<T,S>&container, const F&f)
+			static bool	FindAndEraseF(BasicVector<T,S>&container, const F&f)
 			{
 				foreach (container,item)
 					if (f(*item))
@@ -752,7 +752,7 @@ namespace Objects
 				return false;
 			}
 		template <typename T>
-			static bool FindAndErase(BasicBuffer<std::weak_ptr<T> >&container, const std::shared_ptr<T>&match)
+			static bool FindAndErase(BasicVector<std::weak_ptr<T> >&container, const std::shared_ptr<T>&match)
 			{
 				foreach (container,item)
 					if (item->lock() == match)
@@ -972,7 +972,7 @@ namespace Objects
 
 		//void		Faction::SignalLossOfTemporarySensory()
 		//{
-		//	static Buffer0<PWorldEntity>	toDump;
+		//	static Vector<PWorldEntity>	toDump;
 		//	seeing.VisitAllKeys([this](const PWorldEntity&e)
 		//	{
 		//		if (!e->IsSatellite() && !GridCanSee(e))
@@ -1014,7 +1014,7 @@ namespace Objects
 			}
 		}
 
-		void	Faction::CollectSensors(Buffer0<World::Sensor>&outSensors, float&t) const
+		void	Faction::CollectSensors(Vector<World::Sensor>&outSensors, float&t) const
 		{
 			foreach (this->structures,_s)
 			{
@@ -1092,7 +1092,7 @@ namespace Objects
 				LogEvent(EventSignificance::Common,shared_from_this(),"Recomputing sensory");
 				Time::Stamp started;
 
-				static Buffer0<World::Sensor>	sensors;
+				static Vector<World::Sensor>	sensors;
 				sensors.Clear();
 
 				if (alliance->config.shareSensors)
@@ -1332,7 +1332,7 @@ namespace Objects
 		//}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const M::TVec3<>&center, const Ctr::BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::TVec3<>&center, const Ctr::BasicVector<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -1345,7 +1345,7 @@ namespace Objects
 		}
 
 		template <typename T>
-		count_t		CountRawSensorCoverage(const M::Sphere<>&sphere, const Ctr::BasicBuffer<T>&scope)
+		count_t		CountRawSensorCoverage(const M::Sphere<>&sphere, const Ctr::BasicVector<T>&scope)
 		{
 			count_t rs = 0;
 			foreach (scope,s)
@@ -1448,7 +1448,7 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Ctr::Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const World::Sensor&sensor, int sensorHeight, float&t, Ctr::Vector<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
@@ -1545,7 +1545,7 @@ namespace Objects
 			}
 		}
 
-		//void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		//void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Vector<PWorldEntity>*newContacts /*= nullptr*/)
 		//{
 		//	ChangeSensory(state,t,+1);
 		//	if (checkChangesNow)
@@ -1619,7 +1619,7 @@ namespace Objects
 					hasMineralGeneratorCycle = false;
 			#endif
 
-//				static Buffer0<String> missing;
+//				static Vector<String> missing;
 			if (!hasMineralGeneratorCycle)
 			{
 				whyNot = "";
@@ -1839,7 +1839,7 @@ namespace Objects
 		//}
 
 	#else
-		/*static*/ Buffer0<PFaction>			Faction::allKnown;
+		/*static*/ Vector<PFaction>			Faction::allKnown;
 		/*static*/ HashTable<TUniqueID,PFaction>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
@@ -2231,7 +2231,7 @@ namespace Objects
 
 			{
 				auto lock = f->LockSensorUpdates();
-				static Ctr::Buffer0<PWorldEntity>	toDelete;
+				static Ctr::Vector<PWorldEntity>	toDelete;
 				for (index_t i = 0; i < f->structures.Count(); i++)
 					if (!f->structures[i].lock()->IsIndestructible())
 					{

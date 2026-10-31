@@ -385,7 +385,7 @@ namespace FileIO
 		}
 
 	template <typename T>
-		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, Ctr::BasicBuffer<T>&resultOut)
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, Ctr::BasicVector<T>&resultOut)
 		{
 			Riff::Chunk*chk = parent->FindFirst(id);
 			ASSERT_NOT_NULL1__(chk, id.ToString());
@@ -661,7 +661,7 @@ namespace FileIO
 		}
 	}
 
-	static void Export(Riff::Chunk*taskChunk, const Ctr::BasicBuffer<Objects::PathNode>&path)
+	static void Export(Riff::Chunk*taskChunk, const Ctr::BasicVector<Objects::PathNode>&path)
 	{
 		static_assert(sizeof(Objects::PathNode)==sizeof(Grid::LCellIdI)+sizeof(int), "Struct alignment fault" );
 		if (path.IsEmpty())
@@ -669,7 +669,7 @@ namespace FileIO
 		taskChunk->AppendBlock(RID::path,path.pointer(),path.GetContentSize());
 	}
 
-	static void Import(Riff::Chunk*taskChunk, Ctr::BasicBuffer<Objects::PathNode>&outPath)
+	static void Import(Riff::Chunk*taskChunk, Ctr::BasicVector<Objects::PathNode>&outPath)
 	{
 		Riff::Chunk*source = taskChunk->FindFirst(RID::path);
 		outPath.Clear();
@@ -937,7 +937,7 @@ namespace FileIO
 		return ((UINT16)a & (UINT16)b) != 0;
 	}
 
-	Ctr::Buffer0<Objects::PMobileEntity>	insertIntoHangar;
+	Ctr::Vector<Objects::PMobileEntity>	insertIntoHangar;
 
 	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, HashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
@@ -1457,7 +1457,7 @@ namespace FileIO
 			They are deleted automatically when the program exits this scope, and will then batch-rebuild sensory of all factions.
 			Performance impact uncertain during release, but during debug they change a loading process that takes 5 minutes into one that takes seconds.
 			*/
-			Buffer0<Objects::Faction::TSensorLock>	locks;
+			Vector<Objects::Faction::TSensorLock>	locks;
 
 			HashTable<TUniqueID,Objects::Alliance::TConfig>	allianceConfigMap;
 
@@ -2313,7 +2313,7 @@ namespace FileIO
 				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 					Attach(factionSection,RID::factionWorldTypeChunk,staticDeltaContainer.delta[k].data0);
 
-				static Ctr::Buffer0<UINT32>	final;
+				static Ctr::Vector<UINT32>	final;
 				final.Clear();
 
 				for (index_t i = 0; i < faction->knownResources.resourcesDiscovered.Count(); i++)
@@ -2358,7 +2358,7 @@ namespace FileIO
 
 
 
-	ChunkName Compare1(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent="")
+	ChunkName Compare1(Riff::File&a, Riff::File&b, Ctr::Vector<Riff::TID>&idStack, const String&indent="")
 	{
 		ASSERT2__(a.GetID() == b.GetID(),a.GetID().ToString(),b.GetID().ToString());
 		std::cout << indent << a.GetID().ToString() << std::endl;
@@ -2403,7 +2403,7 @@ namespace FileIO
 		}
 		else
 		{
-			static Ctr::Buffer<BYTE>	data0,data1;
+			static Ctr::Vector<BYTE>	data0,data1;
 			data0.Clear(); data1.Clear();
 			a.Get(data0.AppendRow(a.GetSize()));
 			b.Get(data1.AppendRow(b.GetSize()));
@@ -2417,7 +2417,7 @@ namespace FileIO
 	}
 
 
-	void Compare(Riff::File&a, Riff::File&b, Ctr::Buffer<Riff::TID>&idStack, const String&indent/*=""*/)
+	void Compare(Riff::File&a, Riff::File&b, Ctr::Vector<Riff::TID>&idStack, const String&indent/*=""*/)
 	{
 		bool f0 = a.First();
 		bool f1 = b.First();

@@ -37,7 +37,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 bool	Dispatch(const StringRef&);
 
 String targetHost = "localhost";
-Buffer0<String>	history;
+Vector<String>	history;
 index_t historyAt=InvalidIndex;
 
 Time::Stamp connectionAttemptStarted;
@@ -263,7 +263,7 @@ namespace Channels
 
 
 TCP::Client client;
-Buffer0<String>	bufferedCommands;
+Vector<String>	bufferedCommands;
 std::mutex	bufferedCommandsMutex;
 
 
@@ -678,7 +678,7 @@ int main(int argc, char* argv[])
 		Console::_UpdateLastLine();
 		std::wcout << Console::lastLine;
 		Console::ScanCursorPosition();
-		Buffer0<String>	newLines;
+		Vector<String>	newLines;
 		while (!application_shutting_down)
 		{
 			{

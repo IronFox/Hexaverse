@@ -1,0 +1,63 @@
+<!-- Generated from documentation/documentation/terrain.txt (DokuWiki syntax). -->
+
+# Terrain
+
+![Lava Planet](../../documentation/images/lava.png)
+
+Hexaverse is played on (or something beneath) the surface of planets.
+
+The terrain is composed of 32 layers of mostly hexagonal cells.
+A high resolution grid of terrain cells defines the visible terrain.
+A second, lower resolution grid is constructed to define where units may be placed.
+Each unit cell completely contains one terrain cell, and shares a number of terrain cells with its neighbors equal to the number of edges (6 in most cases).
+
+A unit requires its central and all edge terrain cells to be clear.
+Conversely, it can stand on central terrain blocks as well as mere ledges (shared terrain blocks) one layer beneath the unit.
+
+![Active EMP Zones](../../documentation/images/empZones.png)
+[Vehicles](concepts/vehicle.md) will fall (and be destroyed in some cases) if these conditions are not met.
+Structures hover after construction but remain stationary.
+
+With the exception of lava, units will automatically remove any terrain moving into their unit cell (e.g. expanding water).
+Lava will mercilessly destroy any unit it touches.
+Structures can 'stand' atop lava; [vehicles](concepts/vehicle.md) can not (if nothing else keeps them up).
+
+## EMP Zones
+
+If the server is configured such, the planet may feature EMP zones, that force new factions closer to one another and quicken the game.
+Zones are unlocked as new factions are created.
+
+Each newly created faction unlocks at least one previously locked zone until all 12 zones are unlocked.
+New factions are spawned within the unlocked areas of the planet.
+
+Mobile units cannot enter these zones, and will be routed around them.
+Nexus units already located within EMP zones suffer high levels of [EMP damage](concepts/emp-damage.md) until the respective zone is removed when new factions are created.
+
+## Planet Types
+
+The system distinguishes a number of terrain blocks such as sand, grass, rock, granite, snow, water or lava.
+
+Different planet types may be constructed by [configuring](config/server.md) the server accordingly.
+
+## Terrain Clipping
+
+![Clipped Terrain](../../documentation/images/ClipTerrain.png)
+Terrain clipping allows to view caves beneath the ground. It visually removes terrain within a certain radius around the current focus point down to the current clipping height.
+It can be configured via the respective [view buttons](controls.md), but may also be toggled using the **end** key.
+**Page up/down** can be used to quickly alter the clipping height.
+
+Liquids (water/lava) are shown in their respective colors but all other types are shown as solid dark gray, or black to contrast this viewing mode against regular non-clipped terrain.
+
+## Terraforming
+
+[Terraformer](units/turrets/terraformer.md) vehicles can alter the terrain in various ways.
+Common operations include the removal of terrain to flatten areas or dig tunnels, and the addition of concrete or roads.
+Bridges can be built across cliffs or between floating islands to reach remote locations.
+Walls can obstruct hostile movement or sensory.
+And, depending on the terrain, roads can be a significant strategic asset as they dramatically accelerate the motion of land-based mobile units.
+
+![Roads](../../documentation/images/roads.jpg)
+
+---
+
+[Game documentation index](README.md)

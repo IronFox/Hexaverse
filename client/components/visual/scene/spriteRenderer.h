@@ -4,7 +4,7 @@
 
 #include <global_string.h>
 #include <math/vclasses.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include "../display.h"
 
 namespace Objects
@@ -79,7 +79,7 @@ namespace Objects
 		*/
 		static void	StaticCreate();
 	private:
-		D::Buffer0<Instance>	instances;
+		D::Vector<Instance>	instances;
 		Engine::DX11::Texture	texture;
 	};
 

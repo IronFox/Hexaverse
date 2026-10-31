@@ -1,13 +1,13 @@
 #include <global_root.h>
 #include "niceName.h"
 #include <io/string_file.h>
-#include <container/buffer.h>
+#include <container/vectorList.h>
 #include <io/file_system.h>
 
 namespace NiceName
 {
 
-	static Buffer<String>	nouns;
+	static Vector<String>	nouns;
 
 	#ifdef CLIENT
 		#define PRE_PATH

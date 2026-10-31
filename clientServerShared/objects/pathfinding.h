@@ -102,7 +102,7 @@ namespace Objects
 			/**
 			Resulting path (if any), not including the origin location
 			*/
-			Buffer<PathNode>	result;
+			Vector<PathNode>	result;
 
 			/**
 			Updates @a result.
@@ -149,7 +149,7 @@ namespace Objects
 				int		nodeCosts;
 			};
 			VolumeGrid<TNode>	buffer;
-			Buffer0<PathNode>	routeIgnore;
+			Vector<PathNode>	routeIgnore;
 
 			void				CompleteRouting(const Grid::LCellIdI&dest, bool includeOrigin);
 		};
@@ -157,9 +157,9 @@ namespace Objects
 		extern ShortestPath	shortestPath;
 
 
-		bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+		bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicVector<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 		#ifndef NO_SATELLITES
-			bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+			bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicVector<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 		#endif
 		/**
 		Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
@@ -169,9 +169,9 @@ namespace Objects
 		@param penaltizeVerticalMotion Increases the cost of vertical motion considerably, such that they are chosen only as a last resourt
 		@param constrainVerticalMotion Only chooses path nodes whoes height lies in the height range defined by @a from.height and @a to.height. If @a from and @a to lie on the same height, then path finding is restricted to 2d
 		*/
-		bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
+		bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, Ctr::BasicVector<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
 		#ifndef NO_SATELLITES
-			bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
+			bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicVector<PathNode>&oPath);
 		#endif
 
 
@@ -193,7 +193,7 @@ namespace Objects
 
 			};
 		
-			Buffer<MapNode>	result;
+			Vector<MapNode>	result;
 
 
 			typedef std::function<bool(const Grid::LCellIdI&)>FBlockTest;
@@ -220,7 +220,7 @@ namespace Objects
 				index_t	mapped = InvalidIndex;
 			};
 			bool						logPerformance;
-			Buffer<Grid::LCellIdI>		touched;
+			Vector<Grid::LCellIdI>		touched;
 			VolumeGrid<TReachableNode>	buffer;
 
 //			bool					CheckIsBlocked(const Grid::LCellIdI&cell, const FBlockTest&isBlocked);
