@@ -1,0 +1,8 @@
+echo off
+set user="name"
+set password="pass"
+echo Did you update username and password in repackAndUpload.bat?
+pause
+
+cd steam_sdk\ContentBuilder
+CALL full_build.bat

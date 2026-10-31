@@ -15,6 +15,8 @@
 #include "ai/vehicles.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
+#include <network/steamInterface.h>
+#include <network/net.h>
 #include "configurationMode.h"
 #include "gridControl.h"
 #include "visual/objectChoices.h"
@@ -48,27 +50,39 @@ using namespace Time::Literals;
 
 namespace Network
 {
+	struct SteamServer
+	{
+		ServerAddress address;
+		UINT64 ownerID,lobbyID;
+	};
 
-	bool			haveFaction = false,
+	Buffer0<SteamServer>
+					steamServers;
+
+	bool			haveFactionLoaded = false,
+					haveFactionOnServer = false,
 					haveID = false,
 					amSpectator = false,
 					amOnline=false,
 					gameHasBegun=false;
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
+		UINT64		attemptingToConnect = 0;
 	#endif
 
-	TUniqueID		myID,serverID,worldID;
+	TUniqueID		myID,worldID;
 	UINT32				gameFlags = 0;
 	UINT16			connectionBasePort = DEFAULT_SERVER_BASE_PORT;
 
-	CryptographicID	activeToken,passwordChallenge;
-	String			myIDString,serverIDString,worldIDString,activeTokenString;
+	CryptographicID	passwordChallenge;
+	String			myIDString,worldIDString;
 	INT32			uplinkBandwidth = -1;
-	
-	HashTable<TUniqueID,CryptographicID>	accessMap;
-	bool			serverRequiresPassword = false;
+	ServerAddress	lastServerAddress;
+	UINT64			lastLobbyID=0;
+	UINT64			autoConnectToLobby=0;
 
+	
+	bool			serverRequiresPassword = false;
 
 	Protocol::GameProgress	gameProgress;
 	TUniqueID				winningAllianceID = TUniqueID::Empty();
@@ -78,18 +92,29 @@ namespace Network
 					roundTimer = 0;
 	Time::Stamp		phaseStarted;
 	bool			newRoundRequested = false;
-	ServerAddress	lastServerAddress;
+	UINT64			connectingToSteam = 0;
 
 
 	HashSet<TUniqueID>	visitedWorldMap;
+	bool CanSendFactionRequests()
+	{
+		return		Network::amOnline
+					&&
+					(	RuntimeConfig::IsInAnyCommandPhase() 
+						|| RuntimeConfig::phase  == RuntimeConfig::Phase::AnimationPhase 
+						|| RuntimeConfig::phase  == RuntimeConfig::Phase::EndOfGame
+					)
+				;
+	}
+	
 
-
-	bool	IsValidNickname(const String&candidate)
+	bool IsValidNickname(const String&candidate)
 	{
 		if (candidate.GetLength() < 4)
 			return false;
-		bool rs = Package::IsValid(candidate,32);
-		return rs;
+		bool rs = Package::IsValid(candidate,16);
+		return rs
+				&& !candidate.Contains("  ") && !candidate.Contains('\t') && !candidate.Contains('\n') && !candidate.Contains('\r') && !candidate.EndsWith(' ') && !candidate.BeginsWith(' ');
 	}
 
 	bool	IsValidNickname(const UTF32StringRef&candidate)
@@ -98,6 +123,61 @@ namespace Network
 			return false;
 		bool rs = Package::IsValid(candidate,32);
 		return rs;
+	}
+
+	void	SetSteamPersona()
+	{
+		String name = SteamInterface::GetUserNickName();
+		if (IsValidNickname(name))
+		{
+			Network::chosenNickname = name;
+			Network::customNickname = false;
+		}
+		else
+			throw Except::Program::DataConsistencyFault("Steam user name is not valid for " PRODUCT_NAME". You must manually choose a nickname");;
+
+	}
+
+	void	ResetNickname()
+	{
+		try
+		{
+			SetSteamPersona();
+			FileSystem::UnlinkFile(RuntimeConfig::myConfig.Lookup("userName.txt"));
+			LogEvent(EventClass::Preset::uncommon,"Nickname reset to Steam alias '"+Network::chosenNickname+"'");
+			if (Network::client.IsConnected())
+				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
+		}
+		catch (const std::exception&ex)
+		{
+			LogEvent(EventClass::Preset::error,ex.what());
+		}
+	}
+
+	void ConnectToLobby(UINT64 lobbyID)
+	{
+		if (lobbyID == Network::lastLobbyID && Network::client.IsConnected())
+		{
+			LogEvent(EventSignificance::Uncommon,"Already connected to lobby. Ignoring event");
+			return;
+		}
+		if (Network::ForcingTCPConnections())
+		{
+			LogEvent(EventSignificance::NonFatalError,"Cannot connect to lobby; TCP connections are enforced");
+			return;
+		}
+		Network::client.Disconnect();
+		SteamInterface::RegisterExternalLobby(lobbyID);
+		Network::RefreshServerListNow();
+		Network::autoConnectToLobby = lobbyID;
+		#ifdef HAS_WINDOW
+			attemptingToConnect = lobbyID;
+			HUD::Dialog::PermanentMessage("Attempting to connect. Please wait.",[lobbyID]()
+			{
+				return !Network::client.IsConnected() && SteamInterface::LobbyIsRegistered(lobbyID) ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;
+			});
+		#endif
+	
 	}
 
 
@@ -135,7 +215,7 @@ namespace Network
 			hosts.Open(RuntimeConfig::myConfig.Lookup("hosts.txt"));
 			String host;
 			while (hosts >> host)
-				ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
+				Network::ServerDiscovery::RegisterNewHost(0, SteamInterface::GetUserID(), Network::ServerAddress(host,0, Protocol::ServerInfo()),false, false);
 		}
 		catch (...)
 		{}
@@ -161,8 +241,7 @@ namespace Network
 		{
 			StringFile hosts;
 			hosts.Create(RuntimeConfig::myConfig.Lookup("hosts.txt"));
-		
-			static Buffer0<Network::ServerAddress>	 urls;
+			static Buffer0<Network::ServerIPAddress>	 urls;
 			ServerDiscovery::ListNonAutoAttempts(urls);
 			foreach (urls,url)
 				hosts << url->host << ':' << url->basePort << nl;
@@ -213,7 +292,8 @@ namespace Network
 		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cfg.gameGoal);
 	}
 
-	void			ConnectTo(const Host&host)
+
+	void			ServerInfo::Connect() const
 	{
 		client.Disconnect();
 
@@ -225,33 +305,50 @@ namespace Network
 			#endif
 			return;
 		}
+		const auto&addr = GetPrimaryAddress();
+		if (addr.host.IsEmpty() &&!addr.steamID)
+		{
+			
+			return;
+		}
+		autoConnectToLobby = 0;
+		lastServerAddress = addr;
+		lastLobbyID = lobbyID;
 
-		#ifdef HAS_WINDOW
-			if (HUD::Dialog::QueryNicknameIfEmpty())
-				return;
-		#endif
 
-		RuntimeConfig::tutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
+		RuntimeConfig::tutorialMode = (GetPrimaryAddress().info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
 
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		GlobalEvents::phaseChange();
 		gameHasBegun = false;
 
-		LoadGameConfig(host.serverInfo.gameInfo.gameConfig);
+		Network::worldID = addr.info.gameInfo.worldID;
+		Network::worldIDString = Network::worldID.ToNiceString();
+		Network::gameFlags = addr.info.gameInfo.gameConfig.gameFlags;
+		RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(addr.info.gameInfo.gameConfig.gameGoal);
 
-		client.ConnectAsync(host.address.host + ":"+String(host.address.basePort + PortOffset::Session));
+		if (addr.steamID  && !ForcingTCPConnections())
+		{
+			client.ConnectToSteam(addr.steamID);
+			connectingToSteam = addr.steamID;
+		}
+		else
+		{
+			client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
+			connectingToSteam = 0;
+		}
+		//if (lobbyID != 0)
+		//{
+		//	SteamInterface::JoinLobby(lobbyID);
+		//}
 		#ifdef HAS_WINDOW
 			HUD::WindowStack::SignalSituationChange();
 		#endif
 
-		serverID = host.serverInfo.hostInfo.hostID;
-		serverIDString = Network::serverID.ToNiceString();
-		lastServerAddress = host.address;
-
-		worldID = host.serverInfo.gameInfo.worldID;
+		worldID = addr.info.gameInfo.worldID;
 		worldIDString = worldID.ToNiceString();
 
-		connectionBasePort = host.address.basePort;
+		connectionBasePort = addr.basePort;
 	}
 
 
@@ -274,52 +371,9 @@ namespace Network
 
 	static PathString AccessFilename()
 	{
-		return RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "worldAccess.m32");
+		return RuntimeConfig::myConfig.Lookup("worldAccess.m32");
 	}
 
-	void SaveWorldAccessTokens()
-	{
-		FileSystem::CreateDirectory(L"config");
-		FILE*f = FOPEN(AccessFilename().c_str(), "wb+");
-		if (!f)
-		{
-			LogEvent(EventClass::Preset::error,nullptr,"Unable to write to world access map");
-			return;
-		}
-
-		accessMap.visitAllEntries([f](const TUniqueID&id, const CryptographicID&access)
-		{
-			fwrite(id.bytes,sizeof(id.bytes),1,f);
-			access.Write(f);
-		});
-
-		fclose(f);
-		LogEvent(EventClass::Preset::common,nullptr,"Updated world access map");
-	}
-
-	void LoadWorldAccessTokens()
-	{
-		FILE*f = FOPEN(AccessFilename().c_str(), "rb");
-		if (!f)
-			return;
-
-		accessMap.Clear();
-		TUniqueID id;
-		CryptographicID access;
-		while (!feof(f))
-		{
-			if (fread(id.bytes,sizeof(id.bytes),1,f))
-			{
-				access.Read(f);
-				accessMap.Set(id,access);
-			}
-		}
-
-		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.Count())+" entry/ies loaded.");
-		fclose(f);
-	}
-
-	
 	namespace ServerDiscovery
 	{
 
@@ -334,11 +388,12 @@ namespace Network
 		{
 		public:
 			TCP::Client		client;
-			ServerAddress	address;
+			ServerIPAddress	address;
 			bool			hasContact = false,
 							hasInfo = false,
 							rightVersion = false,
-							autoAttempt = false,
+							persistent = false,
+							autoAttemptHideIfFailing = false,
 							protocolIncompatible = false;
 			Protocol::ServerInfo	lastInfo;
 			float			lastPing;
@@ -381,6 +436,8 @@ namespace Network
 					{
 						pingChannel.SendTo(client,Time::Stamp().ToTicks());
 						Sleep(200);
+						if (client.GetLastPackageTime().ElapsedSeconds() > 5.f)
+							client.Disconnect();
 					}
 					//if (!application_shutting_down)
 						//sem.enter();
@@ -398,29 +455,29 @@ namespace Network
 
 		Buffer0<PHostContactAttempt>	attempts,waste;
 
-		void	ListFailedAttempts(Buffer0<ServerAddress,Adopt>&outList)
+		void	ListFailedAttempts( Buffer0<ServerIPAddress,Swap>&outList )
 		{
 			outList.Clear();
 			foreach (attempts,a)
 			{
-				if (!(*a)->autoAttempt && !(*a)->hasContact)
+				if (!(*a)->autoAttemptHideIfFailing && !(*a)->hasContact)
 					outList << (*a)->address;
 			}
 
 		}
 
-		void	ListNonAutoAttempts(Buffer0<ServerAddress>&outList)
+		void	ListNonAutoAttempts(Buffer0<ServerIPAddress>&outList)
 		{
 			outList.Clear();
 			foreach (attempts,a)
 			{
-				if (!(*a)->autoAttempt)
+				if (!(*a)->autoAttemptHideIfFailing)
 					outList << (*a)->address;
 			}
 		}
 
 
-		bool	TryRemoveHost(const ServerAddress&addr)
+		bool	TryRemoveHost( const ServerIPAddress&addr )
 		{
 			if (client.IsAttemptingToConnect() || client.IsConnected())
 				return false;
@@ -428,9 +485,14 @@ namespace Network
 			{
 				if ((*a)->address == addr)
 				{
-					(*a)->doQuit = true;
-					waste << *a;
-					attempts.erase(a);
+					if ((*a)->persistent)
+						(*a)->autoAttemptHideIfFailing = true;
+					else
+					{
+						(*a)->doQuit = true;
+						waste << *a;
+						attempts.erase(a);
+					}
 					#ifdef HAS_WINDOW
 						HUD::WindowStack::SignalSituationChange();
 					#endif
@@ -441,7 +503,7 @@ namespace Network
 		}
 
 
-		bool	ListeningButCantConnectTo(const ServerAddress&addr)
+		bool	ListeningButCantConnectTo(const ServerIPAddress&addr)
 		{
 			if (client.IsAttemptingToConnect() || client.IsConnected())
 				return false;
@@ -496,19 +558,150 @@ namespace Network
 
 		}
 
+		void MapNonSteamServer(const ServerIPAddress&addr, const Protocol::ServerInfo&info, bool protocolIncompatible, bool rightVersion, float lastPing)
+		{
+			index_t at = InvalidIndex;
+			ServerAddress addr2(addr,info);
+			foreach (servers,serv)
+			{
+				if (serv->HasAddress(addr2))
+				{
+					at = serv - servers.pointer();
+					serv->ownerID = info.hostInfo.ownerID;
+					serv->lobbyID = info.hostInfo.lobbyID;
+					break;
+				}
+				if (serv->ownerID == info.hostInfo.ownerID 
+					&& !serv->HasNonSteamAddress() 
+					&& serv->IsWorldID(info.gameInfo.worldID))
+				{
+					at = serv - servers.pointer();
+					serv->addresses << addr2;
+					break;
+				}					
+			}			
+			if (at == InvalidIndex)
+			{
+				at = servers.Count();
+				servers.Append().addresses << addr2;
+				servers.Last().ownerID = info.hostInfo.ownerID;
+				servers.Last().lobbyID = info.hostInfo.lobbyID;
+				servers.Last().protocolIncompatible = protocolIncompatible;
+				servers.Last().rightVersion = rightVersion && !protocolIncompatible;
+				if (info.hostInfo.lobbyID)
+					SteamInterface::RegisterExternalLobby(info.hostInfo.lobbyID);
+			}
+			else
+				servers[at].UpdateNonSteamAddress(addr2);
+			servers[at].lastPing = lastPing;
+			//servers[at].info = info;
+		}
 
-		bool	RegisterNewHost(const ServerAddress&host, bool probablyRightVersion, bool automaticallyDiscovered)
+		void MapSteamServer(const SteamServer&s)
+		{
+			/*
+			Removed verification because:
+			Lobby has only own owner (guaranteed).
+			Owner sets game server id (guaranteed).
+			Therefor lobby owner -> game server id.
+			Lobby owner could register a bad server:
+				* Doesn't exist, but timeouts are somehow updated: Connection always fails
+				* Owned by someone else, meaning all lobby data is wrong. Corrected during ClientFactionResponse (after logging in/creating faction)
+					=> Could create many lobbies pointing to some server thus overloading it, however, verification would do the same
+			Assumed low probability scenario. If ever wrong: reactivate the following, OR compare lobby data with server data, send actual data upon first connect
+			*/
+			#ifdef USE_STEAM_OWNER_AUTHENTICATION
+				auto authenticationState = SteamNetwork::GetAuthenticationState(s.address.steamID,s.ownerID);
+				if (authenticationState == SteamNetwork::AuthenticationState::AuthenticationFailed)
+					return;
+				bool authenticated = authenticationState == SteamNetwork::AuthenticationState::Authenticated;
+			#endif
+			
+			
+			index_t at = InvalidIndex;
+			foreach (servers,serv)
+			{
+				if (serv->HasAddress(s.address))
+				{
+					at = serv - servers.pointer();
+					serv->ownerID = s.ownerID;
+					serv->lobbyID = s.lobbyID;
+					break;
+				}
+				if (serv->ownerID == s.ownerID 
+					&& !serv->HasSteamAddress() 
+					&& serv->IsWorldID(s.address.info.gameInfo.worldID))
+				{
+					at = serv - servers.pointer();
+					serv->addresses << s.address;
+					break;
+				}					
+			}
+
+
+			if (at == InvalidIndex)
+			{
+				at = servers.Count();
+				servers.Append().addresses << s.address;
+				servers.Last().protocolIncompatible = false;
+				servers.Last().rightVersion = true;
+				servers.Last().ownerID = s.ownerID;
+				servers.Last().lobbyID = s.lobbyID;
+			}
+			else
+				servers[at].UpdateSteamAddress(s.address);
+			#ifdef USE_STEAM_OWNER_AUTHENTICATION
+				servers[at].authenticated |= authenticated;
+			#endif
+		}
+
+
+		bool	RegisterNewHost( UINT64 lobbyID, UINT64 ownerID,const ServerAddress&host, bool probablyRightVersion, bool automaticallyDiscovered, bool makePersistent )
 		{
 			foreach (attempts,a)
 				if ((*a)->address == host)
+				{
+					if (!automaticallyDiscovered)
+						(*a)->autoAttemptHideIfFailing = false;
+					if (makePersistent)
+						(*a)->persistent = true;
 					return false;	//already there
-			PHostContactAttempt&attempt = attempts.Append();
-			attempt.reset(new HostContactAttempt());
-			attempt->address = host;
-			attempt->rightVersion = probablyRightVersion;
-			attempt->autoAttempt = automaticallyDiscovered;
+				}
+			if (host.steamID)
+			{
+				
+				index_t at=InvalidIndex;
+
+				for (index_t i = 0; i < steamServers.Count(); i++)
+				{
+					if (steamServers[i].address == host)
+					{
+						at = i;
+						break;
+					}
+				}
+				if (at == InvalidIndex)
+				{
+					at = steamServers.Count();
+					steamServers.Append().address = host;
+					steamServers.Last().ownerID = ownerID;
+					steamServers.Last().lobbyID = lobbyID;
+				}
+				steamServers[at].address = host;	//might have new info
+
+				MapSteamServer(steamServers[at]);
+			}
+			else
+			{
+				PHostContactAttempt&attempt = attempts.Append();
+				attempt.reset(new HostContactAttempt());
+				attempt->address = host;
+				attempt->rightVersion = probablyRightVersion;
+				attempt->autoAttemptHideIfFailing = automaticallyDiscovered;
+				attempt->persistent = makePersistent;
 			
-			attempt->start();
+				attempt->Start();
+			}
 			return true;
 		}
 
@@ -529,8 +722,8 @@ namespace Network
 			Camera::locked = false;
 		#endif
 
-		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;
+		haveFactionLoaded = false;
 
 		roundTimer = -1;
 
@@ -565,13 +758,13 @@ namespace Network
 	}
 
 	#ifdef HAS_WINDOW
-		void QueryPasswordAndLogin(bool forceNewFaction, UINT32 factionTypes)
+		void QueryPasswordAndLogin(Protocol::FactionOperation::op_t op, UINT32 factionTypes)
 		{
 			HUD::Dialog::QueryPassword("Please provide the configured server password",
-			[factionTypes,forceNewFaction](const UTF32StringRef&input)
+			[factionTypes,op](const UTF32StringRef&input)
 			{
 				StringEncoding::UTF32::ToUTF8(input, RuntimeConfig::serverPassword);
-				AttemptFactionLogin(forceNewFaction,factionTypes,RuntimeConfig::serverPassword);
+				AttemptFactionLogin(op,factionTypes,RuntimeConfig::serverPassword);
 			},[]()->HUD::Dialog::CheckResult
 			{
 				if (!client.IsConnected())
@@ -579,37 +772,116 @@ namespace Network
 				if (!RuntimeConfig::IsInAnyCommandPhase())
 					return HUD::Dialog::CheckResult::OkayNotRightNow;
 				return HUD::Dialog::CheckResult::OkayContinue;
-			});
+			}
+			);
 		}
 
 
-		void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes)
+		void AttemptFactionLogin(Protocol::FactionOperation::op_t op, UINT32 factionTypes)
 		{
 			if (serverRequiresPassword && RuntimeConfig::serverPassword.IsEmpty())
-				QueryPasswordAndLogin(forceNewFaction,factionTypes);
+				QueryPasswordAndLogin(op,factionTypes);
 			else
-				AttemptFactionLogin(forceNewFaction,factionTypes,RuntimeConfig::serverPassword);
+				AttemptFactionLogin(op,factionTypes,RuntimeConfig::serverPassword);
 		}
 
-
-
+	#else
+		void AttemptFactionLogin(Protocol::FactionOperation::op_t op, UINT32 factionTypes)
+		{
+			AttemptFactionLogin(op,factionTypes,RuntimeConfig::serverPassword);
+		}
 	#endif
 
 
 	namespace Receiver
 	{
 		bool			eventsLocked = true;
+		 
 
 		void	GameConfig(Protocol::GameConfig&cfg)
 		{
 			Network::LoadGameConfig(cfg);
 			LogEvent(EventClass::Preset::important,"Game config updated");
 		}
+		void	SendHello(UINT64 userID, const ArrayRef<BYTE>&key)
+		{
+			Protocol::Hello hello;
+			hello.clientType = RuntimeConfig::aiMode ? Protocol::ClientType::AIClient : Protocol::ClientType::RegularClient;
+			hello.steamID = userID;
+			hello.ticket = key;
+		/*	#ifdef HAS_WINDOW
+				hello.steamID = SteamInterface::GenerateNewAccessToken(hello.ticket);
+			#else
+				hello.steamID = 0;
+				RuntimeConfig::aiAccessToken.Export(hello.ticket);
+			#endif
+				*/
+			//if (RuntimeConfig::aiMode || customNickname)
+			hello.nickname = RuntimeConfig::aiMode ? Objects::Faction::nexusName : chosenNickname;
+			if (RuntimeConfig::aiMode)
+				chosenNickname = Objects::Faction::nexusName;
+			//state.state = 0U;
+			LogEvent(EventSignificance::Common,"Sending hello to server ("+String(hello.clientType)+","+String(userID)+",'"+hello.nickname+"')");
+			Channels::hello.SendTo(client,hello);	//elevate client state
+			
 
+			//#ifdef HAS_WINDOW
+			//	Dialog::Show(Dialog::loginMenu);
+			//	GUI::HostList::CheckVisibility(false);
+			//#endif
+
+		}
+
+		void	OnServerHello(Protocol::ServerHello&hello)
+		{
+			if (hello.version != SERVER_NAME)
+			{
+				LogEvent(EventClass::Preset::error,"Server version mismatch (expected "+String(SERVER_NAME)+", but got "+hello.version+")");
+				client.Disconnect();
+				return;
+			}
+
+			if (RuntimeConfig::aiMode)
+			{
+				Array<BYTE> key;
+				RuntimeConfig::aiAccessToken.Export(key);
+				SendHello(0,key);
+				return;
+			}
+
+			if (hello.useCryptographicID)
+			{
+				SteamInterface::RequestNewCryptographicAccessToken([](UINT64 steamID, const ArrayRef<BYTE>&key,const String&error)
+				{
+					if (steamID == 0)
+					{
+						LogEvent(EventClass::Preset::error,"Unable to generate access token ("+error+")");
+						client.Disconnect();
+						return;
+					}
+					SendHello(steamID,key);
+				});
+			}
+			else
+			{
+				Array<BYTE> key;
+				UINT64 steamID = SteamInterface::GenerateNewAccessToken(key);
+				if (steamID)
+				{
+					SendHello(steamID,key);
+
+				}
+				else
+				{
+					LogEvent(EventClass::Preset::error,"Unable to generate access token");
+					client.Disconnect();
+					return;
+				}
+			}
+		}
 
 		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
-			ASSERT__(response.success);
 			if (response.success)
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
@@ -622,25 +894,21 @@ namespace Network
 				}
 				const bool gameEndSpectatorMode = (response.gameFlags & Protocol::GameFlag::GameHasEnded) != 0;
 				serverRequiresPassword = (response.gameFlags & Protocol::GameFlag::RequireServerPassword) != 0;
-				if (gameEndSpectatorMode)
-				{
-					#ifdef HAS_WINDOW
-						if (serverRequiresPassword)
-						{
-							QueryPasswordAndLogin(false,Protocol::FactionType::SpectatorFaction);
-						}
-						else
-					#endif
-							AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction,RuntimeConfig::serverPassword);
-				}
-				elif (RuntimeConfig::tutorialMode || RuntimeConfig::aiMode)
-					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly,RuntimeConfig::serverPassword);
+				haveFactionOnServer = response.hasFaction;
+
+				if (RuntimeConfig::aiMode)
+					AttemptFactionLogin(Protocol::FactionOperation::ForceContinue,Protocol::FactionType::NexusFaction);
+				elif (gameEndSpectatorMode)
+					AttemptFactionLogin(Protocol::FactionOperation::Spectate,Protocol::FactionType::RegularFaction);
+				elif (RuntimeConfig::tutorialMode)
+					AttemptFactionLogin(Protocol::FactionOperation::ForceContinue,Protocol::FactionType::RegularFaction);
 				else
 				{
 					#ifdef HAS_WINDOW
 						HUD::WindowStack::Show(HUD::Menu::login);
 					#endif
 				}
+				SteamInterface::AdvertiseLobby(lastLobbyID);
 				#ifdef HAS_WINDOW
 					HUD::HostList::CheckVisibility(false);
 				#endif
@@ -795,25 +1063,17 @@ namespace Network
 			#endif
 			gameHasBegun = false;
 
-			haveFaction = cr.startFactionTypes != 0;
-			if (haveFaction)
+			haveFactionLoaded = cr.startFactionTypes != 0;
+			if (haveFactionLoaded)
 			{
 				RegisterVisited(worldID);
-				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
+				haveFactionOnServer = true;
+				amSpectator = cr.operation == Protocol::FactionOperation::Spectate;
 				#ifdef HAS_WINDOW
 					Objects::resourceView = !amSpectator;
 					HUD::HexGrid::RefreshButtonState();
 				#endif
 
-				activeToken = cr.newFactionAccessToken;
-				activeTokenString = activeToken.ToString();
-				if (!RuntimeConfig::aiMode && !amSpectator)
-				{
-					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+ToString(worldID)+" to "+activeToken.ToString());
-					accessMap.Set(worldID,activeToken);
-					SaveWorldAccessTokens();
-					Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
-				}
 
 				#ifdef HAS_WINDOW
 					HUD::WindowStack::Hide(HUD::Menu::login);
@@ -824,12 +1084,24 @@ namespace Network
 			}
 			else
 			{
-				amSpectator = false;
-				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
-				FlushFaction(true);
-				#ifdef HAS_WINDOW
-					HUD::WindowStack::Show(HUD::Menu::login);
-				#endif
+				amSpectator = cr.operation == Protocol::FactionOperation::Spectate;
+				if (amSpectator)
+				{
+					RegisterVisited(worldID);
+					#ifdef HAS_WINDOW
+						Objects::resourceView = false;
+						HUD::HexGrid::RefreshButtonState();
+						HUD::WindowStack::Hide(HUD::Menu::login);
+					#endif
+				}
+				else
+				{
+					LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
+					FlushFaction(true);
+					#ifdef HAS_WINDOW
+						HUD::WindowStack::Show(HUD::Menu::login);
+					#endif
+				}
 			}
 
 			if (!amSpectator)
@@ -1374,10 +1646,9 @@ namespace Network
 				#endif
 				if (isMine)
 				{
-					haveFaction = false;
+					haveFactionLoaded = false;
+					haveFactionOnServer = false;
 					haveID = false;
-					accessMap.Unset(worldID);
-					SaveWorldAccessTokens();
 					LogEvent(EventClass(EventSignificance::ClientFatal,EventFlavor::Loss),"Your faction has been annihilated");
 				}
 			}
@@ -1454,6 +1725,7 @@ namespace Network
 		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
 
 		TCP::Channel<Protocol::HelloResponse,0,Protocol::ChannelID::Hello>							helloResponse(Receiver::OnHelloResponse);
+		TCP::Channel<Protocol::ServerHello,0,Protocol::ChannelID::ServerHello>						serverHello(Receiver::OnServerHello);
 		TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData(Receiver::OnWorldDelta);
 		TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>				newMobileEntity(Receiver::OnNewMobileEntity);
 		TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>						mobileStateUpdate(Receiver::OnMobileState);
@@ -1550,23 +1822,24 @@ namespace Network
 	}
 
 
-	TCP::Client		client;
-	SOCKET			broadcastListenSocket = INVALID_SOCKET;
+	SteamNetwork::HybridClient		client;
+	//SOCKET			broadcastListenSocket = INVALID_SOCKET;
 
 	String			chosenNickname;
+	bool			customNickname;
 	//Timer::Time		lastPong = timer.Now();
 	
 
 
 	void			AbandonCurrentFaction()
 	{
-		if (haveFaction && client.IsConnected())
+		if (haveFactionLoaded && client.IsConnected())
 		{
 			Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname+" (abandoned)");
 
 			Protocol::ClientFactionRequest ready;
 			ready.startFactionTypes = 0;
-			ready.hashedFactionToken = Password::Hashed::Empty;
+			ready.operation = Protocol::FactionOperation::AbandonCurrent;
 			LogEvent(EventClass::Preset::uncommon, nullptr, "Abandoning current faction");
 			Channels::clientFactionRequest.SendTo(client,ready);
 
@@ -1576,16 +1849,12 @@ namespace Network
 		}
 	}
 
-	bool		HaveFactionKeyForCurrentWorld()
-	{
-		return client.IsConnected() && accessMap.IsSet(worldID);
-	}
 
-	void		AttemptFactionLogin( bool forceNewFaction, UINT32 factionTypes, const String&serverPassword )
+	void		AttemptFactionLogin( Protocol::FactionOperation::op_t op, UINT32 factionTypes, const String&serverPassword )
 	{
 		Protocol::ClientFactionRequest ready;
 		ready.startFactionTypes = factionTypes;
-		ready.hashedFactionToken = Password::Hashed::Empty;
+		ready.operation = op;
 		CryptographicID accessToken;
 		if (serverPassword.IsNotEmpty())
 		{
@@ -1599,22 +1868,19 @@ namespace Network
 
 		if (RuntimeConfig::aiMode)
 		{
-			Password::Hash(passwordChallenge,RuntimeConfig::aiAccessToken,ready.hashedFactionToken);
-			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI using token: " + RuntimeConfig::aiAccessToken.ToFullString());
-
-		}
-		elif (!forceNewFaction && accessMap.Query(worldID, accessToken))
-		{
-			Password::Hash(passwordChallenge,accessToken,ready.hashedFactionToken);
-			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+RuntimeConfig::aiAccessToken.ToString());
+			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI");
 		}
 		else
 		{
-						
-			if (forceNewFaction)
-				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + ToString(worldID));
-			else
-				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + ToString(worldID));
+			switch (op)
+			{
+				case Protocol::FactionOperation::ForceNew:
+					LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + ToString(worldID));
+				break;
+				case Protocol::FactionOperation::ForceContinue:
+					LogEvent(EventClass::Preset::common, nullptr, "Forcing faction resumption in world " + ToString(worldID));
+				break;
+			}
 		}
 
 
@@ -1625,6 +1891,9 @@ namespace Network
 
 	void		OnEvent(TCP::event_t ev, TCP::Peer&)
 	{
+		#ifdef HAS_WINDOW
+			attemptingToConnect = 0;
+		#endif
 		switch (ev)
 		{
 			case TCP::Event::ConnectionEstablished:
@@ -1643,13 +1912,8 @@ namespace Network
 				amOnline = true;
 
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection established to "+client.ToString());
-				
-				Protocol::Hello hello;
-				hello = RuntimeConfig::aiMode ? Objects::Faction::nexusName : chosenNickname;
-				if (RuntimeConfig::aiMode)
-					chosenNickname = hello;
-				//state.state = 0U;
-				Channels::hello.SendTo(client,hello);	//elevate client state
+				//if (connectingToSteam)
+				//	SteamNetwork::AdvertiseServer(connectingToSteam);
 
 				//lastPong = timer.Now();
 
@@ -1663,7 +1927,10 @@ namespace Network
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
 					HUD::WindowStack::SignalSituationChange();
+
 				#endif
+				RemoveServer(lastServerAddress,lastLobbyID);
+				RefreshServerListNow();
 				GlobalEvents::serverConnectionFailed();
 			}
 			break;
@@ -1673,10 +1940,17 @@ namespace Network
 				RuntimeConfig::tutorialMode = false;
 				if (!RuntimeConfig::aiMode)
 					RuntimeConfig::serverAddress = ServerAddress();	//prevent any automatic reconnect
+				
+				SteamInterface::InvalidateLastAccessToken();
+				//SteamInterface::LeaveLobby();
+				SteamInterface::AdvertiseLobby(0);
+
+
 				String err = client.GetError(true);
 
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : "Connection closed or lost");
 				amOnline = false;
+				haveFactionOnServer = false;
 
 				serverRequiresPassword = false;
 				RuntimeConfig::serverPassword = "";
@@ -1704,6 +1978,8 @@ namespace Network
 					HUD::HostList::CheckVisibility(true);
 					HUD::WindowStack::SignalSituationChange();
 				#endif
+				RemoveServer(lastServerAddress,lastLobbyID);
+				RefreshServerListNow();
 				GlobalEvents::serverConnectionLost();
 
 			}
@@ -1763,8 +2039,8 @@ namespace Network
 	void		Setup()
 	{
 		LoadHosts();
-		LoadWorldAccessTokens();
 
+		client.InstallChannel(Channels::serverHello);
 		client.InstallChannel(Channels::helloResponse);
 		client.InstallChannel(Channels::worldData);
 		client.InstallChannel(Channels::newMobileEntity);
@@ -1846,6 +2122,7 @@ namespace Network
 		};
 
 		ASSERT__(Net::initNet());
+		#if 0
 		if (RuntimeConfig::udpListen)
 		{
 			broadcastListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -1879,9 +2156,15 @@ namespace Network
 				}
 			}
 		}
-
+		#endif /*0*/
 
 		GlobalEvents::frameBegin << Update;
+
+
+		/*several components need this: so w/e*/
+		if (Network::ServerDiscovery::RegisterNewHost(0, SteamInterface::GetUserID(),Network::ServerAddress("localhost",0,Protocol::ServerInfo()),false,true))
+			Network::SaveHosts();
+
 	}
 
 
@@ -1899,8 +2182,10 @@ namespace Network
 	//Buffer0<ServerAddress>	servers;
 
 
-	/*explicit*/			ServerAddress::ServerAddress(const String&url)
+	/*explicit*/			ServerAddress::ServerAddress(const String&url,UINT64 steamID, const Protocol::ServerInfo&info)
 	{
+		this->steamID = steamID;
+		this->info = info;
 		index_t portAt = url.Find(':');
 		if (portAt != InvalidIndex)
 		{
@@ -1920,20 +2205,76 @@ namespace Network
 
 
 	Buffer0<ServerInfo,Swap>	servers;
-	HashTable<TUniqueID,index_t>	serverMap;
+	
 
 	Time::Stamp		lastPing,lastServerTableUpdate;
+	Time::Stamp		lastServerProbe = Time::Stamp() - 50_s;
+	bool			steamDiscovery=true;
+	bool			forceTCP=false;
+
+	void	SteamLobbyLost(UINT64 lobbyID)
+	{
+		if (Network::autoConnectToLobby == lobbyID)
+		{
+			LogEvent( EventClass(EventSignificance::Important, EventFlavor::Loss), "Failed to auto-connect to lobby #"+String(lobbyID));
+			Network::autoConnectToLobby = 0;
+			#ifdef HAS_WINDOW
+				HUD::WindowStack::SignalSituationChange();
+				HUD::Dialog::ShowMessage("Failed to connect to lobby #"+String(attemptingToConnect)+". Steam reports that it does not exist");
+				attemptingToConnect = 0;
+			#endif
+
+		}
+	}
 
 	void		Update()
 	{
-		if (!client.IsConnected() && RuntimeConfig::serverAddress.host.IsNotEmpty())
+		if (!client.IsConnected() && (RuntimeConfig::serverAddress.host.IsNotEmpty() || autoConnectToLobby))
 			ConnectToConfiguredServerIfAvailable();
 
-
+		SteamNetwork::ResolveGlobalEvents();
 		client.Resolve();
 
-
-
+		if (steamDiscovery && !client.IsConnected() && lastServerProbe.CheckIfOutdatedAndUpdate(30_s))
+		{
+			steamServers.Clear();
+			SteamInterface::ProbeServers([](UINT64 lobbyID, UINT64 serverID,UINT64 ownerID, const String&addr0, const Protocol::ServerInfo &info)
+			{
+				ServerAddress addr(addr0,serverID,info);
+				ServerDiscovery::RegisterNewHost(lobbyID, ownerID,addr,true,true);
+			},
+			[](UINT64 lobbyID, const String&string, SteamInterface::ServerMatchError err)
+			{
+				switch (err)
+				{
+					case SteamInterface::ServerMatchError::VersionMismatch:
+					case SteamInterface::ServerMatchError::StampOutdated:
+					break;
+					default:
+						LogEvent(EventSignificance::Common,"Steam lobby error on "+SteamInterface::IDToString(lobbyID)+": "+string);
+					break;
+				}
+				#ifdef HAS_WINDOW
+					if (lobbyID == attemptingToConnect)
+					{
+						switch (err)
+						{
+							case SteamInterface::ServerMatchError::StampOutdated:
+								HUD::Dialog::ShowMessage("Unable to connect.\nLast known time stamp is outdated by "+string+" seconds. This server probably quit");
+							break;
+							case SteamInterface::ServerMatchError::VersionMismatch:
+								HUD::Dialog::ShowMessage("Unable to connect.\nServer reports to be '"+string+"', but local version expected '"+String(SERVER_NAME)+"'");
+							break;
+							default:
+								HUD::Dialog::ShowMessage("Connection attempt failed due to unexpected or missing server data:\n"+string+"\nIf you are certain this should not happen, and the problem persists, you may have to restart Steam");
+							break;
+						}
+					}
+					attemptingToConnect = false;
+				#endif
+			});
+		}
+		#if 0
 		if (broadcastListenSocket != INVALID_SOCKET)
 		{
 			Protocol::THostBroadcastPacket	packet;
@@ -1975,6 +2316,7 @@ namespace Network
 						FATAL__("weird");
 			}
 		}
+		#endif
 
 		Time::Stamp t;
 		if (t -  lastPing > 2_s)
@@ -2033,43 +2375,22 @@ namespace Network
 			#else
 
 				servers.Clear();
-				serverMap.Clear();
+				//serverMap.Clear();
+
 
 				foreach (ServerDiscovery::attempts,_a)
 				{
 					const auto&a = **_a;
 					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
-					{
-						index_t at;
-						if (!serverMap.Query(a.lastInfo.hostInfo.hostID,at))
-						{
-							at = servers.Count();
-							servers.Append();
-							servers.Last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
-							servers.Last().protocolIncompatible = a.protocolIncompatible;
-							servers.Last().id = a.protocolIncompatible ? TUniqueID::Empty() : a.lastInfo.hostInfo.hostID;
-							servers.Last().rightVersion = a.rightVersion && !a.protocolIncompatible;
-							//if (!a.protocolIncompatible)
-							serverMap.Set(servers.Last().id,at);
-						
-						}
-						ServerInfo&info = servers[at];
-
-						if (info.addresses.IsNotEmpty())
-						{
-							if (info.addresses.Last().serverInfo.gameInfo.worldID != a.lastInfo.gameInfo.worldID)
-							{
-								LogEvent(EventClass::Preset::error,"Received mismatching world IDs from host "+info.id.ToNiceString()+". Ignoring address "+ToString(a.address));
-								continue;
-							}
-						}
-
-						Host&host = info.addresses.Append();
-						host.address = a.address;
-						host.serverInfo = a.lastInfo;
-						host.ping = a.lastPing;
-					}
+						ServerDiscovery::MapNonSteamServer(a.address,a.lastInfo,a.protocolIncompatible,a.rightVersion,a.lastPing);
 				}
+				foreach (steamServers,serv)
+				{
+					ServerDiscovery::MapSteamServer(*serv);
+				}
+
+				//LogEvent(EventClass::Preset::important,String(steamServers.Count())+ " steam server(s) resulting in "+String(servers.Count())+" server(s)");
+
 			#endif
 		}
 	
@@ -2078,8 +2399,8 @@ namespace Network
 	void		Shutdown()
 	{
 		client.Disconnect();
-		closesocket(broadcastListenSocket);
-		broadcastListenSocket = INVALID_SOCKET;
+		//closesocket(broadcastListenSocket);
+		//broadcastListenSocket = INVALID_SOCKET;
 
 	}
 
@@ -2304,21 +2625,13 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		return false;	//make sure there is enough time to rebuild the server list in-between connection attempts to a ghost-server that is configured via runtime parameter
 	foreach(Network::servers, srv)
 	{
-		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
+		if (srv->rightVersion && ((autoConnectToLobby && srv->lobbyID == autoConnectToLobby) || (RuntimeConfig::serverAddress.host.IsNotEmpty() && srv->HasAddress(RuntimeConfig::serverAddress) )))
 		{
-			//index_t best = 0;
-			//float bestPing = srv->addresses.First().ping;
-			index_t found = InvalidIndex;
-			for (index_t i = 0; i < srv->addresses.Count(); i++)
-				if (srv->addresses[i].address == RuntimeConfig::serverAddress)
-				{
-					found = i;
-					break;
-				}
-			ASSERT__(found != InvalidIndex);
+			index_t best = 0;
+			
 			srv->selected = true;
+			srv->Connect();
 
-			Network::ConnectTo(srv->addresses[found]);
 
 			lastAttempt.Update();
 			delayCounter = 0;
@@ -2328,6 +2641,73 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 	}
 	return false;
 }
+
+void					Network::RemoveServer(const ServerAddress&a, UINT64 lobbyID)
+{
+	foreach (steamServers,serv)
+	{
+		if (serv->address == a || serv->lobbyID == lobbyID)
+		{
+			steamServers.erase(serv);
+			break;
+		}
+	}
+
+	foreach (servers,serv)
+	{
+		if ((serv->addresses.FindAndErase( a) && serv->addresses.IsEmpty())
+			||
+			serv->lobbyID == lobbyID)
+		{
+			servers.erase(serv);
+			break;
+		}
+	}
+	//ServerDiscovery::TryRemoveHost(a);
+	SteamInterface::UnregisterExternalLobby(lobbyID);
+
+	#ifdef HAS_WINDOW
+		HUD::HostList::Update();
+	#endif
+}
+
+void					Network::RefreshServerListNow()
+{
+	lastServerProbe = Time::Stamp() - 50_s;
+}
+
+
+bool					Network::SteamDiscoveryIsEnabled()
+{
+	return steamDiscovery;
+}
+
+void					Network::SetSteamDiscovery(bool enableDiscovery)
+{
+	steamDiscovery = enableDiscovery;
+	if (!enableDiscovery)
+		steamServers.Clear();
+	else
+		RefreshServerListNow();
+	#ifdef HAS_WINDOW
+		HUD::HostList::Update();
+	#endif
+}
+
+
+bool					Network::ForcingTCPConnections()
+{
+	return forceTCP;
+}
+
+void					Network::ForceTCPConnections(bool doForce)
+{
+	forceTCP = doForce;
+	#ifdef HAS_WINDOW
+		HUD::HostList::Update();
+	#endif
+}
+
 
 
 void	Network::SignalProtocolDisruption(const String&message)

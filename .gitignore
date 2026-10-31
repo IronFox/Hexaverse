@@ -51,3 +51,9 @@ BugReporter/BugReporter.exe.config
 .vs
 /server.7z
 /ServerManager/ServerManager.exe.config
+
+# Steamworks SDK: not redistributable, see steam_sdk/README.md
+steam_sdk/*
+!steam_sdk/README.md
+steam_api*.dll
+sdkencryptedappticket*.dll

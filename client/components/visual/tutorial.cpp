@@ -524,9 +524,13 @@ namespace Tutorial
 		Detail::FlushMemoryFile();
 	}
 
+	void	StopConnectionAttempts();
+
 
 	void	Create()
 	{
+		ServerProcess::onExplicitClose << StopConnectionAttempts;
+
 		XML::Container xtutorials;
 		xtutorials.LoadFromFile(L"resources/tutorial/messages.xml");
 		for (const auto&xmessage : xtutorials.root_node.children)
@@ -618,6 +622,17 @@ namespace Tutorial
 
 	static Random random;
 
+	static Network::ServerAddress	tutorialAddress;
+
+	void	StopConnectionAttempts()
+	{
+		if (tutorialAddress.host.IsNotEmpty())
+		{
+			Network::ServerDiscovery::TryRemoveHost(tutorialAddress);
+			tutorialAddress = Network::ServerAddress{};
+		}
+	}
+
 	void	StartTutorialServer()
 	{
 		using namespace Detail;
@@ -646,12 +661,16 @@ namespace Tutorial
 
 		const UINT16 port = TUTORIAL_BASE_PORTS_FROM + random.Next((65535 - TUTORIAL_BASE_PORTS_FROM)/3) * 3;
 
-		LogEvent(EventClass::Preset::uncommon,"Starting tutorial server ...");
 		LogEvent(EventClass::Preset::debug,"Starting tutorial server on port "+String(port));
-		RuntimeConfig::serverAddress = Network::ServerAddress("localhost:"+String(port));
+		if (tutorialAddress.host.IsNotEmpty())
+			Network::ServerDiscovery::TryRemoveHost(tutorialAddress);
+
+		RuntimeConfig::serverAddress = tutorialAddress = Network::ServerAddress("localhost:"+String(port),0,Protocol::ServerInfo());
+		Network::ServerDiscovery::RegisterNewHost(0,SteamInterface::GetUserID(),  tutorialAddress, true,true,false);
+
 		holdOn = HUD::Dialog::PermanentMessage("Hold on. Getting tutorial server ready.",[]()->HUD::Dialog::CheckResult
 		{
-			if (Network::haveFaction)
+			if (Network::haveFactionLoaded)
 			{
 				//HUD::Dialog::ShowMessage("Welcome to the Hexaverse Tutorial");
 				return HUD::Dialog::CheckResult::Abort;

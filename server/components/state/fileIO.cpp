@@ -49,7 +49,7 @@ namespace FileIO
 	
 	void RefreshWindowTitle()
 	{
-		String title = String(PRODUCT_NAME)+" server "+ ::Network::serverID.ToNiceString()+" (world "+ World::worldID.ToNiceString()+")";
+		String title = String(PRODUCT_NAME)+" world "+ World::worldID.ToNiceString();
 		#ifdef _DEBUG
 			title += " (DEBUG)";
 		#endif
@@ -275,7 +275,8 @@ namespace FileIO
 								mostFactionsAlive(" MFA"),
 								worldTypeChunk(" WTC"),
 								worldCounterChunk(" WCC"),
-								factionAccessToken("ACTK"),
+								steamAccountID("SAID"),
+//								profileName("PROF"),
 								basesRequired("BSRQ"),
 								closedGame("CLGM"),
 								doomsdayWeapons("DODW"),
@@ -1845,6 +1846,8 @@ namespace FileIO
 										}
 
 							
+										if (!GetOptionalPOD(list,RID::steamAccountID,faction->steamID,0ULL))
+											LogEvent(EventClass::Preset::error,"State::Load(): Unable to find Steam account ID for faction "+faction->name);
 										{
 											if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersAreSerialized)
 											{
@@ -1903,13 +1906,8 @@ namespace FileIO
 										factionMap.Set(faction->id,faction);
 
 										
-										if (!GetOptionalPOD(list,RID::factionAccessToken,faction->accessToken,CryptographicID()))
-										{
-											LogEvent(EventSignificance::NonFatalError,faction,"Unable to find access token in file. Generating new token.");
-											CryptographicID token;
-											token.Generate();
-											faction->accessToken = token;
-										}
+										if (!isNexus)
+											::Network::accountMap.Set(::Network::AccountID(faction->steamID),faction);	//dont even allow access if nexus
 
 										//BYTE k = 0;
 										//Protocol::WorldDelta	delta;
@@ -2251,7 +2249,7 @@ namespace FileIO
 				factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.GetLength());
 				factionSection->AppendBlock(RID::factionColor)->SetData(faction->color.v,sizeof(float)*3);
 
-				factionSection->AppendBlock(RID::factionAccessToken)->SetPODData(faction->accessToken);	//faction access token
+				factionSection->AppendBlock(RID::steamAccountID)->SetPODData(faction->steamID);	//faction access token
 
 
 				if (faction->researchState.luaResearchState.IsSet())

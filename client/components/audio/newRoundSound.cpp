@@ -32,7 +32,7 @@ namespace NewRoundSound
 
 	static void OnPlayerBegin()
 	{
-		if (Network::haveFaction)
+		if (Network::haveFactionLoaded)
 			if (!player.IsPlaying())
 			{
 				player.Rewind();

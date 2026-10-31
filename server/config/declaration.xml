@@ -172,6 +172,7 @@
 			ConquerNexus: Three AI bases are spawned around the globe. Their center Nexus Ports must be conquered by building anything next to it. Additional Nexus Ports are spawned if EMP zones are active. Two/three (depending on number of unlocked zones) Nexus Ports must be conquered to win.
 		</variable>
 		<variable name="supportedFactions" default="Spectator, Regular">Comma-separated list of supported faction types.</variable>
+		<variable name="privateServer" default="false">Server will be invite-only. Disable to set the server globally visible for everyone to join</variable>
 		<variable name="closedGame" default="false">Indicates that new factions can be created only during round 0.</variable>
 		<variable name="roundTimer" default="60">
 			Time in seconds that players can remain in command phase. once the deadline is reached, rounds will be progressed.

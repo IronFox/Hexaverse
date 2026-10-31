@@ -48,7 +48,8 @@ namespace Game
 
 	void StartAI()
 	{
-		AIProcess::Begin(Objects::Faction::nexus->accessToken, ::Network::Config::sessionBasePort, ::Network::Config::GetServerPassword);
+		::Network::aiAccessToken.Generate();
+		AIProcess::Begin(::Network::aiAccessToken, ::Network::Config::sessionBasePort, ::Network::Config::GetServerPassword);
 	}
 
 	void StartAIIfEnabled()
@@ -622,6 +623,8 @@ namespace Game
 				rs |= Protocol::GameFlag::TutorialMode;
 			if (World::Config::simulateLiquids)
 				rs |= Protocol::GameFlag::SimulateLiquids;
+			if (::Network::Config::privateServer)
+				rs |= Protocol::GameFlag::PrivateServer;
 			if (Config::Nexus::allPorts.havePlaced)
 				rs |= Protocol::GameFlag::NexusPortsOnAllPoles;
 			if (::Network::Config::HasServerPassword())
@@ -632,21 +635,19 @@ namespace Game
 			rs |= Config::factionSupportFlags;
 			if (!allowSpectatorFactions)
 				rs &= ~Protocol::GameFlag::SupportSpectatorFactions;
-
 			if (RuntimeConfig::GameHasEnded())
 			{
 				rs |= Protocol::GameFlag::GameHasEnded | Protocol::GameFlag::SupportSpectatorFactions;	//always support spectator in this case
 			}
+
 			return rs;
 		}
-
 
 		void		AssembleGameConfig(Protocol::GameConfig&gameConfig, bool allowSpectatorFactions)
 		{
 			gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
 			gameConfig.gameFlags = AssembleGameFlags(allowSpectatorFactions);
 			gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
-
 		}
 
 		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)
@@ -1617,6 +1618,7 @@ namespace Game
 								#if 0
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
+								::Network::accountMap.Unset(faction->steamID);
 								::Network::playerMap.Unset(faction);
 								faction->online = false;
 								if (client)

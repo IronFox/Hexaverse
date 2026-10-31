@@ -130,15 +130,6 @@ namespace Objects
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
-
-				#ifdef _DEBUG
-					if (isNexus)
-						accessToken = CryptographicID();	//easier to debug
-					else
-						accessToken.Generate();
-				#else
-					accessToken.Generate();
-				#endif
 				Setup(toID,isNexus);
 			}
 		#endif
@@ -261,12 +252,11 @@ namespace Objects
 
 			bool						IsNexus() const {return name == nexusName;}
 		#else
+			UINT64						steamID;
 
 			PMarker						CreateMarker(MarkerType type, const ArrayRef<BYTE>&data, bool fromSaveGame);
 			PMarker						CreateMarker(MarkerType type, IReadStream&data, bool fromSaveGame);
 			bool						DestroyMarker(const TUniqueID&id);
-
-			CryptographicID				accessToken;
 		private:
 
 			struct SeeingReference

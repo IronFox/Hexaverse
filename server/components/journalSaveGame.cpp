@@ -208,15 +208,9 @@ namespace Journal
 
 	Round::CreateFaction::CreateFaction(const Objects::Faction&f, Round::CreateFaction::FactionType type):factionType(type)
 	{
-		this->accessToken = f.accessToken;
+		this->steamAccountID = f.steamID;
 		this->factionID = f.id;
 		this->allianceID = f.alliance->id;
-	}
-	Round::CreateFaction::CreateFaction(Round::CreateFaction::FactionType type, const TUniqueID&factionID, const TUniqueID&allianceID, const CryptographicID&accessToken):factionType(type)
-	{
-		this->accessToken = accessToken;
-		this->factionID = factionID;
-		this->allianceID = allianceID;
 	}
 	
 	/*virtual override*/ void Round::CreateFaction::Execute() const
@@ -233,7 +227,8 @@ namespace Journal
 		else
 			if (factionType != GetType(f))
 				throw RoundException(CLOCATION,"Faction already exists. Types diverge");
-		f->accessToken = accessToken;
+		f->steamID = steamAccountID;
+		Network::accountMap.Set(Network::AccountID(f->steamID),f);
 
 		World::UpdateEMPZones();
 	}
@@ -662,7 +657,7 @@ namespace Journal
 	{
 		
 		e.stringParameters.Set("FactionType",factionType.ToString());
-		e.stringParameters.Set("FactionSecret",accessToken.ToFullString());
+		e.stringParameters.Set("FactionAccount",String(steamAccountID));
 		e.uuidParameters.Set("ID",factionID);
 		e.uuidParameters.Set("AllianceID",allianceID);
 	}
@@ -675,7 +670,11 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION,"Unknown faction type '"+ftype+"'");
 		}
-		accessToken.Decode(e.stringParameters.Require(CLOCATION,"FactionSecret"));
+		String fid = e.stringParameters.Require(CLOCATION,"FactionAccount");
+		if (!convert(fid.c_str(),fid.Length(),steamAccountID))
+		{
+			throw RoundException(CLOCATION,"Account ID cannot be converted '"+fid+"'");
+		}
 		factionID = e.uuidParameters.Require(CLOCATION,"ID");
 		allianceID = e.uuidParameters.Require(CLOCATION,"AllianceID");
 	}

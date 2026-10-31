@@ -9,13 +9,12 @@ namespace RuntimeConfig
 	bool aiMode = false;
 	CryptographicID aiAccessToken;
 	String serverPassword;
-	bool udpListen = true;
+//	bool udpListen = true;
 	bool nexusBases=false,	nexusPortsOnAllPoles=false;
 	Time::Stamp				programStart;
 
 	Network::ServerAddress	serverAddress;
-
-	String					profilePrefix,profileName;
+	UINT64					connectToSteamLobby = 0;
 
 
 	void	ClientInit()
@@ -30,7 +29,7 @@ namespace RuntimeConfig
 
 	PathString				GetUserNameFile()
 	{
-		return RuntimeConfig::myConfig.Lookup(RuntimeConfig::profilePrefix+ "userName.txt");
+		return RuntimeConfig::myConfig.Lookup("userName.txt");
 	}
 
 

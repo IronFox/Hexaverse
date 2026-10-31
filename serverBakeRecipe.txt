@@ -13,6 +13,7 @@ server/config/declaration.xml
 lua/*.lua
 lua/*.txt
 lua/distributions/*.lua
+server/*.dll
 
 ControlConsole/ControlConsole*.exe
 ServerManager/ServerManager.exe

@@ -162,7 +162,7 @@ namespace InputControl
 							if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit( Objects::TrajectoryEndPoint( possibleTarget->location )))
 							{
 								ObjectHelper::DirectTo(Objects::selectedEntity,possibleTarget->location,
-								ObjectHelper::AssembleMotionFlags(false,true),
+									ObjectHelper::AssembleMotionFlags(false,true),
 									Objects::CursorMode::AttackMode);
 								return;
 							}
@@ -212,7 +212,6 @@ namespace InputControl
 					}
 				}
 			}
-
 		}
 
 
@@ -243,7 +242,6 @@ namespace InputControl
 
 
 		}
-
 
 
 
@@ -624,7 +622,7 @@ namespace InputControl
 
 		void	ReallyStartNewFaction()
 		{
-			if (Network::haveFaction)
+			if (Network::haveFactionLoaded)
 				Network::AbandonCurrentFaction();
 
 			//technite menu goes here
@@ -633,11 +631,11 @@ namespace InputControl
 		}
 		void	StartNewFaction()
 		{
-			if (Network::haveFaction)
+			if (Network::haveFactionOnServer)
 			{
 				HUD::Dialog::Confirm("You already are in control of a faction. If you start a new faction, your previous one will be abandoned. This process cannot be reversed. Continue?",
 							ReallyStartNewFaction,
-							[](){return Network::client.IsConnected() && Network::haveFaction ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
+							[](){return Network::client.IsConnected() && Network::haveFactionOnServer ? HUD::Dialog::CheckResult::OkayContinue : HUD::Dialog::CheckResult::Abort;});
 			}
 			else
 				ReallyStartNewFaction();

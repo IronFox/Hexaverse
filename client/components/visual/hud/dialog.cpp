@@ -888,6 +888,7 @@ namespace Dialog
 	void	Create()
 	{
 		Detail::showTutorials = !FileSystem::IsFile(RuntimeConfig::myConfig.Lookup("tutorialsDisabled.mark"));
+
 		GlobalEvents::applicationTerminate << Destroy;
 	}
 
@@ -904,7 +905,7 @@ namespace Dialog
 		{
 			//static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
 
-			HUD::Dialog::Query("Please enter a nickname to continue (length 4-16)",::Network::chosenNickname,
+			HUD::Dialog::Query("Please enter a nickname to continue (length 4-16)",Network::chosenNickname,
 				[](char32_t c){return c != ' ';},
 				[](const UTF32StringRef&candidate)->bool
 				{
@@ -917,12 +918,9 @@ namespace Dialog
 					userName.Create(RuntimeConfig::GetUserNameFile());
 					userName << name;
 					Network::chosenNickname = name;
+					Network::customNickname = true;
 					if (Network::client.IsConnected())
-					{
 						Network::Channels::changeMyName.SendTo(Network::client,name);
-
-
-					}
 				}
 			);
 		}

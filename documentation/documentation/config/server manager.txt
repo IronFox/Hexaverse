@@ -24,6 +24,9 @@ Servers started by the client will also be listed as dependent, however close wh
 To preserve the game beyond client-enforced closure, use the context menu to [[config/save game|save the game]], shut down the server, and add a new server with the created save game.
 
 ==NAT, Routers, etc.==
-When clients should be able to connect from behind a router, you must forward the first two ports shown in the port range of a server to be reachable.
+When clients should be able to connect from behind a router via TCP, you must forward the first two ports shown in the port range of a server to be reachable.
 The third has no consequence, as the server will reject non-localhost connection attempts anyway.
 See [[server start]] for details.
+
+Port-forwarding is usually not needed since server and client primarily communicate via the Steam peer-to-peer messaging system, which bypasses routers with ease.
+However, communication via TCP is still possible, and can be more stable in rare situations.

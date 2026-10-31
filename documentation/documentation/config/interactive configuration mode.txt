@@ -22,6 +22,6 @@ Locally created planets are stored in ''[[config/game folder]]\shared\config\myP
 The configuration mode runs entirely on the client, emulating the behavior of the server.
 Upon completion, the planet configuration ''*Previous'' is updated, a temporary, updated configuration file is created from the current [[config/server|server configuration]], and finally the server is started.
 
-The client is dropped back to the server list, where a new server should show up momentarily.
+The client is dropped back to the [[server list]], where a new server should show up momentarily.
 A connection to that server must be established manually.
 

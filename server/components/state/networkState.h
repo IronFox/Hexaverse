@@ -5,6 +5,7 @@
 #include <uniqueID.h>
 #include <protocol.h>
 #include <objects/types.h>
+#include <network/net.h>
 
 
 /**
@@ -13,12 +14,14 @@ Encloses all methods and variables describing the current, direct network state 
 namespace Network
 {
 	extern TUniqueID		serverID;
-	extern TCP::Server		server;
+	extern SteamNetwork::Server	server;
+	extern CryptographicID	aiAccessToken;
 
 
 	namespace Config
 	{
-		extern UINT16	sessionBasePort;
+		extern UINT16		sessionBasePort;
+		extern bool			privateServer;
 		String			GetServerPassword();
 		bool			SetServerPassword(const String&);
 		bool			HasServerPassword();
@@ -28,19 +31,68 @@ namespace Network
 	enum class UserLevel : UINT32
 	{
 		PreHello,
+		PreAuthentication,
 		PreFaction,
 		CommonFaction,
 		Spectator
 	};
 
+	class AccountID
+	{
+	public:
+		UINT64	steamID=0;
+
+		/**/	AccountID()	{}
+		/**/	AccountID(UINT64 steamID):steamID(steamID)
+		{}
+		/**/	AccountID(AccountID&&other):steamID(other.steamID)
+		{}
+		/**/	AccountID(const AccountID&other):steamID(other.steamID)
+		{}
+
+		void	operator=(const AccountID&other)
+		{
+			steamID = other.steamID;
+		}
+
+		void	operator=(AccountID&&other)
+		{
+			steamID = other.steamID;
+		}
+
+		bool	operator==(const AccountID&other) const
+		{
+			return steamID == other.steamID;
+		}
+
+		bool	operator!=(const AccountID&other) const
+		{
+			return !operator==(other);
+		}
+
+		friend hash_t Hash(const AccountID&a)
+		{
+			return HashValue() 
+				<< a.steamID;
+		}
+
+		friend void swap(AccountID&a, AccountID&b)
+		{
+			swp(a.steamID,b.steamID);
+		}
+	};
+
 
 	class Client;
 	typedef std::shared_ptr<Client>	PClient;
+	typedef std::weak_ptr<Client>	WClient;
 
 	class Client : public TCP::Peer::Attachment
 	{
 	public:
 		Protocol::ClientName		name;
+		AccountID					accountID;
+		bool						isNexus=false;
 		std::weak_ptr<TCP::Peer>	peer;
 		//Timer::Time					lastPing;
 		Objects::PFaction	faction;
@@ -75,6 +127,11 @@ namespace Network
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
 	extern HashTable<Objects::PConstFaction,PClient,Objects::OwnerHash>		playerMap;
+
+
+
+
+	extern HashTable<AccountID,Objects::PFaction>					accountMap;
 
 
 
@@ -163,6 +220,7 @@ namespace Network
 	Spectator clients are notified of changes if so.
 	*/
 	void		BuildConfiguredWorld();
+	void UpdateSteamGameState();
 
 	void		LogServerState();
 

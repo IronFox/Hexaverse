@@ -30,6 +30,7 @@
 #include <lua/luaInterface.h>
 #include "components/nexusThreatHandling.h"
 
+#include <network/steamInterface.h>
 UINT32 ApplicationInterface::globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
 volatile bool quitMainLoop = false;
@@ -336,6 +337,12 @@ namespace ApplicationInterface
 	void	SignalFactionDied(const Objects::PFaction&f)
 	{
 		Channels::KillFaction.SendTo(Network::server,f->id,Channels::Level::Faction);
+		Objects::PFaction current;
+		{
+			const auto sid = Network::AccountID(f->steamID);
+			if (Network::accountMap.Query(sid, current) && current == f)	//may have been the faction has already been abandoned
+				Network::accountMap.Unset(sid);
+		}
 		Network::PClient client;
 		if (Network::playerMap.Query(f,client))
 		{
@@ -774,7 +781,9 @@ namespace ParameterConfig
 
 void	StartUp()
 {
+	#if 0
 	UDPBroadCast::Start();
+	#endif
 	Network::Start(ParameterConfig::basePort);
 }
 
@@ -898,9 +907,13 @@ int main( int argc, const char* argv[])
 
 		World::worldID.Generate();
 
-
 		Network::serverID.Generate();
-		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
+		if (!SteamInterface::CreateServer(468350, ParameterConfig::basePort))
+		{
+			FATAL__("Failed to initialize steam");
+			return -1;
+		}
+		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID, SteamInterface::GetUserID());
 
 
 
@@ -911,7 +924,9 @@ int main( int argc, const char* argv[])
 			auto parser = Reflection::state->NewParser();
 			parser->PushFocus();
 			parser->EnterNewFolder("/Server/Online");
+			#if 0
 			parser->SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Stop,[](){UDPBroadCast::Start();})));
+			#endif
 			parser->SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return Network::InformationProvider::IsOnline();},Network::InformationProvider::Stop,[](){Network::InformationProvider::Start(ParameterConfig::basePort);})));
 			parser->SetVariable(CLI::PVariable(new ServiceVar("session",
 				[]()->bool{return Network::SessionIsStarted() && !Network::SessionIsSuspended();},
@@ -1230,7 +1245,7 @@ int main( int argc, const char* argv[])
 			return 0;
 		}
 
-
+		Logging::WriteEvent(EventClass::Preset::configurationPrint,"Authenticated on steam as "+SteamInterface::GetUserNickName(),nullptr,nullptr,Objects::OwnerParameter());
 
 
 		if (!ParameterConfig::customWorldID)
@@ -1278,6 +1293,8 @@ int main( int argc, const char* argv[])
 				LogEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.");
 		}
 		RuntimeConfig::tutorialMode = ParameterConfig::startInTutorial;
+		if (RuntimeConfig::tutorialMode)
+			Network::Config::privateServer = true;
 
 
 		if (ParameterConfig::heartBeat)
@@ -1301,8 +1318,8 @@ int main( int argc, const char* argv[])
 			Game::StartAIIfEnabled();
 
 		Game::ResetFactionStartMineralValue();
-
-
+		Network::UpdateSteamGameState();
+	
 		if (ParameterConfig::enableRemoteControl)
 			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
@@ -1319,6 +1336,7 @@ int main( int argc, const char* argv[])
 				Sleep(1);
 			Network::Tick();
 			RemoteControl::Resolve();
+			SteamInterface::Resolve();
 			if (RuntimeConfig::IsInAnyCommandPhase())
 				Game::Vote::CheckAllTimeouts();
 
@@ -1413,6 +1431,7 @@ int main( int argc, const char* argv[])
 						FileIO::AutoSave();
 					else
 						FileIO::CheckAutoSave(false);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
+					Network::UpdateSteamGameState();
 				}
 			}
 			else if (!RuntimeConfig::IsInAnyCommandPhase() && !RuntimeConfig::GameHasEnded())

@@ -59,6 +59,7 @@ namespace ConfigurationMode
 		{
 			bool				enableAI = true;
 			bool				closedGame = false;
+			bool				privateServer = true;
 			bool				startBases = true,
 								basesRequired = true,
 								simulateLiquids = true,
@@ -966,7 +967,8 @@ namespace ConfigurationMode
 			ConfigurationMode = 0x20,
 
 			*/
-
+			
+			AppendRuleButton(ruleGroup,"Private Server","Rules/privateServer",Detail::Rules::privateServer);
 			AppendRuleButton(ruleGroup,"Closed Game","Rules/closedGame",Detail::Rules::closedGame);
 			{
 				Objects::Command::PIconCommand cmd(new Objects::Command::IconCommand("Password",[]()
@@ -1078,6 +1080,7 @@ namespace ConfigurationMode
 									cfg.Change("Rules/startBases",Rules::startBases);
 									cfg.Change("Rules/basesRequired",Rules::basesRequired);
 									cfg.Change("Rules/gameGoal",RuntimeConfig::gameGoal.ToString());
+									cfg.Change("Rules/privateServer",Rules::privateServer);
 									cfg.Change("Rules/Nexus/enableAI",Rules::enableAI);
 									cfg.Change("Rules/Nexus/spawnBases",Rules::nexusBases && Rules::enableAI);
 									cfg.Change("Rules/Nexus/spawnAllPorts",Rules::allNexusPorts);

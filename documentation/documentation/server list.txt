@@ -1,0 +1,30 @@
+= Server List =
+
+{{serverList.png?800}}
+
+The server list presented by the visual client list all servers found through the Steam network, or explicit TCP/IP lookup.
+
+Results are presented in lists, selectable by clicking on the respective tab:
+* **All**: Shows all detected servers regardless of origin or condition
+* **Friends**: Only lists servers owned by your friends
+* **Visited**: Lists all servers you have ever connected to (preserved in ''[[config/game folder]]\client\visitedWorlds.txt'')
+* **Remote TCP**: Any server that was manually added via the [''Add new host...''] button
+* **Local**: Any server(s) that have been started locally
+
+Each boxed entry represents one server.
+A blueish tint indicates a localhost TCP connection as opposed to a Steam peer-to-peer connection.
+The following information is presented for each:
+* **WorldID**: The ID of the world being run on the respective server
+* **Owner**: The user name of the owner of the server. A green tint indicates a friend of your's, or yourself
+* **Online**: The number of online factions / the number of created factions
+* **Round**: The current game round number. If 'Closed Game' is listed among the ruleset, and the current round number is beyond 0, then you may not create any new faction
+* **Rules**: Active ruleset, game, and server condition
+
+Clicking on any boxed server will attempt connecting to it.
+
+In order to connect to some remote or non-standard-port TCP server, press the [''Add new host...''] button and enter the URL.
+It will be listed in the 'All' and the 'Remote TCP' tabs (or potentially 'Local' for localhost hosts).
+The client will continuously make connection attempts until some TCP connection could be established to its info port.
+
+The buttons [''Start local server''] and [''Stop local server''] can be used to start/stop local [[config/server start|servers]].
+Note that servers started this way close when the client window is closed.

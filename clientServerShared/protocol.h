@@ -51,6 +51,7 @@
 
 #define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION\
 							"["\
+							"S" /*Steam branch*/\
 							NAME_APPEND0\
 							NAME_APPEND1\
 							NAME_APPEND_S\
@@ -95,15 +96,43 @@ namespace Protocol
 		, float, duration
 	)
 
+	typedef Package::NetString<32>	ClientName;
 	String ToString(const Timestamp&t);
 	String ToString(const TimeWindow&t);
+	
+	namespace ClientType
+	{
+		enum type_t
+		{
+			RegularClient,
+			AIClient,
+			Relay
+		};
+	}
 
-	typedef Package::NetString<32>	ClientName,Hello;
+	NETSTRUCT2(ServerHello
+		, Package::NetString<256>, version
+		, NET(bool), useCryptographicID
+	
+	);
 
-	NETSTRUCT4(HelloResponse
+	NETSTRUCT4(Hello
+		, NET(BYTE), clientType
+		, NET(UINT64), steamID
+		, NETA(BYTE), ticket
+		, ClientName, nickname
+	);
+
+	//NETSTRUCT2(ClientState
+	//	, Package::NetString<64>, playerName
+	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
+	//)
+
+	NETSTRUCT5(HelloResponse
 		, NET(bool), success
 		, UINT32, gameFlags
 		, CryptographicID, passwordChallenge	//to be hashed into the password, and faction access token
+		, NET(bool), hasFaction
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -538,9 +567,9 @@ namespace Protocol
 	{
 		enum flag_t : UINT32
 		{
-			ContinueOnly = 0xFFFFFFFF,
+			//ContinueOnly = 0xFFFFFFFF,
 			NexusFaction = 0x1,
-			SpectatorFaction = 0x2,
+			//SpectatorFaction = 0x2,
 			Reserved1 = 0x4,
 			RegularFaction = 0x8,
 		};
@@ -574,9 +603,23 @@ namespace Protocol
 	)
 
 
+
+	namespace FactionOperation
+	{
+		enum op_t
+		{
+			StartOrContinue,
+			ForceContinue,
+			ForceNew,
+			AbandonCurrent,
+			Spectate
+		};
+
+	}
+
 	NETSTRUCT4(ClientFactionResponse
 		, NET(UINT32), startFactionTypes
-		, NET(CryptographicID), newFactionAccessToken
+		, NET(BYTE), operation
 		, NET(Grid::TSharedPlanetConfig), planetConfig
 		, GameInfo, info
 	)
@@ -584,7 +627,7 @@ namespace Protocol
 	NETSTRUCT3(ClientFactionRequest
 		, NET(UINT32), startFactionTypes
 		, SHA256::HashContainer, hashedServerPassword
-		, SHA256::HashContainer, hashedFactionToken
+		, NET(BYTE), operation
 	)
 
 	NETSTRUCT4(GameProgress
@@ -849,6 +892,7 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
+			ServerHello,		//s2c: ServerHello -> c2s: Hello	
 			Hello,				//c2s: Hello -> s2c: HelloResponse
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			MyFaction,			//s2c: MyFaction
@@ -975,22 +1019,24 @@ namespace Protocol
 	struct THostBroadcastPacket
 	{
 		typedef THostBroadcastPacket Self;
-		TUniqueID	hostID;
-		char		version[64];
+		UINT64		ownerID,lobbyID;
+		char		version[62];
 		UINT16		serverBasePort;
 
 
 		friend void Serialize(IWriteStream&s, const Self&v)
 		{
 			using Serialization::Serialize;
-			Serialize(s,v.hostID);
+			Serialize(s,v.ownerID);
+			Serialize(s,v.lobbyID);
 			s.Write(v.version,sizeof(v.version));
 			Serialize(s,v.serverBasePort);
 		}
 		friend void Deserialize(IReadStream&s, Self&v)
 		{
 			using Serialization::Deserialize;
-			Deserialize(s,v.hostID);
+			Deserialize(s,v.ownerID);
+			Deserialize(s,v.lobbyID);
 			s.Read(v.version,sizeof(v.version));
 			Deserialize(s,v.serverBasePort);
 		}
@@ -998,7 +1044,7 @@ namespace Protocol
 
 	static const size_t THostBroadcastPacket_size = sizeof(THostBroadcastPacket);
 
-	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64 + 2, "Struct packing not appropriate for host broadcast packet");//make sure there are no gaps
+	static_assert(sizeof(THostBroadcastPacket) == 62 + 2 + 8 + 8, "Struct packing not appropriate for host broadcast packet");//make sure there are no gaps
 
 
 
@@ -1037,6 +1083,7 @@ namespace Protocol
 			NexusHasBases = 0x100,
 			NexusPortsOnAllPoles = 0x200,
 			RequireServerPassword = 0x400,
+			PrivateServer = 0x800,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,

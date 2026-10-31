@@ -1,0 +1,7 @@
+<project type="Application:Windows">
+	<source path="./" />
+	<referenceProject name="DeltaWorksCore" includePath="true" />
+	<includeLibrary name="Rpcrt4">
+		<link>Rpcrt4.lib</link>
+	</includeLibrary>
+</project>

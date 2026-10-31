@@ -18,12 +18,12 @@ namespace RuntimeConfig
 	extern bool aiMode;
 	extern CryptographicID aiAccessToken;
 	extern String serverPassword;
-	extern bool udpListen;
+	//extern bool udpListen;
 	extern Time::Stamp				programStart;
 
 	extern Network::ServerAddress	serverAddress;
 
-	extern String					profilePrefix, profileName;
+	extern UINT64					connectToSteamLobby;
 
 	extern bool						nexusBases,	nexusPortsOnAllPoles;
 

@@ -836,7 +836,7 @@ namespace AI::Script
 							}
 						}
 
-						if (Network::client.IsConnected() && Network::haveFaction)
+						if (Network::client.IsConnected() && Network::haveFactionLoaded)
 						{
 							Protocol::ScriptedAIState compressedState;
 							compressedState.scriptName = Details::scriptName;

@@ -14,12 +14,15 @@ namespace ServerManager
 	{
 		public struct VersionPackage
 		{
-			public UInt64 a, b, c, d, e, f, g, h;
+			public UInt64 a, b, c, d, e, f, g;
+			public UInt32 h;
+			public UInt16 i;
 		}
 
 		public struct HostPackage
 		{
-			public UUID hostID;
+			public UInt64 ownerID;
+			public UInt64 lobbyID;
 			public VersionPackage version;
 			public UInt16 basePort;
 		}
@@ -101,6 +104,7 @@ namespace ServerManager
 			NexusHasBases = 0x100,
 			NexusPortsOnAllPoles = 0x200,
 			RequireServerPassword = 0x400,
+			PrivateServer = 0x800,
 
 			SupportSpectatorFactions = 0x1000,
 			SupportRegularFactions = 0x2000,

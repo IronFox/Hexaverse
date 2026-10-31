@@ -25,13 +25,13 @@
 bool		inTestMode = false;
 
 
-EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalError),
+EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalError, EventFlavor::Loss),
 			EventClass::Preset::internalError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::scriptLog = EventClass(EventSignificance::Important, EventFlavor::ServerPrivate),
 			EventClass::Preset::scriptMessage = EventClass(EventSignificance::Important),
 			EventClass::Preset::scriptError = EventClass(EventSignificance::NonFatalError, EventFlavor::ServerPrivate),
 			EventClass::Preset::fatal = EventClass(EventSignificance::SystemFatal, EventFlavor::SystemError),
-			EventClass::Preset::unexpectedBehavior = EventClass(EventSignificance::ClientFatal, EventFlavor::SystemError),
+			EventClass::Preset::unexpectedBehavior = EventClass(EventSignificance::ClientFatal, EventFlavor::ServerPrivate),
 			EventClass::Preset::common = EventClass(EventSignificance::Common),
 			EventClass::Preset::debug = EventClass(EventSignificance::Debug),
 			EventClass::Preset::factionDeath = EventClass(EventSignificance::FactionFatal, EventFlavor::Loss),

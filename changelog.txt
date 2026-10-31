@@ -9,6 +9,7 @@ v0.9.13
 
 v0.9.12 [Feb 21 2021]
 	+ AI: Added --#require <...>/--#require "..." statements to include other Lua files
+	+ Added checkbox to force TCP connections even if Steam connection is possible
 	+ AI: Added Game.MeasureSecondsFromNow() to measure time
 	+ AI: Added grid radius<->height conversions
 	+ Added alliance-shared visual markers (via shift+click)
@@ -46,10 +47,16 @@ v0.9.11 [Sep 13 2020]
 	+ AI: Added T2 upgrade command
 	> Initiative is now a user-configurable unit property
 	+ AI: Added missing repair command
+	> Steam server list is now instantly fetched on client start
 	> Artillery range visualization now reaches further down
 	> Now using faction color to highlight submerged or occluded units
 	* Fixed artillery range calculation
 	* Fixed explosion radius always rounded down to int numbers
+	* Fixed infinite Steam connection attempts on invalid command line lobby ID
+	* Steam-invites no longer cause client to instantly crash
+	* Fixed manual Steam reconnects sending client into connection limbo
+	* Fixed 'Launch new client with custom profile' lobby reference
+	- Removed client profiles (no Steam support for same user connecting to server multiple times)
 
 v0.9.10	[Dec 31 2019]
 	+ AI: Added terrain alteration options to mobile unit API
@@ -90,6 +97,7 @@ v0.9.7	[Dec 23 2018]
 	* Fixed splash screen depicting the previous loading item rather than the active one.
 	* Fixed tooltips changing from long to short text rather than the other way around.
 	* Fixed rare mobile task routing error after deploying units from vehicle stores.
+	* Fixed tutorial server discovery.
 	* AI: Fixed Game.Type.* tables to behave as documented (string mapped, not sequential)
 	* AI: Fixed off-by-one error in Game.RandomIndex()
 	* Fixed server-side check when trying to build unresearched or fully locked types.

@@ -517,7 +517,8 @@ namespace Journal
 			/**/			CreateFaction(FactionType factionType, const TUniqueID&, const TUniqueID&, const CryptographicID&);
 
 			FactionType		factionType;
-			CryptographicID	accessToken;
+			//CryptographicID	accessToken;
+			UINT64			steamAccountID;
 			TUniqueID		factionID,allianceID;
 //			Buffer0<PEntityConstructor>	newEntities;
 			virtual void	Decode(const Entry&e) override;

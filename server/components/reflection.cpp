@@ -1207,6 +1207,10 @@ namespace Reflection
 			SetupBase(ctx);
 		}
 	}
+	static void OnPrivateServerChanged(Variable::Base&v)
+	{
+		Network::UpdateSteamGameState();
+	}
 
 	void	CreatePrototypeDeclaration()
 	{
@@ -1323,6 +1327,7 @@ namespace Reflection
 
 			parser->SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
+			VAR(privateServer,Network::Config,false,true,Variable::Persistence::RestoreFromSavegame)->extraOnChange = OnPrivateServerChanged;
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::RestoreFromSavegame);
 			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
@@ -1816,7 +1821,8 @@ namespace Reflection
 			f->variables.Insert("isDead",CLI::PVariable(new FactionCommands::IsDead(faction)));
 			f->variables.Insert("alliance",CLI::PVariable(new FactionCommands::Alliance(faction)));
 			f->variables.Insert("client",CLI::PVariable(new FactionCommands::Client(faction)));
-			f->variables.Insert("accessToken",CLI::PVariable(new CLI::StringVariable("accessToken",faction->accessToken.ToFullString(),CLI::FullProtection)));
+			if (faction->IsNexus())
+				f->variables.Insert("accessToken",CLI::PVariable(new Variable::FunctionalReadonly("accessToken",[](){return Network::aiAccessToken.ToFullString();})));
 		});
 	}
 

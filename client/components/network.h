@@ -3,6 +3,8 @@
 
 #include <protocol.h>
 #include <ports.h>
+#include <network/steamInterface.h>
+#include <network/net.h>
 
 
 /**
@@ -17,22 +19,21 @@ namespace Network
 	bool						ControlEnabled();
 
 
-	extern bool			haveFaction,
+	extern bool			haveFactionLoaded,
 						haveID,
 						amSpectator,
 						amOnline,
-						gameHasBegun;
+						gameHasBegun,
+						haveFactionOnServer;
 	#ifdef HAS_WINDOW
 		extern bool		amLocated;
 	#endif
 
-	extern TUniqueID			myID,serverID,worldID;
+	extern TUniqueID			myID,worldID;
 	extern UINT32				gameFlags;
-	extern CryptographicID		activeToken;
-	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
+	extern String				myIDString,worldIDString;
 	extern UINT16				connectionBasePort;
 	
-	extern HashTable<TUniqueID,CryptographicID>	accessMap;
 
 
 	extern Protocol::GameProgress	gameProgress;
@@ -47,56 +48,107 @@ namespace Network
 
 	bool	IsValidNickname(const String&candidate);
 	bool	IsValidNickname(const UTF32StringRef&candidate);
+	void	SetSteamPersona();
+	void	ResetNickname();
+	void	ConnectToLobby(UINT64 lobbyID);
+	void	SteamLobbyLost(UINT64 lobbyID);
 
 
-	class ServerAddress
+	class ServerIPAddress
 	{
 	public:
 		String				host;
 		UINT16				basePort;
 
 
-		/**/				ServerAddress():basePort(DEFAULT_SERVER_BASE_PORT){}
-		explicit			ServerAddress(const String&url);
+		/**/				ServerIPAddress():basePort(DEFAULT_SERVER_BASE_PORT){}
+		explicit			ServerIPAddress(const String&url);
 
-		bool				operator==(const ServerAddress&other) const
+		bool				operator==(const ServerIPAddress&other) const
 		{
 			return basePort == other.basePort && host == other.host;
 		}
-
-		void				adoptData(ServerAddress&other)
+		bool				operator!=(const ServerIPAddress&other) const
 		{
-			host.adoptData(other.host);
-			basePort = other.basePort;
+			return !operator==(other);
 		}
 
 		bool				IsLocalhost() const {return host == "localhost" || host == "127.0.0.1" || host == "::1";}
-
-		friend String		ToString(const ServerAddress&a) {return a.basePort != DEFAULT_SERVER_BASE_PORT ? a.host + ':' + String(a.basePort) : a.host;}
-	};
-
-	class Host
-	{
-	public:
-		ServerAddress		address;
-		Protocol::ServerInfo	serverInfo;
-		float				ping;
-
-		void				adoptData(Host&other)
+	
+		void				swap(ServerIPAddress&other)
 		{
-			address.adoptData(other.address);
-			serverInfo = other.serverInfo;
-			ping = other.ping;
+			host.swap(other.host);
+			swp(basePort,other.basePort);
+		}
+
+		friend void			swap(ServerIPAddress&a,ServerIPAddress&b)
+		{
+			a.swap(b);
+		}
+
+		friend hash_t		Hash(const ServerIPAddress&addr)
+		{
+			return HashValue() << addr.host << addr.basePort;
+		}
+
+		friend String		ToString(const ServerIPAddress&addr) 
+		{
+			return addr.basePort != DEFAULT_SERVER_BASE_PORT ? addr.host + ':' + String(addr.basePort) : addr.host;
 		}
 	};
 
+
+
+	class ServerAddress : public ServerIPAddress
+	{
+	public:
+		typedef ServerIPAddress Super;
+		UINT64				steamID=0;
+		Protocol::ServerInfo	info;
+
+
+		/**/				ServerAddress(){}
+		explicit			ServerAddress(const String&url, UINT64 steamID, const Protocol::ServerInfo&info);
+		explicit			ServerAddress(const ServerIPAddress&a, const Protocol::ServerInfo&info):Super(a),info(info)	{};
+
+		bool				operator==(const ServerAddress&other) const
+		{
+			return Super::operator==(other) && steamID == other.steamID;
+		}
+		bool				operator!=(const ServerAddress&other) const
+		{
+			return !operator==(other);
+		}
+	
+		void				swap(ServerAddress&other)
+		{
+			Super::swap(other);
+			swp(steamID,other.steamID);
+			info.swap(other.info);
+		}
+
+		friend hash_t		Hash(const ServerAddress&addr)
+		{
+			return HashValue() << ((const Super&)addr) << addr.steamID;
+		}
+
+		bool				IsLocalhost() const {return steamID ? false : Super::IsLocalhost();}
+
+		friend String		ToString(const ServerAddress&addr)
+		{
+			if (addr.steamID)
+				return SteamInterface::IDToString(addr.steamID);
+			using StringConversion::ToString;
+			return ToString((const Super&)addr);
+		}
+	};
 
 	extern ServerAddress	lastServerAddress;
 
 }
 
-DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
-DECLARE_DEFAULT_STRATEGY(Network::Host,Adopt);
+DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Swap);
+DECLARE_DEFAULT_STRATEGY(Network::ServerIPAddress,Swap);
 
 namespace Network
 {
@@ -104,20 +156,15 @@ namespace Network
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, const TUniqueID&allianceID);
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
-
-	void					ConnectTo(const Host&);
+	//void					ConnectTo(const ServerAddress&, UINT64 lobbyID);
 	bool DidVisit(const TUniqueID&worldID);
-	void SaveWorldAccessTokens();
-
-	void LoadWorldAccessTokens();
-
 	void AbandonCurrentFaction();
 	bool HaveFactionKeyForCurrentWorld();
 
-	void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes, const String&serverPassword);
+	void AttemptFactionLogin(Protocol::FactionOperation::op_t, UINT32 factionTypes, const String&serverPassword);
 	#ifdef HAS_WINDOW
-		void QueryPasswordAndLogin(bool forceNewFaction, UINT32 factionTypes);
-		void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes);
+		void QueryPasswordAndLogin(Protocol::FactionOperation::op_t, UINT32 factionTypes);
+		void AttemptFactionLogin(Protocol::FactionOperation::op_t, UINT32 factionTypes);
 	#endif
 
 	/**
@@ -126,10 +173,12 @@ namespace Network
 	*/
 	void	SignalProtocolDisruption(const String&message);
 	
+	bool CanSendFactionRequests();
+	
 	namespace ServerDiscovery
 	{
-		bool	ListeningButCantConnectTo(const ServerAddress&);
-		bool	TryRemoveHost(const ServerAddress&);
+		bool	ListeningButCantConnectTo(const ServerIPAddress&);
+		bool	TryRemoveHost(const ServerIPAddress&);
 
 		void OnServerInfo(Protocol::ServerInfo&info, TCP::Peer&peer);
 		void OnPing(Protocol::Ping&ping, TCP::Peer&peer);
@@ -141,14 +190,14 @@ namespace Network
 		Queries all connection attempts that have so far not successfully connected.
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListFailedAttempts(Buffer0<ServerAddress,Adopt>&outList);
+		void	ListFailedAttempts(Buffer0<ServerIPAddress,Swap>&outList);
 		/**
 		Queries all connection attempts (successful or not).
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListNonAutoAttempts(Buffer0<ServerAddress>&outList);
+		void	ListNonAutoAttempts(Buffer0<ServerIPAddress>&outList);
 
-		bool	RegisterNewHost(const ServerAddress&, bool probablyRightVersion, bool automaticallyDiscovered);
+		bool	RegisterNewHost(UINT64 lobbyID, UINT64 ownerID,const ServerAddress&, bool probablyRightVersion, bool automaticallyDiscovered, bool makePersistent=false);
 
 
 
@@ -230,6 +279,7 @@ namespace Network
 	{
 		extern TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage;
 
+		extern TCP::Channel<Protocol::ServerHello,0,Protocol::ChannelID::ServerHello>					serverHello;
 		extern TCP::Channel<Protocol::HelloResponse,0,Protocol::ChannelID::Hello>						helloResponse;
 		extern TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData;
 		extern TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
@@ -328,10 +378,11 @@ namespace Network
 	}
 
 
-	extern TCP::Client		client;
-	extern SOCKET			broadcastListenSocket;
+	extern SteamNetwork::HybridClient		client;
+	//extern SOCKET			broadcastListenSocket;
 
 	extern String			chosenNickname;
+	extern bool				customNickname;
 	//extern Timer::Time		lastPong;
 
 	extern INT32			uplinkBandwidth;
@@ -374,25 +425,26 @@ namespace Network
 		public:
 			virtual ~VisualAttachment() {};
 		};
-
-		TUniqueID				id;
 		bool					rightVersion = false,
 								protocolIncompatible = false;
-//		Protocol::ServerInfo	info;
 		
-
-
-
-		Buffer0<Host>			addresses;
+		Buffer0<ServerAddress>	addresses;
+		float					lastPing=0;
+		UINT64					ownerID=0,lobbyID=0;
+		#ifdef USE_STEAM_OWNER_AUTHENTICATION
+			bool					authenticated=false;
+		#endif
+		String					ownerName;
 		
 		//float					top, bottom;
-		bool					selected, haveToken;
+		bool					selected;
 
 		std::shared_ptr<VisualAttachment>	visualAttachment;
 
 
-
-		/**/					ServerInfo() :/*top(0), bottom(0),*/ selected(false), haveToken(false)	{}
+		/**/					ServerInfo() :/*top(0), bottom(0),*/ selected(false)
+		//, haveToken(false)	
+		{}
 
 		//bool					HasURL(const String&url) const
 		//{
@@ -405,27 +457,117 @@ namespace Network
 		bool					HasLocalhost() const
 		{
 			foreach (addresses,u)
-				if (u->address.IsLocalhost())
+				if (u->IsLocalhost())
 					return true;
 			return false;
 		}
 
 		bool					HasAddress(const ServerAddress&addr) const
 		{
-			foreach(addresses, u)
-				if (u->address == addr)
+			return addresses.Contains( addr );
+		}
+
+
+		bool					UpdateSteamAddress(const ServerAddress&addr)
+		{
+			foreach (addresses, a)
+				if (a->steamID)
+				{
+					(*a) = addr;
+					return true;	//should be only one
+				}
+			DBG_FATAL__("Trying to update non-existent steam address");
+			return false;
+		}
+
+
+		bool					UpdateNonSteamAddress(const ServerAddress&addr)
+		{
+			foreach (addresses, a)
+				if (!a->steamID)
+				{
+					(*a) = addr;
+					return true;	//should be only one
+				}
+			DBG_FATAL__("Trying to update non-existent TCP address");
+			return false;
+		}
+
+
+		UINT32					GetGeneralGameFlags() const
+		{
+			if (addresses.IsEmpty())
+				return 0;
+			return addresses.First().info.gameInfo.gameConfig.gameFlags;
+		}
+
+		bool					IsPrivate() const
+		{
+			return !!(GetGeneralGameFlags() & Protocol::GameFlag::PrivateServer);
+		}
+
+		const TUniqueID			GetWorldID() const
+		{
+			static const TUniqueID empty = TUniqueID::Empty();
+			if (addresses.IsEmpty())
+				return empty;
+			return addresses.First().info.gameInfo.worldID;
+		}
+
+		bool					IsWorldID(const TUniqueID&id) const
+		{
+			return GetWorldID() == id;
+		}
+
+
+		const ServerAddress&	GetPrimaryAddress() const
+		{
+			bool forceNonSteam = false;
+			foreach (addresses,a)
+				if (!a->steamID)
+					return *a;	//prioritize IP address, so spectators are possible
+			static ServerAddress emptyAddress;
+			if (forceNonSteam)
+			{
+				LogEvent(EventClass::Preset::networkError,"Operation requires non-steam address, but none known for this host");
+				return emptyAddress;
+			}
+			return addresses.First();
+		}
+
+		/**
+		Attempts connection to the primary server of the local info structure.
+		Sets all local parameters live, if an address is available and an attempt is made
+		*/
+		void					Connect()	const;
+
+		bool					HasNonSteamAddress() const
+		{
+			foreach (addresses,addr)
+				if (addr->steamID == 0)
+					return true;
+			return false;
+		}
+		bool					HasSteamAddress() const
+		{
+			foreach (addresses,addr)
+				if (addr->steamID != 0)
 					return true;
 			return false;
 		}
 
 		void					swap(ServerInfo&other)
 		{
-			swp(id,other.id);
-			//swp(top,other.top);
-			//swp(bottom,other.bottom);
+//			swp(id,other.id);
+			swp(ownerID,other.ownerID);
+			swp(lobbyID,other.lobbyID);
+			ownerName.swap(other.ownerName); 
 			swp(selected,other.selected);
+			#ifdef USE_STEAM_OWNER_AUTHENTICATION
+				swp(authenticated,other.authenticated);
+			#endif
 			addresses.swap(other.addresses);
-			swp(haveToken,other.haveToken);
+			//swp(haveToken,other.haveToken);
 			swp(rightVersion,other.rightVersion);
 			visualAttachment.swap(other.visualAttachment);
 
@@ -433,14 +575,41 @@ namespace Network
 	};
 
 	extern Buffer0<ServerInfo,Swap>	servers;
-	extern HashTable<TUniqueID,index_t>	serverMap;
 
 	extern Time::Stamp		lastPing,lastServerTableUpdate;
 
+	/**
+	Last attempted server host.
+	Not cleared upon connection loss
+	*/
+	extern ServerAddress	lastServerAddress;
+	extern UINT64			lastLobbyID;
+	/**
+	Set to non zero to automatically connect to the specified lobby if it comes up
+	*/
+	extern UINT64			autoConnectToLobby;
+	
 
 	void					SendChatMessage(const String&msg, const Objects::PFaction&receiver);
 	void					SendChatMessage(const String&msg, const Objects::PAlliance&receiver);
 	void					BroadcastChatMessage(const String&msg);
+
+	/**
+	Removes a host from all currently known tcp/steam servers
+	*/
+	void					RemoveServer(const ServerAddress&, UINT64 lobbyID);
+
+	/**
+	Triggers a server list refresh
+	*/
+	void					RefreshServerListNow();
+	void					SetSteamDiscovery(bool enableDiscovery);
+	bool					SteamDiscoveryIsEnabled();
+	bool					ForcingTCPConnections();
+	void					ForceTCPConnections(bool doForce);
+
+
+	void		Update();
 
 	void		Shutdown();
 

@@ -11,7 +11,9 @@ namespace UDPBroadCast
 	/**
 	Creates the UDP broadcast packet. Must be called once when the program starts even if UDP broadcast will never be used
 	*/
-	void		Create(UINT16 basePort, const TUniqueID&serverID);
+	void		Create(UINT16 basePort, const TUniqueID&serverID, UINT64 ownerID);
+	void		UpdateLobbyID(UINT64 lobbyID);
+	#if 0
 	/**
 	Starts UDP broadcasting relative to the specified base port
 	*/
@@ -20,14 +22,17 @@ namespace UDPBroadCast
 	Ends UDP broadcasting
 	*/
 	void		Stop();
+	#endif
 	/**
 	Resends any UDP broadcasts, if UDP broadcasting has been started and timing is appropriate. Does nothing otherwise
 	*/
 	void		Update();
+	#if 0
 	/**
 	Checks if UDP broadcasting is enabled
 	*/
 	bool		IsStarted();
+	#endif
 
 	/**
 	Checks whether or not the local packet variable is completed and can be used.

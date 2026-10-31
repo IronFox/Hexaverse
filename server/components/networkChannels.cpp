@@ -3,6 +3,8 @@
 #include "state.h"
 #include "serverLogEvent.h"
 #include "journalSaveGame.h"
+#include <network/steamInterface.h>
+#include "../../client/version.h"
 #include <objects/structure/mine.h>
 #include "state/gameState.h"
 #include <passwordMatch.h>
@@ -10,6 +12,8 @@
 
 extern TwisterRandom		random;
 
+//#define USE_CRYPTOGRAPHIC_LOGIN
+#define CRYPTOGRAPHIC_SECRET nullptr
 
 namespace ResearchSerialization
 {
@@ -357,8 +361,7 @@ namespace Channels
 //	DECLARE_FACTION_CHANNEL(FactionAllianceChange);
 
 
-
-	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
+	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												clientHello(Receiver::Hello);
 	TCP::Channel<Protocol::EntityDirectCommand, Level::Faction, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand(Receiver::EntityDirectCommand);
 	TCP::Channel<Protocol::ChoiceIntersection, Level::Faction, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
 	TCP::Channel<Protocol::DropTasks, Level::Faction, Protocol::ChannelID::DropTasks>						dropTasks(Receiver::DropTasks);
@@ -383,7 +386,8 @@ namespace Channels
 	
 	TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>							tutorialAt(Receiver::TutorialAt);
 
-
+	TCP::ObjectSender<Protocol::ServerHello, Protocol::ChannelID::ServerHello>							serverHello;
+	
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
 	TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>							updateWorld;
@@ -668,25 +672,6 @@ namespace Receiver
 				return *f;
 		return nullptr;
 	}
-
-
-	bool	GetFactionByToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken,Objects::PFaction&outFaction)
-	{
-		if (hashedFactionToken.IsEmpty())
-			return false;
-		foreach (Objects::Faction::all,f)
-		{
-			if (Password::HashMatch(passwordChallenge,(*f)->accessToken,hashedFactionToken))
-			{
-				outFaction = *f;
-				return true;
-			}
-		}
-		return false;
-	}
-
-
-
 	void	ClientFaction(Protocol::ClientFactionRequest&req, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -715,6 +700,7 @@ namespace Receiver
 			}
 		}
 
+		response.operation = req.operation;
 		response.startFactionTypes = req.startFactionTypes;
 		response.planetConfig = Grid::currentPlanetConfig;
 		Game::Network::AssembleGameInfo(response.info, peer.IsLocalhost());
@@ -722,10 +708,10 @@ namespace Receiver
 
 
 		if (RuntimeConfig::GameHasEnded())
-			response.startFactionTypes = Protocol::FactionType::SpectatorFaction;	//automatic spectator status
+			req.operation = Protocol::FactionOperation::Spectate;	//automatic spectator status
 
 
-		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
+		if (req.operation == Protocol::FactionOperation::AbandonCurrent || req.operation == Protocol::FactionOperation::Spectate)
 		{
 			if (Network::activePlayersAndSpectators.FindAndErase(client))
 			{
@@ -737,17 +723,20 @@ namespace Receiver
 					Channels::factionOffline.SendTo(Network::server,client->faction->id,2);
 					client->faction->online = false;
 					client->faction.reset();
+					Network::UpdateSteamGameState();
 				}
 				Network::ChangeUserLevel(peer,Network::UserLevel::PreFaction);
 			}
-			if (!response.startFactionTypes)
+			
+			if (req.operation == Protocol::FactionOperation::AbandonCurrent)
 			{
 				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 				return;
 			}
 		}
+
 		
-		if (response.startFactionTypes != Protocol::FactionType::SpectatorFaction && client->isSpectator)
+		if (req.operation != Protocol::FactionOperation::Spectate && client->isSpectator)
 		{
 			client->isSpectator = false;	
 			Network::spectators.FindAndErase(client);
@@ -772,12 +761,12 @@ namespace Receiver
 
 		bool factionTypeNotSupported = true;
 
-		switch (response.startFactionTypes)
+		switch (req.operation)
 		{
-			case Protocol::FactionType::ContinueOnly:
+			case Protocol::FactionOperation::ForceContinue:
 				factionTypeNotSupported = false;
 			break;
-			case Protocol::FactionType::SpectatorFaction:
+			case Protocol::FactionOperation::Spectate:
 			{
 				factionTypeNotSupported =	!RuntimeConfig::GameHasEnded() &&
 											(
@@ -789,8 +778,17 @@ namespace Receiver
 					LogEvent(EventClass::Preset::commandRejected,peer,"Spectator type is allowed only from localhost, but peer is "+peer.ToString());
 			}
 			break;
-			case Protocol::FactionType::RegularFaction:
-				factionTypeNotSupported = !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
+			case Protocol::FactionOperation::ForceNew:
+			case Protocol::FactionOperation::StartOrContinue:
+				switch (response.startFactionTypes)
+				{
+					case Protocol::FactionType::NexusFaction:
+						factionTypeNotSupported = !client->isNexus;
+					break;
+					case Protocol::FactionType::RegularFaction:
+						factionTypeNotSupported = !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
+					break;
+				}
 			break;
 		}
 
@@ -804,7 +802,7 @@ namespace Receiver
 			return;
 		}
 
-		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
+		if (req.operation == Protocol::FactionOperation::Spectate)
 		{
 			//authenticated and purged any previous faction. let's go
 			Network::ChangeUserLevel(peer,Network::UserLevel::Spectator);
@@ -832,14 +830,19 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (/*Game::Config::Nexus::enableAI &&*/ Password::HashMatch(client->passwordChallenge,Objects::Faction::nexus->accessToken,req.hashedFactionToken))
+		if (/*Game::Config::Nexus::enableAI &&*/ client->isNexus && peer.IsLocalhost())
 		{
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ), peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
 		}
 		if (faction
-			|| GetFactionByToken(client->passwordChallenge, req.hashedFactionToken,faction)
-			|| (	response.startFactionTypes == Protocol::FactionType::ContinueOnly 
+			|| (
+					req.operation != Protocol::FactionOperation::ForceNew
+					&&
+					Network::accountMap.Query(client->accountID,faction)
+				)
+			|| (
+					req.operation == Protocol::FactionOperation::ForceContinue
 					#ifndef _DEBUG
 						&& RuntimeConfig::tutorialMode
 					#endif
@@ -847,9 +850,6 @@ namespace Receiver
 				)
 			)
 		{
-			#ifdef _DEBUG
-				response.newFactionAccessToken = faction->accessToken;
-			#endif
 			Network::PClient other;
 			if (Network::playerMap.Query(faction,other))
 			{
@@ -875,23 +875,6 @@ namespace Receiver
 		}
 		else
 		{
-			if (req.hashedFactionToken.IsSet())
-			{
-				LogEvent(EventClass( EventSignificance::Important, EventFlavor::UserError ),peer,"Provided non-empty token not recognized");
-
-				if (Game::Config::closedGame && RuntimeConfig::roundNumber > 0)
-				{
-					foreach (Objects::Faction::all,f)
-					{
-						ASSERT__(  !Password::HashMatch(client->passwordChallenge, (*f)->accessToken,req.hashedFactionToken));
-						LogEvent(EventSignificance::Debug,peer,"Known token: "+(*f)->accessToken.ToString());
-					}
-				}
-			}
-			else
-			{
-				LogEvent(EventSignificance::Common,peer,"No faction token provided");
-			}
 			newFaction = true;
 		}
 
@@ -905,9 +888,7 @@ namespace Receiver
 		index_t startLocation = InvalidIndex;
 		if (newFaction)
 		{
-			response.newFactionAccessToken.Generate();
-
-			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
+			if (req.operation == Protocol::FactionOperation::ForceContinue)
 			{
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
@@ -943,7 +924,8 @@ namespace Receiver
 
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ),peer,"Created new faction.");
 
-			client->faction->accessToken = response.newFactionAccessToken;
+			client->faction->steamID = client->accountID.steamID;
+			Network::accountMap.Set(client->accountID,client->faction);
 
 			ResearchSerialization::SendTopicProgressVectorTo(Network::server,faction);	//since the user level hasn't been updated yet, this is not sent to the local client
 			ResearchSerialization::SendAttributeVectorTo(Network::server,faction->researchState.attributeTable,faction->id);
@@ -1180,6 +1162,7 @@ namespace Receiver
 			Nexus::ProcessCoverage();
 		
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
+		Network::UpdateSteamGameState();
 	}
 
 	//bool CanSee(const TCP::PPeer&p, const Objects::WorldEntity&e)
@@ -2169,65 +2152,110 @@ namespace Receiver
 	#endif /*0*/
 	void	Hello(Protocol::Hello&hello, TCP::Peer&peer)
 	{
-		if (hello.Trim().IsEmpty())
+		//UINT64 steamID, const Array<BYTE>&ticket
+		Protocol::HelloResponse response;
+
+
+		TCP::PPeer ppeer = Network::server.GetSharedPointerOfClient(&peer);
+		if (!ppeer)	//disconnected in the meantime. rare, but it happens
 		{
-			Protocol::HelloResponse response;
+			LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),"Peer disconnected on its own before client state handling could commence. Ignoring event");
+			return;
+		}
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (client)
+		{
 			response.success = false;
-			response.gameFlags = 0;
-			response.errorMessage ="Invalid initial username";
+			response.errorMessage = "Steam authentication already in progress";
 			peer.SendPackage(TCP::Package(response,Protocol::ChannelID::Hello));
+			return;
+		}
+		Network::ChangeUserLevel(peer,Network::UserLevel::PreAuthentication);
+
+
+		client.reset(new Network::Client());
+		peer.attachment = client;
+		client->peer = ppeer;
+		client->name = hello.nickname;
+		client->isNexus = hello.clientType == Protocol::ClientType::AIClient && Network::aiAccessToken == hello.ticket /*&& Game::Config::Nexus::enableAI*/;
+		if (hello.clientType == Protocol::ClientType::AIClient && !client->isNexus)
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,peer,"Tried to log in as AI but token does not match, or AI mode is disabled");
+		}
+		if (client->isNexus)
+		{
+			Network::ChangeUserLevel(peer,Network::UserLevel::PreFaction);
+			
+			Protocol::HelloResponse response;
+			response.success = true;
+			response.passwordChallenge = client->passwordChallenge;
+			response.hasFaction = true;
+
+			Protocol::PhaseChange	ph;
+			ph.newPhase = RuntimeConfig::phase;
+			ph.roundNumber = RuntimeConfig::roundNumber;
+			ph.timeFactor = -1;
+
+			ppeer->SendPackage(TCP::Package(response,Protocol::ChannelID::Hello));
+			Channels::phaseChange.SendTo(ppeer,ph);
+
+			if (ppeer->IsConnected())
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),client->ConvertToString()+" joined the session");
+			
 			return;
 		}
 
 
-		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
-		if (!client)
+		Network::WClient wclient = client;
+		UINT64 id = hello.steamID;
+		bool local = peer.IsLocalhost();
+		SteamInterface::Authenticate(hello.steamID,hello.ticket, CRYPTOGRAPHIC_SECRET ,[wclient,id,local](bool success, const String&error)
 		{
-			TCP::PPeer ppeer = Network::server.GetSharedPointerOfClient(&peer);
+			Network::PClient client = wclient.lock();
+			if (!client)
+				return;
+			TCP::PPeer ppeer = client->peer.lock();
 			if (!ppeer)	//disconnected in the meantime. rare, but it happens
 			{
 				LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),"Peer disconnected on its own before client state handling could commence. Ignoring event");
 				return;
 			}
-			Network::ChangeUserLevel(peer,Network::UserLevel::PreFaction);
+			LogEvent(EventClass( EventSignificance::Debug, EventFlavor::ServerPrivate ),ppeer,"Steam authentication ticket response="+String(success)+" ("+error+")");
+			if (!success)
+			{
+				Protocol::HelloResponse response;
 
+				response.success = false;
+				response.errorMessage = "Steam authentication ticket rejected ("+error+")";
+				ppeer->SendPackage(TCP::Package(response, Protocol::ChannelID::Hello));
+				return;
+			}
+			client->accountID.steamID = id;
+			Network::ChangeUserLevel(*ppeer,Network::UserLevel::PreFaction);
 
-			client.reset(new Network::Client());
-			client->peer = ppeer;
-			ASSERT__(ppeer);
-				//peer.shared_from_this();
-			peer.attachment = client;
-			//State::clients << client;
-			client->name = hello;
-			LogEvent(EventClass( EventSignificance::Common, EventFlavor::Gain ),peer,client->ConvertToString()+" joined the session");
+			Protocol::HelloResponse response;
+			response.success = true;
+			response.passwordChallenge = client->passwordChallenge;
+			response.hasFaction = Network::accountMap.IsSet(client->accountID);
 
-			
+			Protocol::GameConfig cfg;
+			Game::Network::AssembleGameConfig(cfg,ppeer->IsLocalhost() && (Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions));
+			response.gameFlags = cfg.gameFlags;
+
 			Protocol::PhaseChange	ph;
 			ph.newPhase = RuntimeConfig::phase;
 			ph.roundNumber = RuntimeConfig::roundNumber;
 			ph.timeFactor = -1;
 
 
-			Channels::phaseChange.SendTo(peer,ph);
-
-
-			Protocol::HelloResponse response;
-			response.success = true;
-			response.passwordChallenge = client->passwordChallenge;
-			response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
-			response.errorMessage ="Userlevel set to "+String(peer.userLevel);
-			peer.SendPackage( TCP::Package(response, Protocol::ChannelID::Hello ));
+			ppeer->SendPackage(TCP::Package(response, Protocol::ChannelID::Hello));
+			Channels::GameConfig.SendTo(ppeer,cfg);
+			Channels::phaseChange.SendTo(ppeer,ph);
+			if (ppeer->IsConnected())
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),client->ConvertToString()+" joined the session");
 			return;
-		}
+		});
 
-
-		ChangeMyName(hello,peer);
-		Protocol::HelloResponse response;
-		response.success = true;
-		response.passwordChallenge = client->passwordChallenge;
-		response.gameFlags = Game::Network::AssembleGameFlags(peer.IsLocalhost());
-		response.errorMessage ="Duplicate Hello detected. Userlevel remains "+String(peer.userLevel);
-		peer.SendPackage( TCP::Package(response,Protocol::ChannelID::Hello) );		
 	}
 
 
@@ -2236,12 +2264,24 @@ namespace Receiver
 		switch (ev)
 		{
 			case TCP::Event::ConnectionEstablished:
+			{
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ), peer,"Client connected");
 				if (RuntimeConfig::tutorialMode && !peer.IsLocalhost())
 				{
 					LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"Server is in tutorial mode. Rejecting connection from non-localhost.");
 					peer.DisconnectPeer();
 				}
+				Protocol::ServerHello hello;
+
+				#ifdef USE_CRYPTOGRAPHIC_LOGIN
+					hello.useCryptographicID = true;
+				#else
+					hello.useCryptographicID = false;
+				#endif
+				hello.version = SERVER_NAME;
+
+				Channels::serverHello.SendTo(peer,hello);
+			}
 			break;
 			case TCP::Event::ConnectionLost:
 			{
@@ -2252,6 +2292,8 @@ namespace Receiver
 					Network::HandleConnectionLoss(client);
 
 					peer.attachment.reset();
+
+					Network::UpdateSteamGameState();
 				}
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 

@@ -14,6 +14,8 @@
 #include <globalEvents.h>
 #include <objects/nexus/nexusThreatEstimation.h>
 
+#include <network/steamInterface.h>
+#include <network/net.h>
 
 #undef StartService
 
@@ -133,6 +135,11 @@ namespace Network
 	Buffer0<PClient>	activePlayersAndSpectators,spectators;
 	HashTable<Objects::PConstFaction,PClient,Objects::OwnerHash>	playerMap;
 
+
+
+	HashTable<AccountID,Objects::PFaction>		accountMap;
+
+	CryptographicID	aiAccessToken = CryptographicID::New();
 
 	namespace Heartbeat
 	{
@@ -337,6 +344,7 @@ namespace Network
 	namespace Config
 	{
 		UINT16		sessionBasePort = DEFAULT_SERVER_BASE_PORT;
+		bool		privateServer = true;
 
 		//owner: main thread. Assume SetServerPassword is called by main thread only. Read access by main thread to serverPassword should be safe. still better not allow header-wise direct access
 		String			serverPassword;
@@ -372,7 +380,7 @@ namespace Network
 
 
 	TUniqueID		serverID;
-	TCP::Server		server;
+	SteamNetwork::Server		server;
 
 
 	static void StartServer(bool logStateAfterRestart)
@@ -386,7 +394,8 @@ namespace Network
 		server.OnDoneResolving([logStateAfterRestart]()
 		{
 			const auto port = Config::sessionBasePort + PortOffset::Session;
-			if (server.StartService(port))
+			if (server.StartService(0,port,Config::sessionBasePort,RuntimeConfig::tutorialMode))
+			//if (server.StartService(port))
 			{
 				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionBasePort + PortOffset::Session));
 				if (logStateAfterRestart)
@@ -401,10 +410,17 @@ namespace Network
 	{
 		server.Resolve();
 		Heartbeat::Check();
+		SteamNetwork::ResolveGlobalEvents();
 	}
 
 
 
+	void UpdateSteamGameState()
+	{
+		Protocol::GameInfo gameInfo;
+		Game::Network::AssembleGameInfo(gameInfo,false);
+		SteamNetwork::UpdateGameState(gameInfo,Session::isStarted);
+	}
 
 	void ChangeUserLevel(TCP::Peer&peer, UserLevel newLevel)
 	{
@@ -541,7 +557,7 @@ namespace Network
 			return;
 		setup = true;
 
-		server.InstallChannel(Channels::hello);
+		server.InstallChannel(Channels::clientHello);
 		server.InstallChannel(Channels::entityDirectCommand);
 		server.InstallChannel(Channels::choiceIntersection);
 		server.InstallChannel(Channels::dropTasks);
@@ -619,6 +635,11 @@ namespace Network
 	void HandleConnectionLoss(PClient client)
 	{
 		//State::clients.FindAndErase(client);
+		if (client->accountID.steamID != 0)
+		{
+			SteamInterface::SignalConnectionLoss(client->accountID.steamID);
+			client->accountID.steamID = 0;
+		}
 		activePlayersAndSpectators.FindAndErase(client);
 		spectators.FindAndErase(client);
 		if (client->faction)
@@ -660,7 +681,9 @@ namespace Network
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 
+
 		Session::isStarted = true;
+		UpdateSteamGameState();
 
 		World::Network::CheckAllFactionCoverageAndSendAsNeeded();
 	}
@@ -742,7 +765,9 @@ namespace Network
 
 
 		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
+		accountMap.Clear();
 
+		SteamNetwork::HandleSessionClosure();
 		World::Network::HandleSessionClosure();
 		Game::Network::HandleSessionClosure();
 		FileIO::Network::HandleSessionClosure();
@@ -963,6 +988,11 @@ namespace Network
 				logConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 			if (FileIO::Config::saveWhenAllQuit)
 				logConfig(" -Auto-save will be created when all quit.");
+			if (Network::Config::privateServer)
+				LogConfig(" -Server is invite-only. Connect via TCP and invite players from the main menu");
+			else
+				LogConfig(" -Server is public. Anyone can see and join your server");
+		
 
 			if (RuntimeConfig::GameHasEnded())
 				logConfig("This game has ENDED. Clients can connect to view statistics only.");

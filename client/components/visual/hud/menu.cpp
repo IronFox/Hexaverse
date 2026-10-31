@@ -460,10 +460,12 @@ namespace Menu
 		game = Menu::Create();
 		game->Setup(0.3f,"Game",true);
 
-		game->AddCommand("Change Nickname","Change your ingame alias. Nicknames are not unique", HUD::Dialog::QueryNickname);
-		game->AddCommand("Abandon faction","Flags your current faction as abandoned, and displays a selection to create a new faction (if desired)",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame;});
-		game->AddCommand("Show factions (Tab)","Opens a dialog presenting factions, alliances, and chat messages" ,FactionTable::Show,[](){return Network::amOnline;});
-		game->AddCommand("Show statistics","Shows statistics of the completed local game" ,Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
+		game->AddCommand("Set custom nickname","Change your ingame alias. Nicknames are not unique",HUD::Dialog::QueryNickname);
+		game->AddCommand("Reset nickname to Steam persona name","Change your ingame alias to whatever your Steam name is", Network::ResetNickname,[](){return FileSystem::IsFile(RuntimeConfig::GetUserNameFile());});
+		game->AddCommand("Invite friend","Invite friends to join you in this match" ,[](){SteamInterface::InviteFriend(Network::lastLobbyID);},[](){return Network::amOnline;});
+		game->AddCommand("Abandon faction","Flags your current faction as abandoned, and displays a selection to create a new faction (if desired)",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFactionLoaded;});
+		game->AddCommand("Show factions (Tab)","Opens a dialog presenting factions, alliances, and chat messages" , FactionTable::Show,[](){return Network::amOnline;});
+		game->AddCommand("Show statistics","Shows statistics of the completed local game" , Statistics::Show,[](){return Network::amOnline && RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;});
 		game->AddCommand("Save game as...","Signals the server to save the game under a given name",[]()
 		{
 			Dialog::Query("Please specify a name","", [](char32_t c){return c != '/' && c != '\\';},[](const UTF32StringRef&candidate)->bool{return candidate.Length() > 3 && candidate.Length() < 16 && !candidate.BeginsWith(' ') && !candidate.EndsWith(' ') && !candidate.Contains(U"..");},
@@ -588,7 +590,6 @@ namespace Menu
 	{
 		main = Menu::Create();
 		main->Setup(0.25f,"Main",true);
-
 		main->AddCommand("Return to Server List","Closes the connection to your current server (if any) and displays available servers. You can resume your current faction (if any) by reconnecting",
 		[]()
 		{
@@ -656,33 +657,6 @@ namespace Menu
 				Process::StartProject(L"../ControlConsole/",L"ControlConsole",L"");	//start and abandon, without port parameter since we don't know any
 		});
 
-		menu->AddCommand("New client with custom profile","Launches another instance of the local client under a different profile. Profiles allow control of each one faction per server",[]()
-		{
-			Dialog::Query("Please enter a profile name to continue (empty for none).\n"
-				"Servers allow one faction per profile, enabling multiple factions controlled by each one instance of the same Hexaverse installation.\n"
-				"Make sure to not reuse the same profile for more than one open client instance at a time."
-				,"",
-				[](char32_t c){return StringFunctions::isalnum(c);},[](const UTF32StringRef&str){return true;},[](const String&str)
-			{
-				SetFullScreen(false);
-				PathString parameters = FileSystem::StringToPath("profile="+str);
-				if (Network::client.IsConnected())
-					parameters += FileSystem::StringToPath(" serverURL="+ToString(Network::lastServerAddress));
-
-
-				count_t len = 0;
-				Buffer<PathString::char_t> execPath; 
-				do
-				{
-					execPath.AppendRow(MAX_PATH);
-					len = GetModuleFileNameW(nullptr, execPath.GetPointer(), (DWORD)execPath.GetLength());
-				}
-				while (len >= execPath.GetLength());
-
-				Process::Start(L"./",execPath.GetPointer(),parameters);
-			});
-		});
-
 		menu->AddCommand("Server Manager","Launches the server manager app to review and control locally running servers",[]()
 		{
 			SetFullScreen(false);
@@ -693,20 +667,20 @@ namespace Menu
 	}
 
 
-	static void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
+	void AddFactionCreationChoice(const String&line, Protocol::FactionOperation::op_t op,  UINT32 typeFlags, UINT32 supportFactionFlag)
 	{
 		login->AddCommand(line,"Faction Option",
-		[typeFlags,supportFactionFlag]()
+		[typeFlags,supportFactionFlag,op]()
 		{
-			if (Network::HaveFactionKeyForCurrentWorld() && typeFlags != Protocol::FactionType::SpectatorFaction)
+			if (Network::haveFactionOnServer && op != Protocol::FactionOperation::Spectate)
 			{
-				HUD::Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
-				[typeFlags](){
-					Network::AttemptFactionLogin(true,typeFlags);
+				HUD::Dialog::Confirm("You are already in control of a faction in this world. If you create a new faction, control of your old faction will irreversible be abandoned. Please confirm.",
+				[typeFlags,op](){
+					Network::AttemptFactionLogin(op,typeFlags);
 					WindowStack::Hide(login);
 				},[supportFactionFlag]()
 				{
-					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
+					if (!Network::amOnline || !Network::haveFactionOnServer || !(supportFactionFlag & Network::gameFlags))
 						return HUD::Dialog::CheckResult::Abort;
 					if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 						return HUD::Dialog::CheckResult::OkayNotRightNow;
@@ -715,15 +689,11 @@ namespace Menu
 			}
 			else
 			{
-				Network::AttemptFactionLogin(true,typeFlags);
+				Network::AttemptFactionLogin(op,typeFlags);
 				WindowStack::Hide(login);
 			}
-		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) 
-			&& (
-					RuntimeConfig::IsInAnyCommandPhase() 
-						|| RuntimeConfig::phase  == RuntimeConfig::Phase::AnimationPhase 
-						|| RuntimeConfig::phase  == RuntimeConfig::Phase::EndOfGame
-				)
+		},[supportFactionFlag](){return (Network::gameFlags & supportFactionFlag) 
+			&& Network::CanSendFactionRequests()
 			;},false);
 	}
 
@@ -732,18 +702,18 @@ namespace Menu
 		login = Menu::Create();
 		login->Setup(0.25f,"Login",false); 	//once visible, must explicitly close
 
-		login->AddCommand("Continue existing faction","If you have access to an existing faction, select this option to resume control",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
+		login->AddCommand("Continue existing faction","If you have access to an existing faction, select this option to resume control",[](){Network::AttemptFactionLogin(Protocol::FactionOperation::ForceContinue,0);},
 		[]()
 		{
-			return Network::amOnline && !Network::haveFaction 
-			#ifndef _DEBUG
-			&& Network::HaveFactionKeyForCurrentWorld() 
-			#endif
-			&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+			return Network::CanSendFactionRequests() 
+				#ifndef _DEBUG
+					&& Network::haveFactionOnServer
+				#endif
+				;
 		}
 		);
-		AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
-		AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
+		AddFactionCreationChoice("Spectate", Protocol::FactionOperation::Spectate, 0, Protocol::GameFlag::SupportSpectatorFactions);
+		AddFactionCreationChoice("Create new faction",  Protocol::FactionOperation::ForceNew, Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
 	}
 
 

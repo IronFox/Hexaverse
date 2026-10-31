@@ -31,6 +31,13 @@
 		<link>d3d11.lib</link>
 		<link>d3dcompiler.lib</link>
 	</includeLibrary>
+	<includeLibrary name="Steam SDK">
+		<include>../steam_sdk</include>
+		<linkDirectory if_platform="x32">../steam_sdk/lib/win32</linkDirectory>
+		<linkDirectory if_platform="x64">../steam_sdk/lib/win64</linkDirectory>
+		<link>Steam_api.lib</link>
+		<link>sdkencryptedappticket.lib</link>
+	</includeLibrary>
 	
 	
 	

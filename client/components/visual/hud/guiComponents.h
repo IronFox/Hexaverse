@@ -700,7 +700,7 @@ namespace Component
 		@return Designed component height relative to the current screen height. Return values < 0 to disable automatic resizing by Component::UpdateDynamicSize()
 		*/
 		virtual float	GetContentHeight() const {return -1;}
-		virtual void	PropagateToChildren(const TPropagating&p) {}
+		virtual void	PropagateToChildren(const TPropagating&p){}
 		TPropagating	CreatePropagating() const {return TPropagating(IsEnabled(),IsLit());}
 		virtual void	OnRectChange() override;
 		virtual void	PropagateToChildren(const PWindow&)	{}

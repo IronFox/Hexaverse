@@ -83,11 +83,11 @@ namespace Channels
 	{
 		static const UINT32 Faction = (UINT32)Network::UserLevel::CommonFaction;
 		static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
+		static const UINT32 PreAuth = (UINT32)Network::UserLevel::PreAuthentication;
 		static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
 	}
 
-
-	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello;
+	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												clientHello;
 	extern TCP::Channel<Protocol::EntityDirectCommand, Level::Faction, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 	extern TCP::Channel<Protocol::ChoiceIntersection, Level::Faction, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
 	extern TCP::Channel<Protocol::DropTasks, Level::Faction, Protocol::ChannelID::DropTasks>						dropTasks;
@@ -111,6 +111,7 @@ namespace Channels
 	extern TCP::Channel<NET(INT32),Level::Faction,Protocol::ChannelID::TutorialAt>								tutorialAt;
 
 
+	extern TCP::ObjectSender<Protocol::ServerHello, Protocol::ChannelID::ServerHello>							serverHello;
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>			markerCreationFailedLimitReached;
 	extern TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>								updateWorld;

@@ -22,9 +22,10 @@ namespace UDPBroadCast
 	Protocol::THostBroadcastPacket	packet;
 	Protocol::THostToManagerPacket	managerPacket;
 	static sockaddr_in managerAddr;
-	static bool doBroadcast = false;
+	//static bool doBroadcast = false;
 
 
+	#if 0
 	void UpdateOutAdapters(Ctr::BasicBuffer<sockaddr_in>&out)
 	{
 		out.Clear();
@@ -103,6 +104,7 @@ namespace UDPBroadCast
 		//Sleep(1000);
 
 	}
+	#endif
 
 	void	Destroy()
 	{
@@ -113,12 +115,15 @@ namespace UDPBroadCast
 		}
 	}
 
+	void		UpdateLobbyID(UINT64 lobbyID)
+	{
+		packet.lobbyID = lobbyID;
+	}
 
-
-	void		Create(UINT16 basePort, const TUniqueID&serverID)
+	void		Create(UINT16 basePort, const TUniqueID&serverID, UINT64 ownerID)
 	{
 		GlobalEvents::applicationTerminate << Destroy;
-		packet.hostID = serverID;
+		//packet.hostID = serverID;
 		packet.serverBasePort = basePort;
 		managerPacket.hostID = serverID;
 		managerPacket.serverBasePort = basePort;
@@ -129,7 +134,10 @@ namespace UDPBroadCast
 
 			memcpy(packet.version,var,len);
 		}
+		packet.ownerID = ownerID;
+		packet.lobbyID = 0;
 
+		LogEvent(EventSignificance::Uncommon,"Steam Owner ID: "+SteamInterface::IDToString(ownerID));
 
 		#ifdef _WIN32
 			//Start up Winsock…
@@ -175,6 +183,7 @@ namespace UDPBroadCast
 	}
 
 
+	#if 0
 	bool		Start()
 	{
 	
@@ -210,6 +219,7 @@ namespace UDPBroadCast
 	{
 		return doBroadcast;
 	}
+	#endif
 
 	using namespace Time::Literals;
 
@@ -225,6 +235,7 @@ namespace UDPBroadCast
 				managerPacket.flags |= managerPacket.RequireHeartbeats;
 			sendto(broadcastSocket,(const char*)&managerPacket,sizeof(managerPacket),0,(const sockaddr*)&managerAddr,(int)sizeof(sockaddr_in));
 
+			#if 0
 			if (doBroadcast)
 			{
 				if (lastAdapterQuery.CheckIfOutdatedAndUpdate(5_s))
@@ -238,12 +249,13 @@ namespace UDPBroadCast
 					sendto(broadcastSocket,(const char*)&packet,sizeof(packet),0,(const sockaddr*)someone,(int)sizeof(sockaddr_in));
 				}
 			}
+			#endif
 		}
 	}
 
 	bool		PacketIsDone()
 	{
-		return true;
+		return packet.lobbyID != 0 || RuntimeConfig::tutorialMode;
 	}
 
 }

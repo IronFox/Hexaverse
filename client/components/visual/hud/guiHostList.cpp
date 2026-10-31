@@ -8,6 +8,7 @@
 #include <runtimeConfig.h>
 #include "../../clientRuntimeConfig.h"
 #include <serverProcess.h>
+#include <network/steamInterface.h>
 #include "../../audio/music.h"
 #include "../../clientEvents.h"
 #include "menu.h"
@@ -30,9 +31,10 @@ namespace HUD{namespace HostList{
 
 	const float4 incompatibleColor(1,0.6,0.55,1);
 
-	static const float VisualTabWidth[] = {0.3f,0.15f,0.1f,0.25f};
+	static const float VisualTabWidth[] = {0.2f,0.25f,0.1f,0.1f,0.25f};
 
 	PWindow		serverChoice,changelog;
+	PTabBar		serverTabBar;
 	PPanel		headerRow;
 
 
@@ -69,6 +71,12 @@ namespace HUD{namespace HostList{
 		serverChoice = Window::Create();
 		serverChoice->Anchor().Top().CenterHorizontally(0.9f);
 		serverChoice->canBeImplicitlyClosed = false;
+
+		serverTabBar.reset(new TabBar());
+		serverChoice->AddComponent(serverTabBar,CLOCATION);
+		serverTabBar->FillHorizontally(0);
+		serverTabBar->Anchor().Top();
+		serverTabBar->SetCornerStyle(HUD::Component::TabBar::CornerStyle::Compact);
 
 		try
 		{
@@ -107,10 +115,12 @@ namespace HUD{namespace HostList{
 
 		headerRow.reset(new Panel());
 		headerRow->FillHorizontally(0);
+		headerRow->Anchor().Beneath(serverTabBar);
+		headerRow->SetBackground(false);
 		headerRow->SetAutomaticHeight(true);
 		headerRow->SetBackground(false);
 		
-		Update();
+		CheckVisibility(true);
 	}
 
 	void	CheckVisibility(bool doShow)
@@ -195,6 +205,8 @@ namespace HUD{namespace HostList{
 					result="No Goal";
 				break;
 			}
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::PrivateServer)
+				result += ", Private";
 			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ClosedGame)
 				result += ", Closed Game";
 			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::EMPZones)
@@ -216,29 +228,26 @@ namespace HUD{namespace HostList{
 
 	}
 
-	static float PingOf(const Network::Host&p)
-	{
-		if (p.address.host == "localhost")
-			return -1;
-		return p.ping;
-	}
 
-	static const Network::Host&	GetTargetHost(const Network::ServerInfo&info)
+	static void ConnectToHost(const Network::ServerAddress&id)
 	{
-		float ping = std::numeric_limits<float>::max();
-		const Network::Host* best = nullptr;
-
-		foreach (info.addresses,addr)
+		Network::ServerInfo*info = nullptr;
+		foreach (Network::servers,srv)
 		{
-			float p = PingOf(*addr);
-			if (p < ping)
+			if (srv->HasAddress( id ))
 			{
-				ping = p;
-				best = addr;
+				info = srv;
+				break;
 			}
 		}
-		ASSERT_NOT_NULL__(best);
-		return *best;
+		if (!info)
+			return;
+		index_t best = 0;
+				
+		info->selected = true;
+		info->Connect();
+
+
 	}
 
 	static void SetTop(const PComponent&c, float dist)
@@ -249,14 +258,24 @@ namespace HUD{namespace HostList{
 	PButtonPanel ConstructPanel(Network::ServerInfo&info)
 	{
 
-		const Network::Host&host = GetTargetHost(info);
 
 
 
 		float4 color(1);
 		if (!info.rightVersion || info.protocolIncompatible)
 			color = incompatibleColor;
-		PButtonPanel p;// = To<VisualAttachment>::Cast(info.visualAttachment)->buttonPanel;
+		else
+		{
+		
+			if (info.IsPrivate()
+				|| 
+				info.HasNonSteamAddress()
+				)
+			{
+				color.rgb = float3(0.8,0.85,1)*1.2f;
+			}
+		}
+		PButtonPanel p;
 
 		//if (info.visualAttachment)
 		//{
@@ -275,8 +294,8 @@ namespace HUD{namespace HostList{
 			p->SetAutomaticHeight(true);
 			bool versionMatch = info.rightVersion;
 
-			TUniqueID id = info.id;
-			const bool isTutorialMode = (host.serverInfo.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
+			const auto id = info.lobbyID;
+			const bool isTutorialMode = (info.GetPrimaryAddress().info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::TutorialMode) != 0;
 			const bool requireLocalhost = isTutorialMode;
 
 			p->SetCheck([versionMatch,id,requireLocalhost]()
@@ -286,7 +305,7 @@ namespace HUD{namespace HostList{
 					Network::ServerInfo*info = nullptr;
 					foreach (Network::servers,srv)
 					{
-						if (srv->id == id)
+						if (srv->lobbyID == id)
 						{
 							info = srv;
 							break;
@@ -301,57 +320,27 @@ namespace HUD{namespace HostList{
 
 			p->SetTriggerFunction([id]()
 			{
-				Network::ServerInfo*info = nullptr;
-				foreach (Network::servers,srv)
-				{
-					if (srv->id == id)
+				foreach(Network::servers,serv)
+					if (serv->lobbyID == id)
 					{
-						info = srv;
-						break;
+						ConnectToHost(serv->GetPrimaryAddress());
 					}
-				}
-				if (!info)
-					return;
-				index_t best = 0;
-				float bestPing = PingOf(info->addresses.First());
-				for (index_t i = 1; i < info->addresses.Count(); i++)
-				{
-					float ping = PingOf(info->addresses[i]);
-					if (ping < bestPing)
-					{
-						bestPing = ping;
-						best = i;
-					}
-				}
-				info->selected = true;
-
-
-				Network::ConnectTo(info->addresses[best]);
 			});
 
 
 			
+
 			{
 				String text;
-				//float4 color(1,1,1,1);
-				if (info.rightVersion)
+				//color = incompatibleColor * 1.3f;
+				if (!info.protocolIncompatible)
 				{
-					text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.ToNiceString();
-					if (info.haveToken)
-						text += " (continue)";
+					text = " "+info.GetWorldID().ToNiceString();
 				}
 				else
 				{
-					//color = incompatibleColor * 1.3f;
-					if (info.protocolIncompatible)
-					{
-						text = " <Unknown> (Protocol Incompatible)";
-					}
-					else
-					{
-						text = " "+info.id.ToNiceString()+" / "+host.serverInfo.gameInfo.worldID.ToNiceString();
-						text += "\n (Version Mismatch)";
-					}
+					text = " "+info.GetWorldID().ToNiceString();
+					text += "\n (Version Mismatch)";
 				}
 				PLabel headLine = MakeHeaderLabel(text,1.1f,0);
 				headLine->SetColor(color);
@@ -365,46 +354,35 @@ namespace HUD{namespace HostList{
 
 
 
+		const auto&primary = info.GetPrimaryAddress();
 
-		bool incompatible = !info.rightVersion || info.protocolIncompatible;
+		//bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
-			AddHeader(p,String(host.serverInfo.gameInfo.numFactionsOnline) + "/" + String(host.serverInfo.gameInfo.numFactionsCreated),color,Distance::GameWindow(0.01f));
-			AddHeader(p,host.serverInfo.gameInfo.roundNumber.ToString(),color,Distance::GameWindow(0.01f));
-			PLabel l = AddHeader(p,CompileRules(host.serverInfo),color,Distance::GameWindow(0.01f));
-			l->SetLocalFontScale(l->GetLocalFontScale() * 0.9f);
+			if (info.ownerName.IsEmpty())
+				SteamInterface::TryGetUsernameNow(info.ownerID, info.ownerName);
+			String owner = info.ownerName;
+			#ifdef USE_STEAM_OWNER_AUTHENTICATION
+				if (!info.authenticated)
+					owner += '?';
+			#endif
+			auto ocolor = color;
+			if (SteamInterface::IsFriend(info.ownerID))
+				ocolor = float3(0.65,1,0.7);
 
-		}
+
+			AddHeader(p,owner,ocolor,0.01f);
+			AddHeader(p,String(primary.info.gameInfo.numFactionsOnline) + "/" + String(primary.info.gameInfo.numFactionsCreated),color,0.01f);
+			AddHeader(p,primary.info.gameInfo.roundNumber.ToString(),color,0.01f);
+			PLabel l = AddHeader(p,CompileRules(primary.info),color,0.01f);
+			l->SetLocalFontScale(l->GetLocalFontScale() * 0.7f);
 
 
-		//0.7f * 1.5f = ~1
-		//color set to 70% opacity
-		bool first = true;
-		foreach (info.addresses,addr)
-		{
-			PLabel label = MakeHeaderLabel(ToString(addr->address)+ " (ping "+String((int)ceil(addr->ping*1000))+')',0.7f,0);
-			if (info.rightVersion && !info.protocolIncompatible)
-				label->SetColor(float4(1,1,1,0.7f));
-			else
-				label->SetColor(incompatibleColor);
-			{
-				auto cfg = label->Anchor();
-				cfg.Left(0.05f);
-				if (first)
-				{
-					first = false;
-					cfg.BeneathSomeOf(p,[p](const PComponent&c)->bool{return c != p->GetReferences().Last();});
-				}
-				else
-				{
-					cfg.BeneathLastOf(p);
-				}
-			}
-			p->AddComponent( label, CLOCATION );
+
 		}
 
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
-			PLabel label = MakeHeaderLabel("Server identifies as '"+String(host.serverInfo.hostInfo.version)+'\'',0.7f,0);
+			PLabel label = MakeHeaderLabel("Server identifies as '"+String(primary.info.hostInfo.version)+'\'',0.7f,0);
 			label->SetColor(incompatibleColor);
 			label->Anchor().BeneathLastOf(p,Distance::GameWindow( 0.005f ));
 			p->AddComponent( label ,CLOCATION);
@@ -443,6 +421,39 @@ namespace HUD{namespace HostList{
 		b->SetEdgeVisibility(b->GetCutCorners());
 	}
 
+	namespace Filter
+	{
+		bool	TCPFilter(const Network::ServerInfo&info)
+		{
+			if (!Network::ForcingTCPConnections())
+				return true;
+			return info.lastPing != 0;
+		}
+
+		bool	All(const Network::ServerInfo&info)
+		{
+			return TCPFilter(info);
+		}
+		bool	Friends(const Network::ServerInfo&info)
+		{
+			return TCPFilter(info) && SteamInterface::IsFriend(info.ownerID) && !SteamInterface::IsLocalUser(info.ownerID);
+		}
+		bool	Visited(const Network::ServerInfo&info)
+		{
+			return TCPFilter(info) && Network::DidVisit(info.GetWorldID());
+		}
+		bool	TCPNonLocal(const Network::ServerInfo&info)
+		{
+			return info.HasNonSteamAddress() && !info.HasLocalhost();
+		}
+		bool	Local(const Network::ServerInfo&info)
+		{
+			return TCPFilter(info) && (info.HasLocalhost() || SteamInterface::IsLocalUser(info.ownerID));
+		}
+
+	};
+
+
 	void	Update( )
 	{
 
@@ -454,10 +465,39 @@ namespace HUD{namespace HostList{
 		if (isActive)
 			serverChoice->SetActive(false);
 
+		if (serverTabBar->IsEmpty())
+		{
+			serverTabBar->AddTab("All","Show all found/known servers");
+			serverTabBar->AddTab("Friends","List servers hosted by friends");
+			serverTabBar->AddTab("Visited","List servers you previously connected to");
+			serverTabBar->AddTab("Remote TCP","List all manually added TCP servers");
+			serverTabBar->AddTab("Local","List all servers running on this machine");
+			serverTabBar->SetOnTabChange(Update);
+		}
 
+		bool (*filter)(const Network::ServerInfo&) = nullptr;
 
+		switch (serverTabBar->GetActiveTabIndex())
+		{
+			case 0:	//All
+				filter = Filter::All;
+			break;
+			case 1:	//Friends
+				filter = Filter::Friends;
+			break;
+			case 2:	//Visited
+				filter = Filter::Visited;
+			break;
+			case 3:	//TCP
+				filter = Filter::TCPNonLocal;
+			break;
+			case 4:	//Local
+				filter = Filter::Local;
+			break;
+		}
 
 		serverChoice->ClearComponents();
+		serverChoice->AddComponent(serverTabBar,CLOCATION);
 
 		serverChoice->SetBackground(false);
 		serverChoice->isModal = false;
@@ -467,12 +507,12 @@ namespace HUD{namespace HostList{
 		serverChoice->AddComponent(headerRow,CLOCATION);
 		if (!headerRow->HasComponents())
 		{
-			AddMainHeader("HostID/WorldID");
+			AddMainHeader("WorldID");
+			AddMainHeader("Owner");
 			AddMainHeader("Online");
 			AddMainHeader("Round");
 			AddMainHeader("Rules");
 		}
-		bool attemptingConnection = Network::client.IsAttemptingToConnect();
 
 		//bool first =true;
 		
@@ -489,7 +529,7 @@ namespace HUD{namespace HostList{
 		serverChoice->AddComponent( serverListPanel,CLOCATION );
 
 
-		static Buffer0<Network::ServerAddress>	list;
+		static Buffer0<Network::ServerIPAddress>	list;
 		Network::ServerDiscovery::ListFailedAttempts(list);
 		foreach (list,failed)
 		{
@@ -513,7 +553,7 @@ namespace HUD{namespace HostList{
 			label->Anchor().Top(Distance::GameWindow( 0.01f )).FillHorizontally();//.Right(Distance::GameWindow( 0.01f ));
 			pb->SetCutCorners(false);
 			pb->AddComponent( label,CLOCATION );
-			Network::ServerAddress url = *failed;
+			Network::ServerIPAddress url = *failed;
 			PButton forget(new Button("Forget this host","Removes this host from the list of queried TCP game servers",
 			[url]()
 			{
@@ -549,6 +589,9 @@ namespace HUD{namespace HostList{
 		{
 			auto&info = Network::servers[i];
 
+			if (!filter(info))
+				continue;
+
 			PButtonPanel p = ConstructPanel(info);
 			p->SetBackgroundTone((float3)0.5f);
 
@@ -579,6 +622,69 @@ namespace HUD{namespace HostList{
 		};
 
 
+		{
+			PCheckbox b(new Checkbox("Poll Servers from Steam",Network::SteamDiscoveryIsEnabled(),[](bool enabled)
+			{
+				Network::SetSteamDiscovery(enabled);
+			}));
+			{
+				auto mod = b->Anchor();
+				mod.BeneathLastOf(serverChoice,0.025f);
+				mod.Left();
+			}
+
+
+			b->LockToIdealWidth();
+
+			serverChoice->AddComponent( b,CLOCATION );
+		}
+		
+		{
+			PCheckbox b(new Checkbox("Force TCP Connection",Network::ForcingTCPConnections(),[](bool enabled)
+			{
+				Network::ForceTCPConnections(enabled);
+			}));
+			{
+				auto mod = b->Anchor();
+				mod.BeneathLastOf(serverChoice,0.025f);
+				mod.Left();
+			}
+
+
+			b->LockToIdealWidth();
+
+			serverChoice->AddComponent( b,CLOCATION );
+		}
+
+		{
+			PButton b(new Button("Refresh list",[]()
+			{
+				Network::RefreshServerListNow();
+			},
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();}
+			));
+			{
+				auto mod = b->Anchor();
+				mod.BeneathLastOf(serverChoice,0.025f);
+				mod.Left();
+			}
+
+			b->LockToIdealWidth();
+			b->SetCutCorners({true,true,false,true});
+			{
+				auto cp = b->GetPadding();
+				cp.left = 3;
+				b->SetPadding(cp);
+			}
+			ConfigureButton(b);
+
+			serverChoice->AddComponent( b,CLOCATION );
+		}		
+
+
+
+
+
 		PButton addHostButton;
 		{
 			PButton b(new Button("Add new host...","Queries for a host name or IP address to begin querying. Preserved across game restarts",[]()
@@ -588,7 +694,7 @@ namespace HUD{namespace HostList{
 				{
 					try
 					{
-						if (Network::ServerDiscovery::RegisterNewHost(Network::ServerAddress(url),false,false))
+						if (Network::ServerDiscovery::RegisterNewHost(0, SteamInterface::GetUserID(),Network::ServerAddress(url,0,Protocol::ServerInfo()),false,false))
 							Network::SaveHosts();
 					}
 					catch (const std::exception&ex)
@@ -602,22 +708,17 @@ namespace HUD{namespace HostList{
 			));
 			{
 				auto mod = b->Anchor();
-				mod.BeneathLastOf(serverChoice, Distance::GameWindow( 0.025f )).Left();
+				mod.axis[AnchorAxis::Vertical] = serverChoice->GetLastChild()->GetAnchorConfig().GetVAxis();
+				mod.RightOfLastOf(serverChoice,0.01f);
 			}
 			b->LockToIdealWidth();
-			//{
-			//	auto cp = b->GetPadding();
-			//	cp.left = 3;
-			//	b->SetPadding(cp);
-			//}
-			b->SetCutCorners(M::Quad<bool>(true,true,false,true));
+			b->SetCutCorners(M::Quad<bool>(false,true,false,true));
 			ConfigureButton(b);
 
 			serverChoice->AddComponent( b ,CLOCATION);
 			
 			addHostButton = b;
 		}
-		
 
 		{
 			PButton start(new Button("Start local server...","Opens a menu to start a local server, load save games, or begin a tutorial session"));
@@ -644,6 +745,7 @@ namespace HUD{namespace HostList{
 			stop->SetTriggerFunction([wstart,wstop]()
 			{
 				ServerProcess::End();
+				Network::RefreshServerListNow();
 				PButton b = wstart.lock();
 				if (b)
 					b->SetEnabled(true);

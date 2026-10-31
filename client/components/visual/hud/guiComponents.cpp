@@ -3277,7 +3277,7 @@ namespace Component
 	/*static*/ bool		Component::Set(float&ref, float to)
 	{
 		ASSERT__(!isnan(to));
-		bool changed = !M::Similar(ref,to);
+		bool changed = !M::Similar(ref,to,0.001f);
 		ref = to;
 		return changed;
 	}

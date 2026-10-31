@@ -19,6 +19,9 @@ namespace PortOffset
 		Info,
 		Session,
 		Control,
+		Steam,
+		SteamGame,
+		SteamInfo,
 
 		Heartbeat = Info	//heartbeat is UDP. Can coexist with others
 	};

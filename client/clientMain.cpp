@@ -72,6 +72,7 @@
 #include "components/visual/hud/eventLog.h"
 #include <serverProcess.h>
 #include "components/audio/audioInterface.h"
+#include <network/steamInterface.h>
 #include "components/configurationMode.h"
 #include "components/gridControl.h"
 #include "components/network.h"
@@ -1159,6 +1160,7 @@ bool loop()
 	#endif
 
 
+	SteamInterface::Resolve();
 
 
 
@@ -1462,18 +1464,18 @@ bool loop()
 					textout << Camera::Statistics::noCheckFamilies << ", s"<<Camera::Statistics::sphereCheckFamilies<<", b"<<Camera::Statistics::boxCheckFamilies<<nl;
 				#endif
 
-				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
+				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFactionLoaded ? "logged in" : "not logged in")<< nl;
 				textout << "Hello "<<Network::chosenNickname;
-				if (RuntimeConfig::profileName.IsNotEmpty())
-					textout << " ["<<RuntimeConfig::profileName<<"]";
 				textout <<nl;
 				if (Network::amOnline)
 				{
-					textout << "Server ID: " << Network::serverIDString<<nl;
+					#ifdef _DEBUG
+					textout << "Server: " << Network::client.ToString()<<nl;
+					#endif
 					textout << "World ID: " << Network::worldIDString<<nl;
 					textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
 					#ifdef _DEBUG
-						textout << "Access ID: " << Network::activeTokenString<<nl;
+
 						textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
 					#endif
 					textout << "Round Number: "<<RuntimeConfig::roundNumber.main<<nl;
@@ -1630,7 +1632,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 			HUD::WindowStack::SignalScreenResize();
 
 			GlobalEvents::windowSizeChanged();
+			SteamInterface::SignalWindowResize(res);
 		}
+
 	}
 
 
@@ -1725,21 +1729,26 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::serverPassword = value;
 			LogEvent(EventClass::Preset::configuration,nullptr,"Using server password '"+value+"'");
 		}
-		elif (key == "profile")
+		elif (key == "+connect_lobby")
 		{
-			RuntimeConfig::profileName = value.CopyToLowerCase().Trim();
-			RuntimeConfig::profileName.EraseCharacters(ValidProfileCharacter,false);
-			RuntimeConfig::profilePrefix = RuntimeConfig::profileName+"_";
-			LogEvent(EventClass::Preset::configuration,nullptr,"Using profile prefix '"+RuntimeConfig::profilePrefix+"'");
+			UINT64 to;
+			if (convert(value.c_str(),to))
+			{
+				LogEvent(EventClass::Preset::configuration, nullptr, "Scheduling to automatically connect to lobby "+String(to));
+				RuntimeConfig::connectToSteamLobby = to;
+			}
+			else
+				LogEvent(EventClass::Preset::configurationError, nullptr, "Unable to parse lobby value '"+value+"'");
+				
 		}
 		elif (key == "udpListen")
 		{
-			if (!convert(value.c_str(), RuntimeConfig::udpListen))
-				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse udpListen='" + value + "' to bool");
+			/*if (!convert(value.c_str(), RuntimeConfig::udpListen))
+				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse udpListen='" + value + "' to bool");*/
 		}
 		elif(key == "serverURL")
 		{
-			RuntimeConfig::serverAddress = Network::ServerAddress(value);
+			RuntimeConfig::serverAddress = Network::ServerAddress(value,0,Protocol::ServerInfo());
 			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+ToString(RuntimeConfig::serverAddress));
 		}
 		else
@@ -1818,6 +1827,8 @@ bool ConfigureClient()
 				if (parameterName.IsNotEmpty())
 					throw Except::Program::ParameterFault(CLOCATION, "Configuration syntax violation: Found multiple tokens ('" + parameterName + "' and '" + *token + "') without intermediate '='");
 				parameterName = *token;
+				if (parameterName.BeginsWith('+'))
+					expectValue = true;
 				//expectValue = true;
 			}
 		}
@@ -1839,10 +1850,6 @@ bool ConfigureClient()
 		//MyFatal(FatalDescriptor(CLOCATION, e.what()));		//not good to treat this as a fatal since fatals trigger the bug reporter, and this is not technically a bug
 		ErrMessage(e.what());
 		return false;
-	}
-	if (RuntimeConfig::serverAddress.host.IsNotEmpty())
-	{
-		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverAddress, false,true);
 	}
 
 	//(PRODUCT_NAME".log",true,true)
@@ -1878,6 +1885,8 @@ void InitAI()
 	LogEvent(EventSignificance::Common,"AI initialization complete");
 }
 
+
+ 
 int main( int argc, const char* argv[])
 {
 	Except::onFatal = MyFatal;
@@ -1940,7 +1949,19 @@ int main( int argc, const char* argv[])
 			if (IsTargetWorkingDirectory(dir))
 				FileSystem::SetWorkingDirectory(dir);
 			else
-				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
+				FATAL__("Something is wrong. Unable to locate client executable, or config/declaration.xml is missing.");
+
+
+			if (!SteamInterface::Create(468350,Network::SteamLobbyLost))
+				return -1;
+
+			if (RuntimeConfig::serverAddress.host.IsNotEmpty())
+			{
+				Network::ServerDiscovery::RegisterNewHost(0,SteamInterface::GetUserID(),  RuntimeConfig::serverAddress, false,true);
+			}
+			Network::ServerDiscovery::RegisterNewHost(0,SteamInterface::GetUserID(),Network::ServerAddress("localhost",0,Protocol::ServerInfo()), false,true,true);
+
+
 
 			FileSystem::SetPathPrefix(FileSystem::GetWorkingDirectory(),"Client");
 			FileSystem::Folder up = FileSystem::GetWorkingDirectory();
@@ -2029,8 +2050,7 @@ int main( int argc, const char* argv[])
 
 			UINT32 loadedFlags = Engine::CreateDisplay(display,
 				RuntimeConfig::myConfig.Lookup("window"),
-				(RuntimeConfig::aiMode ? "AI": PRODUCT_NAME)
-				+ (RuntimeConfig::profileName.IsNotEmpty() ? " ["+RuntimeConfig::profileName+"]":"")
+				String(RuntimeConfig::aiMode ? "AI": PRODUCT_NAME)
 				#ifdef _DEBUG
 					+" (DEBUG)"
 				#endif
@@ -2233,22 +2253,41 @@ int main( int argc, const char* argv[])
 
 
 			{
-				String name;
+				bool haveUserName = false;
 				try
 				{
+					String name;
 					StringFile userName(RuntimeConfig::GetUserNameFile());
-					userName >> name;
+					if ((userName >> name) && Network::IsValidNickname(name))
+					{
+						Network::chosenNickname = name;
+						haveUserName = true;
+					}
 				}
 				catch (...)
 				{}
-				if ( Network::IsValidNickname(name))
+				
+				
+				if (!haveUserName)
 				{
-					Network::chosenNickname = name;
+					try
+					{
+						Network::SetSteamPersona();
+					}
+					catch (const std::exception&ex)
+					{
+						LogEvent(EventSignificance::NonFatalError,ex.what());
+						HUD::Dialog::QueryNickname();
+					}
 				}
-				else
+
+				if (RuntimeConfig::connectToSteamLobby)
 				{
+					LogEvent(EventClass::Preset::configuration, nullptr, "Attempting to automatically connect to lobby "+String(RuntimeConfig::connectToSteamLobby));
+					Network::ConnectToLobby(RuntimeConfig::connectToSteamLobby);
 				}
-				HUD::Dialog::QueryNicknameIfEmpty();
+
+				Network::RefreshServerListNow();
 			};
 
 

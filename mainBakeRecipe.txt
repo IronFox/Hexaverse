@@ -21,9 +21,7 @@ client/resources/audio/*.mp3
 client/resources/audio/*.wav
 client/oalinst.exe
 client/dxwebsetup.exe
-client/OpenAL32.dll
-client/D3DCompiler_43.dll
-client/D3DCompiler_47.dll
+client/*.dll
 
 BugReporter/BugReporter.exe
 
@@ -36,6 +34,7 @@ lua/AI/*.lua
 lua/util/*.lua
 lua/*.txt
 lua/distributions/*.lua
+server/*.dll
 
 ControlConsole/ControlConsole*.exe
 ServerManager/ServerManager.exe
