@@ -6,10 +6,14 @@
 #include <net/tcp.h>
 #include "steamInterface.h"
 
+struct SteamNetConnectionStatusChangedCallback_t;
+
 namespace SteamNetwork
 {
 
 	class HybridClient;
+	class Server;
+	struct SteamConnectionDispatch;
 	
 	CONSTRUCT_ENUMERATION3(AuthenticationState,
 		Pending,
@@ -22,9 +26,30 @@ namespace SteamNetwork
 		typedef TCP::Peer Super;
 		UINT64				steamID;
 		int					steamChannel=-1;
+		UINT32				steamConnection=0;	//!< HSteamNetConnection of this peer. 0 (k_HSteamNetConnection_Invalid) if none
+		bool				steamServerSide=false;	//!< True if steamConnection belongs to the game server interface (SteamGameServerNetworkingSockets())
+		Array<BYTE>			steamIncoming;	//!< Reassembly buffer for packages that exceed the maximum Steam message size
+		UINT32				steamIncomingSize=0,	//!< Total size of the package currently being reassembled. 0 if none
+							steamIncomingFill=0;	//!< Number of bytes of the current package received so far
 
 		friend class HybridClient;
+		friend class Server;
+		friend struct SteamConnectionDispatch;
 	protected:
+		/**
+		Sends raw data via this peer's Steam connection.
+		Data larger than the maximum Steam message size is split into multiple messages.
+		@return true on success
+		*/
+		bool				SendToSteam(const void*data, size_t dataSize);
+		bool				SendToSteam(const ArrayRef<BYTE>&data)	{return SendToSteam(data.pointer(),data.size());}
+		/**
+		Feeds one received Steam message into the package reassembly.
+		@param[in,out] data Message data. Updated to point to the complete package, if any
+		@param[in,out] size Message size. Updated to the size of the complete package, if any
+		@return true if @a data and @a size describe a complete message, false if more fragments are needed
+		*/
+		bool				AssembleSteamMessage(const BYTE*&data, UINT32&size);
 		virtual String		AddressToString(bool includePort) const override;
 		virtual bool		AddressIsLocalhost() const
 							{
@@ -60,14 +85,21 @@ namespace SteamNetwork
 
 		Vector<PSteamPeer>	steamPeers;
 		HashTable<UINT64,PSteamPeer> steamMap;
+		HashTable<UINT32,PSteamPeer> steamConnectionMap;	//!< HSteamNetConnection -> peer
 		int	steamChannel=-1;
+		UINT32				steamListenSocket=0,	//!< HSteamListenSocket accepting Steam P2P connections on virtual port steamChannel
+							steamPollGroup=0;	//!< HSteamNetPollGroup of all accepted Steam connections
 		bool				ignoreDisconnection = false;
+
+		friend struct SteamConnectionDispatch;
 
 
 		Super::ExtStartService;
 		Super::StartService;
 
 		PSteamPeer			ResolvePeer(UINT64 steamID);
+		void				HandleSteamConnectionStatus(const SteamNetConnectionStatusChangedCallback_t&);
+		void				HandleSteamMessage(SteamPeer&peer, const BYTE*data, UINT32 size);
 	protected:
 		void				OnDisconnect(const TCP::Peer*, TCP::event_t) override;
 		virtual void		SendPackage(const TCP::Package&object, unsigned minUserLevel) override;
@@ -163,17 +195,19 @@ namespace SteamNetwork
 		enum connectionState_t
 		{
 			Idle,
-			HelloSent,
-			HelloAckSent,
+			Connecting,
 			Connected
 		};
-		Time::Stamp			lastControlMessage;
 		connectionState_t	state = Idle;
-		count_t				numResents=0;
+		bool				steamFailurePending = false;	//!< Set if ConnectToSteam() failed immediately. Reported by the next HandleSteamPackages()
+		String				pendingSteamFailure;
 		friend class ConnectionAttempt;
+		friend struct SteamConnectionDispatch;
 
 		void				fail(const String&message);
 		void				HandleSteamConnectionFailure(const String&reason);
+		void				HandleSteamConnectionStatus(const SteamNetConnectionStatusChangedCallback_t&);
+		void				HandleSteamMessage(const BYTE*data, UINT32 size);
 
 	public:
 					
@@ -199,7 +233,7 @@ namespace SteamNetwork
 
 		bool				IsAttemptingToConnect()	const	//!< Queries whether or not the client is currently attempting to connect
 							{
-								return state == HelloSent || state == HelloAckSent || ( attempt.IsRunning() && !attempt.IsDone() );
+								return state == Connecting || ( attempt.IsRunning() && !attempt.IsDone() );
 							}
 		void				Disconnect();
 

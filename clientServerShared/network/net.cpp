@@ -12,6 +12,8 @@
 #ifdef HAS_STEAM_API
 	#include <steam/steam_api.h>
 	#include <steam/steam_gameserver.h>
+	#include <steam/isteamnetworkingsockets.h>
+	#include <steam/isteamnetworkingutils.h>
 #endif
 
 #ifndef CLIENT
@@ -29,23 +31,33 @@ namespace SteamInterface
 		String	ToString(EAuthSessionResponse rs);
 
 		String ToString(EResult rs);
-		String ToString(ESNetSocketState);
+		String ToString(ESteamNetworkingConnectionState);
 	#endif
 }
 
 namespace SteamNetwork
 {
-	static const UINT16 Hello = 255,
-						HelloAck = 254,
-						Bye=256,
-						ServerAuthRequest=257;
+	/**
+	Virtual port on which servers answer authentication queries (see GetAuthenticationState()).
+	Game connections use the steam channel passed to Server::StartService() and HybridClient::ConnectToSteam() as virtual port.
+	*/
+	static const int AuthVirtualPort = 1000;
 	#ifdef HAS_STEAM_API
 
-	
+		/**
+		Largest message ISteamNetworkingSockets accepts.
+		Larger packages are split by SteamPeer::SendToSteam() and reassembled by SteamPeer::AssembleSteamMessage()
+		*/
+		static const UINT32 MaxSteamMessageSize = k_cbMaxSteamNetworkingSocketsMessageSizeSend;
+		/**
+		Largest package accepted for reassembly. Protects against bogus size headers
+		*/
+		static const UINT32 MaxAssembledSize = 256*1024*1024;
+		static const int SendFlags = k_nSteamNetworkingSend_ReliableNoNagle;
 
 		class Network
 		{
-			ISteamNetworking*	access;
+			ISteamNetworkingSockets*	access;
 
 			struct Static
 			{
@@ -56,15 +68,14 @@ namespace SteamNetwork
 			};
 			static Static	global;
 		public:
-			/**/			Network( /*const TCodeLocation&loc*/)
+			/**
+			@param server True to access the game server interface (SteamGameServerNetworkingSockets()),
+				false to access the user interface (SteamNetworkingSockets())
+			*/
+			explicit		Network(bool server)
 			{
 				Lock(/*loc*/);
-				if (SteamGameServerNetworking())
-				{
-					access = SteamGameServerNetworking();
-				}
-				else
-					access = SteamNetworking();
+				access = server ? SteamGameServerNetworkingSockets() : SteamNetworkingSockets();
 				if (!access)
 					Unlock();
 			}
@@ -93,17 +104,17 @@ namespace SteamNetwork
 				ASSERT__ (std::this_thread::get_id() == global.lockThread);
 
 
-				
+
 				global.depth--;
 				if (global.depth > 0)
 					return;
-					
+
 				global.lockThread = std::thread::id();
 				global.lock.unlock();
-			
+
 			}
 
-			ISteamNetworking* operator->() const
+			ISteamNetworkingSockets* operator->() const
 			{
 				if (!access)
 					throw Except::Program::MemberNotFound("Steam Network Access N/A");
@@ -114,50 +125,31 @@ namespace SteamNetwork
 
 		};
 		Network::Static Network::global;
-		
 
-		EP2PSend sendType = k_EP2PSendReliable;
+
 		class Callback
 		{
 		public:
-
-			Callback():onSessionRequest(this,&Callback::OnSessionRequest)
-							,onSocketStatus(this,&Callback::OnSocketStatus)
-
-			{
-				onSessionRequest.SetGameserverFlag();
-				onSocketStatus.SetGameserverFlag();
-			}
-
-			STEAM_CALLBACK( Callback, OnSessionRequest, P2PSessionRequest_t, onSessionRequest );
-			STEAM_CALLBACK( Callback, OnSocketStatus, SocketStatusCallback_t, onSocketStatus);
-
-
 			void OnLobbyResponse( LobbyCreated_t *pResult, bool ioError);
 			CCallResult<Callback, LobbyCreated_t> callCreateLobbyResponse;
 
 		};
 		std::shared_ptr<Callback>	callback;
 
-		
-		void Callback::OnSessionRequest(P2PSessionRequest_t *pParam)
-		{
-			
-			bool rs = Network(/*CLOCATION*/)->AcceptP2PSessionWithUser( pParam->m_steamIDRemote );
-			LogEvent(EventClass::Preset::uncommon,"SessionRequest: "+String(pParam->m_steamIDRemote.Render())+": "+String(rs));
-		}
 
-		void Callback::OnSocketStatus(SocketStatusCallback_t*p)
-		{
-			{
-				ESNetSocketState state = (ESNetSocketState)p->m_eSNetSocketState;
-				LogEvent(EventSignificance::Uncommon,SteamInterface::ToString(state)+": "+p->m_steamIDRemote.Render());
+		static HSteamListenSocket				authListenSocket = k_HSteamListenSocket_Invalid;
+		static HashTable<UINT32,Server*>		listenServers;		//listen socket -> server
+		static HashTable<UINT32,HybridClient*>	clientConnections;	//outgoing game connection -> client
+		static HashTable<UINT32,UINT64>			authConnections;	//outgoing authentication query -> server Steam ID
+
+		static const int NumConnectionOptions = 2;
+		/**
+		Fills @a options with the configuration of all Steam listen sockets and connections.
+		Sets the status change callback, which Steam invokes during SteamAPI_RunCallbacks() or SteamGameServer_RunCallbacks()
+		*/
+		static void	GetConnectionOptions(SteamNetworkingConfigValue_t (&options)[NumConnectionOptions]);
 
 
-			}
-		}
-
-		
 		Vector<SteamEventHandler*>	globalDispatch;
 		Sys::SpinLock dispatchLock;
 
@@ -196,12 +188,12 @@ namespace SteamNetwork
 			{
 				TCP_TRY
 				{
-					Network net;
-					if (net)
+					if (steamConnection != k_HSteamNetConnection_Invalid)
 					{
-						net->SendP2PPacket(steamID,&Bye,2,k_EP2PSendReliable,steamChannel);
-						Sleep(1);
-						net->CloseP2PChannelWithUser(steamID,steamChannel);
+						clientConnections.Unset(steamConnection);
+						Network net(steamServerSide);
+						if (net)
+							net->CloseConnection(steamConnection,0,"Disconnected",true);	//linger: deliver pending reliable data first
 					}
 				}
 				TCP_CATCH
@@ -209,11 +201,75 @@ namespace SteamNetwork
 				owner->HandleEvent(TCP::Event::ConnectionLost,*this);
 				owner->OnDisconnect(this,TCP::Event::ConnectionLost);
 				steamID = 0;
+				steamConnection = k_HSteamNetConnection_Invalid;
+				steamIncomingSize = steamIncomingFill = 0;
 				return;
 			}
 		#endif
 		Super::DisconnectPeer();
 
+	}
+
+	bool				SteamPeer::SendToSteam(const void*data, size_t dataSize)
+	{
+		#ifdef HAS_STEAM_API
+			if (steamConnection == k_HSteamNetConnection_Invalid)
+				return false;
+			Network net(steamServerSide);
+			if (!net)
+				return false;
+			const BYTE*at = (const BYTE*)data;
+			do
+			{
+				const UINT32 chunk = (UINT32)(dataSize < MaxSteamMessageSize ? dataSize : MaxSteamMessageSize);
+				if (net->SendMessageToConnection(steamConnection,at,chunk,SendFlags,nullptr) != k_EResultOK)
+					return false;
+				at += chunk;
+				dataSize -= chunk;
+			}
+			while (dataSize > 0);
+			return true;
+		#else
+			return false;
+		#endif
+	}
+
+	bool				SteamPeer::AssembleSteamMessage(const BYTE*&data, UINT32&size)
+	{
+		#ifdef HAS_STEAM_API
+			if (steamIncomingSize)
+			{
+				if (steamIncomingFill + size > steamIncomingSize)
+				{
+					//Fragment does not fit. Drop the incomplete package and let the caller report the fragment
+					steamIncomingSize = steamIncomingFill = 0;
+					return true;
+				}
+				memcpy(steamIncoming.pointer()+steamIncomingFill,data,size);
+				steamIncomingFill += size;
+				if (steamIncomingFill < steamIncomingSize)
+					return false;
+				data = steamIncoming.pointer();
+				size = steamIncomingSize;
+				steamIncomingSize = steamIncomingFill = 0;
+				return true;
+			}
+			if (size == MaxSteamMessageSize)
+			{
+				//SendToSteam() splits packages into messages of exactly MaxSteamMessageSize bytes, followed by the remainder
+				const UINT32 innerSize = ((const UINT32*)data)[1];
+				if (innerSize <= MaxAssembledSize - 8 && innerSize + 8 > size)
+				{
+					steamIncomingSize = innerSize + 8;
+					if (steamIncoming.size() < steamIncomingSize)
+						steamIncoming.SetSize(steamIncomingSize);
+					memcpy(steamIncoming.pointer(),data,size);
+					steamIncomingFill = size;
+					return false;
+				}
+			}
+		#endif
+		return true;
 	}
 
 
@@ -230,7 +286,7 @@ namespace SteamNetwork
 		}
 
 		PSteamPeer*p2=nullptr;
-	
+
 		foreach (steamPeers,p3)
 			if (p3->get() == sp)
 			{
@@ -240,36 +296,22 @@ namespace SteamNetwork
 
 		if (!p2)
 			return;
-		steamMap.Unset((*p2)->GetSteamID());
+		PSteamPeer mapped;
+		if (steamMap.Query((*p2)->GetSteamID(),mapped) && mapped.get() == sp)	//a reconnect of the same user may have replaced it already
+			steamMap.Unset((*p2)->GetSteamID());
+		steamConnectionMap.Unset((*p2)->steamConnection);
 		TCP_TRY
 		{
 			(*p2)->Destroy();
 		}
 		TCP_CATCH
-		
+
 		TCP_TRY
 		{
 			(*p2)->Dissolve();
 		}
 		TCP_CATCH
 		steamPeers.erase(p2);
-	}
-
-	static bool SendTo(UINT64 steamID, int steamChannel,const void*data, size_t dataSize)
-	{
-		if (steamID == 0)
-			return false;
-		#ifdef HAS_STEAM_API
-		Network net/*(CLOCATION)*/;
-		return net && net->SendP2PPacket(steamID,data,(UINT32)dataSize,sendType,steamChannel);
-		#else
-		return false;
-		#endif
-	}
-	
-	static bool SendTo(UINT64 steamID, int steamChannel,const ArrayRef<BYTE>&data)
-	{
-		return SendTo(steamID,steamChannel,data.pointer(),data.size());
 	}
 
 	/*virtual override*/ void	Server::SendPackage(const TCP::Package&object, unsigned minUserLevel)
@@ -286,7 +328,7 @@ namespace SteamNetwork
 			{
 				if (p->userLevel < minUserLevel)
 					continue;
-				if (!SendTo(p->GetSteamID(),steamChannel,object.GetData()))
+				if (!p->SendToSteam(object.GetData()))
 					dump << p;
 			}
 			for (const auto&p : dump)
@@ -309,7 +351,7 @@ namespace SteamNetwork
 			{
 				if (p->userLevel < minUserLevel || p == exclude)
 					continue;
-				if (!SendTo(p->GetSteamID(),steamChannel,object.GetData()))
+				if (!p->SendToSteam(object.GetData()))
 					dump << p;
 			}
 			for (const auto&p : dump)
@@ -392,6 +434,17 @@ namespace SteamNetwork
 				SteamGameServer()->LogOnAnonymous();
 				SteamGameServer()->SetAdvertiseServerActive(true);
 
+				SteamNetworkingUtils()->InitRelayNetworkAccess();	//one utils interface serves both the user and the game server
+				{
+					Network net(true);
+					if (net)
+					{
+						SteamNetworkingConfigValue_t options[NumConnectionOptions];
+						GetConnectionOptions(options);
+						authListenSocket = net->CreateListenSocketP2P(AuthVirtualPort,NumConnectionOptions,options);
+					}
+				}
+
 				Network::Unlock();
 			}
 			else
@@ -413,6 +466,12 @@ namespace SteamNetwork
 				{
 					callback.reset();
 
+					{
+						Network net(true);
+						if (net && authListenSocket != k_HSteamListenSocket_Invalid)
+							net->CloseListenSocket(authListenSocket);
+						authListenSocket = k_HSteamListenSocket_Invalid;
+					}
 					SteamGameServer()->SetAdvertiseServerActive(false);
 					SteamGameServer()->LogOff();
 					LeaveLobby();
@@ -454,9 +513,21 @@ namespace SteamNetwork
 		#ifdef HAS_STEAM_API
 			SetupServer(rootPort);
 			this->steamChannel = steamChannel;
+			{
+				Network net(true);
+				if (net)
+				{
+					SteamNetworkingConfigValue_t options[NumConnectionOptions];
+					GetConnectionOptions(options);
+					steamPollGroup = net->CreatePollGroup();
+					steamListenSocket = net->CreateListenSocketP2P(steamChannel,NumConnectionOptions,options);
+					listenServers.Set(steamListenSocket,this);
+				}
+				else
+					LogEvent(EventClass::Preset::networkError,"Steam: Game server networking is not available. Steam clients cannot connect");
+			}
 			if (IsAsync())
 				RegisterHandler(this);
-			//socket = SteamGameServerNetworking()->CreateListenSocket(steamChannel,0,0,true);
 		#endif
 
 		return true;
@@ -595,9 +666,13 @@ namespace SteamNetwork
 			{
 				if (IsAsync())
 					UnregisterHandler(this);
+				Network net(true);
 				ignoreDisconnection = true;
 				foreach (steamPeers,cl)
 				{
+					if (net && (*cl)->steamConnection != k_HSteamNetConnection_Invalid)
+						net->CloseConnection((*cl)->steamConnection,0,"Server shutting down",true);
+					(*cl)->steamConnection = k_HSteamNetConnection_Invalid;
 					TCP_TRY
 					{
 						(*cl)->Destroy();
@@ -613,7 +688,17 @@ namespace SteamNetwork
 
 				steamPeers.Clear();
 				steamMap.Clear();
-				
+				steamConnectionMap.Clear();
+
+				listenServers.Unset(steamListenSocket);
+				if (net)
+				{
+					net->CloseListenSocket(steamListenSocket);
+					net->DestroyPollGroup(steamPollGroup);
+				}
+				steamListenSocket = k_HSteamListenSocket_Invalid;
+				steamPollGroup = k_HSteamNetPollGroup_Invalid;
+
 				ShutdownServer();
 				steamChannel = -1;
 			}
@@ -678,7 +763,7 @@ namespace SteamNetwork
 		#ifdef HAS_STEAM_API
 			if (steamID)
 			{
-				return SendTo(steamID,steamChannel,&channel,sizeof(channel));
+				return SendToSteam(&channel,sizeof(channel));
 			}
 		#endif
 		return Super::SendSignal(channel);
@@ -689,7 +774,7 @@ namespace SteamNetwork
 		#ifdef HAS_STEAM_API
 			if (steamID)
 			{
-				if (!SendTo(steamID,steamChannel,object.GetData()))
+				if (!SendToSteam(object.GetData()))
 					DisconnectPeer();
 			}
 		#endif
@@ -714,6 +799,128 @@ namespace SteamNetwork
 		};
 		HashTable<UINT64,TClientAuthRecord> authenticationState;
 
+		/**
+		Routes Steam connection status changes to the listen socket or connection they belong to
+		*/
+		struct SteamConnectionDispatch
+		{
+			static void OnStatusChanged(SteamNetConnectionStatusChangedCallback_t*p)
+			{
+				LogEvent(EventClass::Preset::debug,"Steam connection "+String((unsigned)p->m_hConn)+" ("+String(p->m_info.m_szConnectionDescription)+"): "+SteamInterface::ToString(p->m_info.m_eState));
+				const HSteamListenSocket listenSocket = p->m_info.m_hListenSocket;
+				if (listenSocket != k_HSteamListenSocket_Invalid)
+				{
+					if (listenSocket == authListenSocket)
+					{
+						HandleAuthenticationQuery(*p);
+						return;
+					}
+					Server*server;
+					if (listenServers.Query(listenSocket,server))
+						server->HandleSteamConnectionStatus(*p);
+					else
+					{
+						Network net(true);
+						if (net)
+							net->CloseConnection(p->m_hConn,0,"Server not running",false);
+					}
+					return;
+				}
+				UINT64 serverID;
+				if (authConnections.Query(p->m_hConn,serverID))
+				{
+					HandleAuthenticationReply(*p,serverID);
+					return;
+				}
+				HybridClient*client;
+				if (clientConnections.Query(p->m_hConn,client))
+					client->HandleSteamConnectionStatus(*p);
+			}
+
+			/**
+			Server side of GetAuthenticationState(): replies with the Steam ID of the local user, then closes the connection
+			*/
+			static void HandleAuthenticationQuery(const SteamNetConnectionStatusChangedCallback_t&p)
+			{
+				Network net(true);
+				if (!net)
+					return;
+				switch (p.m_info.m_eState)
+				{
+					case k_ESteamNetworkingConnectionState_Connecting:
+						if (net->AcceptConnection(p.m_hConn) != k_EResultOK)
+							net->CloseConnection(p.m_hConn,0,"Accept failed",false);
+					break;
+					case k_ESteamNetworkingConnectionState_Connected:
+					{
+						UINT64 id = SteamUser() ? SteamUser()->GetSteamID().ConvertToUint64() : 0;
+						net->SendMessageToConnection(p.m_hConn,&id,sizeof(id),k_nSteamNetworkingSend_Reliable,nullptr);
+						net->CloseConnection(p.m_hConn,0,"Authentication reply sent",true);
+					}
+					break;
+					case k_ESteamNetworkingConnectionState_ClosedByPeer:
+					case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+						net->CloseConnection(p.m_hConn,0,nullptr,false);
+					break;
+				}
+			}
+
+			/**
+			Client side of GetAuthenticationState()
+			*/
+			static void HandleAuthenticationReply(const SteamNetConnectionStatusChangedCallback_t&p, UINT64 serverID)
+			{
+				switch (p.m_info.m_eState)
+				{
+					case k_ESteamNetworkingConnectionState_ClosedByPeer:
+					case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+					{
+						Network net(false);
+						if (!net)
+							return;
+						if (!ReceiveAuthenticationReply(net,p.m_hConn,serverID))
+							LogEvent(EventClass::Preset::networkError,"Steam: Authentication query to server "+String(CSteamID(serverID).Render())+" closed without reply ("+String(p.m_info.m_szEndDebug)+")");
+						net->CloseConnection(p.m_hConn,0,nullptr,false);
+						authConnections.Unset(p.m_hConn);
+					}
+					break;
+				}
+			}
+
+			/**
+			Reads the server's reply to an authentication query, if available
+			@return true if the reply was received
+			*/
+			static bool	ReceiveAuthenticationReply(Network&net, HSteamNetConnection connection, UINT64 serverID)
+			{
+				bool received = false;
+				SteamNetworkingMessage_t*message;
+				while (!received && net->ReceiveMessagesOnConnection(connection,&message,1) > 0)
+				{
+					if (message->m_cbSize >= 8)
+					{
+						const UINT64 userID = *(const UINT64*)message->m_pData;
+						TClientAuthRecord*rec = authenticationState.QueryPointer(serverID);
+						if (rec)
+						{
+							rec->state = AuthenticationState::Authenticated;
+							rec->userID = userID;
+							LogEvent(EventClass::Preset::debug,"Authenticated user "+String(CSteamID(userID).Render())+" on server "+String(CSteamID(serverID).Render()));
+						}
+						received = true;
+					}
+					message->Release();
+				}
+				return received;
+			}
+		};
+
+		static void	GetConnectionOptions(SteamNetworkingConfigValue_t (&options)[NumConnectionOptions])
+		{
+			options[0].SetPtr(k_ESteamNetworkingConfig_Callback_ConnectionStatusChanged,(void*)&SteamConnectionDispatch::OnStatusChanged);
+			options[1].SetInt32(k_ESteamNetworkingConfig_SendBufferSize,32*1024*1024);	//room for large packages, which are queued as several messages
+		}
+
 	#endif
 
 	AuthenticationState	GetAuthenticationState(UINT64 serverID, UINT64 expectUserID)
@@ -732,14 +939,23 @@ namespace SteamNetwork
 				return rs.state;
 			}
 
-			Network net;
-			if (net && net->SendP2PPacket(serverID,&ServerAuthRequest,2,k_EP2PSendReliable,-1))
+			Network net(false);
+			if (net)
 			{
-				rs.created.Update();
-				rs.state = AuthenticationState::Pending;
-				rs.userID = 0;
-				authenticationState.Set(serverID,rs);
-				return rs.state;
+				SteamNetworkingIdentity identity;
+				identity.SetSteamID64(serverID);
+				SteamNetworkingConfigValue_t options[NumConnectionOptions];
+				GetConnectionOptions(options);
+				const HSteamNetConnection connection = net->ConnectP2P(identity,AuthVirtualPort,NumConnectionOptions,options);
+				if (connection != k_HSteamNetConnection_Invalid)
+				{
+					authConnections.Set(connection,serverID);
+					rs.created.Update();
+					rs.state = AuthenticationState::Pending;
+					rs.userID = 0;
+					authenticationState.Set(serverID,rs);
+					return rs.state;
+				}
 			}
 		#endif
 		return AuthenticationState::Pending;
@@ -780,130 +996,22 @@ namespace SteamNetwork
 				dispatchLock.unlock();
 			}
 	
-			/*if (authenticationRecords.IsNotEmpty())
+			if (authConnections.IsNotEmpty())
 			{
-				static Timer::Time lastCheck = timer.Now();
-				if (timer.CheckIfOutdatedAndUpdate(lastCheck,10))
+				Network net(false);
+				if (net)
 				{
-					static Vector<UINT64> toUnset;
-					Timer::Time now = timer.Now();
-					authenticationRecords.VisitAllEntries([now](UINT64 id, TAuthRec&rec)
+					Vector<std::pair<UINT32,UINT64> > pending;
+					authConnections.VisitAllEntries([&pending](UINT32 connection, const UINT64&serverID)
 					{
-						if (timer.ToSeconds(now - rec.created) > 20)
-						{
-							if (SteamUser())
-							{
-								LogEvent(EventSignificance::Uncommon,"Timeout reached: Canceling ticket "+String((unsigned)rec.handle));
-								SteamUser()->CancelAuthTicket(rec.handle);
-							}
-							toUnset << id;
-						}
+						pending << std::make_pair(connection,serverID);
 					});
-					Network net;
-					foreach (toUnset,u)
-					{
-						authenticationRecords.Unset(*u);
-						if (net)
-							net->CloseP2PChannelWithUser(CSteamID(*u),-1);
-					}
-					toUnset.Clear();
-				}
-
-			}*/
-			Network net/*(CLOCATION)*/;
-			if (net)
-			{
-				//char *pchRecvBuf = NULL;
-				uint32 cubMsgSize;
-				CSteamID steamIDRemote;
-				static	Array<BYTE>	inBuffer;
-
-
-				while ( net->IsP2PPacketAvailable( &cubMsgSize,-1) )
-				{
-					if (cubMsgSize > inBuffer.size())
-						inBuffer.SetSize(cubMsgSize);
-
-					// see if there is any data waiting on the socket
-					if ( !net->ReadP2PPacket( inBuffer.pointer(), cubMsgSize, &cubMsgSize, &steamIDRemote,-1 ) )
-						break;
-					if (cubMsgSize >= 8)
-					{
-						net->CloseP2PChannelWithUser(steamIDRemote,-1);
-						UINT64 userID = *(UINT64*)(inBuffer.pointer());
-						TClientAuthRecord*rec = authenticationState.QueryPointer(steamIDRemote.ConvertToUint64());
-						if (rec)
+					for (const auto&p : pending)
+						if (SteamConnectionDispatch::ReceiveAuthenticationReply(net,p.first,p.second))
 						{
-							rec->state = AuthenticationState::Authenticated;
-							rec->userID = userID;
-							LogEvent(EventClass::Preset::debug,"Authenticated user "+String(CSteamID(userID).Render())+" on server "+String(steamIDRemote.Render()));
+							net->CloseConnection(p.first,0,nullptr,false);
+							authConnections.Unset(p.first);
 						}
-						
-/*
-						SteamInterface::Authenticate(userID,
-									ArrayRef<BYTE>(inBuffer.pointer()+8,cubMsgSize-8),nullptr,
-									[steamIDRemote,userID](bool success, const String&err)
-									{
-										TClientAuthRecord*rec = authenticationState.QueryPointer(steamIDRemote.ConvertToUint64());
-										if (rec)
-										{
-											if (success)
-											{
-												rec->state = AuthenticationState::Authenticated;
-												rec->userID = userID;
-												LogEvent(EventClass::Preset::debug,"Authenticated user "+String(CSteamID(userID).Render())+" on server "+String(steamIDRemote.Render()));
-											}
-											else
-											{
-												rec->state = AuthenticationState::AuthenticationFailed;
-												LogEvent(EventClass::Preset::networkError,"Failed to authenticate user "+String(CSteamID(userID).Render())+" on server "+String(steamIDRemote.Render())+" ("+err+")");
-											}
-										}
-									});*/
-						continue;
-					}
-					if (cubMsgSize == 2 && *(UINT16*)inBuffer.pointer() == ServerAuthRequest)
-					{
-					/*	Array<BYTE> package;
-						if (SteamUser())
-						{
-
-							TAuthRec rec;
-							if (authenticationRecords.QueryAndUnset(steamIDRemote.ConvertToUint64(),rec))
-							{
-								LogEvent(EventSignificance::Uncommon,"Re-authenticate: Canceling ticket "+String((unsigned)rec.handle));
-								SteamUser()->CancelAuthTicket(rec.handle);
-							}
-							Array<BYTE> ticket;
-							UINT32 actualSize = 0;
-							ticket.SetSize(234);
-							int cnt = 0;
-							HAuthTicket currentTicket;
-							for(;;)
-							{
-								currentTicket = SteamUser()->GetAuthSessionTicket(ticket.pointer(),(int)ticket.size(),&actualSize);
-								if (currentTicket != k_HAuthTicketInvalid)
-									break;
-								if (++cnt > 10)
-									break;
-								ticket.SetSize(actualSize);
-							}
-							if (currentTicket != k_HAuthTicketInvalid)
-							{
-								rec.created = timer.Now();
-								rec.handle = currentTicket;
-								authenticationRecords.Set(steamIDRemote.ConvertToUint64(),rec);
-								ticket.resizePreserveContent(actualSize);
-
-								package.SetSize(ticket.length()+8);
-								package.insertCopy(8,ticket);
-								*(UINT64*)package.pointer() = SteamUser()->GetSteamID().ConvertToUint64();
-							}
-						}
-						net->SendP2PPacket(steamIDRemote,package.pointer(),package.size(),k_EP2PSendReliable,-1);*/
-						UINT64 id = SteamUser() ? SteamUser()->GetSteamID().ConvertToUint64() : 0;
-						net->SendP2PPacket(steamIDRemote,&id,8,k_EP2PSendReliable,-1);
-					}
 				}
 			}
 	
@@ -920,88 +1028,98 @@ namespace SteamNetwork
 	void				Server::HandleSteamPackages()
 	{
 		#ifdef HAS_STEAM_API
-			Network net/*(CLOCATION)*/;
-			if (net)
+			if (steamPollGroup == k_HSteamNetPollGroup_Invalid)
+				return;
+			Network net(true);
+			if (!net)
+				return;
+			SteamNetworkingMessage_t*messages[32];
+			for (;;)
 			{
-				//char *pchRecvBuf = NULL;
-				uint32 cubMsgSize;
-				CSteamID steamIDRemote;
-				static	Array<BYTE>	inBuffer;
-
-
-				while ( net->IsP2PPacketAvailable( &cubMsgSize,steamChannel) )
+				const int count = net->ReceiveMessagesOnPollGroup(steamPollGroup,messages,ARRAYSIZE(messages));
+				if (count <= 0)
+					break;
+				for (int i = 0; i < count; i++)
 				{
-					if (cubMsgSize > inBuffer.size())
-						inBuffer.SetSize(cubMsgSize);
-
-					// see if there is any data waiting on the socket
-					if ( !net->ReadP2PPacket( inBuffer.pointer(), cubMsgSize, &cubMsgSize, &steamIDRemote,steamChannel ) )
-						break;
-					if (cubMsgSize < 4)//probably a Hello
-					{
-						if (cubMsgSize == 2)
-						{
-							switch(*(UINT16*)inBuffer.pointer())
-							{
-								case HelloAck:
-								{
-									SendTo(steamIDRemote.ConvertToUint64(),steamChannel,&HelloAck,2);
-									PSteamPeer peer;
-									if (!steamMap.Query(steamIDRemote.ConvertToUint64(),peer))
-									{
-										peer.reset(new SteamPeer(this,steamIDRemote.ConvertToUint64(),steamChannel));
-										steamPeers << peer;
-										steamMap.Set(steamIDRemote.ConvertToUint64(),peer);
-										HandleEvent(TCP::Event::ConnectionEstablished,*peer);
-									}
-								}
-								break;
-								case Hello:
-								{
-									SendTo(steamIDRemote.ConvertToUint64(),steamChannel,&Hello,2);
-									PSteamPeer peer;
-									if (steamMap.QueryAndUnset(steamIDRemote.ConvertToUint64(),peer))
-										peer->DisconnectPeer();
-								}
-								break;
-								case Bye:
-								{
-									PSteamPeer peer;
-									if (steamMap.QueryAndUnset(steamIDRemote.ConvertToUint64(),peer))
-										peer->DisconnectPeer();
-								}
-								break;
-							}
-						}
-						continue;
-					}
-					const UINT32 channel = (*(UINT32*)inBuffer.pointer());
-					const UINT32 innerSize = cubMsgSize >= 8 ? (*((UINT32*)inBuffer.pointer()+1)) : 0;
-					
 					PSteamPeer peer;
-					if (!steamMap.Query(steamIDRemote.ConvertToUint64(),peer))
-					{
-						continue;
-					}
-					if (cubMsgSize >= 8 && innerSize +8 != cubMsgSize)
-					{
-						if (onDeserializationFailed)
-							onDeserializationFailed(channel,*peer,"Content declares package to be of size "+String(innerSize+8)+", but steam reports "+String(cubMsgSize)+" bytes.");
-						continue;
-					}
-					peer->SignalPackage();
-					if (cubMsgSize > 8 || !HandleIncomingSignal(channel, *peer))
-					{
-						if (cubMsgSize >= 8)
-						{
-							MemReadStream read(inBuffer.pointer()+8,cubMsgSize-8);
-							HandleIncomingPackage(channel,*peer,read);
-						}
-					}
+					if (steamConnectionMap.Query(messages[i]->m_conn,peer))
+						HandleSteamMessage(*peer,(const BYTE*)messages[i]->m_pData,(UINT32)messages[i]->m_cbSize);
+					messages[i]->Release();
 				}
 			}
 		#endif
 	}
+
+	#ifdef HAS_STEAM_API
+	void				Server::HandleSteamMessage(SteamPeer&peer, const BYTE*data, UINT32 size)
+	{
+		if (!peer.AssembleSteamMessage(data,size))
+			return;
+		if (size < 4)
+			return;
+		const UINT32 channel = (*(const UINT32*)data);
+		const UINT32 innerSize = size >= 8 ? (*((const UINT32*)data+1)) : 0;
+		if (size >= 8 && innerSize +8 != size)
+		{
+			if (onDeserializationFailed)
+				onDeserializationFailed(channel,peer,"Content declares package to be of size "+String(innerSize+8)+", but steam reports "+String(size)+" bytes.");
+			return;
+		}
+		peer.SignalPackage();
+		if (size > 8 || !HandleIncomingSignal(channel, peer))
+		{
+			if (size >= 8)
+			{
+				MemReadStream read(data+8,size-8);
+				HandleIncomingPackage(channel,peer,read);
+			}
+		}
+	}
+
+	void				Server::HandleSteamConnectionStatus(const SteamNetConnectionStatusChangedCallback_t&p)
+	{
+		Network net(true);
+		if (!net)
+			return;
+		const HSteamNetConnection connection = p.m_hConn;
+		switch (p.m_info.m_eState)
+		{
+			case k_ESteamNetworkingConnectionState_Connecting:
+				if (net->AcceptConnection(connection) != k_EResultOK || !net->SetConnectionPollGroup(connection,steamPollGroup))
+				{
+					LogEvent(EventClass::Preset::networkError,"Steam: Failed to accept connection from "+String(p.m_info.m_identityRemote.GetSteamID().Render()));
+					net->CloseConnection(connection,0,"Accept failed",false);
+				}
+			break;
+			case k_ESteamNetworkingConnectionState_Connected:
+			{
+				const UINT64 remoteID = p.m_info.m_identityRemote.GetSteamID64();
+				PSteamPeer peer;
+				if (steamMap.QueryAndUnset(remoteID,peer))
+					peer->DisconnectPeer();	//same user reconnected. Drop the old connection
+				peer.reset(new SteamPeer(this,remoteID,steamChannel));
+				peer->steamConnection = connection;
+				peer->steamServerSide = true;
+				steamPeers << peer;
+				steamMap.Set(remoteID,peer);
+				steamConnectionMap.Set(connection,peer);
+				HandleEvent(TCP::Event::ConnectionEstablished,*peer);
+			}
+			break;
+			case k_ESteamNetworkingConnectionState_ClosedByPeer:
+			case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+			{
+				HandleSteamPackages();	//dispatch anything received before the connection closed
+				PSteamPeer peer;
+				if (steamConnectionMap.Query(connection,peer))
+					peer->DisconnectPeer();
+				else
+					net->CloseConnection(connection,0,nullptr,false);
+			}
+			break;
+		}
+	}
+	#endif
 
 	
 	bool	HybridClient::Connect(const String&url)
@@ -1045,19 +1163,34 @@ namespace SteamNetwork
 		Disconnect();
 		steamID = id;
 		steamChannel = channel;
+		steamServerSide = false;
+		state = Connecting;
 
-		SteamInterface::RegisterConnectionFailure(steamID,[this](const String& reason)
-		{
-			HandleSteamConnectionFailure(reason);
-		});
 		#ifdef HAS_STEAM_API
 			if (IsAsync())
 				RegisterHandler(this);
+			{
+				Network net(false);
+				if (net)
+				{
+					SteamNetworkingIdentity identity;
+					identity.SetSteamID64(id);
+					SteamNetworkingConfigValue_t options[NumConnectionOptions];
+					GetConnectionOptions(options);
+					steamConnection = net->ConnectP2P(identity,channel,NumConnectionOptions,options);
+				}
+			}
+			if (steamConnection != k_HSteamNetConnection_Invalid)
+				clientConnections.Set(steamConnection,this);
+			else
+			{
+				steamFailurePending = true;
+				pendingSteamFailure = "Unable to connect to "+String(CSteamID(id).Render())+" via Steam";
+			}
+		#else
+			steamFailurePending = true;
+			pendingSteamFailure = "Steam is not available";
 		#endif
-		SendTo(steamID,channel,&Hello,2);
-		state = HelloSent;
-		lastControlMessage.Update();
-		numResents = 0;
 
 		SignalPackage();
 	}
@@ -1070,8 +1203,18 @@ namespace SteamNetwork
 			DisconnectPeer();
 		}
 		else
-			if (state == HelloSent || state == HelloAckSent )
+			if (state == Connecting)
 			{
+				#ifdef HAS_STEAM_API
+					if (steamConnection != k_HSteamNetConnection_Invalid)
+					{
+						clientConnections.Unset(steamConnection);
+						Network net(false);
+						if (net)
+							net->CloseConnection(steamConnection,0,nullptr,false);
+						steamConnection = k_HSteamNetConnection_Invalid;
+					}
+				#endif
 				HandleEvent(TCP::Event::ConnectionFailed,*this);
 				state = Idle;
 			}
@@ -1102,126 +1245,108 @@ namespace SteamNetwork
 		eventLock.Unblock(CLOCATION);
 		Dispatcher::FlushPendingEvents();
 		state = Idle;
+		steamFailurePending = false;
 		if (wasConnected)
 			HandleEvent(TCP::Event::ConnectionLost,*this);
 		elif (wasAttempting)
 			HandleEvent(TCP::Event::ConnectionFailed,*this);
 	}
 
-	
+
 	void				HybridClient::Resolve()
 	{
 		TCP::Connection::Resolve();
 		HandleSteamPackages();
-		if (state != Idle && state != Connected && lastControlMessage.CheckIfOutdatedAndUpdate(1_s))
-		{
-			numResents ++;
-			if (numResents > 10)
-			{
-				HandleSteamConnectionFailure("Retried sending control message 10 times. Giving up");
-				return;
-			}
-			
-			switch (state)
-			{
-				case HelloSent:
-					SendTo(steamID,steamChannel,&Hello,2);
-				break;
-				case HelloAckSent:
-					SendTo(steamID,steamChannel,&HelloAck,2);
-				break;
-			}
-		}
 	}
 
 	void				HybridClient::HandleSteamPackages()
 	{
+		if (steamFailurePending)
+		{
+			steamFailurePending = false;
+			HandleSteamConnectionFailure(pendingSteamFailure);
+			return;
+		}
 		#ifdef HAS_STEAM_API
-
-			Network net/*(CLOCATION)*/;
-			if (net)
+			const HSteamNetConnection connection = steamConnection;
+			if (connection == k_HSteamNetConnection_Invalid)
+				return;
+			Network net(false);
+			if (!net)
+				return;
+			SteamNetworkingMessage_t*messages[32];
+			for (;;)
 			{
-				//char *pchRecvBuf = NULL;
-				uint32 cubMsgSize;
-				CSteamID steamIDRemote;
-				static	Array<BYTE>	inBuffer;
-				while ( net->IsP2PPacketAvailable( &cubMsgSize,steamChannel) )
+				const int count = net->ReceiveMessagesOnConnection(connection,messages,ARRAYSIZE(messages));
+				if (count <= 0)
+					break;
+				for (int i = 0; i < count; i++)
 				{
-					if (cubMsgSize > inBuffer.size())
-						inBuffer.SetSize(cubMsgSize);
-
-					// see if there is any data waiting on the socket
-					if ( !net->ReadP2PPacket( inBuffer.pointer(), cubMsgSize, &cubMsgSize, &steamIDRemote,steamChannel ) )
-						break;
-					if (steamIDRemote != CSteamID(steamID))
-					{
-						if (onIgnorePackage)
-							onIgnorePackage(0,cubMsgSize,*this);
-						continue;
-					}
-					if (cubMsgSize < 4)
-					{
-						if (cubMsgSize == 2)
-						{
-							switch(*(UINT16*)inBuffer.pointer())
-							{
-								case HelloAck:
-								{
-									if (state == HelloAckSent)
-									{
-										state = Connected;
-										HandleEvent(TCP::Event::ConnectionEstablished,*this);
-									}
-								}
-								break;
-								case Hello:
-								{
-									SendTo(steamIDRemote.ConvertToUint64(),steamChannel,&HelloAck,2);
-									lastControlMessage.Update();
-									if (state == HelloSent)
-									{
-										state = HelloAckSent;
-										numResents = 0;
-									}
-								}
-								break;
-								case Bye:
-								{
-									Disconnect();
-								}
-								break;
-							}
-						}
-						continue;
-					}
-					const UINT32 channel = (*(UINT32*)inBuffer.pointer());
-					const UINT32 innerSize = cubMsgSize >= 8 ? (*((UINT32*)inBuffer.pointer()+1)) : 0;
-					if (cubMsgSize >= 8 && innerSize + 8 != cubMsgSize)
-					{
-						if (onDeserializationFailed)
-							onDeserializationFailed(channel,*this,"Package header declares package size="+String(innerSize+8)+", but Steam reports "+String(cubMsgSize)+" bytes");
-						continue;
-					}
-					if (state != Connected)
-					{
-						if (onIgnorePackage)
-							onIgnorePackage(channel,cubMsgSize,*this);
-						continue;
-					}
-					
-					SignalPackage();
-					if (cubMsgSize > 8 || !HandleIncomingSignal(channel, *this))
-					{
-						if (cubMsgSize >= 8)
-						{
-							MemReadStream read(inBuffer.pointer()+8,cubMsgSize-8);
-							HandleIncomingPackage(channel,*this,read);
-						}
-					}
+					if (steamConnection == connection)	//handling a message may disconnect
+						HandleSteamMessage((const BYTE*)messages[i]->m_pData,(UINT32)messages[i]->m_cbSize);
+					messages[i]->Release();
 				}
+				if (steamConnection != connection)
+					break;
 			}
 		#endif
 	}
+
+	#ifdef HAS_STEAM_API
+	void				HybridClient::HandleSteamMessage(const BYTE*data, UINT32 size)
+	{
+		if (!AssembleSteamMessage(data,size))
+			return;
+		if (size < 4)
+			return;
+		const UINT32 channel = (*(const UINT32*)data);
+		const UINT32 innerSize = size >= 8 ? (*((const UINT32*)data+1)) : 0;
+		if (size >= 8 && innerSize + 8 != size)
+		{
+			if (onDeserializationFailed)
+				onDeserializationFailed(channel,*this,"Package header declares package size="+String(innerSize+8)+", but Steam reports "+String(size)+" bytes");
+			return;
+		}
+		if (state != Connected)
+		{
+			if (onIgnorePackage)
+				onIgnorePackage(channel,size,*this);
+			return;
+		}
+
+		SignalPackage();
+		if (size > 8 || !HandleIncomingSignal(channel, *this))
+		{
+			if (size >= 8)
+			{
+				MemReadStream read(data+8,size-8);
+				HandleIncomingPackage(channel,*this,read);
+			}
+		}
+	}
+
+	void				HybridClient::HandleSteamConnectionStatus(const SteamNetConnectionStatusChangedCallback_t&p)
+	{
+		if (p.m_hConn != steamConnection)
+			return;
+		switch (p.m_info.m_eState)
+		{
+			case k_ESteamNetworkingConnectionState_Connected:
+				if (state == Connecting)
+				{
+					state = Connected;
+					HandleEvent(TCP::Event::ConnectionEstablished,*this);
+				}
+			break;
+			case k_ESteamNetworkingConnectionState_ClosedByPeer:
+			case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
+				HandleSteamPackages();	//dispatch anything the server sent before closing
+				if (p.m_hConn == steamConnection)
+					HandleSteamConnectionFailure(String(p.m_info.m_szEndDebug));
+			break;
+		}
+	}
+	#endif
 
 
 }

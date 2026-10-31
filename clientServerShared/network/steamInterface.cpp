@@ -129,19 +129,6 @@ namespace SteamInterface
 			}
 			return "Unknown EAuthSessionResponse ("+String((unsigned)rs)+")";
 		}
-		String ToString(EP2PSessionError err)
-		{
-			switch (err)
-			{
-				CASE(k_EP2PSessionErrorNone)
-				CASE(k_EP2PSessionErrorNotRunningApp_DELETED)
-				CASE(k_EP2PSessionErrorNoRightsToApp)
-				CASE(k_EP2PSessionErrorDestinationNotLoggedIn_DELETED)
-				CASE(k_EP2PSessionErrorTimeout)
-			}
-			return "Unknown EP2PSessionError ("+String((unsigned)err)+")";
-		}
-
 		String ToString(EChatRoomEnterResponse resp)
 		{
 			switch (resp)
@@ -272,23 +259,21 @@ namespace SteamInterface
 			return "Unknown EResult ("+String((unsigned)rs)+")";
 		}
 
-		String ToString(ESNetSocketState st)
+		String ToString(ESteamNetworkingConnectionState st)
 		{
 			switch(st)
 			{
-				CASE(k_ESNetSocketStateInvalid)			
-				CASE(k_ESNetSocketStateConnected)
-				CASE(k_ESNetSocketStateInitiated)
-				CASE(k_ESNetSocketStateLocalCandidatesFound)
-				CASE(k_ESNetSocketStateReceivedRemoteCandidates)
-				CASE(k_ESNetSocketStateChallengeHandshake)
-				CASE(k_ESNetSocketStateDisconnecting)
-				CASE(k_ESNetSocketStateLocalDisconnect)
-				CASE(k_ESNetSocketStateTimeoutDuringConnect)
-				CASE(k_ESNetSocketStateRemoteEndDisconnected)
-				CASE(k_ESNetSocketStateConnectionBroken)
+				CASE(k_ESteamNetworkingConnectionState_None)
+				CASE(k_ESteamNetworkingConnectionState_Connecting)
+				CASE(k_ESteamNetworkingConnectionState_FindingRoute)
+				CASE(k_ESteamNetworkingConnectionState_Connected)
+				CASE(k_ESteamNetworkingConnectionState_ClosedByPeer)
+				CASE(k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
+				CASE(k_ESteamNetworkingConnectionState_FinWait)
+				CASE(k_ESteamNetworkingConnectionState_Linger)
+				CASE(k_ESteamNetworkingConnectionState_Dead)
 			}
-			return "Unknown ESNetSocketState ("+String((unsigned)st)+")";
+			return "Unknown ESteamNetworkingConnectionState ("+String((unsigned)st)+")";
 		}
 
 		#undef CASE
@@ -303,9 +288,6 @@ namespace SteamInterface
 	HashTable<UINT64, FAuthResult>	ticketCallbacks;
 	Queue<FAppTicketResponse>				appTicketResponseCallbacks;
 
-	HashTable<UINT64,Vector<FOnSessionConnectionFailure> > failureMap;
-	IndexTable<FOnSocketStatusChange> socketMonitor;
-
 	Queue<UINT64>		lobbyJoinQueue;
 	UINT64				joiningLobby = 0;
 	Time::Stamp			lastLobbyJoinAttempt;
@@ -314,27 +296,6 @@ namespace SteamInterface
 
 	Queue<std::pair<UINT64,Time::Stamp> > checkTicks;
 	#endif
-
-	void	RegisterConnectionFailure(UINT64 remoteID,const FOnSessionConnectionFailure&f)
-	{
-		#ifdef HAS_STEAM_API
-			failureMap.Set(remoteID).Append(f);
-		#endif
-	}
-
-	void	RegisterSocketStatusChange(UINT32 socketID, const FOnSocketStatusChange&f)
-	{
-		#ifdef HAS_STEAM_API
-			socketMonitor.Set(socketID,f);
-		#endif
-	}
-
-	void	UnregisterSocketStatusChange(UINT32 socketID)
-	{
-		#ifdef HAS_STEAM_API
-			socketMonitor.Unset(socketID);
-		#endif
-	}
 
 	void InvalidateLastAccessToken()
 	{
@@ -384,8 +345,6 @@ namespace SteamInterface
 		Callback():onName(this,&Callback::OnName)
 				,onTicketResponse(this,&Callback::OnTicketResponse)
 				/*,onAppTicketResponse(this,&Callback::OnAppTicketResponse)*/
-				,onConnectionFailed(this,&Callback::OnConnectionFailed)
-				,onSocketStatus(this,&Callback::OnSocketStatus)
 				,onLobbyData(this,&Callback::OnLobbyData)
 				,onGameLobbyJoinRequested(this,&Callback::OnGameLobbyJoinRequested)
 				{}
@@ -393,8 +352,6 @@ namespace SteamInterface
 		STEAM_CALLBACK( Callback, OnName, PersonaStateChange_t, onName );
 		STEAM_CALLBACK( Callback, OnTicketResponse, ValidateAuthTicketResponse_t, onTicketResponse );
 		//STEAM_CALLBACK( Callback, OnAppTicketResponse, EncryptedAppTicketResponse_t, onAppTicketResponse );
-		STEAM_CALLBACK( Callback, OnConnectionFailed,P2PSessionConnectFail_t, onConnectionFailed );
-		STEAM_CALLBACK( Callback, OnSocketStatus, SocketStatusCallback_t, onSocketStatus);
 		STEAM_CALLBACK( Callback, OnLobbyData, LobbyDataUpdate_t, onLobbyData);
 		STEAM_CALLBACK( Callback, OnGameLobbyJoinRequested, GameLobbyJoinRequested_t, onGameLobbyJoinRequested);
 
@@ -410,43 +367,6 @@ namespace SteamInterface
 	}	*callback = nullptr;
 
 
-
-	void Callback::OnSocketStatus(SocketStatusCallback_t*p)
-	{
-		FOnSocketStatusChange*f = socketMonitor.QueryPointer(p->m_hSocket);
-		if (f)
-		{
-			ESNetSocketState state = (ESNetSocketState)p->m_eSNetSocketState;
-
-			SocketState s = SocketState::Disconnected;
-			switch (state)
-			{
-				case k_ESNetSocketStateConnected:
-					s = SocketState::Connected;
-				break;
-				case k_ESNetSocketStateInitiated:
-				case k_ESNetSocketStateLocalCandidatesFound:
-				case k_ESNetSocketStateReceivedRemoteCandidates:
-				case k_ESNetSocketStateChallengeHandshake:
-					s = SocketState::AttemptingConnection;
-				break;
-			}
-			(*f)(p->m_steamIDRemote.ConvertToUint64(), s,ToString(state));
-
-		}
-	}
-
-	void Callback::OnConnectionFailed(P2PSessionConnectFail_t*p)
-	{
-		Vector<FOnSessionConnectionFailure>*list = failureMap.QueryPointer(p->m_steamIDRemote.ConvertToUint64());
-		if (list)
-		{
-			String err = ToString((EP2PSessionError)p->m_eP2PSessionError);
-			foreach (*list,h)
-				(*h)(err);
-			failureMap.Unset(p->m_steamIDRemote.ConvertToUint64());
-		}
-	}
 
 	void Callback::OnAppTicketResponse(EncryptedAppTicketResponse_t *pParam, bool ioError)
 	{
@@ -1172,6 +1092,7 @@ namespace SteamInterface
 			}
 		#endif*/
 			SteamUtils()->SetOverlayNotificationPosition(k_EPositionBottomRight);
+			SteamNetworkingUtils()->InitRelayNetworkAccess();	//Steam P2P connections (ISteamNetworkingSockets) go through the Steam Datagram Relay
 		// set our debug handler
 		SteamClient()->SetWarningMessageHook( &SteamAPIDebugTextHook );
 		

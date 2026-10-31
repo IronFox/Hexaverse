@@ -28,13 +28,6 @@ namespace SteamInterface
 	bool	Create(UINT32 appID, FOnRegisteredLobbyInvalid onInvalidCallback);
 	bool	CreateServer(UINT32 appID, UINT16 basePort);
 
-	enum class SocketState
-	{
-		Disconnected,
-		AttemptingConnection,
-		Connected,
-	};
-
 	enum class ServerMatchError
 	{
 		DataError,
@@ -56,8 +49,6 @@ namespace SteamInterface
 	*/
 	typedef std::function<void(UINT64 lobbyID, UINT64 serverID, UINT64 ownerID,const String&addr, const Protocol::ServerInfo &info)> FOnServerMatch;
 	typedef std::function<void(UINT64 lobbyID, const String&error, ServerMatchError)> FOnServerMatchError;
-	typedef std::function<void(const String&)> FOnSessionConnectionFailure;
-	typedef std::function<void(UINT64, SocketState,const String&)> FOnSocketStatusChange;
 
 	UINT64	GetUserID();
 	String	GetUserNickName();
@@ -74,9 +65,6 @@ namespace SteamInterface
 	bool	IsLocalUser(UINT64 steamID);
 	bool	IsFriend(UINT64 steamID);
 	String	IDToString(UINT64 steamID);
-	void	RegisterConnectionFailure(UINT64 remoteID,const FOnSessionConnectionFailure&);
-	void	RegisterSocketStatusChange(UINT32 socketID, const FOnSocketStatusChange&);
-	void	UnregisterSocketStatusChange(UINT32 socketID);
 
 	typedef std::function<void(UINT64)> FLobbyCallback;
 
