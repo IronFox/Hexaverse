@@ -20,6 +20,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # DeltaWorks is checked out next to the sources. If it is private, add a
+      # DELTAWORKS_TOKEN secret (a token with read access to IronFox/DeltaWorks).
+      - name: Check out DeltaWorks
+        uses: actions/checkout@v4
+        with:
+          repository: IronFox/DeltaWorks
+          ref: c4ec0ed049e4e879df66b9e6448c41df0becdd4f
+          path: _deps/DeltaWorks
+          token: ${{ secrets.DELTAWORKS_TOKEN || github.token }}
+
       - name: Update vcpkg
         if: matrix.deps == 'vcpkg'
         shell: pwsh
@@ -28,8 +38,7 @@ jobs:
           git -C "$env:VCPKG_INSTALLATION_ROOT" checkout --quiet origin/master
           & "$env:VCPKG_INSTALLATION_ROOT\bootstrap-vcpkg.bat" -disableMetrics
 
-      # DeltaWorks is downloaded by CMake (FetchContent). The build counter is
-      # left alone so CI does not modify tracked files.
+      # The build counter is left alone so CI does not modify tracked files.
       - name: Configure (vcpkg)
         if: matrix.deps == 'vcpkg'
         shell: pwsh
@@ -39,11 +48,12 @@ jobs:
             "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             "-DVCPKG_TARGET_TRIPLET=$triplet" `
             -DDELTAWORKS_THIRD_PARTY=PACKAGES `
-            -DHEXAVERSE_INCREMENT_BUILD_COUNTER=OFF
+            -DHEXAVERSE_INCREMENT_BUILD_COUNTER=OFF `
+            "-DHEXAVERSE_DELTAWORKS_DIR=$env:GITHUB_WORKSPACE/_deps/DeltaWorks"
 
       - name: Configure (bundled)
         if: matrix.deps == 'bundled'
-        run: cmake -S . -B build -A ${{ matrix.arch }} -DDELTAWORKS_THIRD_PARTY=BUNDLED -DHEXAVERSE_INCREMENT_BUILD_COUNTER=OFF
+        run: cmake -S . -B build -A ${{ matrix.arch }} -DDELTAWORKS_THIRD_PARTY=BUNDLED -DHEXAVERSE_INCREMENT_BUILD_COUNTER=OFF "-DHEXAVERSE_DELTAWORKS_DIR=${{ github.workspace }}/_deps/DeltaWorks"
 
       - name: Build
         run: cmake --build build --config ${{ matrix.config }} --parallel

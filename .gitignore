@@ -57,3 +57,4 @@ BugReporter/BugReporter.exe.config
 /out/
 CMakeUserPresets.json
 BuildCounter/.projector/
+/_deps/
