@@ -847,9 +847,10 @@ namespace Receiver
 				)
 			)
 		{
-			#ifdef _DEBUG
-				response.newFactionAccessToken = faction->accessToken;
-			#endif
+			//Echo the faction's token back to the client. The client stores whatever it receives here
+			//as its access token for this world, so leaving it empty (as release builds used to do)
+			//wiped the client's stored token on every successful continue and broke the next rejoin
+			response.newFactionAccessToken = faction->accessToken;
 			Network::PClient other;
 			if (Network::playerMap.Query(faction,other))
 			{

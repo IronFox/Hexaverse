@@ -806,8 +806,13 @@ namespace Network
 				#endif
 
 				activeToken = cr.newFactionAccessToken;
+				if (activeToken.IsEmpty() && !RuntimeConfig::aiMode && !amSpectator)
+				{
+					//older servers do not echo the token when continuing a faction. Keep the one we used
+					accessMap.Query(worldID, activeToken);
+				}
 				activeTokenString = activeToken.ToString();
-				if (!RuntimeConfig::aiMode && !amSpectator)
+				if (!RuntimeConfig::aiMode && !amSpectator && activeToken.IsSet())
 				{
 					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+ToString(worldID)+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
@@ -1603,10 +1608,10 @@ namespace Network
 			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + ToString(worldID) + " as AI using token: " + RuntimeConfig::aiAccessToken.ToFullString());
 
 		}
-		elif (!forceNewFaction && accessMap.Query(worldID, accessToken))
+		elif (!forceNewFaction && accessMap.Query(worldID, accessToken) && accessToken.IsSet())
 		{
 			Password::Hash(passwordChallenge,accessToken,ready.hashedFactionToken);
-			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+RuntimeConfig::aiAccessToken.ToString());
+			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+ToString(worldID)+": "+accessToken.ToString());
 		}
 		else
 		{

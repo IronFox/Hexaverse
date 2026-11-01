@@ -1,4 +1,5 @@
 v0.9.17
+	* Fixed rejoining a running game failing with "No faction found that could be continued". Continuing a faction erased the locally stored faction access token, so the next reconnect could not find the faction
 	* HUD: Fixed UI scale not applying to the on-screen event log (and other HUD text) until a window resize
 
 v0.9.16
