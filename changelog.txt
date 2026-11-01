@@ -2,6 +2,7 @@ v0.9.17
 	+ HUD: Nexus Ports being captured by you or your allies now show the number of rounds left until capture above them
 	* Fixed rejoining a running game failing with "No faction found that could be continued". Continuing a faction erased the locally stored faction access token, so the next reconnect could not find the faction
 	* HUD: Fixed UI scale not applying to the on-screen event log (and other HUD text) until a window resize
+	* HUD: Right panel text now always starts below the selected unit's hexagonal image, regardless of UI and button scale
 
 v0.9.16
 	+ HUD: Added Button Scale option (Options > Visual). Scales hexagonal buttons, unit navigation and notifications on top of the UI scale

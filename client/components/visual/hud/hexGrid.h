@@ -72,6 +72,13 @@ namespace HexGrid
 	TGridConfig	GetGridConfig();
 	TGridConfig	GetGridConfig(float);
 
+	/**
+	Determines the lowest window-relative y coordinate (0=bottom, 1=top) covered by any
+	hexagonal button anchored to the top right corner (e.g. the selected unit's focus button).
+	Returns 1 if there is none.
+	*/
+	float		GetTopRightLowerEdge();
+
 	
 	//static const float CellSize = 0.075f;
 	//static const float stepY = (0.5f + 1.f) * CellSize;
