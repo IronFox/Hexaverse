@@ -1050,6 +1050,8 @@ namespace ApplicationInterface
 
 
 #ifdef HAS_WINDOW
+	void	UpdateFontScale();
+
 	void RenderShadows(float shadowRadius, DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<M::TMatrix4<> >&shadowMatrix
 	#ifdef CASCADING_SHADOW
 		,index_t cascade
@@ -1403,6 +1405,9 @@ bool loop()
 			display.SetDepthTest(false,false);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
+			//re-apply the UI scale each frame: the global text scale can otherwise go stale
+			//(e.g. after the loading screen or when changed while a text state was pushed)
+			UpdateFontScale();
 			textout.SetColor(1,1,1);
 
 			if (InputControl::saveScreenshot)
