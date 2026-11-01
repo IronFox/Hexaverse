@@ -37,7 +37,10 @@
     <Compile Remove="Protocol\**" />
     <EmbeddedResource Remove="Protocol\**" />
     <None Remove="Protocol\**" />
-    <ProjectReference Include="Protocol\Protocol.csproj" />
+    <!-- 'dotnet publish -o ServerManager' makes PublishDir this folder. Passed on to Protocol, the SDK
+         would exclude $(PublishDir)/** (which contains Protocol\) from its sources and build an empty
+         Protocol.dll. -->
+    <ProjectReference Include="Protocol\Protocol.csproj" GlobalPropertiesToRemove="PublishDir" />
   </ItemGroup>
 
 </Project>
