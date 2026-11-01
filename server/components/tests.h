@@ -175,6 +175,18 @@ namespace Test
 		virtual void	Run(Random&random)	override;
 
 	};
+	/**
+	Checks that the anti-air reach at flight altitude does not depend on the height the turret is located at.
+	Turrets at h>=14 used to lose most of their reach while the client kept showing the full range.
+	*/
+	class AntiAirReach : public Test
+	{
+	public:
+		/**/			AntiAirReach() : Test("AntiAirReach")
+		{}
+		virtual void	Run(Random&random) override;
+	};
+
 	class HighGridFamilies : public Test
 	{
 	public:

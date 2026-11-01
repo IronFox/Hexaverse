@@ -1208,6 +1208,7 @@ int main( int argc, const char* argv[])
 			{
 				Test::Run<Test::Routing>();
 				Test::Run<Test::AutoTargeting>();
+				Test::Run<Test::AntiAirReach>();
 				Test::Run<Test::StringMethods>();
 				Test::Run<Test::Serialization>();
 				Test::Run<Test::CharacterEncoding>();

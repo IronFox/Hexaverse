@@ -455,13 +455,10 @@ namespace Objects
 			break;
 			case TrajectoryType::AAMissile:
 			{
-				const float h = Grid::ToRadius(SubOrbital::Height);	//orbital radius
+				//same shape the server uses to decide whether a target can be hit (see Component::Turret::AARangeContains())
 				const float r = base->GetFlatAttackRange();
-				//const float hC = sqrt(M::Sqr(h)+M::Sqr(r));
-				const float hC = sqrt(M::Sqr(h) - M::Sqr(r));
-
 				const M::TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				RenderFlattenedRangeSphere(d * (hC+Grid::GetLayerHeight(location.height) * 0.5f), r + explosionRadius,d,3.f,color, extended);
+				RenderFlattenedRangeSphere(d * Component::Turret::GetAARangeCenterRadius(r,location.height), r + explosionRadius,d,Component::Turret::AARangeHalfHeight,color, extended);
 			}
 			break;
 			case TrajectoryType::A2GMissile:

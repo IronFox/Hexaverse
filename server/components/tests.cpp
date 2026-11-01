@@ -5,6 +5,8 @@
 #include <objects/structure/storageStructures.h>
 #include <objects/structure/mine.h>
 #include <objects/structure/vehiclePlant.h>
+#include <objects/structure/tower.h>
+#include <objects/subOrbital.h>
 #include <string/encoding.h>
 #include <io/byte_stream.h>
 
@@ -1562,6 +1564,44 @@ namespace Test
 			Grid::ResetStructureCounters();
 		}
 	#endif
+
+	/*virtual override*/ void	AntiAirReach::Run(Random&random)
+	{
+		using Objects::Component::Turret;
+		const float flatRange = 9.f;	//default AntiAircraft HorizontalAttackRange
+		const float foundation = Objects::Tower::GetEffectiveFoundationHeight();
+		for (int sample = 0; sample < 4; sample++)
+		{
+			const UINT32 towerStack = random.Next(Grid::LowSetup::GridType::CellCount-1);
+
+			const Objects::TrajectoryEndPoint above(Grid::LCellIdI(towerStack,Objects::SubOrbital::Height));
+
+			Ctr::Vector<UINT32>	reference;	//target stacks hit from height 0
+			for (int h = 0; h <= Grid::CellStack::TopHeight; h++)
+			{
+				const Objects::TrajectoryEndPoint source(Grid::LCellIdI(towerStack,h),foundation);
+				if (!Turret::CanHit(Objects::TrajectoryType::AAMissile,flatRange,source,above))
+					Fail(CLOCATION,"Anti-air turret at height "+String(h)+" cannot hit a plane directly above it");
+
+				Ctr::Vector<UINT32>	hits;
+				for (UINT32 s = 0; s < Grid::LowSetup::GridType::CellCount; s++)
+				{
+					const Objects::TrajectoryEndPoint target(Grid::LCellIdI(s,Objects::SubOrbital::Height));
+					if (Turret::CanHit(Objects::TrajectoryType::AAMissile,flatRange,source,target))
+						hits << s;
+				}
+				if (h == 0)
+				{
+					reference = hits;
+					if (reference.Count() < 7)
+						Fail(CLOCATION,"Anti-air turret reaches only "+String(reference.Count())+" stack(s) at flight altitude");
+					BeginSection("Turret at stack "+String(towerStack)+" reaches "+String(reference.Count())+" stacks at flight altitude");
+				}
+				elif (hits != reference)
+					Fail(CLOCATION,"Anti-air turret at height "+String(h)+" reaches "+String(hits.Count())+" stacks at flight altitude, but "+String(reference.Count())+" from height 0");
+			}
+		}
+	}
 
 	/*virtual override*/ void	HighGridFamilies::Run(Random&random)
 	{

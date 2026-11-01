@@ -371,6 +371,26 @@ namespace Objects
 		}
 
 
+		/*static*/ float						Turret::GetAARangeCenterRadius(float flatRange, int originHeight)
+		{
+			const float h = Grid::ToRadius(Objects::SubOrbital::Height);
+			const float r = M::Min(flatRange, h);
+			return sqrt(M::Sqr(h) - M::Sqr(r)) + Grid::GetLayerHeight(originHeight) * 0.5f;
+		}
+
+		/*static*/ bool						Turret::AARangeContains(float flatRange, const Grid::LCellIdI&origin, const M::TVec3<>&target, float extension)
+		{
+			if (flatRange <= 0)
+				return false;
+			const M::TVec3<>&axis = Grid::low.cells[origin.stackID].centerVertex.xyz;
+			const M::TVec3<> center = axis * GetAARangeCenterRadius(flatRange,origin.height);
+			const M::TVec3<> delta = target - center;
+			const float vertical = Vec::dot(axis,delta);
+			const float horizontal2 = M::Max(0.f,Vec::dot(delta,delta) - M::Sqr(vertical));
+			return horizontal2 / M::Sqr(flatRange + extension) + M::Sqr(vertical / (AARangeHalfHeight + extension)) <= 1.f;
+		}
+
+
 		/*static*/ bool						Turret::CanHit( TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle )
 		{
 			if (t == TrajectoryType::Artillery)
@@ -392,18 +412,13 @@ namespace Objects
 					return dest.cellLocation.height >= GetGroundHeight(World::actual, origin.cellLocation)-1;
 				}
 				case TrajectoryType::AAMissile:
-				{
-					//let's define this as a cone, so that mid-way explosions are valid
-					const float h = Grid::ToRadius(Objects::SubOrbital::Height);
-					const float r = flatRange;
-					const float h2 = sqrt(M::Sqr(h) - M::Sqr(r));
-					const auto&axis = Grid::low.cells[origin.cellLocation.stackID].cornerCenter;
-					const float h2d = Vec::dot(axis,dest.worldLocation - origin.worldLocation);
-					if (h2d < 0)
-						return false;
-					const float rd = h2d * r / (h2 - origin.radius);
-					return Vec::quadraticDistance(origin.worldLocation + axis * h2d,dest.worldLocation) <= M::Sqr(rd);
-				}
+					/*
+					Range check only. Shots through solid ground are rejected by the straight missile trace (TraceMissileTrajectory()).
+					Previously this was a cone from the turret up to the flight altitude. Its apex was derived from the orbit and the range,
+					so turrets located at or above that apex (h>=14 on the default planet) lost most of their reach,
+					while the client kept showing the full range. Use the displayed shape instead.
+					*/
+					return AARangeContains(flatRange,origin.cellLocation,dest.worldLocation);
 				case TrajectoryType::A2GMissile:
 				{
 					if (dest.cellLocation.height > Grid::CellStack::TopHeight)
