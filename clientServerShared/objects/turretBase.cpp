@@ -288,6 +288,8 @@ namespace Objects
 
 		if (trajectoryType == TrajectoryType::AAMissile)
 		{
+			if (destIn.cellLocation.height <= Grid::CellStack::TopHeight)
+				return false;	//anti-air only engages airborne targets
 			//the ellipsoid's center depends on the range, so extend it rather than passing an inflated range:
 			if (!Component::Turret::AARangeContains(range, source.cellLocation, destIn.worldLocation, explosionRadius * 2))
 				return false;

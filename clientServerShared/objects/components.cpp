@@ -418,6 +418,8 @@ namespace Objects
 					so turrets located at or above that apex (h>=14 on the default planet) lost most of their reach,
 					while the client kept showing the full range. Use the displayed shape instead.
 					*/
+					if (dest.cellLocation.height <= Grid::CellStack::TopHeight)
+						return false;	//anti-air only engages airborne targets, never anything on or in the ground
 					return AARangeContains(flatRange,origin.cellLocation,dest.worldLocation);
 				case TrajectoryType::A2GMissile:
 				{
