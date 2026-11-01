@@ -31,8 +31,11 @@ endif()
 hexaverse_collect_sources(visual_sources "${CMAKE_CURRENT_SOURCE_DIR}"
 	FILE console.rc2)
 
+# Shared sources first, in the same order as the .project files. MSVC runs
+# static initializers in link order, and client/ globals depend on statics
+# from the shared folders. With client/ first, the clients exit before main().
 add_executable(VisualClient WIN32
-	${visual_sources} ${client_shared}
+	${client_shared} ${visual_sources}
 	"${CMAKE_CURRENT_SOURCE_DIR}/DeclareDPIAware.manifest")
 hexaverse_apply_common_settings(VisualClient SUBSYSTEM Windows)
 target_compile_definitions(VisualClient PRIVATE CLIENT HAS_WINDOW _SCL_SECURE_NO_WARNINGS)
@@ -58,7 +61,7 @@ hexaverse_collect_sources(console_sources "${CMAKE_CURRENT_SOURCE_DIR}"
 	DIR  visual audio
 	FILE visual.rc2)
 
-add_executable(ConsoleClient ${console_sources} ${client_shared})
+add_executable(ConsoleClient ${client_shared} ${console_sources})
 hexaverse_apply_common_settings(ConsoleClient SUBSYSTEM Console)
 target_compile_definitions(ConsoleClient PRIVATE CLIENT _SCL_SECURE_NO_WARNINGS)
 target_include_directories(ConsoleClient PRIVATE ${client_shared_includes})
