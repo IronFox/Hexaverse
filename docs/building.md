@@ -213,5 +213,5 @@ Recipe syntax: one path or wildcard pattern per line, relative to the repository
 | CMake: vcpkg packages not found | Run from a VS developer prompt, set `VCPKG_ROOT`, or use a `*-bundled` preset. |
 | Client starts but shows a black screen or crashes when loading shaders | Start it from `client/` as the working directory, and make sure `shaders/compiled/` exists. |
 | The server can't find planets or Lua scripts | Start it from `server/` as the working directory. |
-| CMake-built `Server.exe` exits right away without output (exit code `0xC0000094`, integer divide by zero) | Static initialization order. `server/CMakeLists.txt` must list the `clientServerShared/` and `globalShared/` sources before the `server/` sources, as `Server.project` does. |
+| CMake-built `Server.exe`, `Visual Client.exe` or `Console Client.exe` exits right away without output (exit code `0xC0000094`, integer divide by zero) | Static initialization order. `server/CMakeLists.txt` and `client/CMakeLists.txt` must list the shared folder sources (`clientServerShared/`, `clientConsoleShared/`, `globalShared/`) before their own sources, as the `.project` files do. |
 | Compile errors in DeltaWorks headers | Use the DeltaWorks commit CMake downloads by default (`HEXAVERSE_DELTAWORKS_GIT_TAG` in `CMakeLists.txt`), which is the one Hexaverse is tested against. |
