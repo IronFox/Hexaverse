@@ -315,7 +315,8 @@ end;
 function GetSameTurretBadness(myLoc, theirLoc, myUnit, theirUnit, isAA)
 	if (isAA) then
 		local distance = QuadraticDistance(Util.ToSuborbit(myLoc).world,Util.ToSuborbit(theirLoc).world);
-		local minDist = Sqr(math.max(myUnit.suborbitalScanningRange,theirUnit.suborbitalScanningRange));
+		--suborbitalScanningRange is nil for units without a sub-orbital scanner (e.g. pending/directed ground units)
+		local minDist = Sqr(math.max(myUnit.suborbitalScanningRange or 0,theirUnit.suborbitalScanningRange or 0));
 		if (distance > minDist) then
 			return 0.0;
 		end;
