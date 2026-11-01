@@ -486,6 +486,11 @@ namespace Protocol
 
 
 	
+	/**
+	Serialization helper that holds at most one value of type T0.
+	The active element is written as a leading byte (0 = empty, 1 = option0), followed by the value if present.
+	Use Get0() to read (returns nullptr if empty) and Set0() to activate and fill.
+	*/
 	template <typename T0>
 		class Optional
 		{
@@ -548,6 +553,18 @@ namespace Protocol
 		};
 
 
+	/**
+	SelectiveN<T0,...,TN-1> is a serialization helper structure that can dynamically contain any one of the
+	listed types (or none). It is a discriminated union in the spirit of std::variant, but it serializes
+	compactly via Serialize()/Deserialize(): first one byte naming the active option (0 = none, i = option i-1),
+	then only the active value.
+	Each SelectiveN derives from Selective(N-1), so Get<i>()/Set<i>() for earlier options stay available:
+	- GetI() returns a pointer to option I if it is the active one, otherwise nullptr.
+	- SetI() makes option I the active one and returns a reference to it for filling in.
+	Inactive options are still default-constructed members, so every Ti must be default constructible and
+	provide swap(). Variants exist for N = 2 to 9 (Optional<T0> is the N = 1 case).
+	Option indices are part of the wire and file format: append new types at the end and never reorder.
+	*/
 	template <typename T0, typename T1>
 		class Selective2 : public Optional<T0>
 		{
@@ -576,13 +593,13 @@ namespace Protocol
 					case 0:
 						break;
 					case 1:
-						Serialize(s,option0);
+						Serialize(s,v.option0);
 						break;
 					case 2:
-						Serialize(s,option1);
+						Serialize(s,v.option1);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
 				}
 			}
 
@@ -595,13 +612,13 @@ namespace Protocol
 					case 0:
 						break;
 					case 1:
-						Deserialize(s,option0);
+						Deserialize(s,v.option0);
 						break;
 					case 2:
-						Deserialize(s,option1);
+						Deserialize(s,v.option1);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
 				}
 			}
 
@@ -657,7 +674,7 @@ namespace Protocol
 						Serialize(s,v.option2);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective3<>: "+String(v.active));
 				}
 			}
 
@@ -679,7 +696,7 @@ namespace Protocol
 						Deserialize(s,v.option2);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective3<>: "+String(v.active));
 				}
 			}
 
@@ -738,7 +755,7 @@ namespace Protocol
 						Serialize(s,v.option3);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective4<>: "+String(v.active));
 				}
 			}
 
@@ -763,7 +780,7 @@ namespace Protocol
 						Deserialize(s,v.option3);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective4<>: "+String(v.active));
 				}
 			}
 
@@ -852,7 +869,7 @@ namespace Protocol
 						Deserialize(s,v.option4);
 						break;
 					default:
-						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective2<>: "+String(v.active));
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective5<>: "+String(v.active));
 				}
 			}
 
@@ -865,6 +882,433 @@ namespace Protocol
 			{
 				active = 5;
 				return option4;
+			}
+		};
+
+
+	template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5>
+		class Selective6 : public Selective5<T0,T1,T2,T3,T4>
+		{
+		protected:
+			typedef Selective5<T0,T1,T2,T3,T4>	Super;
+			typedef Selective6<T0,T1,T2,T3,T4,T5>	Self;
+
+			using Super::active;
+			using Super::option0;
+			using Super::option1;
+			using Super::option2;
+			using Super::option3;
+			using Super::option4;
+
+			T5		option5;
+
+		public:
+			void				swap(Selective6&other)
+			{
+				Super::swap(other);
+				option5.swap(other.option5);
+			}
+			friend	void					Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				s.WritePrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Serialize(s,v.option0);
+						break;
+					case 2:
+						Serialize(s,v.option1);
+						break;
+					case 3:
+						Serialize(s,v.option2);
+						break;
+					case 4:
+						Serialize(s,v.option3);
+						break;
+					case 5:
+						Serialize(s,v.option4);
+						break;
+					case 6:
+						Serialize(s,v.option5);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective6<>: "+String(v.active));
+				}
+			}
+
+			friend	void					Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Deserialize(s,v.option0);
+						break;
+					case 2:
+						Deserialize(s,v.option1);
+						break;
+					case 3:
+						Deserialize(s,v.option2);
+						break;
+					case 4:
+						Deserialize(s,v.option3);
+						break;
+					case 5:
+						Deserialize(s,v.option4);
+						break;
+					case 6:
+						Deserialize(s,v.option5);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective6<>: "+String(v.active));
+				}
+			}
+
+			const T5*		Get5() const
+			{
+				return active == 6 ? &option5 : nullptr;
+			}
+
+			T5&				Set5()
+			{
+				active = 6;
+				return option5;
+			}
+		};
+
+	template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+		class Selective7 : public Selective6<T0,T1,T2,T3,T4,T5>
+		{
+		protected:
+			typedef Selective6<T0,T1,T2,T3,T4,T5>	Super;
+			typedef Selective7<T0,T1,T2,T3,T4,T5,T6>	Self;
+
+			using Super::active;
+			using Super::option0;
+			using Super::option1;
+			using Super::option2;
+			using Super::option3;
+			using Super::option4;
+			using Super::option5;
+
+			T6		option6;
+
+		public:
+			void				swap(Selective7&other)
+			{
+				Super::swap(other);
+				option6.swap(other.option6);
+			}
+			friend	void					Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				s.WritePrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Serialize(s,v.option0);
+						break;
+					case 2:
+						Serialize(s,v.option1);
+						break;
+					case 3:
+						Serialize(s,v.option2);
+						break;
+					case 4:
+						Serialize(s,v.option3);
+						break;
+					case 5:
+						Serialize(s,v.option4);
+						break;
+					case 6:
+						Serialize(s,v.option5);
+						break;
+					case 7:
+						Serialize(s,v.option6);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective7<>: "+String(v.active));
+				}
+			}
+
+			friend	void					Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Deserialize(s,v.option0);
+						break;
+					case 2:
+						Deserialize(s,v.option1);
+						break;
+					case 3:
+						Deserialize(s,v.option2);
+						break;
+					case 4:
+						Deserialize(s,v.option3);
+						break;
+					case 5:
+						Deserialize(s,v.option4);
+						break;
+					case 6:
+						Deserialize(s,v.option5);
+						break;
+					case 7:
+						Deserialize(s,v.option6);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective7<>: "+String(v.active));
+				}
+			}
+
+			const T6*		Get6() const
+			{
+				return active == 7 ? &option6 : nullptr;
+			}
+
+			T6&				Set6()
+			{
+				active = 7;
+				return option6;
+			}
+		};
+
+	template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
+		class Selective8 : public Selective7<T0,T1,T2,T3,T4,T5,T6>
+		{
+		protected:
+			typedef Selective7<T0,T1,T2,T3,T4,T5,T6>	Super;
+			typedef Selective8<T0,T1,T2,T3,T4,T5,T6,T7>	Self;
+
+			using Super::active;
+			using Super::option0;
+			using Super::option1;
+			using Super::option2;
+			using Super::option3;
+			using Super::option4;
+			using Super::option5;
+			using Super::option6;
+
+			T7		option7;
+
+		public:
+			void				swap(Selective8&other)
+			{
+				Super::swap(other);
+				option7.swap(other.option7);
+			}
+			friend	void					Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				s.WritePrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Serialize(s,v.option0);
+						break;
+					case 2:
+						Serialize(s,v.option1);
+						break;
+					case 3:
+						Serialize(s,v.option2);
+						break;
+					case 4:
+						Serialize(s,v.option3);
+						break;
+					case 5:
+						Serialize(s,v.option4);
+						break;
+					case 6:
+						Serialize(s,v.option5);
+						break;
+					case 7:
+						Serialize(s,v.option6);
+						break;
+					case 8:
+						Serialize(s,v.option7);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective8<>: "+String(v.active));
+				}
+			}
+
+			friend	void					Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Deserialize(s,v.option0);
+						break;
+					case 2:
+						Deserialize(s,v.option1);
+						break;
+					case 3:
+						Deserialize(s,v.option2);
+						break;
+					case 4:
+						Deserialize(s,v.option3);
+						break;
+					case 5:
+						Deserialize(s,v.option4);
+						break;
+					case 6:
+						Deserialize(s,v.option5);
+						break;
+					case 7:
+						Deserialize(s,v.option6);
+						break;
+					case 8:
+						Deserialize(s,v.option7);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective8<>: "+String(v.active));
+				}
+			}
+
+			const T7*		Get7() const
+			{
+				return active == 8 ? &option7 : nullptr;
+			}
+
+			T7&				Set7()
+			{
+				active = 8;
+				return option7;
+			}
+		};
+
+	template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
+		class Selective9 : public Selective8<T0,T1,T2,T3,T4,T5,T6,T7>
+		{
+		protected:
+			typedef Selective8<T0,T1,T2,T3,T4,T5,T6,T7>	Super;
+			typedef Selective9<T0,T1,T2,T3,T4,T5,T6,T7,T8>	Self;
+
+			using Super::active;
+			using Super::option0;
+			using Super::option1;
+			using Super::option2;
+			using Super::option3;
+			using Super::option4;
+			using Super::option5;
+			using Super::option6;
+			using Super::option7;
+
+			T8		option8;
+
+		public:
+			void				swap(Selective9&other)
+			{
+				Super::swap(other);
+				option8.swap(other.option8);
+			}
+			friend	void					Serialize(IWriteStream&s, const Self&v)
+			{
+				using Serialization::Serialize;
+				s.WritePrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Serialize(s,v.option0);
+						break;
+					case 2:
+						Serialize(s,v.option1);
+						break;
+					case 3:
+						Serialize(s,v.option2);
+						break;
+					case 4:
+						Serialize(s,v.option3);
+						break;
+					case 5:
+						Serialize(s,v.option4);
+						break;
+					case 6:
+						Serialize(s,v.option5);
+						break;
+					case 7:
+						Serialize(s,v.option6);
+						break;
+					case 8:
+						Serialize(s,v.option7);
+						break;
+					case 9:
+						Serialize(s,v.option8);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective9<>: "+String(v.active));
+				}
+			}
+
+			friend	void					Deserialize(IReadStream&s, Self&v)
+			{
+				using Serialization::Deserialize;
+				s.ReadPrimitive(v.active);
+				switch (v.active)
+				{
+					case 0:
+						break;
+					case 1:
+						Deserialize(s,v.option0);
+						break;
+					case 2:
+						Deserialize(s,v.option1);
+						break;
+					case 3:
+						Deserialize(s,v.option2);
+						break;
+					case 4:
+						Deserialize(s,v.option3);
+						break;
+					case 5:
+						Deserialize(s,v.option4);
+						break;
+					case 6:
+						Deserialize(s,v.option5);
+						break;
+					case 7:
+						Deserialize(s,v.option6);
+						break;
+					case 8:
+						Deserialize(s,v.option7);
+						break;
+					case 9:
+						Deserialize(s,v.option8);
+						break;
+					default:
+						throw Except::Program::DataConsistencyFault(CLOCATION,"Invalid number of active elements in Selective9<>: "+String(v.active));
+				}
+			}
+
+			const T8*		Get8() const
+			{
+				return active == 9 ? &option8 : nullptr;
+			}
+
+			T8&				Set8()
+			{
+				active = 9;
+				return option8;
 			}
 		};
 
