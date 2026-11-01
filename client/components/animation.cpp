@@ -11,6 +11,7 @@
 #include "animation/mobileState.h"
 #include "animation/delayedMobileInsertion.h"
 #include "clientEvents.h"
+#include <algorithm>
 
 namespace Animation
 {
@@ -170,8 +171,34 @@ namespace Animation
 
 	void	ScheduleEvent( const TTime&time, const PEvent&ev )
 	{
-		primitives.Append({time,ev});
-		LogEvent(EventSignificance::Debug, "Animation: Appended '"+ev->Describe()+"' to animation sequence at t="+ToString(time));
+		TTime effective = time;
+		if (ev->IsMobileState() || ev->IsStructureState())
+		{
+			/*
+			The server restarts its timestamps with each phase, so a state sent during MovementPhase
+			may carry an earlier time than a state of the same entity sent during the preceding AttackPhase.
+			Sorting by time alone would then apply the older state last, leaving the client with outdated
+			data (e.g. a task the server has already cleared) until the server sends another change.
+			States of the same entity must apply in the order they arrived, so never schedule a state
+			before an already pending state of the same entity.
+			*/
+			float latest = effective.min;
+			foreach (primitives,prim)
+				if (prim->event->targetEntityID == ev->targetEntityID
+					&& prim->event->IsMobileState() == ev->IsMobileState()
+					&& prim->event->IsStructureState() == ev->IsStructureState()
+					&& prim->time.min > latest)
+					latest = prim->time.min;
+			if (latest > effective.min)
+			{
+				const float delta = latest - effective.min;
+				effective.min += delta;
+				effective.max += delta;
+				LogEvent(EventSignificance::Debug, "Animation: Delaying '"+ev->Describe()+"' from t="+ToString(time)+" to keep it after an earlier received state of the same entity");
+			}
+		}
+		primitives.Append({effective,ev});
+		LogEvent(EventSignificance::Debug, "Animation: Appended '"+ev->Describe()+"' to animation sequence at t="+ToString(effective));
 	}
 
 	void	ScheduleEventWhenDone( const PEvent&ev )
@@ -253,7 +280,8 @@ namespace Animation
 				}
 
 
-				std::sort(items.begin(),items.end());
+				//stable: events with identical start times keep their arrival order (see ScheduleEvent())
+				std::stable_sort(items.begin(),items.end());
 
 				foreach (items,it)
 				{
