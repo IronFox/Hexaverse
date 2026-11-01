@@ -1,5 +1,6 @@
 v0.9.17
 	* HUD: Fixed UI scale not applying to the on-screen event log (and other HUD text) until a window resize
+	* HUD: Right panel text now always starts below the selected unit's hexagonal image, regardless of UI and button scale
 
 v0.9.16
 	+ HUD: Added Button Scale option (Options > Visual). Scales hexagonal buttons, unit navigation and notifications on top of the UI scale

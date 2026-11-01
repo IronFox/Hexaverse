@@ -1093,6 +1093,19 @@ namespace HexGrid
 		return GetGridConfig(hexGridScale);
 	}
 
+	float		GetTopRightLowerEdge()
+	{
+		const auto cfg = GetGridConfig();
+		float lowest = 1.f;
+		foreach (region[Anchor::TopRight].allGuiCells,c)
+		{
+			//hexagons are pointy-top, with their corners cellSize away from the center
+			const float bottom = c->ToFloatCoords(cfg,Anchor::TopRight).y - cfg.cellSize;
+			lowest = M::Min(lowest, bottom * 0.5f + 0.5f);
+		}
+		return lowest;
+	}
+
 	void			UpdateAllCells()
 	{
 		auto cfg2 = GetGridConfig();
