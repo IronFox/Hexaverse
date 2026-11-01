@@ -1986,6 +1986,7 @@ int main( int argc, const char* argv[])
 				TimeLapse::maxCompressionPNG = StartConfig::GetBool("timelapse/maxCompressionPNG");
 				
 				UI::SetScale(StartConfig::GetFloat("runtime/uiScale",1.f));
+				UI::SetButtonScale(StartConfig::GetFloat("runtime/buttonScale",1.f));
 
 				Explosions::maxConcurrentParticles = StartConfig::GetFloat("runtime/maxExplosionParticles",2000);
 				Camera::terrainIntersectionTest = StartConfig::GetBool("runtime/terrainCameraIntersectionCorrection",true);

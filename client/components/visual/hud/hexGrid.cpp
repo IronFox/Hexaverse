@@ -1080,7 +1080,7 @@ namespace HexGrid
 		static const float stepY = (0.5f + 1.f) * CellSize;
 		static const float stepX = 0.86602540378443864676372317075294f * CellSize;
 
-		const float scale = UI::GetScale()*extraScale;
+		const float scale = UI::GetScale()*UI::GetButtonScale()*extraScale;
 		TGridConfig rs;
 		rs.cellSize = CellSize * scale;
 		rs.stepX = stepX * scale;
@@ -1205,6 +1205,7 @@ namespace HexGrid
 	void						Create()
 	{
 		GlobalEvents::uiScaleChanged += OnScreenResize;	//mostly the same effect
+		GlobalEvents::buttonScaleChanged += OnScreenResize;
 
 		center.Create(float4());
 		visualCodeRGB_CellSize.Create(float4(1));

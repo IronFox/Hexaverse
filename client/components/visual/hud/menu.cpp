@@ -303,6 +303,18 @@ namespace Menu
 		}
 		)->SetupMarkers(0.25f,true);
 
+		AddOptionSlider(visual,"Button Scale", 0.5f, 2.f, 0.125f,UI::GetButtonScale(), [](float&q)
+		{
+			q = M::Round(q * 8.f)*0.125f;
+			UI::SetButtonScale(q);
+			Configuration::Update("runtime/buttonScale",q);
+		},
+		[]()->String
+		{
+			return String(M::Round(UI::GetButtonScale() * 100))+"%";
+		}
+		)->SetupMarkers(0.25f,true);
+
 		AddCheckBox(visual,"Real-Time GUI Blur","runtime/realtimeGUIBlur",[](){return HUD::Component::BlurredBackground::realtimeBlur;},[](bool enabled)
 		{
 			HUD::Component::BlurredBackground::realtimeBlur = enabled;
