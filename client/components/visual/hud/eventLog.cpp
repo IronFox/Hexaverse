@@ -150,11 +150,16 @@ namespace VisualEventLog
 
 	volatile bool		historyChanged = true;
 	float				historyHeight=1;
-	static const float	eventFontScale = 0.9f;
+	static const float	baseEventFontScale = 0.9f;
+
+	static float	GetEventFontScale()
+	{
+		return baseEventFontScale * UI::GetButtonScale();
+	}
 	
 	static void		UpdateHistoryHeight()
 	{
-		float h0 = textout.GetScaledHeight() * eventFontScale;
+		float h0 = textout.GetScaledHeight() * GetEventFontScale();
 		historyChanged = false;
 		historyHeight = 0;
 		foreach (events,ev)
@@ -166,6 +171,7 @@ namespace VisualEventLog
 	void Create()
 	{
 		GlobalEvents::uiScaleChanged << [](){historyChanged = true;};
+		GlobalEvents::buttonScaleChanged << [](){historyChanged = true;};
 		GlobalEvents::windowSizeChanged << [](){historyChanged = true;};
 	}
 
@@ -191,7 +197,7 @@ namespace VisualEventLog
 
 
 			const auto old = textout.state;
-				textout.Scale(eventFontScale,eventFontScale);
+				textout.Scale(GetEventFontScale(),GetEventFontScale());
 
 
 			//count_t rows = events.Count();
@@ -199,7 +205,7 @@ namespace VisualEventLog
 			const auto h = textout.GetScaledHeight();
 			const float resourceHeight = HUD::ResourceGauges::GetUpperEdgeFromBottomInPixels();
 			const auto bottom = resourceHeight/display.GetClientHeight();
-			const auto top = 1.f - 260.f/display.GetClientHeight() * UI::GetScale();
+			const auto top = 1.f - 260.f/display.GetClientHeight() * UI::GetScale() * UI::GetButtonScale();
 			const count_t rowSpace = std::max(10.f, ceil((top - bottom) / h));
 			const index_t skip = events.Count() > rowSpace ? events.Count() - rowSpace : 0;
 			const auto skipHeight = h * skip;

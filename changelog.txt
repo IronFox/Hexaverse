@@ -1,3 +1,6 @@
+v0.9.16
+	+ HUD: Added Button Scale option (Options > Visual). Scales hexagonal buttons, unit navigation and notifications on top of the UI scale
+
 v0.9.15
 	* AI: Fixed Lua AI stopping (and no longer ending its turns) when processing anti-air units alongside units without sub-orbital scanners
 

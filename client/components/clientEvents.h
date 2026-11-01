@@ -12,7 +12,8 @@ namespace GlobalEvents
 		extern Observable<>	frameAfterCamera,
 							shadowQualityChanged,
 							windowSizeChanged,
-							uiScaleChanged;
+							uiScaleChanged,
+							buttonScaleChanged;
 	#endif
 
 	/**

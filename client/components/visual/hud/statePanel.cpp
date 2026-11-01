@@ -747,7 +747,7 @@ namespace StatePanel
 
 		const float h = textout.GetScaledHeight();
 
-		float at = UI::GetScale() > 1.f ? 1.f - HexGrid::GetGridConfig().stepY * 0.8f : 0.95f;
+		float at = UI::GetScale()*UI::GetButtonScale() > 1.f ? 1.f - HexGrid::GetGridConfig().stepY * 0.8f : 0.95f;
 
 		if (doRewrap)
 		{
@@ -769,6 +769,7 @@ namespace StatePanel
 	void		Create()
 	{
 		GlobalEvents::uiScaleChanged << [](){doRewrap = true;};
+		GlobalEvents::buttonScaleChanged << [](){doRewrap = true;};
 		GlobalEvents::resourceTableUpdated << SignalChange;
 	}
 
