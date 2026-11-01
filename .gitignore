@@ -51,6 +51,9 @@ BugReporter/BugReporter.exe.config
 .vs
 /server.7z
 /ServerManager/ServerManager.exe.config
+# Published by repack.bat and the release workflow
+/ServerManager/ServerManager.exe
+/ServerManager/Protocol.dll
 
 # CMake
 /build/

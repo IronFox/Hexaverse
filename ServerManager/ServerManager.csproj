@@ -1,126 +1,43 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Hexaverse Server Manager. See docs/tools.md.
+    The release workflow publishes it as a single self-contained ServerManager.exe,
+    so players don't need to install the .NET runtime:
+      dotnet publish ServerManager/ServerManager.csproj -c Release -r win-x64 -o ServerManager
+  -->
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{24DF1755-6BEA-4C57-9210-FCC28504D961}</ProjectGuid>
     <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>server_icon_3QL_icon.ico</ApplicationIcon>
     <RootNamespace>ServerManager</RootNamespace>
     <AssemblyName>ServerManager</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Product>Hexaverse Server Manager</Product>
+    <Copyright>Copyright (c) 2018-2026 Stefan Elsen. MIT License.</Copyright>
+    <Version>2.0.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Lets 'dotnet build' compile the project on any OS (for CI checks); it only runs on Windows. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <!-- WinForms doesn't support trimming, so the bundle is compressed instead. -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>.\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationIcon>server_icon_3QL_icon.ico</ApplicationIcon>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Deployment" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
+    <!-- Protocol/ is its own project, so keep its sources out of this one. -->
+    <Compile Remove="Protocol\**" />
+    <EmbeddedResource Remove="Protocol\**" />
+    <None Remove="Protocol\**" />
+    <ProjectReference Include="Protocol\Protocol.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="ControlConnection.cs" />
-    <Compile Include="EditServerConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="EditServerConfig.Designer.cs">
-      <DependentUpon>EditServerConfig.cs</DependentUpon>
-    </Compile>
-    <Compile Include="HeartbeatSender.cs" />
-    <Compile Include="LocalhostClient.cs" />
-    <Compile Include="NiceName.cs" />
-    <Compile Include="Server.cs" />
-    <Compile Include="ServerInfoReceiver.cs" />
-    <Compile Include="ServerTable.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ServerTable.Designer.cs">
-      <DependentUpon>ServerTable.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="StartServer.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="StartServer.Designer.cs">
-      <DependentUpon>StartServer.cs</DependentUpon>
-    </Compile>
-    <Compile Include="UDP Receiver.cs" />
-    <EmbeddedResource Include="EditServerConfig.resx">
-      <DependentUpon>EditServerConfig.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ServerTable.resx">
-      <DependentUpon>ServerTable.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
-    </Compile>
-    <EmbeddedResource Include="StartServer.resx">
-      <DependentUpon>StartServer.cs</DependentUpon>
-    </EmbeddedResource>
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\hexaverse server capsule 87.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\hexaverse cover capsule 87.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="Protocol\Protocol.csproj">
-      <Project>{b9f262af-b3c7-44a8-a095-cf84f5b6c009}</Project>
-      <Name>Protocol</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="server_icon_3QL_icon.ico" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
 </Project>

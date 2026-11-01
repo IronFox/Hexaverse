@@ -320,7 +320,7 @@ namespace ServerManager
 		{
 			FetchVariableContentAsync("/IO/logFile",(logAt) =>
 			{
-				using (Process.Start(logAt))
+				using (Process.Start(new ProcessStartInfo(logAt) { UseShellExecute = true }))
 				{ }
 			});
 		}

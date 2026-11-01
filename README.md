@@ -67,7 +67,7 @@ How this works in the code, and which host settings deliberately share more, is 
 | [vcpkg](https://vcpkg.io) | C++ programs, optional | Supplies zlib, libpng, libjpeg-turbo and bzip2 (listed in `vcpkg.json`). Ships with Visual Studio. Without it, CMake uses DeltaWorks' bundled copies. |
 | OpenAL 1.1 SDK (Creative Labs) | Visual Client, optional with CMake | Only its import library `OpenAL32.lib` is used; the headers are bundled with DeltaWorks. CMake generates the import library itself if the SDK isn't installed. Projector needs the SDK. The runtime DLL and installer are committed in `client/`. |
 | Lua 5.3.3 | client and server | Bundled in `ThirdParty/lua/`, nothing to install. |
-| .NET Framework 4.x developer packs | C# tools | Plain `.sln`/`.csproj` files. Prebuilt copies of most tools are committed. |
+| .NET Framework 4.x developer packs, .NET 10 SDK | C# tools | Plain `.sln`/`.csproj` files. Server Manager and BugReporter use .NET 10; prebuilt copies of most other tools are committed. |
 | Git LFS | cloning | `ArtWork/*.psd` is stored in LFS. |
 
 Third-party code, assets and their licenses are listed in [docs/third-party.md](docs/third-party.md).

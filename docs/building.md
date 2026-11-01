@@ -21,8 +21,8 @@ Both compile the same files with the same settings, and both put the executables
 | [Projector](https://github.com/IronFox/Projector) 1.5 or newer | Projector build | .NET 10 WinForms app. Build it with `dotnet build Projector.sln -c Release`. |
 | [DeltaWorks](https://github.com/IronFox/DeltaWorks) | all C++ projects | Provides `DeltaWorksCore` and `DeltaWorksEngine`. CMake downloads it if needed. |
 | OpenAL 1.1 SDK (Creative Labs) | Visual Client: required for Projector, optional for CMake | Only its import library `OpenAL32.lib` is needed; the OpenAL headers are bundled in DeltaWorks (`Engine/al`). Projector finds it through the registry key `HKLM\SOFTWARE\Wow6432Node\Creative Labs\OpenAL 1.1 Software Development Kit\3.05` (or `3.03`) `InstallDir`. |
-| .NET Framework 4.0–4.6.1 developer packs | C# tools | ServerManager, Bake, DocumentationEditor, MetaServer. These are plain `.sln`/`.csproj` files that open directly in Visual Studio. |
-| .NET 10 SDK | Bug reporter, optional | Only for the optional bug reporter, see [bug-reporter.md](bug-reporter.md). |
+| .NET Framework 4.0–4.6.1 developer packs | C# tools | Bake, DocumentationEditor, MetaServer. These are plain `.sln`/`.csproj` files that open directly in Visual Studio. |
+| .NET 10 SDK | Server Manager, bug reporter | Server Manager (also needed by `repack.bat`) and the optional bug reporter, see [bug-reporter.md](bug-reporter.md). |
 | Git LFS | repository | `ArtWork/*.psd` is stored in LFS. Run `git lfs install` before cloning. |
 
 ## 2. Building with CMake
@@ -161,7 +161,7 @@ These locations matter: the programs find each other through them (`globalShared
 
 ## 5. C# tools
 
-Build the C# tools by opening their `.sln` files directly (`ServerManager/ServerManager.sln`, `BugReporter/BugReporter.sln`, `Bake/Bake.sln`, `DocumentationEditor/DocumentationEditor.sln`). Prebuilt copies of `ServerManager.exe` and `Bake.exe` are committed next to their sources. They aren't part of the CMake build. The optional bug reporter is an SDK-style .NET 10 project (`dotnet build BugReporter\BugReporter.csproj`); it isn't packaged by default, see [bug-reporter.md](bug-reporter.md).
+Build the C# tools by opening their `.sln` files directly (`ServerManager/ServerManager.sln`, `BugReporter/BugReporter.sln`, `Bake/Bake.sln`, `DocumentationEditor/DocumentationEditor.sln`). A prebuilt `Bake.exe` is committed next to its sources. The Server Manager is an SDK-style .NET 10 project; `repack.bat` and the release workflow publish it as a single self-contained `ServerManager\ServerManager.exe` that runs without an installed .NET runtime (`dotnet publish ServerManager\ServerManager.csproj -c Release -r win-x64 -o ServerManager`). None of the C# tools are part of the CMake build. The optional bug reporter is an SDK-style .NET 10 project (`dotnet build BugReporter\BugReporter.csproj`); it isn't packaged by default, see [bug-reporter.md](bug-reporter.md).
 
 ### Shaders and binary data
 
@@ -181,15 +181,16 @@ The `Bake` tool copies files that match a recipe into an output folder:
 repack.bat
 ```
 
-1. `Bake\Bake.exe mainBakeRecipe baked` uses `mainBakeRecipe.txt` and collects the game: client executables, shaders, fonts, resources, server, ControlConsole, ServerManager, Lua scripts, planets and so on.
-2. The result is zipped into `game.7z` with `7z.exe`, which must be on `PATH`.
-3. The same is repeated with `serverBakeRecipe.txt` to produce `server.7z`, a dedicated-server-only package.
+1. `dotnet publish` builds `ServerManager\ServerManager.exe`, which the recipes pick up.
+2. `Bake\Bake.exe mainBakeRecipe baked` uses `mainBakeRecipe.txt` and collects the game: client executables, shaders, fonts, resources, server, ControlConsole, ServerManager, Lua scripts, planets and so on.
+3. The result is zipped into `game.7z` with `7z.exe`, which must be on `PATH`.
+4. The same is repeated with `serverBakeRecipe.txt` to produce `server.7z`, a dedicated-server-only package.
 
 Recipe syntax: one path or wildcard pattern per line, relative to the repository root. The folder structure is kept in the output. `source/*.* -> target/*.*` copies matching files into a different folder (used to add the [bug reporter](bug-reporter.md#adding-it-to-a-release)).
 
 ### GitHub releases
 
-`.github/workflows/release.yml` does the same on GitHub Actions and publishes the result as a GitHub release. It builds Release x64 with CMake, runs Bake with both recipes, zips the output as `Hexaverse-<tag>-win64.zip` and `Hexaverse-Server-<tag>-win64.zip`, and creates the release with the newest `changelog.txt` section as its notes. It starts when a `v*` tag is pushed (`git tag v0.9.14 && git push origin v0.9.14`), or from the Actions tab (*Release → Run workflow*), which creates the tag on the chosen commit.
+`.github/workflows/release.yml` does the same on GitHub Actions and publishes the result as a GitHub release. It builds Release x64 with CMake, publishes the Server Manager, runs Bake with both recipes, zips the output as `Hexaverse-<tag>-win64.zip` and `Hexaverse-Server-<tag>-win64.zip`, and creates the release with the newest `changelog.txt` section as its notes. It starts when a `v*` tag is pushed (`git tag v0.9.14 && git push origin v0.9.14`), or from the Actions tab (*Release → Run workflow*), which creates the tag on the chosen commit.
 
 ### CI
 
