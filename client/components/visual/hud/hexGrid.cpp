@@ -1076,7 +1076,7 @@ namespace HexGrid
 
 	TGridConfig	GetGridConfig(float extraScale)
 	{
-		static const float CellSize = 0.075f;
+		static const float CellSize = 0.075f * 0.75f;	//default hex button size (reduced by 25%), further scaled by UI and button scale
 		static const float stepY = (0.5f + 1.f) * CellSize;
 		static const float stepX = 0.86602540378443864676372317075294f * CellSize;
 
