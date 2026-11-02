@@ -98,7 +98,7 @@ Important events are listed beneath, such as unit losses and attacks that occurr
 Left to right, the commands are:
 * **Undo** (shortcut: backspace): Drops the last task of the selected unit. Only applicable to active units.
 * **Abort**: Drops all tasks of the selected unit.
-* **Sleep**: Toggles sleep-state of the selected unit. Sleeping units are omitted in the [[concepts/idle|Idle Queue]].
+* **Sleep**: Toggles sleep-state of the selected unit. Sleeping units are omitted in the [[concepts/idle|Idle Queue]]. Most mobile units wake up when given a new job. Factories ([[units/structures/vehicle plant|vehicle plants]], [[units/structures/plane factory|plane factories]]) and [[units/turrets/mechanic|mechanic]] vehicles keep sleeping: new jobs are queued, but only start once the unit is woken up.
 * **Self Destruct**: Requests a confirmation, then instantly destroys the selected unit.
 * **Votes**: Shows active votes
 * **Messages**: Displays any waiting info messages. Pulses if there are any.

@@ -12,6 +12,8 @@
 
 This turret type can repair other structures and vehicles. It requires ![Minerals](../../../../documentation/images/Minerals.png) to initiate repair.
 
+Unlike most vehicles, a sleeping mechanic does not wake up when given new jobs. Repair (and other) jobs are queued and start once you wake the mechanic up with the [sleep](../../controls.md) command.
+
 ---
 
 [Game documentation index](../../README.md)

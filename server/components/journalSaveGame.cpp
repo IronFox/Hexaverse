@@ -868,7 +868,9 @@ namespace Journal
 			if (e->IsWorkingStructure())
 			{
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(e);
-				if (!ws->IsEnabled())
+				//Sleep is persistent: a sleeping producer (vehicle plant, plane factory) keeps sleeping (and thus disabled)
+				//when new production is queued. Production resumes once the structure is woken up.
+				if (!ws->IsEnabled() && !ws->IsSleeping())
 				{
 					ws->SetEnabled(true,t);
 				}
