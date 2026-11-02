@@ -12,6 +12,13 @@ namespace ConfigurationMode
 	void	SetActive(bool);
 	void	SetGameConfig(UINT32, RuntimeConfig::GameGoal, Grid::WorldDiscovery);
 	bool	IsActive();
+
+	/**
+	Loads a planet .ini file (as found in predefinedPlanets or the user's planet folder) into @a outConfig.
+	Does not alter the state of configuration mode.
+	@return true if the file could be loaded, false otherwise
+	*/
+	bool	LoadPlanetPreset(const PathString&file, Grid::ExtendedPlanetConfig&outConfig);
 	void	RandomizeSeed();
 
 	UINT32	GetServerSeed();
