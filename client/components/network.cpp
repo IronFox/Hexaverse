@@ -16,6 +16,7 @@
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
+#include "menuBackdrop.h"
 #include "gridControl.h"
 #include "visual/objectChoices.h"
 #include "visual/scene/terrain.h"
@@ -1638,6 +1639,7 @@ namespace Network
 
 
 				#ifdef HAS_WINDOW
+					MenuBackdrop::ClearIfShowing();	//server expects us to start from an empty terrain
 					World::allowRecompilation = false;	//until game begins
 					Tutorial::HideMessage("Servers");
 					Tutorial::lastDelayingEvent.Update();

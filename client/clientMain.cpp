@@ -73,6 +73,7 @@
 #include <serverProcess.h>
 #include "components/audio/audioInterface.h"
 #include "components/configurationMode.h"
+#include "components/menuBackdrop.h"
 #include "components/gridControl.h"
 #include "components/network.h"
 #include "components/animation.h"
@@ -2217,6 +2218,7 @@ int main( int argc, const char* argv[])
 		#ifdef HAS_WINDOW
 
 			Loading::Stage("Main Menu",HUD::Menu::Create);
+			Loading::Stage("Menu Backdrop",MenuBackdrop::Create);
 
 
 			Loading::Stage("Atmosphere",
