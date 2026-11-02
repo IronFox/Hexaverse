@@ -1,4 +1,5 @@
 v0.9.17
+	* Anti Aircraft no longer targets ground units on high plateaus inside its range. It only engages airborne targets
 	* Fixed Anti Aircraft towers on high ground (h=14 and above) not firing at planes they visibly had in range. The server now uses the same range shape the client displays
 	* Fixed units sometimes keeping a task in their task list that the server had already dropped (for example a Move To that failed on an obstruction), which could not be removed until the unit got a new order
 	> HUD: Hexagonal buttons are now 25% smaller by default (still adjustable via Button Scale)

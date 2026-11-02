@@ -178,6 +178,7 @@ namespace Test
 	/**
 	Checks that the anti-air reach at flight altitude does not depend on the height the turret is located at.
 	Turrets at h>=14 used to lose most of their reach while the client kept showing the full range.
+	Also checks that anti-air never targets cells within the terrain range (ground units).
 	*/
 	class AntiAirReach : public Test
 	{

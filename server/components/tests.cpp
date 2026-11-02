@@ -1582,6 +1582,9 @@ namespace Test
 				const Objects::TrajectoryEndPoint source(Grid::LCellIdI(towerStack,h),foundation);
 				if (!Turret::CanHit(Objects::TrajectoryType::AAMissile,flatRange,source,above))
 					Fail(CLOCATION,"Anti-air turret at height "+String(h)+" cannot hit a plane directly above it");
+				for (int groundH = Grid::CellStack::BottomHeight; groundH <= Grid::CellStack::TopHeight; groundH++)
+					if (Turret::CanHit(Objects::TrajectoryType::AAMissile,flatRange,source,Objects::TrajectoryEndPoint(Grid::LCellIdI(towerStack,groundH))))
+						Fail(CLOCATION,"Anti-air turret at height "+String(h)+" can hit ground level "+String(groundH));
 
 				Ctr::Vector<UINT32>	hits;
 				for (UINT32 s = 0; s < Grid::LowSetup::GridType::CellCount; s++)
