@@ -9,7 +9,7 @@ Different requirements apply for a unit to be considered *idle*:
 - A mine is currently disabled, is awake, and can be [enabled](compound.md).
 - A [nexus port](../units/structures/nexus-port.md) is owned, disabled, awake, and can be [enabled](compound.md).
 
-Units can be [put to sleep](../controls.md) to avoid them appearing in the idle queue.
+Units can be [put to sleep](../controls.md) to avoid them appearing in the idle queue. Sleep on factories and [mechanic](../units/turrets/mechanic.md) vehicles is persistent: queuing new jobs does not wake them up, so they stay out of the idle queue until you wake them.
 
 During [command phase](round.md) the ***space key*** can be used to go through the list of idle units. This feature is very useful to not miss units without jobs.
 If no unit is left in the idle queue, the [end round button](../controls.md) will flash.

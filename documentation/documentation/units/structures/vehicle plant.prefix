@@ -5,3 +5,5 @@
 *  [[concepts/scanning range|Scanning range]]: 2
 *  Consumes: %Minerals%10
 Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of %Minerals%, and %time%. A vehicle plant that does not have access to the necessary [[concepts/resources]] switches off immediately. Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure.
+
+Putting a vehicle plant to [[controls|sleep]] switches it off. Sleep is persistent: queuing new vehicles does not wake the plant up. Production starts once you wake it again.

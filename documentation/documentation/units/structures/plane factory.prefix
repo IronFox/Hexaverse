@@ -5,3 +5,5 @@
 *  [[concepts/scanning range|Scanning range]]: 2
 *  Consumes: %Fuel%20 %Minerals%20
 Plane factories produce planes
+
+Putting a plane factory to [[controls|sleep]] switches it off. Sleep is persistent: queuing new planes does not wake the factory up. Production starts once you wake it again.

@@ -6,3 +6,5 @@
 *  Base [[concepts/scanning range]]: 3
 *  Can repair other vehicles/structures
 This turret type can repair other structures and vehicles. It requires %Minerals% to initiate repair.
+
+Unlike most vehicles, a sleeping mechanic does not wake up when given new jobs. Repair (and other) jobs are queued and start once you wake the mechanic up with the [[controls|sleep]] command.
