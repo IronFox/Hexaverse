@@ -1130,6 +1130,16 @@ namespace Objects
 			return true;
 		}
 
+		/**
+		Determines whether assigning a new job to this entity while it is sleeping should wake it up.
+		Mechanic vehicles keep sleeping (their jobs remain queued until they are woken manually),
+		all other mobile entities wake up when given a job that is delayed by sleep.
+		*/
+		bool					MobileEntity::NewJobsEndSleep() const
+		{
+			return !(turret && turret->constName == ConstName::Turret_Mechanic);
+		}
+
 		void					MobileEntity::RegisterNewJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const Grid::LCellIdI*destination)
 		{
 			/*{
@@ -1152,7 +1162,7 @@ namespace Objects
 				constructionActionCounter = 0;
 			}
 
-			if (IsSleeping() && job->DelayedBySleep())
+			if (IsSleeping() && job->DelayedBySleep() && NewJobsEndSleep())
 			{
 				float t = 0.f;
 				SetSleep(false,t);
@@ -1179,7 +1189,7 @@ namespace Objects
 
 			BuildChecker checker(this);
 
-			if (IsSleeping() && job->DelayedBySleep())
+			if (IsSleeping() && job->DelayedBySleep() && NewJobsEndSleep())
 			{
 				float t = 0.f;
 				SetSleep(false,t);

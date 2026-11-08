@@ -71,6 +71,8 @@ If the type has state that clients need to show, extend the protocol and the ser
    typedef Selective5<MineState,ProducerState,NexusPortState,TowerState,PlantationState> ...;
    ```
 
+   `SelectiveN<...>` (`clientServerShared/protocol/serialBaseTypes.h`) is a serialization helper structure that can dynamically contain any one of the listed types (or none). `SetI()` selects option I and returns it for filling in; `GetI()` returns it, or `nullptr` if another option is active. Only the active option goes over the wire, after a one-byte index. Variants exist up to `Selective9`, so a sixth structure state means switching the typedef to `Selective6<..., NewState>`, and so on. Always append new types at the end, because the index is part of the wire and save format.
+
 2. **`server/components/state/gameState.cpp`**: in `Game::Network::Describe(Protocol::StructureState&, …)`, fill the sub-state, but only when the faction may see it (`expose & Expose::…`) and the matching change flag is set:
 
    ```cpp

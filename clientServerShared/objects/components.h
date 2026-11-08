@@ -341,6 +341,27 @@ namespace Objects
 
 			static float					GetHorizontalDistance(const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest);
 
+			/**
+			Anti-air reach is a flattened sphere (ellipsoid) around the sub-orbital flight altitude above the turret's stack.
+			The client renders exactly this shape (with flatRange + explosion radius), and the server uses it to decide
+			whether a target can be hit, so a tower can fire at whatever lies inside its displayed range.
+			*/
+			static constexpr float			AARangeHalfHeight = 3.f;	//!< Vertical half-extent of the anti-air range ellipsoid
+			/**
+			Distance from planet center of the anti-air range ellipsoid's center
+			@param flatRange Horizontal attack range of the turret
+			@param originHeight Height of the cell the turret is located in
+			*/
+			static float					GetAARangeCenterRadius(float flatRange, int originHeight);
+			/**
+			Checks whether a world location lies inside the anti-air range ellipsoid of a turret
+			@param flatRange Horizontal attack range of the turret. Determines the ellipsoid's center
+			@param origin Turret location. Only the stack and height of its cell are used
+			@param target World location to check
+			@param extension Distance by which to extend the ellipsoid both horizontally and vertically (e.g. to account for explosion radii)
+			*/
+			static bool						AARangeContains(float flatRange, const Grid::LCellIdI&origin, const M::TVec3<>&target, float extension=0.f);
+
 			static float					MaxRangeToVelocity(float range)
 			{
 				return sqrt(range*g);

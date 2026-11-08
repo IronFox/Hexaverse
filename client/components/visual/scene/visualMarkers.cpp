@@ -5,6 +5,7 @@
 #include "../../cameraControl.h"
 #include <objects/markers.h>
 #include <objects/faction.h>
+#include <objects/structure.h>
 
 
 namespace Objects { namespace VisualMarkers
@@ -142,8 +143,46 @@ namespace Objects { namespace VisualMarkers
 	}
 
 
+	namespace CaptureCountdown
+	{
+		struct Label
+		{
+			M::TVec3<>	screenLocation;
+			String		text;
+		};
+		Vector<Label>	labels;
+
+		/**
+		Projects the remaining capture rounds of all allied Nexus Ports that are currently being captured.
+		Must be called while the scene camera is active.
+		*/
+		void	Update()
+		{
+			labels.Clear();
+			if (!Objects::objectView)
+				return;
+			structures.Foreach([](const Objects::PStructure&s)
+			{
+				const NexusPort*np = dynamic_cast<const NexusPort*>(s.get());
+				if (!np || np->resistance <= 0 || !np->IsEnabled() || !np->owner || !np->owner->IsAlliedWithMe())
+					return;
+				const float h = Grid::GetLayerHeight(np->location.height);
+				M::TVec3<> center;
+				Vec::mad(np->system.w.xyz,np->system.z.xyz,h*(1.f + np->GetHeight()),center);
+				Label l;
+				if (Camera::scene.Project(center,l.screenLocation))
+				{
+					l.text = String(np->resistance);
+					labels << l;
+				}
+			});
+		}
+	}
+
+
 	void	Render( )
 	{
+		CaptureCountdown::Update();
 		namespace Debug = Debug::Details;
 		if (Debug::markers.IsEmpty() && Objects::MarkerStore::client.GetArtifacts().allianceDefs.IsEmpty())
 			return;
@@ -200,7 +239,7 @@ namespace Objects { namespace VisualMarkers
 	void	RenderText( )
 	{
 		namespace Debug = Debug::Details;
-		if (Debug::markers.IsEmpty() && Objects::MarkerStore::client.GetArtifacts().allianceDefs.IsEmpty())
+		if (Debug::markers.IsEmpty() && Objects::MarkerStore::client.GetArtifacts().allianceDefs.IsEmpty() && CaptureCountdown::labels.IsEmpty())
 			return;
 
 		display.StoreRendererState();
@@ -209,6 +248,14 @@ namespace Objects { namespace VisualMarkers
 
 		textout.PushState();
 		textout.Scale(2.f);
+
+		foreach (CaptureCountdown::labels,l)
+		{
+			Locate(l->screenLocation);
+			textout.SetColor(float3(1,0.5,0.4));
+			textout << l->text;
+		}
+
 		foreach (Debug::markers,m)
 			if (m->labelVisible)
 			{

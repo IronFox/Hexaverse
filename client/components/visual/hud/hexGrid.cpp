@@ -1076,11 +1076,11 @@ namespace HexGrid
 
 	TGridConfig	GetGridConfig(float extraScale)
 	{
-		static const float CellSize = 0.075f;
+		static const float CellSize = 0.075f * 0.75f;	//default hex button size (reduced by 25%), further scaled by UI and button scale
 		static const float stepY = (0.5f + 1.f) * CellSize;
 		static const float stepX = 0.86602540378443864676372317075294f * CellSize;
 
-		const float scale = UI::GetScale()*extraScale;
+		const float scale = UI::GetScale()*UI::GetButtonScale()*extraScale;
 		TGridConfig rs;
 		rs.cellSize = CellSize * scale;
 		rs.stepX = stepX * scale;
@@ -1091,6 +1091,19 @@ namespace HexGrid
 	TGridConfig	GetGridConfig()
 	{
 		return GetGridConfig(hexGridScale);
+	}
+
+	float		GetTopRightLowerEdge()
+	{
+		const auto cfg = GetGridConfig();
+		float lowest = 1.f;
+		foreach (region[Anchor::TopRight].allGuiCells,c)
+		{
+			//hexagons are pointy-top, with their corners cellSize away from the center
+			const float bottom = c->ToFloatCoords(cfg,Anchor::TopRight).y - cfg.cellSize;
+			lowest = M::Min(lowest, bottom * 0.5f + 0.5f);
+		}
+		return lowest;
 	}
 
 	void			UpdateAllCells()
@@ -1205,6 +1218,7 @@ namespace HexGrid
 	void						Create()
 	{
 		GlobalEvents::uiScaleChanged += OnScreenResize;	//mostly the same effect
+		GlobalEvents::buttonScaleChanged += OnScreenResize;
 
 		center.Create(float4());
 		visualCodeRGB_CellSize.Create(float4(1));
