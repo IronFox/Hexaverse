@@ -719,37 +719,41 @@ namespace ConfigurationMode
 			Query(sub,"dampening",layer.dampening);
 		}
 
-		void	LoadPlanetFrom( const Configuration&cfg )
+		void	ReadPlanetConfig( const Configuration&cfg, Grid::ExtendedPlanetConfig&target )
 		{
-			Query(cfg,"atmosphereDensity",config.atmosphereColor.a);
-			QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",config.innerCoreType);
+			Query(cfg,"atmosphereDensity",target.atmosphereColor.a);
+			QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",target.innerCoreType);
 
 			if (const Config::Context*sub = cfg.GetContext("ExtendedCore"))
 			{
-				QueryMappedEnum<Grid::Content>(*sub,"type",config.extendedCoreType);
-				ImportConfig(*sub,config.extendedCore);
+				QueryMappedEnum<Grid::Content>(*sub,"type",target.extendedCoreType);
+				ImportConfig(*sub,target.extendedCore);
 			}
 			else
 				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'ExtendedCore'");
 					
 			if (const Config::Context*sub = cfg.GetContext("Mountains"))
 			{
-				QueryMappedEnum<Grid::Content>(*sub,"type",config.type);
-				Query(*sub,"snowHeight",config.snowHeight);
-				ImportConfig(*sub,config.mountains);
+				QueryMappedEnum<Grid::Content>(*sub,"type",target.type);
+				Query(*sub,"snowHeight",target.snowHeight);
+				ImportConfig(*sub,target.mountains);
 			}
 			else
 				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Mountains'");
 
 			if (const Config::Context*sub = cfg.GetContext("Liquid"))
 			{
-				QueryMappedEnum<Grid::Content>(*sub,"type",config.liquidCoverage);
-				Query(*sub,"level",config.liquidHeight);
-				QueryMappedEnum<Grid::Content>(*sub,"outline",config.liquidOutline);
+				QueryMappedEnum<Grid::Content>(*sub,"type",target.liquidCoverage);
+				Query(*sub,"level",target.liquidHeight);
+				QueryMappedEnum<Grid::Content>(*sub,"outline",target.liquidOutline);
 			}
 			else
 				LogEvent(EventClass::Preset::configurationError,"Unable to fetch 'Liquid'");
-				
+		}
+
+		void	LoadPlanetFrom( const Configuration&cfg )
+		{
+			ReadPlanetConfig(cfg,config);
 
 			//if (warnings.IsNotEmpty())
 			//{
@@ -1315,6 +1319,29 @@ namespace ConfigurationMode
 	{
 		using namespace Detail;
 		return isActive;
+	}
+
+	bool	LoadPlanetPreset(const PathString&file, Grid::ExtendedPlanetConfig&outConfig)
+	{
+		using namespace Detail;
+		Configuration cfg;
+		if (!cfg.LoadFromFile(file))
+		{
+			LogEvent(EventClass::Preset::configurationError,cfg.Report());
+			return false;
+		}
+		outConfig = Grid::ExtendedPlanetConfig();
+		ReadPlanetConfig(cfg,outConfig);
+		//plant densities are optional in planet files
+		if (const Config::Context*sub = cfg.GetContext("Plants"))
+		{
+			String value;
+			if (sub->QueryString("crystalDensity",value))
+				convert(value.c_str(),value.GetLength(),outConfig.crystalDensity);
+			if (sub->QueryString("treeDensity",value))
+				convert(value.c_str(),value.GetLength(),outConfig.treeDensity);
+		}
+		return true;
 	}
 
 	bool	DefineHexCommands()

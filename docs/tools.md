@@ -1,11 +1,11 @@
 # Tools
 
-Besides the client and the server, the repository contains several helper programs. The C++ ones are built with CMake or Projector (see [building.md](building.md)). The C# ones are plain Visual Studio solutions for .NET Framework 4.x.
+Besides the client and the server, the repository contains several helper programs. The C++ ones are built with CMake or Projector (see [building.md](building.md)). The C# ones are Visual Studio solutions: Server Manager and BugReporter target .NET 10, the others .NET Framework 4.x.
 
 | Tool | Language | Folder | Shipped to players | Purpose |
 |---|---|---|:-:|---|
 | ControlConsole | C++ | `ControlConsole/` | ✓ | Command-line remote control of local servers |
-| Server Manager | C# (WinForms) | `ServerManager/` | ✓ | GUI to start, configure, monitor and stop local servers |
+| Server Manager | C# (WinForms, .NET 10) | `ServerManager/` | ✓ | GUI to start, configure, monitor and stop local servers |
 | BugReporter | C# (WinForms, .NET 10) | `BugReporter/` | ✗ | Optional crash reporter: collects logs and uploads them to your own server or saves them as a .zip. Not in the default packages |
 | Bake | C# (console) | `Bake/` | – | Copies release files by recipe (packaging) |
 | BuildCounter | C++ | `BuildCounter/` | – | Increments the client build number before each build |
@@ -33,7 +33,7 @@ The full command reference is in [running.md §6](running.md#6-control-console) 
 - connect a control console, save the game, open the log, or resume, stop or terminate a server,
 - start the client (**Launch Client**).
 
-Servers it starts are *dependent* and run without a console window. Only one Server Manager can run per machine. The `Protocol` sub-project (`ServerManager/Protocol/`, `Protocol.dll`) holds the message definitions it shares with the server. A prebuilt `ServerManager.exe` is committed.
+Servers it starts are *dependent* and run without a console window. Only one Server Manager can run per machine. The `Protocol` sub-project (`ServerManager/Protocol/`, `Protocol.dll`) holds the message definitions it shares with the server. `ServerManager.exe` isn't committed: `repack.bat` and the release workflow publish it as a single self-contained exe (about 50 MB, no .NET runtime needed on the player's machine) with `dotnet publish ServerManager\ServerManager.csproj -c Release -r win-x64 -o ServerManager`.
 
 ## BugReporter
 

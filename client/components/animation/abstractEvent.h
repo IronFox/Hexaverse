@@ -47,6 +47,7 @@ namespace Animation
 		virtual bool			IsWorldDelta() const {return false;}
 		virtual bool			IsMobileEntityMotion() const {return false;}
 		virtual bool			IsMobileState() const {return false;}
+		virtual bool			IsStructureState() const {return false;}
 		virtual bool			IsEntityDestruction() const {return false;}
 		virtual bool			IsEntityCreation() const {return false;}
 	};

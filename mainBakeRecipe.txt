@@ -38,4 +38,3 @@ server/*.dll
 
 ControlConsole/ControlConsole*.exe
 ServerManager/ServerManager.exe
-ServerManager/Protocol.dll

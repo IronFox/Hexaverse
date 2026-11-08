@@ -13,6 +13,7 @@ namespace Animation
 		virtual void			End() override	{};
 		virtual void			Update(float x) override	{};
 		virtual D::String		Describe() const override;
+		virtual bool			IsStructureState() const override {return true;}
 
 
 		static void				Apply(const Objects::PStructure&, Protocol::StructureState&);

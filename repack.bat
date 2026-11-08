@@ -6,6 +6,9 @@ set rs2="server.7z"
 del %rs1% /Q
 del %rs2% /Q
 
+dotnet publish ServerManager\ServerManager.csproj -c Release -r win-x64 -o ServerManager
+IF "%errorlevel%" NEQ "0" goto failed
+
 Bake\Bake.exe mainBakeRecipe baked
 IF "%errorlevel%" NEQ "0" goto failed
 

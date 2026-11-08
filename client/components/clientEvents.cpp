@@ -18,7 +18,8 @@ namespace GlobalEvents
 		Observable<>frameAfterCamera,
 					shadowQualityChanged,
 					windowSizeChanged,
-					uiScaleChanged;
+					uiScaleChanged,
+					buttonScaleChanged;
 
 		Observable<bool>	onFullscreenChange;
 	#endif

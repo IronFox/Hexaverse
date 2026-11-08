@@ -11,6 +11,8 @@
 
 Plane factories produce planes
 
+Putting a plane factory to [sleep](../../controls.md) switches it off. Sleep is persistent: queuing new planes does not wake the factory up. Production starts once you wake it again.
+
 ---
 
 [Game documentation index](../../README.md)

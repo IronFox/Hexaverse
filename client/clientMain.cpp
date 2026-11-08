@@ -74,6 +74,7 @@
 #include "components/audio/audioInterface.h"
 #include <network/steamInterface.h>
 #include "components/configurationMode.h"
+#include "components/menuBackdrop.h"
 #include "components/gridControl.h"
 #include "components/network.h"
 #include "components/animation.h"
@@ -1051,6 +1052,8 @@ namespace ApplicationInterface
 
 
 #ifdef HAS_WINDOW
+	void	UpdateFontScale();
+
 	void RenderShadows(float shadowRadius, DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<M::TMatrix4<> >&shadowMatrix
 	#ifdef CASCADING_SHADOW
 		,index_t cascade
@@ -1405,6 +1408,9 @@ bool loop()
 			display.SetDepthTest(false,false);
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
+			//re-apply the UI scale each frame: the global text scale can otherwise go stale
+			//(e.g. after the loading screen or when changed while a text state was pushed)
+			UpdateFontScale();
 			textout.SetColor(1,1,1);
 
 			if (InputControl::saveScreenshot)
@@ -2007,6 +2013,7 @@ int main( int argc, const char* argv[])
 				TimeLapse::maxCompressionPNG = StartConfig::GetBool("timelapse/maxCompressionPNG");
 				
 				UI::SetScale(StartConfig::GetFloat("runtime/uiScale",1.f));
+				UI::SetButtonScale(StartConfig::GetFloat("runtime/buttonScale",1.f));
 
 				Explosions::maxConcurrentParticles = StartConfig::GetFloat("runtime/maxExplosionParticles",2000);
 				Camera::terrainIntersectionTest = StartConfig::GetBool("runtime/terrainCameraIntersectionCorrection",true);
@@ -2231,6 +2238,7 @@ int main( int argc, const char* argv[])
 		#ifdef HAS_WINDOW
 
 			Loading::Stage("Main Menu",HUD::Menu::Create);
+			Loading::Stage("Menu Backdrop",MenuBackdrop::Create);
 
 
 			Loading::Stage("Atmosphere",

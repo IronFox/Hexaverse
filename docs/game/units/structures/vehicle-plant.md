@@ -11,6 +11,8 @@
 
 Enabled vehicle plants produce vehicles of arbitrary configuration at the expense of ![Minerals](../../../../documentation/images/Minerals.png), and ![Time](../../../../documentation/images/Time.png). A vehicle plant that does not have access to the necessary [resources](../../concepts/resources.md) switches off immediately. Vehicle plants should be placed so that any produced vehicles can stand in the immediate surroundings of the structure.
 
+Putting a vehicle plant to [sleep](../../controls.md) switches it off. Sleep is persistent: queuing new vehicles does not wake the plant up. Production starts once you wake it again.
+
 ---
 
 [Game documentation index](../../README.md)

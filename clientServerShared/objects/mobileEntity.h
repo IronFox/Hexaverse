@@ -343,6 +343,7 @@ namespace Objects
 			bool				PlotCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
 			bool				PlotFrontCourse(MutableArrayRef<Grid::LCellIdI> destination, bool detailedPath);
 			virtual	void		SetupSystem() override {UpdateSystem();}
+			bool				NewJobsEndSleep() const;
 			void				RegisterNewJob(
 										const String&localizableShapeIdentifier,
 										const PVehicleJob&job, const Grid::LCellIdI*focus);
