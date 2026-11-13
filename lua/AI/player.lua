@@ -37,7 +37,7 @@ Structure
 -------------------------------------------------------------------------------
 
 Cfg = {
-	stateVersion = 1,
+	stateVersion = 2,
 	logPrefix = 'Player AI: ',
 	verbose = true,
 
@@ -46,6 +46,8 @@ Cfg = {
 	constructorsLate = 5,
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
+	maxSurveyorsDeep = 3,		-- once underground activity is suspected
+	aaPerCombat = 4,			-- one AA per N combat units, once air activity is known
 
 	-- posture
 	attackMinUnits = 8,			-- combat units needed before attacking
@@ -230,7 +232,10 @@ Region
 	Cell[]		cells;
 	{id->true}	neighbors;
 	-- memory (persisted)
-	int			lastSeen;		-- round, -1 = never
+	int			lastSeen;		-- round the ground layer was last covered, -1 = never
+	int			lastSeenAir;	-- same for the air (suborbital) layer: AA, planes
+	int			lastSeenDeep;	-- same for underground: surveyor vehicles/towers
+	float		airThreat;		-- remembered hostile plane presence
 	float		mobileThreat;	-- remembered hostile mobile damage potential
 	float		staticThreat;	-- remembered hostile structure damage potential
 	int			hostileStructures;
@@ -267,6 +272,7 @@ function Map.Build()
 	local n = #cells;
 	local k = math.max(24, math.min(96, math.floor(n / 40)));
 	Map.groundRadius = Game.Grid.HeightToRadius(0);
+	Map.airRadius = Game.Grid.HeightToRadius(Game.Grid.suborbitalHeight or 0);
 
 	-- deterministic farthest point sampling (same regions on every client restart)
 	local step = math.max(1, math.floor(n / 4000));
@@ -295,8 +301,8 @@ function Map.Build()
 	for i,s in ipairs(seeds) do
 		Map.regions[i] = {
 			id = i, center = s.center, centerCell = s, cells = {}, neighbors = {},
-			lastSeen = -1, mobileThreat = 0, staticThreat = 0, hostileStructures = 0, deaths = 0,
-			seenNow = false, myStructures = 0, myMobiles = 0, myStrength = 0,
+			lastSeen = -1, lastSeenAir = -1, lastSeenDeep = -1, airThreat = 0, mobileThreat = 0, staticThreat = 0, hostileStructures = 0, deaths = 0,
+			seenNow = false, seenAirNow = false, seenDeepNow = false, myStructures = 0, myMobiles = 0, myStrength = 0,
 		};
 	end;
 
@@ -339,6 +345,11 @@ function Map.WorldCenter(r)
 	return {x=r.center.x*g, y=r.center.y*g, z=r.center.z*g};
 end;
 
+function Map.AirCenter(r)
+	local g = Map.airRadius or Map.groundRadius;
+	return {x=r.center.x*g, y=r.center.y*g, z=r.center.z*g};
+end;
+
 -- Region graph distance (BFS hops) from a set of start regions
 function Map.Hops(startIds)
 	local dist = {};
@@ -368,6 +379,8 @@ Mem = {
 	posture = 'defend',		-- 'defend' | 'attack'
 	attackTarget = nil,		-- region id
 	homeRegion = nil,		-- region id
+	airSeen = -1,			-- round hostile air activity (planes, plane factories) was last sensed
+	deepSeen = -1,			-- round hostile underground activity was last sensed or suspected
 	pendingImport = nil,
 	blacklist = {},			-- cell index -> round until which build attempts are skipped
 	jobs = {},				-- unit id -> {kind, cell, since, at}  (transient, not exported)
@@ -379,9 +392,11 @@ function ExportState()
 	end;
 	local r = {};
 	for i,reg in ipairs(Map.regions) do
-		if reg.lastSeen >= 0 or reg.staticThreat > 0 or reg.deaths > 0 then
-			-- flat record: lastSeen, mobile threat, static threat, hostile structures, deaths
-			r[#r+1] = {i, reg.lastSeen, math.floor(reg.mobileThreat*10)/10, math.floor(reg.staticThreat*10)/10, reg.hostileStructures, reg.deaths};
+		if reg.lastSeen >= 0 or reg.lastSeenAir >= 0 or reg.lastSeenDeep >= 0 or reg.staticThreat > 0 or reg.deaths > 0 then
+			-- flat record: id, lastSeen (ground, air, deep), mobile threat, static threat, hostile structures, deaths, air threat
+			r[#r+1] = {i, reg.lastSeen, reg.lastSeenAir, reg.lastSeenDeep,
+				math.floor(reg.mobileThreat*10)/10, math.floor(reg.staticThreat*10)/10,
+				reg.hostileStructures, reg.deaths, math.floor(reg.airThreat*10)/10};
 		end;
 	end;
 	return {
@@ -390,6 +405,8 @@ function ExportState()
 		posture = Mem.posture,
 		target = Mem.attackTarget or 0,
 		home = Mem.homeRegion or 0,
+		air = Mem.airSeen,
+		deep = Mem.deepSeen,
 		r = r,
 	};
 end;
@@ -410,15 +427,20 @@ function ApplyImport()
 	Mem.posture = (s.posture == 'attack') and 'attack' or 'defend';
 	if s.target and s.target > 0 then Mem.attackTarget = s.target; end;
 	if s.home and s.home > 0 then Mem.homeRegion = s.home; end;
+	Mem.airSeen = s.air or -1;
+	Mem.deepSeen = s.deep or -1;
 	if type(s.r) == 'table' then
 		for _,rec in ipairs(s.r) do
 			local reg = Map.regions[rec[1]];
 			if reg then
 				reg.lastSeen = rec[2] or -1;
-				reg.mobileThreat = rec[3] or 0;
-				reg.staticThreat = rec[4] or 0;
-				reg.hostileStructures = rec[5] or 0;
-				reg.deaths = rec[6] or 0;
+				reg.lastSeenAir = rec[3] or -1;
+				reg.lastSeenDeep = rec[4] or -1;
+				reg.mobileThreat = rec[5] or 0;
+				reg.staticThreat = rec[6] or 0;
+				reg.hostileStructures = rec[7] or 0;
+				reg.deaths = rec[8] or 0;
+				reg.airThreat = rec[9] or 0;
 			end;
 		end;
 	end;
@@ -461,13 +483,24 @@ function Sense.Update()
 
 	for _,reg in ipairs(Map.regions) do
 		reg.seenNow = false;
+		reg.seenAirNow = false;
+		reg.seenDeepNow = false;
 		reg.myStructures = 0;
 		reg.myMobiles = 0;
 		reg.myStrength = 0;
 	end;
 
 	-- my units, and what they currently observe
-	local observers = {};
+	--[[
+	Three separate sensor layers:
+	* ground: regular scanning range of ground units/structures, and ground scanning of airborne sensor planes.
+	  Barely penetrates the ground
+	* air: suborbital scanning (AA, planes). Regular radar can't see planes
+	* deep: units with resource-detecting turrets (surveyors). Deep, but short horizontal range
+	]]
+	local observers = {};		-- {pos=Vector, range=float} for the ground layer
+	local airObservers = {};
+	local deepObservers = {};
 	local sx, sy, sz, sc = 0, 0, 0, 0;
 	for _,u in pairs(Game.myUnits) do
 		local reg = Map.RegionOfLoc(u.location);
@@ -496,8 +529,28 @@ function Sense.Update()
 			local w = u.location.world;
 			sx, sy, sz, sc = sx + w.x, sy + w.y, sz + w.z, sc + 1;
 		end;
-		if u.scanningRange and u.scanningRange > 0 and not u.location.isSuborbital then
-			observers[#observers+1] = u;
+		local w = u.location.world;
+		if u.location.isSuborbital then
+			if u.groundScanningRange and u.groundScanningRange > 0 then
+				-- distance measured at suborbital height (see Util.CheckVisibility)
+				observers[#observers+1] = {pos=w, range=u.groundScanningRange, air=true};
+			end;
+			if u.scanningRange and u.scanningRange > 0 then
+				airObservers[#airObservers+1] = {pos=w, range=u.scanningRange};
+			end;
+		else
+			if u.scanningRange and u.scanningRange > 0 then
+				observers[#observers+1] = {pos=w, range=u.scanningRange};
+			end;
+			if u.suborbitalScanningRange and u.suborbitalScanningRange > 0 then
+				local ok, sub = pcall(Util.ToSuborbit, u.location);
+				if ok and sub then
+					airObservers[#airObservers+1] = {pos=sub.world, range=u.suborbitalScanningRange};
+				end;
+			end;
+			if u.turret and u.turret.type.detectsResources and u.scanningRange then
+				deepObservers[#deepObservers+1] = {pos=w, range=u.scanningRange};
+			end;
 		end;
 	end;
 
@@ -529,23 +582,59 @@ function Sense.Update()
 		Mem.homeRegion = home;
 	end;
 
-	-- which regions are observed right now: region center within any observer's ground scanning range
+	-- which regions are observed right now, per layer: region center within an observer's range
+	local function Covered(list, groundCenter, airCenter)
+		for _,o in ipairs(list) do
+			local c = o.air and airCenter or groundCenter;
+			if Dist2(o.pos, c) <= o.range*o.range then
+				return true;
+			end;
+		end;
+		return false;
+	end;
+	local refUnit = Sense.my.constructor[1] or Sense.my.combat[1] or Sense.my.radar[1] or Sense.my.surveyor[1];
 	for _,reg in ipairs(Map.regions) do
 		local c = Map.WorldCenter(reg);
-		for _,o in ipairs(observers) do
-			local r = o.scanningRange;
-			if Dist2(o.location.world, c) <= r*r then
-				reg.seenNow = true;
-				reg.lastSeen = round;
-				break;
-			end;
+		local a = Map.AirCenter(reg);
+		-- Ground: range is only a pre-filter. Rock casts shadows, so the engine's actual sensor
+		-- grid decides (sampled at a few surface points of the region)
+		if Covered(observers, c, a) and Sense.GroundVisible(reg, refUnit) then
+			reg.seenNow = true;
+			reg.lastSeen = round;
+		end;
+		if Covered(airObservers, a, a) then
+			reg.seenAirNow = true;
+			reg.lastSeenAir = round;
+		end;
+		if Covered(deepObservers, c, c) then
+			reg.seenDeepNow = true;
+			reg.lastSeenDeep = round;
 		end;
 	end;
 
 	-- hostile presence: what is sensed now replaces memory of seen regions
-	local seenMobile, seenStatic, seenStructs = {}, {}, {};
+	local seenMobile, seenStatic, seenStructs, seenAir = {}, {}, {}, {};
 	for _,e in pairs(Game.hostileUnits) do
+		if e.health > 0 and e.location.isSuborbital then
+			local reg = Map.RegionOfLoc(e.location);
+			if reg then
+				seenAir[reg.id] = (seenAir[reg.id] or 0) + math.max(DamagePotential(e), 1);
+			end;
+			if e.owner == nil or not e.owner.alliance or e.owner.alliance ~= Game.myFaction.alliance then
+				Mem.airSeen = round;
+			end;
+		end;
 		if e.health > 0 and not e.location.isSuborbital then
+			-- the hostile can build or launch planes: air coverage matters from now on
+			if e.type.name == 'Plane Factory' or (e.type.isSuborbitalPlane) then
+				Mem.airSeen = round;
+			end;
+			-- sensed clearly below the surface, or digging: underground coverage matters
+			if (e.location.height or 0) <= -3 or (e.turret and e.turret.type.canRemoveTerrain) then
+				if (e.location.height or 0) <= -3 then
+					Mem.deepSeen = round;
+				end;
+			end;
 			local reg = Map.RegionOfLoc(e.location);
 			if reg then
 				local id = reg.id;
@@ -573,6 +662,12 @@ function Sense.Update()
 			if seenStructs[id] then reg.hostileStructures = math.max(reg.hostileStructures, seenStructs[id]); end;
 			if reg.mobileThreat < 0.5 then reg.mobileThreat = 0; end;
 		end;
+		if reg.seenAirNow then
+			reg.airThreat = seenAir[id] or 0;
+		else
+			reg.airThreat = math.max(reg.airThreat * Cfg.mobileThreatDecay, seenAir[id] or 0);
+			if reg.airThreat < 0.5 then reg.airThreat = 0; end;
+		end;
 	end;
 
 	-- unexplained deaths of my units: something we can't see is dangerous there
@@ -582,6 +677,14 @@ function Sense.Update()
 				local reg = Map.RegionOfLoc(m.location);
 				if reg then
 					reg.deaths = reg.deaths + 1;
+					-- a loss inside my territory that no sensed hostile explains: maybe undermined
+					if (reg.myStructures > 0 or reg.id == Mem.homeRegion) and reg.mobileThreat == 0 and reg.staticThreat == 0 then
+						if reg.airThreat > 0 or Mem.airSeen >= round - 3 then
+							Mem.airSeen = round;
+						else
+							Mem.deepSeen = round;
+						end;
+					end;
 				end;
 			end;
 		end;
@@ -618,15 +721,75 @@ function Sense.Update()
 	Sense.hops = Map.Hops(Sense.myRegionIds);
 end;
 
+--[[
+Surface sample points per region (cached; terrain changes slowly, unknown terrain has no surface yet)
+]]
+Sense.surfaceCache = {};	-- cell index -> {loc=Loc|false, round=int}
+
+function Sense.SamplesOf(reg)
+	if reg.samples == nil then
+		local s = {reg.centerCell};
+		local n = #reg.cells;
+		if n > 2 then
+			s[#s+1] = reg.cells[math.floor(n/3)+1];
+			s[#s+1] = reg.cells[math.floor(2*n/3)+1];
+		end;
+		reg.samples = s;
+	end;
+	return reg.samples;
+end;
+
+function Sense.SurfaceAt(cell, refUnit)
+	local e = Sense.surfaceCache[cell.index];
+	if e and (e.loc or Sense.round - e.round < 5) and Sense.round - e.round < 20 then
+		return e.loc or nil;
+	end;
+	local loc = false;
+	if refUnit then
+		local ok, l = pcall(Game.Grid.FindHighestVehicleGround, refUnit, cell);
+		if ok and l then loc = l; end;
+	end;
+	Sense.surfaceCache[cell.index] = {loc=loc, round=Sense.round};
+	return loc or nil;
+end;
+
+function Sense.GroundVisible(reg, refUnit)
+	if not Game.Terrain or not Game.Terrain.GetLowestSensorStrength then
+		return true;	-- API unavailable: fall back to range only
+	end;
+	for _,cell in ipairs(Sense.SamplesOf(reg)) do
+		local loc = Sense.SurfaceAt(cell, refUnit);
+		if loc then
+			local ok, strength = pcall(Game.Terrain.GetLowestSensorStrength, loc, 1);
+			if ok and strength and strength > 0 then
+				return true;
+			end;
+		end;
+	end;
+	return false;
+end;
+
 function Sense.Threat(reg)
 	return reg.mobileThreat + reg.staticThreat + reg.deaths * 2;
 end;
 
-function Sense.Staleness(reg)
-	if reg.lastSeen < 0 then
+function Sense.Staleness(reg, layer)
+	local last = reg.lastSeen;
+	if layer == 'air' then last = reg.lastSeenAir;
+	elseif layer == 'deep' then last = reg.lastSeenDeep; end;
+	if last < 0 then
 		return 1000;
 	end;
-	return Sense.round - reg.lastSeen;
+	return Sense.round - last;
+end;
+
+-- Does a layer currently matter? Weight decays if the enemy hasn't shown that capability for a while
+function Sense.AirMatters()
+	return Mem.airSeen >= 0 and Sense.round - Mem.airSeen < 80;
+end;
+
+function Sense.DeepMatters()
+	return Mem.deepSeen >= 0 and Sense.round - Mem.deepSeen < 60;
 end;
 
 
@@ -792,6 +955,9 @@ function Economy.NextStructure(constructorIndex)
 			end;
 		end;
 	end;
+	if Types.aaTower and Sense.AirMatters() and Types.IsUnlocked(Types.aaTower) and Economy.Count(Types.aaTower) < 2 then
+		return {type=Types.aaTower, kind='tower'};
+	end;
 	if Economy.Count(Types.mine) < 4 + math.floor(round / 10) then
 		local res = 'Minerals';
 		if bal.fuel <= 0 then res = 'Fuel'; end;
@@ -955,7 +1121,12 @@ function Economy.NextVehicle()
 	if #my.radar < 1 + math.floor(#my.combat / Cfg.radarPerCombat) then
 		return Types.Vehicle(Types.turret.radar, hover);
 	end;
-	if #my.surveyor < Cfg.maxSurveyors and Sense.round > 10 then
+	if Sense.AirMatters() and #my.aa * Cfg.aaPerCombat < #my.combat + 2 then
+		local aa = Types.Vehicle(Types.turret.aa, hover);
+		if aa then return aa; end;
+	end;
+	local wantSurveyors = Sense.DeepMatters() and Cfg.maxSurveyorsDeep or Cfg.maxSurveyors;
+	if #my.surveyor < wantSurveyors and Sense.round > 10 then
 		return Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
 	end;
 	-- mostly cannons, some artillery once available
@@ -1160,17 +1331,18 @@ function Military.Scouts()
 	local taken = {};
 	local scouts = {};
 	for _,u in ipairs(Sense.my.radar) do scouts[#scouts+1] = u; end;
-	-- before radars exist, the starting surveyor/artillery do some looking around
 	for _,u in ipairs(Sense.my.surveyor) do scouts[#scouts+1] = u; end;
 
 	for _,v in ipairs(scouts) do
+		local deep = v.turret and v.turret.type.detectsResources;
+		local layer = deep and 'deep' or 'ground';
 		SafeCall('scout '..v.niceName, function()
 			local myReg = Map.RegionOfLoc(v.location);
 			local best, bestScore = nil, nil;
 			for _,reg in ipairs(Map.regions) do
 				if not taken[reg.id] then
 					local hops = Sense.hops[reg.id] or 30;
-					local stale = math.min(Sense.Staleness(reg), 60);
+					local stale = math.min(Sense.Staleness(reg, layer), 60);
 					-- what we care about: frontier and enemy regions, and finding enemies at all
 					local importance = 1;
 					if Sense.frontier[reg.id] then importance = importance + 3; end;
@@ -1178,11 +1350,15 @@ function Military.Scouts()
 					if #Sense.enemyRegions == 0 then importance = importance + 1; end;
 					local danger = Sense.Threat(reg);
 					local score = stale * importance / (1 + hops) / (1 + danger);
-					if v.type.isMobile and v.turret and v.turret.type.detectsResources then
-						-- surveyors stay close to home and look for resources
+					if deep then
+						-- surveyors: short horizontal range, so they patrol close to home.
+						-- With suspected underground activity they sweep my own regions first
 						score = score / (1 + hops * hops);
+						if Sense.DeepMatters() and Sense.mine[reg.id] then
+							score = score * 4;
+						end;
 					end;
-					if stale >= Cfg.staleRounds or reg.lastSeen < 0 then
+					if stale >= Cfg.staleRounds then
 						if bestScore == nil or score > bestScore then
 							best, bestScore = reg, score;
 						end;
@@ -1202,12 +1378,21 @@ end;
 
 -- AA follows the largest concentration of my units
 function Military.AA()
-	for _,v in ipairs(Sense.my.aa) do
+	-- spread AA over my regions, most air-threatened and most built-up first
+	local targets = {};
+	for id,_ in pairs(Sense.mine) do
+		local reg = Map.regions[id];
+		local nearAir = reg.airThreat;
+		for nb,_ in pairs(reg.neighbors) do nearAir = nearAir + Map.regions[nb].airThreat * 0.5; end;
+		targets[#targets+1] = {reg=reg, score=reg.myStructures + nearAir * 5};
+	end;
+	table.sort(targets, function(a,b) return a.score > b.score end);
+	for i,v in ipairs(Sense.my.aa) do
 		SafeCall('aa '..v.niceName, function()
 			Military.Fire(v);
-			if Mem.homeRegion then
-				local reg = Map.regions[Mem.homeRegion];
-				Move.Towards(v, Map.WorldCenter(reg), reg.centerCell, true, false);
+			local t = targets[((i-1) % math.max(1,#targets)) + 1];
+			if t then
+				Move.Towards(v, Map.WorldCenter(t.reg), t.reg.centerCell, true, false);
 			end;
 		end);
 	end;
@@ -1250,14 +1435,17 @@ function Execute()
 	SafeCall('AA', Military.AA);
 
 	local cur = Game.myFaction.currentResources;
-	local seen = 0;
+	local seen, seenA, seenD = 0, 0, 0;
 	for _,reg in ipairs(Map.regions) do
 		if reg.lastSeen >= 0 then seen = seen + 1; end;
+		if reg.lastSeenAir >= 0 then seenA = seenA + 1; end;
+		if reg.lastSeenDeep >= 0 then seenD = seenD + 1; end;
 	end;
-	Game.Log(string.format('%sround %d | %s | units c%d m%d r%d s%d | structures %d | regions seen %d/%d, enemy %d | minerals %d energy %d | %.2fs',
+	Game.Log(string.format('%sround %d | %s | units c%d m%d r%d s%d aa%d | structures %d | seen g%d a%d d%d /%d, enemy %d%s%s | minerals %d energy %d | %.2fs',
 		Cfg.logPrefix, Sense.round, Mem.posture..(Mem.attackTarget and ('->'..Mem.attackTarget) or ''),
-		#Sense.my.constructor, #Sense.my.combat, #Sense.my.radar, #Sense.my.surveyor,
-		#Sense.myStructures, seen, #Map.regions, #Sense.enemyRegions,
+		#Sense.my.constructor, #Sense.my.combat, #Sense.my.radar, #Sense.my.surveyor, #Sense.my.aa,
+		#Sense.myStructures, seen, seenA, seenD, #Map.regions, #Sense.enemyRegions,
+		Sense.AirMatters() and ' AIR' or '', Sense.DeepMatters() and ' DEEP' or '',
 		cur.storage.minerals or 0, cur.balance.energy or 0, timer()));
 end;
 
