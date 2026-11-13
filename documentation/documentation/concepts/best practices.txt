@@ -80,6 +80,9 @@ Endless improvement [[concepts/research|research]] captures whatever research ca
 * **Scanning range** on [[units/turrets/radar|radars]], some plane types, or in odd cases the [[units/turrets/surveyor|scanner]] turret.
 * **Attack range** on whichever turret you use most.
 
+=== Terraforming and Constrained Space ===
+[[units/vbases/heavy base|Heavy]] and [[units/vbases/catamaran base|catamaran]] bases terraform about twice as fast. With catamarans you can build waterways, and with heavy bases roads and tunnels go up very quickly. Both can construct submerged mines where space is constrained. This is useful on planets with floating islands: if there is water underneath, mines can be placed on it. If there is only air, mines must stay above. Mines do not fall, but non-plane vehicles do.
+
 === Plantations and T2 Units ===
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [[concepts/compound|compound]] types can be manufactured and combined into the material needed to elevate units to T2.
 T2 upgrades are done by [[units/turrets/mechanic|mechanic]] units. T2 units are tie-breakers: they gain experience from destroying enemy units and can become so powerful that a single one can decimate hostile installations without any doomsday weaponry.

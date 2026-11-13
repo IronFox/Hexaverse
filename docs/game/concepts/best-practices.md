@@ -91,6 +91,10 @@ Endless improvement [research](research.md) captures whatever research capacity 
 - **Scanning range** on [radars](../units/turrets/radar.md), some plane types, or in odd cases the [scanner](../units/turrets/surveyor.md) turret.
 - **Attack range** on whichever turret you use most.
 
+### Terraforming and Constrained Space
+
+[Heavy](../units/vbases/heavy-base.md) and [catamaran](../units/vbases/catamaran-base.md) bases terraform about twice as fast. With catamarans you can build waterways, and with heavy bases roads and tunnels go up very quickly. Both can construct submerged mines where space is constrained. This is useful on planets with floating islands: if there is water underneath, mines can be placed on it. If there is only air, mines must stay above. Mines do not fall, but non-plane vehicles do.
+
 ### Plantations and T2 Units
 
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [compound](compound.md) types can be manufactured and combined into the material needed to elevate units to T2.

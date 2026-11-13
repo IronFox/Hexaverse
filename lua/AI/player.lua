@@ -1858,8 +1858,17 @@ function Economy.NextVehicle()
 	local base = Types.GroundBase();
 	local hover = Types.base.hover;
 	local function Constructor()
-		if base == Types.base.cat then base = hover; end;	-- constructors must reach land
-		return Types.Vehicle(Types.turret.terraformer, base) or Types.Vehicle(Types.turret.terraformer, hover);
+		-- heavy and catamaran bases terraform twice as fast: heavy as soon as it is unlocked.
+		-- On water planets catamarans dig waterways, but every other constructor stays on hover to reach land
+		local cb = Types.IsUnlocked(Types.base.heavy) and Types.base.heavy or hover;
+		if base == Types.base.cat then
+			local nCat = 0;
+			for _,u in ipairs(my.constructor) do
+				if u.type.vehicleBaseType == Types.base.cat then nCat = nCat + 1; end;
+			end;
+			cb = (nCat * 2 < #my.constructor) and Types.base.cat or hover;
+		end;
+		return Types.Vehicle(Types.turret.terraformer, cb) or Types.Vehicle(Types.turret.terraformer, hover);
 	end;
 	local function Tank()
 		local nArt = 0;
