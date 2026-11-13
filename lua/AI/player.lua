@@ -1853,7 +1853,11 @@ function Economy.AssignConstructor(u, index)
 	end;
 	if not Move.IsIdle(u) then
 		-- a job that runs far too long is stuck (e.g. no room to relocate after constructing)
-		if job and Sense.round - job.since > (job.kind == 'Road' and 40 or 20) then
+		-- (rounds without minerals don't count: construction simply pauses then)
+		if job and (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.brokeMinerals then
+			job.busy = (job.busy or 0) + 1;
+		end;
+		if job and (job.busy or 0) > (job.kind == 'Road' and 40 or 20) then
 			Log(u.niceName..': '..job.kind..' at cell '..tostring(job.cell)..' is stuck. Dropping it');
 			if job.cell then Mem.blacklist[job.cell] = Sense.round + 50; end;
 			u.ClearTasks();
@@ -2035,6 +2039,7 @@ function Economy.NextVehicle()
 		if aa then return aa; end;
 	end;
 	local wantSurveyors = Sense.DeepMatters() and Cfg.maxSurveyorsDeep or Cfg.maxSurveyors;
+	if Economy.MineShortage() then wantSurveyors = wantSurveyors + 1; end;
 	if #my.surveyor < wantSurveyors and Sense.round > 10 then
 		return Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
 	end;
@@ -2058,6 +2063,21 @@ function Economy.WorkingPlants()
 	for _,p in ipairs(Sense.plants) do
 		local b = Economy.plantBlocked[p.id];
 		if not (b and Sense.round - b >= 5) then n = n + 1; end;
+	end;
+	return n;
+end;
+
+-- Too few mines and the last mine order found no site
+function Economy.MineShortage()
+	local last = Economy.noMineSite['Minerals'] or Economy.noMineSite['Fuel'];
+	return Economy.Count(Types.mine) < Cfg.minMines + 1 and last ~= nil and Sense.round - last <= 5;
+end;
+
+-- Mine constructions currently ordered
+function Economy.MineJobs()
+	local n = 0;
+	for _,job in pairs(Mem.jobs) do
+		if Types.mine and job.kind == Types.mine.name then n = n + 1; end;
 	end;
 	return n;
 end;
@@ -2121,6 +2141,10 @@ function Economy.Production()
 			and Sense.Pressure() <= 0;
 		local maxQueue = broke and 1 or 2;
 		local reserveBlocked = (cur.storage.minerals or 0) < Economy.PowerReserve() and #Sense.my.combat >= 2;
+		-- while short on mines and broke, mines under construction get the minerals first
+		if not reserveBlocked and broke and Economy.MineJobs() > 0 and #Sense.my.combat >= 2 then
+			reserveBlocked = true;
+		end;
 		if queued < maxQueue and p.BuildMobile then
 			local t = Economy.NextVehicle();
 			-- never spend the power reserve on vehicles, except the minimum of constructors and a pinch of defense
@@ -2531,6 +2555,10 @@ function Military.Scouts()
 						score = score / (1 + hops * hops);
 						if Sense.DeepMatters() and Sense.mine[reg.id] then
 							score = score * 4;
+						end;
+						-- short on mines and no known site: survey my nearby ground for resources
+						if Economy.MineShortage() and (Sense.hops[reg.id] or 99) <= 2 then
+							score = score * 6;
 						end;
 					end;
 					if stale >= Cfg.staleRounds then
