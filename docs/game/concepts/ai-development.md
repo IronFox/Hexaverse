@@ -34,6 +34,13 @@ Final deployment is [configured](../config/server.md) via the [control console](
 You must have a working Lua AI file located in *[game folder](../config/game-folder.md)/shared/AIScripts* to assign it.
 Re-assignment clears out any existing AI state, forcing the AI to start from scratch.
 
+## AI Players
+
+Besides the Nexus, the server can host Lua scripted AI players that act as regular factions (opponents or allies). Set the [control console](../config/control-console.md) variable `Rules/AIPlayers/count` to the number of AI players. Each one joins like a regular player, so they can only be created while new factions may join (round 0 in closed games), and the server runs one console client per AI player.
+`Rules/AIPlayers/script` selects the script (default `player`). *[game folder](../config/game-folder.md)/shared/AIScripts/X.lua* is used if it exists, otherwise `[install]/lua/AI/X.lua`.
+
+The included `player.lua` only acts on what its faction can currently sense, and follows the strategy described in [best practices](best-practices.md).
+
 ## Debugging
 
 Development should be done in an interactive client session.

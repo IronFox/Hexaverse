@@ -47,6 +47,46 @@ Many matches are decided during this stage.
 - Do not enter [alliances](faction.md) with people you do not trust. As soon as you accept an invitation, every alliance member will know where you are. The alliance does not protect you, even if it is not immediately dissolved.
 - While this may appear promising or even crucial, rushing way out of your defense perimeter into distant, possibly [unobserved territory](scanning-range.md) to claim contested [Nexus Ports](../units/structures/nexus-port.md) usually ends badly. It's always better to be the one with the tank on the nearby mountain than the one that hastily built a storage next to the port but failed to establish sufficient defense in time. Everyone can see where the Nexus Ports are. Assume your enemies expect you to go for them.
 
+## Coverage and Positioning
+
+These principles apply throughout the match. Fights are won or lost by defense coverage, and coverage starts with what you can actually [see](scanning-range.md).
+
+### Three Kinds of Sensory
+
+- **Ground** coverage comes from [radars](../units/turrets/radar.md) and, later, [sensor drones](../units/planes/sensor-drone.md). Radar is the most economical early detection, but it cannot see planes, does not penetrate the ground by more than one or two cells, and rock casts shadows into its coverage. Sensor drones mostly supersede radar later on, but they can never peer into the ground, and planes cannot look into caves.
+- **Air** coverage comes from planes and [anti aircraft](../units/turrets/anti-aircraft.md). AA mostly looks up. A bomber you cannot see is extremely lethal.
+- **Underground** coverage comes from [surveyor](../units/turrets/surveyor.md) (scanner) vehicles and [towers](../units/structures/surveyor-tower.md). Scanners are the only sensory without any obstruction, reaching deep into the ground, but they are directed mostly down and do not extend far horizontally. If you suspect someone might undermine you, a surveyor tower is a good investment.
+
+### The Defense Ladder
+
+Every layer of defense you add shifts your opponent to the next attack vector:
+
+- A radar without [AA](../units/turrets/anti-aircraft.md) or hovering [raptors](../units/planes/raptor.md) will be attacked from the air sooner or later.
+- Place AA near it, and your next problem is tanks.
+- Place a [missile launcher](../units/structures/missile-launcher-tower.md) next to it, and your next problem is heavy tanks.
+- Once that is covered, the next problem comes from underground.
+
+Tanks become relatively cheap later on, so an attacker can always try to overwhelm a proper defense with more units.
+Against the Nexus AI, anti aircraft is essential: it starts building planes fairly early.
+
+### Moving and Firing
+
+Units react differently to being moved. [Cannon](../units/turrets/cannon.md) turrets and airborne [raptors](../units/planes/raptor.md) fire independently of motion. Most other vehicles do not fire in a round in which they also moved.
+A [cannon](../units/turrets/cannon.md) tank can simply be moved around, while an [artillery](../units/turrets/artillery.md) tank is best placed on a mountain and left stationary.
+
+### Vehicle Stores
+
+[Vehicle stores](../units/structures/vehicle-store.md) are interconnected. They are very useful as storage for backup units that you can offload wherever you have a vehicle store. Planes can be loaded into them, too.
+
+### Power
+
+Power generation is most efficient when built in a circle around a [reactor core](../units/structures/reactor-core.md). Until you have the technology and the uranium for a core, build additional [generators](../units/structures/generator.md) in a circle, keeping the center free and accessible.
+
+### Plantations and T2 Units
+
+Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [compound](compound.md) types can be manufactured and combined into the material needed to elevate units to T2.
+T2 upgrades are done by [mechanic](../units/turrets/mechanic.md) units. T2 units are tie-breakers: they gain experience from destroying enemy units and can become so powerful that a single one can decimate hostile installations without any doomsday weaponry.
+
 ## Mid to End Game
 
 Usually, when you get here, you have a decent tower network, [vehicle plants](../units/structures/vehicle-plant.md), lots of [mines](../units/structures/mine.md), and start wondering what to build with that [terraformer](../units/turrets/terraformer.md) that just completed its jobs.

@@ -1901,8 +1901,63 @@ function Military.DefenseRegion()
 	return best;
 end;
 
+-- Units whose turret only fires when the vehicle did not move (artillery, AA, ...)
+function Military.NeedsStationary(v)
+	return v.turret and v.turret.requiresStationaryVehicle and not v.motionIgnoresAttack;
+end;
+
+-- Firing posts for stationary shooters: the highest ground of a region, held until the goal changes
+Military.posts = {};
+
+local function Height(loc)
+	local w = loc.world;
+	return math.sqrt(w.x*w.x + w.y*w.y + w.z*w.z);
+end;
+
+-- Region a stationary shooter should hold: the goal itself while defending,
+-- the neighbor of the attack target that is closest to home while attacking
+function Military.PostRegion(goalId)
+	if Mem.posture ~= 'attack' or goalId ~= Mem.attackTarget then
+		return goalId;
+	end;
+	local best, bestH = goalId, nil;
+	for nb,_ in pairs(Map.regions[goalId].neighbors) do
+		local h = Sense.hops[nb] or 99;
+		if Sense.Threat(Map.regions[nb]) <= 0 and (bestH == nil or h < bestH) then
+			best, bestH = nb, h;
+		end;
+	end;
+	return best;
+end;
+
+function Military.PostFor(v, regionId, taken)
+	local post = Military.posts[v.id];
+	if post and post.region == regionId and not taken[post.key] then
+		return post;
+	end;
+	local reg = Map.regions[regionId];
+	local best, bestH = nil, nil;
+	local step = math.max(1, math.floor(#reg.cells / 16));
+	for k = 1, #reg.cells, step do
+		local cell = reg.cells[k];
+		local key = regionId..':'..k;
+		if not taken[key] then
+			local loc = Move.GroundAt(v, cell);
+			if loc and not Move.IsDangerous(loc) then
+				local h = Height(loc);
+				if bestH == nil or h > bestH then
+					best, bestH = {region=regionId, key=key, cell=cell, loc=loc}, h;
+				end;
+			end;
+		end;
+	end;
+	Military.posts[v.id] = best;
+	return best;
+end;
+
 function Military.Combat()
 	local defense = Military.DefenseRegion();
+	local takenPosts = {};
 	-- army centroid, for cohesion while attacking
 	local cx, cy, cz, cn = 0, 0, 0, 0;
 	for _,u in ipairs(Sense.my.combat) do
@@ -1943,6 +1998,19 @@ function Military.Combat()
 				goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
 			end;
 			local attacking = Mem.posture == 'attack';
+			if Military.NeedsStationary(v) then
+				-- artillery: get onto high ground and stay there. Moving costs it the round's fire
+				local post = Military.PostFor(v, Military.PostRegion(goalId), takenPosts);
+				if post then
+					takenPosts[post.key] = true;
+					if Dist2(v.location.world, post.loc.world) < 0.01 then
+						if not Move.IsIdle(v) then v.ClearSafeTasks(); end;
+						return;
+					end;
+					Move.Towards(v, post.loc.world, post.cell, true, false);
+					return;
+				end;
+			end;
 			Move.Towards(v, goal, cell, not attacking, attacking);
 		end);
 	end;
@@ -2015,9 +2083,25 @@ function Military.AA()
 		local w = u.location.world;
 		cx, cy, cz, cn = cx + w.x, cy + w.y, cz + w.z, cn + 1;
 	end;
+	local aaPosts = {};
 	for i,v in ipairs(Sense.my.aa) do
 		SafeCall('aa '..v.niceName, function()
-			Military.Fire(v);
+			local fired = Military.Fire(v);
+			if fired and not v.motionIgnoresAttack then
+				return;	-- moving now would cancel this round's shot
+			end;
+			if Military.NeedsStationary(v) and Mem.posture ~= 'attack' then
+				-- guarding: hold the highest ground of the assigned region
+				local t = targets[((i-1) % math.max(1,#targets)) + 1];
+				local post = t and Military.PostFor(v, t.reg.id, aaPosts);
+				if post then
+					aaPosts[post.key] = true;
+					if Dist2(v.location.world, post.loc.world) >= 0.01 then
+						Move.Towards(v, post.loc.world, post.cell, true, false);
+					end;
+					return;
+				end;
+			end;
 			if Mem.posture == 'attack' and cn > 0 and i % 2 == 0 then
 				local c = {x=cx/cn, y=cy/cn, z=cz/cn};
 				Move.Towards(v, c, nil, true, false);
