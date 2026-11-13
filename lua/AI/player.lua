@@ -767,6 +767,27 @@ function Sense.Update()
 		end;
 	end;
 	Sense.hops = Map.Hops(Sense.myRegionIds);
+
+	-- losses: my mobiles that disappeared since last round (stored units don't count as gone)
+	local now = {};
+	for _,list in pairs(Sense.my) do for _,u in ipairs(list) do now[u.id] = Types.Role(u) or 'other'; end; end;
+	for _,u in ipairs(Sense.stored) do now[u.id] = 'stored'; end;
+	local lost, lostConstructors = 0, 0;
+	if Sense.prevMobiles then
+		for id,role in pairs(Sense.prevMobiles) do
+			if now[id] == nil then
+				lost = lost + 1;
+				if role == 'constructor' then lostConstructors = lostConstructors + 1; end;
+			end;
+		end;
+	end;
+	Sense.prevMobiles = now;
+	Sense.lossLog = Sense.lossLog or {};
+	Sense.lossLog[round] = {lost, lostConstructors};
+	Sense.lossLog[round - 12] = nil;
+	if lost > 0 then
+		Log('Lost '..lost..' unit(s) this round ('..lostConstructors..' constructor(s))');
+	end;
 	Sense.nexus = Sense.NexusPresent();
 end;
 
@@ -816,6 +837,28 @@ function Sense.GroundVisible(reg, refUnit)
 		end;
 	end;
 	return false;
+end;
+
+-- Losses within the last n rounds: {all, constructors}
+function Sense.RecentLosses(n)
+	local a, c = 0, 0;
+	for r = Sense.round - n + 1, Sense.round do
+		local e = Sense.lossLog and Sense.lossLog[r];
+		if e then a, c = a + e[1], c + e[2]; end;
+	end;
+	return a, c;
+end;
+
+-- How much hostile pressure is on my territory right now (sensed or remembered), 0 = none
+function Sense.Pressure()
+	local p = 0;
+	for id,_ in pairs(Sense.mine or {}) do
+		local reg = Map.regions[id];
+		p = p + reg.mobileThreat;
+		for nb,_ in pairs(reg.neighbors) do p = p + Map.regions[nb].mobileThreat * 0.5; end;
+	end;
+	local lost = Sense.RecentLosses(6);
+	return p + lost * 3;
 end;
 
 function Sense.Threat(reg)
@@ -1019,6 +1062,17 @@ function Economy.NextStructure(constructorIndex)
 			return {type=Types.mine, kind='mine', resource='Uranium'};
 		end;
 	end;
+	-- minerals piling up means the plants are the bottleneck
+	if Types.plant and (cur.storage.minerals or 0) >= 300 and Economy.Count(Types.plant) < 3 then
+		return {type=Types.plant, kind='base'};
+	end;
+	-- the home region gets its first defense early; raids start around round 15
+	if round >= 4 then
+		local need = Economy.DefenseNeed(false, true);
+		if need then
+			return need;
+		end;
+	end;
 	if Types.lab and Economy.Count(Types.lab) == 0 and round >= 3 then
 		return {type=Types.lab, kind='base'};
 	end;
@@ -1082,7 +1136,7 @@ most valuable first. With surplus=true, adds a second ground/launcher tower
 where remembered threat is high (more units can always beat a fixed defense).
 @return {type, kind='tower', region} or nil
 ]]
-function Economy.DefenseNeed(surplus)
+function Economy.DefenseNeed(surplus, homeOnly)
 	local regions = {};
 	for id,_ in pairs(Sense.mine) do
 		local reg = Map.regions[id];
@@ -1092,7 +1146,10 @@ function Economy.DefenseNeed(surplus)
 				value = value + 2;	-- sensors are what the enemy wants to blind
 			end;
 		end;
-		if value >= 2 then
+		if homeOnly and id ~= Mem.homeRegion then
+			value = 0;
+		end;
+		if value >= 2 or (homeOnly and id == Mem.homeRegion) then
 			regions[#regions+1] = {reg=reg, value=value};
 		end;
 	end;
@@ -1235,6 +1292,12 @@ function Economy.SiteOK(loc, forMine)
 	end;
 	-- don't build where remembered or sensed hostiles can hit
 	if Move.IsDangerous(loc) then return false; end;
+	-- the constructor must be able to move off the finished structure
+	local free = 0;
+	for _,nb in ipairs(loc.cell.neighbors) do
+		if not Sense.structureCells[nb.index] and not Economy.claimed[nb.index] then free = free + 1; end;
+	end;
+	if free < 2 then return false; end;
 	return true;
 end;
 
@@ -1376,7 +1439,32 @@ Economy.powerOrders = 0;
 
 function Economy.AssignConstructor(u, index)
 	local job = Mem.jobs[u.id];
+	-- danger: get out first, build later
+	local reg = Map.RegionOfLoc(u.location);
+	if Move.IsDangerous(u.location) or (reg and reg.mobileThreat > reg.myStrength) then
+		local safest, bestS = nil, -1;
+		for id,_ in pairs(Sense.mine) do
+			local r = Map.regions[id];
+			local sc = r.myStrength - r.mobileThreat;
+			if r ~= reg and sc > bestS then safest, bestS = r, sc; end;
+		end;
+		if safest then
+			u.ClearSafeTasks();
+			if job and job.cell then Mem.blacklist[job.cell] = Sense.round + 15; end;
+			Mem.jobs[u.id] = nil;
+			Move.Towards(u, Map.WorldCenter(safest), safest.centerCell, true, false);
+			Log(u.niceName..': retreating from danger');
+			return;
+		end;
+	end;
 	if not Move.IsIdle(u) then
+		-- a job that runs far too long is stuck (e.g. no room to relocate after constructing)
+		if job and Sense.round - job.since > 20 then
+			Log(u.niceName..': '..job.kind..' at cell '..tostring(job.cell)..' is stuck. Dropping it');
+			if job.cell then Mem.blacklist[job.cell] = Sense.round + 50; end;
+			u.ClearTasks();
+			Mem.jobs[u.id] = nil;
+		end;
 		return;	-- busy with a queued motion/construction
 	end;
 	-- detect stuck jobs: still idle at the same place where we ordered a construction
@@ -1494,11 +1582,37 @@ function Economy.NextVehicle()
 	local my = Sense.my;
 	local base = Types.GroundBase();
 	local hover = Types.base.hover;
-	local wantConstructors = (Sense.round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate) - (Sense.storedByRole.constructor or 0);
-	if #my.constructor < wantConstructors then
+	local function Constructor()
 		return Types.Vehicle(Types.turret.terraformer, base) or Types.Vehicle(Types.turret.terraformer, hover);
 	end;
-	if #my.radar < 1 + math.floor(#my.combat / Cfg.radarPerCombat) then
+	local function Tank()
+		local nArt = 0;
+		for _,u in ipairs(my.combat) do
+			if u.turret.type == Types.turret.artillery then nArt = nArt + 1; end;
+		end;
+		if Types.IsUnlocked(Types.turret.artillery) and nArt * 3 < #my.combat then
+			local a = Types.Vehicle(Types.turret.artillery, base) or Types.Vehicle(Types.turret.artillery, hover);
+			if a then return a; end;
+		end;
+		return Types.Vehicle(Types.turret.cannon, base) or Types.Vehicle(Types.turret.cannon, hover);
+	end;
+	local combat = #my.combat + (Sense.storedByRole.combat or 0);
+	local constructors = #my.constructor + (Sense.storedByRole.constructor or 0);
+	local pressure = Sense.Pressure();
+
+	-- never fewer than two constructors: without them there is no economy at all
+	if constructors < 2 then
+		return Constructor();
+	end;
+	-- under pressure, tanks first. Replacing constructors that keep dying feeds the enemy
+	if pressure > 0 and combat < 4 + math.floor(pressure / 3) then
+		return Tank();
+	end;
+	local wantConstructors = Sense.round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate;
+	if constructors < wantConstructors and (combat >= constructors or Sense.round < 12) then
+		return Constructor();
+	end;
+	if #my.radar < math.min(1, math.floor(combat / 2)) + math.floor(combat / Cfg.radarPerCombat) then
 		return Types.Vehicle(Types.turret.radar, hover);
 	end;
 	if Sense.AirMatters() and #my.aa * Cfg.aaPerCombat < #my.combat + 2 then
