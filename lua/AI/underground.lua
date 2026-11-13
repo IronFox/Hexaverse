@@ -157,6 +157,10 @@ function Mole.DigToward(u, targetCell)
 		if bd == nil or d < bd then best, bd = nb, d; end;
 	end;
 	if best == nil then return false; end;
+	if Mole.SurfaceStructureCells()[best.index] and not Mole.IsOpen(best) then
+		Economy.Blacklist(best.index, 30);	-- don't undermine our own structures
+		return false;
+	end;
 	local loc = Mole.LocAt(best);
 	if loc == nil then return false; end;
 	if Mole.IsOpen(best) then
@@ -186,6 +190,38 @@ function Mole.DigToward(u, targetCell)
 	return true;
 end;
 
+--[[
+Shaft site: near the digger, but with no own surface structure within the cavern
+radius (+1). Digging beneath one undermines it: a start mine that loses its
+ground is disabled, and without a mineral mine the faction dies.
+]]
+function Mole.SurfaceStructureCells()
+	local out = {};
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if not Mole.IsBelow(st.location) then out[st.location.cell.index] = true; end;
+	end;
+	return out;
+end;
+
+function Mole.PickShaftCell(u)
+	local taken = Mole.SurfaceStructureCells();
+	local keep = Cfg.moleRings + 1;
+	local best, bd = nil, nil;
+	for _,c in ipairs(Mole.Rings(u.location.cell, 6)) do
+		local free = true;
+		for _,n in ipairs(Mole.Rings(c, keep)) do
+			if taken[n.index] then free = false; break; end;
+		end;
+		if free then
+			local ok, res = pcall(Game.Grid.GetNaturalResourcesAt, c);
+			local resCell = ok and res and ((res.minerals or 0) > 0 or (res.fuel or 0) > 0);
+			local d = D2(c.center, u.location.cell.center) + (resCell and 1 or 0);
+			if bd == nil or d < bd then best, bd = c, d; end;
+		end;
+	end;
+	return best;
+end;
+
 -- The closed cavern cell (next to an open one) nearest to a unit, not claimed by another digger
 function Mole.NextClosed(u)
 	local center = CellByIndex(Mole.shaftCell);
@@ -196,8 +232,9 @@ function Mole.NextClosed(u)
 	end;
 	open[Mole.shaftCell] = true;	-- the digger stands at the bottom of the shaft
 	local best, bd = nil, nil;
+	local surface = Mole.SurfaceStructureCells();
 	for _,c in ipairs(want) do
-		if not open[c.index] and not (Mole.digClaims and Mole.digClaims[c.index]) then
+		if not open[c.index] and not (Mole.digClaims and Mole.digClaims[c.index]) and not surface[c.index] then
 			local bl = Mem.blacklist[c.index];
 			if not (bl and bl > Sense.round) then
 				for _,nb in ipairs(c.neighbors) do
@@ -234,16 +271,24 @@ function Mole.Update()
 
 	if Mole.phase == 'shaft' then
 		if Mole.shaftCell == nil then
-			Mole.shaftCell = u.location.cell.index;
+			local c = Mole.PickShaftCell(u);
+			if c == nil then
+				if Sense.round % 5 == 0 then Log('No free spot for the shaft yet'); end;
+				return;
+			end;
+			Mole.shaftCell = c.index;
+			Log('Digging in: shaft at cell '..Mole.shaftCell);
+		end;
+		if u.location.cell.index == Mole.shaftCell and Mole.level == nil then
 			Mole.level = u.location.height - Cfg.moleDepth;
-			Log('Digging in: shaft at cell '..Mole.shaftCell..' down to height '..Mole.level);
+			Log('Shaft goes down to height '..Mole.level);
 		end;
 		if u.location.cell.index ~= Mole.shaftCell then
 			local loc = Move.GroundAt(u, CellByIndex(Mole.shaftCell));
 			if loc then Move.Towards(u, loc.world, loc.cell, false, false); end;
 			return;
 		end;
-		if u.location.height > Mole.level then
+		if Mole.level and u.location.height > Mole.level then
 			local check = Mole.DigCheck(u.location.cell, u.location.height - 2);
 			if check == 'lava' then
 				-- lava below: settle for the depth reached

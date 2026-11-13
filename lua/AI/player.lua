@@ -81,7 +81,7 @@ Cfg = {
 	plantFreeCells = 3,
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
 	unseenAttackThreat = 4,	-- threat assumed at the origin of an attack whose shooter we cannot sense
-	deepBelowSurface = 2,
+	deepBelowSurface = 3,
 	-- air (planes) and bombs. Successful games fight both on the ground and in the air
 	planeFactoryRound = 35,	-- first plane factory from this round, once the economy runs
 	planeFactories = 1,		-- how many to keep
@@ -2195,6 +2195,8 @@ end;
 function Economy.PlaneFactoryNeed()
 	local t = Types.planeFactory;
 	if t == nil or not Types.IsUnlocked(t) or Economy.Count(t) >= Cfg.planeFactories then return nil; end;
+	-- a factory without any researched plane only costs fuel and minerals
+	if not (Types.IsUnlocked(Types.bomber) or Types.IsUnlocked(Types.raptor) or Types.IsUnlocked(Types.drone)) then return nil; end;
 	if Sense.round < Cfg.planeFactoryRound or Economy.Count(Types.mine) < Cfg.planeFactoryMines then return nil; end;
 	local cur, max = Economy.Resources();
 	local demand = t.balance and t.balance.demand or {};
@@ -2217,13 +2219,17 @@ function Economy.NextPlane()
 		elseif p.type == Types.drone then n.drone = n.drone + 1; end;
 	end;
 	if #Sense.my.plane >= Cfg.maxPlanes then return nil; end;
+	-- only what is researched: the server rejects the rest
+	local bomber = Types.IsUnlocked(Types.bomber) and Types.bomber or nil;
+	local raptor = Types.IsUnlocked(Types.raptor) and Types.raptor or nil;
+	local drone = Types.IsUnlocked(Types.drone) and Types.drone or nil;
 	-- hostile planes around: raptors hunt them
 	local hostileAir = Sense.AirPressure() > 0;
-	if hostileAir and Types.raptor and n.raptor <= n.bomber then return Types.raptor; end;
-	if Types.drone and n.drone < Cfg.wantDrones and n.bomber + n.raptor >= 1 then return Types.drone; end;
+	if hostileAir and raptor and n.raptor <= n.bomber then return raptor; end;
+	if drone and n.drone < Cfg.wantDrones and n.bomber + n.raptor >= 1 then return drone; end;
 	local attack = n.bomber + n.raptor;
-	if Types.bomber and n.bomber < math.ceil((attack + 1) * Cfg.bomberShare) then return Types.bomber; end;
-	return Types.raptor or Types.bomber;
+	if bomber and n.bomber < math.ceil((attack + 1) * Cfg.bomberShare) then return bomber; end;
+	return raptor or bomber or drone;
 end;
 
 function Economy.PlaneProduction()

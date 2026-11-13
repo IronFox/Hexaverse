@@ -18,6 +18,7 @@ e.g. 'player,underground,air').
 --#require "player.lua"
 
 Cfg.logPrefix = 'Air AI: ';
+Air = {};
 Cfg.planePriority = 'early';
 Cfg.planeFactoryRound = 0;
 Cfg.planeFactoryMines = 1;
@@ -32,10 +33,26 @@ Cfg.groundGuard = 4;			-- combat vehicles kept at home
 table.insert(Cfg.research, 1, 'Unlock:Bomber');
 table.insert(Cfg.research, 1, 'Unlock:Plane');
 
+-- Saving up for the plane factory: researched, fuel mine running, minerals short
+function Air.Saving()
+	local pf = Types.planeFactory;
+	return #Sense.planeFactories == 0 and pf ~= nil and Types.IsUnlocked(pf)
+		and (Types.IsUnlocked(Types.bomber) or Types.IsUnlocked(Types.raptor))
+		and Economy.FuelMines() >= 1
+		and (Game.myFaction.currentResources.storage.minerals or 0) < (tonumber(pf.constructionCost) or 200) + 50;
+end;
+
 local baseNextStructure = Economy.NextStructure;
 function Economy.NextStructure(index)
 	Cfg.planeFactories = (Sense.round >= 50 and Economy.Count(Types.mine) >= 5) and 2 or 1;
-	return baseNextStructure(index);
+	local want = baseNextStructure(index);
+	-- while saving, constructors build only what earns or powers (mines, generators)
+	if want and Air.Saving() and Sense.Pressure() <= 3 and want.kind ~= 'mine'
+		and want.type ~= Types.generator and want.type ~= Types.planeFactory
+		and not (want.type == Types.plant and Economy.WorkingPlants() == 0) then
+		return nil;
+	end;
+	return want;
 end;
 
 -- the ground plants hold back for the plane factory (minerals for it must pile up first),
@@ -46,8 +63,7 @@ function Economy.NextVehicle()
 	if t == nil then return t; end;
 	local pf = Types.planeFactory;
 	if #Sense.planeFactories == 0 then
-		local saving = pf and Types.IsUnlocked(pf) and Economy.FuelMines() >= 1
-			and (Game.myFaction.currentResources.storage.minerals or 0) < (tonumber(pf.constructionCost) or 200) + 50;
+		local saving = Air.Saving();
 		local tt = t.turretType;
 		local essential = tt and (tt.canConstruct or tt.detectsResources);
 		if saving and not essential and #Sense.my.combat >= 2 and Sense.Pressure() <= 3 then
