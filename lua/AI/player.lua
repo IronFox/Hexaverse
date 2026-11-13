@@ -977,7 +977,7 @@ function Economy.NextStructure(constructorIndex)
 		return {type=Types.lab, kind='base'};
 	end;
 	-- a tower on a threatened frontier
-	if Types.cannonTower and constructorIndex == 1 then
+	if Types.cannonTower and constructorIndex == 1 and Types.IsUnlocked(Types.cannonTower) then
 		for id,_ in pairs(Sense.frontier) do
 			local reg = Map.regions[id];
 			if reg.mobileThreat > 0 and Economy.TowersIn(reg) < Cfg.wantTowersPerFrontier then
@@ -1006,7 +1006,7 @@ function Economy.NextStructure(constructorIndex)
 	if extra then
 		return extra;
 	end;
-	if Types.cannonTower and Economy.Count(Types.cannonTower) < 2 + math.floor(round / 20) then
+	if Types.cannonTower and Types.IsUnlocked(Types.cannonTower) and Economy.Count(Types.cannonTower) < 2 + math.floor(round / 20) then
 		return {type=Types.cannonTower, kind='tower'};
 	end;
 	if Types.radarTower and Types.IsUnlocked(Types.radarTower) and Economy.Count(Types.radarTower) < 1 + math.floor(round / 25) then
