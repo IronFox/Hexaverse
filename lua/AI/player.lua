@@ -2023,11 +2023,6 @@ function Economy.NextVehicle()
 	if constructors < 2 then
 		return Constructor();
 	end;
-	-- no scanner at all means no resource coverage: always get one
-	if #my.surveyor == 0 and (Sense.storedByRole.surveyor or 0) == 0 and Economy.ScannerTowers() == 0 then
-		local sv = Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
-		if sv then return sv; end;
-	end;
 	-- no mine site but minerals to spend: scanners to find resources (below), tanks to conquer them
 	if Economy.MineShortage() and (Game.myFaction.currentResources.storage.minerals or 0) >= 150
 		and #my.surveyor >= 1 and combat < Cfg.retreatBelowUnits * 3 then
@@ -2036,6 +2031,11 @@ function Economy.NextVehicle()
 	-- under pressure, tanks first. Replacing constructors that keep dying feeds the enemy
 	if pressure > 0 and combat < 4 + math.floor(pressure / 3) then
 		return Tank();
+	end;
+	-- no scanner at all means no resource coverage: get one, right after defending the base
+	if #my.surveyor == 0 and (Sense.storedByRole.surveyor or 0) == 0 and Economy.ScannerTowers() == 0 then
+		local sv = Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
+		if sv then return sv; end;
 	end;
 	local wantConstructors = Sense.round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate;
 	if constructors < wantConstructors and (combat >= constructors or Sense.round < 12) then
@@ -2183,7 +2183,7 @@ function Economy.Production()
 			local t = Economy.NextVehicle();
 			-- never spend the power reserve on vehicles, except the minimum of constructors and a pinch of defense
 			local essential = #Sense.my.constructor + (Sense.storedByRole.constructor or 0) < 2
-				or (t and t.turretType == Types.turret.surveyor and #Sense.my.surveyor == 0);
+				or (t and t.turretType == Types.turret.surveyor and #Sense.my.surveyor == 0 and Sense.Pressure() <= 0);
 			if t and reserveBlocked and not essential then
 				t = nil;
 			end;
