@@ -81,6 +81,7 @@ A [cannon](../units/turrets/cannon.md) tank can simply be moved around, while an
 ### Power
 
 Power generation is most efficient when built in a circle around a [reactor core](../units/structures/reactor-core.md). Until you have the technology and the uranium for a core, build additional [generators](../units/structures/generator.md) in a circle, keeping the center free and accessible.
+A faction whose energy output drops to zero is as good as dead, and very rarely recovers. Keep enough minerals to rebuild at least one generator and one [fuel mine](../units/structures/mine.md). With those, survival is still possible, for example by having your [terraformers](../units/turrets/terraformer.md) dig into the ground, close the shaft behind them, and build an underground city.
 
 ### Plantations and T2 Units
 

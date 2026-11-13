@@ -1001,6 +1001,23 @@ function Economy.Resources()
 	return f.currentResources, f.maxResources;
 end;
 
+-- Energy output is gone (or about to be): no generator, or nothing feeds the generators
+function Economy.PowerCritical()
+	local _, max = Economy.Resources();
+	return Economy.Count(Types.generator) == 0 or ((max.supply or {}).energy or 0) <= 0;
+end;
+
+-- Minerals to keep back while the power base is thin: enough to rebuild a generator and a fuel mine
+function Economy.PowerReserve()
+	local _, max = Economy.Resources();
+	if Economy.Count(Types.generator) >= 2 and ((max.supply or {}).fuel or 0) > 0 then
+		return 0;
+	end;
+	local g = Types.generator and Types.generator.constructionCost or 0;
+	local m = Types.mine and Types.mine.constructionCost or 0;
+	return g + m;
+end;
+
 function Economy.Count(t)
 	if t == nil then return 0; end;
 	return Sense.structuresByType[t.name] or 0;
@@ -1043,6 +1060,20 @@ function Economy.NextStructure(constructorIndex)
 	local bal = max.balance;
 	local round = Sense.round;
 
+	-- no energy output means the faction is as good as dead. Rebuilding one generator and
+	-- one fuel mine beats everything else, including the vehicle plant
+	if Economy.PowerCritical() then
+		if ((max.supply or {}).fuel or 0) <= 0 and constructorIndex % 2 == 0 then
+			return {type=Types.mine, kind='mine', resource='Fuel'};
+		end;
+		if Economy.powerOrders < 2 then
+			Economy.powerOrders = Economy.powerOrders + 1;
+			return {type=Types.generator, kind='base'};
+		end;
+		if ((max.supply or {}).fuel or 0) <= 0 then
+			return {type=Types.mine, kind='mine', resource='Fuel'};
+		end;
+	end;
 	if Types.plant and Economy.Count(Types.plant) == 0 then
 		return {type=Types.plant, kind='base'};
 	end;
@@ -1157,6 +1188,9 @@ function Economy.DefenseNeed(surplus, homeOnly)
 		for _,st in ipairs(Sense.myStructures) do
 			if st.turret and not st.turret.type.canAttack and Map.RegionOfLoc(st.location) == reg then
 				value = value + 2;	-- sensors are what the enemy wants to blind
+			end;
+			if st.type == Types.generator and Map.RegionOfLoc(st.location) == reg then
+				value = value + 3;	-- losing power output is losing the game
 			end;
 		end;
 		if homeOnly and id ~= Mem.homeRegion then
@@ -1663,6 +1697,10 @@ function Economy.Production()
 			and Economy.Count(Types.mine) < Cfg.earlyMines + 2
 			and Sense.Pressure() <= 0;
 		local maxQueue = broke and 1 or 2;
+		-- never spend the power reserve on vehicles (a pinch of defense aside)
+		if (cur.storage.minerals or 0) < Economy.PowerReserve() and #Sense.my.combat >= 2 then
+			maxQueue = 0;
+		end;
 		if queued < maxQueue and p.BuildMobile then
 			local t = Economy.NextVehicle();
 			if t then

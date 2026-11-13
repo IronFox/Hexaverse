@@ -72,6 +72,7 @@ A [[units/turrets/cannon|cannon]] tank can simply be moved around, while an [[un
 
 === Power ===
 Power generation is most efficient when built in a circle around a [[units/structures/reactor core|reactor core]]. Until you have the technology and the uranium for a core, build additional [[units/structures/generator|generators]] in a circle, keeping the center free and accessible.
+A faction whose energy output drops to zero is as good as dead, and very rarely recovers. Keep enough minerals to rebuild at least one generator and one [[units/structures/mine|fuel mine]]. With those, survival is still possible, for example by having your [[units/turrets/terraformer|terraformers]] dig into the ground, close the shaft behind them, and build an underground city.
 
 === Plantations and T2 Units ===
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [[concepts/compound|compound]] types can be manufactured and combined into the material needed to elevate units to T2.
