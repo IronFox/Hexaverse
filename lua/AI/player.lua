@@ -125,11 +125,13 @@ function Types.Resolve()
 
 	-- towers are named after their turret
 	Types.cannonTower = nil;
+	Types.towerByTurret = {};
 	Types.radarTower = nil;
 	Types.aaTower = nil;
 	for name,t in pairs(u) do
 		if t.isStructure and t.turretType then
 			local tn = t.turretType.name;
+			Types.towerByTurret[tn] = t;
 			if tn == 'Cannon' then Types.cannonTower = t;
 			elseif tn == 'Radar' then Types.radarTower = t;
 			elseif tn == 'Anti Aircraft' then Types.aaTower = t;
@@ -161,6 +163,17 @@ function Types.Resolve()
 		end;
 	end;
 	Types.resolved = true;
+end;
+
+-- Best unlocked anti-ground tower (the Cannon Tower is deprecated and never unlockable)
+function Types.GroundTower()
+	for _,name in ipairs({'Rocket Launcher', 'Artillery', 'Cannon'}) do
+		local t = Types.towerByTurret and Types.towerByTurret[name];
+		if t and Types.IsUnlocked(t) then
+			return t;
+		end;
+	end;
+	return nil;
 end;
 
 function Types.IsUnlocked(t)
@@ -1010,11 +1023,11 @@ function Economy.NextStructure(constructorIndex)
 		return {type=Types.lab, kind='base'};
 	end;
 	-- a tower on a threatened frontier
-	if Types.cannonTower and constructorIndex == 1 and Types.IsUnlocked(Types.cannonTower) then
+	if Types.GroundTower() and constructorIndex == 1 then
 		for id,_ in pairs(Sense.frontier) do
 			local reg = Map.regions[id];
 			if reg.mobileThreat > 0 and Economy.TowersIn(reg) < Cfg.wantTowersPerFrontier then
-				return {type=Types.cannonTower, kind='tower', region=id};
+				return {type=Types.GroundTower(), kind='tower', region=id};
 			end;
 		end;
 	end;
@@ -1046,8 +1059,9 @@ function Economy.NextStructure(constructorIndex)
 	if extra then
 		return extra;
 	end;
-	if Types.cannonTower and Types.IsUnlocked(Types.cannonTower) and Economy.Count(Types.cannonTower) < 2 + math.floor(round / 20) then
-		return {type=Types.cannonTower, kind='tower'};
+	local gt = Types.GroundTower();
+	if gt and Economy.Count(gt) < 2 + math.floor(round / 20) then
+		return {type=gt, kind='tower'};
 	end;
 	if Types.radarTower and Types.IsUnlocked(Types.radarTower) and Economy.Count(Types.radarTower) < 1 + math.floor(round / 25) then
 		return {type=Types.radarTower, kind='tower'};
@@ -1094,12 +1108,12 @@ function Economy.DefenseNeed(surplus)
 			local threat = Sense.Threat(reg);
 			for nb,_ in pairs(reg.neighbors) do threat = threat + Map.regions[nb].mobileThreat; end;
 			if threat > 10 then
-				ladder[#ladder+1] = {Types.cannonTower, c.ground < 2};
+				ladder[#ladder+1] = {Types.GroundTower(), c.ground < 2};
 				ladder[#ladder+1] = {Types.launcherTower, heavy and c.launcher < 2};
 				ladder[#ladder+1] = {Types.aaTower, Sense.AirMatters() and c.aa < 2};
 			end;
 		else
-			ladder[#ladder+1] = {Types.cannonTower, c.ground < 1};
+			ladder[#ladder+1] = {Types.GroundTower(), c.ground < 1};
 			ladder[#ladder+1] = {Types.aaTower, Sense.AirMatters() and c.aa < Cfg.aaTowersPerRegion};
 			ladder[#ladder+1] = {Types.launcherTower, heavy and c.launcher < 1};
 			ladder[#ladder+1] = {Types.scannerTower, Sense.DeepMatters() and c.scanner < 1};
@@ -1164,7 +1178,7 @@ function Economy.DefenseCounts(reg)
 			if Types.scannerTower and job.kind == Types.scannerTower.name then c.scanner = c.scanner + 1;
 			elseif Types.aaTower and job.kind == Types.aaTower.name then c.aa = c.aa + 1;
 			elseif Types.launcherTower and job.kind == Types.launcherTower.name then c.launcher = c.launcher + 1;
-			elseif Types.cannonTower and job.kind == Types.cannonTower.name then c.ground = c.ground + 1;
+			elseif Types.GroundTower() and job.kind == Types.GroundTower().name then c.ground = c.ground + 1;
 			end;
 		end;
 	end;
