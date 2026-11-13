@@ -866,6 +866,17 @@ function Sense.RecentLosses(n)
 end;
 
 -- How much hostile pressure is on my territory right now (sensed or remembered), 0 = none
+-- Sensed or remembered hostile air threat over and around my regions
+function Sense.AirPressure()
+	local p = 0;
+	for id,_ in pairs(Sense.mine or {}) do
+		local reg = Map.regions[id];
+		p = p + (reg.airThreat or 0);
+		for nb,_ in pairs(reg.neighbors) do p = p + (Map.regions[nb].airThreat or 0) * 0.5; end;
+	end;
+	return p;
+end;
+
 function Sense.Pressure()
 	local p = 0;
 	for id,_ in pairs(Sense.mine or {}) do
@@ -2027,6 +2038,12 @@ function Economy.NextVehicle()
 	if Economy.MineShortage() and (Game.myFaction.currentResources.storage.minerals or 0) >= 150
 		and #my.surveyor >= 1 and combat < Cfg.retreatBelowUnits * 3 then
 		return Tank();
+	end;
+	-- attacked from the air: mobile AA first, a tank does not solve that
+	local airPressure = Sense.AirPressure();
+	if airPressure > 0 and #my.aa < 1 + math.floor(airPressure / 3) then
+		local aa = Types.Vehicle(Types.turret.aa, hover);
+		if aa then return aa; end;
 	end;
 	-- under pressure, tanks first. Replacing constructors that keep dying feeds the enemy
 	if pressure > 0 and combat < 4 + math.floor(pressure / 3) then
