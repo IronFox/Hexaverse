@@ -2033,9 +2033,18 @@ function Economy.NextVehicle()
 		return Tank();
 	end;
 	-- no scanner at all means no resource coverage: get one, right after defending the base
+	-- But a known mine site comes first while minerals only cover that mine and its generator
 	if #my.surveyor == 0 and (Sense.storedByRole.surveyor or 0) == 0 and Economy.ScannerTowers() == 0 then
 		local sv = Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
-		if sv then return sv; end;
+		if sv then
+			local minerals = Game.myFaction.currentResources.storage.minerals or 0;
+			local needForMine = (Types.mine and Types.mine.constructionCost or 0)
+				+ (Types.generator and Types.generator.constructionCost or 0);
+			local knownSite = Economy.FindMineCell('Minerals') ~= nil;
+			if not knownSite or minerals >= needForMine + (sv.constructionCost or 0) then
+				return sv;
+			end;
+		end;
 	end;
 	local wantConstructors = Sense.round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate;
 	if constructors < wantConstructors and (combat >= constructors or Sense.round < 12) then
