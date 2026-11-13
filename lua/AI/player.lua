@@ -129,6 +129,7 @@ function Types.Resolve()
 			elseif tn == 'Radar' then Types.radarTower = t;
 			elseif tn == 'Anti Aircraft' then Types.aaTower = t;
 			elseif tn == 'Surveyor' then Types.scannerTower = t;
+			elseif tn == 'Missile Launcher' then Types.launcherTower = t;
 			end;
 		end;
 	end;
@@ -384,6 +385,7 @@ Mem = {
 	homeRegion = nil,		-- region id
 	airSeen = -1,			-- round hostile air activity (planes, plane factories) was last sensed
 	deepSeen = -1,			-- round hostile underground activity was last sensed or suspected
+	heavySeen = -1,			-- round hostile heavy vehicles were last sensed
 	pendingImport = nil,
 	blacklist = {},			-- cell index -> round until which build attempts are skipped
 	jobs = {},				-- unit id -> {kind, cell, since, at}  (transient, not exported)
@@ -410,6 +412,7 @@ function ExportState()
 		home = Mem.homeRegion or 0,
 		air = Mem.airSeen,
 		deep = Mem.deepSeen,
+		heavy = Mem.heavySeen,
 		r = r,
 	};
 end;
@@ -432,6 +435,7 @@ function ApplyImport()
 	if s.home and s.home > 0 then Mem.homeRegion = s.home; end;
 	Mem.airSeen = s.air or -1;
 	Mem.deepSeen = s.deep or -1;
+	Mem.heavySeen = s.heavy or -1;
 	if type(s.r) == 'table' then
 		for _,rec in ipairs(s.r) do
 			local reg = Map.regions[rec[1]];
@@ -630,6 +634,9 @@ function Sense.Update()
 			end;
 		end;
 		if e.health > 0 and not e.location.isSuborbital then
+			if e.type.isMobile and e.type.vehicleBaseType and e.type.vehicleBaseType.name == 'Heavy Base' then
+				Mem.heavySeen = round;
+			end;
 			-- the hostile can build or launch planes: air coverage matters from now on
 			if e.type.name == 'Plane Factory' or (e.type.isSuborbitalPlane) then
 				Mem.airSeen = round;
@@ -978,29 +985,10 @@ function Economy.NextStructure(constructorIndex)
 			end;
 		end;
 	end;
-	-- suspected undermining: a scanner tower per built-up region (scanners see down, not far sideways)
-	if Types.scannerTower and Sense.DeepMatters() and Types.IsUnlocked(Types.scannerTower) then
-		for id,_ in pairs(Sense.mine) do
-			local reg = Map.regions[id];
-			if reg.myStructures >= 3 and Economy.ScannersIn(reg) == 0 and not Economy.scannerClaimed[id] then
-				Economy.scannerClaimed[id] = true;
-				return {type=Types.scannerTower, kind='tower', region=id};
-			end;
-		end;
-	end;
-	if Types.aaTower and Sense.AirMatters() and Types.IsUnlocked(Types.aaTower) then
-		-- every built-up region gets AA cover, most built-up first
-		local best, bestN = nil, 1;
-		for id,_ in pairs(Sense.mine) do
-			local reg = Map.regions[id];
-			if reg.myStructures > bestN and Economy.AATowersIn(reg) < Cfg.aaTowersPerRegion and not Economy.scannerClaimed['aa'..id] then
-				best, bestN = id, reg.myStructures;
-			end;
-		end;
-		if best then
-			Economy.scannerClaimed['aa'..best] = true;
-			return {type=Types.aaTower, kind='tower', region=best};
-		end;
+	-- layered defense of built-up regions (see Economy.DefenseNeed)
+	local need = Economy.DefenseNeed(false);
+	if need then
+		return need;
 	end;
 	if Economy.Count(Types.mine) < 4 + math.floor(round / 10) then
 		local res = 'Minerals';
@@ -1013,6 +1001,11 @@ function Economy.NextStructure(constructorIndex)
 	if Types.plant and Economy.Count(Types.plant) < 2 and round >= 30 then
 		return {type=Types.plant, kind='base'};
 	end;
+	-- surplus: thicken the defense where the threat is highest
+	local extra = Economy.DefenseNeed(true);
+	if extra then
+		return extra;
+	end;
 	if Types.cannonTower and Economy.Count(Types.cannonTower) < 2 + math.floor(round / 20) then
 		return {type=Types.cannonTower, kind='tower'};
 	end;
@@ -1020,6 +1013,92 @@ function Economy.NextStructure(constructorIndex)
 		return {type=Types.radarTower, kind='tower'};
 	end;
 	return {type=Types.mine, kind='mine', resource='Minerals'};
+end;
+
+--[[
+Defense ladder. Coverage wins or loses fights, and every layer that is covered
+shifts the enemy's best answer to the next one:
+  sensor only      -> attacked from the air      => AA
+  + AA             -> attacked by tanks          => ground tower (cannon)
+  + cannon         -> attacked by heavy tanks    => missile launcher tower
+  + launcher       -> attacked from underground  => scanner tower
+Layers are added in the order the enemy has shown the matching capability
+(air/heavy/deep), with the ground tower always first. Regions are served
+most valuable first. With surplus=true, adds a second ground/launcher tower
+where remembered threat is high (more units can always beat a fixed defense).
+@return {type, kind='tower', region} or nil
+]]
+function Economy.DefenseNeed(surplus)
+	local regions = {};
+	for id,_ in pairs(Sense.mine) do
+		local reg = Map.regions[id];
+		local value = reg.myStructures;
+		for _,st in ipairs(Sense.myStructures) do
+			if st.turret and not st.turret.type.canAttack and Map.RegionOfLoc(st.location) == reg then
+				value = value + 2;	-- sensors are what the enemy wants to blind
+			end;
+		end;
+		if value >= 2 then
+			regions[#regions+1] = {reg=reg, value=value};
+		end;
+	end;
+	table.sort(regions, function(a,b) return a.value > b.value end);
+
+	local heavy = Mem.heavySeen >= 0 or Sense.round >= 60;
+	for _,e in ipairs(regions) do
+		local reg = e.reg;
+		local id = reg.id;
+		local c = Economy.DefenseCounts(reg);
+		local ladder = {};
+		if surplus then
+			local threat = Sense.Threat(reg);
+			for nb,_ in pairs(reg.neighbors) do threat = threat + Map.regions[nb].mobileThreat; end;
+			if threat > 10 then
+				ladder[#ladder+1] = {Types.cannonTower, c.ground < 2};
+				ladder[#ladder+1] = {Types.launcherTower, heavy and c.launcher < 2};
+				ladder[#ladder+1] = {Types.aaTower, Sense.AirMatters() and c.aa < 2};
+			end;
+		else
+			ladder[#ladder+1] = {Types.cannonTower, c.ground < 1};
+			ladder[#ladder+1] = {Types.aaTower, Sense.AirMatters() and c.aa < Cfg.aaTowersPerRegion};
+			ladder[#ladder+1] = {Types.launcherTower, heavy and c.launcher < 1};
+			ladder[#ladder+1] = {Types.scannerTower, Sense.DeepMatters() and c.scanner < 1};
+		end;
+		for _,step in ipairs(ladder) do
+			local t, wanted = step[1], step[2];
+			local key = (t and t.name or '?')..'@'..id;
+			if t and wanted and Types.IsUnlocked(t) and not Economy.scannerClaimed[key] then
+				Economy.scannerClaimed[key] = true;
+				return {type=t, kind='tower', region=id};
+			end;
+		end;
+	end;
+	return nil;
+end;
+
+-- Counts my defensive structures in a region (including towers under construction there)
+function Economy.DefenseCounts(reg)
+	local c = {ground=0, aa=0, launcher=0, scanner=0};
+	for _,st in ipairs(Sense.myStructures) do
+		if st.turret and Map.RegionOfLoc(st.location) == reg then
+			local tt = st.turret.type;
+			if tt.detectsResources then c.scanner = c.scanner + 1;
+			elseif tt.trajectoryType == 'AAMissile' then c.aa = c.aa + 1;
+			elseif tt.name == 'Missile Launcher' then c.launcher = c.launcher + 1;
+			elseif tt.canAttack then c.ground = c.ground + 1;
+			end;
+		end;
+	end;
+	for _,job in pairs(Mem.jobs) do
+		if job.region == reg.id then
+			if Types.scannerTower and job.kind == Types.scannerTower.name then c.scanner = c.scanner + 1;
+			elseif Types.aaTower and job.kind == Types.aaTower.name then c.aa = c.aa + 1;
+			elseif Types.launcherTower and job.kind == Types.launcherTower.name then c.launcher = c.launcher + 1;
+			elseif Types.cannonTower and job.kind == Types.cannonTower.name then c.ground = c.ground + 1;
+			end;
+		end;
+	end;
+	return c;
 end;
 
 function Economy.AATowersIn(reg)
@@ -1169,7 +1248,8 @@ function Economy.BuildAt(u, loc, t, reachable)
 		Log('BuildStructure failed: '..tostring(err));
 		return false;
 	end;
-	Mem.jobs[u.id] = {kind = t.name, cell = loc.cell.index, since = Sense.round, at = loc.cell.index};
+	local reg = Map.RegionOfLoc(loc);
+	Mem.jobs[u.id] = {kind = t.name, cell = loc.cell.index, since = Sense.round, at = loc.cell.index, region = reg and reg.id};
 	Log(u.niceName..' -> build '..t.name..' at cell '..loc.cell.index);
 	return true;
 end;
@@ -1301,12 +1381,22 @@ function Military.ChooseAttackTarget()
 	return best;
 end;
 
+-- Fixed defenses can always be beaten with more units: size the attack by what we remember of the target
+function Military.RequiredForce(id)
+	local reg = Map.regions[id];
+	local need = Cfg.attackMinUnits + reg.hostileStructures * 2 + math.floor(reg.staticThreat / 4);
+	for nb,_ in pairs(reg.neighbors) do
+		need = need + math.floor(Map.regions[nb].staticThreat / 8);
+	end;
+	return need;
+end;
+
 function Military.UpdatePosture()
 	local n = Military.ArmyStrength();
 	if Mem.posture == 'defend' then
-		if n >= Cfg.attackMinUnits and Sense.round >= Cfg.attackMinRound then
-			local target = Military.ChooseAttackTarget();
-			if target then
+		local target = (Sense.round >= Cfg.attackMinRound) and Military.ChooseAttackTarget() or nil;
+		if target and n >= Military.RequiredForce(target) then
+			do
 				Mem.posture = 'attack';
 				Mem.attackTarget = target;
 				Log('Posture: attack region '..target..' with '..n..' units');
