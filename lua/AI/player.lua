@@ -68,6 +68,10 @@ Cfg = {
 	-- structures
 	wantLabs = 3,
 	wantTowersPerFrontier = 1,
+	-- economy
+	energyHeadroom = 2,	-- build power while spare energy (all structures enabled) is below this
+	earlyMines = 3,		-- mines before towers while home is quiet (+1 per 10 rounds)
+	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
 
 	-- research, in order of preference. Matched against topic fullName (case-insensitive substring)
@@ -1042,15 +1046,24 @@ function Economy.NextStructure(constructorIndex)
 	if Types.plant and Economy.Count(Types.plant) == 0 then
 		return {type=Types.plant, kind='base'};
 	end;
-	-- energy first: everything else depends on it
-	if bal.energy < 0 or (cur.balance.energy <= 0 and Economy.Count(Types.generator) < 2) then
-		if bal.fuel <= 0 and constructorIndex % 2 == 1 then
+	-- energy first: everything else depends on it. Keep some headroom so the next mine
+	-- (or a vehicle plant) runs as soon as it is finished instead of sitting disabled
+	if bal.energy < Cfg.energyHeadroom or (cur.balance.energy <= 0 and Economy.Count(Types.generator) < 2) then
+		if (bal.fuel or 0) <= 0 and (constructorIndex % 2 == 1 or Economy.Count(Types.mine) == 0) then
 			return {type=Types.mine, kind='mine', resource='Fuel'};
 		end;
 		if Economy.powerOrders < 2 then
 			Economy.powerOrders = Economy.powerOrders + 1;
 			return {type=Types.generator, kind='power'};
 		end;
+	end;
+	-- income before towers: a broke faction cannot build defenses or tanks either.
+	-- Only while home is quiet; under attack the defense below comes first
+	local wantMines = math.min(Cfg.earlyMines + math.floor(round / 10), 10);
+	if Economy.Count(Types.mine) < wantMines and Sense.Pressure() <= 0 then
+		local res = 'Minerals';
+		if (bal.fuel or 0) <= 0 then res = 'Fuel'; end;
+		return {type=Types.mine, kind='mine', resource=res};
 	end;
 	-- a reactor core in the middle of a generator ring, once unlocked and fed with uranium
 	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
@@ -1644,7 +1657,13 @@ function Economy.Production()
 			end;
 		end;
 		local queued = p.productionQueue and #p.productionQueue or 0;
-		if queued < 2 and p.BuildMobile then
+		-- while broke and short on mines, queue only one vehicle at a time so constructors get the minerals
+		local cur = Economy.Resources();
+		local broke = (cur.storage.minerals or 0) < Cfg.brokeMinerals
+			and Economy.Count(Types.mine) < Cfg.earlyMines + 2
+			and Sense.Pressure() <= 0;
+		local maxQueue = broke and 1 or 2;
+		if queued < maxQueue and p.BuildMobile then
 			local t = Economy.NextVehicle();
 			if t then
 				local ok, err = pcall(p.BuildMobile, t);
