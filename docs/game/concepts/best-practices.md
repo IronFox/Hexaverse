@@ -96,7 +96,7 @@ Endless improvement [research](research.md) captures whatever research capacity 
 [Heavy](../units/vbases/heavy-base.md) and [catamaran](../units/vbases/catamaran-base.md) bases terraform about twice as fast. With catamarans you can build waterways, and with heavy bases roads and tunnels go up very quickly. Both can construct submerged mines where space is constrained. This is useful on planets with floating islands: if there is water underneath, mines can be placed on it. If there is only air, mines must stay above. Mines do not fall, but non-plane vehicles do.
 
 Roads are really effective, yet even human players seldom build them. A one-time investment in proper infrastructure makes everything a lot faster afterwards.
-Keep in mind that hostile encounters tend to rip holes into the ground, so roads through contested areas do not last. Also, [terraformers](../units/turrets/terraformer.md) are priority targets for the Nexus AI, because they can be used to take over a hub. Sending one in first can go either way.
+Keep in mind that hostile encounters tend to rip holes into the ground, so roads through contested areas do not last. Also, [terraformers](../units/turrets/terraformer.md) are priority targets for the Nexus AI, because they can be used to take over a hub. Sending one in first to claim a spot can go either way: in the best case it builds the towers to defend the spot before anything gets to it, in the worst case it does not.
 
 ### Plantations and T2 Units
 
