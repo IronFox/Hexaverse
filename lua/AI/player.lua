@@ -71,6 +71,7 @@ Cfg = {
 	-- economy
 	energyHeadroom = 2,	-- build power while spare energy (all structures enabled) is below this
 	earlyMines = 3,		-- mines before towers while home is quiet (+1 per 10 rounds)
+	stuckProductionRounds = 15,	-- abort a plant's head production after this many rounds without progress
 	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
 
@@ -1484,6 +1485,51 @@ Economy.claimed = {};
 Economy.scannerClaimed = {};
 Economy.powerOrders = 0;
 
+--[[
+Best known resource cell for a new mine in safe, nearby territory.
+The engine's global search only returns the single highest spot, which is often
+far away or under fire. This scans my regions and their quiet neighbors instead
+(cached per round), and falls back to the engine's pick if that one is safe.
+]]
+Economy.mineCache = {};
+function Economy.FindMineCell(resource)
+	local cache = Economy.mineCache[resource];
+	if cache == nil or cache.round ~= Sense.round then
+		local list = {};
+		local seen = {};
+		local function Scan(reg)
+			if seen[reg.id] then return; end;
+			seen[reg.id] = true;
+			if Sense.Threat(reg) > 0 or (Sense.hops[reg.id] or 99) > 2 then return; end;
+			for _,cell in ipairs(reg.cells) do
+				if not Sense.structureCells[cell.index] then
+					local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, resource, cell);
+					if ok and lvl and lvl > 0 then
+						list[#list+1] = {cell=cell, level=lvl, hops=Sense.hops[reg.id] or 0};
+					end;
+				end;
+			end;
+		end;
+		for id,_ in pairs(Sense.mine) do
+			Scan(Map.regions[id]);
+			for nb,_ in pairs(Map.regions[id].neighbors) do Scan(Map.regions[nb]); end;
+		end;
+		-- richer and closer first
+		table.sort(list, function(a,b) return a.level / (1 + a.hops) > b.level / (1 + b.hops) end);
+		cache = {round=Sense.round, list=list};
+		Economy.mineCache[resource] = cache;
+	end;
+	for _,e in ipairs(cache.list) do
+		local bl = Mem.blacklist[e.cell.index];
+		if not Economy.claimed[e.cell.index] and not Sense.structureCells[e.cell.index] and not (bl and bl > Sense.round) then
+			return e.cell;
+		end;
+	end;
+	local ok, c = pcall(Game.Grid.FindHighestAvailableResourceLocationExt, resource, true, true);
+	if ok then return c; end;
+	return nil;
+end;
+
 function Economy.AssignConstructor(u, index)
 	local job = Mem.jobs[u.id];
 	-- danger: get out first, build later
@@ -1539,12 +1585,9 @@ function Economy.AssignConstructor(u, index)
 	end;
 
 	if want.kind == 'mine' then
-		local cell = nil;
-		local ok, c = pcall(Game.Grid.FindHighestAvailableResourceLocationExt, want.resource, true, true);
-		if ok then cell = c; end;
+		local cell = Economy.FindMineCell(want.resource);
 		if cell == nil and want.resource ~= 'Minerals' then
-			ok, c = pcall(Game.Grid.FindHighestAvailableResourceLocationExt, 'Minerals', true, true);
-			if ok then cell = c; end;
+			cell = Economy.FindMineCell('Minerals');
 		end;
 		if cell and not Economy.claimed[cell.index] then
 			local dest = Move.GroundAt(u, cell);
@@ -1681,14 +1724,40 @@ function Economy.NextVehicle()
 	return Types.Vehicle(Types.turret.cannon, base) or Types.Vehicle(Types.turret.cannon, hover);
 end;
 
+Economy.plantHead = {};	-- plant id -> {id=production id, since=round}
+
 function Economy.Production()
 	for _,p in ipairs(Sense.plants) do
 		if p.productionCompleted or p.deploymentOptions then
 			local ok, loc = pcall(p.GetIdealDeploymentOption);
+			if not (ok and loc) and p.deploymentOptions then
+				-- no ideal spot (e.g. crowded around the plant): any safe option beats a blocked plant
+				for _,o in ipairs(p.deploymentOptions) do
+					if not Move.IsDangerous(o) then loc = o; ok = true; break; end;
+				end;
+			end;
 			if ok and loc then
 				Log(p.niceName..': deploying '..tostring(p.productionCompleted));
 				p.DeployProductionAt(loc);
+			elseif Sense.round % 10 == 0 then
+				Log(p.niceName..': cannot deploy '..tostring(p.productionCompleted)..', no deployment option');
 			end;
+		end;
+		-- a production that does not progress for many rounds blocks the plant: drop it
+		local head = p.productionQueue and p.productionQueue[1];
+		if head and head.id == nil then head = nil; end;
+		if head then
+			local h = Economy.plantHead[p.id];
+			if h == nil or h.id ~= head.id then
+				Economy.plantHead[p.id] = {id=head.id, since=Sense.round};
+			elseif Sense.round - h.since > Cfg.stuckProductionRounds and not p.productionCompleted
+				and (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.brokeMinerals then
+				Log(p.niceName..': production of '..tostring(head.name)..' is stuck. Aborting it');
+				pcall(head.Abort);
+				Economy.plantHead[p.id] = nil;
+			end;
+		else
+			Economy.plantHead[p.id] = nil;
 		end;
 		local queued = p.productionQueue and #p.productionQueue or 0;
 		-- while broke and short on mines, queue only one vehicle at a time so constructors get the minerals
@@ -1697,12 +1766,13 @@ function Economy.Production()
 			and Economy.Count(Types.mine) < Cfg.earlyMines + 2
 			and Sense.Pressure() <= 0;
 		local maxQueue = broke and 1 or 2;
-		-- never spend the power reserve on vehicles (a pinch of defense aside)
-		if (cur.storage.minerals or 0) < Economy.PowerReserve() and #Sense.my.combat >= 2 then
-			maxQueue = 0;
-		end;
+		local reserveBlocked = (cur.storage.minerals or 0) < Economy.PowerReserve() and #Sense.my.combat >= 2;
 		if queued < maxQueue and p.BuildMobile then
 			local t = Economy.NextVehicle();
+			-- never spend the power reserve on vehicles, except the minimum of constructors and a pinch of defense
+			if t and reserveBlocked and #Sense.my.constructor + (Sense.storedByRole.constructor or 0) >= 2 then
+				t = nil;
+			end;
 			if t then
 				local ok, err = pcall(p.BuildMobile, t);
 				if ok then
@@ -2216,12 +2286,13 @@ function Execute()
 		if reg.lastSeenAir >= 0 then seenA = seenA + 1; end;
 		if reg.lastSeenDeep >= 0 then seenD = seenD + 1; end;
 	end;
-	Game.Log(string.format('%sround %d | %s | units c%d m%d(+%d stored) r%d s%d aa%d | structures %d | seen g%d a%d d%d /%d, enemy %d%s%s | minerals %d energy %d | %.2fs',
+	Game.Log(string.format('%sround %d | %s | units c%d m%d(+%d stored) r%d s%d aa%d | structures %d | seen g%d a%d d%d /%d, enemy %d%s%s | minerals %d energy out %d spare %d | mines %d gen %d | %.2fs',
 		Cfg.logPrefix, Sense.round, Mem.posture..(Mem.attackTarget and ('->'..Mem.attackTarget) or ''),
 		#Sense.my.constructor, #Sense.my.combat, Sense.storedByRole.combat or 0, #Sense.my.radar, #Sense.my.surveyor, #Sense.my.aa,
 		#Sense.myStructures, seen, seenA, seenD, #Map.regions, #Sense.enemyRegions,
 		Sense.AirMatters() and ' AIR' or '', Sense.DeepMatters() and ' DEEP' or '',
-		cur.storage.minerals or 0, cur.balance.energy or 0, timer()));
+		cur.storage.minerals or 0, (Game.myFaction.maxResources.supply or {}).energy or 0, cur.balance.energy or 0,
+		Economy.Count(Types.mine), Economy.Count(Types.generator), timer()));
 end;
 
 function OnMessage(sender--[[Faction]], message--[[string]])
