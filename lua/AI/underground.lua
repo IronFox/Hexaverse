@@ -681,8 +681,10 @@ function Military.Combat()
 end;
 
 -- Towers below ground only matter once someone has broken in, and by then the base is lost
--- anyway: a couple next to the shaft, the rest of the minerals go into bombs and economy
-Cfg.moleMaxTowers = 2;
+-- anyway. They are also two layers high: in a one-layer cavern they would have to be built
+-- submerged (in a pit dug one layer down), which this script doesn't do. So none below ground:
+-- the minerals go into bombs and economy
+Cfg.moleMaxTowers = 0;
 local function TowerCount()
 	local n = 0;
 	for _,st in ipairs(Sense.myStructures or {}) do
