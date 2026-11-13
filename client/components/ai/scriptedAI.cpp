@@ -97,7 +97,10 @@ namespace AI::Script
 			if (scriptName.IsEmpty())
 				return installScripts.Find(L"AI/ai.lua",outFile);
 
-			return scripts.Find(UserScriptNameToPath(scriptName),outFile);
+			if (scripts.Find(UserScriptNameToPath(scriptName),outFile))
+				return true;
+			//shipped scripts, e.g. the AI player script 'player' (lua/AI/player.lua)
+			return installScripts.Find(FileSystem::StringToPath("AI/")+UserScriptNameToPath(scriptName),outFile);
 		}
 
 

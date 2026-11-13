@@ -206,6 +206,7 @@ namespace FileIO
 		enum flag_t
 		{
 			IsDead = 0x1,
+			IsAIPlayer = 0x2,
 
 		};
 
@@ -1915,6 +1916,8 @@ namespace FileIO
 												flagChunk->Get(&flags);
 												if (flags & FactionFlags::IsDead)
 													faction->isDead = true;
+												if (flags & FactionFlags::IsAIPlayer)
+													faction->isAIPlayer = true;
 											}
 										}
 
@@ -2381,6 +2384,8 @@ namespace FileIO
 					UINT32 outFlags = 0;
 					if (faction->isDead)
 						outFlags |= FactionFlags::IsDead;
+					if (faction->isAIPlayer)
+						outFlags |= FactionFlags::IsAIPlayer;
 					if (outFlags != 0)
 						factionSection->AppendBlock(RID::factionFlags)->SetPODData(outFlags);
 				}

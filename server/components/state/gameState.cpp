@@ -11,6 +11,11 @@
 #include <objects/packable.h>
 #include <objects/t2.h>
 #include <objects/nexus/nexusThreatEstimation.h>
+#include <passwordMatch.h>
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <vector>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -57,6 +62,107 @@ namespace Game
 		{
 			StartAI();
 		}
+		StartAIPlayers();
+	}
+
+
+	namespace AIPlayerDetail
+	{
+		struct Reservation
+		{
+			CryptographicID		token;
+			String				name;
+			std::atomic<bool>	claimed{false};
+		};
+		typedef std::shared_ptr<Reservation>	PReservation;
+
+		std::mutex				lock;
+		std::vector<PReservation>	pending;
+		UINT32					nameCounter = 0;
+
+		String	EscapeName(const String&name)
+		{
+			String rs = name;
+			rs.EraseCharacters("'\"\\",true);
+			return rs;
+		}
+
+		void	Launch(const PReservation&r)
+		{
+			AIProcess::BeginPlayer(r->token, ::Network::Config::sessionBasePort, ::Network::Config::GetServerPassword,
+				[r]()->String
+				{
+					String rs = "aiPlayerName='"+EscapeName(r->name)+"'";
+					if (!r->claimed)
+						rs += " aiNewFaction=true";
+					return rs;
+				});
+		}
+	}
+
+	void StartAIPlayers()
+	{
+		using namespace AIPlayerDetail;
+		count_t have = 0;
+		foreach (Objects::Faction::all,f)
+		{
+			const Objects::PFaction&faction = *f;
+			if (!faction->isAIPlayer)
+				continue;
+			have++;
+			if (faction->isDead)
+				continue;
+			PReservation r(new Reservation());
+			r->token = faction->accessToken;
+			r->name = faction->name;
+			r->claimed = true;
+			Launch(r);
+		}
+
+		std::lock_guard<std::mutex> guard(lock);
+		have += pending.size();
+		if (have >= Config::AIPlayers::count)
+		{
+			for (const auto&r : pending)
+				Launch(r);	//no-op if running
+			return;
+		}
+		if (RuntimeConfig::GameHasEnded() || (Config::closedGame && RuntimeConfig::roundNumber > 0))
+		{
+			LogEvent(EventClass::Preset::common,"AI players: game is closed or has ended. Not creating new AI players");
+			return;
+		}
+		while (have < Config::AIPlayers::count)
+		{
+			PReservation r(new Reservation());
+			r->token.Generate();
+			r->name = "AI "+String(have+1);
+			have++;
+			pending.push_back(r);
+			LogEvent(EventClass::Preset::common,"AI players: launching new AI player '"+r->name+"'");
+			Launch(r);
+		}
+		for (const auto&r : pending)
+			Launch(r);
+	}
+
+	bool ClaimAIPlayerToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken, CryptographicID&outToken)
+	{
+		using namespace AIPlayerDetail;
+		if (hashedFactionToken.IsEmpty())
+			return false;
+		std::lock_guard<std::mutex> guard(lock);
+		for (auto it = pending.begin(); it != pending.end(); ++it)
+		{
+			if (Password::HashMatch(passwordChallenge,(*it)->token,hashedFactionToken))
+			{
+				(*it)->claimed = true;
+				outToken = (*it)->token;
+				pending.erase(it);	//the process keeps its reservation alive and now continues the created faction
+				return true;
+			}
+		}
+		return false;
 	}
 
 	bool AIIsActive()
@@ -477,6 +583,12 @@ namespace Game
 			Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 
+		namespace AIPlayers
+		{
+			UINT32		count = 0;
+			String		script = "player";
+		}
+
 		count_t	GetTargetNexusCount()
 		{
 			if (RuntimeConfig::empZones)
@@ -581,8 +693,7 @@ namespace Game
 
 		void		HandleSessionSuspension()
 		{
-			if (Config::Nexus::enableAI)
-				AIProcess::End();
+			AIProcess::End();	//Nexus (if any) and AI players
 		}
 
 		void		HandleSessionClosure()
@@ -595,6 +706,10 @@ namespace Game
 			winner.reset();
 			postEvolutionWinner.reset();
 			HandleSessionSuspension();
+			{
+				std::lock_guard<std::mutex> guard(AIPlayerDetail::lock);
+				AIPlayerDetail::pending.clear();	//new game: forget unclaimed AI player reservations
+			}
 			Vote::Flush();
 		}
 

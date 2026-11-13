@@ -17,6 +17,16 @@ namespace RuntimeConfig
 {
 	extern bool aiMode;
 	extern CryptographicID aiAccessToken;
+	/**
+	Set (non-empty) if this AI client plays a regular faction (server-launched AI player) rather than the Nexus faction.
+	Used as faction name
+	*/
+	extern String aiPlayerName;
+	/**
+	True if this AI player client should create its faction (first launch) rather than continue an existing one
+	*/
+	extern bool aiNewFaction;
+	inline bool IsAIPlayer() {return aiMode && aiPlayerName.IsNotEmpty();}
 	extern String serverPassword;
 	extern bool udpListen;
 	extern Time::Stamp				programStart;

@@ -1,4 +1,5 @@
 #include <global_root.h>
+#include "aiProcess.h"
 #include "networkChannels.h"
 #include "state.h"
 #include "serverLogEvent.h"
@@ -904,9 +905,19 @@ namespace Receiver
 
 
 		index_t startLocation = InvalidIndex;
+		bool newAIPlayer = false;
 		if (newFaction)
 		{
 			response.newFactionAccessToken.Generate();
+			const auto cancelAIPlayer = [&]()
+			{
+				CryptographicID aiPlayerToken;
+				if (Game::ClaimAIPlayerToken(client->passwordChallenge, req.hashedFactionToken, aiPlayerToken))
+				{
+					LogEvent(EventClass::Preset::commandRejected,peer,"AI player could not join. Ending its process");
+					AIProcess::EndOne(aiPlayerToken);
+				}
+			};
 
 			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
 			{
@@ -921,6 +932,7 @@ namespace Receiver
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
 				LogEvent(EventClass::Preset::commandRejected,peer,"Game is closed. User does not have any valid access token. Join-request rejected.");
+				cancelAIPlayer();
 				return;
 			}
 
@@ -932,9 +944,19 @@ namespace Receiver
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
 				LogEvent(EventClass::Preset::operationAborted,peer,"Unable to find valid starting location for new faction.");
+				cancelAIPlayer();
 				return;
 			}
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
+			{
+				CryptographicID aiPlayerToken;
+				newAIPlayer = Game::ClaimAIPlayerToken(client->passwordChallenge, req.hashedFactionToken, aiPlayerToken);
+				if (newAIPlayer)
+				{
+					LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ),peer,"Recognized server-launched AI player client");
+					response.newFactionAccessToken = aiPlayerToken;
+				}
+			}
 			faction = client->faction = Objects::Faction::Create(TUniqueID::New(),TUniqueID::New());
 			ApplicationInterface::SignalFactionsChanged();
 			if (client->faction != Objects::Faction::nexus)
@@ -945,6 +967,12 @@ namespace Receiver
 			LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ),peer,"Created new faction.");
 
 			client->faction->accessToken = response.newFactionAccessToken;
+			if (newAIPlayer)
+			{
+				client->faction->isAIPlayer = true;
+				client->faction->aiScriptName = Game::Config::AIPlayers::script;
+				client->faction->aiScriptState.Clear();
+			}
 
 			ResearchSerialization::SendTopicProgressVectorTo(Network::server,faction);	//since the user level hasn't been updated yet, this is not sent to the local client
 			ResearchSerialization::SendAttributeVectorTo(Network::server,faction->researchState.attributeTable,faction->id);

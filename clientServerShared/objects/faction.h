@@ -166,6 +166,11 @@ namespace Objects
 		#else
 			String		aiScriptName;
 			Array<BYTE>	aiScriptState;
+			/**
+			True if this regular faction is played by a server-launched AI client (see Game::StartAIPlayers()).
+			Persisted in savegames via faction flags
+			*/
+			bool		isAIPlayer = false;
 		#endif
 
 		#ifdef ONE_COMPOUND_PER_FACTION

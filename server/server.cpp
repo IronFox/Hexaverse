@@ -335,6 +335,8 @@ namespace ApplicationInterface
 
 	void	SignalFactionDied(const Objects::PFaction&f)
 	{
+		if (f->isAIPlayer)
+			AIProcess::EndOne(f->accessToken);	//prevent the AI client from being restarted for a dead faction
 		Channels::KillFaction.SendTo(Network::server,f->id,Channels::Level::Faction);
 		Network::PClient client;
 		if (Network::playerMap.Query(f,client))

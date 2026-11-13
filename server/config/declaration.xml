@@ -286,6 +286,15 @@
 				Only affects newly spawned vehicles - does not affect nexus vehicles loaded from a save-file.
 			</variable>
 		</context>
+		<context name="AIPlayers">Lua scripted AI players. Each one is a regular faction, controlled by its own Console Client process that the server launches.
+			<variable name="count" default="0">
+				Number of AI player factions. New AI players join like regular players, so they can only be created while new factions may join (round 0 in closed games).
+				Lowering this value does not remove existing AI players. Range [0,16].
+			</variable>
+			<variable name="script" default="player">
+				Lua script that new AI players run. For any value X, [My Games]/shared/AIScripts/X.lua is used if it exists, otherwise [install]/lua/AI/X.lua.
+			</variable>
+		</context>
 	</context>
 	<context name="Server">Everything related to this server. Not exported to/imported from save games
 		<variable name="saveEveryNRounds" default="10">Number of rounds between auto-saves. Set negative to disable.</variable>

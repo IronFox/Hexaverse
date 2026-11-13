@@ -244,6 +244,23 @@ namespace Game
 								minRoundForHeavyVehicleBases;
 			extern Ctr::Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
+
+		/**
+		Lua scripted AI players: regular factions, each controlled by its own Console Client process
+		*/
+		namespace AIPlayers
+		{
+			/**
+			Number of AI player factions the server keeps. New AI factions are only created while new factions
+			may join (round 0 or open games). Lowering the number does not remove existing AI factions
+			*/
+			extern UINT32		count/* = 0*/;
+			/**
+			Name of the Lua script new AI player factions run. Looked up in [game folder]/shared/AIScripts first,
+			then in the install folder lua/AI/
+			*/
+			extern String		script/* = "player"*/;
+		}
 	}
 	
 
@@ -379,6 +396,19 @@ namespace Game
 
 	void			StartAIIfEnabled();
 	void			StartAI();
+
+	/**
+	Launches clients for all living AI player factions and creates new AI players
+	until Config::AIPlayers::count is reached (if new factions may currently join)
+	*/
+	void			StartAIPlayers();
+
+	/**
+	Checks whether the given hashed token belongs to an AI player client launched by this server
+	that has not yet created its faction. If so, the reservation is consumed.
+	@param[out] outToken The reserved (unhashed) token, to be used as the new faction's access token
+	*/
+	bool			ClaimAIPlayerToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken, CryptographicID&outToken);
 	/**
 	Checks whether an AI client should be or is currently active.
 	If found active, disregards whether it should be there

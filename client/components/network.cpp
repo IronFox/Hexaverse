@@ -634,6 +634,8 @@ namespace Network
 					#endif
 							AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction,RuntimeConfig::serverPassword);
 				}
+				elif (RuntimeConfig::aiMode && RuntimeConfig::aiNewFaction)
+					AttemptFactionLogin(false,Protocol::FactionType::RegularFaction,RuntimeConfig::serverPassword);	//server-launched AI player. Our token is reserved for the new faction
 				elif (RuntimeConfig::tutorialMode || RuntimeConfig::aiMode)
 					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly,RuntimeConfig::serverPassword);
 				else
@@ -1652,7 +1654,10 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection established to "+client.ToString());
 				
 				Protocol::Hello hello;
-				hello = RuntimeConfig::aiMode ? Objects::Faction::nexusName : chosenNickname;
+				if (RuntimeConfig::IsAIPlayer())
+					hello = RuntimeConfig::aiPlayerName;
+				else
+					hello = RuntimeConfig::aiMode ? Objects::Faction::nexusName : chosenNickname;
 				if (RuntimeConfig::aiMode)
 					chosenNickname = hello;
 				//state.state = 0U;

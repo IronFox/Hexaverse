@@ -398,6 +398,42 @@ namespace Reflection
 		};
 
 
+		class AIPlayerCount : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue = "0";
+
+			/**/			AIPlayerCount(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "UINT32",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ConvertToString()		const	override	{return String(Game::Config::AIPlayers::count);}
+			virtual	bool	Set(const String&value)	override
+			{
+				UINT32 val;
+				if (!convert(value.c_str(),val) || val > 16)
+					return false;
+				if (val == Game::Config::AIPlayers::count)
+					return true;
+				Game::Config::AIPlayers::count = val;
+				if (Network::SessionIsStarted())
+					Game::StartAIPlayers();
+				OnChanged();
+				return true;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[0,16]";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ConvertToString();
+			}
+		};
+
+
 		class NexusAIScript : public Base
 		{
 			typedef Base	Super;
@@ -1383,6 +1419,11 @@ namespace Reflection
 				VAR(minRoundForPlanes,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
 				VAR(minRoundForHeavyVehicleBases,Game::Config::Nexus,0U,10000U,Variable::Persistence::RestoreFromSavegame);
 				parser->SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
+			parser->ExitFolder();
+
+			parser->EnterNewFolder("AIPlayers")->attachment = persistenceAttachment;
+				parser->SetVariable(CLI::PVariable(new Variable::AIPlayerCount("count")));
+				Variable::SetStringReference("script","AIScript",Game::Config::AIPlayers::script,Variable::Persistence::RestoreFromSavegame);
 			parser->ExitFolder();
 		parser->ExitFolder();
 

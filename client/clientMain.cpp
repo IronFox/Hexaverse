@@ -1726,6 +1726,16 @@ void ParseKeyValue(const String&key, const String&value)
 			RuntimeConfig::aiAccessToken.Decode(value);
 			LogEvent(EventClass::Preset::configuration,nullptr,"Assuming AI-client role");
 		}
+		elif (key == "aiPlayerName")
+		{
+			RuntimeConfig::aiPlayerName = value.Trim();
+			LogEvent(EventClass::Preset::configuration,nullptr,"Playing as AI player '"+RuntimeConfig::aiPlayerName+"'");
+		}
+		elif (key == "aiNewFaction")
+		{
+			if (!convert(value.c_str(), RuntimeConfig::aiNewFaction))
+				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse aiNewFaction='" + value + "' to bool");
+		}
 		elif (key == "password")
 		{
 			RuntimeConfig::serverPassword = value;
@@ -1838,7 +1848,17 @@ bool ConfigureClient()
 
 		RuntimeConfig::ClientInit();	//requires RuntimeConfig::aiMode, which is declared by parameter variables
 		FileSystem::ForceCreateDirectory(RuntimeConfig::myConfig.Lookup("logs"));	//can't do this until 
-		Logging::Begin(RuntimeConfig::myConfig.Lookup(FileSystem::StringToPath("logs/client "+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
+		{
+			//AI player clients are launched in parallel. Keep their logs apart
+			String logPrefix = "client ";
+			if (RuntimeConfig::aiPlayerName.IsNotEmpty())
+			{
+				String safeName = RuntimeConfig::aiPlayerName.CopyToLowerCase();
+				safeName.EraseCharacters(ValidProfileCharacter,false);
+				logPrefix = "client "+safeName+" ";
+			}
+			Logging::Begin(RuntimeConfig::myConfig.Lookup(FileSystem::StringToPath("logs/"+logPrefix+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
+		}
 	}
 	catch (const std::exception&e)
 	{
@@ -1874,7 +1894,9 @@ void InitAI()
 	FileSystem::Folder wd;
 	FileSystem::File f;
 
-	if (!wd.FindFile(L"../lua/AI/ai.lua",f))
+	//The server sends the faction's actual script name once logged in (see AI::Script::Resume()). This is only the initial default
+	const PathString defaultScript = RuntimeConfig::aiPlayerName.IsNotEmpty() ? L"../lua/AI/player.lua" : L"../lua/AI/ai.lua";
+	if (!wd.FindFile(defaultScript,f))
 		LogEvent(EventSignificance::NonFatalError,"Unable to find default AI script from "+FileSystem::PathToString(wd.GetLocation()));
 	else
 	{
