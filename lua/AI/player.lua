@@ -2198,7 +2198,8 @@ function Economy.PlaneFactoryNeed()
 	if Sense.round < Cfg.planeFactoryRound or Economy.Count(Types.mine) < Cfg.planeFactoryMines then return nil; end;
 	local cur, max = Economy.Resources();
 	local demand = t.balance and t.balance.demand or {};
-	if (max.balance.fuel or 0) < (demand.fuel or 0) or Economy.FuelMines() < 1 then
+	-- it needs fuel every round: a fuel mine at least, and some spare fuel unless it is the air personality's core
+	if Economy.FuelMines() < 1 or (Cfg.planePriority ~= 'early' and (max.balance.fuel or 0) < (demand.fuel or 0)) then
 		local m = Economy.MineReq('Fuel');
 		if m and Cfg.planePriority == 'early' then return m; end;
 		return nil;

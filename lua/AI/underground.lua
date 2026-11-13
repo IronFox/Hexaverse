@@ -171,13 +171,46 @@ function Mole.DigToward(u, targetCell)
 		Mole.tunnelGoal = nil;
 		return false;
 	elseif check == 'unknown' then
-		Mole.waitSurvey = best.center;
-		return false;
+		-- wait a few rounds for a surveyor to look, then dig anyway
+		Mole.unknownSince = Mole.unknownSince or Sense.round;
+		if Sense.round - Mole.unknownSince < 3 then
+			Mole.waitSurvey = best.center;
+			return false;
+		end;
+		Log('Digging blind into cell '..best.index..': no survey');
 	end;
+	Mole.unknownSince = nil;
 	Mole.waitSurvey = nil;
 	local ok, err = pcall(u.DigHorizontally, loc);
 	if not ok then Log('DigHorizontally failed: '..tostring(err)); return false; end;
 	return true;
+end;
+
+-- The closed cavern cell (next to an open one) nearest to a unit, not claimed by another digger
+function Mole.NextClosed(u)
+	local center = CellByIndex(Mole.shaftCell);
+	local open = {};
+	local want = Mole.Rings(center, Mole.rings);
+	for _,c in ipairs(want) do
+		if Mole.IsOpen(c) then open[c.index] = true; end;
+	end;
+	open[Mole.shaftCell] = true;	-- the digger stands at the bottom of the shaft
+	local best, bd = nil, nil;
+	for _,c in ipairs(want) do
+		if not open[c.index] and not (Mole.digClaims and Mole.digClaims[c.index]) then
+			local bl = Mem.blacklist[c.index];
+			if not (bl and bl > Sense.round) then
+				for _,nb in ipairs(c.neighbors) do
+					if open[nb.index] then
+						local d = D2(c.center, u.location.cell.center);
+						if bd == nil or d < bd then best, bd = c, d; end;
+						break;
+					end;
+				end;
+			end;
+		end;
+	end;
+	return best, want;
 end;
 
 function Mole.Digger()
@@ -195,7 +228,9 @@ end;
 
 function Mole.Update()
 	local u = Mole.Digger();
-	if u == nil or not Move.IsIdle(u) then return; end;
+	-- a lone constructor builds the survival essentials before it digs
+	Mole.digging = u ~= nil and (#Sense.my.constructor >= 2 or Mole.EssentialsAnywhere());
+	if not Mole.digging or not Move.IsIdle(u) then return; end;
 
 	if Mole.phase == 'shaft' then
 		if Mole.shaftCell == nil then
@@ -214,10 +249,12 @@ function Mole.Update()
 				-- lava below: settle for the depth reached
 				Mole.level = u.location.height;
 				Log('Lava below: cavern at height '..Mole.level);
-			elseif check == 'unknown' and #Sense.my.surveyor > 0 then
+			elseif check == 'unknown' and #Sense.my.surveyor > 0 and Sense.round - (Mole.unknownSince or Sense.round) < 3 then
+				Mole.unknownSince = Mole.unknownSince or Sense.round;
 				Mole.waitSurvey = u.location.world;
 				return;
 			else
+				Mole.unknownSince = nil;
 				Mole.waitSurvey = nil;
 				local ok, err = pcall(u.DigDown);
 				if not ok then Log('DigDown failed: '..tostring(err)); Mole.level = u.location.height; end;
@@ -229,26 +266,10 @@ function Mole.Update()
 	end;
 
 	-- cavern: open the next closed cell next to an open one, ring by ring
-	local center = CellByIndex(Mole.shaftCell);
-	local open = {};
-	local want = Mole.Rings(center, Mole.rings);
-	local closed = nil;
-	for _,c in ipairs(want) do
-		if Mole.IsOpen(c) then open[c.index] = true; end;
-	end;
-	open[Mole.shaftCell] = true;	-- the digger stands at the bottom of the shaft
-	for _,c in ipairs(want) do
-		if not open[c.index] then
-			local bl = Mem.blacklist[c.index];
-			if not (bl and bl > Sense.round) then
-				for _,nb in ipairs(c.neighbors) do
-					if open[nb.index] then closed = c; break; end;
-				end;
-			end;
-		end;
-		if closed then break; end;
-	end;
+	Mole.digClaims = {};
+	local closed, want = Mole.NextClosed(u);
 	if closed then
+		Mole.digClaims[closed.index] = true;
 		Mole.DigToward(u, closed);
 		return;
 	end;
@@ -390,11 +411,42 @@ end;
 local baseSiteOK = Economy.SiteOK;
 function Economy.SiteOK(loc, forMine)
 	if not baseSiteOK(loc, forMine) then return false; end;
-	if Mole.phase == 'live' or (Mole.phase == 'cavern' and Mole.level) then
-		if Mole.IsBelow(loc) then return true; end;
-		return false;
+	if Mole.phase ~= 'shaft' and Mole.IsBelow(loc) then return true; end;
+	-- surface: only what keeps the faction alive until the cavern has its own
+	-- (without a mineral mine a faction dies within a few rounds)
+	if forMine then return not Mole.EssentialsBelow(); end;
+	return Economy.allowSurface == true;
+end;
+
+-- Does the cavern have a mineral mine, a fuel mine and a generator of its own?
+function Mole.EssentialsBelow()
+	local mineral, fuel, gen = false, false, false;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if Mole.IsBelow(st.location) then
+			if st.type == Types.generator then gen = true;
+			elseif st.type == Types.mine then
+				local ok, f = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', st.location.cell);
+				if ok and f and f > 0 then fuel = true; else mineral = true; end;
+			end;
+		end;
 	end;
-	return forMine or Economy.allowSurface == true;
+	return mineral and fuel and gen;
+end;
+
+function Mole.MineralMines()
+	local n = 0;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.type == Types.mine then
+			local ok, m = pcall(Game.Grid.GetNaturalResourceAt, 'Minerals', st.location.cell);
+			if ok and m and m > 0 then n = n + 1; end;
+		end;
+	end;
+	return n;
+end;
+
+-- Surface essentials: a mineral mine, a fuel mine and a generator
+function Mole.EssentialsAnywhere()
+	return Mole.MineralMines() >= 1 and Economy.FuelMines() >= 1 and Economy.Count(Types.generator) >= 1;
 end;
 
 -- Underground units stand on the cavern floor of a cell, not on the highest ground
@@ -414,22 +466,36 @@ end;
 local baseNextStructure = Economy.NextStructure;
 function Economy.NextStructure(index)
 	-- before the cavern is ready, only power: the rest waits for space below
-	if Mole.phase ~= 'live' then
-		Economy.allowSurface = Economy.Count(Types.generator) < 1;
-		if Economy.Count(Types.generator) < 1 then return {type=Types.generator, kind='base'}; end;
-		if Economy.FuelMines() < 1 then return Economy.MineReq('Fuel'); end;
-		if Economy.Count(Types.mine) < 2 then return Economy.MineReq('Minerals'); end;
-		if Mole.phase == 'shaft' then return nil; end;
-	end;
+	-- survival first, on the surface if need be: a mineral mine (the faction dies without one),
+	-- a fuel mine and a generator. The cavern gets its own later, then these are demolished
 	Economy.allowSurface = false;
+	if not Mole.EssentialsBelow() then
+		if Mole.MineralMines() < 1 then
+			local m = Economy.MineReq('Minerals'); if m then return m; end;
+		end;
+		if Economy.FuelMines() < 1 then
+			local m = Economy.MineReq('Fuel'); if m then return m; end;
+		end;
+		if Economy.Count(Types.generator) < 1 then
+			Economy.allowSurface = true;
+			return {type=Types.generator, kind='base'};
+		end;
+	end;
+	-- no vehicle plant anywhere: one on the surface for now (the cavern gets its own, then this one goes)
+	if Types.plant and Economy.Count(Types.plant) == 0 and Mole.phase ~= 'live' then
+		Economy.allowSurface = true;
+		return {type=Types.plant, kind='base'};
+	end;
+	if Mole.phase ~= 'live' then return nil; end;
 	return baseNextStructure(index);
 end;
 
 local baseAssign = Economy.AssignConstructor;
 function Economy.AssignConstructor(u, index)
-	if u.id == Mole.digger then return; end;	-- the digger digs
+	if u.id == Mole.digger and Mole.digging then return; end;	-- the digger digs
 	-- constructors still on the surface head down once the cavern has room
-	if Mole.phase ~= 'shaft' and not Mole.sealed and not Mole.IsBelow(u.location) and Move.IsIdle(u) then
+	if Mole.phase ~= 'shaft' and not Mole.sealed and not Mole.IsBelow(u.location) and Move.IsIdle(u)
+		and Mole.EssentialsAnywhere() then
 		local open = Mole.CavernCells();
 		if #open >= 3 then
 			local target = open[(index % #open) + 1];
@@ -440,6 +506,15 @@ function Economy.AssignConstructor(u, index)
 				u.DirectTo(path[#path]);
 				return;
 			end;
+		end;
+	end;
+	-- below ground before the cavern is ready: help digging
+	if Mole.phase == 'cavern' and Mole.IsBelow(u.location) and Move.IsIdle(u) and u.DigHorizontally then
+		local c = Mole.NextClosed(u);
+		if c then
+			Mole.digClaims = Mole.digClaims or {};
+			Mole.digClaims[c.index] = true;
+			if Mole.DigToward(u, c) then return; end;
 		end;
 	end;
 	local before = Mem.jobs[u.id];

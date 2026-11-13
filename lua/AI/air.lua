@@ -38,11 +38,23 @@ function Economy.NextStructure(index)
 	return baseNextStructure(index);
 end;
 
--- the ground plants hold back once a plane factory runs: minerals go to planes
+-- the ground plants hold back for the plane factory (minerals for it must pile up first),
+-- and once it runs, minerals go to planes
 local baseNextVehicle = Economy.NextVehicle;
 function Economy.NextVehicle()
 	local t = baseNextVehicle();
-	if t == nil or #Sense.planeFactories == 0 then return t; end;
+	if t == nil then return t; end;
+	local pf = Types.planeFactory;
+	if #Sense.planeFactories == 0 then
+		local saving = pf and Types.IsUnlocked(pf) and Economy.FuelMines() >= 1
+			and (Game.myFaction.currentResources.storage.minerals or 0) < (tonumber(pf.constructionCost) or 200) + 50;
+		local tt = t.turretType;
+		local essential = tt and (tt.canConstruct or tt.detectsResources);
+		if saving and not essential and #Sense.my.combat >= 2 and Sense.Pressure() <= 3 then
+			return nil;
+		end;
+		return t;
+	end;
 	local tt = t.turretType;
 	local combat = #Sense.my.combat + #Sense.my.bomb + (Sense.storedByRole.combat or 0);
 	local ground = tt and tt.canAttack and tt.trajectoryType ~= 'AAMissile';
