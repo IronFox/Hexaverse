@@ -2023,6 +2023,11 @@ function Economy.NextVehicle()
 	if constructors < 2 then
 		return Constructor();
 	end;
+	-- no mine site but minerals to spend: scanners to find resources (below), tanks to conquer them
+	if Economy.MineShortage() and (Game.myFaction.currentResources.storage.minerals or 0) >= 150
+		and #my.surveyor >= 1 and combat < Cfg.retreatBelowUnits * 3 then
+		return Tank();
+	end;
 	-- under pressure, tanks first. Replacing constructors that keep dying feeds the enemy
 	if pressure > 0 and combat < 4 + math.floor(pressure / 3) then
 		return Tank();
@@ -2064,6 +2069,22 @@ function Economy.WorkingPlants()
 		local b = Economy.plantBlocked[p.id];
 		if not (b and Sense.round - b >= 5) then n = n + 1; end;
 	end;
+	return n;
+end;
+
+-- Known, unclaimed resource cells in a region (cached per region for 10 rounds)
+Economy.resCache = {};
+function Economy.ResourceCells(reg)
+	local c = Economy.resCache[reg.id];
+	if c and Sense.round - c.round < 10 then return c.n; end;
+	local n = 0;
+	for _,cell in ipairs(reg.cells) do
+		if not Sense.structureCells[cell.index] then
+			local ok, res = pcall(Game.Grid.GetNaturalResourcesAt, cell);
+			if ok and res and ((res.minerals or 0) > 0 or (res.fuel or 0) > 0) then n = n + 1; end;
+		end;
+	end;
+	Economy.resCache[reg.id] = {round=Sense.round, n=n};
 	return n;
 end;
 
@@ -2231,6 +2252,10 @@ function Military.ChooseAttackTarget()
 			-- prefer remembered structures (they don't move), weigh against distance and staleness
 			local value = reg.hostileStructures * 3 + reg.mobileThreat * 0.2;
 			local hops = Sense.hops[id] or 20;
+			-- short on mines: known resources in contested ground are worth conquering
+			if Economy.MineShortage() or Economy.Count(Types.mine) < Cfg.minMines then
+				value = value + Economy.ResourceCells(reg) * 2;
+			end;
 			local score = value / (1 + hops * 0.3) / (1 + Sense.Staleness(reg) * 0.02);
 			if score > bestScore then
 				best, bestScore = id, score;
