@@ -16,6 +16,7 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+#include <string>
 
 void			ApplicationInterface::SignalFactionsChanged()
 {
@@ -72,6 +73,7 @@ namespace Game
 		{
 			CryptographicID		token;
 			String				name;
+			String				script;	//AI script this player will run
 			std::atomic<bool>	claimed{false};
 		};
 		typedef std::shared_ptr<Reservation>	PReservation;
@@ -85,6 +87,32 @@ namespace Game
 			String rs = name;
 			rs.EraseCharacters("'\"\\",true);
 			return rs;
+		}
+
+		/**
+		Config::AIPlayers::script may list several scripts, separated by commas. They are assigned
+		round-robin to new AI players, by player index
+		*/
+		String	ScriptFor(count_t playerIndex)
+		{
+			std::vector<std::string> names;
+			std::string all = Config::AIPlayers::script.c_str(), cur;
+			all += ',';
+			for (char c : all)
+			{
+				if (c == ',')
+				{
+					const size_t b = cur.find_first_not_of(" 	"), e = cur.find_last_not_of(" 	");
+					if (b != std::string::npos)
+						names.push_back(cur.substr(b, e-b+1));
+					cur.clear();
+				}
+				else
+					cur += c;
+			}
+			if (names.empty())
+				return "player";
+			return String(names[playerIndex % names.size()].c_str());
 		}
 
 		void	Launch(const PReservation&r)
@@ -137,16 +165,17 @@ namespace Game
 			PReservation r(new Reservation());
 			r->token.Generate();
 			r->name = "AI "+String(have+1);
+			r->script = ScriptFor(have);
 			have++;
 			pending.push_back(r);
-			LogEvent(EventClass::Preset::common,"AI players: launching new AI player '"+r->name+"'");
+			LogEvent(EventClass::Preset::common,"AI players: launching new AI player '"+r->name+"' running script '"+r->script+"'");
 			Launch(r);
 		}
 		for (const auto&r : pending)
 			Launch(r);
 	}
 
-	bool ClaimAIPlayerToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken, CryptographicID&outToken)
+	bool ClaimAIPlayerToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken, CryptographicID&outToken, String*outScript)
 	{
 		using namespace AIPlayerDetail;
 		if (hashedFactionToken.IsEmpty())
@@ -158,6 +187,8 @@ namespace Game
 			{
 				(*it)->claimed = true;
 				outToken = (*it)->token;
+				if (outScript)
+					*outScript = (*it)->script;
 				pending.erase(it);	//the process keeps its reservation alive and now continues the created faction
 				return true;
 			}

@@ -906,6 +906,7 @@ namespace Receiver
 
 		index_t startLocation = InvalidIndex;
 		bool newAIPlayer = false;
+		String aiPlayerScript;
 		if (newFaction)
 		{
 			response.newFactionAccessToken.Generate();
@@ -950,7 +951,7 @@ namespace Receiver
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
 			{
 				CryptographicID aiPlayerToken;
-				newAIPlayer = Game::ClaimAIPlayerToken(client->passwordChallenge, req.hashedFactionToken, aiPlayerToken);
+				newAIPlayer = Game::ClaimAIPlayerToken(client->passwordChallenge, req.hashedFactionToken, aiPlayerToken, &aiPlayerScript);
 				if (newAIPlayer)
 				{
 					LogEvent(EventClass( EventSignificance::Important, EventFlavor::Gain ),peer,"Recognized server-launched AI player client");
@@ -970,7 +971,7 @@ namespace Receiver
 			if (newAIPlayer)
 			{
 				client->faction->isAIPlayer = true;
-				client->faction->aiScriptName = Game::Config::AIPlayers::script;
+				client->faction->aiScriptName = aiPlayerScript.IsNotEmpty() ? aiPlayerScript : Game::Config::AIPlayers::script;
 				client->faction->aiScriptState.Clear();
 			}
 

@@ -408,7 +408,7 @@ namespace Game
 	that has not yet created its faction. If so, the reservation is consumed.
 	@param[out] outToken The reserved (unhashed) token, to be used as the new faction's access token
 	*/
-	bool			ClaimAIPlayerToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken, CryptographicID&outToken);
+	bool			ClaimAIPlayerToken(const CryptographicID&passwordChallenge, const SHA256::HashContainer&hashedFactionToken, CryptographicID&outToken, String*outScript=nullptr);
 	/**
 	Checks whether an AI client should be or is currently active.
 	If found active, disregards whether it should be there

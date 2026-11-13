@@ -292,7 +292,7 @@
 				Lowering this value does not remove existing AI players. Range [0,16].
 			</variable>
 			<variable name="script" default="player">
-				Lua script that new AI players run. For any value X, [My Games]/shared/AIScripts/X.lua is used if it exists, otherwise [install]/lua/AI/X.lua.
+				Lua script that new AI players run. For any value X, [My Games]/shared/AIScripts/X.lua is used if it exists, otherwise [install]/lua/AI/X.lua. Several scripts can be listed, separated by commas (e.g. 'player,underground,air'); new AI players get them in turn.
 			</variable>
 		</context>
 	</context>
