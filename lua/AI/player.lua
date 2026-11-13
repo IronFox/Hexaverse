@@ -81,7 +81,10 @@ Cfg = {
 	plantFreeCells = 3,
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
 	unseenAttackThreat = 4,	-- threat assumed at the origin of an attack whose shooter we cannot sense
-	deepBelowSurface = 2,	-- shots from this many layers below the local surface count as underground
+	deepBelowSurface = 2,
+	artyZoneRounds = 10,	-- remember where hostile artillery fired from this long
+	artyHighLayers = 2,		-- artillery firing from this many layers above its impact counts as "high"
+	artyRushUnits = 5,		-- last resort against high artillery: rush only with this many units at once	-- shots from this many layers below the local surface count as underground
 	stuckProductionRounds = 15,	-- abort a plant's head production after this many rounds without progress
 	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
@@ -784,6 +787,10 @@ function Sense.Update()
 					local hit = Map.RegionOfWorld(a.impact);
 					local layer = Sense.AttackLayer(a, src, len);
 					Sense.recentAttacks[#Sense.recentAttacks+1] = {src=src, hit=hit, layer=layer, precise=a.precise, turretType=a.turretType};
+					local tt = a.turretType;
+					if layer == 'ground' and tt and tt.trajectoryType == 'Artillery' and a.impact then
+						Military.NoteArtillery(a);
+					end;
 					if src and not a.precise then
 						-- unseen shooter: remember the threat at its origin
 						if layer == 'air' then
@@ -1035,7 +1042,12 @@ the reachable node closest to the goal (frontier stepping). Unknown terrain is
 only entered by units with permission (scouts).
 @return true if a motion was scheduled
 ]]
+-- avoidThreat: true avoids every known threat, 'arty' only remembered artillery fire (attacking units)
 function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
+	local danger = Move.IsDangerous;
+	if avoidThreat == 'arty' then
+		danger = function(loc) return Military.InArtilleryZone(loc.world) ~= nil; end;
+	end;
 	if goalCell then
 		local dest = Move.GroundAt(u, goalCell);
 		if dest and dest ~= u.location then
@@ -1047,7 +1059,7 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 				for _,n in ipairs(path) do
 					if n.movementCostsFromRoot <= limit then pick = n; end;
 				end;
-				if not avoidThreat or not Move.IsDangerous(pick.location) then
+				if not avoidThreat or not danger(pick.location) then
 					u.DirectTo(pick);
 					return true;
 				end;
@@ -1057,7 +1069,7 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 
 	local block = nil;
 	if avoidThreat then
-		block = function(loc) return Move.IsDangerous(loc); end;
+		block = danger;
 	end;
 	local ok, reach = pcall(u.GetReach, block, math.max(1, u.movementSpeed * 2), false, false, false, not mayEnterUnknown);
 	if not ok or reach == nil or #reach == 0 then
@@ -1082,6 +1094,9 @@ function Move.IsDangerous(loc)
 	local reg = Map.RegionOfLoc(loc);
 	if reg and reg.staticThreat > 0 and not reg.seenNow then
 		return true;	-- remembered towers we currently can't see
+	end;
+	if Military.InArtilleryZone(loc.world) then
+		return true;	-- where hostile artillery has been shelling from out of sight
 	end;
 	for _,e in pairs(Game.hostileUnits) do
 		if e.health > 0 and e.turret and e.turret.type.canAttack and e.turret.IsInRange then
@@ -2578,6 +2593,124 @@ function Military.DefenseRegion()
 	return best;
 end;
 
+--[[
+Hostile artillery zones. Artillery on high ground out-ranges everything below it,
+and tanks sent toward it die on the way, one after another. Each shell we observe
+marks a circle around its origin that units avoid. Counters, best first:
+planes (fly over walls), tunnels (come up beneath it), and only then a rush with
+many units at once, if the cliff can be reached at all. A walled-off cliff can't.
+]]
+Military.artyZones = {};	-- list of {source, radius2, expires, high}
+
+local function VLen(v) return math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); end;
+
+function Military.NoteArtillery(a)
+	local tt = a.turretType;
+	local h0, h1 = Game.Grid.HeightToRadius(0), Game.Grid.HeightToRadius(1);
+	local layer = math.max(1e-3, h1 - h0);
+	local rise = (VLen(a.source) - VLen(a.impact)) / layer;
+	-- artillery reaches further downhill: widen the circle by the height it fires from
+	local range = (tt.flatAttackRange or 0) * 1.25 + (a.explosionRadius or 0) + math.max(0, rise) * layer;
+	local seen = math.sqrt(Dist2(a.source, a.impact)) * 1.1;
+	range = math.max(range, seen);
+	local high = rise >= Cfg.artyHighLayers;
+	for _,z in ipairs(Military.artyZones) do
+		if Dist2(z.source, a.source) < layer * layer then
+			z.expires = Sense.round + Cfg.artyZoneRounds;
+			z.radius2 = math.max(z.radius2, range * range);
+			z.high = z.high or high;
+			return;
+		end;
+	end;
+	Military.artyZones[#Military.artyZones+1] = {source=a.source, radius2=range*range, expires=Sense.round + Cfg.artyZoneRounds, high=high, since=Sense.round};
+	Log('Hostile artillery '..(high and 'on high ground ' or '')..'shelling from out of sight: keeping units clear');
+end;
+
+function Military.ExpireArtyZones()
+	local keep = {};
+	for _,z in ipairs(Military.artyZones) do
+		if z.expires >= Sense.round then keep[#keep+1] = z; end;
+	end;
+	Military.artyZones = keep;
+end;
+
+function Military.InArtilleryZone(world)
+	for _,z in ipairs(Military.artyZones) do
+		if z.expires >= (Sense.round or 0) and Dist2(world, z.source) < z.radius2 then
+			return z;
+		end;
+	end;
+	return nil;
+end;
+
+--[[
+Counter a high artillery zone with combat units outside of it. No planes or
+tunnels yet, so the only answer left is a rush: all at once, and only if there
+is a ground path up to it. Otherwise stay out of range and let it be.
+Returns true for units that got an order here.
+]]
+Military.rush = nil;	-- {zone, units = {id=true}}
+
+function Military.ArtyCounter()
+	local zone = nil;
+	for _,z in ipairs(Military.artyZones) do
+		if z.high and (zone == nil or z.since < zone.since) then zone = z; end;
+	end;
+	if zone == nil then
+		Military.rush = nil;
+		return {};
+	end;
+	local ordered = {};
+	if Military.rush == nil or Military.rush.zone ~= zone then
+		-- gather: who could reach it?
+		local cands = {};
+		local reachable = false;
+		local srcRegion = Map.RegionOfWorld(zone.source);
+		for _,v in ipairs(Sense.my.combat) do
+			if v.health > 0 and not Military.stashing[v.id] and not Military.NeedsStationary(v) then
+				cands[#cands+1] = v;
+			end;
+		end;
+		if #cands < Cfg.artyRushUnits or srcRegion == nil then
+			return ordered;
+		end;
+		-- walled off cliffs: no ground path, no rush
+		local probe = cands[1];
+		local best, bd = nil, nil;
+		for _,c in ipairs(srcRegion.cells) do
+			local loc = Move.GroundAt(probe, c);
+			if loc then
+				local d = Dist2(loc.world, zone.source);
+				if bd == nil or d < bd then best, bd = loc, d; end;
+			end;
+		end;
+		if best then
+			local ok, path = pcall(probe.FindShortestPath, best, nil, false);
+			reachable = ok and path ~= nil and #path > 0;
+		end;
+		if not reachable then
+			if not zone.noPath then
+				Log('High artillery cannot be reached by ground: staying out of its range');
+				zone.noPath = true;
+			end;
+			return ordered;
+		end;
+		Military.rush = {zone=zone, units={}, cell=best.cell};
+		for _,v in ipairs(cands) do Military.rush.units[v.id] = true; end;
+		Log('Rushing high artillery with '..#cands..' units');
+	end;
+	for _,v in ipairs(Sense.my.combat) do
+		if Military.rush.units[v.id] and v.health > 0 then
+			ordered[v.id] = true;
+			if not Military.Fire(v) or v.motionIgnoresAttack then
+				if not Move.IsIdle(v) then v.ClearSafeTasks(); end;
+				Move.Towards(v, zone.source, Military.rush.cell, false, true);
+			end;
+		end;
+	end;
+	return ordered;
+end;
+
 -- Units whose turret only fires when the vehicle did not move (artillery, AA, ...)
 function Military.NeedsStationary(v)
 	return v.turret and v.turret.requiresStationaryVehicle and not v.motionIgnoresAttack;
@@ -2642,9 +2775,12 @@ function Military.Combat()
 		cx, cy, cz, cn = cx + w.x, cy + w.y, cz + w.z, cn + 1;
 	end;
 	local centroid = cn > 0 and {x=cx/cn, y=cy/cn, z=cz/cn} or nil;
+	Military.ExpireArtyZones();
+	local rushing = Military.ArtyCounter();
 
 	for i,v in ipairs(Sense.my.combat) do
 		SafeCall('combat '..v.niceName, function()
+			if rushing[v.id] then return; end;
 			local fired = Military.Fire(v);
 			if Military.stashing[v.id] then
 				return;	-- on its way into a vehicle store
@@ -2688,7 +2824,8 @@ function Military.Combat()
 					return;
 				end;
 			end;
-			Move.Towards(v, goal, cell, not attacking, attacking);
+			-- never walk into remembered artillery fire, attacking or not: a rush is decided above
+			Move.Towards(v, goal, cell, (not attacking) or 'arty', attacking);
 		end);
 	end;
 end;

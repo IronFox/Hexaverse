@@ -74,6 +74,15 @@ Against the Nexus AI, anti aircraft is essential: it starts building planes fair
 Units react differently to being moved. [Cannon](../units/turrets/cannon.md) turrets and airborne [raptors](../units/planes/raptor.md) fire independently of motion. Most other vehicles do not fire in a round in which they also moved.
 A [cannon](../units/turrets/cannon.md) tank can simply be moved around, while an [artillery](../units/turrets/artillery.md) tank is best placed on a mountain and left stationary.
 
+### Artillery on High Ground
+
+Altitude doesn't tell you what you are up against. Look at the turret that fired: an [artillery](../units/turrets/artillery.md) tank on a high cliff shoots from far above, but it is a ground unit, and [AA](../units/turrets/anti-aircraft.md) cannot touch it.
+If a hostile faction has placed artillery high up, sending more tanks there is not a good idea. They are shelled one by one on the way up. Keep your units out of its range instead, and pick a counter:
+
+- Planes, such as a [bomber](../units/planes/bomber.md), fly over cliffs and walls. This is usually the best answer.
+- Tunnels: [terraformers](../units/turrets/terraformer.md) can dig up to it from below, out of sight.
+- Only if neither works, rush it with many units at once. That is a valid albeit lousy strategy, and it may not be possible at all: if the attacker has walled off the cliff, tanks cannot get up there.
+
 ### Vehicle Stores
 
 [Vehicle stores](../units/structures/vehicle-store.md) are interconnected. They are very useful as storage for backup units that you can offload wherever you have a vehicle store. Planes can be loaded into them, too.
