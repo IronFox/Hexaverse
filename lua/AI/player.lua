@@ -71,6 +71,10 @@ Cfg = {
 	-- economy
 	energyHeadroom = 2,	-- build power while spare energy (all structures enabled) is below this
 	earlyMines = 3,		-- mines before towers while home is quiet (+1 per 10 rounds)
+	roadMinRound = 20,		-- roads once the economy is up
+	roadMinerals = 250,		-- and minerals pile up
+	roadRepaveRounds = 80,
+	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
 	stuckProductionRounds = 15,	-- abort a plant's head production after this many rounds without progress
 	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
@@ -1715,6 +1719,72 @@ function Economy.FindMineCell(resource)
 	return nil;
 end;
 
+--[[
+Roads. A one-time investment that makes every later trip faster.
+Once the economy is stable, the last constructor paves a route from home to
+the place units travel to most: the attack staging area while attacking,
+otherwise the farthest of my built-up regions (mines, outposts). Each target
+gets paved at most once per Cfg.roadRepaveRounds. Never into danger.
+@return true if a road segment was scheduled
+]]
+Mem.roadsDone = Mem.roadsDone or {};
+function Economy.RoadTarget()
+	if Mem.posture == 'attack' and Mem.attackTarget then
+		local id = Military.PostRegion(Mem.attackTarget);
+		local done = Mem.roadsDone[id];
+		if id ~= Mem.attackTarget and not (done and Sense.round - done < Cfg.roadRepaveRounds) then return id; end;
+	end;
+	local best, bestH = nil, 1;
+	for id,_ in pairs(Sense.mine) do
+		local reg = Map.regions[id];
+		local h = Sense.hops[id] or 0;
+		local done = Mem.roadsDone[id];
+		if reg.myStructures > 0 and h > bestH and Sense.Threat(reg) <= 0
+			and not (done and Sense.round - done < Cfg.roadRepaveRounds) then
+			best, bestH = id, h;
+		end;
+	end;
+	return best;
+end;
+
+function Economy.TryRoad(u)
+	if not u.BuildRoadTo or Sense.round < Cfg.roadMinRound or #Sense.my.constructor < 3 then return false; end;
+	local cur = Economy.Resources();
+	if (cur.storage.minerals or 0) < Cfg.roadMinerals or Economy.PowerCritical() or Sense.Pressure() > Cfg.roadMaxPressure then
+		return false;
+	end;
+	-- start near home, so roads radiate from the base
+	local here = Map.RegionOfLoc(u.location);
+	if not here or (Sense.hops[here.id] or 99) > 1 then return false; end;
+	local target = Economy.RoadTarget();
+	if target == nil then return false; end;
+	local reg = Map.regions[target];
+	local dest = Move.GroundAt(u, reg.centerCell);
+	if dest == nil then return false; end;
+	local ok, path = pcall(u.FindShortestPath, dest, nil, false);
+	if not ok or path == nil or #path < 3 then
+		Mem.roadsDone[target] = Sense.round;
+		return false;
+	end;
+	-- stop short of anything dangerous
+	local pick = nil;
+	for _,n in ipairs(path) do
+		if Move.IsDangerous(n.location) then break; end;
+		pick = n;
+	end;
+	if pick == nil then return false; end;
+	local ok2, err = pcall(u.BuildRoadTo, pick);
+	if not ok2 then
+		Log('BuildRoadTo failed: '..tostring(err));
+		Mem.roadsDone[target] = Sense.round;
+		return false;
+	end;
+	Mem.roadsDone[target] = Sense.round;
+	Mem.jobs[u.id] = {kind = 'Road', since = Sense.round, region = target};
+	Log(u.niceName..': paving road to region '..target..' ('..#path..' steps)');
+	return true;
+end;
+
 function Economy.AssignConstructor(u, index)
 	local job = Mem.jobs[u.id];
 	-- danger: get out first, build later
@@ -1737,7 +1807,7 @@ function Economy.AssignConstructor(u, index)
 	end;
 	if not Move.IsIdle(u) then
 		-- a job that runs far too long is stuck (e.g. no room to relocate after constructing)
-		if job and Sense.round - job.since > 20 then
+		if job and Sense.round - job.since > (job.kind == 'Road' and 40 or 20) then
 			Log(u.niceName..': '..job.kind..' at cell '..tostring(job.cell)..' is stuck. Dropping it');
 			if job.cell then Mem.blacklist[job.cell] = Sense.round + 50; end;
 			u.ClearTasks();
@@ -1751,6 +1821,10 @@ function Economy.AssignConstructor(u, index)
 		Log(u.niceName..': construction of '..job.kind..' at cell '..job.cell..' did not happen. Blacklisting the site');
 	end;
 	Mem.jobs[u.id] = nil;
+
+	if index == #Sense.my.constructor and Economy.TryRoad(u) then
+		return;
+	end;
 
 	local want = Economy.NextStructure(index);
 	if want == nil or want.type == nil then
