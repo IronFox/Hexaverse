@@ -1722,24 +1722,25 @@ end;
 --[[
 Roads. A one-time investment that makes every later trip faster.
 Once the economy is stable, the last constructor paves a route from home to
-the place units travel to most: the attack staging area while attacking,
-otherwise the farthest of my built-up regions (mines, outposts). Each target
+the farthest of my built-up regions (mines, outposts) whose surroundings are
+quiet. Roads are not built towards fronts, where fighting craters them. Each target
 gets paved at most once per Cfg.roadRepaveRounds. Never into danger.
 @return true if a road segment was scheduled
 ]]
 Mem.roadsDone = Mem.roadsDone or {};
 function Economy.RoadTarget()
-	if Mem.posture == 'attack' and Mem.attackTarget then
-		local id = Military.PostRegion(Mem.attackTarget);
-		local done = Mem.roadsDone[id];
-		if id ~= Mem.attackTarget and not (done and Sense.round - done < Cfg.roadRepaveRounds) then return id; end;
-	end;
+	-- only through my own quiet territory: fights rip holes into the ground (and roads),
+	-- and terraformers are priority targets for the Nexus, since they can take over hubs
 	local best, bestH = nil, 1;
 	for id,_ in pairs(Sense.mine) do
 		local reg = Map.regions[id];
 		local h = Sense.hops[id] or 0;
 		local done = Mem.roadsDone[id];
-		if reg.myStructures > 0 and h > bestH and Sense.Threat(reg) <= 0
+		local quiet = Sense.Threat(reg) <= 0;
+		for nb,_ in pairs(reg.neighbors) do
+			if Map.regions[nb].mobileThreat > 0 then quiet = false; end;
+		end;
+		if reg.myStructures > 0 and h > bestH and quiet
 			and not (done and Sense.round - done < Cfg.roadRepaveRounds) then
 			best, bestH = id, h;
 		end;
