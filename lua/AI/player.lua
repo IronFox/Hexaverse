@@ -48,6 +48,8 @@ Cfg = {
 	maxSurveyors = 1,
 	maxSurveyorsDeep = 3,		-- once underground activity is suspected
 	aaPerCombat = 4,			-- one AA per N combat units, once air activity is known
+	nexusAirPrepRound = 50,		-- the Nexus starts building planes (default Rules/Nexus/minRoundForPlanes = 80). Unseen bombers are lethal: have AA before then
+	aaTowersPerRegion = 1,		-- AA towers per built-up region once air matters
 
 	-- posture
 	attackMinUnits = 8,			-- combat units needed before attacking
@@ -720,6 +722,7 @@ function Sense.Update()
 		end;
 	end;
 	Sense.hops = Map.Hops(Sense.myRegionIds);
+	Sense.nexus = Sense.NexusPresent();
 end;
 
 --[[
@@ -785,8 +788,25 @@ function Sense.Staleness(reg, layer)
 end;
 
 -- Does a layer currently matter? Weight decays if the enemy hasn't shown that capability for a while
+function Sense.NexusPresent()
+	for _,f in pairs(Game.factions) do
+		if f.name == 'Nexus' then return true; end;
+	end;
+	return false;
+end;
+
 function Sense.AirMatters()
-	return Mem.airSeen >= 0 and Sense.round - Mem.airSeen < 80;
+	if Mem.airSeen >= 0 and Sense.round - Mem.airSeen < 80 then
+		return true;
+	end;
+	-- Against the Nexus, prepare before its planes arrive. ShouldBuildPlanes() reflects the server's
+	-- public rule (minRoundForPlanes), not anything sensed
+	if Sense.nexus then
+		if Sense.round >= Cfg.nexusAirPrepRound then return true; end;
+		local ok, rs = pcall(function() return Game.AI and Game.AI.ShouldBuildPlanes and Game.AI.ShouldBuildPlanes() end);
+		if ok and rs then return true; end;
+	end;
+	return false;
 end;
 
 function Sense.DeepMatters()
@@ -966,8 +986,19 @@ function Economy.NextStructure(constructorIndex)
 			end;
 		end;
 	end;
-	if Types.aaTower and Sense.AirMatters() and Types.IsUnlocked(Types.aaTower) and Economy.Count(Types.aaTower) < 2 then
-		return {type=Types.aaTower, kind='tower'};
+	if Types.aaTower and Sense.AirMatters() and Types.IsUnlocked(Types.aaTower) then
+		-- every built-up region gets AA cover, most built-up first
+		local best, bestN = nil, 1;
+		for id,_ in pairs(Sense.mine) do
+			local reg = Map.regions[id];
+			if reg.myStructures > bestN and Economy.AATowersIn(reg) < Cfg.aaTowersPerRegion and not Economy.scannerClaimed['aa'..id] then
+				best, bestN = id, reg.myStructures;
+			end;
+		end;
+		if best then
+			Economy.scannerClaimed['aa'..best] = true;
+			return {type=Types.aaTower, kind='tower', region=best};
+		end;
 	end;
 	if Economy.Count(Types.mine) < 4 + math.floor(round / 10) then
 		local res = 'Minerals';
@@ -987,6 +1018,16 @@ function Economy.NextStructure(constructorIndex)
 		return {type=Types.radarTower, kind='tower'};
 	end;
 	return {type=Types.mine, kind='mine', resource='Minerals'};
+end;
+
+function Economy.AATowersIn(reg)
+	local n = 0;
+	for _,s in ipairs(Sense.myStructures) do
+		if s.turret and s.turret.type.trajectoryType == 'AAMissile' and Map.RegionOfLoc(s.location) == reg then
+			n = n + 1;
+		end;
+	end;
+	return n;
 end;
 
 function Economy.ScannersIn(reg)
@@ -1410,9 +1451,20 @@ function Military.AA()
 		targets[#targets+1] = {reg=reg, score=reg.myStructures + nearAir * 5};
 	end;
 	table.sort(targets, function(a,b) return a.score > b.score end);
+	-- while attacking, every other AA escorts the army (bombers hunt armies too)
+	local cx, cy, cz, cn = 0, 0, 0, 0;
+	for _,u in ipairs(Sense.my.combat) do
+		local w = u.location.world;
+		cx, cy, cz, cn = cx + w.x, cy + w.y, cz + w.z, cn + 1;
+	end;
 	for i,v in ipairs(Sense.my.aa) do
 		SafeCall('aa '..v.niceName, function()
 			Military.Fire(v);
+			if Mem.posture == 'attack' and cn > 0 and i % 2 == 0 then
+				local c = {x=cx/cn, y=cy/cn, z=cz/cn};
+				Move.Towards(v, c, nil, true, false);
+				return;
+			end;
 			local t = targets[((i-1) % math.max(1,#targets)) + 1];
 			if t then
 				Move.Towards(v, Map.WorldCenter(t.reg), t.reg.centerCell, true, false);
