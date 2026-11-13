@@ -86,6 +86,8 @@ namespace AIProcess
 				slot->accessToken = accessToken;
 				slot->isPlayer = isPlayer;
 			}
+			elif (slot->process.IsFaulted())
+				LogEvent(EventClass::Preset::error,"AI client process failed: "+slot->process.GetLastFault()+". Restarting");
 			Start(*slot,serverBasePort,asyncGetServerPassword,asyncGetExtraParameters);
 		}
 

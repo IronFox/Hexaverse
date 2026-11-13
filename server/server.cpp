@@ -1398,6 +1398,7 @@ int main( int argc, const char* argv[])
 						(*p)->wantNewRound = false;
 
 					Game::BeginRoundProcessing();
+					Game::StartAIPlayers();	//relaunches AI player clients that failed to start or exited
 					Game::ProcessChanges(true);
 				}
 
