@@ -55,7 +55,11 @@ Mole = {
 	tunnelGoal = nil,	-- cell index the digger tunnels towards
 	rings = Cfg.moleRings,
 	waitSurvey = nil,	-- world position a surveyor should look at before we dig on
+	sealed = false,		-- shaft plugged: nothing walks in from the surface
+	sealTries = 0,
+	liveRound = nil,
 };
+Cfg.moleSealAfter = 15;		-- rounds after the cavern is ready: seal even if units are still up there
 
 local function D2(a,b) local x,y,z = a.x-b.x, a.y-b.y, a.z-b.z; return x*x+y*y+z*z; end;
 
@@ -80,6 +84,13 @@ function Mole.DigCheck(cell, h)
 	local cells = {tc};
 	for _,n in ipairs(tc.neighbors or {}) do cells[#cells+1] = n; end;
 	local unknown = false;
+	-- open space right above an undug cell: digging there would open the cavern to the outside
+	if C.Clear then
+		for dh = 1, 2 do
+			local okc, content = pcall(Game.Terrain.GetContent, tc, h + dh);
+			if okc and content == C.Clear and cell.index ~= Mole.shaftCell then return 'breach'; end;
+		end;
+	end;
 	for i,c in ipairs(cells) do
 		for dh = -1, 2 do
 			local ok2, content = pcall(Game.Terrain.GetContent, c, h + dh);
@@ -154,8 +165,8 @@ function Mole.DigToward(u, targetCell)
 		return false;
 	end;
 	local check = Mole.DigCheck(best, Mole.level);
-	if check == 'lava' then
-		Log('Lava next to cell '..best.index..': not digging there');
+	if check == 'lava' or check == 'breach' then
+		Log((check == 'lava' and 'Lava next to' or 'Open space above')..' cell '..best.index..': not digging there');
 		Economy.Blacklist(best.index, 200);
 		Mole.tunnelGoal = nil;
 		return false;
@@ -242,10 +253,16 @@ function Mole.Update()
 		return;
 	end;
 	if Mole.phase == 'cavern' then
+		Mole.liveRound = Sense.round;
 		Mole.phase = 'live';
 		Log('Cavern ready ('..#want..' cells): building below ground');
 	end;
-	-- live: tunnel to a requested mine site, otherwise widen the cavern when space runs out
+	-- live: seal the shaft first. An open shaft lets every other faction walk right in
+	if not Mole.sealed then
+		Mole.Seal(u);
+		return;
+	end;
+	-- then tunnel to a requested mine site, otherwise widen the cavern when space runs out
 	if Mole.tunnelGoal then
 		local cell = CellByIndex(Mole.tunnelGoal);
 		if cell == nil or Mole.IsOpen(cell) or not Mole.DigToward(u, cell) then
@@ -258,6 +275,78 @@ function Mole.Update()
 		Mole.rings = Mole.rings + 1;
 		Mole.noSpace = false;
 		Log('Widening the cavern to '..Mole.rings..' rings');
+	end;
+end;
+
+--[[
+Seal the shaft: fill its terrain one layer above the cavern floor with
+foundation, from a neighboring cavern cell. A unit cell's terrain is its
+central terrain cell plus the cells it shares with its neighbors.
+Waits until constructors and surveyors are down (or Cfg.moleSealAfter rounds passed).
+]]
+function Mole.ShaftTerrain(h)
+	local C = Game.Terrain.Content or {};
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, CellByIndex(Mole.shaftCell));
+	if not ok or tc == nil then return {}, false; end;
+	local out, open = {}, false;
+	local cells = {tc};
+	for _,n in ipairs(tc.neighbors or {}) do cells[#cells+1] = n; end;
+	for i,c in ipairs(cells) do
+		local okc, content = pcall(Game.Terrain.GetContent, c, h);
+		if okc and (content == C.Clear or content == C.Water) then
+			out[#out+1] = Game.Terrain.Pack(c, h);
+			if i == 1 then open = true; end;
+		end;
+	end;
+	return out, open;
+end;
+
+function Mole.Seal(u)
+	local h = Mole.level + 1;
+	local cells, open = Mole.ShaftTerrain(h);
+	if not open then
+		Mole.sealed = true;
+		Log('Sealed shaft at cell '..Mole.shaftCell);
+		return;
+	end;
+	-- wait for the ground units still on the surface
+	local up = 0;
+	for _,role in ipairs({'constructor', 'surveyor'}) do	-- combat units left above guard the surface
+		for _,v in ipairs(Sense.my[role] or {}) do
+			if not Mole.IsBelow(v.location) then up = up + 1; end;
+		end;
+	end;
+	if up > 0 and Sense.round - (Mole.liveRound or Sense.round) < Cfg.moleSealAfter then
+		return;
+	end;
+	-- stand next to the shaft, inside the cavern
+	local shaft = CellByIndex(Mole.shaftCell);
+	local nextTo = false;
+	for _,nb in ipairs(shaft.neighbors) do
+		if nb.index == u.location.cell.index and Mole.IsBelow(u.location) then nextTo = true; end;
+	end;
+	if not nextTo then
+		for _,nb in ipairs(shaft.neighbors) do
+			if Mole.IsOpen(nb) then
+				local loc = Mole.LocAt(nb);
+				local ok, path = pcall(u.FindShortestPath, loc, nil, true);
+				if ok and path and #path > 0 then u.DirectTo(path[#path]); return; end;
+			end;
+		end;
+		Log('Cannot reach the shaft to seal it');
+		return;
+	end;
+	Mole.sealTries = Mole.sealTries + 1;
+	if Mole.sealTries > 6 then
+		if Mole.sealTries == 7 then Log('Sealing the shaft keeps failing: giving up'); end;
+		Mole.sealed = true;
+		return;
+	end;
+	local ok, err = pcall(u.BuildBlocks, cells);
+	if ok then
+		Log('Sealing shaft at cell '..Mole.shaftCell..' ('..#cells..' blocks, '..up..' units left above)');
+	else
+		Log('BuildBlocks failed: '..tostring(err));
 	end;
 end;
 
@@ -340,7 +429,7 @@ local baseAssign = Economy.AssignConstructor;
 function Economy.AssignConstructor(u, index)
 	if u.id == Mole.digger then return; end;	-- the digger digs
 	-- constructors still on the surface head down once the cavern has room
-	if Mole.phase ~= 'shaft' and not Mole.IsBelow(u.location) and Move.IsIdle(u) then
+	if Mole.phase ~= 'shaft' and not Mole.sealed and not Mole.IsBelow(u.location) and Move.IsIdle(u) then
 		local open = Mole.CavernCells();
 		if #open >= 3 then
 			local target = open[(index % #open) + 1];
@@ -427,6 +516,7 @@ function ExportState()
 		r.moleShaft = Mole.shaftCell or 0;
 		r.moleLevel = Mole.level or -1000;
 		r.moleRings = Mole.rings;
+		r.moleSealed = Mole.sealed and 1 or 0;
 	end;
 	return r;
 end;
@@ -439,6 +529,8 @@ function ApplyImport()
 		Mole.shaftCell = (s.moleShaft or 0) > 0 and s.moleShaft or nil;
 		Mole.level = (s.moleLevel or -1000) > -1000 and s.moleLevel or nil;
 		Mole.rings = s.moleRings or Cfg.moleRings;
+		Mole.sealed = (s.moleSealed or 0) == 1;
+		Mole.liveRound = Mole.phase == 'live' and -1000 or nil;
 	end;
 	baseApply();
 end;
