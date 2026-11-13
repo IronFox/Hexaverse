@@ -60,6 +60,11 @@ Cfg = {
 	mobileThreatDecay = 0.85,	-- per round, for remembered (unseen) mobile threat
 	staleRounds = 12,			-- region considered stale after this many unseen rounds
 
+	-- vehicle stores (shared park: units stored in one can be deployed at any other)
+	maxStores = 5,
+	garrison = 6,				-- active combat units kept out while defending; the rest wait in stores
+	maxDeploysPerRound = 6,
+
 	-- structures
 	wantLabs = 3,
 	wantTowersPerFrontier = 1,
@@ -383,6 +388,7 @@ Mem = {
 	posture = 'defend',		-- 'defend' | 'attack'
 	attackTarget = nil,		-- region id
 	homeRegion = nil,		-- region id
+	powerCenters = {},		-- cell indices kept free for reactor cores; generators are built in rings around them
 	airSeen = -1,			-- round hostile air activity (planes, plane factories) was last sensed
 	deepSeen = -1,			-- round hostile underground activity was last sensed or suspected
 	heavySeen = -1,			-- round hostile heavy vehicles were last sensed
@@ -413,6 +419,7 @@ function ExportState()
 		air = Mem.airSeen,
 		deep = Mem.deepSeen,
 		heavy = Mem.heavySeen,
+		power = Mem.powerCenters,
 		r = r,
 	};
 end;
@@ -436,6 +443,12 @@ function ApplyImport()
 	Mem.airSeen = s.air or -1;
 	Mem.deepSeen = s.deep or -1;
 	Mem.heavySeen = s.heavy or -1;
+	Mem.powerCenters = {};
+	if type(s.power) == 'table' then
+		for _,c in ipairs(s.power) do
+			if type(c) == 'number' then Mem.powerCenters[#Mem.powerCenters+1] = c; end;
+		end;
+	end;
 	if type(s.r) == 'table' then
 		for _,rec in ipairs(s.r) do
 			local reg = Map.regions[rec[1]];
@@ -484,6 +497,9 @@ function Sense.Update()
 	Sense.round = round;
 	Sense.my = {constructor={}, combat={}, radar={}, surveyor={}, aa={}, plane={}, other={}};
 	Sense.myStructures = {};
+	Sense.stores = {};
+	Sense.stored = {};
+	Sense.storedByRole = {};
 	Sense.structureCells = {};
 	Sense.structuresByType = {};
 	Sense.plants = {};
@@ -512,7 +528,11 @@ function Sense.Update()
 	local sx, sy, sz, sc = 0, 0, 0, 0;
 	for _,u in pairs(Game.myUnits) do
 		local reg = Map.RegionOfLoc(u.location);
-		if u.type.isMobile then
+		if u.type.isMobile and u.storedIn ~= nil then
+			local role = Types.Role(u) or 'other';
+			Sense.stored[#Sense.stored+1] = u;
+			Sense.storedByRole[role] = (Sense.storedByRole[role] or 0) + 1;
+		elseif u.type.isMobile then
 			local role = Types.Role(u) or 'other';
 			local list = Sense.my[role];
 			list[#list+1] = u;
@@ -527,6 +547,9 @@ function Sense.Update()
 			Sense.structuresByType[tn] = (Sense.structuresByType[tn] or 0) + 1;
 			if u.type.isMobileEntityProducer and not u.type.isHangar then
 				Sense.plants[#Sense.plants+1] = u;
+			end;
+			if u.type.isHangar then
+				Sense.stores[#Sense.stores+1] = u;
 			end;
 			if Types.lab and u.type == Types.lab then
 				Sense.labs[#Sense.labs+1] = u;
@@ -965,13 +988,23 @@ function Economy.NextStructure(constructorIndex)
 	end;
 	-- energy first: everything else depends on it
 	if bal.energy < 0 or (cur.balance.energy <= 0 and Economy.Count(Types.generator) < 2) then
-		if Types.IsUnlocked(Types.reactor) and Economy.Count(Types.reactor) == 0 and Economy.Count(Types.generator) >= 2 then
-			return {type=Types.reactor, kind='base'};
-		end;
 		if bal.fuel <= 0 and constructorIndex % 2 == 1 then
 			return {type=Types.mine, kind='mine', resource='Fuel'};
 		end;
-		return {type=Types.generator, kind='base'};
+		if Economy.powerOrders < 2 then
+			Economy.powerOrders = Economy.powerOrders + 1;
+			return {type=Types.generator, kind='power'};
+		end;
+	end;
+	-- a reactor core in the middle of a generator ring, once unlocked and fed with uranium
+	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
+		local uranium = (max.balance.uranium or 0) > 0 or (cur.storage.uranium or 0) > 0;
+		if uranium then
+			return {type=Types.reactor, kind='power'};
+		end;
+		if constructorIndex == 2 then
+			return {type=Types.mine, kind='mine', resource='Uranium'};
+		end;
 	end;
 	if Types.lab and Economy.Count(Types.lab) == 0 and round >= 3 then
 		return {type=Types.lab, kind='base'};
@@ -1000,6 +1033,13 @@ function Economy.NextStructure(constructorIndex)
 	end;
 	if Types.plant and Economy.Count(Types.plant) < 2 and round >= 30 then
 		return {type=Types.plant, kind='base'};
+	end;
+	-- a vehicle store next to the plants and in every defended region: reserves can appear anywhere we have one
+	if Types.store and round >= 12 and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores then
+		local want = Economy.StoreRegion();
+		if want then
+			return {type=Types.store, kind='tower', region=want};
+		end;
 	end;
 	-- surplus: thicken the defense where the threat is highest
 	local extra = Economy.DefenseNeed(true);
@@ -1076,6 +1116,36 @@ function Economy.DefenseNeed(surplus)
 	return nil;
 end;
 
+-- Region that should get the next vehicle store: plant regions first, then defended regions, most valuable first
+function Economy.StoreRegion()
+	local hasStore = {};
+	for _,st in ipairs(Sense.stores) do
+		local reg = Map.RegionOfLoc(st.location);
+		if reg then hasStore[reg.id] = true; end;
+	end;
+	for _,job in pairs(Mem.jobs) do
+		if Types.store and job.kind == Types.store.name and job.region then hasStore[job.region] = true; end;
+	end;
+	for _,p in ipairs(Sense.plants) do
+		local reg = Map.RegionOfLoc(p.location);
+		if reg and not hasStore[reg.id] and not Economy.scannerClaimed['store'..reg.id] then
+			Economy.scannerClaimed['store'..reg.id] = true;
+			return reg.id;
+		end;
+	end;
+	local best, bestV = nil, 3;
+	for id,_ in pairs(Sense.mine) do
+		local reg = Map.regions[id];
+		local c = Economy.DefenseCounts(reg);
+		local v = reg.myStructures + (c.ground + c.aa + c.launcher) * 2;
+		if not hasStore[id] and not Economy.scannerClaimed['store'..id] and v > bestV then
+			best, bestV = id, v;
+		end;
+	end;
+	if best then Economy.scannerClaimed['store'..best] = true; end;
+	return best;
+end;
+
 -- Counts my defensive structures in a region (including towers under construction there)
 function Economy.DefenseCounts(reg)
 	local c = {ground=0, aa=0, launcher=0, scanner=0};
@@ -1134,6 +1204,8 @@ end;
 -- Is this cell a reasonable construction site?
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
+	if Economy.IsPowerCenter(idx) and not Economy.allowPowerCenter then return false; end;
+	if Economy.IsPowerRing(idx) and not Economy.allowPowerRing then return false; end;
 	local bl = Mem.blacklist[idx];
 	if bl and bl > Sense.round then return false; end;
 	if Game.GetStructureAt(loc) ~= nil then return false; end;
@@ -1152,9 +1224,141 @@ function Economy.SiteOK(loc, forMine)
 	return true;
 end;
 
+--[[
+Power: generators work best in a ring around a reactor core. Keep a center cell
+free, build generators on its neighbors, and put a reactor core in the middle
+once unlocked. When a ring is full, start a new one.
+]]
+function Economy.IsPowerCenter(idx)
+	for _,c in ipairs(Mem.powerCenters) do
+		if c == idx then return true; end;
+	end;
+	return false;
+end;
+
+function Economy.IsPowerRing(idx)
+	for _,c in ipairs(Mem.powerCenters) do
+		local center = Economy.Cell(c);
+		if center then
+			for _,nb in ipairs(center.neighbors) do
+				if nb.index == idx then return true; end;
+			end;
+		end;
+	end;
+	return false;
+end;
+
+Economy.cellByIndex = nil;
+function Economy.Cell(idx)
+	if Economy.cellByIndex == nil then
+		Economy.cellByIndex = {};
+		for _,c in ipairs(Game.Grid.unitCells) do Economy.cellByIndex[c.index] = c; end;
+	end;
+	return Economy.cellByIndex[idx];
+end;
+
+function Economy.StructureTypeAt(cell)
+	for _,st in ipairs(Sense.myStructures) do
+		if st.location.cell == cell then return st.type; end;
+	end;
+	return nil;
+end;
+
+function Economy.ReactorSiteReady()
+	for _,idx in ipairs(Mem.powerCenters) do
+		local center = Economy.Cell(idx);
+		if center and Economy.StructureTypeAt(center) == nil and not Economy.claimed[idx] then
+			local gens = 0;
+			for _,nb in ipairs(center.neighbors) do
+				if Economy.StructureTypeAt(nb) == Types.generator then gens = gens + 1; end;
+			end;
+			if gens >= 2 then return true; end;
+		end;
+	end;
+	return false;
+end;
+
+-- Finds a new ring center near home: a free cell whose neighbors are free and level with it
+function Economy.NewPowerCenter(u)
+	local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed * 3), true, false, false, true);
+	if not ok or reach == nil then return nil; end;
+	local goal = Sense.baseCenter or u.location.world;
+	local best, bestD = nil, nil;
+	for _,n in ipairs(reach) do
+		local loc = n.location;
+		if not loc.isSuborbital and Economy.SiteOK(loc, false) then
+			local good = 0;
+			for _,nb in ipairs(loc.cell.neighbors) do
+				local g = Move.GroundAt(u, nb);
+				if g and g.height == loc.height and Economy.SiteOK(g, false) then good = good + 1; end;
+			end;
+			if good >= 4 then
+				local d = Dist2(loc.world, goal) - good * 2;
+				if bestD == nil or d < bestD then best, bestD = loc, d; end;
+			end;
+		end;
+	end;
+	if best then
+		Mem.powerCenters[#Mem.powerCenters+1] = best.cell.index;
+		Log('New power ring centered at cell '..best.cell.index);
+		return best.cell.index;
+	end;
+	return nil;
+end;
+
+-- Site for a generator (ring around a center) or a reactor (the center itself)
+function Economy.PowerSite(u, t)
+	if t == Types.reactor then
+		for _,idx in ipairs(Mem.powerCenters) do
+			local center = Economy.Cell(idx);
+			if center and Economy.StructureTypeAt(center) == nil and not Economy.claimed[idx] then
+				local loc = Move.GroundAt(u, center);
+				if loc then
+					Economy.allowPowerCenter = true;
+					local ok = Economy.SiteOK(loc, false);
+					Economy.allowPowerCenter = false;
+					if ok then return loc; end;
+				end;
+			end;
+		end;
+		return nil;
+	end;
+	for pass = 1,2 do
+		for i = #Mem.powerCenters, 1, -1 do
+			local center = Economy.Cell(Mem.powerCenters[i]);
+			local ringFree = 0;
+			local centerOpen = center and Economy.StructureTypeAt(center) == nil;
+			if center then
+				for _,nb in ipairs(center.neighbors) do
+					if Economy.StructureTypeAt(nb) == nil and not Economy.claimed[nb.index] then ringFree = ringFree + 1; end;
+				end;
+			end;
+			-- until the reactor core stands, keep one ring cell open so a constructor can reach the center
+			if center and (not centerOpen or ringFree > 1) then
+				for _,nb in ipairs(center.neighbors) do
+					if not Economy.claimed[nb.index] and Economy.StructureTypeAt(nb) == nil then
+						local loc = Move.GroundAt(u, nb);
+						Economy.allowPowerRing = true;
+						local ok = loc and Economy.SiteOK(loc, false);
+						Economy.allowPowerRing = false;
+						if ok then
+							return loc;
+						end;
+					end;
+				end;
+			end;
+		end;
+		if pass == 1 and Economy.NewPowerCenter(u) == nil then
+			return nil;
+		end;
+	end;
+	return nil;
+end;
+
 -- Cells another constructor has already claimed this round
 Economy.claimed = {};
 Economy.scannerClaimed = {};
+Economy.powerOrders = 0;
 
 function Economy.AssignConstructor(u, index)
 	local job = Mem.jobs[u.id];
@@ -1171,6 +1375,18 @@ function Economy.AssignConstructor(u, index)
 	local want = Economy.NextStructure(index);
 	if want == nil or want.type == nil then
 		return;
+	end;
+
+	if want.kind == 'power' then
+		local loc = Economy.PowerSite(u, want.type);
+		if loc and Economy.BuildAt(u, loc, want.type) then
+			Economy.claimed[loc.cell.index] = true;
+			return;
+		end;
+		if want.type == Types.reactor then
+			return;
+		end;
+		want = {type = want.type, kind = 'base'};	-- no ring possible here: plain placement
 	end;
 
 	if want.kind == 'mine' then
@@ -1262,7 +1478,7 @@ function Economy.NextVehicle()
 	local my = Sense.my;
 	local base = Types.GroundBase();
 	local hover = Types.base.hover;
-	local wantConstructors = Sense.round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate;
+	local wantConstructors = (Sense.round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate) - (Sense.storedByRole.constructor or 0);
 	if #my.constructor < wantConstructors then
 		return Types.Vehicle(Types.turret.terraformer, base) or Types.Vehicle(Types.turret.terraformer, hover);
 	end;
@@ -1314,6 +1530,7 @@ end;
 
 function Economy.Constructors()
 	Economy.claimed = {};
+	Economy.powerOrders = 0;
 	Economy.scannerClaimed = {};
 	-- remember cells constructors are already heading to
 	for id,job in pairs(Mem.jobs) do
@@ -1360,7 +1577,7 @@ function Military.Fire(v)
 end;
 
 function Military.ArmyStrength()
-	local n = 0;
+	local n = Sense.storedByRole.combat or 0;
 	for _,u in ipairs(Sense.my.combat) do
 		if u.health > 0 then n = n + 1; end;
 	end;
@@ -1426,6 +1643,119 @@ function Military.UpdatePosture()
 	end;
 end;
 
+--[[
+Vehicle stores form one shared park. Surplus defenders wait inside; when a
+region is threatened or an attack starts, they are deployed from the store
+nearest to where they are needed.
+]]
+Military.stashing = {};
+
+function Military.NearestStore(regionId)
+	if #Sense.stores == 0 then return nil; end;
+	local hops = Map.Hops({regionId});
+	local best, bestH = nil, nil;
+	for _,st in ipairs(Sense.stores) do
+		local reg = Map.RegionOfLoc(st.location);
+		local h = reg and hops[reg.id] or 99;
+		-- a store in a region with sensed hostile fire is a bad exit
+		if reg and reg.seenNow and reg.mobileThreat > 0 then h = h + 2; end;
+		if bestH == nil or h < bestH then best, bestH = st, h; end;
+	end;
+	return best, bestH;
+end;
+
+function Military.DeployFrom(store, count, goalWorld)
+	local deployed = 0;
+	local used = {};
+	for _,u in ipairs(Sense.stored) do
+		if deployed >= count then break; end;
+		if Types.Role(u) == 'combat' and store.DeployStored then
+			local ok, options = pcall(store.GetStoredDeploymentOptions, u);
+			if ok and options and #options > 0 then
+				local best, bestD = nil, nil;
+				for _,loc in ipairs(options) do
+					if not used[loc.cell.index] then
+						local d = goalWorld and Dist2(loc.world, goalWorld) or 0;
+						if bestD == nil or d < bestD then best, bestD = loc, d; end;
+					end;
+				end;
+				if best then
+					used[best.cell.index] = true;
+					local ok2, err = pcall(store.DeployStored, u, best);
+					if ok2 then
+						deployed = deployed + 1;
+					else
+						Log('DeployStored failed: '..tostring(err));
+					end;
+				end;
+			end;
+		end;
+	end;
+	if deployed > 0 then
+		Log('Deployed '..deployed..' stored unit(s) at '..store.niceName);
+	end;
+	return deployed;
+end;
+
+function Military.Stores()
+	Military.stashing = {};
+	if #Sense.stores == 0 then
+		return;
+	end;
+	local budget = Cfg.maxDeploysPerRound;
+	local storedCombat = Sense.storedByRole.combat or 0;
+
+	-- attack: everything stored joins, exiting as close to the target as possible
+	if storedCombat > 0 and Mem.posture == 'attack' and Mem.attackTarget then
+		local st = Military.NearestStore(Mem.attackTarget);
+		if st then
+			budget = budget - Military.DeployFrom(st, budget, Map.WorldCenter(Map.regions[Mem.attackTarget]));
+		end;
+	end;
+
+	-- defense: regions where remembered hostile strength exceeds what we have there
+	if storedCombat > 0 and budget > 0 then
+		for id,_ in pairs(Sense.mine) do
+			if budget <= 0 then break; end;
+			local reg = Map.regions[id];
+			local threat = reg.mobileThreat;
+			for nb,_ in pairs(reg.neighbors) do threat = threat + Map.regions[nb].mobileThreat * 0.5; end;
+			local lack = threat - reg.myStrength;
+			if threat > 0 and lack > 0 then
+				local st = Military.NearestStore(id);
+				if st then
+					local want = math.min(budget, math.ceil(lack / 2));
+					budget = budget - Military.DeployFrom(st, want, Map.WorldCenter(reg));
+				end;
+			end;
+		end;
+	end;
+
+	-- stash surplus defenders that have nothing to do
+	if Mem.posture == 'defend' and #Sense.my.combat > Cfg.garrison then
+		local surplus = #Sense.my.combat - Cfg.garrison;
+		for i = #Sense.my.combat, 1, -1 do
+			if surplus <= 0 then break; end;
+			local v = Sense.my.combat[i];
+			local reg = Map.RegionOfLoc(v.location);
+			if reg and Sense.Threat(reg) == 0 and v.CanStandAt then
+				local ok, reach = pcall(v.GetReach, nil, math.max(2, v.movementSpeed * 2), false, true, true, true);
+				if ok and reach then
+					for _,n in ipairs(reach) do
+						if n.hangar and (not n.hangar.CanStore or n.hangar.CanStore(v)) then
+							v.ClearSafeTasks();
+							v.DirectTo(n);
+							Military.stashing[v.id] = true;
+							surplus = surplus - 1;
+							break;
+						end;
+					end;
+				end;
+			end;
+		end;
+	end;
+end;
+
 -- Region the defense should cover: the most threatened of my regions or the frontier
 function Military.DefenseRegion()
 	local best, bestT = Mem.homeRegion, -1;
@@ -1454,6 +1784,9 @@ function Military.Combat()
 	for i,v in ipairs(Sense.my.combat) do
 		SafeCall('combat '..v.niceName, function()
 			local fired = Military.Fire(v);
+			if Military.stashing[v.id] then
+				return;	-- on its way into a vehicle store
+			end;
 			if fired and not v.motionIgnoresAttack then
 				return;	-- e.g. artillery: stay and shoot
 			end;
@@ -1600,6 +1933,7 @@ function Execute()
 	SafeCall('Constructors', Economy.Constructors);
 	SafeCall('Posture', Military.UpdatePosture);
 	SafeCall('Towers', Military.Towers);
+	SafeCall('Stores', Military.Stores);
 	SafeCall('Combat', Military.Combat);
 	SafeCall('Scouts', Military.Scouts);
 	SafeCall('AA', Military.AA);
@@ -1611,9 +1945,9 @@ function Execute()
 		if reg.lastSeenAir >= 0 then seenA = seenA + 1; end;
 		if reg.lastSeenDeep >= 0 then seenD = seenD + 1; end;
 	end;
-	Game.Log(string.format('%sround %d | %s | units c%d m%d r%d s%d aa%d | structures %d | seen g%d a%d d%d /%d, enemy %d%s%s | minerals %d energy %d | %.2fs',
+	Game.Log(string.format('%sround %d | %s | units c%d m%d(+%d stored) r%d s%d aa%d | structures %d | seen g%d a%d d%d /%d, enemy %d%s%s | minerals %d energy %d | %.2fs',
 		Cfg.logPrefix, Sense.round, Mem.posture..(Mem.attackTarget and ('->'..Mem.attackTarget) or ''),
-		#Sense.my.constructor, #Sense.my.combat, #Sense.my.radar, #Sense.my.surveyor, #Sense.my.aa,
+		#Sense.my.constructor, #Sense.my.combat, Sense.storedByRole.combat or 0, #Sense.my.radar, #Sense.my.surveyor, #Sense.my.aa,
 		#Sense.myStructures, seen, seenA, seenD, #Map.regions, #Sense.enemyRegions,
 		Sense.AirMatters() and ' AIR' or '', Sense.DeepMatters() and ' DEEP' or '',
 		cur.storage.minerals or 0, cur.balance.energy or 0, timer()));
