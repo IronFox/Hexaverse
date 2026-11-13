@@ -126,6 +126,7 @@ function Types.Resolve()
 			if tn == 'Cannon' then Types.cannonTower = t;
 			elseif tn == 'Radar' then Types.radarTower = t;
 			elseif tn == 'Anti Aircraft' then Types.aaTower = t;
+			elseif tn == 'Surveyor' then Types.scannerTower = t;
 			end;
 		end;
 	end;
@@ -955,6 +956,16 @@ function Economy.NextStructure(constructorIndex)
 			end;
 		end;
 	end;
+	-- suspected undermining: a scanner tower per built-up region (scanners see down, not far sideways)
+	if Types.scannerTower and Sense.DeepMatters() and Types.IsUnlocked(Types.scannerTower) then
+		for id,_ in pairs(Sense.mine) do
+			local reg = Map.regions[id];
+			if reg.myStructures >= 3 and Economy.ScannersIn(reg) == 0 and not Economy.scannerClaimed[id] then
+				Economy.scannerClaimed[id] = true;
+				return {type=Types.scannerTower, kind='tower', region=id};
+			end;
+		end;
+	end;
 	if Types.aaTower and Sense.AirMatters() and Types.IsUnlocked(Types.aaTower) and Economy.Count(Types.aaTower) < 2 then
 		return {type=Types.aaTower, kind='tower'};
 	end;
@@ -976,6 +987,16 @@ function Economy.NextStructure(constructorIndex)
 		return {type=Types.radarTower, kind='tower'};
 	end;
 	return {type=Types.mine, kind='mine', resource='Minerals'};
+end;
+
+function Economy.ScannersIn(reg)
+	local n = 0;
+	for _,s in ipairs(Sense.myStructures) do
+		if s.turret and s.turret.type.detectsResources and Map.RegionOfLoc(s.location) == reg then
+			n = n + 1;
+		end;
+	end;
+	return n;
 end;
 
 function Economy.TowersIn(reg)
@@ -1011,6 +1032,7 @@ end;
 
 -- Cells another constructor has already claimed this round
 Economy.claimed = {};
+Economy.scannerClaimed = {};
 
 function Economy.AssignConstructor(u, index)
 	local job = Mem.jobs[u.id];
@@ -1166,6 +1188,7 @@ end;
 
 function Economy.Constructors()
 	Economy.claimed = {};
+	Economy.scannerClaimed = {};
 	-- remember cells constructors are already heading to
 	for id,job in pairs(Mem.jobs) do
 		if job.cell then Economy.claimed[job.cell] = true; end;
