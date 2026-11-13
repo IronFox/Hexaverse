@@ -444,6 +444,7 @@ Mem = {
 	heavySeen = -1,			-- round hostile heavy vehicles were last sensed
 	pendingImport = nil,
 	blacklist = {},			-- cell index -> round until which build attempts are skipped
+	siteFails = {},			-- cell index -> failed build attempts there: each one doubles the next blacklisting
 	jobs = {},				-- unit id -> {kind, cell, since, at}  (transient, not exported)
 };
 
@@ -808,7 +809,15 @@ function Sense.Update()
 				end;
 			end;
 			if #Sense.recentAttacks > 0 then
-				Log('Attacked '..#Sense.recentAttacks..' time(s) last round');
+				local by = {};
+				for _,a in ipairs(Sense.recentAttacks) do
+					local k = a.layer..':'..((a.turretType and a.turretType.name) or '?');
+					by[k] = (by[k] or 0) + 1;
+				end;
+				local parts = {};
+				for k,n in pairs(by) do parts[#parts+1] = k..' x'..n; end;
+				table.sort(parts);
+				Log('Attacked '..#Sense.recentAttacks..' time(s) last round ('..table.concat(parts, ', ')..')');
 			end;
 		end;
 	end;
@@ -1914,24 +1923,48 @@ function Economy.RoadTarget()
 	return best;
 end;
 
-function Economy.TryRoad(u)
-	if not u.BuildRoadTo or Sense.round < Cfg.roadMinRound or #Sense.my.constructor < 2 then return false; end;
-	local cur = Economy.Resources();
-	if (cur.storage.minerals or 0) < Cfg.roadMinerals or Economy.PowerCritical() or Sense.Pressure() > Cfg.roadMaxPressure then
-		return false;
+Economy.busy = {};	-- constructor id -> busy rounds (with minerals) since it was last idle
+
+-- Skip a build site for a while. Sites that keep failing are skipped for longer each time
+function Economy.Blacklist(cell, rounds)
+	local n = (Mem.siteFails[cell] or 0) + 1;
+	Mem.siteFails[cell] = n;
+	Mem.blacklist[cell] = Sense.round + math.min(rounds * 2 ^ (n - 1), 1000);
+end;
+
+-- Why no road this round (logged every 10 rounds while minerals pile up, for tuning)
+local function NoRoad(why)
+	if Sense.round % 10 == 0 and (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.roadMinerals
+		and Economy.noRoadLogged ~= Sense.round then
+		Economy.noRoadLogged = Sense.round;
+		Log('No road: '..why);
 	end;
-	-- start near home, so roads radiate from the base
+	return false;
+end;
+
+function Economy.TryRoad(u)
+	if not u.BuildRoadTo then return NoRoad('constructor cannot pave'); end;
+	if Sense.round < Cfg.roadMinRound or #Sense.my.constructor < 2 then return false; end;
+	local cur = Economy.Resources();
+	if (cur.storage.minerals or 0) < Cfg.roadMinerals then return false; end;
+	if Economy.PowerCritical() then return NoRoad('power critical'); end;
+	local pressure = Sense.Pressure();
+	-- the route itself stays in quiet regions (RoadTarget, IsDangerous); with minerals piling up,
+	-- some pressure elsewhere is no reason to keep the constructors idle
+	local maxP = Cfg.roadMaxPressure * (((cur.storage.minerals or 0) >= Cfg.richMinerals) and 3 or 1);
+	if pressure > maxP then return NoRoad('pressure '..pressure); end;
+	-- start inside own territory, so roads connect what we hold
 	local here = Map.RegionOfLoc(u.location);
-	if not here or (Sense.hops[here.id] or 99) > 1 then return false; end;
+	if not here or not (Sense.mine[here.id] or (Sense.hops[here.id] or 99) <= 1) then return NoRoad('constructor outside territory'); end;
 	local target = Economy.RoadTarget();
-	if target == nil then return false; end;
+	if target == nil then return NoRoad('no quiet built-up region away from home'); end;
 	local reg = Map.regions[target];
 	local dest = Move.GroundAt(u, reg.centerCell);
 	if dest == nil then return false; end;
 	local ok, path = pcall(u.FindShortestPath, dest, nil, false);
 	if not ok or path == nil or #path < 3 then
 		Mem.roadsDone[target] = Sense.round;
-		return false;
+		return NoRoad('no path to region '..target);
 	end;
 	-- stop short of anything dangerous
 	local pick = nil;
@@ -1965,7 +1998,7 @@ function Economy.AssignConstructor(u, index)
 		end;
 		if safest then
 			u.ClearSafeTasks();
-			if job and job.cell then Mem.blacklist[job.cell] = Sense.round + 15; end;
+			if job and job.cell then Economy.Blacklist(job.cell, 15); end;
 			Mem.jobs[u.id] = nil;
 			Move.Towards(u, Map.WorldCenter(safest), safest.centerCell, true, false);
 			Log(u.niceName..': retreating from danger');
@@ -1975,20 +2008,25 @@ function Economy.AssignConstructor(u, index)
 	if not Move.IsIdle(u) then
 		-- a job that runs far too long is stuck (e.g. no room to relocate after constructing)
 		-- (rounds without minerals don't count: construction simply pauses then)
-		if job and (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.brokeMinerals then
-			job.busy = (job.busy or 0) + 1;
+		-- Untracked tasks count too: a retreat keeps a construction that already spent resources
+		-- (ClearSafeTasks), and such a leftover can wait forever for room to relocate
+		if (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.brokeMinerals then
+			Economy.busy[u.id] = (Economy.busy[u.id] or 0) + 1;
 		end;
-		if job and (job.busy or 0) > (job.kind == 'Road' and 40 or 20) then
-			Log(u.niceName..': '..job.kind..' at cell '..tostring(job.cell)..' is stuck. Dropping it');
-			if job.cell then Mem.blacklist[job.cell] = Sense.round + 50; end;
+		local limit = (job and job.kind == 'Road') and 40 or 20;
+		if (Economy.busy[u.id] or 0) > limit then
+			Log(u.niceName..': '..(job and job.kind or 'leftover task')..' at cell '..tostring(job and job.cell)..' is stuck. Dropping it');
+			if job and job.cell then Economy.Blacklist(job.cell, 50); end;
 			u.ClearTasks();
 			Mem.jobs[u.id] = nil;
+			Economy.busy[u.id] = nil;
 		end;
 		return;	-- busy with a queued motion/construction
 	end;
+	Economy.busy[u.id] = nil;
 	-- detect stuck jobs: still idle at the same place where we ordered a construction
 	if job and job.cell and Sense.round - job.since >= 1 and not Sense.structureCells[job.cell] then
-		Mem.blacklist[job.cell] = Sense.round + 30;
+		Economy.Blacklist(job.cell, 30);
 		Log(u.niceName..': construction of '..job.kind..' at cell '..job.cell..' did not happen. Blacklisting the site');
 	end;
 	Mem.jobs[u.id] = nil;
