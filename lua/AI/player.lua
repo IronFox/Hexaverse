@@ -81,7 +81,7 @@ Cfg = {
 	plantFreeCells = 3,
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
 	unseenAttackThreat = 4,	-- threat assumed at the origin of an attack whose shooter we cannot sense
-	deepHeight = -3,		-- shots from below this height count as underground
+	deepBelowSurface = 2,	-- shots from this many layers below the local surface count as underground
 	stuckProductionRounds = 15,	-- abort a plant's head production after this many rounds without progress
 	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
@@ -782,13 +782,7 @@ function Sense.Update()
 				if a.isHostile and a.source then
 					local src, len = Map.RegionOfWorld(a.source);
 					local hit = Map.RegionOfWorld(a.impact);
-					local layer = 'ground';
-					if Map.airRadius and Map.airRadius > Map.groundRadius
-						and len >= Map.groundRadius + (Map.airRadius - Map.groundRadius) * 0.5 then
-						layer = 'air';
-					elseif len < Game.Grid.HeightToRadius(Cfg.deepHeight) then
-						layer = 'deep';
-					end;
+					local layer = Sense.AttackLayer(a, src, len);
 					Sense.recentAttacks[#Sense.recentAttacks+1] = {src=src, hit=hit, layer=layer, precise=a.precise, turretType=a.turretType};
 					if src and not a.precise then
 						-- unseen shooter: remember the threat at its origin
@@ -933,6 +927,40 @@ function Sense.AirPressure()
 		for nb,_ in pairs(reg.neighbors) do p = p + (Map.regions[nb].airThreat or 0) * 0.5; end;
 	end;
 	return p;
+end;
+
+--[[
+Which sensor layer an attack came from. Altitude alone says little (towers and
+artillery sit on mountains), so the attacking turret decides first: plane
+turrets mean air. Without a known turret, only shots from near flight height
+count as air. Shots from well below the local surface count as underground.
+]]
+function Sense.AttackLayer(a, srcRegion, len)
+	local tt = a.turretType;
+	if tt and tt.mountType == 'Plane' then
+		return 'air';
+	end;
+	local h0, h1 = Game.Grid.HeightToRadius(0), Game.Grid.HeightToRadius(1);
+	local height = (h1 > h0) and (len - h0) / (h1 - h0) or 0;
+	if tt == nil and Map.airRadius and Map.airRadius > Map.groundRadius
+		and len >= Map.airRadius - (h1 - h0) * 2 then
+		return 'air';
+	end;
+	-- compare with the surface where it came from
+	local ref = Sense.my.constructor[1] or Sense.my.combat[1] or Sense.my.radar[1];
+	if ref and srcRegion then
+		local cell = srcRegion.centerCell;
+		local best, bd = nil, nil;
+		for _,c in ipairs(srcRegion.cells) do
+			local d = Dist2(a.source, c.center);
+			if bd == nil or d < bd then best, bd = c, d; end;
+		end;
+		local ok, loc = pcall(Game.Grid.FindHighestVehicleGround, ref, best or cell);
+		if ok and loc and loc.height and height < loc.height - Cfg.deepBelowSurface then
+			return 'deep';
+		end;
+	end;
+	return 'ground';
 end;
 
 function Sense.Pressure()
