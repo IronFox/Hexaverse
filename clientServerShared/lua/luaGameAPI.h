@@ -10,6 +10,7 @@
 #include "../objects/mobileEntity.h"
 #include "../objects/pathfinding.h"
 #include <functional>
+#include <vector>
 #include "../objects/entityType.h"
 #include "../objects/nexus/nexusThreatEstimation.h"
 
@@ -156,6 +157,24 @@ namespace Lua
 		std::function<void(index_t,bool)>	onQueueResearch;
 		std::function<void(const TUniqueID&, ConstName, ConstName)>	onSimpleJobStart;
 		std::function<void(const TUniqueID&, Objects::CursorMode, const ArrayRef<Grid::HCellIdI>&)> onGridBatchJobStart; 
+
+		/**
+		Attack observed by the local client (shot trails as players see them).
+		Exposed to scripts via Game.GetRecentAttacks() (client only)
+		*/
+		struct RecentAttack
+		{
+			UINT32			round = 0;
+			bool			precise = false,		//!< Attacker was visible (attacker set). Otherwise only the vague source position is known
+							isHostile = true,
+							hasSource = false;
+			M::TVec3<>		source,					//!< World position the attack originated from (approximate if !precise)
+							impact;					//!< World position the attack was aimed at
+			ConstName		turretType = ConstName::Empty;
+			float			explosionRadius = 0;
+			TUniqueID		attacker = TUniqueID::Empty();
+		};
+		std::function<void(UINT32 sinceRound, std::vector<RecentAttack>&)>	onGetRecentAttacks;
 
 		struct TExportResult
 		{

@@ -674,6 +674,27 @@ Table-Type: Vector
 
 	Marker		Game.CreateMarker(Unit ref, string type)			-- Creates a new marker and immediately adds it to markers, as though the operation had succeeded even if it fails later on
 
+	--[[
+	GetRecentAttacks():
+	Lists non-own attacks this client observed during the last rounds, as players see them (shot trails).
+	This includes attacks whose attacker is not sensed. Their source position is then only approximate.
+	@param rounds Number of past rounds to include [1,5]
+	@return Array of RecentAttack
+	]]
+	RecentAttack[]	Game.GetRecentAttacks(int rounds)
+
+	Table-Type: RecentAttack
+	{
+		int		round;				-- Round the attack happened in
+		bool	precise;			-- True if the attacker was sensed (attackerID set). False if only its approximate origin is known
+		bool	isHostile;			-- False if the attacker is allied
+		Vector	source;				-- World position the attack came from (approximate if not precise). nil if unknown
+		Vector	impact;				-- World position the attack was aimed at
+		Type	turretType;			-- Attacking turret type. nil if unknown
+		float	explosionRadius;	-- Explosion radius of the attack
+		string	attackerID;			-- ID of the attacking unit. Only set if precise
+	}
+
 	
 	
 Table-Type: Reachable

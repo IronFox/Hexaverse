@@ -9,6 +9,7 @@
 #include "../visual/hud/dialog.h"
 #include "../visual/hud/guiComponents.h"
 #include "../visual/scene/visualMarkers.h"
+#include "attackLog.h"
 #include <io/string_file.h>
 #include "../io.h"
 #include "../playerControlBegin.h"
@@ -1042,6 +1043,7 @@ namespace AI::Script
 		api.onMarkerCreate = Callback::MarkerCreate;
 		api.onMarkerDestroy = Callback::MarkerDestroy;
 		api.onMarkerTouch = Callback::MarkerTouch;
+		api.onGetRecentAttacks = AttackLog::Snapshot;
 		#ifdef HAS_WINDOW
 			api.onVisualMarkerCreate = Callback::VisualMarkers::Create;
 			api.onVisualMarkerDelete = Callback::VisualMarkers::Delete;

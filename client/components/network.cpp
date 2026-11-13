@@ -13,6 +13,7 @@
 #include "visual/hud/menu.h"
 #include "visual/hud/guiStatistics.h"
 #include "ai/vehicles.h"
+#include "ai/attackLog.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
 #include "configurationMode.h"
@@ -886,12 +887,14 @@ namespace Network
 		void	VagueAttackTrajectory(Protocol::VagueAttackTrajectory&a)
 		{
 			ASSERT__(!eventsLocked);
+			AttackLog::RecordVague((UINT32)RuntimeConfig::roundNumber.main, a.sourcePosition, a.turretType, a.traceTo, a.explosionRadius);
 			Animation::SmartSchedule<Animation::Trajectory>(a.time, a);
 		}
 
 		void	PreciseAttackTrajectory(Protocol::PreciseAttackTrajectory&a)
 		{
 			ASSERT__(!eventsLocked);
+			AttackLog::RecordPrecise((UINT32)RuntimeConfig::roundNumber.main, a.attacker, a.traceTo);
 			Animation::SmartSchedule<Animation::Trajectory>(a.time, a);
 		}
 

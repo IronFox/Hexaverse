@@ -1019,6 +1019,42 @@ namespace Lua
 			hostileEntityIDMap = gameTable.SetSubTable("hostileUnits");
 
 			myMarkerIDMap = gameTable.SetSubTable("myMarkers");
+
+			/*
+			Game.GetRecentAttacks(int rounds) -> array of
+				{round, precise, isHostile, source={x,y,z} (nil if unknown), impact={x,y,z},
+				 turretType (Type, nil if unknown), explosionRadius, attackerID (string, precise only)}
+			Lists hostile or allied attacks observed during the last 'rounds' rounds (max 5),
+			including those whose attacker is not sensed (approximate source).
+			*/
+			gameTable.SetFunction("GetRecentAttacks",[this](int rounds)->Lua::Table
+			{
+				rounds = std::max(1,std::min(5,rounds));
+				std::vector<RecentAttack> list;
+				if (onGetRecentAttacks)
+				{
+					const UINT32 now = (UINT32)RuntimeConfig::roundNumber.main;
+					onGetRecentAttacks(now >= (UINT32)rounds ? now - (UINT32)rounds : 0, list);
+				}
+				Lua::Table rs = program->CreateTable();
+				for (const auto&a : list)
+				{
+					Lua::Table t = program->CreateTable();
+					t.SetField("round",(int)a.round);
+					t.SetField("precise",a.precise);
+					t.SetField("isHostile",a.isHostile);
+					if (a.hasSource)
+						t.SetField("source",Detail::ToTable(program,a.source));
+					t.SetField("impact",Detail::ToTable(program,a.impact));
+					if (a.turretType != ConstName::Empty)
+						t.SetField("turretType",AddOrGetType(a.turretType));
+					t.SetField("explosionRadius",a.explosionRadius);
+					if (a.precise)
+						t.SetField("attackerID",a.attacker.ToFullString());
+					rs.AppendElement(t);
+				}
+				return rs;
+			});
 		#endif
 
 			factionIDMap = gameTable.SetSubTable("factions");

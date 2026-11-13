@@ -78,6 +78,8 @@ Cfg = {
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
 	plantFreeCells = 3,
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
+	unseenAttackThreat = 4,	-- threat assumed at the origin of an attack whose shooter we cannot sense
+	deepHeight = -3,		-- shots from below this height count as underground
 	stuckProductionRounds = 15,	-- abort a plant's head production after this many rounds without progress
 	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
@@ -376,6 +378,20 @@ function Map.RegionOfLoc(loc)
 	local id = Map.cellRegion[loc.cell.index];
 	if id == nil then return nil; end;
 	return Map.regions[id];
+end;
+
+-- Region whose seed direction is closest to a world position (any height)
+function Map.RegionOfWorld(w)
+	if w == nil then return nil; end;
+	local len = math.sqrt(w.x*w.x + w.y*w.y + w.z*w.z);
+	if len <= 0 then return nil; end;
+	local v = {x=w.x/len, y=w.y/len, z=w.z/len};
+	local best, bv = nil, -2;
+	for _,r in ipairs(Map.regions) do
+		local d = Dot(v, r.center);
+		if d > bv then best, bv = r, d; end;
+	end;
+	return best, len;
 end;
 
 function Map.WorldCenter(r)
@@ -750,6 +766,46 @@ function Sense.Update()
 						end;
 					end;
 				end;
+			end;
+		end;
+	end;
+
+	-- attacks seen last round, including those whose attacker we cannot sense (shot trails, as
+	-- players see them). The rough origin tells which layer and region to worry about
+	Sense.recentAttacks = {};
+	if Game.GetRecentAttacks then
+		local ok, list = pcall(Game.GetRecentAttacks, 1);
+		if ok and list then
+			for _,a in ipairs(list) do
+				if a.isHostile and a.source then
+					local src, len = Map.RegionOfWorld(a.source);
+					local hit = Map.RegionOfWorld(a.impact);
+					local layer = 'ground';
+					if Map.airRadius and Map.airRadius > Map.groundRadius
+						and len >= Map.groundRadius + (Map.airRadius - Map.groundRadius) * 0.5 then
+						layer = 'air';
+					elseif len < Game.Grid.HeightToRadius(Cfg.deepHeight) then
+						layer = 'deep';
+					end;
+					Sense.recentAttacks[#Sense.recentAttacks+1] = {src=src, hit=hit, layer=layer, precise=a.precise, turretType=a.turretType};
+					if src and not a.precise then
+						-- unseen shooter: remember the threat at its origin
+						if layer == 'air' then
+							src.airThreat = math.max(src.airThreat, Cfg.unseenAttackThreat);
+							Mem.airSeen = round;
+						elseif layer == 'deep' then
+							Mem.deepSeen = round;
+							src.mobileThreat = math.max(src.mobileThreat, Cfg.unseenAttackThreat);
+						elseif a.turretType and a.turretType.isStructure then
+							src.staticThreat = math.max(src.staticThreat, Cfg.unseenAttackThreat);
+						else
+							src.mobileThreat = math.max(src.mobileThreat, Cfg.unseenAttackThreat);
+						end;
+					end;
+				end;
+			end;
+			if #Sense.recentAttacks > 0 then
+				Log('Attacked '..#Sense.recentAttacks..' time(s) last round');
 			end;
 		end;
 	end;
