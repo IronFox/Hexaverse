@@ -83,6 +83,14 @@ A [cannon](../units/turrets/cannon.md) tank can simply be moved around, while an
 Power generation is most efficient when built in a circle around a [reactor core](../units/structures/reactor-core.md). Until you have the technology and the uranium for a core, build additional [generators](../units/structures/generator.md) in a circle, keeping the center free and accessible.
 A faction whose energy output drops to zero is as good as dead, and very rarely recovers. Keep enough minerals to rebuild at least one generator and one [fuel mine](../units/structures/mine.md). With those, survival is still possible, for example by having your [terraformers](../units/turrets/terraformer.md) dig into the ground, close the shaft behind them, and build an underground city.
 
+### Improvement Research
+
+Endless improvement [research](research.md) captures whatever research capacity your unlock topics leave over, so keep some in your queue at all times. It amplifies whichever tactic you are using, and has the most impact when focused on what you use most:
+
+- **Health** on the base that suits the planet: the [catamaran base](../units/vbases/catamaran-base.md) on water planets, the [heavy base](../units/vbases/heavy-base.md) on solid ones. Only on very mixed planets is [hoverbase](../units/vbases/hoverbase.md) health worth it.
+- **Scanning range** on [radars](../units/turrets/radar.md), some plane types, or in odd cases the [scanner](../units/turrets/surveyor.md) turret.
+- **Attack range** on whichever turret you use most.
+
 ### Plantations and T2 Units
 
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [compound](compound.md) types can be manufactured and combined into the material needed to elevate units to T2.

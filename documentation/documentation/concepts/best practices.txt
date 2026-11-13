@@ -74,6 +74,12 @@ A [[units/turrets/cannon|cannon]] tank can simply be moved around, while an [[un
 Power generation is most efficient when built in a circle around a [[units/structures/reactor core|reactor core]]. Until you have the technology and the uranium for a core, build additional [[units/structures/generator|generators]] in a circle, keeping the center free and accessible.
 A faction whose energy output drops to zero is as good as dead, and very rarely recovers. Keep enough minerals to rebuild at least one generator and one [[units/structures/mine|fuel mine]]. With those, survival is still possible, for example by having your [[units/turrets/terraformer|terraformers]] dig into the ground, close the shaft behind them, and build an underground city.
 
+=== Improvement Research ===
+Endless improvement [[concepts/research|research]] captures whatever research capacity your unlock topics leave over, so keep some in your queue at all times. It amplifies whichever tactic you are using, and has the most impact when focused on what you use most:
+* **Health** on the base that suits the planet: the [[units/vbases/catamaran base|catamaran base]] on water planets, the [[units/vbases/heavy base|heavy base]] on solid ones. Only on very mixed planets is [[units/vbases/hoverbase|hoverbase]] health worth it.
+* **Scanning range** on [[units/turrets/radar|radars]], some plane types, or in odd cases the [[units/turrets/surveyor|scanner]] turret.
+* **Attack range** on whichever turret you use most.
+
 === Plantations and T2 Units ===
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [[concepts/compound|compound]] types can be manufactured and combined into the material needed to elevate units to T2.
 T2 upgrades are done by [[units/turrets/mechanic|mechanic]] units. T2 units are tie-breakers: they gain experience from destroying enemy units and can become so powerful that a single one can decimate hostile installations without any doomsday weaponry.

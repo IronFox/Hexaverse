@@ -76,15 +76,15 @@ Cfg = {
 	maxMinesPerRound = 2,
 
 	-- research, in order of preference. Matched against topic fullName (case-insensitive substring)
+	researchReplanRounds = 10,	-- re-rank improvement research this often
+	waterPlanetShare = 0.6,		-- known surface water share from which catamarans are the main base
+	solidPlanetShare = 0.15,	-- below this, heavy bases are the main base
 	research = {
 		'Unlock:ReactorCore',
 		'Unlock:MissileLauncher',
 		'Unlock:HeavyBase',
 		'Unlock:Artillery',
-		'Attack Range:Cannon',
-		'Health:Hoverbase',
-		'Attack Range:Artillery',
-		'Health:HeavyBase',
+		-- endless improvements are chosen by usage (Economy.ImprovementUsage)
 	},
 };
 
@@ -191,6 +191,10 @@ end;
 
 -- Best available base for ground vehicles
 function Types.GroundBase()
+	-- water planets: catamarans carry the fight (constructors stay on hover, see NextVehicle)
+	if Types.base.cat and Types.IsUnlocked(Types.base.cat) and Economy and Economy.PlanetStyle() == 'cat' then
+		return Types.base.cat;
+	end;
 	if Types.IsUnlocked(Types.base.heavy) and Game.GetMainRoundNumber() > 30 then
 		return Types.base.heavy;
 	end;
@@ -1024,33 +1028,214 @@ function Economy.Count(t)
 	return Sense.structuresByType[t.name] or 0;
 end;
 
+local function NormName(n)
+	return string.lower(string.gsub(n or '', '[%s_%-]', ''));
+end;
+
+--[[
+How much each endless improvement topic would pay off right now, based on what
+the faction actually fields. Improvement research absorbs whatever research
+capacity the unlock topics leave over, so focusing it on the most used unit
+types matters.
+@return {normalized topic key -> score}, key = group..':'..name, e.g. 'attackrange:cannon'
+]]
+--[[
+Share of the known surface that is water, from what this faction has seen.
+Decides which vehicle base gets health research: catamaran on water planets,
+heavy on solid ones, hover only on very mixed planets. Refreshed every 25 rounds.
+]]
+Economy.waterInfo = nil;
+function Economy.WaterShare()
+	local wi = Economy.waterInfo;
+	if wi and Sense.round - wi.round < 25 then
+		return wi.share, wi.known;
+	end;
+	local C = Game.Terrain and Game.Terrain.Content;
+	local water, known = 0, 0;
+	if C and Game.Terrain.GetContent and Game.Terrain.TranslateUnitCell then
+		for _,uc in ipairs(Game.Grid.unitCells) do
+			local ok, tc = pcall(Game.Terrain.TranslateUnitCell, uc);
+			if ok and tc then
+				-- top-down: the first non-clear content is the surface
+				for h = 31, 0, -1 do
+					local ok2, c = pcall(Game.Terrain.GetContent, tc, h);
+					if ok2 and c ~= nil and c ~= C.Clear then
+						if c ~= C.Unknown then
+							known = known + 1;
+							if c == C.Water then water = water + 1; end;
+						end;
+						break;
+					end;
+				end;
+			end;
+		end;
+	end;
+	local share = known > 0 and water / known or 0;
+	Economy.waterInfo = {round=Sense.round, share=share, known=known};
+	return share, known;
+end;
+
+-- 'cat', 'heavy' or 'mixed'
+function Economy.PlanetStyle()
+	local share, known = Economy.WaterShare();
+	if known < 20 then return 'heavy'; end;
+	if share >= Cfg.waterPlanetShare then return 'cat'; end;
+	if share <= Cfg.solidPlanetShare then return 'heavy'; end;
+	return 'mixed';
+end;
+
+--[[
+How much each endless improvement topic would pay off right now, based on what
+the faction actually fields. Improvement research absorbs whatever research
+capacity the unlock topics leave over, so it is focused:
+  attack range   on the turrets used most (mobile and towers)
+  scanning range on radars (and sensor planes / scanners if such topics exist);
+                 AA only while air matters
+  health         on the base that suits the planet: catamaran on water planets,
+                 heavy on solid ones, hover only on very mixed ones
+@return {normalized topic key -> score}, key = group..':'..name, e.g. 'attackrange:cannon'
+]]
+function Economy.ImprovementUsage()
+	local score = {};
+	local function Add(k, v) score[k] = (score[k] or 0) + v; end;
+	local air = Sense.AirMatters();
+	for _,u in pairs(Game.myUnits) do
+		local t = u.turret and u.turret.type;
+		local tn = t and NormName(t.name);
+		local mobile = u.type.isMobile;
+		if t and t.canAttack then
+			Add('attackrange:'..tn, mobile and 2 or 1.5);
+		end;
+		if t and not t.canAttack then
+			-- sensors: radar first, scanners mostly look down (odd cases only)
+			if tn == 'radar' then Add('scanningrange:radar', mobile and 1.5 or 1);
+			elseif t.detectsResources then Add('scanningrange:'..tn, 0.3);
+			elseif u.type.isSuborbitalPlane then Add('scanningrange:'..tn, 1.5);
+			end;
+		end;
+		if tn == 'antiaircraft' and air then Add('scanningrange:antiaircraft', 1); end;
+		local base = mobile and u.type.vehicleBaseType;
+		if base and base.name then Add('health:'..NormName(base.name), (t and t.canAttack) and 2 or 1); end;
+	end;
+	if air then
+		Add('attackrange:antiaircraft', 3);
+		Add('scanningrange:antiaircraft', 2);
+	end;
+	-- health research goes to the base that suits the planet
+	local style = Economy.PlanetStyle();
+	for k,v in pairs(score) do
+		if string.sub(k, 1, 7) == 'health:' then
+			local b = string.sub(k, 8);
+			local f = 1;
+			if b == 'hoverbase' then f = (style == 'mixed') and 1 or 0.2;
+			elseif b == 'heavybase' then f = (style == 'heavy') and 1.5 or 0.5;
+			elseif b == 'catamaranbase' then f = (style == 'cat') and 1.5 or 0.5;
+			end;
+			score[k] = v * f;
+		end;
+	end;
+	return score;
+end;
+
+local function TopicKey(topic)
+	local full = string.lower(topic.fullName or '');
+	local name = NormName(topic.name);
+	for _,g in ipairs({'attack range', 'scanning range', 'health'}) do
+		if string.find(full, g, 1, true) then
+			return NormName(g)..':'..name;
+		end;
+	end;
+	return nil;
+end;
+
+local function TopicAvailable(topic)
+	return not topic.isCompleted and topic.max ~= 0
+		and (topic.dependency == nil or topic.dependency.isCompleted);
+end;
+
+Economy.researchPlanRound = -100;
+
+--[[
+Keeps the research queue full: pending unlocks from Cfg.research first, the rest
+of the queue filled with the endless improvements that pay off most. The engine
+spends research on the queue in order, and an endless topic takes all that is
+left, so an idle or short queue wastes capacity.
+]]
 function Economy.Research()
 	local queue = Game.Research.myQueue or {};
 	local maxLen = Game.Research.maxQueueLength or 3;
-	if #queue >= math.min(maxLen, 2) then
-		return;
-	end;
-	local queued = #queue;
+
+	-- unlocks wanted next, in priority order
+	local unlocks = {};
+	local style = Economy.PlanetStyle();
 	for _,want in ipairs(Cfg.research) do
-		if queued >= math.min(maxLen, 2) then break; end;
 		local w = string.lower(want);
-		local parts = {};
-		for p in string.gmatch(w, '[^:]+') do parts[#parts+1] = p; end;
+		if style == 'cat' then w = string.gsub(w, 'heavybase', 'catamaranbase'); end;
+		if string.find(w, 'unlock', 1, true) then
+			local parts = {};
+			for p in string.gmatch(w, '[^:]+') do parts[#parts+1] = p; end;
+			for name,topic in pairs(Game.Research.topics) do
+				local fn = string.lower(topic.fullName or name);
+				local match = not topic.isEndless;
+				for _,p in ipairs(parts) do
+					if not string.find(fn, p, 1, true) then match = false; break; end;
+				end;
+				if match and TopicAvailable(topic) then
+					unlocks[#unlocks+1] = topic;
+					break;
+				end;
+			end;
+		end;
+	end;
+
+	-- improvements ranked by current usage (re-planned every few rounds to avoid churn)
+	local replan = Sense.round - Economy.researchPlanRound >= Cfg.researchReplanRounds;
+	local improvements = {};
+	if replan or Economy.researchPlan == nil then
+		local usage = Economy.ImprovementUsage();
 		for name,topic in pairs(Game.Research.topics) do
-			local fn = string.lower(topic.fullName or name);
-			local match = true;
-			for _,p in ipairs(parts) do
-				if not string.find(fn, p, 1, true) then match = false; break; end;
+			if topic.isEndless and TopicAvailable(topic) then
+				local key = TopicKey(topic);
+				local sc = key and usage[key] or 0;
+				if topic.isQueued then sc = sc * 1.3; end;	-- hysteresis: don't flip-flop between close candidates
+				if sc > 0 then
+					improvements[#improvements+1] = {topic=topic, score=sc};
+				end;
 			end;
-			if match and not topic.isCompleted and not topic.isQueued
-				and (topic.dependency == nil or topic.dependency.isCompleted)
-				and topic.max ~= 0
-			then
-				Log('Research: '..topic.fullName);
-				topic.Enqueue();
-				queued = queued + 1;
-				break;
-			end;
+		end;
+		table.sort(improvements, function(a,b) return a.score > b.score end);
+		Economy.researchPlan = improvements;
+		Economy.researchPlanRound = Sense.round;
+	end;
+	improvements = Economy.researchPlan;
+
+	-- desired queue: up to 2 unlocks (keep at least one slot for an improvement), rest improvements
+	local desired, want = {}, {};
+	local unlockSlots = math.min(#unlocks, math.max(1, maxLen - 1), 2);
+	for i = 1, unlockSlots do desired[#desired+1] = unlocks[i]; end;
+	for _,e in ipairs(improvements) do
+		if #desired >= maxLen then break; end;
+		desired[#desired+1] = e.topic;
+	end;
+	for _,t in ipairs(desired) do want[t.fullName] = true; end;
+
+	-- drop improvements that are no longer among the best (progress is kept)
+	local queued = {};
+	local len = #queue;
+	for _,t in ipairs(queue) do
+		if t.isEndless and not want[t.fullName] and replan and pcall(t.Dequeue) then
+			Log('Research: dropping '..t.fullName);
+			len = len - 1;
+		else
+			queued[t.fullName] = true;
+		end;
+	end;
+	for _,t in ipairs(desired) do
+		if len >= maxLen then break; end;
+		if not queued[t.fullName] and not t.isQueued then
+			Log('Research: '..t.fullName);
+			t.Enqueue();
+			len = len + 1;
 		end;
 	end;
 end;
@@ -1673,6 +1858,7 @@ function Economy.NextVehicle()
 	local base = Types.GroundBase();
 	local hover = Types.base.hover;
 	local function Constructor()
+		if base == Types.base.cat then base = hover; end;	-- constructors must reach land
 		return Types.Vehicle(Types.turret.terraformer, base) or Types.Vehicle(Types.turret.terraformer, hover);
 	end;
 	local function Tank()
