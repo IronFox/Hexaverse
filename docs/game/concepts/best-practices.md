@@ -113,7 +113,7 @@ Successful matches usually involve both ground and air battles. Planes fly over 
 
 ### Going Underground
 
-A base below ground is hard to find: sensors don't see through rock. One way to play it is to dig in right away, demolish the surface structures, and rebuild them underground. Sealing the entry is really important: if the shaft stays open, other factions just walk right in. Mines can be undermined (placed beneath a surface mine), Nexus hubs cannot.
+A base below ground is hard to find: sensors don't see through rock. One way to play it is to dig in right away, demolish the surface structures, and rebuild them underground. Sealing the entry is really important: if the shaft stays open, other factions just walk right in. The strategy works as long as hostile [surveyors](../units/turrets/surveyor.md) don't survive long: they look into the ground and give the base away, so shoot them first. Against a single enemy the outcome is open: it depends on what happens sooner, surface artillery breaking through or bombs destroying the other's base. Mines can be undermined (placed beneath a surface mine), Nexus hubs cannot.
 Successful underground operations need [surveyors](../units/turrets/surveyor.md) and [terraformers](../units/turrets/terraformer.md) working together: the surveyor looks ahead into the ground, the terraformer digs. Lava is a real issue if you run into it.
 Underground fights favor [bomb](../units/turrets/bomb.md) vehicles over tanks: there is no room to use a tank's range. Since the Nexus AI does not dig tunnels, subterranean warfare is never necessary against it.
 

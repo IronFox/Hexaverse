@@ -609,3 +609,64 @@ function ApplyImport()
 	end;
 	baseApply();
 end;
+
+--[[
+Hostile surveyors are the main danger: they look into the ground and reveal the
+cavern. They are shot first, and units nearby hunt them down.
+]]
+local function IsSurveyor(e)
+	return e.turret and e.turret.type and e.turret.type.detectsResources;
+end;
+
+local baseFire = Military.Fire;
+function Military.Fire(v)
+	local t = v.turret;
+	if t and t.type.canAttack and v.Attack and t.SearchAttackTarget then
+		for _,e in pairs(Game.hostileUnits) do
+			if e.health > 0 and IsSurveyor(e) and not e.location.isSuborbital then
+				local ok, choice = pcall(t.SearchAttackTarget, e.location);
+				if ok and choice then
+					v.Attack({choice});
+					Log(v.niceName..': firing at hostile surveyor '..tostring(e.niceName));
+					return true;
+				end;
+			end;
+		end;
+	end;
+	return baseFire(v);
+end;
+
+-- combat units hunt hostile surveyors anywhere near the base before anything else
+local baseCombat = Military.Combat;
+function Military.Combat()
+	local hunted = {};
+	local home = Mole.shaftCell and CellByIndex(Mole.shaftCell);
+	for _,e in pairs(Game.hostileUnits) do
+		if e.health > 0 and IsSurveyor(e) and home and D2(e.location.cell.center, home.center) < 0.02 then
+			-- nearest two combat units go for it
+			local list = {};
+			for _,v in ipairs(Sense.my.combat) do
+				if not hunted[v.id] then list[#list+1] = {v=v, d=D2(v.location.world, e.location.world)}; end;
+			end;
+			table.sort(list, function(a,b) return a.d < b.d end);
+			for i = 1, math.min(2, #list) do
+				local v = list[i].v;
+				hunted[v.id] = true;
+				SafeCall('hunt '..v.niceName, function()
+					if not Military.Fire(v) or v.motionIgnoresAttack then
+						if not Move.IsIdle(v) then v.ClearSafeTasks(); end;
+						Move.Towards(v, e.location.world, e.location.cell, false, true);
+					end;
+				end);
+			end;
+		end;
+	end;
+	if next(hunted) == nil then return baseCombat(); end;
+	-- the rest as usual
+	local keep = Sense.my.combat;
+	local rest = {};
+	for _,v in ipairs(keep) do if not hunted[v.id] then rest[#rest+1] = v; end; end;
+	Sense.my.combat = rest;
+	baseCombat();
+	Sense.my.combat = keep;
+end;
