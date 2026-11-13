@@ -571,9 +571,18 @@ function Economy.Constructors()
 	baseConstructors();
 end;
 
+-- bombs are the only weapon that really works underground: once the plants are
+-- below ground, every combat vehicle they build is a bomb (tanks only for the surface guard)
+table.insert(Cfg.research, 1, 'Unlock:Bomb');
+
 -- a surveyor first: digging needs eyes below ground
 local baseNextVehicle = Economy.NextVehicle;
 function Economy.NextVehicle()
+	local below = 0;
+	for _,p in ipairs(Sense.plants) do
+		if Mole.IsBelow(p.location) then below = below + 1; end;
+	end;
+	Cfg.bombShare = (below > 0 and below == #Sense.plants) and 1.0 or 0.5;
 	local constructors = #Sense.my.constructor + (Sense.storedByRole.constructor or 0);
 	if constructors >= 2 and #Sense.my.surveyor == 0 and (Sense.storedByRole.surveyor or 0) == 0 then
 		local sv = Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover);
@@ -669,4 +678,29 @@ function Military.Combat()
 	Sense.my.combat = rest;
 	baseCombat();
 	Sense.my.combat = keep;
+end;
+
+-- Towers below ground only matter once someone has broken in, and by then the base is lost
+-- anyway: a couple next to the shaft, the rest of the minerals go into bombs and economy
+Cfg.moleMaxTowers = 2;
+local function TowerCount()
+	local n = 0;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.turret and st.turret.type.canAttack then n = n + 1; end;
+	end;
+	return n;
+end;
+local baseDefenseNeed = Economy.DefenseNeed;
+function Economy.DefenseNeed(surplus, homeOnly)
+	local need = baseDefenseNeed(surplus, homeOnly);
+	if need and need.type and need.type.turretType and need.type.turretType.canAttack
+		and TowerCount() >= Cfg.moleMaxTowers then
+		return nil;
+	end;
+	return need;
+end;
+local baseGroundTower = Types.GroundTower;
+function Types.GroundTower()
+	if TowerCount() >= Cfg.moleMaxTowers then return nil; end;
+	return baseGroundTower();
 end;

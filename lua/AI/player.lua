@@ -2345,15 +2345,8 @@ function Economy.NextVehicle()
 	if #my.surveyor < wantSurveyors and Sense.round > 10 then
 		return Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
 	end;
-	-- mostly cannons, some artillery once available
-	local nArt = 0;
-	for _,u in ipairs(my.combat) do
-		if u.turret.type == Types.turret.artillery then nArt = nArt + 1; end;
-	end;
-	if Types.IsUnlocked(Types.turret.artillery) and nArt * 3 < #my.combat then
-		return Types.Vehicle(Types.turret.artillery, base) or Types.Vehicle(Types.turret.artillery, hover);
-	end;
-	return Types.Vehicle(Types.turret.cannon, base) or Types.Vehicle(Types.turret.cannon, hover);
+	-- mostly cannons, some artillery once available (and bombs where the fight is underground)
+	return Tank();
 end;
 
 Economy.plantHead = {};	-- plant id -> {id=production id, since=round}
