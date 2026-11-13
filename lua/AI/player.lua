@@ -1192,10 +1192,13 @@ function Economy.AssignConstructor(u, index)
 				end;
 			end;
 		end;
-		-- no safe known resource spot: build something useful at home instead
-		want = {type = Types.cannonTower or Types.generator, kind='tower'};
-		if Sense.round < 10 then
+		-- no safe known resource spot: thicken defenses if useful, otherwise wait (and let surveyors/radars find spots)
+		want = Economy.DefenseNeed(true);
+		if want == nil and Sense.round < 10 and Economy.Count(Types.generator) < 2 then
 			want = {type = Types.generator, kind='base'};
+		end;
+		if want == nil then
+			return;
 		end;
 	end;
 
