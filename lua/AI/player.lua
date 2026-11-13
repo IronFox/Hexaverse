@@ -67,6 +67,8 @@ Cfg = {
 
 	-- structures
 	wantLabs = 3,
+	wantLabsRich = 6,		-- labs while minerals pile up
+	richMinerals = 400,		-- minerals from which surplus spending kicks in
 	wantTowersPerFrontier = 1,
 	-- economy
 	energyHeadroom = 2,	-- build power while spare energy (all structures enabled) is below this
@@ -1447,6 +1449,18 @@ function Economy.NextStructure(constructorIndex)
 		return {type=Types.radarTower, kind='tower'};
 	end;
 	do local m = Economy.MineReq('Minerals'); if m then return m; end; end;
+	-- rich and nothing else to do: more research, more fixed defense
+	if (cur.storage.minerals or 0) >= Cfg.richMinerals then
+		if Types.lab and Economy.Count(Types.lab) < Cfg.wantLabsRich then
+			return {type=Types.lab, kind='base'};
+		end;
+		if gt and Economy.Count(gt) < 4 + math.floor(round / 10) then
+			return {type=gt, kind='tower'};
+		end;
+		if Types.store and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores + 2 then
+			return {type=Types.store, kind='tower'};
+		end;
+	end;
 end;
 
 --[[
@@ -1843,15 +1857,12 @@ Mem.roadsDone = Mem.roadsDone or {};
 function Economy.RoadTarget()
 	-- only through my own quiet territory: fights rip holes into the ground (and roads),
 	-- and terraformers are priority targets for the Nexus, since they can take over hubs
-	local best, bestH = nil, 1;
+	local best, bestH = nil, 0;
 	for id,_ in pairs(Sense.mine) do
 		local reg = Map.regions[id];
 		local h = Sense.hops[id] or 0;
 		local done = Mem.roadsDone[id];
 		local quiet = Sense.Threat(reg) <= 0;
-		for nb,_ in pairs(reg.neighbors) do
-			if Map.regions[nb].mobileThreat > 0 then quiet = false; end;
-		end;
 		if reg.myStructures > 0 and h > bestH and quiet
 			and not (done and Sense.round - done < Cfg.roadRepaveRounds) then
 			best, bestH = id, h;
@@ -1861,7 +1872,7 @@ function Economy.RoadTarget()
 end;
 
 function Economy.TryRoad(u)
-	if not u.BuildRoadTo or Sense.round < Cfg.roadMinRound or #Sense.my.constructor < 3 then return false; end;
+	if not u.BuildRoadTo or Sense.round < Cfg.roadMinRound or #Sense.my.constructor < 2 then return false; end;
 	local cur = Economy.Resources();
 	if (cur.storage.minerals or 0) < Cfg.roadMinerals or Economy.PowerCritical() or Sense.Pressure() > Cfg.roadMaxPressure then
 		return false;
@@ -1939,7 +1950,8 @@ function Economy.AssignConstructor(u, index)
 	end;
 	Mem.jobs[u.id] = nil;
 
-	if index == #Sense.my.constructor and Economy.TryRoad(u) then
+	if not Economy.roadOrdered and Economy.TryRoad(u) then
+		Economy.roadOrdered = true;
 		return;
 	end;
 
@@ -2288,6 +2300,7 @@ function Economy.Constructors()
 		Economy.plantCells[p.location.cell.index] = p.location.cell;
 	end;
 	Economy.powerOrders = 0;
+	Economy.roadOrdered = false;
 	Economy.scannerClaimed = {};
 	-- remember cells constructors are already heading to
 	for id,job in pairs(Mem.jobs) do
@@ -2376,7 +2389,12 @@ function Military.UpdatePosture()
 	local n = Military.ArmyStrength();
 	if Mem.posture == 'defend' then
 		local target = (Sense.round >= Cfg.attackMinRound) and Military.ChooseAttackTarget() or nil;
-		if target and n >= Military.RequiredForce(target) then
+		local need = target and Military.RequiredForce(target);
+		-- with minerals piling up, losses are cheap to replace: attack with less
+		if need and (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.richMinerals then
+			need = math.ceil(need * 0.7);
+		end;
+		if target and n >= need then
 			do
 				Mem.posture = 'attack';
 				Mem.attackTarget = target;
@@ -2750,6 +2768,46 @@ function Military.AA()
 	end;
 end;
 
+-- Idle units parked next to a vehicle plant block its deployment: move them aside
+Military.parked = {};
+function Military.ClearPlants()
+	local near = {};
+	for _,p in ipairs(Sense.plants) do
+		near[p.location.cell.index] = true;
+		for _,nb in ipairs(p.location.cell.neighbors) do near[nb.index] = true; end;
+	end;
+	if next(near) == nil then return; end;
+	-- only units that have been sitting there for a while (not ones just ordered elsewhere)
+	local parked = {};
+	for role,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do
+			if role ~= 'constructor' and u.type.isMobile and near[u.location.cell.index] then
+				parked[u.id] = (Military.parked[u.id] or 0) + 1;
+			end;
+		end;
+	end;
+	Military.parked = parked;
+	for role,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do
+			if (parked[u.id] or 0) >= 2 and Move.IsIdle(u) and u.GetReach then
+				SafeCall('clear plant '..u.niceName, function()
+					local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed * 2), false, false, false, true);
+					if not ok or reach == nil then return; end;
+					local best, bestC = nil, nil;
+					for _,n in ipairs(reach) do
+						if not near[n.location.cell.index] and not Move.IsDangerous(n.location) then
+							if bestC == nil or n.movementCostsFromRoot < bestC then
+								best, bestC = n, n.movementCostsFromRoot;
+							end;
+						end;
+					end;
+					if best then u.DirectTo(best); end;
+				end);
+			end;
+		end;
+	end;
+end;
+
 -- Stationary towers just shoot
 function Military.Towers()
 	for _,s in ipairs(Sense.myStructures) do
@@ -2786,6 +2844,7 @@ function Execute()
 	SafeCall('Combat', Military.Combat);
 	SafeCall('Scouts', Military.Scouts);
 	SafeCall('AA', Military.AA);
+	SafeCall('ClearPlants', Military.ClearPlants);
 
 	local cur = Game.myFaction.currentResources;
 	local seen, seenA, seenD = 0, 0, 0;
