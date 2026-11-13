@@ -480,6 +480,7 @@ function Sense.Update()
 	Sense.round = round;
 	Sense.my = {constructor={}, combat={}, radar={}, surveyor={}, aa={}, plane={}, other={}};
 	Sense.myStructures = {};
+	Sense.structureCells = {};
 	Sense.structuresByType = {};
 	Sense.plants = {};
 	Sense.labs = {};
@@ -517,6 +518,7 @@ function Sense.Update()
 			end;
 		else
 			Sense.myStructures[#Sense.myStructures+1] = u;
+			Sense.structureCells[u.location.cell.index] = true;
 			local tn = u.type.name;
 			Sense.structuresByType[tn] = (Sense.structuresByType[tn] or 0) + 1;
 			if u.type.isMobileEntityProducer and not u.type.isHangar then
@@ -1081,9 +1083,9 @@ function Economy.AssignConstructor(u, index)
 		return;	-- busy with a queued motion/construction
 	end;
 	-- detect stuck jobs: still idle at the same place where we ordered a construction
-	if job and job.cell and job.at == u.location.cell.index and Sense.round - job.since >= 1 then
+	if job and job.cell and Sense.round - job.since >= 1 and not Sense.structureCells[job.cell] then
 		Mem.blacklist[job.cell] = Sense.round + 30;
-		Log(u.niceName..': construction at cell '..job.cell..' seems to have failed. Blacklisting');
+		Log(u.niceName..': construction of '..job.kind..' at cell '..job.cell..' did not happen. Blacklisting the site');
 	end;
 	Mem.jobs[u.id] = nil;
 
