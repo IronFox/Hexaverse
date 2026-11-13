@@ -75,6 +75,7 @@ Cfg = {
 	roadMinerals = 250,		-- and minerals pile up
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
+	plantFreeCells = 3,		-- free cells to keep around each vehicle plant for deployment
 	stuckProductionRounds = 15,	-- abort a plant's head production after this many rounds without progress
 	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
@@ -1244,6 +1245,15 @@ function Economy.Research()
 	end;
 end;
 
+-- Mine request, unless this round already showed there is no usable site for that resource
+Economy.noMineSite = {};
+function Economy.MineReq(resource)
+	if Economy.noMineSite[resource] == Sense.round then
+		return nil;
+	end;
+	return {type=Types.mine, kind='mine', resource=resource};
+end;
+
 -- What should the next idle constructor build? Returns {type, kind} or nil
 function Economy.NextStructure(constructorIndex)
 	local cur, max = Economy.Resources();
@@ -1254,24 +1264,28 @@ function Economy.NextStructure(constructorIndex)
 	-- one fuel mine beats everything else, including the vehicle plant
 	if Economy.PowerCritical() then
 		if ((max.supply or {}).fuel or 0) <= 0 and constructorIndex % 2 == 0 then
-			return {type=Types.mine, kind='mine', resource='Fuel'};
+			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
 		end;
 		if Economy.powerOrders < 2 then
 			Economy.powerOrders = Economy.powerOrders + 1;
 			return {type=Types.generator, kind='base'};
 		end;
 		if ((max.supply or {}).fuel or 0) <= 0 then
-			return {type=Types.mine, kind='mine', resource='Fuel'};
+			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
 		end;
 	end;
-	if Types.plant and Economy.Count(Types.plant) == 0 then
+	if Types.plant and Economy.WorkingPlants() == 0 then
 		return {type=Types.plant, kind='base'};
+	end;
+	-- a spare fuel mine: losing the only one starves every generator
+	if round >= 10 and Economy.Count(Types.generator) >= 1 and Economy.FuelMines() < math.min(2, Economy.Count(Types.generator)) then
+		do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
 	end;
 	-- energy first: everything else depends on it. Keep some headroom so the next mine
 	-- (or a vehicle plant) runs as soon as it is finished instead of sitting disabled
 	if bal.energy < Cfg.energyHeadroom or (cur.balance.energy <= 0 and Economy.Count(Types.generator) < 2) then
 		if (bal.fuel or 0) <= 0 and (constructorIndex % 2 == 1 or Economy.Count(Types.mine) == 0) then
-			return {type=Types.mine, kind='mine', resource='Fuel'};
+			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
 		end;
 		if Economy.powerOrders < 2 then
 			Economy.powerOrders = Economy.powerOrders + 1;
@@ -1284,7 +1298,7 @@ function Economy.NextStructure(constructorIndex)
 	if Economy.Count(Types.mine) < wantMines and Sense.Pressure() <= 0 then
 		local res = 'Minerals';
 		if (bal.fuel or 0) <= 0 then res = 'Fuel'; end;
-		return {type=Types.mine, kind='mine', resource=res};
+		do local m = Economy.MineReq(res); if m then return m; end; end;
 	end;
 	-- a reactor core in the middle of a generator ring, once unlocked and fed with uranium
 	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
@@ -1293,11 +1307,12 @@ function Economy.NextStructure(constructorIndex)
 			return {type=Types.reactor, kind='power'};
 		end;
 		if constructorIndex == 2 then
-			return {type=Types.mine, kind='mine', resource='Uranium'};
+			do local m = Economy.MineReq('Uranium'); if m then return m; end; end;
 		end;
 	end;
 	-- minerals piling up means the plants are the bottleneck
-	if Types.plant and (cur.storage.minerals or 0) >= 300 and Economy.Count(Types.plant) < 3 then
+	if Types.plant and (((cur.storage.minerals or 0) >= 300 and Economy.Count(Types.plant) < 3)
+		or ((cur.storage.minerals or 0) >= 450 and Economy.Count(Types.plant) < 5)) then
 		return {type=Types.plant, kind='base'};
 	end;
 	-- the home region gets its first defense early; raids start around round 15
@@ -1327,7 +1342,7 @@ function Economy.NextStructure(constructorIndex)
 	if Economy.Count(Types.mine) < 4 + math.floor(round / 10) then
 		local res = 'Minerals';
 		if bal.fuel <= 0 then res = 'Fuel'; end;
-		return {type=Types.mine, kind='mine', resource=res};
+		do local m = Economy.MineReq(res); if m then return m; end; end;
 	end;
 	if Types.lab and Economy.Count(Types.lab) < Cfg.wantLabs and round >= 15 then
 		return {type=Types.lab, kind='base'};
@@ -1354,7 +1369,7 @@ function Economy.NextStructure(constructorIndex)
 	if Types.radarTower and Types.IsUnlocked(Types.radarTower) and Economy.Count(Types.radarTower) < 1 + math.floor(round / 25) then
 		return {type=Types.radarTower, kind='tower'};
 	end;
-	return {type=Types.mine, kind='mine', resource='Minerals'};
+	do local m = Economy.MineReq('Minerals'); if m then return m; end; end;
 end;
 
 --[[
@@ -1379,8 +1394,8 @@ function Economy.DefenseNeed(surplus, homeOnly)
 			if st.turret and not st.turret.type.canAttack and Map.RegionOfLoc(st.location) == reg then
 				value = value + 2;	-- sensors are what the enemy wants to blind
 			end;
-			if st.type == Types.generator and Map.RegionOfLoc(st.location) == reg then
-				value = value + 3;	-- losing power output is losing the game
+			if (st.type == Types.generator or st.type == Types.mine) and Map.RegionOfLoc(st.location) == reg then
+				value = value + 3;	-- losing power output (generators and the mines feeding them) is losing the game
 			end;
 		end;
 		if homeOnly and id ~= Mem.homeRegion then
@@ -1510,6 +1525,8 @@ function Economy.TowersIn(reg)
 end;
 
 -- Is this cell a reasonable construction site?
+Economy.plantCells = {};	-- cell index -> cell of my vehicle plants, refreshed per round
+
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
 	if Economy.IsPowerCenter(idx) and not Economy.allowPowerCenter then return false; end;
@@ -1529,6 +1546,16 @@ function Economy.SiteOK(loc, forMine)
 	end;
 	-- don't build where remembered or sensed hostiles can hit
 	if Move.IsDangerous(loc) then return false; end;
+	-- never box in a vehicle plant: finished vehicles need somewhere to deploy
+	for _,nb in ipairs(loc.cell.neighbors) do
+		if Economy.plantCells[nb.index] then
+			local pfree = 0;
+			for _,pn in ipairs(Economy.plantCells[nb.index].neighbors) do
+				if pn.index ~= idx and not Sense.structureCells[pn.index] and not Economy.claimed[pn.index] then pfree = pfree + 1; end;
+			end;
+			if pfree < Cfg.plantFreeCells then return false; end;
+		end;
+	end;
 	-- the constructor must be able to move off the finished structure
 	local free = 0;
 	for _,nb in ipairs(loc.cell.neighbors) do
@@ -1860,8 +1887,17 @@ function Economy.AssignConstructor(u, index)
 				end;
 			end;
 		end;
-		-- no safe known resource spot: thicken defenses if useful, otherwise wait (and let surveyors/radars find spots)
-		want = Economy.DefenseNeed(true);
+		-- no safe known resource spot: remember that for this round and build the next best thing instead
+		-- (a constructor waiting for a mine site while minerals pile up is a stalled economy)
+		Economy.noMineSite[want.resource] = Sense.round;
+		if want.resource ~= 'Minerals' then Economy.noMineSite['Minerals'] = Sense.round; end;
+		local alt = Economy.NextStructure(index);
+		if alt and alt.type and alt.kind ~= 'mine' and alt.type ~= Types.reactor then
+			want = alt;
+			if want.kind == 'power' then want = {type = want.type, kind = 'base'}; end;
+		else
+			want = Economy.DefenseNeed(true);
+		end;
 		if want == nil and Sense.round < 10 and Economy.Count(Types.generator) < 2 then
 			want = {type = Types.generator, kind='base'};
 		end;
@@ -1995,6 +2031,29 @@ function Economy.NextVehicle()
 end;
 
 Economy.plantHead = {};	-- plant id -> {id=production id, since=round}
+Economy.plantBlocked = {};	-- plant id -> round since which its finished vehicle cannot deploy
+
+-- Vehicle plants that can actually deliver (not boxed in for 5+ rounds)
+function Economy.WorkingPlants()
+	local n = 0;
+	for _,p in ipairs(Sense.plants) do
+		local b = Economy.plantBlocked[p.id];
+		if not (b and Sense.round - b >= 5) then n = n + 1; end;
+	end;
+	return n;
+end;
+
+-- Mines sitting on fuel: they feed the generators, losing the last one starves power
+function Economy.FuelMines()
+	local n = 0;
+	for _,st in ipairs(Sense.myStructures) do
+		if st.type == Types.mine then
+			local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', st.location.cell);
+			if ok and lvl and lvl > 0 then n = n + 1; end;
+		end;
+	end;
+	return n;
+end;
 
 function Economy.Production()
 	for _,p in ipairs(Sense.plants) do
@@ -2009,9 +2068,15 @@ function Economy.Production()
 			if ok and loc then
 				Log(p.niceName..': deploying '..tostring(p.productionCompleted));
 				p.DeployProductionAt(loc);
-			elseif Sense.round % 10 == 0 then
-				Log(p.niceName..': cannot deploy '..tostring(p.productionCompleted)..', no deployment option');
+				Economy.plantBlocked[p.id] = nil;
+			else
+				Economy.plantBlocked[p.id] = Economy.plantBlocked[p.id] or Sense.round;
+				if Sense.round % 10 == 0 then
+					Log(p.niceName..': cannot deploy '..tostring(p.productionCompleted)..', no deployment option');
+				end;
 			end;
+		else
+			Economy.plantBlocked[p.id] = nil;
 		end;
 		-- a production that does not progress for many rounds blocks the plant: drop it
 		local head = p.productionQueue and p.productionQueue[1];
@@ -2057,6 +2122,10 @@ end;
 
 function Economy.Constructors()
 	Economy.claimed = {};
+	Economy.plantCells = {};
+	for _,p in ipairs(Sense.plants) do
+		Economy.plantCells[p.location.cell.index] = p.location.cell;
+	end;
 	Economy.powerOrders = 0;
 	Economy.scannerClaimed = {};
 	-- remember cells constructors are already heading to
