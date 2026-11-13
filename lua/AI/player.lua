@@ -70,12 +70,14 @@ Cfg = {
 	wantTowersPerFrontier = 1,
 	-- economy
 	energyHeadroom = 2,	-- build power while spare energy (all structures enabled) is below this
+	minMines = 3,		-- mines rebuilt even under pressure
 	earlyMines = 3,		-- mines before towers while home is quiet (+1 per 10 rounds)
 	roadMinRound = 20,		-- roads once the economy is up
-	roadMinerals = 250,		-- and minerals pile up
+	roadMinerals = 200,		-- and minerals pile up
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
-	plantFreeCells = 3,		-- free cells to keep around each vehicle plant for deployment
+	plantFreeCells = 3,
+	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
 	stuckProductionRounds = 15,	-- abort a plant's head production after this many rounds without progress
 	brokeMinerals = 60,	-- below this, plants queue one vehicle at a time
 	maxMinesPerRound = 2,
@@ -1287,10 +1289,17 @@ function Economy.NextStructure(constructorIndex)
 		if (bal.fuel or 0) <= 0 and (constructorIndex % 2 == 1 or Economy.Count(Types.mine) == 0) then
 			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
 		end;
-		if Economy.powerOrders < 2 then
+		-- a generator without spare fuel produces nothing: fuel first
+		if (bal.fuel or 0) <= 0 and Economy.Count(Types.generator) >= 1 then
+			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
+		elseif Economy.powerOrders < 2 then
 			Economy.powerOrders = Economy.powerOrders + 1;
 			return {type=Types.generator, kind='power'};
 		end;
+	end;
+	-- a floor of mineral income, even under pressure: without it nothing else gets built
+	if Economy.Count(Types.mine) < Cfg.minMines then
+		do local m = Economy.MineReq('Minerals'); if m then return m; end; end;
 	end;
 	-- income before towers: a broke faction cannot build defenses or tanks either.
 	-- Only while home is quiet; under attack the defense below comes first
@@ -1311,8 +1320,9 @@ function Economy.NextStructure(constructorIndex)
 		end;
 	end;
 	-- minerals piling up means the plants are the bottleneck
-	if Types.plant and (((cur.storage.minerals or 0) >= 300 and Economy.Count(Types.plant) < 3)
-		or ((cur.storage.minerals or 0) >= 450 and Economy.Count(Types.plant) < 5)) then
+	-- (the 500 starting minerals don't count: only with real income)
+	if Types.plant and round >= 25 and Economy.Count(Types.mine) >= 4
+		and (cur.storage.minerals or 0) >= 300 and Economy.Count(Types.plant) < 3 then
 		return {type=Types.plant, kind='base'};
 	end;
 	-- the home region gets its first defense early; raids start around round 15
@@ -1708,7 +1718,7 @@ far away or under fire. This scans my regions and their quiet neighbors instead
 (cached per round), and falls back to the engine's pick if that one is safe.
 ]]
 Economy.mineCache = {};
-function Economy.FindMineCell(resource)
+function Economy.FindMineCells(resource, maxCount)
 	local cache = Economy.mineCache[resource];
 	if cache == nil or cache.round ~= Sense.round then
 		local list = {};
@@ -1735,15 +1745,23 @@ function Economy.FindMineCell(resource)
 		cache = {round=Sense.round, list=list};
 		Economy.mineCache[resource] = cache;
 	end;
+	local out = {};
 	for _,e in ipairs(cache.list) do
+		if #out >= (maxCount or 1) then break; end;
 		local bl = Mem.blacklist[e.cell.index];
 		if not Economy.claimed[e.cell.index] and not Sense.structureCells[e.cell.index] and not (bl and bl > Sense.round) then
-			return e.cell;
+			out[#out+1] = e.cell;
 		end;
 	end;
-	local ok, c = pcall(Game.Grid.FindHighestAvailableResourceLocationExt, resource, true, true);
-	if ok then return c; end;
-	return nil;
+	if #out < (maxCount or 1) then
+		local ok, c = pcall(Game.Grid.FindHighestAvailableResourceLocationExt, resource, true, true);
+		if ok and c and not Economy.claimed[c.index] then out[#out+1] = c; end;
+	end;
+	return out;
+end;
+
+function Economy.FindMineCell(resource)
+	return Economy.FindMineCells(resource, 1)[1];
 end;
 
 --[[
@@ -1872,18 +1890,19 @@ function Economy.AssignConstructor(u, index)
 	end;
 
 	if want.kind == 'mine' then
-		local cell = Economy.FindMineCell(want.resource);
-		if cell == nil and want.resource ~= 'Minerals' then
-			cell = Economy.FindMineCell('Minerals');
-		end;
-		if cell and not Economy.claimed[cell.index] then
-			local dest = Move.GroundAt(u, cell);
-			local reg = Map.RegionOfLoc(dest);
-			local safe = reg and Sense.Threat(reg) <= 0 and (Sense.hops[reg.id] or 99) <= 2;
-			if dest and safe and Economy.SiteOK(dest, true) then
-				if Economy.BuildAt(u, dest, want.type) then
-					Economy.claimed[cell.index] = true;
-					return;
+		-- try the best few candidates; the first one is often blocked or crowded
+		local resources = {want.resource};
+		if want.resource ~= 'Minerals' then resources[2] = 'Minerals'; end;
+		for _,res in ipairs(resources) do
+			for _,cell in ipairs(Economy.FindMineCells(res, Cfg.mineCandidates)) do
+				local dest = Move.GroundAt(u, cell);
+				local reg = dest and Map.RegionOfLoc(dest);
+				local safe = reg and Sense.Threat(reg) <= 0 and (Sense.hops[reg.id] or 99) <= 2;
+				if dest and safe and Economy.SiteOK(dest, true) then
+					if Economy.BuildAt(u, dest, want.type) then
+						Economy.claimed[cell.index] = true;
+						return;
+					end;
 				end;
 			end;
 		end;
