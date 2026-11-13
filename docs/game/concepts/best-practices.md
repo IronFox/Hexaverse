@@ -107,6 +107,16 @@ Endless improvement [research](research.md) captures whatever research capacity 
 Roads are really effective, yet even human players seldom build them. A one-time investment in proper infrastructure makes everything a lot faster afterwards.
 Keep in mind that hostile encounters tend to rip holes into the ground, so roads through contested areas do not last. Also, [terraformers](../units/turrets/terraformer.md) are priority targets for the Nexus AI, because they can be used to take over a hub. Sending one in first to claim a spot can go either way: in the best case it builds the towers to defend the spot before anything gets to it, in the worst case it does not.
 
+### Air and Ground
+
+Successful matches usually involve both ground and air battles. Planes fly over walls and cliffs and are invisible to regular radar, so only [AA](../units/turrets/anti-aircraft.md) can answer them. [Bombers](../units/planes/bomber.md) hit what is directly beneath them, [raptors](../units/planes/raptor.md) hunt other planes, and [sensor drones](../units/planes/sensor-drone.md) keep the map in view. A [plane factory](../units/structures/plane-factory.md) consumes fuel and minerals every round, so it needs a running economy.
+
+### Going Underground
+
+A base below ground is hard to find: sensors don't see through rock. One way to play it is to dig in right away, demolish the surface structures, and rebuild them underground. Mines can be undermined (placed beneath a surface mine), Nexus hubs cannot.
+Successful underground operations need [surveyors](../units/turrets/surveyor.md) and [terraformers](../units/turrets/terraformer.md) working together: the surveyor looks ahead into the ground, the terraformer digs. Lava is a real issue if you run into it.
+Underground fights favor [bomb](../units/turrets/bomb.md) vehicles over tanks: there is no room to use a tank's range. Since the Nexus AI does not dig tunnels, subterranean warfare is never necessary against it.
+
 ### Plantations and T2 Units
 
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [compound](compound.md) types can be manufactured and combined into the material needed to elevate units to T2.

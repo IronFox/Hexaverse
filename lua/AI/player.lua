@@ -82,6 +82,18 @@ Cfg = {
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
 	unseenAttackThreat = 4,	-- threat assumed at the origin of an attack whose shooter we cannot sense
 	deepBelowSurface = 2,
+	-- air (planes) and bombs. Successful games fight both on the ground and in the air
+	planeFactoryRound = 35,	-- first plane factory from this round, once the economy runs
+	planeFactories = 1,		-- how many to keep
+	planeFactoryMines = 4,	-- mines needed before the first plane factory (it eats fuel and minerals every round)
+	planePriority = 'normal',	-- 'early': plane factories right after the first vehicle plant (air personality)
+	maxPlanes = 6,
+	planeMinerals = 150,	-- queue planes only with this much in storage
+	bomberShare = 0.6,		-- bombers among attack planes (raptors are the rest)
+	wantDrones = 1,		-- sensor drones for air and ground coverage
+	bombShare = 0,			-- share of combat vehicles built as bomb vehicles (raised when fighting underground)
+	bombShareDeep = 0.33,
+	minesBelowThreat = false,	-- mine sites in threatened regions too (underground personality: mines below the fight)	-- ... once hostile underground activity was seen
 	artyZoneRounds = 10,	-- remember where hostile artillery fired from this long
 	artyHighLayers = 2,		-- artillery firing from this many layers above its impact counts as "high"
 	artyRushUnits = 5,		-- last resort against high artillery: rush only with this many units at once	-- shots from this many layers below the local surface count as underground
@@ -98,6 +110,8 @@ Cfg = {
 		'Unlock:MissileLauncher',
 		'Unlock:HeavyBase',
 		'Unlock:Artillery',
+		'Unlock:Plane',		-- plane factory (topic names: 'Unlock/...', matched by substring)
+		'Unlock:Bomber',
 		-- endless improvements are chosen by usage (Economy.ImprovementUsage)
 	},
 };
@@ -140,6 +154,10 @@ function Types.Resolve()
 	Types.lab = u['Laboratory'];
 	Types.store = u['Vehicle Store'];
 	Types.mineralContainer = u['Mineral Container'];
+	Types.planeFactory = u['Plane Factory'];
+	Types.bomber = u['Bomber'];
+	Types.raptor = u['Raptor'];
+	Types.drone = u['Sensor Drone'];
 	Types.fuelContainer = u['Fuel Container'];
 
 	-- towers are named after their turret
@@ -170,6 +188,7 @@ function Types.Resolve()
 		radar = tur['Radar'],
 		surveyor = tur['Surveyor'],
 		aa = tur['Anti Aircraft'],
+		bomb = tur['Bomb'],
 	};
 	Types.base = {
 		hover = bases['Hoverbase'],
@@ -240,6 +259,9 @@ function Types.Role(u)
 	end;
 	if tt.canConstruct then
 		return 'constructor';
+	end;
+	if tt.canSelfDetonate then
+		return 'bomb';
 	end;
 	if tt.detectsResources then
 		return 'surveyor';
@@ -546,7 +568,8 @@ end;
 function Sense.Update()
 	local round = Game.GetMainRoundNumber();
 	Sense.round = round;
-	Sense.my = {constructor={}, combat={}, radar={}, surveyor={}, aa={}, plane={}, other={}};
+	Sense.my = {constructor={}, combat={}, radar={}, surveyor={}, aa={}, plane={}, bomb={}, other={}};
+	Sense.planeFactories = {};
 	Sense.myStructures = {};
 	Sense.stores = {};
 	Sense.stored = {};
@@ -596,10 +619,12 @@ function Sense.Update()
 			Sense.structureCells[u.location.cell.index] = true;
 			local tn = u.type.name;
 			Sense.structuresByType[tn] = (Sense.structuresByType[tn] or 0) + 1;
-			if u.type.isMobileEntityProducer and not u.type.isHangar then
+			if Types.planeFactory and u.type == Types.planeFactory then
+				Sense.planeFactories[#Sense.planeFactories+1] = u;
+			elseif u.type.isMobileEntityProducer and not u.type.isHangar then
 				Sense.plants[#Sense.plants+1] = u;
 			end;
-			if u.type.isHangar then
+			if u.type.isHangar and u.type ~= Types.planeFactory then
 				Sense.stores[#Sense.stores+1] = u;
 			end;
 			if Types.lab and u.type == Types.lab then
@@ -789,7 +814,8 @@ function Sense.Update()
 					local layer = Sense.AttackLayer(a, src, len);
 					Sense.recentAttacks[#Sense.recentAttacks+1] = {src=src, hit=hit, layer=layer, precise=a.precise, turretType=a.turretType};
 					local tt = a.turretType;
-					if layer == 'ground' and tt and tt.trajectoryType == 'Artillery' and a.impact then
+					-- artillery proper: cannons share the ballistic trajectory but fire on the move
+					if layer == 'ground' and tt and tt.requiresStationaryVehicle and tt.trajectoryType == 'Artillery' and a.impact then
 						Military.NoteArtillery(a);
 					end;
 					if src and not a.precise then
@@ -1400,6 +1426,10 @@ function Economy.NextStructure(constructorIndex)
 	if Types.plant and Economy.WorkingPlants() == 0 then
 		return {type=Types.plant, kind='base'};
 	end;
+	if Cfg.planePriority == 'early' then
+		local pf = Economy.PlaneFactoryNeed();
+		if pf then return pf; end;
+	end;
 	-- a spare fuel mine: losing the only one starves every generator
 	if round >= 10 and Economy.Count(Types.generator) >= 1 and Economy.FuelMines() < math.min(2, Economy.Count(Types.generator)) then
 		do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
@@ -1455,6 +1485,10 @@ function Economy.NextStructure(constructorIndex)
 	end;
 	if Types.lab and Economy.Count(Types.lab) == 0 and round >= 3 then
 		return {type=Types.lab, kind='base'};
+	end;
+	do
+		local pf = Economy.PlaneFactoryNeed();
+		if pf then return pf; end;
 	end;
 	-- a tower on a threatened frontier
 	if Types.GroundTower() and constructorIndex == 1 then
@@ -1859,7 +1893,7 @@ function Economy.FindMineCells(resource, maxCount)
 		local function Scan(reg)
 			if seen[reg.id] then return; end;
 			seen[reg.id] = true;
-			if Sense.Threat(reg) > 0 or (Sense.hops[reg.id] or 99) > 2 then return; end;
+			if (Sense.Threat(reg) > 0 and not Cfg.minesBelowThreat) or (Sense.hops[reg.id] or 99) > 2 then return; end;
 			for _,cell in ipairs(reg.cells) do
 				if not Sense.structureCells[cell.index] then
 					local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, resource, cell);
@@ -1924,6 +1958,7 @@ function Economy.RoadTarget()
 end;
 
 Economy.busy = {};	-- constructor id -> busy rounds (with minerals) since it was last idle
+Economy.retreats = {};	-- constructor id -> consecutive rounds spent retreating
 
 -- Skip a build site for a while. Sites that keep failing are skipped for longer each time
 function Economy.Blacklist(cell, rounds)
@@ -1997,7 +2032,16 @@ function Economy.AssignConstructor(u, index)
 			if r ~= reg and sc > bestS then safest, bestS = r, sc; end;
 		end;
 		if safest then
-			u.ClearSafeTasks();
+			-- a construction that already spent resources survives ClearSafeTasks and keeps the
+			-- constructor in place. Retreating several rounds in a row: give it up
+			Economy.retreats[u.id] = (Economy.retreats[u.id] or 0) + 1;
+			if Economy.retreats[u.id] >= 3 and not Move.IsIdle(u) then
+				u.ClearTasks();
+				Economy.retreats[u.id] = 0;
+				Log(u.niceName..': abandoning its task to get out');
+			else
+				u.ClearSafeTasks();
+			end;
 			if job and job.cell then Economy.Blacklist(job.cell, 15); end;
 			Mem.jobs[u.id] = nil;
 			Move.Towards(u, Map.WorldCenter(safest), safest.centerCell, true, false);
@@ -2005,6 +2049,7 @@ function Economy.AssignConstructor(u, index)
 			return;
 		end;
 	end;
+	Economy.retreats[u.id] = nil;
 	if not Move.IsIdle(u) then
 		-- a job that runs far too long is stuck (e.g. no room to relocate after constructing)
 		-- (rounds without minerals don't count: construction simply pauses then)
@@ -2061,7 +2106,7 @@ function Economy.AssignConstructor(u, index)
 			for _,cell in ipairs(Economy.FindMineCells(res, Cfg.mineCandidates)) do
 				local dest = Move.GroundAt(u, cell);
 				local reg = dest and Map.RegionOfLoc(dest);
-				local safe = reg and Sense.Threat(reg) <= 0 and (Sense.hops[reg.id] or 99) <= 2;
+				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= 2;
 				if dest and safe and Economy.SiteOK(dest, true) then
 					if Economy.BuildAt(u, dest, want.type) then
 						Economy.claimed[cell.index] = true;
@@ -2146,6 +2191,71 @@ function Economy.BuildAt(u, loc, t, reachable)
 	return true;
 end;
 
+-- A plane factory, if one is wanted now. It consumes fuel and minerals every round
+function Economy.PlaneFactoryNeed()
+	local t = Types.planeFactory;
+	if t == nil or not Types.IsUnlocked(t) or Economy.Count(t) >= Cfg.planeFactories then return nil; end;
+	if Sense.round < Cfg.planeFactoryRound or Economy.Count(Types.mine) < Cfg.planeFactoryMines then return nil; end;
+	local cur, max = Economy.Resources();
+	local demand = t.balance and t.balance.demand or {};
+	if (max.balance.fuel or 0) < (demand.fuel or 0) or Economy.FuelMines() < 1 then
+		local m = Economy.MineReq('Fuel');
+		if m and Cfg.planePriority == 'early' then return m; end;
+		return nil;
+	end;
+	if (cur.storage.minerals or 0) < (tonumber(t.constructionCost) or 200) then return nil; end;
+	return {type=t, kind='base'};
+end;
+
+-- Next plane for a plane factory
+function Economy.NextPlane()
+	local n = {bomber=0, raptor=0, drone=0};
+	for _,p in ipairs(Sense.my.plane) do
+		if p.type == Types.bomber then n.bomber = n.bomber + 1;
+		elseif p.type == Types.raptor then n.raptor = n.raptor + 1;
+		elseif p.type == Types.drone then n.drone = n.drone + 1; end;
+	end;
+	if #Sense.my.plane >= Cfg.maxPlanes then return nil; end;
+	-- hostile planes around: raptors hunt them
+	local hostileAir = Sense.AirPressure() > 0;
+	if hostileAir and Types.raptor and n.raptor <= n.bomber then return Types.raptor; end;
+	if Types.drone and n.drone < Cfg.wantDrones and n.bomber + n.raptor >= 1 then return Types.drone; end;
+	local attack = n.bomber + n.raptor;
+	if Types.bomber and n.bomber < math.ceil((attack + 1) * Cfg.bomberShare) then return Types.bomber; end;
+	return Types.raptor or Types.bomber;
+end;
+
+function Economy.PlaneProduction()
+	for _,f in ipairs(Sense.planeFactories) do
+		if f.productionCompleted or f.deploymentOptions then
+			local ok, loc = pcall(f.GetIdealDeploymentOption);
+			if not (ok and loc) and f.deploymentOptions then loc = f.deploymentOptions[1]; ok = loc ~= nil; end;
+			if ok and loc then
+				Log(f.niceName..': launching '..tostring(f.productionCompleted));
+				f.DeployProductionAt(loc);
+			end;
+		end;
+		-- planes parked inside: launch them
+		if f.storedUnits and f.GetStoredDeploymentOptions then
+			for _,p in ipairs(f.storedUnits) do
+				local ok, opts = pcall(f.GetStoredDeploymentOptions, p);
+				if ok and opts and opts[1] then
+					pcall(f.DeployStored, p, opts[1]);
+				end;
+			end;
+		end;
+		local queued = f.productionQueue and #f.productionQueue or 0;
+		if queued < 1 and f.BuildMobile and (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.planeMinerals
+			and (Game.myFaction.currentResources.storage.minerals or 0) >= Economy.PowerReserve() then
+			local t = Economy.NextPlane();
+			if t then
+				local ok, err = pcall(f.BuildMobile, t);
+				Log(f.niceName..': '..(ok and 'producing ' or 'cannot produce ')..t.name..(ok and '' or (': '..tostring(err))));
+			end;
+		end;
+	end;
+end;
+
 -- What should a vehicle plant produce next?
 function Economy.NextVehicle()
 	local my = Sense.my;
@@ -2165,6 +2275,12 @@ function Economy.NextVehicle()
 		return Types.Vehicle(Types.turret.terraformer, cb) or Types.Vehicle(Types.turret.terraformer, hover);
 	end;
 	local function Tank()
+		-- bomb vehicles: underground, a tank's range is worthless, a blast clears a tunnel
+		local share = Sense.DeepMatters() and math.max(Cfg.bombShare, Cfg.bombShareDeep) or Cfg.bombShare;
+		if share > 0 and Types.turret.bomb and Types.IsUnlocked(Types.turret.bomb) and #my.bomb < (#my.combat + #my.bomb + 1) * share then
+			local b = Types.Vehicle(Types.turret.bomb, base) or Types.Vehicle(Types.turret.bomb, hover);
+			if b then return b; end;
+		end;
 		local nArt = 0;
 		for _,u in ipairs(my.combat) do
 			if u.turret.type == Types.turret.artillery then nArt = nArt + 1; end;
@@ -2408,11 +2524,14 @@ function Military.Fire(v)
 	if t.ammoDemandPerShot and t.ammoAvailability and t.ammoDemandPerShot > t.ammoAvailability then
 		return false;
 	end;
-	local isAA = t.type.trajectoryType == 'AAMissile';
+	local tr = t.type.trajectoryType;
+	local plane = v.type.isSuborbitalPlane;
+	local hitsAir = tr == 'AAMissile' or (plane and tr == 'Missile');
+	local hitsGround = (not plane and tr ~= 'AAMissile') or (plane and (tr == 'A2GMissile' or tr == 'VerticalBeam' or tr == 'Missile'));
 	local candidates = {};
 	for _,e in pairs(Game.hostileUnits) do
 		if e.health > 0 then	-- sensed now; no firing at ghosts
-			SafeCall('target', ProcessAttackTarget, v, e, candidates, isAA, not isAA);
+			SafeCall('target', ProcessAttackTarget, v, e, candidates, hitsAir, hitsGround);
 		end;
 	end;
 	if #candidates == 0 then
@@ -2868,6 +2987,156 @@ function Military.Combat()
 	end;
 end;
 
+--[[
+Planes. They fly over walls, cliffs and tunnels' worth of rock, and regular
+radar can't see them, so only AA can answer them.
+* Bombers hit what is directly beneath them: hostile artillery on high ground
+  first (the best answer to it), then the attack target, then known structures.
+* Raptors hunt hostile planes, otherwise escort the bombers.
+* Sensor drones keep the stalest nearby regions in view.
+Planes avoid sensed AA, except when diving onto their target.
+]]
+function Move.AirDanger(loc)
+	for _,e in pairs(Game.hostileUnits) do
+		if e.health > 0 and e.turret and e.turret.type.trajectoryType == 'AAMissile' and e.turret.IsInRange then
+			local ok, r = pcall(e.turret.IsInRange, loc.world);
+			if ok and r then return true; end;
+		end;
+	end;
+	return false;
+end;
+
+function Move.Fly(p, goalWorld, avoidAA)
+	local block = avoidAA and Move.AirDanger or nil;
+	local ok, reach = pcall(p.GetReach, block, math.max(1, p.movementSpeed), true, false, false, false);
+	if not ok or reach == nil then return false; end;
+	local best, bestD = nil, Dist2(p.location.world, goalWorld);
+	for _,n in ipairs(reach) do
+		if n.location.isSuborbital then
+			local d = Dist2(n.location.world, goalWorld);
+			if d < bestD then best, bestD = n, d; end;
+		end;
+	end;
+	if best then p.DirectTo(best); return true; end;
+	return false;
+end;
+
+function Military.BomberGoal()
+	-- high artillery: planes are the best answer
+	for _,z in ipairs(Military.artyZones) do
+		if z.high then return z.source, true; end;
+	end;
+	local sensedBest, sbd = nil, nil;
+	local home = Sense.baseCenter;
+	for _,e in pairs(Game.hostileUnits) do
+		if e.health > 0 and not e.location.isSuborbital and not e.isIndestructible then
+			local w = e.location.world;
+			local d = home and Dist2(w, home) or 0;
+			-- artillery and towers first: they hold ground our tanks can't take
+			if e.turret and e.turret.type.requiresStationaryVehicle then d = d * 0.25; end;
+			if sbd == nil or d < sbd then sensedBest, sbd = w, d; end;
+		end;
+	end;
+	if sensedBest then return sensedBest, true; end;
+	local target = Mem.attackTarget or Military.ChooseAttackTarget();
+	if target then return Map.AirCenter(Map.regions[target]), false; end;
+	return nil, false;
+end;
+
+function Military.Planes()
+	local bombers = {};
+	for _,p in ipairs(Sense.my.plane) do
+		if p.type == Types.bomber then bombers[#bombers+1] = p; end;
+	end;
+	local taken = {};
+	for _,p in ipairs(Sense.my.plane) do
+		SafeCall('plane '..p.niceName, function()
+			local fired = Military.Fire(p);
+			if not Move.IsIdle(p) then p.ClearSafeTasks(); end;
+			local goal, dive = nil, false;
+			if p.type == Types.bomber then
+				goal, dive = Military.BomberGoal();
+			elseif p.type == Types.drone or not p.turret or not p.turret.type.canAttack then
+				local best, bs = nil, nil;
+				for _,reg in ipairs(Map.regions) do
+					if not taken[reg.id] then
+						local hops = Sense.hops[reg.id] or 30;
+						local sc = math.min(Sense.Staleness(reg), 60) / (1 + hops * 0.5);
+						if Sense.frontier[reg.id] then sc = sc * 2; end;
+						if bs == nil or sc > bs then best, bs = reg, sc; end;
+					end;
+				end;
+				if best then taken[best.id] = true; goal = Map.AirCenter(best); end;
+			else
+				-- raptor: nearest hostile plane, else over the bombers, else over home
+				local bd = nil;
+				for _,e in pairs(Game.hostileUnits) do
+					if e.health > 0 and e.location.isSuborbital then
+						local d = Dist2(e.location.world, p.location.world);
+						if bd == nil or d < bd then goal, bd = e.location.world, d; end;
+					end;
+				end;
+				dive = goal ~= nil;
+				if goal == nil and #bombers > 0 then goal = bombers[1].location.world; end;
+			end;
+			if goal == nil and Mem.homeRegion then goal = Map.AirCenter(Map.regions[Mem.homeRegion]); end;
+			if goal and not (fired and not p.motionIgnoresAttack) then
+				-- close to the target, accept AA fire; on the way, avoid it
+				local near = Dist2(p.location.world, goal) < 36;
+				Move.Fly(p, goal, not (dive and near));
+			end;
+		end);
+	end;
+end;
+
+--[[
+Bomb vehicles blow up next to hostiles. Underground, where tanks can't use their
+range, they are the better weapon. Never detonate next to own units or structures.
+]]
+function Military.Bombs()
+	local defense = Military.DefenseRegion();
+	for _,b in ipairs(Sense.my.bomb) do
+		SafeCall('bomb '..b.niceName, function()
+			local r = (b.turret and b.turret.explosionRadius) or 2;
+			local r2 = r * r;
+			local w = b.location.world;
+			local hostile, nearest, nd = 0, nil, nil;
+			for _,e in pairs(Game.hostileUnits) do
+				if e.health > 0 and not e.location.isSuborbital then
+					local d = Dist2(e.location.world, w);
+					if d < r2 * 0.6 then hostile = hostile + (tonumber(e.type.constructionCost) or 50); end;
+					if nd == nil or d < nd then nearest, nd = e, d; end;
+				end;
+			end;
+			if hostile >= 80 then
+				local own = false;
+				for _,u in pairs(Game.myUnits) do
+					if u.id ~= b.id and not u.location.isSuborbital and Dist2(u.location.world, w) < r2 * 1.5 then own = true; break; end;
+				end;
+				if not own and b.SelfDetonate then
+					b.ClearTasks();
+					b.SelfDetonate();
+					Log(b.niceName..': detonating');
+					return;
+				end;
+			end;
+			if not Move.IsIdle(b) then b.ClearSafeTasks(); end;
+			-- go for sensed hostiles in or next to my territory, else wait in the defense region
+			if nearest then
+				local reg = Map.RegionOfLoc(nearest.location);
+				if reg and (Sense.mine[reg.id] or Sense.frontier[reg.id]) then
+					Move.Towards(b, nearest.location.world, nearest.location.cell, false, false);
+					return;
+				end;
+			end;
+			if defense then
+				local reg = Map.regions[defense];
+				Move.Towards(b, Map.WorldCenter(reg), reg.centerCell, true, false);
+			end;
+		end);
+	end;
+end;
+
 -- Scouts (radars) keep the map fresh: the core answer to sensor-limited play
 function Military.Scouts()
 	local taken = {};
@@ -3040,6 +3309,7 @@ function Execute()
 
 	SafeCall('Research', Economy.Research);
 	SafeCall('Production', Economy.Production);
+	SafeCall('PlaneProduction', Economy.PlaneProduction);
 	SafeCall('Constructors', Economy.Constructors);
 	SafeCall('Posture', Military.UpdatePosture);
 	SafeCall('Towers', Military.Towers);
@@ -3047,6 +3317,8 @@ function Execute()
 	SafeCall('Combat', Military.Combat);
 	SafeCall('Scouts', Military.Scouts);
 	SafeCall('AA', Military.AA);
+	SafeCall('Planes', Military.Planes);
+	SafeCall('Bombs', Military.Bombs);
 	SafeCall('ClearPlants', Military.ClearPlants);
 
 	local cur = Game.myFaction.currentResources;
@@ -3056,9 +3328,9 @@ function Execute()
 		if reg.lastSeenAir >= 0 then seenA = seenA + 1; end;
 		if reg.lastSeenDeep >= 0 then seenD = seenD + 1; end;
 	end;
-	Game.Log(string.format('%sround %d | %s | units c%d m%d(+%d stored) r%d s%d aa%d | structures %d | seen g%d a%d d%d /%d, enemy %d%s%s | minerals %d energy out %d spare %d | mines %d gen %d | %.2fs',
+	Game.Log(string.format('%sround %d | %s | units c%d m%d(+%d stored) r%d s%d aa%d p%d b%d | structures %d | seen g%d a%d d%d /%d, enemy %d%s%s | minerals %d energy out %d spare %d | mines %d gen %d | %.2fs',
 		Cfg.logPrefix, Sense.round, Mem.posture..(Mem.attackTarget and ('->'..Mem.attackTarget) or ''),
-		#Sense.my.constructor, #Sense.my.combat, Sense.storedByRole.combat or 0, #Sense.my.radar, #Sense.my.surveyor, #Sense.my.aa,
+		#Sense.my.constructor, #Sense.my.combat, Sense.storedByRole.combat or 0, #Sense.my.radar, #Sense.my.surveyor, #Sense.my.aa, #Sense.my.plane, #Sense.my.bomb,
 		#Sense.myStructures, seen, seenA, seenD, #Map.regions, #Sense.enemyRegions,
 		Sense.AirMatters() and ' AIR' or '', Sense.DeepMatters() and ' DEEP' or '',
 		cur.storage.minerals or 0, (Game.myFaction.maxResources.supply or {}).energy or 0, cur.balance.energy or 0,

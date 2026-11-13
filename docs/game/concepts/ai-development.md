@@ -40,6 +40,12 @@ Besides the Nexus, the server can host Lua scripted AI players that act as regul
 `Rules/AIPlayers/script` selects the script (default `player`). *[game folder](../config/game-folder.md)/shared/AIScripts/X.lua* is used if it exists, otherwise `[install]/lua/AI/X.lua`.
 
 The included `player.lua` only acts on what its faction can currently sense, and follows the strategy described in [best practices](best-practices.md).
+`Rules/AIPlayers/script` may also be a comma-separated list. New AI players get the scripts in turn (AI 1 the first, AI 2 the second, and so on). Besides `player`, two personalities are included, both built on `player.lua`:
+
+- `underground`: digs in right away, rebuilds its base in a cavern, demolishes the surface structures, tunnels to its mines, and prefers bomb vehicles.
+- `air`: researches and builds plane factories as early as possible and puts most of its minerals into bombers and raptors.
+
+For example `player,underground,air` mixes all three.
 
 ## Debugging
 
