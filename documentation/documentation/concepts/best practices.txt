@@ -110,6 +110,12 @@ Digging into water is possible, just harder. Terraformers can drill into the wat
 * A base below ground keeps its surveyor in the cave. A surveyor sees deep but not far, so dig caves far and wide, then put the surveyor in them: each corridor widens both what you know and what you can reach from below.
 * Never rely on a single fuel mine: losing the last one ends the game. Keep a few tanks standing wherever your mines are; minerals in storage defend nothing.
 
+=== Striking Water or Lava ===
+* Water is not lethal, but the hole needs to be plugged: build walls into the water around, above and beneath you.
+* Lava is a whole different story. A [[units/turrets/terraformer|terraformer]] that digs into it is usually lost at once. Have a second terraformer plug the tunnel further back, before the lava gets to it, and write off everything beyond the plug.
+* How likely lava is depends on the planet: on a lava planet expect it everywhere, on a normal planet only further down. On a floating planet your biggest problem is falling: never dig where nothing lies beneath.
+* Never dig blind where lava is likely. Let a [[units/turrets/surveyor|surveyor]] look first.
+
 === Plantations and T2 Units ===
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [[concepts/compound|compound]] types can be manufactured and combined into the material needed to elevate units to T2.
 T2 upgrades are done by [[units/turrets/mechanic|mechanic]] units. T2 units are tie-breakers: they gain experience from destroying enemy units and can become so powerful that a single one can decimate hostile installations without any doomsday weaponry.

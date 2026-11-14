@@ -190,11 +190,20 @@ function Mole.DigCheck(cell, h)
 			if okc and content == C.Clear and cell.index ~= Mole.shaftCell then return 'breach'; end;
 		end;
 	end;
+	-- nothing beneath (a floating planet, or a cave below): the digger would fall
+	if C.Clear then
+		local solid = false;
+		for _,c in ipairs(cells) do
+			local okc, content = pcall(Game.Terrain.GetContent, c, h - 1);
+			if not okc or (content ~= C.Clear and content ~= C.Water and content ~= C.Lava) then solid = true; break; end;
+		end;
+		if not solid then return 'void'; end;
+	end;
 	for i,c in ipairs(cells) do
 		for dh = -1, 2 do
 			local ok2, content = pcall(Game.Terrain.GetContent, c, h + dh);
 			if ok2 and content then
-				if C.Lava and content == C.Lava then return 'lava'; end;
+				if C.Lava and content == C.Lava then Mole.lavaSeen = Sense.round; return 'lava'; end;
 				if C.Water and content == C.Water and dh >= 0 then return 'water'; end;
 				if i == 1 and C.Unknown and content == C.Unknown and dh >= 0 and dh <= 1 then unknown = true; end;
 			end;
@@ -479,31 +488,66 @@ function Mole.DigToward(u, targetCell)
 		if loc == nil then return false; end;
 	end;
 	local check = Mole.DigCheck(best, Mole.level);
-	-- water: dig anyway (terraformers drill into water), then wall off what leaks in from the sides
+	local prospect = Mole.tunnelGoal ~= nil and Mole.tunnelGoal == Mole.prospecting;
+	--[[
+	Striking water or lava.
+	* Water on the way to something we need (a mine site, the cavern itself): dig anyway
+	  (terraformers drill into water), then wall off what leaks in, around, above and below.
+	* Water in a prospecting corridor: not worth the walling. The corridor ends here, the
+	  surveyor looks from its end, the next corridor goes another way.
+	* Lava: never. It destroys whatever it touches, and a leak into the base ends everything.
+	  The cell is off limits for good, the tunnel is given up, and what was found is looked
+	  at from where the digger stands.
+	]]
+	if check == 'water' and prospect then
+		Log('Prospecting corridor strikes water at cell '..best.index..': ending it at cell '..here.index);
+		Economy.Blacklist(best.index, 100);
+		Mole.surveyPost, Mole.surveyUntil = here.index, Sense.round + 12;
+		Mole.tunnelGoal, Mole.prospecting = nil, nil;
+		return false;
+	end;
 	if check == 'water' then
 		Mole.wallAfter = {cell = best.index, h = Mole.level};
 		check = 'ok';
 	end;
-	if check == 'lava' or check == 'breach' then
-		Log(({lava = 'Lava next to', breach = 'Open space above'})[check]..' cell '..best.index..': not digging there');
-		Economy.Blacklist(best.index, 200);
-		Mole.tunnelGoal = nil;
+	if check == 'lava' or check == 'breach' or check == 'void' then
+		Log(({lava = 'Lava next to', breach = 'Open space above', void = 'Nothing to stand on at'})[check]..' cell '..best.index..': not digging there');
+		Economy.Blacklist(best.index, check == 'lava' and 100000 or 200);
+		if check == 'lava' then
+			Mole.lavaCells = Mole.lavaCells or {};
+			Mole.lavaCells[best.index] = true;
+			if prospect then Mole.surveyPost, Mole.surveyUntil = here.index, Sense.round + 12; end;
+		end;
+		Mole.tunnelGoal, Mole.prospecting = nil, nil;
 		return false;
 	elseif check == 'unknown' then
-		-- wait a few rounds for a surveyor to look, then dig anyway
+		-- never dig blind while a surveyor can come and look: what is behind the wall may be
+		-- lava. The surveyor is called to the spot; only without any surveyor, after a
+		-- few rounds, dig anyway (the plant is asked for one meanwhile)
 		Mole.unknownSince = Mole.unknownSince or Sense.round;
-		if Sense.round - Mole.unknownSince < 3 then
+		local wait = ((Mole.surveyors or 0) > 0 and 4 or 2) + math.floor(8 * Mole.LavaRisk());
+		if Sense.round - Mole.unknownSince < wait then
 			Mole.waitSurvey = best.center;
+			Mole.waitSurveyCell = here.index;
 			return false;
 		end;
-		Log('Digging blind into cell '..best.index..': no survey');
+		Log('Digging blind into cell '..best.index..': no survey after '..wait..' rounds');
 	end;
 	Mole.unknownSince = nil;
 	Mole.waitSurvey = nil;
 	local ok, err = pcall(u.DigHorizontally, loc);
 	if not ok then Log('DigHorizontally failed: '..tostring(err)); return false; end;
 	Mole.lastDig = best.index;
+	Mole.lastDigRound = Sense.round;
 	Mole.dug[best.index] = true;
+	-- the way this tunnel took, in order: if lava breaks in, it is plugged further back
+	if Mole.tunnelGoal then
+		if Mole.corridorGoal ~= Mole.tunnelGoal then
+			Mole.corridorGoal = Mole.tunnelGoal;
+			Mole.corridor = {here.index};
+		end;
+		if Mole.corridor[#Mole.corridor] ~= best.index then table.insert(Mole.corridor, best.index); end;
+	end;
 	Log(u.niceName..': digging cell '..best.index..' at height '..tostring(loc.height)..' (standing at '..u.location.cell.index..'/'..tostring(u.location.height)..')');
 	return true;
 end;
@@ -601,6 +645,7 @@ end;
 function Mole.Update()
 	if Mole.phase == 'surface' then return; end;	-- gave up digging (no dry ground)
 	local u = Mole.Digger();
+	if u and Mole.plug and u.id == Mole.plugger then return; end;	-- it is plugging a tunnel against lava
 	-- a lone constructor builds the survival essentials before it digs
 	Mole.digging = u ~= nil and (#Sense.my.constructor >= 2 or Mole.EssentialsAnywhere());
 	if not Mole.digging then
@@ -631,6 +676,26 @@ function Mole.Update()
 		return;
 	end;
 	Mole.busy = 0;
+
+	--[[
+	Lava next to where the digger stands (it flows, or a blind dig opened onto it): get
+	out. Back towards the shaft, and the spot is never dug at again. A terraformer lost
+	to lava is the cheap outcome; the base flooded is the dear one.
+	]]
+	if Mole.level and Mole.IsBelow(u.location) and Mole.shaftCell
+		and u.location.cell.index ~= Mole.shaftCell and Mole.DigCheck(u.location.cell, Mole.level) == 'lava' then
+		local here = u.location.cell;
+		if not (Mole.lavaFled and Mole.lavaFled[here.index]) then
+			Log('Lava next to the digger at cell '..here.index..': backing off towards the shaft');
+		end;
+		Mole.lavaFled = Mole.lavaFled or {};
+		Mole.lavaFled[here.index] = true;
+		Mole.lavaCells = Mole.lavaCells or {};
+		Mole.lavaCells[here.index] = true;
+		Economy.Blacklist(here.index, 100000);
+		Mole.tunnelGoal, Mole.prospecting, Mole.wallAfter = nil, nil, nil;
+		if Mole.WalkToward(u, CellByIndex(Mole.shaftCell)) then return; end;
+	end;
 
 	-- after drilling into water: wall off the water cells around the dug cell
 	if Mole.wallAfter and Move.IsIdle(u) then
@@ -1006,6 +1071,152 @@ function Mole.ProspectTunnel(u)
 	table.insert(Mole.prospectEnds, best.index);
 	Log('Prospecting: corridor '..#Mole.prospectEnds..' outward to cell '..best.index..' ('..reach..' cells from the shaft)');
 	return true;
+end;
+
+--[[
+Lava breaking into a tunnel. The terraformer at the face is usually lost at once, and
+there is nothing to do for it. What matters is the base behind: a second terraformer
+plugs the corridor further back, a few cells towards the base, before the lava gets
+there. If the lava is faster, the plug moves back again. Everything beyond the plug is
+written off.
+]]
+Mole.corridor = {};
+--[[
+How likely is lava here? A judgement, not a fact: certain once any was seen (a lava
+planet shows it right away), otherwise unlikely near the surface and more likely the
+deeper the cavern lies. It sets how long the digger waits for a survey before unknown
+terrain, and how much a second terraformer below is worth while tunnelling.
+]]
+function Mole.LavaRisk()
+	if Mole.lavaSeen then return 1; end;
+	local depth = Mole.level and math.max(0, -Mole.level) or 0;
+	return math.min(0.6, 0.05 + depth * 0.05);
+end;
+local function LavaIn(cell)
+	local C = Game.Terrain and Game.Terrain.Content;
+	if not (C and C.Lava and Mole.level) then return false; end;
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+	if not ok or tc == nil then return false; end;
+	for dh = 0, 1 do
+		local okc, content = pcall(Game.Terrain.GetContent, tc, Mole.level + dh);
+		if okc and content == C.Lava then return true; end;
+	end;
+	return false;
+end;
+
+function Mole.PlugTerrain(cell)
+	local C = Game.Terrain.Content or {};
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+	if not ok or tc == nil then return {}, false; end;
+	local out, open = {}, false;
+	local cells = {tc};
+	for _,n in ipairs(tc.neighbors or {}) do cells[#cells+1] = n; end;
+	for i,c in ipairs(cells) do
+		for dh = 0, 1 do
+			local okc, content = pcall(Game.Terrain.GetContent, c, Mole.level + dh);
+			if okc and (content == C.Clear or content == C.Water) then
+				out[#out+1] = Game.Terrain.Pack(c, Mole.level + dh);
+				if i == 1 then open = true; end;
+			end;
+		end;
+	end;
+	return out, open;
+end;
+
+function Mole.LavaWatch()
+	if not (Mole.level and Mole.shaftCell) then return; end;
+	local cor = Mole.corridor or {};
+	-- where is the lava? The cell nearest the base that holds it or touches it
+	if Mole.plug == nil and #cor >= 2 then
+		local first = nil;
+		for i = 1, #cor do
+			local c = CellByIndex(cor[i]);
+			if c and (LavaIn(c) or (i > 1 and Mole.DigCheck(c, Mole.level) == 'lava')) then first = i; break; end;
+		end;
+		-- the digger gone right after a dig, deep in a tunnel: assume the worst
+		local diggerLost = false;
+		if first == nil and Mole.lastDigRound and Sense.round - Mole.lastDigRound <= 3 and Mole.tunnelGoal then
+			diggerLost = true;
+			for _,c in ipairs(Sense.my.constructor) do if c.id == Mole.digger then diggerLost = false; end; end;
+			if diggerLost and #cor >= 3 then first = #cor; end;
+		end;
+		if first then
+			local at = math.max(2, first - 3);
+			if at < first then
+				Mole.plug = {i = at, since = Sense.round};
+				Log('Lava in the tunnel at cell '..cor[first]..(diggerLost and ' (digger lost)' or '')..': plugging the corridor at cell '..cor[at]);
+				Mole.tunnelGoal, Mole.prospecting = nil, nil;
+			end;
+		end;
+	end;
+	local plug = Mole.plug;
+	if plug == nil then return; end;
+	local cell = CellByIndex(cor[plug.i]);
+	local stand = CellByIndex(cor[plug.i - 1]);
+	local function WriteOff(done)
+		for i = plug.i, #cor do
+			Economy.Blacklist(cor[i], 100000);
+			Mole.dug[cor[i]] = nil;
+			Mole.lavaCells = Mole.lavaCells or {};
+			Mole.lavaCells[cor[i]] = true;
+		end;
+		Log(done and ('Corridor plugged at cell '..cor[plug.i]..': '..(#cor - plug.i)..' cell(s) beyond written off')
+			or ('Could not plug the corridor at cell '..cor[plug.i]..': giving up on it'));
+		Mole.plug, Mole.plugger, Mole.corridor, Mole.corridorGoal = nil, nil, {}, nil;
+	end;
+	if cell == nil or stand == nil then WriteOff(false); return; end;
+	-- the lava got there first: one further back, as long as there is corridor left
+	if LavaIn(cell) then
+		if plug.i > 2 then
+			plug.i = math.max(2, plug.i - 2);
+			Log('Lava reached the plug site: plugging further back at cell '..cor[plug.i]);
+			return;
+		end;
+		WriteOff(false);
+		return;
+	end;
+	local blocks, open = Mole.PlugTerrain(cell);
+	if not open then WriteOff(true); return; end;
+	if Sense.round - plug.since > 20 then WriteOff(false); return; end;
+	-- the nearest terraformer below that is not beyond the plug
+	local beyond = {};
+	for i = plug.i, #cor do beyond[cor[i]] = true; end;
+	local best, bd = nil, nil;
+	for _,c in ipairs(Sense.my.constructor) do
+		if c.BuildBlocks and Mole.IsBelow(c.location) and not beyond[c.location.cell.index] then
+			local d = D2(c.location.cell.center, stand.center);
+			if c.id == Mole.plugger then d = d - 1; end;
+			if bd == nil or d < bd then best, bd = c, d; end;
+		end;
+	end;
+	if best == nil then
+		if Sense.round % 3 == 0 then Log('Lava in the tunnel and no terraformer below to plug it'); end;
+		Needs.Block('plugging the tunnel', 'builder', 1);
+		return;
+	end;
+	Mole.plugger = best.id;
+	local near = best.location.cell.index == stand.index;
+	if not near then
+		for _,nb in ipairs(cell.neighbors) do
+			if nb.index == best.location.cell.index and not beyond[nb.index] then near = true; end;
+		end;
+	end;
+	if not near then
+		local loc = Mole.LocAt(stand);
+		local ok, path = false, nil;
+		if loc then ok, path = pcall(best.FindShortestPath, loc, nil, false); end;
+		if ok and path and #path > 0 then
+			if not Move.IsIdle(best) then best.ClearTasks(); end;
+			best.DirectTo(path[#path]);
+		end;
+		return;
+	end;
+	if Move.IsIdle(best) or plug.ordered ~= best.id then
+		if not Move.IsIdle(best) then best.ClearTasks(); end;
+		local ok, err = pcall(best.BuildBlocks, blocks);
+		plug.ordered = best.id;
+		Log(ok and (best.niceName..': plugging the corridor at cell '..cor[plug.i]..' ('..#blocks..' blocks)') or ('BuildBlocks (plug) failed: '..tostring(err)));
+	end;
 end;
 
 -- Is there a mine on a mineral (or fuel) cell below ground?
@@ -1430,6 +1641,7 @@ end;
 local baseAssign = Economy.AssignConstructor;
 function Economy.AssignConstructor(u, index)
 	if u.id == Mole.digger and Mole.digging then return; end;	-- the digger digs
+	if u.id == Mole.plugger and Mole.plug then return; end;		-- plugging a tunnel against lava
 	-- constructors still on the surface head down once the cavern has room
 	if Mole.phase ~= 'shaft' and not Mole.sealed and not Mole.IsBelow(u.location) and Move.IsIdle(u)
 		and Mole.EssentialsAnywhere() then
@@ -1495,6 +1707,7 @@ end;
 local baseScouts = Military.Scouts;
 function Military.Scouts()
 	local escort = nil;
+	Mole.surveyors = #Sense.my.surveyor;
 	-- the cave needs its own surveyor in the cave: the first one never roams off automated
 	Military.keepScripted = {};
 	if Sense.my.surveyor[1] then
@@ -1514,6 +1727,8 @@ function Military.Scouts()
 		local cell = Mole.shaftCell and CellByIndex(Mole.shaftCell) or (d and d.location.cell);
 		-- the end of a new corridor: that is where there is something new to see
 		if Mole.surveyPost and not Mole.waitSurvey then cell = CellByIndex(Mole.surveyPost) or cell; end;
+		-- the digger waits before unknown terrain: come and look (from the cell behind it)
+		if Mole.waitSurvey and Mole.waitSurveyCell then cell = CellByIndex(Mole.waitSurveyCell) or cell; end;
 		-- not on the shaft bottom itself either (units coming down land there): an open
 		-- cavern cell next to it, away from the digger
 		if cell and Mole.phase ~= 'shaft' then
@@ -1546,6 +1761,7 @@ end;
 
 local baseConstructors = Economy.Constructors;
 function Economy.Constructors()
+	SafeCall('Lava', Mole.LavaWatch);
 	SafeCall('Mole', Mole.Update);
 	SafeCall('Demolish', Mole.Demolish);
 	baseConstructors();
@@ -1579,6 +1795,13 @@ function Needs.ApplyBlocks(v)
 	if Mole.SurfaceDependent() and Sense.round >= 8 then
 		v.defense = math.max(v.defense or 0, 0.5);
 		v.army = math.max(v.army or 0, 0.4);
+	end;
+	-- tunnelling where lava is likely: a second terraformer below is what plugs the tunnel
+	-- when the first is lost to it
+	if Mole.sealed and (Mole.tunnelGoal or Mole.plug) then
+		local below = 0;
+		for _,c in ipairs(Sense.my.constructor) do if Mole.IsBelow(c.location) then below = below + 1; end; end;
+		if below < 2 then v.builders = math.max(v.builders or 0, Mole.plug and 1 or Mole.LavaRisk()); end;
 	end;
 end;
 
