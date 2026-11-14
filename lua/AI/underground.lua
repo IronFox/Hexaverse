@@ -59,6 +59,9 @@ Mole = {
 	waitSurvey = nil,	-- world position a surveyor should look at before we dig on
 	moveFailed = {},	-- cell index -> round a move into it failed
 	ceilingFailed = {},	-- cell index -> true: second layer could not be cleared there
+	dug = {},		-- cell index -> true: dug at cavern level (tunnels included)
+	shaftRejected = {},	-- cell index -> true: the digger could not get there
+	shaftSince = nil,	-- round the current shaft cell was picked
 	lastMove = nil,		-- {round, from, to} of the digger's last move order
 	sealed = false,		-- shaft plugged: nothing walks in from the surface
 	sealTries = 0,
@@ -66,6 +69,7 @@ Mole = {
 };
 Cfg.moleSealAfter = 15;
 Cfg.moleDigTimeout = 6;		-- rounds a single dig order may take
+Cfg.moleShaftTimeout = 8;	-- rounds for the digger to reach the shaft cell before another is picked
 Cfg.moleCavernRounds = 25;	-- after this long, live with the cavern as it is (if it has some room)		-- rounds after the cavern is ready: seal even if units are still up there
 
 local function D2(a,b) local x,y,z = a.x-b.x, a.y-b.y, a.z-b.z; return x*x+y*y+z*z; end;
@@ -142,6 +146,65 @@ function Mole.IsOpen(cell)
 	return ok and clear;
 end;
 
+-- Cells at cavern level that hold our own structures: open, but no vehicle gets through
+function Mole.BelowStructureCells()
+	local out = {};
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if Mole.IsBelow(st.location) then out[st.location.cell.index] = true; end;
+	end;
+	return out;
+end;
+
+-- Open and free of own structures: a vehicle can stand there
+function Mole.IsPassable(cell, built)
+	return Mole.IsOpen(cell) and not (built or Mole.BelowStructureCells())[cell.index];
+end;
+
+--[[
+Walk to the reachable open cell nearest to a target, if it is closer than the
+digger is now. Our own structures and parked units split the cavern, so
+stepping to the neighbor in the target's direction is not always possible.
+Returns true if a move was ordered.
+]]
+function Mole.WalkToward(u, targetCell)
+	local here = u.location.cell;
+	local built = Mole.BelowStructureCells();
+	local center = CellByIndex(Mole.shaftCell);
+	local cand, seen = {}, {};
+	local function add(c)
+		if c and not seen[c.index] and c.index ~= here.index then
+			seen[c.index] = true;
+			cand[#cand+1] = c;
+		end;
+	end;
+	for _,c in ipairs(Mole.Rings(center, Mole.rings)) do add(c); end;
+	for idx in pairs(Mole.dug) do add(CellByIndex(idx)); end;
+	local hd = D2(here.center, targetCell.center);
+	local list = {};
+	for _,c in ipairs(cand) do
+		local d = D2(c.center, targetCell.center);
+		if d < hd and Mole.IsPassable(c, built) then
+			local f = Mole.moveFailed[c.index];
+			if not (f and Sense.round - f < 20) then list[#list+1] = {c=c, d=d}; end;
+		end;
+	end;
+	table.sort(list, function(a, b) return a.d < b.d; end);
+	for i = 1, math.min(4, #list) do
+		local c = list[i].c;
+		local loc = Mole.LocAt(c);
+		local ok, path = false, nil;
+		if loc then ok, path = pcall(u.FindShortestPath, loc, nil, false); end;
+		if ok and path and #path > 0 then
+			u.DirectTo(path[#path]);
+			Mole.lastMove = {round=Sense.round, from=here.index, to=c.index};
+			Log(u.niceName..': walking to cell '..c.index..' towards '..targetCell.index);
+			return true;
+		end;
+		Mole.moveFailed[c.index] = Sense.round;
+	end;
+	return false;
+end;
+
 function Mole.CavernCells()
 	local center = Mole.shaftCell and CellByIndex(Mole.shaftCell);
 	if center == nil then return {}; end;
@@ -171,6 +234,12 @@ function Mole.DigToward(u, targetCell)
 	end;
 	local loc = Mole.LocAt(best);
 	if loc == nil then Log('No location at cell '..best.index..' height '..tostring(Mole.level)); return false; end;
+	local built = Mole.BelowStructureCells();
+	if Mole.IsOpen(best) and built[best.index] then
+		-- our own structure stands there: walk around it, or dig a way around it
+		if Mole.WalkToward(u, targetCell) then return true; end;
+		Mole.moveFailed[best.index] = Sense.round;
+	end;
 	if Mole.IsOpen(best) then
 		-- walking back through dug cells can fail ("Route to destination lost"): after one
 		-- failed move towards a cell, keep digging forward instead of walking
@@ -181,7 +250,7 @@ function Mole.DigToward(u, targetCell)
 			Log('Move from cell '..here.index..' to '..Mole.lastMove.to..' failed: digging around instead');
 			failed = Mole.lastMove.to == best.index;
 		end;
-		if not failed then
+		if not failed and not built[best.index] then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 			if ok and path and #path > 0 then
 				u.DirectTo(path[#path]);
@@ -191,6 +260,8 @@ function Mole.DigToward(u, targetCell)
 			Log('Open cell '..best.index..' at height '..tostring(Mole.level)..' has no path from '..here.index..'/'..tostring(u.location.height));
 			Mole.moveFailed[best.index] = Sense.round;
 		end;
+		-- another open cell closer to the target may still be reachable
+		if Mole.WalkToward(u, targetCell) then return true; end;
 		-- dig a closed neighbor in the target's direction instead (it may lie outside the cavern plan)
 		local alt, ad = nil, nil;
 		for _,nb in ipairs(here.neighbors) do
@@ -230,6 +301,7 @@ function Mole.DigToward(u, targetCell)
 	local ok, err = pcall(u.DigHorizontally, loc);
 	if not ok then Log('DigHorizontally failed: '..tostring(err)); return false; end;
 	Mole.lastDig = best.index;
+	Mole.dug[best.index] = true;
 	Log(u.niceName..': digging cell '..best.index..' at height '..tostring(loc.height)..' (standing at '..u.location.cell.index..'/'..tostring(u.location.height)..')');
 	return true;
 end;
@@ -252,8 +324,8 @@ function Mole.PickShaftCell(u)
 	local keep = Cfg.moleRings + 1;
 	local best, bd = nil, nil;
 	for _,c in ipairs(Mole.Rings(u.location.cell, 6)) do
-		local free = true;
-		for _,n in ipairs(Mole.Rings(c, keep)) do
+		local free = not Mole.shaftRejected[c.index];
+		for _,n in ipairs(free and Mole.Rings(c, keep) or {}) do
 			if taken[n.index] then free = false; break; end;
 		end;
 		if free then
@@ -271,14 +343,15 @@ function Mole.NextClosed(u)
 	local center = CellByIndex(Mole.shaftCell);
 	local open = {};
 	local want = Mole.Rings(center, Mole.rings);
+	local built = Mole.BelowStructureCells();
 	for _,c in ipairs(want) do
-		if Mole.IsOpen(c) then open[c.index] = true; end;
+		if Mole.IsPassable(c, built) then open[c.index] = true; end;
 	end;
 	open[Mole.shaftCell] = true;	-- the digger stands at the bottom of the shaft
 	local best, bd = nil, nil;
 	local surface = Mole.SurfaceStructureCells();
 	for _,c in ipairs(want) do
-		if not open[c.index] and not (Mole.digClaims and Mole.digClaims[c.index]) and not surface[c.index] then
+		if not open[c.index] and not built[c.index] and not (Mole.digClaims and Mole.digClaims[c.index]) and not surface[c.index] then
 			local bl = Mem.blacklist[c.index];
 			if not (bl and bl > Sense.round) then
 				for _,nb in ipairs(c.neighbors) do
@@ -311,7 +384,12 @@ function Mole.Update()
 	local u = Mole.Digger();
 	-- a lone constructor builds the survival essentials before it digs
 	Mole.digging = u ~= nil and (#Sense.my.constructor >= 2 or Mole.EssentialsAnywhere());
-	if not Mole.digging then return; end;
+	if not Mole.digging then
+		if Mole.phase ~= 'live' and Sense.round % 10 == 0 then
+			Log('Not digging: '..(u and ('waiting for essentials ('..#Sense.my.constructor..' constructors)') or 'no terraformer'));
+		end;
+		return;
+	end;
 	-- a dig order that never completes keeps the digger busy forever: drop it after a few rounds
 	if not Move.IsIdle(u) then
 		Mole.busy = (Mole.busy or 0) + 1;
@@ -334,7 +412,18 @@ function Mole.Update()
 				return;
 			end;
 			Mole.shaftCell = c.index;
+			Mole.shaftSince = Sense.round;
 			Log('Digging in: shaft at cell '..Mole.shaftCell);
+		end;
+		-- the digger can't get to the shaft cell: pick another one
+		Mole.shaftSince = Mole.shaftSince or Sense.round;
+		if u.location.cell.index ~= Mole.shaftCell and Mole.level == nil
+			and Sense.round - (Mole.shaftSince or Sense.round) >= Cfg.moleShaftTimeout then
+			Log('Digger did not reach shaft cell '..Mole.shaftCell..' in '..(Sense.round - Mole.shaftSince)..' rounds (standing at '..u.location.cell.index..'/'..tostring(u.location.height)..'): picking another');
+			Mole.shaftRejected[Mole.shaftCell] = true;
+			Mole.shaftCell = nil;
+			Mole.shaftSince = nil;
+			return;
 		end;
 		if u.location.cell.index == Mole.shaftCell and Mole.level == nil then
 			Mole.level = u.location.height - Cfg.moleDepth;
@@ -342,7 +431,20 @@ function Mole.Update()
 		end;
 		if u.location.cell.index ~= Mole.shaftCell then
 			local loc = Move.GroundAt(u, CellByIndex(Mole.shaftCell));
-			if loc then Move.Towards(u, loc.world, loc.cell, false, false); end;
+			local moved = false;
+			if loc then
+				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
+				if ok and path and #path > 0 then
+					u.DirectTo(path[#path]);
+					moved = true;
+				end;
+			end;
+			if not moved then
+				Log('No way to shaft cell '..Mole.shaftCell..' from '..u.location.cell.index..'/'..tostring(u.location.height)..': picking another');
+				Mole.shaftRejected[Mole.shaftCell] = true;
+				Mole.shaftCell = nil;
+				Mole.shaftSince = nil;
+			end;
 			return;
 		end;
 		if Mole.level and u.location.height > Mole.level then
@@ -406,9 +508,21 @@ function Mole.Update()
 	-- then tunnel to a requested mine site, otherwise widen the cavern when space runs out
 	if Mole.tunnelGoal then
 		local cell = CellByIndex(Mole.tunnelGoal);
-		if cell == nil or Mole.IsOpen(cell) or not Mole.DigToward(u, cell) then
-			if cell and Mole.IsOpen(cell) then Log('Tunnel reached cell '..Mole.tunnelGoal); end;
+		if cell == nil or Mole.IsOpen(cell) then
+			if cell then Log('Tunnel reached cell '..Mole.tunnelGoal); end;
 			Mole.tunnelGoal = nil;
+			Mole.tunnelFails = 0;
+		elseif Mole.DigToward(u, cell) then
+			Mole.tunnelFails = 0;
+		else
+			-- a few rounds without progress: give up on this site for a while, so another is picked
+			Mole.tunnelFails = (Mole.tunnelFails or 0) + 1;
+			if Mole.tunnelFails >= 5 then
+				Log('Tunnel to cell '..Mole.tunnelGoal..' gives up at cell '..u.location.cell.index);
+				Economy.Blacklist(Mole.tunnelGoal, 60);
+				Mole.tunnelGoal = nil;
+				Mole.tunnelFails = 0;
+			end;
 		end;
 		return;
 	end;
@@ -592,7 +706,17 @@ end;
 local baseSiteOK = Economy.SiteOK;
 function Economy.SiteOK(loc, forMine)
 	if not baseSiteOK(loc, forMine) then return false; end;
-	if Mole.phase ~= 'shaft' and Mole.IsBelow(loc) then return true; end;
+	if Mole.phase ~= 'shaft' and Mole.IsBelow(loc) then
+		-- the hub around the shaft stays free, so every part of the cavern stays reachable
+		local hub = Mole.shaftCell and CellByIndex(Mole.shaftCell);
+		if hub and not forMine then
+			if loc.cell.index == hub.index then return false; end;
+			for _,nb in ipairs(hub.neighbors) do
+				if nb.index == loc.cell.index then return false; end;
+			end;
+		end;
+		return true;
+	end;
 	-- surface: only what keeps the faction alive until the cavern has its own
 	-- (without a mineral mine a faction dies within a few rounds)
 	if forMine then return not Mole.EssentialsBelow(); end;
