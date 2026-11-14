@@ -660,6 +660,7 @@ Needs.resolve = {
 	capacity = {builders = 1, spend = 1},	-- income piles up: more builders and plants to spend it
 	income = {income = 1},					-- nothing to save from: income first
 	energy = {energy = 1, fuel = 0.8},		-- power or fuel lost under what we were building
+	fuelsupply = {fuel = 1, prospecting = 0.5},	-- plane factories without fuel to run on
 };
 Needs.blocks = {};	-- cause -> {value, round, what}
 
@@ -913,7 +914,25 @@ function Needs.StructureOptions(constructorIndex)
 	local minerals = cur.storage.minerals or 0;
 
 	add(Economy.MineReq('Minerals'), {survivalMineral = 1, income = 1}, 'Mine (minerals)');
-	add(Economy.MineReq('Fuel'), {survivalFuel = 1, fuel = 1, income = 0.3, energy = 0.3}, 'Mine (fuel)');
+	--[[
+	A plane factory burns fuel every round: without spare fuel supply it stands disabled.
+	Fuel for it is the air goal's own requirement, bought from the air goal's account: the
+	fuel mine first, the factory once the supply carries it.
+	]]
+	local pfT = Types.planeFactory;
+	local pfFuel = pfT and pfT.balance and pfT.balance.demand and (pfT.balance.demand.fuel or 0) or 0;
+	local spareFuel = max.balance.fuel or 0;
+	local nPf = pfT and Economy.Count(pfT) or 0;
+	local wantsPf = pfT and Types.IsUnlocked(pfT) and nPf < (Cfg.planeFactories or 1);
+	-- short for the factories standing, or for the next one
+	local fuelShort = pfFuel > 0 and ((nPf > 0 and spareFuel < 0) or (wantsPf and (Needs.v.planes or 0) > 0 and spareFuel < pfFuel));
+	Needs.fuelShortForPlanes = fuelShort;
+	local fuelServes = {survivalFuel = 1, fuel = 1, income = 0.3, energy = 0.3};
+	if fuelShort then
+		fuelServes.planes = 1.2;
+		Needs.Block('Plane Factory', 'fuelsupply', math.max(0.6, Needs.v.planes or 0));
+	end;
+	add(Economy.MineReq('Fuel'), fuelServes, 'Mine (fuel)');
 	if Types.generator and Economy.powerOrders < 2 then
 		add({type = Types.generator, kind = 'power'}, {survivalGenerator = 1, energy = 1}, 'Generator');
 	end;
@@ -947,6 +966,8 @@ function Needs.StructureOptions(constructorIndex)
 				local late = Sense.round >= 60 and Types.drone ~= nil;
 				add({type = pf, kind = 'base'}, {planes = 1, spend = 0.3, scouting = late and 0.6 or 0});
 				opts[#opts].have = Economy.Count(pf);
+				-- no fuel to run it: the fuel mine comes first
+				if fuelShort then opts[#opts].factor = 0.15; end;
 			end;
 		end;
 	end;
