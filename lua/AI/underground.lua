@@ -67,7 +67,8 @@ Mole = {
 	sealTries = 0,
 	liveRound = nil,
 };
-Cfg.moleSealAfter = 15;
+Cfg.moleSealAfter = 6;	-- rounds to wait for units still on the surface before sealing anyway
+Cfg.moleSealRings = 1;	-- seal once this many rings around the shaft are open; dig the rest sealed
 Cfg.moleDigTimeout = 6;		-- rounds a single dig order may take
 Cfg.moleShaftTimeout = 8;	-- rounds for the digger to reach the shaft cell before another is picked
 Cfg.moleCavernRounds = 25;	-- after this long, live with the cavern as it is (if it has some room)		-- rounds after the cavern is ready: seal even if units are still up there
@@ -646,9 +647,25 @@ function Mole.Update()
 			Log('Cavern still has only '..n..' open cells after '..(Sense.round - Mole.cavernSince)..' rounds');
 		end;
 	end;
+	-- a small first chamber is enough to seal: every round with an open shaft is a round
+	-- anyone can walk in. The rest of the cavern is dug behind the seal
+	if closed and Mole.phase == 'cavern' then
+		local first = 0;
+		local ring = Mole.Rings(CellByIndex(Mole.shaftCell), Cfg.moleSealRings);
+		for _,c in ipairs(ring) do if Mole.IsOpen(c) or c.index == Mole.shaftCell then first = first + 1; end; end;
+		if first >= #ring or (first >= 4 and Sense.round - Mole.cavernSince >= 8) then
+			Log('First chamber open ('..first..' cells): sealing before digging on');
+			closed = nil;
+		end;
+	end;
 	-- once live, sealing the shaft comes before any further digging
 	if Mole.phase == 'live' and not Mole.sealed then
 		closed = nil;
+	end;
+	-- sealed: a mineral mine below ground before widening
+	if closed and Mole.phase == 'live' and Mole.UrgentMineTunnel() then
+		Mole.Tunnel(u);
+		return;
 	end;
 	if closed then
 		Mole.digClaims[closed.index] = true;
@@ -658,7 +675,7 @@ function Mole.Update()
 	if Mole.phase == 'cavern' then
 		Mole.liveRound = Sense.round;
 		Mole.phase = 'live';
-		Log('Cavern ready ('..#want..' cells): building below ground');
+		Log('Going live with '..select(2, Mole.CavernCells())..' of '..#want..' cavern cells open');
 	end;
 	-- live: seal the shaft first. An open shaft lets every other faction walk right in
 	if not Mole.sealed then
