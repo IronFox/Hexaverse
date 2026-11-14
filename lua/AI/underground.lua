@@ -386,7 +386,7 @@ function Mole.Plot(u)
 	if center == nil then return false; end;
 	local set = Mole.PassableSet();
 	Mole.digClaims = Mole.digClaims or {};
-	local surface = Mole.SurfaceStructureCells();
+	local surface = Mole.SurfaceStructureCells(true);
 	local best, bd = nil, nil;
 	for _,c in ipairs(Mole.Rings(center, Mole.rings + 1)) do
 		if not Mole.IsOpen(c) and not Mole.digClaims[c.index] and not surface[c.index] then
@@ -578,16 +578,18 @@ Shaft site: near the digger, but with no own surface structure within the cavern
 radius (+1). Digging beneath one undermines it: a start mine that loses its
 ground is disabled, and without a mineral mine the faction dies.
 ]]
-function Mole.SurfaceStructureCells()
+-- Only mines: a mine counts (and the faction lives) only while every terrain layer beneath
+-- it is foundation. Other structures hover where they were built: tunnels pass under them
+function Mole.SurfaceStructureCells(all)
 	local out = {};
 	for _,st in ipairs(Sense.myStructures or {}) do
-		if not Mole.IsBelow(st.location) then out[st.location.cell.index] = true; end;
+		if not Mole.IsBelow(st.location) and (all or st.type == Types.mine) then out[st.location.cell.index] = true; end;
 	end;
 	return out;
 end;
 
 function Mole.PickShaftCell(u)
-	local taken = Mole.SurfaceStructureCells();
+	local taken = Mole.SurfaceStructureCells(true);
 	-- only cells the digger can drive to (a base on a plateau may have no way down)
 	local reach = {[u.location.cell.index] = true};
 	local okr, nodes = pcall(u.GetReach, nil, math.max(6, (u.movementSpeed or 1) * 6), true, false, false, true);
@@ -632,7 +634,7 @@ function Mole.NextClosed(u)
 	end;
 	open[Mole.shaftCell] = true;	-- the digger stands at the bottom of the shaft
 	local best, bd = nil, nil;
-	local surface = Mole.SurfaceStructureCells();
+	local surface = Mole.SurfaceStructureCells(true);
 	for _,c in ipairs(want) do
 		if not open[c.index] and not built[c.index] and not (Mole.digClaims and Mole.digClaims[c.index]) and not surface[c.index] then
 			local bl = Mem.blacklist[c.index];
