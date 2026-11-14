@@ -1135,6 +1135,8 @@ function Economy.SiteOK(loc, forMine)
 		-- never cut the cavern in two or wall in the builder
 		return Mole.KeepsConnected(loc.cell.index);
 	end;
+	-- a constructor shut out above the seal builds on the surface: mines, defense, whatever is weighed
+	if Mole.surfaceBuilder then return true; end;
 	-- surface: only what keeps the faction alive until the cavern has its own
 	-- (without a mineral mine a faction dies within a few rounds)
 	if forMine then return not Mole.EssentialsBelow(); end;
@@ -1353,6 +1355,15 @@ function Economy.NextStructure(index)
 	return baseNextStructure(index);
 end;
 
+-- constructors taken out of a store come out next to the cavern
+function Military.ConstructorGoal(st)
+	if Mole.sealed and Mole.shaftCell then
+		local loc = Mole.LocAt(CellByIndex(Mole.shaftCell));
+		if loc then return loc.world; end;
+	end;
+	return Sense.baseCenter;
+end;
+
 local baseAssign = Economy.AssignConstructor;
 function Economy.AssignConstructor(u, index)
 	if u.id == Mole.digger and Mole.digging then return; end;	-- the digger digs
@@ -1381,7 +1392,10 @@ function Economy.AssignConstructor(u, index)
 		end;
 	end;
 	local before = Mem.jobs[u.id];
+	-- shut out above the seal: it can't get down, so it works on the surface
+	Mole.surfaceBuilder = Mole.sealed and not Mole.IsBelow(u.location);
 	baseAssign(u, index);
+	Mole.surfaceBuilder = false;
 	-- idle below ground with nothing ordered: out of space, or the mine site needs a tunnel
 	if Mole.phase == 'live' and Mem.jobs[u.id] == nil and Move.IsIdle(u) and before == nil then
 		Mole.noSpace = true;

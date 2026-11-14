@@ -276,7 +276,13 @@ function Needs.Update()
 	Needs.dronesShort = not canDrones or drones < math.ceil(own / 4);
 	Needs.deepRisk = Sense.DeepMatters() and 1 or ((player and Sense.round >= 30) and 0.35 or 0.1);
 
-	local constructors = #Sense.my.constructor + (Sense.storedByRole.constructor or 0);
+	-- builders that can work: parked ones don't (they get deployed, see Military.Stores)
+	local constructors = #Sense.my.constructor;
+	local storedC = Sense.storedByRole.constructor or 0;
+	-- no builder at all is near-fatal: nothing can be built or rebuilt. Any constructor beats
+	-- the fifth cannon
+	v.survivalBuilder = (constructors == 0 and storedC == 0) and 1 or 0;
+	constructors = constructors + storedC;
 	local wantC = round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate;
 	v.builders = constructors < 2 and 1 or clamp((wantC - constructors) / wantC);
 
@@ -843,7 +849,7 @@ function Needs.VehicleOptions(kit)
 	local function have(role)
 		return #(Sense.my[role] or {}) + 2 * (Sense.storedByRole[role] or 0);
 	end;
-	add(kit.Constructor(), {builders = 1, income = 0.2});	-- the builders need already counts them
+	add(kit.Constructor(), {builders = 1, income = 0.2, survivalBuilder = 1});	-- the builders need already counts them
 	local combat = #Sense.my.combat + #Sense.my.bomb;
 	-- tanks: as many as the action can use (the attack target's required force, or the
 	-- pressure at home), counted in groups of four. Beyond that only a swarm floor:

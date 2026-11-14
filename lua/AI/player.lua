@@ -2476,6 +2476,13 @@ function Economy.Production()
 	for _,p in ipairs(Sense.plants) do
 		if p.productionCompleted or p.deploymentOptions then
 			local ok, loc = pcall(p.GetIdealDeploymentOption);
+			-- the "ideal" option can be a neighboring vehicle store: a new unit parked there does
+			-- nothing (constructors build nothing in there). Prefer open ground
+			if ok and loc and p.deploymentOptions and Game.GetStructureAt(loc) ~= nil then
+				for _,o in ipairs(p.deploymentOptions) do
+					if Game.GetStructureAt(o) == nil and not Move.IsDangerous(o) then loc = o; break; end;
+				end;
+			end;
 			if not (ok and loc) and p.deploymentOptions then
 				-- no ideal spot (e.g. crowded around the plant): any safe option beats a blocked plant
 				for _,o in ipairs(p.deploymentOptions) do
@@ -2729,12 +2736,12 @@ function Military.NearestStore(regionId)
 	return best, bestH;
 end;
 
-function Military.DeployFrom(store, count, goalWorld, filter, out)
+function Military.DeployFrom(store, count, goalWorld, filter, out, role)
 	local deployed = 0;
 	local used = {};
 	for _,u in ipairs(Sense.stored) do
 		if deployed >= count then break; end;
-		if Types.Role(u) == 'combat' and store.DeployStored and (filter == nil or filter(u)) then
+		if Types.Role(u) == (role or 'combat') and store.DeployStored and (filter == nil or filter(u)) then
 			local ok, options = pcall(store.GetStoredDeploymentOptions, u);
 			if ok and options and #options > 0 then
 				local best, bestD = nil, nil;
@@ -2770,6 +2777,19 @@ function Military.Stores()
 	end;
 	local budget = Cfg.maxDeploysPerRound;
 	local storedCombat = Sense.storedByRole.combat or 0;
+
+	-- parked constructors build nothing: take them out while builders are short
+	local storedC = Sense.storedByRole.constructor or 0;
+	if storedC > 0 and #Sense.my.constructor < (Cfg.constructorsLate or 4) then
+		local home = Sense.baseCenter or (Mem.homeRegion and Map.WorldCenter(Map.regions[Mem.homeRegion]));
+		for _,st in ipairs(Sense.stores) do
+			if budget <= 0 then break; end;
+			local n = Military.DeployFrom(st, math.min(budget, storedC), Military.ConstructorGoal and Military.ConstructorGoal(st) or home, nil, nil, 'constructor');
+			budget = budget - n;
+			storedC = storedC - n;
+			if storedC <= 0 then break; end;
+		end;
+	end;
 
 	-- attack: everything stored joins, exiting as close to the target as possible
 	if storedCombat > 0 and Mem.posture == 'attack' and Mem.attackTarget then
