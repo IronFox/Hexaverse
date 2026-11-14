@@ -1746,7 +1746,7 @@ function Economy.SiteOK(loc, forMine)
 	-- a resource cell on a planned generator ring still goes to a mine: income beats a ring slot
 	if Economy.IsPowerRing(idx) and not Economy.allowPowerRing and not forMine then Economy.siteWhy = 'power ring'; return false; end;
 	local bl = Mem.blacklist[idx];
-	if bl and bl > Sense.round then Economy.siteWhy = 'blacklisted'; return false; end;
+	if bl and bl > Sense.round and not (forMine and Economy.retryBanned and bl <= Sense.round + 500) then Economy.siteWhy = 'blacklisted'; return false; end;
 	if Game.GetStructureAt(loc) ~= nil then Economy.siteWhy = 'structure'; return false; end;
 	local other = Game.GetMobileAt(loc);
 	if other ~= nil and not other.isOwnedByMe then Economy.siteWhy = 'hostile unit'; return false; end;
@@ -1945,8 +1945,9 @@ function Economy.FindMineCells(resource, maxCount)
 			Scan(Map.regions[id]);
 			for nb,_ in pairs(Map.regions[id].neighbors) do Scan(Map.regions[nb]); end;
 		end;
-		-- nothing close: look one ring further out (expanding beats starving)
-		if #list == 0 then
+		-- few sites close by: look one ring further out (expanding beats starving, and
+		-- resources are usually abundant: knowing only a site or two is the odd case)
+		if #list < 4 then
 			maxHops = 3;
 			seen = {};
 			for id,reg in pairs(Map.regions) do
@@ -1969,6 +1970,22 @@ function Economy.FindMineCells(resource, maxCount)
 	if #out < (maxCount or 1) then
 		local ok, c = pcall(Game.Grid.FindHighestAvailableResourceLocationExt, resource, true, true);
 		if ok and c and not Economy.claimed[c.index] then out[#out+1] = c; end;
+	end;
+	-- how many usable sites I know (read by Needs: few known sites make prospecting matter)
+	Economy.knownSites = Economy.knownSites or {};
+	Economy.knownSites[resource] = #out;
+	-- nothing left but sites a failed build banned: a ban is a guess, not a fact. Trying
+	-- again beats having no mine (EMP zones stay banned: those are facts)
+	Economy.retryBanned = false;
+	if #out == 0 then
+		for _,e in ipairs(cache.list) do
+			if #out >= (maxCount or 1) then break; end;
+			local bl = Mem.blacklist[e.cell.index];
+			if not Economy.claimed[e.cell.index] and not Sense.structureCells[e.cell.index] and not (bl and bl > Sense.round + 500) then
+				out[#out+1] = e.cell;
+				Economy.retryBanned = true;
+			end;
+		end;
 	end;
 	return out;
 end;
@@ -2200,10 +2217,8 @@ function Economy.AssignConstructor(u, index)
 					return;
 				else why.build = why.build + 1; end;
 			end;
-			if Sense.round % 5 == 0 then
-				Log(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed',
-					res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.reasons or '', why.build));
-			end;
+			Needs.Note(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed',
+				res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.reasons or '', why.build));
 		end;
 		-- the requirement that is missing: no known site (survey), or the known ones are under
 		-- threat (guard them). Rejected sites and failed orders just weigh the mine down
@@ -3407,7 +3422,9 @@ function Military.Scouts()
 						end;
 						-- short on mines and no known site: survey my nearby ground for resources
 						local noMinerals = Economy.noMineSite['Minerals'] and Sense.round - Economy.noMineSite['Minerals'] <= 10;
-						if (Economy.MineShortage() or noMinerals) and (Sense.hops[reg.id] or 99) <= 3 then
+						local ks = Economy.knownSites or {};
+						local few = (ks['Minerals'] or 9) < 3 or (ks['Fuel'] or 9) < 3;
+						if (Economy.MineShortage() or noMinerals or few) and (Sense.hops[reg.id] or 99) <= 3 then
 							score = score * 6;
 						end;
 					end;

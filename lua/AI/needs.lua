@@ -259,6 +259,12 @@ function Needs.Update()
 	-- resources in the ground); one is rarely enough when the known sites run out
 	local noMin = Economy.noMineSite['Minerals'] and round - Economy.noMineSite['Minerals'] <= 10;
 	v.prospecting = noMin and 0.9 or 0;
+	-- knowing only a site or two is fragile too: one ban or one raid and there is none
+	do
+		local ks = Economy.knownSites or {};
+		local fewest = math.min(ks['Minerals'] or 9, ks['Fuel'] or 9);
+		if fewest < 3 and round >= 5 then v.prospecting = math.max(v.prospecting, 0.6 - 0.15 * fewest); end;
+	end;
 	if Sense.DeepMatters() and #Sense.my.surveyor < Cfg.maxSurveyorsDeep then v.scouting = math.max(v.scouting, 0.5); end;
 	-- coverage of my own land: a region of mine out of sight could hide anything that slipped through
 	local own, blind = 0, 0;
@@ -297,6 +303,21 @@ function Needs.Update()
 
 	local combat = #Sense.my.combat + #Sense.my.bomb + (Sense.storedByRole.combat or 0);
 	v.army = clamp(0.35 - combat * 0.02);
+	--[[
+	A garrison: what stands is what a raid finds. No combat unit at all means the first few
+	hover tanks take the base apart, however many minerals sit in storage. None is near-fatal
+	once raids can come, a few per region I hold is enough.
+	]]
+	do
+		local nReg = 0;
+		for _ in pairs(Sense.mine) do nReg = nReg + 1; end;
+		local wantG = 2 + nReg;
+		v.survivalGarrison = 0;
+		if round >= 8 then
+			if combat == 0 then v.survivalGarrison = 0.75;
+			elseif combat < wantG then v.survivalGarrison = 0.45 * (1 - combat / wantG); end;
+		end;
+	end;
 	if Mem.posture == 'attack' then v.army = math.max(v.army, 0.3); end;
 	v.army = math.max(v.army, v.defense * 0.8);
 
@@ -1137,7 +1158,7 @@ function Needs.VehicleOptions(kit)
 	-- pressure at home), counted in groups of four. Beyond that only a swarm floor:
 	-- meat shields and sensor coverage through numbers
 	local tank = kit.Tank();
-	add(tank, {defense = 1, army = 1, scouting = 0.15});
+	add(tank, {defense = 1, army = 1, scouting = 0.15, survivalGarrison = 1});
 	if tank and #opts > 0 then
 		local o = opts[#opts];
 		local pot = Military.UnitPotential();
