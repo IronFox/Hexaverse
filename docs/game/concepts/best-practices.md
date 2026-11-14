@@ -109,7 +109,7 @@ Keep in mind that hostile encounters tend to rip holes into the ground, so roads
 
 ### Air and Ground
 
-Successful matches usually involve both ground and air battles. Planes fly over walls and cliffs and are invisible to regular radar, so only [AA](../units/turrets/anti-aircraft.md) can answer them. [Bombers](../units/planes/bomber.md) hit what is directly beneath them, [raptors](../units/planes/raptor.md) hunt other planes, and [sensor drones](../units/planes/sensor-drone.md) keep the map in view. A [plane factory](../units/structures/plane-factory.md) consumes fuel and minerals every round, so it needs a running economy.
+Successful matches usually involve both ground and air battles. Planes fly over walls and cliffs and are invisible to regular radar, so only [AA](../units/turrets/anti-aircraft.md) can answer them. [Bombers](../units/planes/bomber.md) hit what is directly beneath them, [raptors](../units/planes/raptor.md) hunt other planes, and [sensor drones](../units/planes/sensor-drone.md) keep the map in view. A [plane factory](../units/structures/plane-factory.md) consumes fuel and minerals every round, so it needs a running economy. Even moving a mobile [AA](../units/turrets/anti-aircraft.md) vehicle right under a bomber can make sense.
 
 ### Going Underground
 
@@ -123,6 +123,10 @@ Bombs are the only weapon you really have underground: there is no room to use a
 
 Plantations need some space around them to grow plants and crystals. Without earth or granite/lava, both [compound](compound.md) types can be manufactured and combined into the material needed to elevate units to T2.
 T2 upgrades are done by [mechanic](../units/turrets/mechanic.md) units. T2 units are tie-breakers: they gain experience from destroying enemy units and can become so powerful that a single one can decimate hostile installations without any doomsday weaponry.
+
+### Judgement Calls
+
+There is no "always do this when that". Every decision is a judgement call: how badly do you need planes right now, how badly do you need that mine, how badly do you need that Nexus hub? The same move can be right in one match and fatal in the next.
 
 ## Mid to End Game
 
