@@ -127,6 +127,8 @@ T2 upgrades are done by [mechanic](../units/turrets/mechanic.md) units. T2 units
 ### Judgement Calls
 
 There is no "always do this when that". Every decision is a judgement call: how badly do you need planes right now, how badly do you need that mine, how badly do you need that Nexus hub? The same move can be right in one match and fatal in the next.
+There are signs that you weighed something wrong. If a bomber blows up your towers, your weight for AA was clearly too low. Less obviously, if your enemy has no AA and you build no planes, your weight for planes was too low.
+Any weakness in a defense is a fatal vulnerability, and every failure to exploit one can decide the match.
 
 ## Mid to End Game
 

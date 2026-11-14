@@ -30,6 +30,7 @@ Structure
 --#require <util/resvec.lua>
 --#require <util/queue.lua>
 --#require <AI/vehicles.lua>
+--#require "needs.lua"
 
 
 -------------------------------------------------------------------------------
@@ -558,7 +559,7 @@ Sense = {
 	enemyRegions = {},	-- region ids with remembered hostile presence
 };
 
-local function DamagePotential(u)
+function DamagePotential(u)
 	if u.turret and u.turret.type.canAttack and u.turret.damageLevel then
 		return (u.turret.damageLevel or 0) * (u.turret.attacksPerRound or 1);
 	end;
@@ -1403,150 +1404,10 @@ function Economy.MineReq(resource)
 	return {type=Types.mine, kind='mine', resource=resource};
 end;
 
--- What should the next idle constructor build? Returns {type, kind} or nil
+-- What should the next idle constructor build? Returns {type, kind} or nil.
+-- Weighs the current needs against every option (see needs.lua)
 function Economy.NextStructure(constructorIndex)
-	local cur, max = Economy.Resources();
-	local bal = max.balance;
-	local round = Sense.round;
-
-	-- no energy output means the faction is as good as dead. Rebuilding one generator and
-	-- one fuel mine beats everything else, including the vehicle plant
-	if Economy.PowerCritical() then
-		if ((max.supply or {}).fuel or 0) <= 0 and constructorIndex % 2 == 0 then
-			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
-		end;
-		if Economy.powerOrders < 2 then
-			Economy.powerOrders = Economy.powerOrders + 1;
-			return {type=Types.generator, kind='base'};
-		end;
-		if ((max.supply or {}).fuel or 0) <= 0 then
-			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
-		end;
-	end;
-	if Types.plant and Economy.WorkingPlants() == 0 then
-		return {type=Types.plant, kind='base'};
-	end;
-	if Cfg.planePriority == 'early' then
-		local pf = Economy.PlaneFactoryNeed();
-		if pf then return pf; end;
-	end;
-	-- a spare fuel mine: losing the only one starves every generator
-	if round >= 10 and Economy.Count(Types.generator) >= 1 and Economy.FuelMines() < math.min(2, Economy.Count(Types.generator)) then
-		do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
-	end;
-	-- energy first: everything else depends on it. Keep some headroom so the next mine
-	-- (or a vehicle plant) runs as soon as it is finished instead of sitting disabled
-	if bal.energy < Cfg.energyHeadroom or (cur.balance.energy <= 0 and Economy.Count(Types.generator) < 2) then
-		if (bal.fuel or 0) <= 0 and (constructorIndex % 2 == 1 or Economy.Count(Types.mine) == 0) then
-			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
-		end;
-		-- a generator without spare fuel produces nothing: fuel first
-		if (bal.fuel or 0) <= 0 and Economy.Count(Types.generator) >= 1 then
-			do local m = Economy.MineReq('Fuel'); if m then return m; end; end;
-		elseif Economy.powerOrders < 2 then
-			Economy.powerOrders = Economy.powerOrders + 1;
-			return {type=Types.generator, kind='power'};
-		end;
-	end;
-	-- a floor of mineral income, even under pressure: without it nothing else gets built
-	if Economy.Count(Types.mine) < Cfg.minMines then
-		do local m = Economy.MineReq('Minerals'); if m then return m; end; end;
-	end;
-	-- income before towers: a broke faction cannot build defenses or tanks either.
-	-- Only while home is quiet; under attack the defense below comes first
-	local wantMines = math.min(Cfg.earlyMines + math.floor(round / 10), 10);
-	if Economy.Count(Types.mine) < wantMines and Sense.Pressure() <= 0 then
-		local res = 'Minerals';
-		if (bal.fuel or 0) <= 0 then res = 'Fuel'; end;
-		do local m = Economy.MineReq(res); if m then return m; end; end;
-	end;
-	-- a reactor core in the middle of a generator ring, once unlocked and fed with uranium
-	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
-		local uranium = (max.balance.uranium or 0) > 0 or (cur.storage.uranium or 0) > 0;
-		if uranium then
-			return {type=Types.reactor, kind='power'};
-		end;
-		if constructorIndex == 2 then
-			do local m = Economy.MineReq('Uranium'); if m then return m; end; end;
-		end;
-	end;
-	-- minerals piling up means the plants are the bottleneck
-	-- (the 500 starting minerals don't count: only with real income)
-	if Types.plant and round >= 25 and Economy.Count(Types.mine) >= 4
-		and (cur.storage.minerals or 0) >= 300 and Economy.Count(Types.plant) < 3 then
-		return {type=Types.plant, kind='base'};
-	end;
-	-- the home region gets its first defense early; raids start around round 15
-	if round >= 4 then
-		local need = Economy.DefenseNeed(false, true);
-		if need then
-			return need;
-		end;
-	end;
-	if Types.lab and Economy.Count(Types.lab) == 0 and round >= 3 then
-		return {type=Types.lab, kind='base'};
-	end;
-	do
-		local pf = Economy.PlaneFactoryNeed();
-		if pf then return pf; end;
-	end;
-	-- a tower on a threatened frontier
-	if Types.GroundTower() and constructorIndex == 1 then
-		for id,_ in pairs(Sense.frontier) do
-			local reg = Map.regions[id];
-			if reg.mobileThreat > 0 and Economy.TowersIn(reg) < Cfg.wantTowersPerFrontier then
-				return {type=Types.GroundTower(), kind='tower', region=id};
-			end;
-		end;
-	end;
-	-- layered defense of built-up regions (see Economy.DefenseNeed)
-	local need = Economy.DefenseNeed(false);
-	if need then
-		return need;
-	end;
-	if Economy.Count(Types.mine) < 4 + math.floor(round / 10) then
-		local res = 'Minerals';
-		if bal.fuel <= 0 then res = 'Fuel'; end;
-		do local m = Economy.MineReq(res); if m then return m; end; end;
-	end;
-	if Types.lab and Economy.Count(Types.lab) < Cfg.wantLabs and round >= 15 then
-		return {type=Types.lab, kind='base'};
-	end;
-	if Types.plant and Economy.Count(Types.plant) < 2 and round >= 30 then
-		return {type=Types.plant, kind='base'};
-	end;
-	-- a vehicle store next to the plants and in every defended region: reserves can appear anywhere we have one
-	if Types.store and round >= 12 and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores then
-		local want = Economy.StoreRegion();
-		if want then
-			return {type=Types.store, kind='tower', region=want};
-		end;
-	end;
-	-- surplus: thicken the defense where the threat is highest
-	local extra = Economy.DefenseNeed(true);
-	if extra then
-		return extra;
-	end;
-	local gt = Types.GroundTower();
-	if gt and Economy.Count(gt) < 2 + math.floor(round / 20) then
-		return {type=gt, kind='tower'};
-	end;
-	if Types.radarTower and Types.IsUnlocked(Types.radarTower) and Economy.Count(Types.radarTower) < 1 + math.floor(round / 25) then
-		return {type=Types.radarTower, kind='tower'};
-	end;
-	do local m = Economy.MineReq('Minerals'); if m then return m; end; end;
-	-- rich and nothing else to do: more research, more fixed defense
-	if (cur.storage.minerals or 0) >= Cfg.richMinerals then
-		if Types.lab and Economy.Count(Types.lab) < Cfg.wantLabsRich then
-			return {type=Types.lab, kind='base'};
-		end;
-		if gt and Economy.Count(gt) < 4 + math.floor(round / 10) then
-			return {type=gt, kind='tower'};
-		end;
-		if Types.store and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores + 2 then
-			return {type=Types.store, kind='tower'};
-		end;
-	end;
+	return Needs.NextStructure(constructorIndex);
 end;
 
 --[[
@@ -2308,61 +2169,8 @@ function Economy.NextVehicle()
 		end;
 		return Types.Vehicle(Types.turret.cannon, base) or Types.Vehicle(Types.turret.cannon, hover);
 	end;
-	local combat = #my.combat + (Sense.storedByRole.combat or 0);
-	local constructors = #my.constructor + (Sense.storedByRole.constructor or 0);
-	local pressure = Sense.Pressure();
-
-	-- never fewer than two constructors: without them there is no economy at all
-	if constructors < 2 then
-		return Constructor();
-	end;
-	-- no mine site but minerals to spend: scanners to find resources (below), tanks to conquer them
-	if Economy.MineShortage() and (Game.myFaction.currentResources.storage.minerals or 0) >= 150
-		and #my.surveyor >= 1 and combat < Cfg.retreatBelowUnits * 3 then
-		return Tank();
-	end;
-	-- attacked from the air: mobile AA first, a tank does not solve that
-	local airPressure = Sense.AirPressure();
-	if airPressure > 0 and #my.aa < 1 + math.floor(airPressure / 3) then
-		local aa = Types.Vehicle(Types.turret.aa, hover);
-		if aa then return aa; end;
-	end;
-	-- under pressure, tanks first. Replacing constructors that keep dying feeds the enemy
-	if pressure > 0 and combat < 4 + math.floor(pressure / 3) then
-		return Tank();
-	end;
-	-- no scanner at all means no resource coverage: get one, right after defending the base
-	-- But a known mine site comes first while minerals only cover that mine and its generator
-	if #my.surveyor == 0 and (Sense.storedByRole.surveyor or 0) == 0 and Economy.ScannerTowers() == 0 then
-		local sv = Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
-		if sv then
-			local minerals = Game.myFaction.currentResources.storage.minerals or 0;
-			local needForMine = (Types.mine and Types.mine.constructionCost or 0)
-				+ (Types.generator and Types.generator.constructionCost or 0);
-			local knownSite = Economy.FindMineCell('Minerals') ~= nil;
-			if not knownSite or minerals >= needForMine + (sv.constructionCost or 0) then
-				return sv;
-			end;
-		end;
-	end;
-	local wantConstructors = Sense.round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate;
-	if constructors < wantConstructors and (combat >= constructors or Sense.round < 12) then
-		return Constructor();
-	end;
-	if #my.radar < math.min(1, math.floor(combat / 2)) + math.floor(combat / Cfg.radarPerCombat) then
-		return Types.Vehicle(Types.turret.radar, hover);
-	end;
-	if Sense.AirMatters() and #my.aa * Cfg.aaPerCombat < #my.combat + 2 then
-		local aa = Types.Vehicle(Types.turret.aa, hover);
-		if aa then return aa; end;
-	end;
-	local wantSurveyors = Sense.DeepMatters() and Cfg.maxSurveyorsDeep or Cfg.maxSurveyors;
-	if Economy.MineShortage() then wantSurveyors = wantSurveyors + 1; end;
-	if #my.surveyor < wantSurveyors and Sense.round > 10 then
-		return Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, hover);
-	end;
-	-- mostly cannons, some artillery once available (and bombs where the fight is underground)
-	return Tank();
+	-- weigh the current needs against every vehicle option (see needs.lua)
+	return Needs.NextVehicle({Constructor = Constructor, Tank = Tank});
 end;
 
 Economy.plantHead = {};	-- plant id -> {id=production id, since=round}
@@ -2564,19 +2372,45 @@ function Military.ArmyStrength()
 	return n;
 end;
 
+-- Average damage potential of one of our combat units (what a hostile threat figure is worth in units)
+function Military.UnitPotential()
+	local sum, n = 0, 0;
+	for _,u in ipairs(Sense.my.combat) do
+		local p = DamagePotential(u);
+		if p > 0 then sum = sum + p; n = n + 1; end;
+	end;
+	return n > 0 and sum / n or 4;
+end;
+
+-- Hostile defense at and around a region, in threat figures
+function Military.DefenseAt(reg)
+	local d = reg.staticThreat + reg.mobileThreat;
+	for nb,_ in pairs(reg.neighbors) do
+		local r = Map.regions[nb];
+		d = d + (r.staticThreat + r.mobileThreat) * 0.4;
+	end;
+	return d;
+end;
+
+--[[
+The weakest worthwhile target. Any weakness in a defense is a fatal vulnerability,
+and not using one can decide the match: a lone mine or an undefended factory is worth
+more than a fortress full of structures. Score: what is there, against how well it is
+defended, how far it is and how old our knowledge is.
+]]
 function Military.ChooseAttackTarget()
 	local best, bestScore = nil, 0;
+	local pot = Military.UnitPotential();
 	for _,id in ipairs(Sense.enemyRegions) do
 		local reg = Map.regions[id];
 		if not Sense.mine[id] then
-			-- prefer remembered structures (they don't move), weigh against distance and staleness
 			local value = reg.hostileStructures * 3 + reg.mobileThreat * 0.2;
 			local hops = Sense.hops[id] or 20;
-			-- short on mines: known resources in contested ground are worth conquering
 			if Economy.MineShortage() or Economy.Count(Types.mine) < Cfg.minMines then
 				value = value + Economy.ResourceCells(reg) * 2;
 			end;
-			local score = value / (1 + hops * 0.3) / (1 + Sense.Staleness(reg) * 0.02);
+			local defense = Military.DefenseAt(reg) / pot;	-- in our units
+			local score = value / (1 + defense * 0.5) / (1 + hops * 0.3) / (1 + Sense.Staleness(reg) * 0.02);
 			if score > bestScore then
 				best, bestScore = id, score;
 			end;
@@ -2586,20 +2420,24 @@ function Military.ChooseAttackTarget()
 end;
 
 -- Fixed defenses can always be beaten with more units: size the attack by what we remember of the target
+-- Units needed to take a region: enough to outgun its defense, and a few more
 function Military.RequiredForce(id)
 	local reg = Map.regions[id];
-	local need = Cfg.attackMinUnits + reg.hostileStructures * 2 + math.floor(reg.staticThreat / 4);
-	for nb,_ in pairs(reg.neighbors) do
-		need = need + math.floor(Map.regions[nb].staticThreat / 8);
-	end;
-	return need;
+	local units = Military.DefenseAt(reg) / Military.UnitPotential();
+	local need = math.ceil(units * 1.3) + 3 + math.floor(reg.hostileStructures / 3);
+	-- a lone, undefended target needs a raid, not an army
+	return math.max(3, math.min(need, Cfg.attackMinUnits * 3));
 end;
 
 function Military.UpdatePosture()
 	local n = Military.ArmyStrength();
 	if Mem.posture == 'defend' then
-		local target = (Sense.round >= Cfg.attackMinRound) and Military.ChooseAttackTarget() or nil;
+		-- before attackMinRound only clear chances: twice the force a target needs
+		local target = Military.ChooseAttackTarget();
 		local need = target and Military.RequiredForce(target);
+		if need and Sense.round < Cfg.attackMinRound then need = need * 2; end;
+		-- keep enough at home for the pressure there
+		if need then need = need + math.ceil(Sense.Pressure() / Military.UnitPotential()); end;
 		-- with minerals piling up, losses are cheap to replace: attack with less
 		if need and (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.richMinerals then
 			need = math.ceil(need * 0.7);
@@ -3316,6 +3154,8 @@ function Execute()
 		SafeCall('ApplyImport', ApplyImport);
 	end;
 	if not SafeCall('Sense.Update', Sense.Update) then return; end;
+	SafeCall('Needs', Needs.Update);
+	SafeCall('NeedsReport', Needs.Report);
 
 	SafeCall('Research', Economy.Research);
 	SafeCall('Production', Economy.Production);

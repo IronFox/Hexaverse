@@ -27,64 +27,22 @@ Cfg.maxPlanes = 14;
 Cfg.planeMinerals = 100;
 Cfg.bomberShare = 0.55;
 Cfg.wantDrones = 1;
-Cfg.groundGuard = 4;			-- combat vehicles kept at home
 
 -- research: planes first, then the rest
 table.insert(Cfg.research, 1, 'Unlock:Raptor');
 table.insert(Cfg.research, 1, 'Unlock:Bomber');
 table.insert(Cfg.research, 1, 'Unlock:PlaneFactory');
 
--- Saving up for the plane factory: researched, fuel mine running, minerals short
-function Air.Saving()
-	local pf = Types.planeFactory;
-	return #Sense.planeFactories == 0 and pf ~= nil and Types.IsUnlocked(pf)
-		and Economy.FuelMines() >= 1
-		and (Game.myFaction.currentResources.storage.minerals or 0) < (tonumber(pf.constructionCost) or 200) + 50;
-end;
+-- Weights (see needs.lua): planes matter a lot, the ground army less. Saving for the
+-- factory follows from the weights: while it is the top option and not affordable yet,
+-- cheaper builds and vehicles that score far lower wait
+Cfg.needWeights = {planes = 9, army = 0.8, fuel = 5};
 
-local baseNextStructure = Economy.NextStructure;
-function Economy.NextStructure(index)
+-- a second factory once the economy carries it
+local baseUpdate = Needs.Update;
+function Needs.Update()
 	Cfg.planeFactories = (Sense.round >= 50 and Economy.Count(Types.mine) >= 5) and 2 or 1;
-	local want = baseNextStructure(index);
-	-- while saving, constructors build only what earns or powers (mines, generators)
-	if want and Air.Saving() and Sense.Pressure() <= 3 and want.kind ~= 'mine'
-		and want.type ~= Types.generator and want.type ~= Types.planeFactory
-		and not (want.type == Types.plant and Economy.WorkingPlants() == 0) then
-		return nil;
-	end;
-	-- the plane factory burns fuel every round: without spare fuel it shuts down
-	if #Sense.planeFactories > 0 then
-		local _, max = Economy.Resources();
-		if ((max.balance or {}).fuel or 0) <= 0 then
-			local m = Economy.MineReq('Fuel');
-			if m then return m; end;
-		end;
-	end;
-	return want;
-end;
-
--- the ground plants hold back for the plane factory (minerals for it must pile up first),
--- and once it runs, minerals go to planes
-local baseNextVehicle = Economy.NextVehicle;
-function Economy.NextVehicle()
-	local t = baseNextVehicle();
-	if t == nil then return t; end;
-	local pf = Types.planeFactory;
-	if #Sense.planeFactories == 0 then
-		local saving = Air.Saving();
-		local tt = t.turretType;
-		local essential = tt and (tt.canConstruct or tt.detectsResources);
-		if saving and not essential and #Sense.my.combat >= 2 and Sense.Pressure() <= 3 then
-			return nil;
-		end;
-		return t;
-	end;
-	local tt = t.turretType;
-	local combat = #Sense.my.combat + #Sense.my.bomb + (Sense.storedByRole.combat or 0);
-	local ground = tt and tt.canAttack and tt.trajectoryType ~= 'AAMissile';
-	if (ground or (tt and tt.canSelfDetonate)) and combat >= Cfg.groundGuard
-		and #Sense.my.plane < Cfg.maxPlanes and Sense.Pressure() <= 0 then
-		return nil;
-	end;
-	return t;
+	baseUpdate();
+	-- every plane factory burns fuel each round: without spare fuel they shut down
+	if #Sense.planeFactories > 0 and (Needs.v.fuel or 0) > 0 then Needs.v.fuel = 1; end;
 end;
