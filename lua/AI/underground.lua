@@ -425,15 +425,35 @@ end;
 -- Dig one step from the digger towards a target cell (at cavern level). Returns true if something was scheduled
 function Mole.DigToward(u, targetCell)
 	local here = u.location.cell;
+	Mole.digWhy = 'already there';
 	if here.index == targetCell.index then return false; end;
+	Mole.digWhy = 'no step';
 	local best, bd = nil, nil;
 	local goal = targetCell.center;
+	--[[
+	The straight line is only the first choice. A cell under one of our own surface
+	structures (digging there undermines it), or one found to touch lava, is gone around:
+	the next best neighbor, not back the way the digger just came.
+	]]
+	local covered = Mole.SurfaceStructureCells();
+	Mole.trail = Mole.trail or {};
+	if Mole.trailGoal ~= targetCell.index then Mole.trailGoal = targetCell.index; Mole.trail = {}; end;
+	Mole.trail[here.index] = Sense.round;
+	local span = math.sqrt(D2(here.center, here.neighbors[1].center));
 	for _,nb in ipairs(here.neighbors) do
-		local d = D2(nb.center, goal);
-		if bd == nil or d < bd then best, bd = nb, d; end;
+		local blocked = (covered[nb.index] and not Mole.IsOpen(nb) and nb.index ~= targetCell.index)
+			or (Mole.lavaCells and Mole.lavaCells[nb.index]);
+		if not blocked then
+			local d = math.sqrt(D2(nb.center, goal));
+			-- been there lately on this way: going back is worth two cells of detour
+			local t = Mole.trail[nb.index];
+			if t and Sense.round - t < 30 then d = d + 2 * span; end;
+			if bd == nil or d < bd then best, bd = nb, d; end;
+		end;
 	end;
 	if best == nil then return false; end;
-	if Mole.SurfaceStructureCells()[best.index] and not Mole.IsOpen(best) then
+	if covered[best.index] and not Mole.IsOpen(best) then
+		Mole.digWhy = 'own structure above cell '..best.index;
 		Log('Not digging beneath own structure at cell '..best.index);
 		Economy.Blacklist(best.index, 30);	-- don't undermine our own structures
 		return false;
@@ -480,6 +500,7 @@ function Mole.DigToward(u, targetCell)
 			end;
 		end;
 		if alt == nil then
+			Mole.digWhy = 'boxed in';
 			Log('Digger at cell '..here.index..' is boxed in by open cells it cannot reach');
 			return false;
 		end;
@@ -536,7 +557,7 @@ function Mole.DigToward(u, targetCell)
 	Mole.unknownSince = nil;
 	Mole.waitSurvey = nil;
 	local ok, err = pcall(u.DigHorizontally, loc);
-	if not ok then Log('DigHorizontally failed: '..tostring(err)); return false; end;
+	if not ok then Mole.digWhy = 'dig order refused'; Log('DigHorizontally failed: '..tostring(err)); return false; end;
 	Mole.lastDig = best.index;
 	Mole.lastDigRound = Sense.round;
 	Mole.dug[best.index] = true;
@@ -998,6 +1019,7 @@ Returns true if an order was given.
 -- One step of the tunnel to Mole.tunnelGoal
 function Mole.Tunnel(u)
 	if Mole.tunnelGoal == nil then return; end;
+	local goal = Mole.tunnelGoal;	-- (DigToward may drop the goal: lava, open space)
 	local cell = CellByIndex(Mole.tunnelGoal);
 	if cell == nil or Mole.IsOpen(cell) then
 		if cell then Log('Tunnel reached cell '..Mole.tunnelGoal); end;
@@ -1011,11 +1033,15 @@ function Mole.Tunnel(u)
 		Mole.tunnelFails = 0;
 	elseif Mole.DigToward(u, cell) then
 		Mole.tunnelFails = 0;
+	elseif Mole.tunnelGoal == nil then
+		Mole.tunnelFails = 0;	-- given up inside (lava, water, open space): already logged
+	elseif Mole.waitSurvey then
+		-- waiting for the surveyor to look is not a failure
 	else
 		-- a few rounds without progress: give up on this site for a while, so another is picked
 		Mole.tunnelFails = (Mole.tunnelFails or 0) + 1;
 		if Mole.tunnelFails >= 5 then
-			Log('Tunnel to cell '..Mole.tunnelGoal..' gives up at cell '..u.location.cell.index);
+			Log('Tunnel to cell '..goal..' gives up at cell '..u.location.cell.index..' ('..tostring(Mole.digWhy)..')');
 			-- a corridor that got only part of the way still widens the view
 			if Mole.prospecting == Mole.tunnelGoal then
 				Mole.surveyPost = u.location.cell.index;
@@ -1495,6 +1521,9 @@ function Mole.SurfaceMineToGo(surfaceMines)
 				end;
 				if others == 0 or below == 0 then ok = false; break; end;
 			end;
+			-- a mine that doesn't count for survival still yields: while the faction lives off
+			-- its surface base, it stays
+			if ok and #needs == 0 and Mole.SurfaceDependent() then ok = false; end;
 			if ok then
 				Log('Surface mine '..cand.st.niceName..' can go: '..(#needs == 0 and 'it no longer counts (undermined or poor)'
 					or ('replaced below for '..table.concat(needs, ', '))));
