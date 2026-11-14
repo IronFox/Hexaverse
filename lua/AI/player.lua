@@ -1489,6 +1489,13 @@ function Economy.StoreRegion()
 	for _,job in pairs(Mem.jobs) do
 		if Types.store and job.kind == Types.store.name and job.region then hasStore[job.region] = true; end;
 	end;
+	-- a peak over our resources: a store on top holds it with no standing garrison (nobody
+	-- else can sit there, and the store releases units onto the high ground when needed)
+	local peak = Needs.StorePeak(hasStore);
+	if peak and not Economy.scannerClaimed['store'..peak] then
+		Economy.scannerClaimed['store'..peak] = true;
+		return peak, true;
+	end;
 	for _,p in ipairs(Sense.plants) do
 		local reg = Map.RegionOfLoc(p.location);
 		if reg and not hasStore[reg.id] and not Economy.scannerClaimed['store'..reg.id] then
@@ -2034,7 +2041,9 @@ function Economy.AssignConstructor(u, index)
 				score = math.abs(d - 9.0);
 			end;
 			score = score + n.movementCostsFromRoot * 0.05;
-			if want.kind ~= 'mine' then
+			-- on the peak itself: the highest ground of the region
+			if want.peak then score = score - (loc.height or 0) * 3; end;
+			if want.kind ~= 'mine' and not want.peak then
 				score = score + Needs.Spacing(loc);
 				-- exposed to high ground within artillery reach: towers suffer most
 				local ex = Needs.Exposure(u, loc);
@@ -2503,6 +2512,8 @@ region is threatened or an attack starts, they are deployed from the store
 nearest to where they are needed.
 ]]
 Military.stashing = {};
+Military.peakGuard = {};	-- unit id -> peak region it was offloaded onto from a store
+Military.peakQuiet = {};	-- unit id -> last round its peak was threatened
 
 function Military.NearestStore(regionId)
 	if #Sense.stores == 0 then return nil; end;
@@ -2518,12 +2529,12 @@ function Military.NearestStore(regionId)
 	return best, bestH;
 end;
 
-function Military.DeployFrom(store, count, goalWorld)
+function Military.DeployFrom(store, count, goalWorld, filter, out)
 	local deployed = 0;
 	local used = {};
 	for _,u in ipairs(Sense.stored) do
 		if deployed >= count then break; end;
-		if Types.Role(u) == 'combat' and store.DeployStored then
+		if Types.Role(u) == 'combat' and store.DeployStored and (filter == nil or filter(u)) then
 			local ok, options = pcall(store.GetStoredDeploymentOptions, u);
 			if ok and options and #options > 0 then
 				local best, bestD = nil, nil;
@@ -2538,6 +2549,7 @@ function Military.DeployFrom(store, count, goalWorld)
 					local ok2, err = pcall(store.DeployStored, u, best);
 					if ok2 then
 						deployed = deployed + 1;
+						if out then out[#out+1] = u; end;
 					else
 						Log('DeployStored failed: '..tostring(err));
 					end;
@@ -2564,6 +2576,42 @@ function Military.Stores()
 		local st = Military.NearestStore(Mem.attackTarget);
 		if st then
 			budget = budget - Military.DeployFrom(st, budget, Map.WorldCenter(Map.regions[Mem.attackTarget]));
+		end;
+	end;
+
+	--[[
+	A store on a peak holds it with no standing garrison. When anything comes close,
+	offload an artillery tank or three onto the high ground: they command the slopes.
+	]]
+	do
+		-- forget guards that died (deployed last round or earlier: they are active units by now)
+		local alive = {};
+		for _,u in ipairs(Sense.my.combat) do alive[u.id] = true; end;
+		for id,_ in pairs(Military.peakGuard) do
+			if not alive[id] then Military.peakGuard[id] = nil; Military.peakQuiet[id] = nil; end;
+		end;
+	end;
+	if storedCombat > 0 and budget > 0 then
+		for _,st in ipairs(Sense.stores) do
+			local reg = Map.RegionOfLoc(st.location);
+			if budget > 0 and reg and Needs.Overlook(reg) >= 2 then
+				local threat = Sense.Threat(reg);
+				for nb,_ in pairs(reg.neighbors) do threat = threat + Map.regions[nb].mobileThreat; end;
+				local have = 0;
+				for id,r in pairs(Military.peakGuard) do
+					if r == reg.id then have = have + 1; end;
+				end;
+				if threat > 0 and have < 3 then
+					local want = math.min(budget, 3 - have, math.max(1, math.ceil(threat / Military.UnitPotential())));
+					local out = {};
+					local function arty(u) return u.turret and u.turret.type == Types.turret.artillery; end;
+					local n = Military.DeployFrom(st, want, st.location.world, arty, out);
+					if n == 0 then n = Military.DeployFrom(st, want, st.location.world, nil, out); end;
+					for _,u in ipairs(out) do Military.peakGuard[u.id] = reg.id; end;
+					if n > 0 then Log('Hostiles near the peak at region '..reg.id..': offloaded '..n..' unit(s) onto it'); end;
+					budget = budget - n;
+				end;
+			end;
 		end;
 	end;
 
@@ -2837,6 +2885,21 @@ function Military.Combat()
 			local goalId = defense;
 			if Mem.posture == 'attack' and Mem.attackTarget then
 				goalId = Mem.attackTarget;
+			end;
+			-- offloaded onto a peak: hold it while anything is near, then go back into storage
+			local peak = Military.peakGuard[v.id];
+			if peak then
+				local pr = Map.regions[peak];
+				local threat = Sense.Threat(pr);
+				for nb,_ in pairs(pr.neighbors) do threat = threat + Map.regions[nb].mobileThreat; end;
+				if threat > 0 or Military.peakQuiet[v.id] == nil then
+					Military.peakQuiet[v.id] = Sense.round;
+					goalId = peak;
+				elseif Sense.round - Military.peakQuiet[v.id] >= 10 then
+					Military.peakGuard[v.id] = nil;
+				else
+					goalId = peak;
+				end;
 			end;
 			if goalId == nil then return; end;
 			local reg = Map.regions[goalId];

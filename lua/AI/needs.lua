@@ -460,7 +460,11 @@ function Needs.Overwatch()
 			for nb,_ in pairs(reg.neighbors) do
 				local nr = Map.regions[nb];
 				local mx = Needs.Elevation(nr);
-				if mx and mx - mean >= 2 and nr.hostileStructures == 0 and nr.staticThreat <= 0 then
+				local stored = false;
+				for _,st in ipairs(Sense.stores or {}) do
+					if Map.RegionOfLoc(st.location) == nr then stored = true; break; end;
+				end;
+				if mx and mx - mean >= 2 and nr.hostileStructures == 0 and nr.staticThreat <= 0 and not stored then
 					-- a peak deep inside our own territory is probably (not certainly) less
 					-- urgent: an enemy has to get through us first. Count how much of it we surround
 					local inner, total = Sense.mine[nb] and 1 or 0, 1;
@@ -475,6 +479,30 @@ function Needs.Overwatch()
 		end;
 	end;
 	return best, bestV;
+end;
+
+-- The peak over our resources most worth a store on top, inside or next to our territory,
+-- wherever there is none yet (interior peaks count fully here: a store is cheap insurance)
+function Needs.StorePeak(hasStore)
+	local best, bestV = nil, 1;
+	for id,_ in pairs(Sense.mine) do
+		local reg = Map.regions[id];
+		local res = Economy.ResourceCells(reg) + (reg.myStructures or 0);
+		local _, mean = Needs.Elevation(reg);
+		if mean and res > 0 then
+			local cands = {[id] = true};
+			for nb,_ in pairs(reg.neighbors) do cands[nb] = true; end;
+			for c,_ in pairs(cands) do
+				local cr = Map.regions[c];
+				local mx = Needs.Elevation(cr);
+				if mx and mx - mean >= 2 and not hasStore[c] and cr.hostileStructures == 0 and cr.staticThreat <= 0 then
+					local v = res * math.min(1, (mx - mean) / 4);
+					if v > bestV then best, bestV = c, v; end;
+				end;
+			end;
+		end;
+	end;
+	return best;
 end;
 
 -- Room left in a region: 1 while half its cells are free, falling to 0 when it is full.
@@ -616,9 +644,10 @@ function Needs.StructureOptions(constructorIndex)
 		if Sense.DeepMatters() then tower(Types.scannerTower, c.scanner, {scouting = 0.8, defense = 0.2}); end;
 	end;
 	if Types.store and Sense.round >= 12 and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores then
-		local want = Economy.StoreRegion();
+		local want, peak = Economy.StoreRegion();
 		if want then
-			add({type = Types.store, kind = 'tower', region = want}, {defense = 0.3, army = 0.3, spend = 0.3});
+			add({type = Types.store, kind = 'tower', region = want, peak = peak},
+				{defense = peak and 0.8 or 0.3, army = 0.3, spend = 0.3}, peak and ('Store on peak @'..want) or nil);
 			opts[#opts].have = Economy.Count(Types.store);
 		end;
 	end;
