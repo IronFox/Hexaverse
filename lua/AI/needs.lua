@@ -304,7 +304,7 @@ the exposure too. Returns layers of advantage an attacker would have (0 = none).
 Needs.groundCache = {};		-- cell index -> {h, round}
 Needs.exposureCache = {};	-- cell index .. '@' .. height -> {e, round}
 
-local function GroundHeight(u, cell)
+function Needs.GroundHeight(u, cell)
 	local c = Needs.groundCache[cell.index];
 	if c and Sense.round - c.round < 15 then return c.h; end;
 	local ok, g = pcall(Game.Grid.FindHighestVehicleGround, u, cell);
@@ -339,7 +339,7 @@ function Needs.Exposure(u, loc)
 			local d = dist(cell.center, loc.cell.center);
 			-- artillery reaches further downhill: every layer of height adds about a layer of range
 			if d <= reach + 8 * layer then
-				local h = GroundHeight(u, cell);
+				local h = Needs.GroundHeight(u, cell);
 				local rise = h and (h - loc.height) or 0;
 				if rise >= 2 and d <= reach + rise * layer then
 					e = math.max(e, rise - 1);
@@ -361,6 +361,113 @@ function Needs.Exposure(u, loc)
 	end;
 	Needs.exposureCache[key] = {e = e, round = Sense.round};
 	return e;
+end;
+
+--[[
+Strategic value of a region. A valley without natural resources is worthless. A peak can
+decide the match: artillery up there commands everything below. A valley with lots of
+resources is complicated: whoever holds the heights around it owns it, so either take
+those heights or put the mines underground where nobody sees them.
+  elevation: highest and average ground of a few sample cells (cached)
+  overlook:  how far a region looks down on its lowest neighbor (a peak)
+  exposed:   how far the highest unheld neighbor looks down on it
+]]
+Needs.elevCache = {};
+
+local function RefUnit()
+	for _,role in ipairs({'combat', 'constructor', 'aa', 'radar', 'surveyor'}) do
+		for _,u in ipairs(Sense.my[role] or {}) do
+			if u.health > 0 and u.location and not u.location.isSuborbital then return u; end;
+		end;
+	end;
+	return nil;
+end;
+
+function Needs.Elevation(reg)
+	local c = Needs.elevCache[reg.id];
+	if c and Sense.round - c.round < 30 then return c.max, c.mean; end;
+	local u = RefUnit();
+	if u == nil then return nil, nil; end;
+	local step = math.max(1, math.floor(#reg.cells / 8));
+	local mx, sum, n = nil, 0, 0;
+	for k = 1, #reg.cells, step do
+		local h = Needs.GroundHeight(u, reg.cells[k]);
+		if h then
+			mx = math.max(mx or h, h);
+			sum, n = sum + h, n + 1;
+		end;
+	end;
+	if n == 0 then return nil, nil; end;
+	Needs.elevCache[reg.id] = {max = mx, mean = sum / n, round = Sense.round};
+	return mx, sum / n;
+end;
+
+function Needs.Overlook(reg)
+	local mx = Needs.Elevation(reg);
+	if mx == nil then return 0; end;
+	local low = nil;
+	for nb,_ in pairs(reg.neighbors) do
+		local _, mean = Needs.Elevation(Map.regions[nb]);
+		if mean then low = math.min(low or mean, mean); end;
+	end;
+	return low and math.max(0, mx - low) or 0;
+end;
+
+-- How far unheld high ground next door looks down on this region
+function Needs.Exposed(reg)
+	local _, mean = Needs.Elevation(reg);
+	if mean == nil then return 0; end;
+	local e = 0;
+	for nb,_ in pairs(reg.neighbors) do
+		if not Sense.mine[nb] then
+			local mx = Needs.Elevation(Map.regions[nb]);
+			if mx then e = math.max(e, mx - mean); end;
+		end;
+	end;
+	return e;
+end;
+
+function Needs.StrategicValue(reg)
+	local res = Economy.ResourceCells(reg);
+	local v = res;
+	local over = Needs.Overlook(reg);
+	if over >= 2 then
+		v = v + over;
+		-- a peak is worth what it commands: the resources in the valleys below it
+		for nb,_ in pairs(reg.neighbors) do
+			local nr = Map.regions[nb];
+			local _, mean = Needs.Elevation(nr);
+			local mx = Needs.Elevation(reg);
+			if mean and mx and mx - mean >= 2 then
+				v = v + Economy.ResourceCells(nr) * math.min(1, (mx - mean) / 4) * 1.5;
+			end;
+		end;
+	end;
+	return v;
+end;
+
+--[[
+Overwatch: the unheld high ground that most endangers our resources. The peak next to a
+resource region of ours, scored by what it commands of ours. Nil if nothing qualifies.
+]]
+function Needs.Overwatch()
+	local best, bestV = nil, 0;
+	for id,_ in pairs(Sense.mine) do
+		local reg = Map.regions[id];
+		local res = Economy.ResourceCells(reg) + (reg.myStructures or 0);
+		local _, mean = Needs.Elevation(reg);
+		if mean and res > 0 then
+			for nb,_ in pairs(reg.neighbors) do
+				local nr = Map.regions[nb];
+				local mx = Needs.Elevation(nr);
+				if mx and mx - mean >= 2 and nr.hostileStructures == 0 and nr.staticThreat <= 0 then
+					local v = res * math.min(1, (mx - mean) / 4);
+					if v > bestV then best, bestV = nb, v; end;
+				end;
+			end;
+		end;
+	end;
+	return best, bestV;
 end;
 
 -- Room left in a region: 1 while half its cells are free, falling to 0 when it is full.
@@ -633,5 +740,15 @@ function Needs.Report()
 		if math.abs(m - 1) >= 0.05 then ad[#ad+1] = string.format('%s x%.2f', k, m); end;
 	end;
 	table.sort(ad);
+	if Sense.round % 30 == 0 then
+		local ow, owv = Needs.Overwatch();
+		local top, topV = nil, 0;
+		for id,reg in pairs(Map.regions) do
+			local v = Needs.StrategicValue(reg);
+			if v > topV then top, topV = id, v; end;
+		end;
+		Log(string.format('Needs: strategic top region %s (%.1f), overwatch %s (%.1f), home exposed %.0f layers',
+			tostring(top), topV, tostring(ow), owv or 0, Mem.homeRegion and Needs.Exposed(Map.regions[Mem.homeRegion]) or 0));
+	end;
 	if #ad > 0 then Log('Needs learned: '..table.concat(ad, ', ')..'; enemy AA sensed '..tostring(Needs.enemyAA)); end;
 end;

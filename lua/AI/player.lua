@@ -2430,7 +2430,8 @@ function Military.ChooseAttackTarget()
 	for _,id in ipairs(Sense.enemyRegions) do
 		local reg = Map.regions[id];
 		if not Sense.mine[id] then
-			local value = reg.hostileStructures * 3 + reg.mobileThreat * 0.2;
+			-- what is there, plus what holding it gives: a peak over resource valleys can decide the match
+			local value = reg.hostileStructures * 3 + reg.mobileThreat * 0.2 + Needs.StrategicValue(reg) * 0.5;
 			local hops = Sense.hops[id] or 20;
 			if Economy.MineShortage() or Economy.Count(Types.mine) < Cfg.minMines then
 				value = value + Economy.ResourceCells(reg) * 2;
@@ -2619,6 +2620,15 @@ function Military.DefenseRegion()
 		end;
 		if t > bestT then
 			best, bestT = id, t;
+		end;
+	end;
+	-- quiet at home: hold the high ground over our resources before someone else does
+	if bestT <= 0 then
+		local ow = Needs.Overwatch();
+		if ow then
+			if Military.overwatch ~= ow then Log('Holding high ground at region '..ow..' over our resources'); end;
+			Military.overwatch = ow;
+			return ow;
 		end;
 	end;
 	return best;
