@@ -237,6 +237,11 @@ function Needs.Update()
 	for _,f in pairs(Game.factions or {}) do
 		if f.name ~= 'Nexus' and f ~= Game.myFaction and f.isHostile ~= false then player = true; end;
 	end;
+	-- can drones cover my land? (a plane factory, drones researched, and enough of them flying)
+	local drones = 0;
+	for _,p in ipairs(Sense.my.plane or {}) do if p.type == Types.drone then drones = drones + 1; end; end;
+	local canDrones = Types.drone and Types.IsUnlocked(Types.drone) and Types.planeFactory and Economy.Count(Types.planeFactory) > 0;
+	Needs.dronesShort = not canDrones or drones < math.ceil(own / 4);
 	Needs.deepRisk = Sense.DeepMatters() and 1 or ((player and Sense.round >= 30) and 0.35 or 0.1);
 
 	local constructors = #Sense.my.constructor + (Sense.storedByRole.constructor or 0);
@@ -659,8 +664,16 @@ function Needs.StructureOptions(constructorIndex)
 			end;
 		end;
 		tower(Types.GroundTower(), c.ground, {defense = 0.6 + 0.6 * ground});
-		tower(Types.radarTower, c.radar, {scouting = Needs.blind[reg.id] and 1 or 0.5, defense = 0.4});
-		tower(Types.aaTower, c.aa, {air = math.min(1, airShare * 3), defense = 0.6 * airShare});
+		--[[
+		Radar sees the ground, AA the sky: each covers only its own layer. A drone covers both,
+		so only without enough drones do radar and AA go up in pairs: the one missing from a
+		spot that has the other gets a push for the coverage it completes.
+		]]
+		local noDrones = Needs.dronesShort;
+		local pairRadar = (noDrones and c.aa > 0 and c.radar == 0) and 0.4 or 0;
+		local pairAA = (noDrones and c.radar > 0 and c.aa == 0 and Sense.AirMatters()) and 0.4 or 0;
+		tower(Types.radarTower, c.radar, {scouting = (Needs.blind[reg.id] and 1 or 0.5) + pairRadar, defense = 0.4});
+		tower(Types.aaTower, c.aa, {air = math.min(1, airShare * 3), defense = 0.6 * airShare, scouting = pairAA});
 		if Mem.heavySeen >= 0 or Sense.round >= 60 then
 			tower(Types.launcherTower, c.launcher, {defense = 0.9 * ground});
 		end;
