@@ -53,7 +53,7 @@ local function clamp(x) return math.max(0, math.min(1, x)); end;
 function Needs.Weights()
 	local w = {
 		survival = 10, energy = 4, fuel = 4, income = 3, spend = 2, defense = 3,
-		air = 3, planes = 1, research = 1, scouting = 1.5, builders = 3, army = 1.5,
+		air = 3, planes = 1, research = 2.5, scouting = 1.5, builders = 3, army = 1.5,
 	};
 	for k,v in pairs(Cfg.needWeights or {}) do w[k] = v; end;
 	for k,m in pairs(Needs.adapt) do if w[k] then w[k] = w[k] * m; end; end;
@@ -214,6 +214,13 @@ function Needs.Update()
 		if labs == 0 then v.research = 0.6;
 		elseif labs < Cfg.wantLabs and round >= 15 then v.research = 0.3;
 		elseif minerals >= Cfg.richMinerals and labs < Cfg.wantLabsRich then v.research = 0.25; end;
+		-- what we want most is still locked: research is the way to it
+		local pfw = Types.planeFactory;
+		if pfw and not Types.IsUnlocked(pfw) and Needs.Weights().planes >= 3 and round >= 8 then
+			v.research = math.max(v.research, labs == 0 and 1 or 0.5);
+		end;
+		-- sitting on minerals with no lab: research is the best use
+		if labs == 0 and minerals >= 300 and round >= 8 then v.research = math.max(v.research, 0.9); end;
 	end;
 
 	local scouts = #Sense.my.surveyor + (Sense.storedByRole.surveyor or 0) + Economy.ScannerTowers();
@@ -555,11 +562,39 @@ end;
 
 -- Rate options and pick one. Options: {want=..., serves={...}, cost=n, name=...}.
 -- Returns the chosen option or nil (nothing worth it, or saving up)
+--[[
+Learn from orders that come to nothing: an option chosen but never started (no site, no
+path, vetoed further down) is chosen again next round, forever. Each such failure halves
+that option's score for a while, so the next best thing gets built instead.
+]]
+Needs.failed = {};		-- option name -> {n, round}
+
+function Needs.FailFactor(name)
+	local f = Needs.failed[name];
+	if f == nil then return 1; end;
+	local n = f.n - math.floor((Sense.round - f.round) / 5);	-- forget one failure every 5 rounds
+	if n <= 0 then Needs.failed[name] = nil; return 1; end;
+	return 0.5 ^ n;
+end;
+
+function Needs.Failed(name)
+	local f = Needs.failed[name] or {n = 0, round = Sense.round};
+	f.n = math.min(6, f.n + 1);
+	f.round = Sense.round;
+	Needs.failed[name] = f;
+	Needs.Note('order for '..name..' came to nothing ('..f.n..'x): weighing it down');
+end;
+
+-- A structure order was placed: the pending choice worked out
+function Needs.Started()
+	Needs.pending = nil;
+end;
+
 function Needs.Choose(options, what, budget)
 	local best, bestS = nil, Needs.minScore;
 	local bestAny, bestAnyS = nil, 0;
 	for _,o in ipairs(options) do
-		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1) * Needs.Have(o.have, o.cap, o.swarm);
+		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1) * Needs.Have(o.have, o.cap, o.swarm) * Needs.FailFactor(o.name);
 		if o.score > bestAnyS then bestAny, bestAnyS = o, o.score; end;
 		local affordable = budget == nil or (o.cost or 0) <= budget + 50;
 		if affordable and o.score > bestS then best, bestS = o, o.score; end;
@@ -735,6 +770,8 @@ end;
 function Needs.AdjustStructureOptions(opts) return opts; end;
 
 function Needs.NextStructure(constructorIndex)
+	-- the last choice never turned into an order
+	if Needs.pending then Needs.Failed(Needs.pending); Needs.pending = nil; end;
 	local cur = Economy.Resources();
 	local minerals = cur.storage.minerals or 0;
 	local opts = Needs.AdjustStructureOptions(Needs.StructureOptions(constructorIndex));
@@ -757,6 +794,7 @@ function Needs.NextStructure(constructorIndex)
 		table.insert(Needs.ordered[best.key], Sense.round);
 	end;
 	Needs.Note(string.format('build %s (%.2f)', best.name, best.score));
+	Needs.pending = best.name;
 	return want;
 end;
 

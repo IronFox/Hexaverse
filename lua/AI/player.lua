@@ -2078,6 +2078,7 @@ function Economy.BuildAt(u, loc, t, reachable)
 		Log('BuildStructure failed: '..tostring(err));
 		return false;
 	end;
+	Needs.Started();
 	local reg = Map.RegionOfLoc(loc);
 	Mem.jobs[u.id] = {kind = t.name, cell = loc.cell.index, since = Sense.round, at = loc.cell.index, region = reg and reg.id};
 	-- count it right away, so other constructors assigned this frame don't pick the same structure
