@@ -310,6 +310,7 @@ function Needs.Update()
 		end;
 	end;
 	Needs.ApplyBlocks(v);
+	Needs.UpdateBudgets(v, minerals, math.max(0, cur.balance and cur.balance.minerals or 0));
 end;
 
 -- weight of a need key (survival* share the survival weight)
@@ -712,6 +713,94 @@ function Needs.Unsupported(t)
 	return nil;
 end;
 
+-------------------------------------------------------------------------------
+-- Goals and budgets
+-------------------------------------------------------------------------------
+
+--[[
+Priorities and resource allocation: task -> resources allocated -> implementation. Each need
+belongs to a goal. A goal's value is its strongest weighted need, and every round's mineral
+income is split across the goals by value. An option can only be bought from its own
+goal's account, so a cheap, busy goal can't spend what a valuable, expensive one is saving
+up for (builders eating the plane factory's minerals). Survival emergencies may draw on
+everything, and with storage full anything goes: income is being lost.
+]]
+Needs.goalOf = {
+	survival = 'survive', defense = 'survive', air = 'survive',
+	income = 'economy', energy = 'economy', fuel = 'economy', prospecting = 'economy', builders = 'economy', spend = 'economy',
+	research = 'research', planes = 'airpower', scouting = 'knowledge', army = 'army',
+};
+Needs.account = {};		-- goal -> minerals allocated to it and not yet spent
+Needs.committed = 0;	-- ordered but not yet drawn from storage
+Needs.goalValue = {};
+
+local function GoalKey(k)
+	if string.sub(k, 1, 8) == 'survival' then return 'survive'; end;
+	return Needs.goalOf[k] or 'economy';
+end;
+
+-- The goal an option serves most
+function Needs.GoalOf(o)
+	local w = Needs.Weights();
+	local best, bestV = 'economy', -1;
+	for k,amount in pairs(o.serves or {}) do
+		local val = (k:sub(1, 8) == 'survival' and w.survival or (w[k] or 1)) * (Needs.v[k] or 0) * amount;
+		if val > bestV then best, bestV = GoalKey(k), val; end;
+	end;
+	return best;
+end;
+
+function Needs.UpdateBudgets(v, storage, income)
+	local w = Needs.Weights();
+	local val, sum = {}, 0;
+	for k,x in pairs(v) do
+		local g = GoalKey(k);
+		local wk = k:sub(1, 8) == 'survival' and w.survival or (w[k] or 1);
+		val[g] = math.max(val[g] or 0, wk * x);
+	end;
+	for g,x in pairs(val) do sum = sum + x; end;
+	if sum <= 0 then return; end;
+	Needs.goalValue = val;
+	-- what was drawn from storage since last round pays off commitments first
+	local prev = Needs.prevStorage or storage;
+	local drawn = math.max(0, prev + income - storage);
+	-- (orders that came to nothing never draw: commitments fade, and never exceed storage)
+	Needs.committed = math.min(storage, math.max(0, Needs.committed - drawn) * 0.8);
+	Needs.prevStorage = storage;
+	for g,x in pairs(val) do
+		Needs.account[g] = (Needs.account[g] or 0) + income * x / sum;
+	end;
+	-- storage is the truth: minerals no account holds are shared out by value, accounts
+	-- holding more than there is shrink alike
+	local held = 0;
+	for g,a in pairs(Needs.account) do
+		if val[g] == nil then Needs.account[g] = nil; else held = held + math.max(0, a); end;
+	end;
+	local free = storage - Needs.committed - held;
+	if free > 0 then
+		for g,x in pairs(val) do Needs.account[g] = (Needs.account[g] or 0) + free * x / sum; end;
+	elseif held > 0 then
+		local f = math.max(0, storage - Needs.committed) / held;
+		for g,a in pairs(Needs.account) do if a > 0 then Needs.account[g] = a * f; end; end;
+	end;
+end;
+
+-- What this option may spend: its goal's account, or everything in an emergency
+function Needs.Available(o, budget)
+	if budget == nil or budget >= 450 then return budget; end;
+	local g = Needs.GoalOf(o);
+	if g == 'survive' and Needs.Urgency(o) >= 0.7 then return budget; end;
+	return math.min(budget, math.max(0, Needs.account[g] or 0));
+end;
+
+function Needs.Charge(o)
+	if o == nil then return; end;
+	local g = Needs.GoalOf(o);
+	-- (emergencies and full storage spend past the account: a small debt at most, not a grudge)
+	Needs.account[g] = math.max(-50, (Needs.account[g] or 0) - (o.cost or 0));
+	Needs.committed = Needs.committed + (o.cost or 0);
+end;
+
 function Needs.Choose(options, what, budget)
 	-- storage nearly full: income is being thrown away, anything useful beats nothing
 	local full = (budget or 0) >= 450;
@@ -722,7 +811,8 @@ function Needs.Choose(options, what, budget)
 		-- its foundation is gone: restore that first
 		if what == 'structure' and o.want and Needs.Unsupported(o.want.type) then o.score = o.score * 0.1; end;
 		if o.score > bestAnyS then bestAny, bestAnyS = o, o.score; end;
-		local affordable = budget == nil or (o.cost or 0) <= budget + 50;
+		local avail = Needs.Available(o, budget);
+		local affordable = avail == nil or (o.cost or 0) <= avail + 50;
 		if affordable and o.score > bestS then best, bestS = o, o.score; end;
 	end;
 	return best, bestAny;
@@ -915,8 +1005,11 @@ function Needs.NextStructure(constructorIndex)
 	if top and top ~= best and minerals < 450 and not income and (best == nil or best.score < top.score * 0.6) then
 		Needs.Block('saving for '..top.name, 'income', Needs.Urgency(top));
 	end;
-	if top and top ~= best and minerals < 450 and income and (best == nil or best.score < top.score * 0.6) then
-		Needs.saving = {score = top.score, cost = top.cost, name = top.name, round = Sense.round};
+	-- (saving is per goal now: another goal's cheaper option spends its own account, it
+	-- doesn't take from the one being saved up)
+	if top and top ~= best and minerals < 450 and income and (best == nil or best.score < top.score * 0.6)
+		and (best == nil or Needs.GoalOf(best) == Needs.GoalOf(top)) then
+		Needs.saving = {score = top.score, cost = top.cost, name = top.name, round = Sense.round, goal = Needs.GoalOf(top)};
 		Needs.Note('saving for '..top.name..string.format(' (%.2f)', top.score));
 		return nil;
 	end;
@@ -934,6 +1027,7 @@ function Needs.NextStructure(constructorIndex)
 	Needs.Note(string.format('build %s (%.2f)', best.name, best.score));
 	Needs.pending = best.name;
 	Needs.pendingUrgency = Needs.Urgency(best);
+	Needs.Charge(best);
 	return want;
 end;
 
@@ -1016,10 +1110,12 @@ function Needs.NextVehicle(kit)
 	if best == nil then return nil; end;
 	-- the constructors are saving for something that matters more: hold back
 	local s = Needs.saving;
-	if s and Sense.round - s.round <= 1 and best.score < s.score * 0.8 and minerals - best.cost < s.cost then
+	if s and Sense.round - s.round <= 1 and best.score < s.score * 0.8 and minerals - best.cost < s.cost
+		and Needs.GoalOf(best) == s.goal then
 		return nil;
 	end;
 	Needs.Note(string.format('produce %s (%.2f)', best.name, best.score));
+	Needs.Charge(best);
 	return best.want;
 end;
 
@@ -1054,6 +1150,10 @@ function Needs.Report()
 	end;
 	table.sort(bl);
 	if #bl > 0 then Log('Needs blocked: '..table.concat(bl, '; ')); end;
+	local gs = {};
+	for g,x in pairs(Needs.goalValue or {}) do gs[#gs+1] = string.format('%s %.1f/%d', g, x, math.floor(Needs.account[g] or 0)); end;
+	table.sort(gs);
+	if #gs > 0 then Log('Needs goals (value/minerals): '..table.concat(gs, ', ')..string.format('; committed %d', math.floor(Needs.committed))); end;
 	local ad = {};
 	for k,m in pairs(Needs.adapt) do
 		if math.abs(m - 1) >= 0.05 then ad[#ad+1] = string.format('%s x%.2f', k, m); end;
