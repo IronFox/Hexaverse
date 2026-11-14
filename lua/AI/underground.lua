@@ -2105,6 +2105,8 @@ function Mole.SurfaceDependent()
 	return not Mole.EssentialsBelow();
 end;
 local function MaxTowers()
+	-- no cavern on this map: a surface faction like any other, defended like one
+	if Mole.phase == 'surface' then return 99; end;
 	if Mole.SurfaceDependent() and (Mole.surfaceBuilder or (not Mole.sealed and Economy.allowSurface)) then
 		return Cfg.moleSurfaceTowers;
 	end;
