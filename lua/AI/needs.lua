@@ -461,7 +461,14 @@ function Needs.Overwatch()
 				local nr = Map.regions[nb];
 				local mx = Needs.Elevation(nr);
 				if mx and mx - mean >= 2 and nr.hostileStructures == 0 and nr.staticThreat <= 0 then
-					local v = res * math.min(1, (mx - mean) / 4);
+					-- a peak deep inside our own territory is probably (not certainly) less
+					-- urgent: an enemy has to get through us first. Count how much of it we surround
+					local inner, total = Sense.mine[nb] and 1 or 0, 1;
+					for nn,_ in pairs(nr.neighbors) do
+						total = total + 1;
+						if Sense.mine[nn] then inner = inner + 1; end;
+					end;
+					local v = res * math.min(1, (mx - mean) / 4) * (1 - 0.7 * inner / total);
 					if v > bestV then best, bestV = nb, v; end;
 				end;
 			end;
