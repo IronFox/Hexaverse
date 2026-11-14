@@ -807,7 +807,9 @@ function Mole.Update()
 	if Mole.Ceiling(u) then
 		return;
 	end;
-	-- then tunnel to a requested mine site, otherwise widen the cavern when space runs out
+	-- then tunnel to a requested mine site, or outward to find some; otherwise widen the
+	-- cavern when space runs out
+	if not Mole.tunnelGoal then Mole.ProspectTunnel(u); end;
 	if Mole.tunnelGoal then
 		Mole.Tunnel(u);
 		return;
@@ -934,6 +936,12 @@ function Mole.Tunnel(u)
 	local cell = CellByIndex(Mole.tunnelGoal);
 	if cell == nil or Mole.IsOpen(cell) then
 		if cell then Log('Tunnel reached cell '..Mole.tunnelGoal); end;
+		-- a prospecting corridor: the surveyor comes to its end and looks around
+		if cell and Mole.prospecting == Mole.tunnelGoal then
+			Mole.surveyPost = Mole.tunnelGoal;
+			Mole.surveyUntil = Sense.round + 12;
+			Mole.prospecting = nil;
+		end;
 		Mole.tunnelGoal = nil;
 		Mole.tunnelFails = 0;
 	elseif Mole.DigToward(u, cell) then
@@ -943,11 +951,61 @@ function Mole.Tunnel(u)
 		Mole.tunnelFails = (Mole.tunnelFails or 0) + 1;
 		if Mole.tunnelFails >= 5 then
 			Log('Tunnel to cell '..Mole.tunnelGoal..' gives up at cell '..u.location.cell.index);
+			-- a corridor that got only part of the way still widens the view
+			if Mole.prospecting == Mole.tunnelGoal then
+				Mole.surveyPost = u.location.cell.index;
+				Mole.surveyUntil = Sense.round + 12;
+				Mole.prospecting = nil;
+			end;
 			Economy.Blacklist(Mole.tunnelGoal, 60);
 			Mole.tunnelGoal = nil;
 			Mole.tunnelFails = 0;
 		end;
 	end;
+end;
+
+--[[
+Caves far and wide. A surveyor sees deep but not far, and the cave AI's surveyor stays in
+the cave: so the cave goes to where there is something to find. While the cavern lacks its
+essentials or knows few resource sites, the digger drives one-cell corridors outward, each
+in the direction furthest from the earlier ones, and the surveyor moves to each new end.
+Every corridor widens both what is known and what can be reached from below.
+]]
+Mole.prospectEnds = {};
+function Mole.ProspectTunnel(u)
+	if Mole.tunnelGoal or not Mole.shaftCell then return false; end;
+	local ks = Economy.knownSites or {};
+	local want = not Mole.EssentialsBelow() or (ks['Minerals'] or 9) < 3 or (ks['Fuel'] or 9) < 3;
+	if not want then return false; end;
+	-- the surveyor is still looking at the last end
+	if Mole.surveyUntil and Sense.round < Mole.surveyUntil - 6 then return false; end;
+	local center = CellByIndex(Mole.shaftCell);
+	local lap = math.floor(#Mole.prospectEnds / 6);
+	if lap >= 3 then return false; end;
+	local reach = Mole.rings + 4 + lap * 4;
+	local inner = {};
+	for _,c in ipairs(Mole.Rings(center, reach - 1)) do inner[c.index] = true; end;
+	local best, bestD = nil, nil;
+	for _,c in ipairs(Mole.Rings(center, reach)) do
+		local bl = Mem.blacklist[c.index];
+		if not inner[c.index] and not (bl and bl > Sense.round) and not Mole.IsOpen(c) then
+			-- furthest from every earlier corridor end
+			local d = 1e9;
+			for _,idx in ipairs(Mole.prospectEnds) do
+				local e = CellByIndex(idx);
+				if e then d = math.min(d, D2(c.center, e.center)); end;
+			end;
+			if #Mole.prospectEnds == 0 then d = -D2(c.center, u.location.cell.center); end;
+			if bestD == nil or d > bestD then best, bestD = c, d; end;
+		end;
+	end;
+	if best == nil then return false; end;
+	Mole.tunnelGoal = best.index;
+	Mole.prospecting = best.index;
+	Mole.urgent = false;
+	table.insert(Mole.prospectEnds, best.index);
+	Log('Prospecting: corridor '..#Mole.prospectEnds..' outward to cell '..best.index..' ('..reach..' cells from the shaft)');
+	return true;
 end;
 
 -- Is there a mine on a mineral (or fuel) cell below ground?
@@ -968,7 +1026,9 @@ kills it. A mineral mine below ground comes first: tunnel to the nearest
 mineral site unless one is already open to build on.
 ]]
 function Mole.UrgentMineTunnel()
-	if Mole.tunnelGoal or Mole.MineBelow('Minerals') then return Mole.tunnelGoal ~= nil and Mole.urgent; end;
+	-- (a prospecting corridor gives way to a known mineral site)
+	local prospect = Mole.tunnelGoal ~= nil and Mole.tunnelGoal == Mole.prospecting;
+	if (Mole.tunnelGoal and not prospect) or Mole.MineBelow('Minerals') then return Mole.tunnelGoal ~= nil and Mole.urgent; end;
 	Mole.urgent = false;
 	local center = CellByIndex(Mole.shaftCell);
 	local best, bd = nil, nil;
@@ -982,6 +1042,7 @@ function Mole.UrgentMineTunnel()
 	end;
 	if best == nil then return false; end;
 	Mole.tunnelGoal = best.index;
+	Mole.prospecting = nil;
 	Mole.urgent = true;
 	Log('No mineral mine below ground: tunnelling to mineral site at cell '..best.index);
 	return true;
@@ -1441,7 +1502,8 @@ function Military.Scouts()
 		Military.keepScripted[first.id] = true;
 		if first.isAutomated and first.SetAutomation then pcall(first.SetAutomation, false); end;
 	end;
-	if Mole.phase ~= 'live' or Mole.tunnelGoal or Mole.waitSurvey then
+	if Mole.surveyUntil and Sense.round >= Mole.surveyUntil then Mole.surveyPost, Mole.surveyUntil = nil, nil; end;
+	if Mole.phase ~= 'live' or Mole.tunnelGoal or Mole.waitSurvey or Mole.surveyPost then
 		escort = Sense.my.surveyor[1];
 	end;
 	if escort then
@@ -1450,6 +1512,8 @@ function Military.Scouts()
 		-- From the shaft bottom its deep scan still covers the cavern around it
 		local d = Mole.Digger();
 		local cell = Mole.shaftCell and CellByIndex(Mole.shaftCell) or (d and d.location.cell);
+		-- the end of a new corridor: that is where there is something new to see
+		if Mole.surveyPost and not Mole.waitSurvey then cell = CellByIndex(Mole.surveyPost) or cell; end;
 		-- not on the shaft bottom itself either (units coming down land there): an open
 		-- cavern cell next to it, away from the digger
 		if cell and Mole.phase ~= 'shaft' then
