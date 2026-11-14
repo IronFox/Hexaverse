@@ -53,7 +53,7 @@ local function clamp(x) return math.max(0, math.min(1, x)); end;
 function Needs.Weights()
 	local w = {
 		survival = 10, energy = 4, fuel = 4, income = 3, spend = 2, defense = 3,
-		air = 3, planes = 1, research = 2.5, scouting = 1.5, builders = 3, army = 1.5,
+		air = 3, planes = 1, research = 2.5, scouting = 1.5, prospecting = 3, builders = 3, army = 1.5,
 	};
 	for k,v in pairs(Cfg.needWeights or {}) do w[k] = v; end;
 	for k,m in pairs(Needs.adapt) do if w[k] then w[k] = w[k] * m; end; end;
@@ -250,6 +250,10 @@ function Needs.Update()
 
 	local scouts = #Sense.my.surveyor + (Sense.storedByRole.surveyor or 0) + Economy.ScannerTowers();
 	v.scouting = scouts == 0 and 0.7 or (Economy.MineShortage() and 0.4 or 0.05);
+	-- prospecting: no mineral site known means no new income. Surveyors find them (they see
+	-- resources in the ground); one is rarely enough when the known sites run out
+	local noMin = Economy.noMineSite['Minerals'] and round - Economy.noMineSite['Minerals'] <= 10;
+	v.prospecting = noMin and 0.9 or 0;
 	if Sense.DeepMatters() and #Sense.my.surveyor < Cfg.maxSurveyorsDeep then v.scouting = math.max(v.scouting, 0.5); end;
 	-- coverage of my own land: a region of mine out of sight could hide anything that slipped through
 	local own, blind = 0, 0;
@@ -879,8 +883,8 @@ function Needs.VehicleOptions(kit)
 		opts[#opts].have = have('aa');
 		opts[#opts].cap = math.max(1, spots * 2);
 	end;
-	add(Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover), {scouting = 1});
-	if #opts > 0 then opts[#opts].have = have('surveyor'); end;
+	add(Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover), {scouting = 1, prospecting = 1});
+	if #opts > 0 then opts[#opts].have = have('surveyor'); opts[#opts].cap = 3; end;
 	add(Types.Vehicle(Types.turret.radar, Types.base.hover), {scouting = 0.5, defense = 0.3});
 	if #opts > 0 then opts[#opts].have = math.floor(have('radar') * Cfg.radarPerCombat / math.max(1, combat)); end;
 	return opts;

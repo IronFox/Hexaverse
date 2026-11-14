@@ -1741,15 +1741,16 @@ end;
 
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
-	if Economy.labReserved[idx] and not Economy.allowLabSite then return false; end;
-	if Economy.IsPowerCenter(idx) and not Economy.allowPowerCenter then return false; end;
-	if Economy.IsPowerRing(idx) and not Economy.allowPowerRing then return false; end;
+	if Economy.labReserved[idx] and not Economy.allowLabSite then Economy.siteWhy = 'lab reserve'; return false; end;
+	if Economy.IsPowerCenter(idx) and not Economy.allowPowerCenter then Economy.siteWhy = 'power center'; return false; end;
+	-- a resource cell on a planned generator ring still goes to a mine: income beats a ring slot
+	if Economy.IsPowerRing(idx) and not Economy.allowPowerRing and not forMine then Economy.siteWhy = 'power ring'; return false; end;
 	local bl = Mem.blacklist[idx];
-	if bl and bl > Sense.round then return false; end;
-	if Game.GetStructureAt(loc) ~= nil then return false; end;
+	if bl and bl > Sense.round then Economy.siteWhy = 'blacklisted'; return false; end;
+	if Game.GetStructureAt(loc) ~= nil then Economy.siteWhy = 'structure'; return false; end;
 	local other = Game.GetMobileAt(loc);
-	if other ~= nil and not other.isOwnedByMe then return false; end;
-	if Game.Grid.AffectedByEMP(loc) then return false; end;
+	if other ~= nil and not other.isOwnedByMe then Economy.siteWhy = 'hostile unit'; return false; end;
+	if Game.Grid.AffectedByEMP(loc) then Economy.siteWhy = 'emp'; return false; end;
 	if not forMine then
 		-- keep resource cells free for mines
 		local res = Game.Grid.GetNaturalResourcesAt and Game.Grid.GetNaturalResourcesAt(loc.cell);
@@ -1758,7 +1759,7 @@ function Economy.SiteOK(loc, forMine)
 		end;
 	end;
 	-- don't build where remembered or sensed hostiles can hit
-	if Move.IsDangerous(loc) then return false; end;
+	if Move.IsDangerous(loc) then Economy.siteWhy = 'danger'; return false; end;
 	-- never box in a vehicle plant: finished vehicles need somewhere to deploy
 	for _,nb in ipairs(loc.cell.neighbors) do
 		if Economy.plantCells[nb.index] then
@@ -1766,7 +1767,7 @@ function Economy.SiteOK(loc, forMine)
 			for _,pn in ipairs(Economy.plantCells[nb.index].neighbors) do
 				if pn.index ~= idx and not Sense.structureCells[pn.index] and not Economy.claimed[pn.index] then pfree = pfree + 1; end;
 			end;
-			if pfree < Cfg.plantFreeCells then return false; end;
+			if pfree < Cfg.plantFreeCells then Economy.siteWhy = 'boxes in plant'; return false; end;
 		end;
 	end;
 	-- the constructor must be able to move off the finished structure
@@ -1774,7 +1775,7 @@ function Economy.SiteOK(loc, forMine)
 	for _,nb in ipairs(loc.cell.neighbors) do
 		if not Sense.structureCells[nb.index] and not Economy.claimed[nb.index] then free = free + 1; end;
 	end;
-	if free < 2 then return false; end;
+	if free < 2 then Economy.siteWhy = 'no room to leave'; return false; end;
 	return true;
 end;
 
@@ -1926,10 +1927,11 @@ function Economy.FindMineCells(resource, maxCount)
 	if cache == nil or cache.round ~= Sense.round then
 		local list = {};
 		local seen = {};
+		local maxHops = 2;
 		local function Scan(reg)
 			if seen[reg.id] then return; end;
 			seen[reg.id] = true;
-			if (Sense.Threat(reg) > 0 and not Cfg.minesBelowThreat) or (Sense.hops[reg.id] or 99) > 2 then return; end;
+			if (Sense.Threat(reg) > 0 and not Cfg.minesBelowThreat) or (Sense.hops[reg.id] or 99) > maxHops then return; end;
 			for _,cell in ipairs(reg.cells) do
 				if not Sense.structureCells[cell.index] then
 					local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, resource, cell);
@@ -1942,6 +1944,14 @@ function Economy.FindMineCells(resource, maxCount)
 		for id,_ in pairs(Sense.mine) do
 			Scan(Map.regions[id]);
 			for nb,_ in pairs(Map.regions[id].neighbors) do Scan(Map.regions[nb]); end;
+		end;
+		-- nothing close: look one ring further out (expanding beats starving)
+		if #list == 0 then
+			maxHops = 3;
+			seen = {};
+			for id,reg in pairs(Map.regions) do
+				if (Sense.hops[id] or 99) <= 3 then Scan(reg); end;
+			end;
 		end;
 		-- richer and closer first
 		table.sort(list, function(a,b) return a.level / (1 + a.hops) > b.level / (1 + b.hops) end);
@@ -2159,19 +2169,21 @@ function Economy.AssignConstructor(u, index)
 				why.cands = why.cands + 1;
 				local dest = Move.GroundAt(u, cell);
 				local reg = dest and Map.RegionOfLoc(dest);
-				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= 2;
+				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= 3;
 				if dest == nil then why.noGround = why.noGround + 1;
 				elseif not safe then
-					if reg and (Sense.hops[reg.id] or 99) > 2 then why.far = why.far + 1; else why.unsafe = why.unsafe + 1; end;
-				elseif not Economy.SiteOK(dest, true) then why.site = why.site + 1;
+					if reg and (Sense.hops[reg.id] or 99) > 3 then why.far = why.far + 1; else why.unsafe = why.unsafe + 1; end;
+				elseif not Economy.SiteOK(dest, true) then
+					why.site = why.site + 1;
+					why.reasons = (why.reasons or '')..' '..tostring(Economy.siteWhy);
 				elseif Economy.BuildAt(u, dest, want.type) then
 					Economy.claimed[cell.index] = true;
 					return;
 				else why.build = why.build + 1; end;
 			end;
 			if Sense.round % 5 == 0 then
-				Log(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected, %d build failed',
-					res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.build));
+				Log(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed',
+					res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.reasons or '', why.build));
 			end;
 		end;
 		-- no safe known resource spot: remember that for this round and build the next best thing instead
@@ -3346,7 +3358,8 @@ function Military.Scouts()
 							score = score * 4;
 						end;
 						-- short on mines and no known site: survey my nearby ground for resources
-						if Economy.MineShortage() and (Sense.hops[reg.id] or 99) <= 2 then
+						local noMinerals = Economy.noMineSite['Minerals'] and Sense.round - Economy.noMineSite['Minerals'] <= 10;
+						if (Economy.MineShortage() or noMinerals) and (Sense.hops[reg.id] or 99) <= 3 then
 							score = score * 6;
 						end;
 					end;
