@@ -67,6 +67,7 @@ Mole = {
 	sealTries = 0,
 	liveRound = nil,
 };
+Cfg.moleMineProven = 10;	-- rounds a mine below must have produced before a surface mine of its kind goes
 Cfg.moleSealAfter = 6;	-- rounds to wait for units still on the surface before sealing anyway
 Cfg.moleSealRings = 1;	-- seal once this many rings around the shaft are open; dig the rest sealed
 Cfg.moleDigTimeout = 6;		-- rounds a single dig order may take
@@ -1019,16 +1020,27 @@ function Mole.MinesReplaced(surfaceMines)
 			local k = Kind(st);
 			local sup = st.balance and st.balance.supply;
 			local made = sup and (k == 'fuel' and sup.fuel or sup.minerals) or 0;
-			if made > 0 then below[k] = below[k] + 1; end;
+			-- and has kept producing for a while: a supply figure alone showed up a round
+			-- after placement, and twice the faction died right after the surface mine went
+			Mole.mineSince = Mole.mineSince or {};
+			if made > 0 and st.isEnabled ~= false then
+				Mole.mineSince[st.id] = Mole.mineSince[st.id] or Sense.round;
+			else
+				Mole.mineSince[st.id] = nil;
+			end;
+			if Mole.mineSince[st.id] and Sense.round - Mole.mineSince[st.id] >= Cfg.moleMineProven then
+				below[k] = below[k] + 1;
+			end;
 		end;
 	end;
 	for _,st in ipairs(surfaceMines) do
 		local k = Kind(st);
 		above[k] = above[k] + 1;
 	end;
+	-- keep the last surface mine of each kind until two proven mines run below
 	for _,st in ipairs(surfaceMines) do
 		local k = Kind(st);
-		if below[k] >= 1 and below[k] >= above[k] then return st; end;
+		if below[k] >= 2 and below[k] >= above[k] then return st; end;
 	end;
 	return nil;
 end;

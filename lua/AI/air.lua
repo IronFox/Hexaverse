@@ -58,6 +58,14 @@ function Economy.NextStructure(index)
 		and not (want.type == Types.plant and Economy.WorkingPlants() == 0) then
 		return nil;
 	end;
+	-- the plane factory burns fuel every round: without spare fuel it shuts down
+	if #Sense.planeFactories > 0 then
+		local _, max = Economy.Resources();
+		if ((max.balance or {}).fuel or 0) <= 0 then
+			local m = Economy.MineReq('Fuel');
+			if m then return m; end;
+		end;
+	end;
 	-- while the factory research runs: mines instead of towers, so income is up when it completes
 	if want and want.kind == 'tower' and Air.Researching() and Sense.Pressure() <= 3 then
 		return Economy.MineReq('Minerals');
