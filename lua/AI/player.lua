@@ -3075,6 +3075,29 @@ function Military.AA()
 		cx, cy, cz, cn = cx + w.x, cy + w.y, cz + w.z, cn + 1;
 	end;
 	local aaPosts = {};
+	--[[
+	Leapfrog: AA that must stand still to fire covers nothing while it moves. Two in one
+	group (the same guarded region, or the army escort) take turns while air is around:
+	one moves, the other stays put and covers it.
+	]]
+	local groupOf, groupSize = {}, {};
+	for i,v in ipairs(Sense.my.aa) do
+		local g = (Mem.posture == 'attack' and cn > 0 and i % 2 == 0) and 'escort'
+			or tostring(((i-1) % math.max(1,#targets)) + 1);
+		groupOf[v.id] = g;
+		groupSize[g] = (groupSize[g] or 0) + 1;
+	end;
+	local turn = {};
+	local function MayMove(v)
+		local g = groupOf[v.id];
+		if (groupSize[g] or 0) < 2 or not Military.NeedsStationary(v) then return true; end;
+		local reg = Map.RegionOfLoc(v.location);
+		local air = reg and reg.airThreat or 0;
+		if reg then for nb,_ in pairs(reg.neighbors) do air = air + Map.regions[nb].airThreat; end; end;
+		if air <= 0 then return true; end;
+		turn[g] = (turn[g] or 0) + 1;
+		return (turn[g] + Sense.round) % 2 == 0;
+	end;
 	for i,v in ipairs(Sense.my.aa) do
 		SafeCall('aa '..v.niceName, function()
 			local fired = Military.Fire(v);
@@ -3087,12 +3110,13 @@ function Military.AA()
 				local post = t and Military.PostFor(v, t.reg.id, aaPosts);
 				if post then
 					aaPosts[post.key] = true;
-					if Dist2(v.location.world, post.loc.world) >= 0.01 then
+					if Dist2(v.location.world, post.loc.world) >= 0.01 and MayMove(v) then
 						Move.Towards(v, post.loc.world, post.cell, true, false);
 					end;
 					return;
 				end;
 			end;
+			if not MayMove(v) then return; end;	-- the partner moves this round
 			if Mem.posture == 'attack' and cn > 0 and i % 2 == 0 then
 				local c = {x=cx/cn, y=cy/cn, z=cz/cn};
 				Move.Towards(v, c, nil, true, false);

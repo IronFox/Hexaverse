@@ -114,6 +114,34 @@ end;
 Terrain check before digging into (cell, height): never next to lava, and never
 into unknown terrain (wait for a surveyor to look). Returns 'ok', 'lava' or 'unknown'.
 ]]
+--[[
+Water: below the water table, dug cells fill with water (it flows) and the cavern
+never opens. True if the cell or its neighbors hold water at h..h+2.
+]]
+function Mole.WaterNear(cell, h)
+	local C = Game.Terrain and Game.Terrain.Content;
+	if not (C and C.Water and Game.Terrain.TranslateUnitCell and Game.Terrain.GetContent) then return false; end;
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+	if not ok or tc == nil then return false; end;
+	local cells = {tc};
+	for _,n in ipairs(tc.neighbors or {}) do cells[#cells+1] = n; end;
+	for _,c in ipairs(cells) do
+		for dh = 0, 2 do
+			local okc, content = pcall(Game.Terrain.GetContent, c, h + dh);
+			if okc and content == C.Water then return true; end;
+		end;
+	end;
+	return false;
+end;
+
+-- Any water in the cavern area (rings + 1 around a cell) at a cavern level
+function Mole.WetArea(center, level)
+	for _,c in ipairs(Mole.Rings(center, Mole.rings + 1)) do
+		if Mole.WaterNear(c, level) then return true; end;
+	end;
+	return false;
+end;
+
 function Mole.DigCheck(cell, h)
 	if not (Game.Terrain and Game.Terrain.TranslateUnitCell and Game.Terrain.GetContent) then return 'ok'; end;
 	local C = Game.Terrain.Content or {};
@@ -134,6 +162,7 @@ function Mole.DigCheck(cell, h)
 			local ok2, content = pcall(Game.Terrain.GetContent, c, h + dh);
 			if ok2 and content then
 				if C.Lava and content == C.Lava then return 'lava'; end;
+				if C.Water and content == C.Water and dh >= 0 then return 'water'; end;
 				if i == 1 and C.Unknown and content == C.Unknown and dh >= 0 and dh <= 1 then unknown = true; end;
 			end;
 		end;
@@ -417,8 +446,8 @@ function Mole.DigToward(u, targetCell)
 		if loc == nil then return false; end;
 	end;
 	local check = Mole.DigCheck(best, Mole.level);
-	if check == 'lava' or check == 'breach' then
-		Log((check == 'lava' and 'Lava next to' or 'Open space above')..' cell '..best.index..': not digging there');
+	if check == 'lava' or check == 'breach' or check == 'water' then
+		Log(({lava = 'Lava next to', breach = 'Open space above', water = 'Water next to'})[check]..' cell '..best.index..': not digging there');
 		Economy.Blacklist(best.index, 200);
 		Mole.tunnelGoal = nil;
 		return false;
@@ -481,6 +510,8 @@ function Mole.PickShaftCellKeep(u, taken, reach, keep)
 			local ok, res = pcall(Game.Grid.GetNaturalResourcesAt, c);
 			local resCell = ok and res and ((res.minerals or 0) > 0 or (res.fuel or 0) > 0);
 			local d = D2(c.center, u.location.cell.center) + (resCell and 1 or 0);
+			-- water at cavern depth floods the cavern: strongly prefer dry spots
+			if Mole.WaterNear(c, u.location.height - Cfg.moleDepth) then d = d + 50; end;
 			if bd == nil or d < bd then best, bd = c, d; end;
 		end;
 	end;
@@ -591,7 +622,19 @@ function Mole.Update()
 				local okg, g = pcall(Game.Grid.FindHighestVehicleGround, u, c);
 				if okg and g and g.height and g.height < low then low = g.height; end;
 			end;
-			Mole.level = math.max(low - Cfg.moleDepth, -15);
+			-- below the water table the cavern floods: go only as deep as it stays dry, and
+			-- if it is wet even just below the ground, look for another spot
+			local level = math.max(low - Cfg.moleDepth, -15);
+			while level <= low - 2 and Mole.WetArea(u.location.cell, level) do level = level + 1; end;
+			if level > low - 2 then
+				Log('Water below shaft cell '..Mole.shaftCell..' (ground '..low..'): picking another');
+				Mole.shaftRejected[Mole.shaftCell] = true;
+				Mole.shaftCell = nil;
+				Mole.shaftSince = nil;
+				return;
+			end;
+			if level > low - Cfg.moleDepth then Log('Water table: cavern only '..(low - level)..' below ground'); end;
+			Mole.level = level;
 			Log('Shaft goes down to height '..Mole.level);
 		end;
 		if u.location.cell.index ~= Mole.shaftCell then
@@ -614,10 +657,10 @@ function Mole.Update()
 		end;
 		if Mole.level and u.location.height > Mole.level then
 			local check = Mole.DigCheck(u.location.cell, u.location.height - 2);
-			if check == 'lava' then
-				-- lava below: settle for the depth reached
+			if check == 'lava' or check == 'water' then
+				-- lava or water below: settle for the depth reached
 				Mole.level = u.location.height;
-				Log('Lava below: cavern at height '..Mole.level);
+				Log((check == 'lava' and 'Lava' or 'Water')..' below: cavern at height '..Mole.level);
 			elseif check == 'unknown' and #Sense.my.surveyor > 0 and Sense.round - (Mole.unknownSince or Sense.round) < 3 then
 				Mole.unknownSince = Mole.unknownSince or Sense.round;
 				Mole.waitSurvey = u.location.world;

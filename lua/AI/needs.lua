@@ -236,9 +236,27 @@ function Needs.RecentOrders(key)
 	return n;
 end;
 
-function Needs.Have(n)
-	if n == nil then return 1; end;
-	return (1 + n) ^ -0.8;
+--[[
+One of something in the right spot always beats zero. A second is only worth it if the
+spot or the action can use it (cap): tanks hinder each other, towers block access,
+everything competes for space. Beyond what a spot can use, value drops steeply, except
+for a swarm floor: numbers still give a blanket of meat shields and sensor coverage.
+]]
+function Needs.Have(n, cap, swarm)
+	if n == nil or n <= 0 then return 1; end;
+	local v = (1 + n) ^ -0.8;
+	if cap and n >= cap then v = v * 0.35 ^ (n - cap + 1); end;
+	if swarm then v = math.max(v, swarm); end;
+	return v;
+end;
+
+-- Room left in a region: 1 while half its cells are free, falling to 0 when it is full.
+-- Crowded spots block access and plant deployment, so another structure there is worth less
+function Needs.Room(reg)
+	local n = #(reg.cells or {});
+	if n == 0 then return 1; end;
+	local used = (reg.myStructures or 0) + (reg.myMobiles or 0) * 0.5;
+	return clamp((n - used) / (n * 0.5));
 end;
 
 function Needs.Score(serves, cost)
@@ -260,7 +278,7 @@ function Needs.Choose(options, what, budget)
 	local best, bestS = nil, Needs.minScore;
 	local bestAny, bestAnyS = nil, 0;
 	for _,o in ipairs(options) do
-		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1) * Needs.Have(o.have);
+		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1) * Needs.Have(o.have, o.cap, o.swarm);
 		if o.score > bestAnyS then bestAny, bestAnyS = o, o.score; end;
 		local affordable = budget == nil or (o.cost or 0) <= budget + 50;
 		if affordable and o.score > bestS then best, bestS = o, o.score; end;
@@ -291,7 +309,7 @@ function Needs.DefendedRegions()
 		for nb,_ in pairs(reg.neighbors) do threat = threat + Map.regions[nb].mobileThreat * 0.5; end;
 		if id == Mem.homeRegion then value = value + 4; end;
 		if value >= 3 then
-			list[#list+1] = {reg = reg, value = value, weight = math.min(1.5, 0.4 + value / 12 + threat / 20)};
+			list[#list+1] = {reg = reg, value = value, threat = threat, weight = math.min(1.5, 0.4 + value / 12 + threat / 20)};
 		end;
 	end;
 	table.sort(list, function(a, b) return a.value > b.value; end);
@@ -346,6 +364,11 @@ function Needs.StructureOptions(constructorIndex)
 	-- the enemy is likely to come by air (Needs.enemyAirShare), so usually radar and guns first
 	for _,e in ipairs(Needs.DefendedRegions()) do
 		local reg, c, weight = e.reg, Economy.DefenseCounts(e.reg), e.weight;
+		-- the right amount in the right spot: one of each kind is always worth it, more only
+		-- as far as the threat there can use them, and only while there is room
+		local pot = Military.UnitPotential();
+		local cap = 1 + math.floor(e.threat / (pot * 3));
+		weight = weight * (0.25 + 0.75 * Needs.Room(reg));
 		local airShare = Needs.enemyAirShare;
 		local ground = 1 - airShare;
 		local function tower(t, have, serves, name)
@@ -354,7 +377,7 @@ function Needs.StructureOptions(constructorIndex)
 				-- what stands there, or was ordered for it lately (the site may end up next door)
 				have = math.max(have, Needs.RecentOrders(key));
 				opts[#opts+1] = {want = {type = t, kind = 'tower', region = reg.id}, serves = serves,
-					cost = Cost(t), have = have, factor = weight, name = (name or t.name)..' @'..reg.id, key = key};
+					cost = Cost(t), have = have, cap = cap, factor = weight, name = (name or t.name)..' @'..reg.id, key = key};
 			end;
 		end;
 		tower(Types.GroundTower(), c.ground, {defense = 0.6 + 0.6 * ground});
@@ -419,10 +442,34 @@ function Needs.VehicleOptions(kit)
 	end;
 	add(kit.Constructor(), {builders = 1, income = 0.2});	-- the builders need already counts them
 	local combat = #Sense.my.combat + #Sense.my.bomb;
-	add(kit.Tank(), {defense = 1, army = 1});
-	if #opts > 0 then opts[#opts].have = math.floor((combat + 2 * (Sense.storedByRole.combat or 0)) / 4); end;
-	add(Types.Vehicle(Types.turret.aa, Types.base.hover), {air = math.min(1, 0.4 + Needs.enemyAirShare * 2)});
-	if #opts > 0 then opts[#opts].have = have('aa'); end;
+	-- tanks: as many as the action can use (the attack target's required force, or the
+	-- pressure at home), counted in groups of four. Beyond that only a swarm floor:
+	-- meat shields and sensor coverage through numbers
+	local tank = kit.Tank();
+	add(tank, {defense = 1, army = 1, scouting = 0.15});
+	if tank and #opts > 0 then
+		local o = opts[#opts];
+		local pot = Military.UnitPotential();
+		local use = math.ceil(Sense.Pressure() / pot) + 2 * #Needs.DefendedRegions();
+		local target = Mem.attackTarget or Military.ChooseAttackTarget();
+		if target then use = use + Military.RequiredForce(target); end;
+		o.have = (combat + 2 * (Sense.storedByRole.combat or 0)) / 4;
+		o.cap = math.max(1, use / 4);
+		o.swarm = 0.12;
+	end;
+	-- mobile AA: one per spot that needs air cover, a second there lets them leapfrog
+	-- (one moves while the other covers)
+	local aa = Types.Vehicle(Types.turret.aa, Types.base.hover);
+	add(aa, {air = math.min(1, 0.4 + Needs.enemyAirShare * 2)});
+	if aa and #opts > 0 then
+		local spots = 0;
+		for _,e in ipairs(Needs.DefendedRegions()) do
+			if e.reg.airThreat > 0 or Needs.enemyAirShare >= 0.3 then spots = spots + 1; end;
+		end;
+		if Mem.posture == 'attack' then spots = spots + 1; end;
+		opts[#opts].have = have('aa');
+		opts[#opts].cap = math.max(1, spots * 2);
+	end;
 	add(Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover), {scouting = 1});
 	if #opts > 0 then opts[#opts].have = have('surveyor'); end;
 	add(Types.Vehicle(Types.turret.radar, Types.base.hover), {scouting = 0.5, defense = 0.3});
