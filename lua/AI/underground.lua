@@ -1469,6 +1469,11 @@ function Economy.DefenseNeed(surplus, homeOnly)
 	end;
 	return need;
 end;
+local baseTowerAllowed = Economy.TowerAllowed;
+function Economy.TowerAllowed(t)
+	if t and t.turretType and t.turretType.canAttack and TowerCount() >= Cfg.moleMaxTowers then return false; end;
+	return baseTowerAllowed(t);
+end;
 local baseGroundTower = Types.GroundTower;
 function Types.GroundTower()
 	if TowerCount() >= Cfg.moleMaxTowers then return nil; end;

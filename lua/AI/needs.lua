@@ -36,7 +36,10 @@ Needs = {
 	v = {},				-- current need levels
 	adapt = {},			-- per need: multiplier on its weight, learned from what happens (see Needs.Learn)
 	enemyAASeen = -1,	-- last round hostile anti-air was sensed
+	ordered = {},		-- option key -> rounds it was chosen (a tower ordered for a region may stand next door)
+	enemyAirShare = 0.15,	-- how likely the enemy comes by air rather than with tanks (learned)
 	costScale = 400,	-- cost at which an option's score halves
+	minScore = 0.2,		-- below this, an option is not worth its minerals
 	saving = nil,		-- {score, cost, name}: the best structure we could not afford yet
 	log = {},
 };
@@ -100,8 +103,18 @@ function Needs.Learn()
 		else ground = ground + 1; end;
 	end;
 	if air > 0 then Nudge('air', 1.15 ^ math.min(air, 4)); end;
+	-- the enemy's mix: planes vs ground forces sensed, and where the hits come from
+	local ea, eg = air, ground;
+	for _,e in pairs(Game.hostileUnits or {}) do
+		if e.health > 0 and e.type and e.type.isMobile and e.turret and e.turret.type and e.turret.type.canAttack then
+			if e.location.isSuborbital then ea = ea + 1; else eg = eg + 1; end;
+		end;
+	end;
+	if ea + eg > 0 then
+		Needs.enemyAirShare = Needs.enemyAirShare * 0.9 + 0.1 * (ea / (ea + eg));
+	end;
 	if deep > 0 then Nudge('scouting', 1.12 ^ math.min(deep, 4)); end;
-	if ground > 0 then Nudge('defense', 1.04 ^ math.min(ground, 4)); end;
+	if ground > 0 and (Needs.adapt.defense or 1) < 2 then Nudge('defense', 1.04 ^ math.min(ground, 4)); end;
 
 	local aa = 0;
 	for _,e in pairs(Game.hostileUnits or {}) do
@@ -206,6 +219,28 @@ local function W(w, k)
 	return w[k] or 1;
 end;
 
+--[[
+How much of this do I already have? None makes an option far more significant than
+having some: the first radar, tower or AA counts most. Units parked in a store count
+double: they are probably more than enough.
+]]
+-- How often an option was chosen in the last 40 rounds
+function Needs.RecentOrders(key)
+	local list = Needs.ordered[key];
+	if list == nil then return 0; end;
+	local n, keep = 0, {};
+	for _,r in ipairs(list) do
+		if Sense.round - r < 40 then n = n + 1; keep[#keep+1] = r; end;
+	end;
+	Needs.ordered[key] = keep;
+	return n;
+end;
+
+function Needs.Have(n)
+	if n == nil then return 1; end;
+	return (1 + n) ^ -0.8;
+end;
+
 function Needs.Score(serves, cost)
 	local w = Needs.Weights();
 	local s = 0;
@@ -222,10 +257,10 @@ end;
 -- Rate options and pick one. Options: {want=..., serves={...}, cost=n, name=...}.
 -- Returns the chosen option or nil (nothing worth it, or saving up)
 function Needs.Choose(options, what, budget)
-	local best, bestS = nil, 0.05;
+	local best, bestS = nil, Needs.minScore;
 	local bestAny, bestAnyS = nil, 0;
 	for _,o in ipairs(options) do
-		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1);
+		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1) * Needs.Have(o.have);
 		if o.score > bestAnyS then bestAny, bestAnyS = o, o.score; end;
 		local affordable = budget == nil or (o.cost or 0) <= budget + 50;
 		if affordable and o.score > bestS then best, bestS = o, o.score; end;
@@ -237,14 +272,31 @@ end;
 -- Structures
 -------------------------------------------------------------------------------
 
--- Defense candidates come from Economy.DefenseNeed, which claims its pick for the round:
--- collect them without claiming, claim only what is chosen
-local function DefenseOption(surplus, homeOnly)
-	local saved = {};
-	for k,x in pairs(Economy.scannerClaimed) do saved[k] = x; end;
-	local need = Economy.DefenseNeed(surplus, homeOnly);
-	Economy.scannerClaimed = saved;
-	return need;
+--[[
+Regions worth defending, with a factor for how much is there: the home region always,
+then built-up regions by what stands in them (power and sensors count extra) and the
+threat around them.
+]]
+function Needs.DefendedRegions()
+	local list = {};
+	for id,_ in pairs(Sense.mine) do
+		local reg = Map.regions[id];
+		local value = reg.myStructures or 0;
+		for _,st in ipairs(Sense.myStructures) do
+			if Map.RegionOfLoc(st.location) == reg and (st.type == Types.generator or st.type == Types.mine) then
+				value = value + 2;
+			end;
+		end;
+		local threat = Sense.Threat(reg);
+		for nb,_ in pairs(reg.neighbors) do threat = threat + Map.regions[nb].mobileThreat * 0.5; end;
+		if id == Mem.homeRegion then value = value + 4; end;
+		if value >= 3 then
+			list[#list+1] = {reg = reg, value = value, weight = math.min(1.5, 0.4 + value / 12 + threat / 20)};
+		end;
+	end;
+	table.sort(list, function(a, b) return a.value > b.value; end);
+	while #list > 4 do table.remove(list); end;
+	return list;
 end;
 
 function Needs.StructureOptions(constructorIndex)
@@ -264,7 +316,8 @@ function Needs.StructureOptions(constructorIndex)
 	end;
 	if Types.plant then
 		local plants = Economy.Count(Types.plant);
-		add({type = Types.plant, kind = 'base'}, {survivalPlant = 1, spend = plants < 3 and 1 or 0.2, army = plants == 0 and 1 or 0.1});
+		add({type = Types.plant, kind = 'base'}, {survivalPlant = 1, spend = 1, army = 0.3});
+		opts[#opts].have = plants;
 	end;
 	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
 		local uranium = (max.balance.uranium or 0) > 0 or (cur.storage.uranium or 0) > 0;
@@ -274,40 +327,50 @@ function Needs.StructureOptions(constructorIndex)
 			add(Economy.MineReq('Uranium'), {energy = 0.4}, 'Mine (uranium)');
 		end;
 	end;
-	if Types.lab then add({type = Types.lab, kind = 'base'}, {research = 1, spend = 0.3}); end;
+	if Types.lab then
+		add({type = Types.lab, kind = 'base'}, {research = 1, spend = 0.3});
+		opts[#opts].have = Economy.Count(Types.lab);
+	end;
 	do
 		-- the plane factory without the mineral check: saving for it is the scorer's job
 		local pf = Types.planeFactory;
 		if pf and Types.IsUnlocked(pf) and Economy.Count(pf) < (Cfg.planeFactories or 1) then
 			if Economy.FuelMines() >= 1 then
 				add({type = pf, kind = 'base'}, {planes = 1, spend = 0.3});
+				opts[#opts].have = Economy.Count(pf);
 			end;
 		end;
 	end;
-	-- defense: the home region first, then built-up regions, then surplus where the threat is highest
-	local home = Sense.round >= 4 and DefenseOption(false, true);
-	if home then add(home, {defense = 1.2, air = home.type == Types.aaTower and 1 or 0}); end;
-	local reg = DefenseOption(false);
-	if reg then add(reg, {defense = 0.9, air = reg.type == Types.aaTower and 1 or 0}); end;
-	local extra = DefenseOption(true);
-	if extra then add(extra, {defense = 0.6, spend = 0.4}); end;
-	if Types.GroundTower() and constructorIndex == 1 then
-		for id,_ in pairs(Sense.frontier) do
-			local r = Map.regions[id];
-			if r.mobileThreat > 0 and Economy.TowersIn(r) < Cfg.wantTowersPerFrontier then
-				add({type = Types.GroundTower(), kind = 'tower', region = id}, {defense = 1});
-				break;
+	-- defense, per location: at each defended region a gun tower, a radar, an AA tower and a
+	-- launcher compete. Whatever the region has none of counts most. AA wins only as far as
+	-- the enemy is likely to come by air (Needs.enemyAirShare), so usually radar and guns first
+	for _,e in ipairs(Needs.DefendedRegions()) do
+		local reg, c, weight = e.reg, Economy.DefenseCounts(e.reg), e.weight;
+		local airShare = Needs.enemyAirShare;
+		local ground = 1 - airShare;
+		local function tower(t, have, serves, name)
+			if t and Economy.TowerAllowed(t) and not Economy.scannerClaimed[t.name..'@'..reg.id] then
+				local key = t.name..'@'..reg.id;
+				-- what stands there, or was ordered for it lately (the site may end up next door)
+				have = math.max(have, Needs.RecentOrders(key));
+				opts[#opts+1] = {want = {type = t, kind = 'tower', region = reg.id}, serves = serves,
+					cost = Cost(t), have = have, factor = weight, name = (name or t.name)..' @'..reg.id, key = key};
 			end;
 		end;
+		tower(Types.GroundTower(), c.ground, {defense = 0.6 + 0.6 * ground});
+		tower(Types.radarTower, c.radar, {scouting = 0.5, defense = 0.4});
+		tower(Types.aaTower, c.aa, {air = math.min(1, airShare * 3), defense = 0.6 * airShare});
+		if Mem.heavySeen >= 0 or Sense.round >= 60 then
+			tower(Types.launcherTower, c.launcher, {defense = 0.9 * ground});
+		end;
+		if Sense.DeepMatters() then tower(Types.scannerTower, c.scanner, {scouting = 0.8, defense = 0.2}); end;
 	end;
 	if Types.store and Sense.round >= 12 and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores then
 		local want = Economy.StoreRegion();
-		if want then add({type = Types.store, kind = 'tower', region = want}, {defense = 0.3, army = 0.3, spend = 0.3}); end;
-	end;
-	local gt = Types.GroundTower();
-	if gt then add({type = gt, kind = 'tower'}, {defense = 0.4, spend = 0.4}, gt.name..' (base)'); end;
-	if Types.radarTower and Types.IsUnlocked(Types.radarTower) and Economy.Count(Types.radarTower) < 1 + math.floor(Sense.round / 25) then
-		add({type = Types.radarTower, kind = 'tower'}, {scouting = 0.6, defense = 0.2});
+		if want then
+			add({type = Types.store, kind = 'tower', region = want}, {defense = 0.3, army = 0.3, spend = 0.3});
+			opts[#opts].have = Economy.Count(Types.store);
+		end;
 	end;
 	return opts;
 end;
@@ -333,6 +396,10 @@ function Needs.NextStructure(constructorIndex)
 		Economy.scannerClaimed[want.type.name..'@'..want.region] = true;
 	end;
 	if want.type == Types.generator then Economy.powerOrders = Economy.powerOrders + 1; end;
+	if best.key then
+		Needs.ordered[best.key] = Needs.ordered[best.key] or {};
+		table.insert(Needs.ordered[best.key], Sense.round);
+	end;
 	Needs.Note(string.format('build %s (%.2f)', best.name, best.score));
 	return want;
 end;
@@ -346,14 +413,20 @@ function Needs.VehicleOptions(kit)
 	local function add(t, serves, name)
 		if t then opts[#opts+1] = {want = t, serves = serves, cost = Cost(t), name = name or t.name}; end;
 	end;
-	add(kit.Constructor(), {builders = 1, income = 0.2});
-	add(kit.Tank(), {defense = 1, army = 1});
-	add(Types.Vehicle(Types.turret.aa, Types.base.hover), {air = 1});
-	add(Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover), {scouting = 1});
-	local combat = #Sense.my.combat;
-	if #Sense.my.radar < 1 + math.floor(combat / Cfg.radarPerCombat) then
-		add(Types.Vehicle(Types.turret.radar, Types.base.hover), {scouting = 0.5, defense = 0.2});
+	-- what we have of each: active units, plus those parked in stores counted double
+	local function have(role)
+		return #(Sense.my[role] or {}) + 2 * (Sense.storedByRole[role] or 0);
 	end;
+	add(kit.Constructor(), {builders = 1, income = 0.2});	-- the builders need already counts them
+	local combat = #Sense.my.combat + #Sense.my.bomb;
+	add(kit.Tank(), {defense = 1, army = 1});
+	if #opts > 0 then opts[#opts].have = math.floor((combat + 2 * (Sense.storedByRole.combat or 0)) / 4); end;
+	add(Types.Vehicle(Types.turret.aa, Types.base.hover), {air = math.min(1, 0.4 + Needs.enemyAirShare * 2)});
+	if #opts > 0 then opts[#opts].have = have('aa'); end;
+	add(Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover), {scouting = 1});
+	if #opts > 0 then opts[#opts].have = have('surveyor'); end;
+	add(Types.Vehicle(Types.turret.radar, Types.base.hover), {scouting = 0.5, defense = 0.3});
+	if #opts > 0 then opts[#opts].have = math.floor(have('radar') * Cfg.radarPerCombat / math.max(1, combat)); end;
 	return opts;
 end;
 
@@ -386,6 +459,7 @@ end;
 
 function Needs.Report()
 	if Sense.round % 10 ~= 0 then return; end;
+	Log(string.format('Needs: enemy air share %.2f', Needs.enemyAirShare));
 	local keys = {};
 	for k,_ in pairs(Needs.v) do keys[#keys+1] = k; end;
 	table.sort(keys);

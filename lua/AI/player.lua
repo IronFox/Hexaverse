@@ -1508,12 +1508,18 @@ function Economy.StoreRegion()
 end;
 
 -- Counts my defensive structures in a region (including towers under construction there)
+-- May this tower type be built at all? (personalities restrict it)
+function Economy.TowerAllowed(t)
+	return t ~= nil and Types.IsUnlocked(t);
+end;
+
 function Economy.DefenseCounts(reg)
-	local c = {ground=0, aa=0, launcher=0, scanner=0};
+	local c = {ground=0, aa=0, launcher=0, scanner=0, radar=0};
 	for _,st in ipairs(Sense.myStructures) do
 		if st.turret and Map.RegionOfLoc(st.location) == reg then
 			local tt = st.turret.type;
-			if tt.detectsResources then c.scanner = c.scanner + 1;
+			if st.type == Types.radarTower then c.radar = c.radar + 1;
+			elseif tt.detectsResources then c.scanner = c.scanner + 1;
 			elseif tt.trajectoryType == 'AAMissile' then c.aa = c.aa + 1;
 			elseif tt.name == 'Missile Launcher' then c.launcher = c.launcher + 1;
 			elseif tt.canAttack then c.ground = c.ground + 1;
@@ -1525,6 +1531,7 @@ function Economy.DefenseCounts(reg)
 			if Types.scannerTower and job.kind == Types.scannerTower.name then c.scanner = c.scanner + 1;
 			elseif Types.aaTower and job.kind == Types.aaTower.name then c.aa = c.aa + 1;
 			elseif Types.launcherTower and job.kind == Types.launcherTower.name then c.launcher = c.launcher + 1;
+			elseif Types.radarTower and job.kind == Types.radarTower.name then c.radar = c.radar + 1;
 			elseif Types.GroundTower() and job.kind == Types.GroundTower().name then c.ground = c.ground + 1;
 			end;
 		end;
@@ -2084,12 +2091,23 @@ end;
 -- Next plane for a plane factory
 function Economy.NextPlane()
 	local n = {bomber=0, raptor=0, drone=0};
-	for _,p in ipairs(Sense.my.plane) do
-		if p.type == Types.bomber then n.bomber = n.bomber + 1;
-		elseif p.type == Types.raptor then n.raptor = n.raptor + 1;
-		elseif p.type == Types.drone then n.drone = n.drone + 1; end;
+	local parked = {bomber=0, raptor=0, drone=0};
+	local function count(p, into)
+		if p.type == Types.bomber then into.bomber = into.bomber + 1;
+		elseif p.type == Types.raptor then into.raptor = into.raptor + 1;
+		elseif p.type == Types.drone then into.drone = into.drone + 1; end;
 	end;
-	if #Sense.my.plane >= Cfg.maxPlanes then return nil; end;
+	for _,p in ipairs(Sense.my.plane) do count(p, n); end;
+	for _,p in ipairs(Sense.stored or {}) do
+		if p.type and p.type.isSuborbitalPlane then count(p, n); count(p, parked); end;
+	end;
+	local total = n.bomber + n.raptor + n.drone;
+	if total >= Cfg.maxPlanes then return nil; end;
+	-- planes parked in a store and not taken out: probably enough of those already
+	-- (unless they are being saved up for a run)
+	if parked.bomber > 0 and not Military.bomberRun then n.bomber = n.bomber + 2; end;
+	if parked.raptor > 0 then n.raptor = n.raptor + 2; end;
+	if parked.drone > 0 then n.drone = n.drone + 2; end;
 	-- only what is researched: the server rejects the rest
 	local bomber = Types.IsUnlocked(Types.bomber) and Types.bomber or nil;
 	local raptor = Types.IsUnlocked(Types.raptor) and Types.raptor or nil;
