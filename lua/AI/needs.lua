@@ -38,6 +38,8 @@ Needs = {
 	enemyAASeen = -1,	-- last round hostile anti-air was sensed
 	ordered = {},		-- option key -> rounds it was chosen (a tower ordered for a region may stand next door)
 	enemyAirShare = 0.15,	-- how likely the enemy comes by air rather than with tanks (learned)
+	artyRisk = 0.1,		-- how likely hostile artillery shells our structures (learned)
+	splash = 0,			-- largest hostile artillery explosion radius seen
 	costScale = 400,	-- cost at which an option's score halves
 	minScore = 0.2,		-- below this, an option is not worth its minerals
 	saving = nil,		-- {score, cost, name}: the best structure we could not afford yet
@@ -113,6 +115,21 @@ function Needs.Learn()
 	if ea + eg > 0 then
 		Needs.enemyAirShare = Needs.enemyAirShare * 0.9 + 0.1 * (ea / (ea + eg));
 	end;
+	-- artillery: how likely shells land on our base, and how far their blast reaches
+	local arty = 0;
+	for _,a in ipairs(Sense.recentAttacks or {}) do
+		if a.arty then
+			arty = arty + 1;
+			Needs.splash = math.max(Needs.splash, tonumber(a.splash) or 0);
+		end;
+	end;
+	for _,e in pairs(Game.hostileUnits or {}) do
+		local t = e.health > 0 and e.turret and e.turret.type;
+		if t and t.requiresStationaryVehicle and t.trajectoryType == 'Artillery' and not e.location.isSuborbital then arty = arty + 0.5; end;
+	end;
+	local floor = Sense.round >= 60 and 0.2 or 0.1;
+	if Military.artyZones and #Military.artyZones > 0 then floor = 0.6; end;
+	Needs.artyRisk = math.max(floor, math.min(1, Needs.artyRisk * 0.97 + arty * 0.1));
 	if deep > 0 then Nudge('scouting', 1.12 ^ math.min(deep, 4)); end;
 	if ground > 0 and (Needs.adapt.defense or 1) < 2 then Nudge('defense', 1.04 ^ math.min(ground, 4)); end;
 
@@ -248,6 +265,33 @@ function Needs.Have(n, cap, swarm)
 	if cap and n >= cap then v = v * 0.35 ^ (n - cap + 1); end;
 	if swarm then v = math.max(v, swarm); end;
 	return v;
+end;
+
+--[[
+How close together to keep things. An AA tower next to a radar next to a missile tower
+covers each other against most threats, but one elevated artillery tank that reaches any
+of them hits all three with each shell. So a site next to a few structures gets a small
+bonus while artillery is unlikely, and a penalty per structure within blast reach as it
+becomes likely. Returns a site score addition (lower is better).
+]]
+function Needs.Spacing(loc)
+	local r = Needs.splash;
+	if r <= 0 then
+		local t = Types.turret and Types.turret.artillery;
+		r = (t and tonumber(t.explosionRadius)) or 0;
+	end;
+	r = math.max(r, 1.2) * 1.5;	-- a shell rarely lands exactly on target
+	local r2 = r * r;
+	local n = 0;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		local w = st.location and st.location.world;
+		if w and not st.location.isSuborbital then
+			local dx, dy, dz = w.x - loc.world.x, w.y - loc.world.y, w.z - loc.world.z;
+			if dx*dx + dy*dy + dz*dz < r2 then n = n + 1; end;
+		end;
+	end;
+	local risk = Needs.artyRisk;
+	return n * risk * 12 - math.min(n, 2) * (1 - risk) * 2;
 end;
 
 -- Room left in a region: 1 while half its cells are free, falling to 0 when it is full.
@@ -506,7 +550,7 @@ end;
 
 function Needs.Report()
 	if Sense.round % 10 ~= 0 then return; end;
-	Log(string.format('Needs: enemy air share %.2f', Needs.enemyAirShare));
+	Log(string.format('Needs: enemy air share %.2f, artillery risk %.2f, splash %.1f', Needs.enemyAirShare, Needs.artyRisk, Needs.splash));
 	local keys = {};
 	for k,_ in pairs(Needs.v) do keys[#keys+1] = k; end;
 	table.sort(keys);

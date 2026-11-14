@@ -813,7 +813,9 @@ function Sense.Update()
 					local src, len = Map.RegionOfWorld(a.source);
 					local hit = Map.RegionOfWorld(a.impact);
 					local layer = Sense.AttackLayer(a, src, len);
-					Sense.recentAttacks[#Sense.recentAttacks+1] = {src=src, hit=hit, layer=layer, precise=a.precise, turretType=a.turretType};
+					local tt0 = a.turretType;
+					Sense.recentAttacks[#Sense.recentAttacks+1] = {src=src, hit=hit, layer=layer, precise=a.precise, turretType=tt0,
+						splash=a.explosionRadius, arty=(layer == 'ground' and tt0 and tt0.requiresStationaryVehicle and tt0.trajectoryType == 'Artillery') or false};
 					local tt = a.turretType;
 					-- artillery proper: cannons share the ballistic trajectory but fire on the move
 					if layer == 'ground' and tt and tt.requiresStationaryVehicle and tt.trajectoryType == 'Artillery' and a.impact then
@@ -2032,6 +2034,7 @@ function Economy.AssignConstructor(u, index)
 				score = math.abs(d - 9.0);
 			end;
 			score = score + n.movementCostsFromRoot * 0.05;
+			if want.kind ~= 'mine' then score = score + Needs.Spacing(loc); end;
 			if bestScore == nil or score < bestScore then
 				best, bestScore = n, score;
 			end;
