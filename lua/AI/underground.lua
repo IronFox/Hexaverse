@@ -79,8 +79,32 @@ local function CellByIndex(idx)
 end;
 
 -- Is a location below ground (at or below the cavern level)?
+-- Below ground means: at cavern depth, inside our cavern or tunnels. A surface
+-- structure in a valley may sit just as deep, but it is not below ground
 function Mole.IsBelow(loc)
-	return Mole.level ~= nil and loc ~= nil and not loc.isSuborbital and loc.height <= Mole.level + 1;
+	if Mole.level == nil or loc == nil or loc.isSuborbital or loc.height > Mole.level + 1 then return false; end;
+	if Mole.Area()[loc.cell.index] then return true; end;
+	-- outside the known cavern (e.g. a tunnel dug before a reload): rock overhead means below ground
+	local ok, up = pcall(Game.Grid.ToLocation, loc.cell, loc.height + 2);
+	if not ok or up == nil then return false; end;
+	local okc, clear = pcall(Game.Grid.IsClear, up);
+	return okc and clear == false;
+end;
+
+Mole.areaCache = nil;
+function Mole.Area()
+	if Mole.areaCache and Mole.areaCache.round == Sense.round and Mole.areaCache.rings == Mole.rings
+		and Mole.areaCache.shaft == Mole.shaftCell then
+		return Mole.areaCache.set;
+	end;
+	local set = {};
+	local center = Mole.shaftCell and CellByIndex(Mole.shaftCell);
+	if center then
+		for _,c in ipairs(Mole.Rings(center, Mole.rings + 1)) do set[c.index] = true; end;
+	end;
+	for idx in pairs(Mole.dug) do set[idx] = true; end;
+	Mole.areaCache = {round = Sense.round, rings = Mole.rings, shaft = Mole.shaftCell, set = set};
+	return set;
 end;
 
 --[[
@@ -409,10 +433,24 @@ end;
 
 function Mole.PickShaftCell(u)
 	local taken = Mole.SurfaceStructureCells();
-	local keep = Cfg.moleRings + 1;
+	-- only cells the digger can drive to (a base on a plateau may have no way down)
+	local reach = {[u.location.cell.index] = true};
+	local okr, nodes = pcall(u.GetReach, nil, math.max(6, (u.movementSpeed or 1) * 6), true, false, false, true);
+	if okr and nodes then
+		for _,n in ipairs(nodes) do
+			if n.location and not n.location.isSuborbital then reach[n.location.cell.index] = true; end;
+		end;
+	end;
+	local best = Mole.PickShaftCellKeep(u, taken, reach, Cfg.moleRings + 1);
+	-- crowded: settle for a spot with just its direct neighbors free (the cavern digs around structures)
+	if best == nil then best = Mole.PickShaftCellKeep(u, taken, reach, 1); end;
+	return best;
+end;
+
+function Mole.PickShaftCellKeep(u, taken, reach, keep)
 	local best, bd = nil, nil;
 	for _,c in ipairs(Mole.Rings(u.location.cell, 6)) do
-		local free = not Mole.shaftRejected[c.index];
+		local free = reach[c.index] and not Mole.shaftRejected[c.index];
 		for _,n in ipairs(free and Mole.Rings(c, keep) or {}) do
 			if taken[n.index] then free = false; break; end;
 		end;
@@ -670,19 +708,35 @@ function Mole.Seal(u)
 	end;
 	if not nextTo then
 		for _,nb in ipairs(shaft.neighbors) do
-			if Mole.IsOpen(nb) then
+			if Mole.IsPassable(nb) then
 				local loc = Mole.LocAt(nb);
 				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 				if ok and path and #path > 0 then u.DirectTo(path[#path]); return; end;
 			end;
 		end;
-		Log('Cannot reach the shaft to seal it');
-		return;
+		-- no neighbor reachable: try from where it stands if that is close (BuildBlocks reaches 3 terrain cells),
+		-- else from any reachable cell of the second ring
+		local here = u.location.cell;
+		local close = Mole.IsBelow(u.location) and Mole.Rings(shaft, 2);
+		local inRing2 = false;
+		for _,c in ipairs(close or {}) do if c.index == here.index then inRing2 = true; break; end; end;
+		if not inRing2 then
+			for _,c in ipairs(Mole.Rings(shaft, 2)) do
+				if c.index ~= shaft.index and Mole.IsPassable(c) then
+					local loc = Mole.LocAt(c);
+					local ok, path = pcall(u.FindShortestPath, loc, nil, false);
+					if ok and path and #path > 0 then u.DirectTo(path[#path]); return; end;
+				end;
+			end;
+			Mole.SealDiagnose(u, shaft);
+			return;
+		end;
 	end;
 	Mole.sealTries = Mole.sealTries + 1;
 	if Mole.sealTries > 6 then
 		if Mole.sealTries == 7 then Log('Sealing the shaft keeps failing: giving up'); end;
 		Mole.sealed = true;
+		Mole.sealFailed = true;
 		return;
 	end;
 	local ok, err = pcall(u.BuildBlocks, cells);
@@ -699,6 +753,25 @@ the cell atop the vehicle or diagonally above it (a neighbor's upper layer).
 The shaft column is left alone: its seal goes one layer above the floor.
 Returns true if an order was given.
 ]]
+-- Why the digger can't get next to the shaft: log every 5 rounds
+function Mole.SealDiagnose(u, shaft)
+	if Sense.round % 5 ~= 0 then return; end;
+	local parts = {};
+	for _,nb in ipairs(shaft.neighbors) do
+		local loc = Mole.LocAt(nb);
+		local what = Mole.IsOpen(nb) and 'open' or 'closed';
+		if loc then
+			local ok, st = pcall(Game.GetStructureAt, loc);
+			if ok and st and st.type then what = st.type.name; end;
+			local okm, m = pcall(Game.GetMobileAt, loc);
+			if okm and m and m.type then what = what..'+'..tostring(m.niceName or m.type.name); end;
+		end;
+		parts[#parts+1] = nb.index..':'..what;
+	end;
+	Log('Cannot reach the shaft to seal it from '..u.location.cell.index..'/'..tostring(u.location.height)
+		..(Mole.IsBelow(u.location) and ' (below)' or ' (above)')..'; next to the shaft: '..table.concat(parts, ' '));
+end;
+
 function Mole.Ceiling(u)
 	if Cfg.moleHighRings <= 0 or not u.ClearAbove then return false; end;
 	local center = CellByIndex(Mole.shaftCell);
@@ -756,7 +829,8 @@ end;
 
 -- Demolish surface structures once the cavern holds replacements. One per round
 function Mole.Demolish()
-	if Mole.phase ~= 'live' then return; end;
+	-- an open shaft lets everyone in: keep the surface base until the cavern is closed
+	if Mole.phase ~= 'live' or not Mole.sealed or Mole.sealFailed then return; end;
 	local below, above = {}, {};
 	for _,s in ipairs(Sense.myStructures) do
 		local tn = s.type.name;
@@ -772,8 +846,12 @@ function Mole.Demolish()
 	for tn,list in pairs(above) do
 		local t = list[1].type;
 		local replaced;
-		if t == Types.generator or t == Types.mine then
-			-- keep power and income: only once the cavern carries at least as many
+		if t == Types.mine then
+			-- income: mineral and fuel mines each need a working replacement below.
+			-- Without a mineral mine the faction dies within a few rounds
+			replaced = Mole.MinesReplaced(list);
+		elseif t == Types.generator then
+			-- keep power: only once the cavern carries at least as many
 			replaced = (below[tn] or 0) >= #list;
 		elseif t.turretType then
 			replaced = powerBelow;	-- towers are not rebuilt above; they just give the base away
@@ -781,7 +859,7 @@ function Mole.Demolish()
 			replaced = (below[tn] or 0) >= 1;
 		end;
 		if replaced then
-			local s = list[1];
+			local s = type(replaced) == 'table' and replaced or list[1];
 			Log('Demolishing surface '..s.niceName);
 			pcall(s.Destroy);
 			return;
@@ -825,6 +903,31 @@ function Mole.EssentialsBelow()
 		end;
 	end;
 	return mineral and fuel and gen;
+end;
+
+-- Do working mines below ground outnumber these surface mines, per resource?
+-- Returns the surface mine that may go, or nil
+function Mole.MinesReplaced(surfaceMines)
+	local function Kind(st)
+		local ok, f = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', st.location.cell);
+		return (ok and f and f > 0) and 'fuel' or 'minerals';
+	end;
+	local below, above = {minerals = 0, fuel = 0}, {minerals = 0, fuel = 0};
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.type == Types.mine and Mole.IsBelow(st.location) and st.isEnabled ~= false then
+			local k = Kind(st);
+			below[k] = below[k] + 1;
+		end;
+	end;
+	for _,st in ipairs(surfaceMines) do
+		local k = Kind(st);
+		above[k] = above[k] + 1;
+	end;
+	for _,st in ipairs(surfaceMines) do
+		local k = Kind(st);
+		if below[k] >= 1 and below[k] >= above[k] then return st; end;
+	end;
+	return nil;
 end;
 
 function Mole.MineralMines()
@@ -932,8 +1035,11 @@ function Economy.AssignConstructor(u, index)
 			local center = CellByIndex(Mole.shaftCell);
 			local best, bd = nil, nil;
 			for _,c in ipairs(cells) do
-				local d = D2(c.center, center.center);
-				if bd == nil or d < bd then best, bd = c, d; end;
+				local bl = Mem.blacklist[c.index];
+				if not (bl and bl > Sense.round) and not Mole.IsOpen(c) then
+					local d = D2(c.center, center.center);
+					if bd == nil or d < bd then best, bd = c, d; end;
+				end;
 			end;
 			if best then
 				Mole.tunnelGoal = best.index;
