@@ -135,17 +135,17 @@ function Mole.WaterNear(cell, h)
 end;
 
 --[[
-Wall off water: digging into water is possible, just slower. Blocks built into the water
-cells around a cell replace the water and stop the leak; then the cell can be dug.
+Wall off water: digging into water is possible, just slower. The terraformer digs first,
+then blocks built into the water cells around it replace the water and stop the leak.
 Returns true if an order was given.
 ]]
 Mole.wallTries = {};
-function Mole.WallWater(u, cell, h, dhs)
+function Mole.WallWater(u, cell, h, dhs, skipCenter)
 	local C = Game.Terrain.Content or {};
 	if not (C.Water and u.BuildBlocks) then return false; end;
 	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
 	if not ok or tc == nil then return false; end;
-	local cells = {tc};
+	local cells = skipCenter and {} or {tc};
 	for _,n in ipairs(tc.neighbors or {}) do cells[#cells+1] = n; end;
 	local out = {};
 	for _,c in ipairs(cells) do
@@ -476,10 +476,13 @@ function Mole.DigToward(u, targetCell)
 		if loc == nil then return false; end;
 	end;
 	local check = Mole.DigCheck(best, Mole.level);
-	-- water: wall it off first (slower, but it works), dig once dry
-	if check == 'water' and Mole.WallWater(u, best, Mole.level) then return true; end;
-	if check == 'lava' or check == 'breach' or check == 'water' then
-		Log(({lava = 'Lava next to', breach = 'Open space above', water = 'Water next to'})[check]..' cell '..best.index..': not digging there');
+	-- water: dig anyway (terraformers drill into water), then wall off what leaks in from the sides
+	if check == 'water' then
+		Mole.wallAfter = {cell = best.index, h = Mole.level};
+		check = 'ok';
+	end;
+	if check == 'lava' or check == 'breach' then
+		Log(({lava = 'Lava next to', breach = 'Open space above'})[check]..' cell '..best.index..': not digging there');
 		Economy.Blacklist(best.index, 200);
 		Mole.tunnelGoal = nil;
 		return false;
@@ -626,6 +629,13 @@ function Mole.Update()
 	end;
 	Mole.busy = 0;
 
+	-- after drilling into water: wall off the water cells around the dug cell
+	if Mole.wallAfter and Move.IsIdle(u) then
+		local w = Mole.wallAfter;
+		Mole.wallAfter = nil;
+		local cell = CellByIndex(w.cell);
+		if cell and Mole.WallWater(u, cell, w.h, {-1, 0, 1, 2}, true) then return; end;
+	end;
 	if Mole.phase == 'shaft' then
 		if Mole.shaftCell == nil then
 			local c = Mole.PickShaftCell(u);
@@ -707,13 +717,15 @@ function Mole.Update()
 		end;
 		if Mole.level and u.location.height > Mole.level then
 			local check = Mole.DigCheck(u.location.cell, u.location.height - 2);
-			if check == 'water' and Mole.WallWater(u, u.location.cell, u.location.height - 2, {-1, 0, 1}) then
-				return;	-- walling off water around the shaft, then digging on
+			-- water below: drill on, then wall off the water around the shaft (next round)
+			if check == 'water' then
+				Mole.wallAfter = {cell = u.location.cell.index, h = u.location.height - 1};
+				check = 'ok';
 			end;
-			if check == 'lava' or check == 'water' then
-				-- lava (or water that won't hold) below: settle for the depth reached
+			if check == 'lava' then
+				-- lava below: settle for the depth reached
 				Mole.level = u.location.height;
-				Log((check == 'lava' and 'Lava' or 'Water')..' below: cavern at height '..Mole.level);
+				Log('Lava below: cavern at height '..Mole.level);
 			elseif check == 'unknown' and #Sense.my.surveyor > 0 and Sense.round - (Mole.unknownSince or Sense.round) < 3 then
 				Mole.unknownSince = Mole.unknownSince or Sense.round;
 				Mole.waitSurvey = u.location.world;
