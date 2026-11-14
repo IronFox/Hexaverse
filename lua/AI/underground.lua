@@ -226,6 +226,14 @@ function Mole.LayerFault(center, level)
 	return nil;
 end;
 
+-- Water next to the shaft column anywhere between the cavern and the surface
+function Mole.WetShaft(cell, level, top)
+	for h = level, top, 3 do
+		if Mole.WaterNear(cell, h) then return true; end;
+	end;
+	return false;
+end;
+
 function Mole.DigCheck(cell, h)
 	if not (Game.Terrain and Game.Terrain.TranslateUnitCell and Game.Terrain.GetContent) then return 'ok'; end;
 	local C = Game.Terrain.Content or {};
@@ -833,13 +841,17 @@ function Mole.Update()
 			-- if it is wet even just below the ground, look for another spot
 			-- after several wet spots, settle for less: one layer of cover, no margin around the cavern
 			local wet = Mole.wetRejects or 0;
+			-- (heights are absolute: the lowest usable layer is the bottom of the world, with a floor)
+			local bottom = (tonumber(Game.Grid.bottomHeight) or -15) + 1;
 			local minCover = wet >= 4 and 1 or 2;
 			local margin = wet >= 4 and 0 or 1;
-			local level = math.max(low - Cfg.moleDepth, -15);
+			local level = math.max(low - Cfg.moleDepth, bottom);
 			-- and the layer must be one a cavern can live in: rock with a floor and a roof, no lava
 			local fault = nil;
 			while level <= low - minCover do
-				fault = Mole.WetArea(u.location.cell, level, margin) and 'water' or Mole.LayerFault(u.location.cell, level);
+				-- (water anywhere along the shaft runs down it and floods the cavern from above)
+				fault = (Mole.WetArea(u.location.cell, level, margin) or Mole.WetShaft(u.location.cell, level, u.location.height)) and 'water'
+					or Mole.LayerFault(u.location.cell, level);
 				if fault == nil then break; end;
 				level = level + 1;
 			end;
@@ -847,7 +859,7 @@ function Mole.Update()
 			-- longer, so try a couple of other spots first
 			if level > low - minCover and wet >= 2 and Game.Terrain.Content and Game.Terrain.Content.Water then
 				-- the deepest level whose only fault is water
-				local l = math.max(low - Cfg.moleDepth, -15);
+				local l = math.max(low - Cfg.moleDepth, bottom);
 				while l <= low - minCover and Mole.LayerFault(u.location.cell, l) do l = l + 1; end;
 				if l <= low - minCover then
 					level = l;
@@ -857,6 +869,8 @@ function Mole.Update()
 			end;
 			if level > low - minCover then
 				Mole.wetRejects = wet + 1;
+				fault = fault or 'too close to the bottom of the world';
+				Mole.lastFault = fault;
 				Log('No cavern layer below shaft cell '..Mole.shaftCell..' (ground '..low..'): '..tostring(fault)..'. Picking another');
 				Mole.shaftRejected[Mole.shaftCell] = true;
 				Mole.shaftCell = nil;
@@ -938,6 +952,16 @@ function Mole.Update()
 		if n >= 4 then
 			Log('Cavern digging takes too long: using the '..n..' open cells');
 			closed = nil;
+		elseif Sense.round - Mole.cavernSince >= Cfg.moleCavernRounds + 10 and not Mole.sealed then
+			-- it floods or caves in faster than it is dug: this spot is no cavern. Try another,
+			-- and after two such spots live on the surface
+			Mole.cavernFails = (Mole.cavernFails or 0) + 1;
+			Log('Cavern at cell '..Mole.shaftCell..' has only '..n..' open cells after '..(Sense.round - Mole.cavernSince)
+				..' rounds: giving this spot up'..(Mole.cavernFails >= 2 and ', and building up on the surface instead' or ''));
+			Mole.shaftRejected[Mole.shaftCell] = true;
+			Mole.shaftCell, Mole.shaftSince, Mole.level, Mole.cavernSince = nil, nil, nil, nil;
+			Mole.phase = Mole.cavernFails >= 2 and 'surface' or 'shaft';
+			return;
 		elseif Sense.round % 10 == 0 then
 			Log('Cavern still has only '..n..' open cells after '..(Sense.round - Mole.cavernSince)..' rounds; digger at '
 				..u.location.cell.index..'/'..tostring(u.location.height)..'; content Clear='..tostring(Game.Terrain.Content and Game.Terrain.Content.Clear));
