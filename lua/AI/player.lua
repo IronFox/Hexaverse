@@ -2096,6 +2096,19 @@ function Economy.AssignConstructor(u, index)
 		end;
 	end;
 	Economy.retreats[u.id] = nil;
+	-- what it is building may have lost its foundation since (power, fuel): drop it, so the
+	-- builder can restore the foundation instead
+	if job and job.kind and not Move.IsIdle(u) then
+		local why = Needs.Unsupported(Game.Type.units[job.kind]);
+		if why then
+			Log(u.niceName..': dropping '..job.kind..' ('..why..')');
+			Needs.Block(job.kind, 'energy', 1);
+			u.ClearTasks();
+			Mem.jobs[u.id] = nil;
+			Economy.busy[u.id] = nil;
+			return;
+		end;
+	end;
 	if not Move.IsIdle(u) then
 		-- a job that runs far too long is stuck (e.g. no room to relocate after constructing)
 		-- (rounds without minerals don't count: construction simply pauses then)

@@ -652,6 +652,7 @@ Needs.resolve = {
 	builder = {builders = 1},				-- nobody free to build it
 	capacity = {builders = 1, spend = 1},	-- income piles up: more builders and plants to spend it
 	income = {income = 1},					-- nothing to save from: income first
+	energy = {energy = 1, fuel = 0.8},		-- power or fuel lost under what we were building
 };
 Needs.blocks = {};	-- cause -> {value, round, what}
 
@@ -693,6 +694,23 @@ function Needs.ApplyBlocks(v)
 	end;
 end;
 
+--[[
+React fast. A running construction whose foundation just broke (the only generator or
+reactor core went boom, the last fuel mine is gone) is not worth finishing now: a lab or
+plane factory without power or fuel is dead weight. Returns why, or nil if it still stands.
+Power, mines and plants themselves are what restores the foundation: never dropped.
+]]
+function Needs.Unsupported(t)
+	if t == nil or t == Types.generator or t == Types.reactor or t == Types.mine or t == Types.plant then return nil; end;
+	local demand = t.balance and t.balance.demand or {};
+	if not Economy.PowerCritical() then Needs.hadPower = true; end;
+	if (demand.energy or 0) > 0 and Needs.hadPower and Economy.PowerCritical() then return 'power lost'; end;
+	if (demand.fuel or 0) > 0 and Economy.FuelMines() == 0 and (Game.myFaction.currentResources.storage.fuel or 0) <= 0 then
+		return 'fuel lost';
+	end;
+	return nil;
+end;
+
 function Needs.Choose(options, what, budget)
 	-- storage nearly full: income is being thrown away, anything useful beats nothing
 	local full = (budget or 0) >= 450;
@@ -700,6 +718,8 @@ function Needs.Choose(options, what, budget)
 	local bestAny, bestAnyS = nil, 0;
 	for _,o in ipairs(options) do
 		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1) * Needs.Have(o.have, o.cap, o.swarm) * Needs.FailFactor(o.name);
+		-- its foundation is gone: restore that first
+		if what == 'structure' and o.want and Needs.Unsupported(o.want.type) then o.score = o.score * 0.1; end;
 		if o.score > bestAnyS then bestAny, bestAnyS = o, o.score; end;
 		local affordable = budget == nil or (o.cost or 0) <= budget + 50;
 		if affordable and o.score > bestS then best, bestS = o, o.score; end;
