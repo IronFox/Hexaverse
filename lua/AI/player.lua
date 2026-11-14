@@ -2152,16 +2152,26 @@ function Economy.AssignConstructor(u, index)
 		local resources = {want.resource};
 		if want.resource ~= 'Minerals' then resources[2] = 'Minerals'; end;
 		for _,res in ipairs(resources) do
+			-- why a mine order comes to nothing (logged every 5 rounds): no candidates, no ground,
+			-- unsafe or too far, site rejected, or the build order failed
+			local why = {cands = 0, noGround = 0, unsafe = 0, far = 0, site = 0, build = 0};
 			for _,cell in ipairs(Economy.FindMineCells(res, Cfg.mineCandidates)) do
+				why.cands = why.cands + 1;
 				local dest = Move.GroundAt(u, cell);
 				local reg = dest and Map.RegionOfLoc(dest);
 				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= 2;
-				if dest and safe and Economy.SiteOK(dest, true) then
-					if Economy.BuildAt(u, dest, want.type) then
-						Economy.claimed[cell.index] = true;
-						return;
-					end;
-				end;
+				if dest == nil then why.noGround = why.noGround + 1;
+				elseif not safe then
+					if reg and (Sense.hops[reg.id] or 99) > 2 then why.far = why.far + 1; else why.unsafe = why.unsafe + 1; end;
+				elseif not Economy.SiteOK(dest, true) then why.site = why.site + 1;
+				elseif Economy.BuildAt(u, dest, want.type) then
+					Economy.claimed[cell.index] = true;
+					return;
+				else why.build = why.build + 1; end;
+			end;
+			if Sense.round % 5 == 0 then
+				Log(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected, %d build failed',
+					res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.build));
 			end;
 		end;
 		-- no safe known resource spot: remember that for this round and build the next best thing instead
