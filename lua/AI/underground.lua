@@ -518,7 +518,16 @@ function Mole.Update()
 	end;
 	-- a dig order that never completes keeps the digger busy forever: drop it after a few rounds
 	if not Move.IsIdle(u) then
-		Mole.busy = (Mole.busy or 0) + 1;
+		-- a construction that advanced since last round is not stuck (labs and plants take many rounds)
+		local t1 = u.tasks and u.tasks[1];
+		local left = t1 and t1.job and t1.job.continuationsToCompletion;
+		local prev = Mole.jobLeft;
+		Mole.jobLeft = left;
+		if left and prev and left < prev then
+			Mole.busy = 0;
+		else
+			Mole.busy = (Mole.busy or 0) + 1;
+		end;
 		if Mole.busy >= Cfg.moleDigTimeout then
 			local t = u.tasks and u.tasks[1];
 			Log('Digger stuck for '..Mole.busy..' rounds on '..tostring(t and t.name)..' at height '..tostring(u.location.height)..': dropping it');
@@ -915,8 +924,11 @@ function Mole.MinesReplaced(surfaceMines)
 	local below, above = {minerals = 0, fuel = 0}, {minerals = 0, fuel = 0};
 	for _,st in ipairs(Sense.myStructures or {}) do
 		if st.type == Types.mine and Mole.IsBelow(st.location) and st.isEnabled ~= false then
+			-- only a mine that already produces counts: a freshly placed one may not run yet
 			local k = Kind(st);
-			below[k] = below[k] + 1;
+			local sup = st.balance and st.balance.supply;
+			local made = sup and (k == 'fuel' and sup.fuel or sup.minerals) or 0;
+			if made > 0 then below[k] = below[k] + 1; end;
 		end;
 	end;
 	for _,st in ipairs(surfaceMines) do

@@ -2055,7 +2055,16 @@ function Economy.AssignConstructor(u, index)
 		-- (rounds without minerals don't count: construction simply pauses then)
 		-- Untracked tasks count too: a retreat keeps a construction that already spent resources
 		-- (ClearSafeTasks), and such a leftover can wait forever for room to relocate
-		if (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.brokeMinerals then
+		-- a job that advanced since last round is not stuck, however long it takes
+		-- (a plane factory needs 20 rounds of construction)
+		local t1 = u.tasks and u.tasks[1];
+		local left = t1 and t1.job and t1.job.continuationsToCompletion;
+		Economy.jobLeft = Economy.jobLeft or {};
+		local prev = Economy.jobLeft[u.id];
+		Economy.jobLeft[u.id] = left;
+		if left and prev and left < prev then
+			Economy.busy[u.id] = 0;
+		elseif (Game.myFaction.currentResources.storage.minerals or 0) >= Cfg.brokeMinerals then
 			Economy.busy[u.id] = (Economy.busy[u.id] or 0) + 1;
 		end;
 		local limit = (job and job.kind == 'Road') and 40 or 20;
