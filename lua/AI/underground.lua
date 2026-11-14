@@ -978,9 +978,10 @@ function Mole.Demolish()
 		local t = list[1].type;
 		local replaced;
 		if t == Types.mine then
-			-- income: mineral and fuel mines each need a working replacement below.
-			-- Without a mineral mine the faction dies within a few rounds
-			replaced = Mole.MinesReplaced(list);
+			-- surface mines stay: they give little away, and losing the last mineral mine is fatal.
+			-- Even with two producing mines below, the faction once died 5 rounds after
+			-- demolishing its surface mine ("Lacking ... Mineral Mine")
+			replaced = false;
 		elseif t == Types.generator then
 			-- keep power: only once the cavern carries at least as many
 			replaced = (below[tn] or 0) >= #list;
