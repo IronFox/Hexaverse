@@ -2070,7 +2070,8 @@ function Economy.AssignConstructor(u, index)
 	local job = Mem.jobs[u.id];
 	-- danger: get out first, build later
 	local reg = Map.RegionOfLoc(u.location);
-	if Move.IsDangerous(u.location) or (reg and reg.mobileThreat > reg.myStrength) then
+	-- (Economy.shielded: sealed in below ground, what roams the surface can't reach it)
+	if not Economy.shielded and (Move.IsDangerous(u.location) or (reg and reg.mobileThreat > reg.myStrength)) then
 		local safest, bestS = nil, -1;
 		for id,_ in pairs(Sense.mine) do
 			local r = Map.regions[id];

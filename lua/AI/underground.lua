@@ -1105,7 +1105,9 @@ function Mole.Demolish()
 			-- keep power: only once the cavern carries at least as many
 			replaced = (below[tn] or 0) >= #list;
 		elseif t.turretType then
-			replaced = powerBelow;	-- towers are not rebuilt above; they just give the base away
+			-- towers are not rebuilt above; they just give the base away. But while the
+			-- faction still lives off the surface, they guard what keeps it alive
+			replaced = powerBelow and not Mole.SurfaceDependent();
 		else
 			replaced = (below[tn] or 0) >= 1;
 		end;
@@ -1394,7 +1396,10 @@ function Economy.AssignConstructor(u, index)
 	local before = Mem.jobs[u.id];
 	-- shut out above the seal: it can't get down, so it works on the surface
 	Mole.surfaceBuilder = Mole.sealed and not Mole.IsBelow(u.location);
+	-- sealed in below: surface raids can't reach it, so it keeps working (unless something digs)
+	Economy.shielded = Mole.sealed and not Mole.sealFailed and Mole.IsBelow(u.location) and not Sense.DeepMatters();
 	baseAssign(u, index);
+	Economy.shielded = false;
 	Mole.surfaceBuilder = false;
 	-- idle below ground with nothing ordered: out of space, or the mine site needs a tunnel
 	if Mole.phase == 'live' and Mem.jobs[u.id] == nil and Move.IsIdle(u) and before == nil then
@@ -1495,6 +1500,17 @@ function Economy.NextVehicle()
 	return baseNextVehicle();
 end;
 
+-- while the faction lives off its surface base, that base needs standing defense
+-- (hooked where blocked requirements are applied: before the goal budgets are set)
+local baseApplyBlocks = Needs.ApplyBlocks;
+function Needs.ApplyBlocks(v)
+	baseApplyBlocks(v);
+	if Mole.SurfaceDependent() and Sense.round >= 8 then
+		v.defense = math.max(v.defense or 0, 0.5);
+		v.army = math.max(v.army or 0, 0.4);
+	end;
+end;
+
 -- persist the dig state (flat numbers and strings only)
 local baseExport = ExportState;
 function ExportState()
@@ -1589,6 +1605,21 @@ end;
 -- submerged (in a pit dug one layer down), which this script doesn't do. So none below ground:
 -- the minerals go into bombs and economy
 Cfg.moleMaxTowers = 0;
+--[[
+Living below requires a mineral mine, a fuel mine and a generator below. Until the cavern
+has them, the surface base is what keeps the faction alive, sealed or not: it must be
+defended like any other base. A few towers up there, built by whoever is on the surface.
+]]
+Cfg.moleSurfaceTowers = 3;
+function Mole.SurfaceDependent()
+	return not Mole.EssentialsBelow();
+end;
+local function MaxTowers()
+	if Mole.SurfaceDependent() and (Mole.surfaceBuilder or (not Mole.sealed and Economy.allowSurface)) then
+		return Cfg.moleSurfaceTowers;
+	end;
+	return Cfg.moleMaxTowers;
+end;
 local function TowerCount()
 	local n = 0;
 	for _,st in ipairs(Sense.myStructures or {}) do
@@ -1600,18 +1631,18 @@ local baseDefenseNeed = Economy.DefenseNeed;
 function Economy.DefenseNeed(surplus, homeOnly)
 	local need = baseDefenseNeed(surplus, homeOnly);
 	if need and need.type and need.type.turretType and need.type.turretType.canAttack
-		and TowerCount() >= Cfg.moleMaxTowers then
+		and TowerCount() >= MaxTowers() then
 		return nil;
 	end;
 	return need;
 end;
 local baseTowerAllowed = Economy.TowerAllowed;
 function Economy.TowerAllowed(t)
-	if t and t.turretType and t.turretType.canAttack and TowerCount() >= Cfg.moleMaxTowers then return false; end;
+	if t and t.turretType and t.turretType.canAttack and TowerCount() >= MaxTowers() then return false; end;
 	return baseTowerAllowed(t);
 end;
 local baseGroundTower = Types.GroundTower;
 function Types.GroundTower()
-	if TowerCount() >= Cfg.moleMaxTowers then return nil; end;
+	if TowerCount() >= MaxTowers() then return nil; end;
 	return baseGroundTower();
 end;
