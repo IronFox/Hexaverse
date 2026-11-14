@@ -175,6 +175,57 @@ function Mole.WetArea(center, level, margin)
 	return false;
 end;
 
+--[[
+Is this a layer a cavern can live in? The terrain is known before the first dig, so look
+at the whole planned cavern, not just the shaft: solid rock to dig out, a floor beneath, a
+roof above, and no lava in or next to it. Returns nil if it is, or what is wrong with it.
+A few bad cells at the rim are fine (the cavern digs around them); bad cells around the
+shaft, or lava anywhere, are not.
+]]
+function Mole.LayerFault(center, level)
+	local C = Game.Terrain and Game.Terrain.Content;
+	if not (C and C.Clear and Game.Terrain.TranslateUnitCell and Game.Terrain.GetContent) then return nil; end;
+	local function At(tc, h)
+		local ok, content = pcall(Game.Terrain.GetContent, tc, h);
+		if ok then return content; end;
+		return nil;
+	end;
+	local inner = {};
+	for _,c in ipairs(Mole.Rings(center, 1)) do inner[c.index] = true; end;
+	local plan = {};
+	for _,c in ipairs(Mole.Rings(center, Mole.rings)) do plan[c.index] = true; end;
+	local n, bad, void, open = 0, 0, 0, 0;
+	for _,c in ipairs(Mole.Rings(center, Mole.rings + 1)) do
+		local ok, tc = pcall(Game.Terrain.TranslateUnitCell, c);
+		if ok and tc then
+			if C.Lava then
+				for dh = -2, 2 do
+					if At(tc, level + dh) == C.Lava then return 'lava at height '..(level + dh)..' (cell '..c.index..')'; end;
+				end;
+			end;
+			if plan[c.index] then
+				n = n + 1;
+				local floor = At(tc, level - 1);
+				local noFloor = floor == C.Clear or (C.Lava and floor == C.Lava);
+				-- the cavern takes two layers (floor level and the one above); the roof is the third
+				local breach = c.index ~= center.index
+					and (At(tc, level) == C.Clear or At(tc, level + 1) == C.Clear or At(tc, level + 2) == C.Clear);
+				if noFloor or breach then
+					bad = bad + 1;
+					if noFloor then void = void + 1; else open = open + 1; end;
+					if inner[c.index] then
+						return (noFloor and 'no floor' or 'open space')..' next to the shaft (cell '..c.index..')';
+					end;
+				end;
+			end;
+		end;
+	end;
+	if n > 0 and bad > n * 0.25 then
+		return string.format('%d of %d cells unusable (%d without floor, %d open to the outside)', bad, n, void, open);
+	end;
+	return nil;
+end;
+
 function Mole.DigCheck(cell, h)
 	if not (Game.Terrain and Game.Terrain.TranslateUnitCell and Game.Terrain.GetContent) then return 'ok'; end;
 	local C = Game.Terrain.Content or {};
@@ -785,24 +836,35 @@ function Mole.Update()
 			local minCover = wet >= 4 and 1 or 2;
 			local margin = wet >= 4 and 0 or 1;
 			local level = math.max(low - Cfg.moleDepth, -15);
-			while level <= low - minCover and Mole.WetArea(u.location.cell, level, margin) do level = level + 1; end;
+			-- and the layer must be one a cavern can live in: rock with a floor and a roof, no lava
+			local fault = nil;
+			while level <= low - minCover do
+				fault = Mole.WetArea(u.location.cell, level, margin) and 'water' or Mole.LayerFault(u.location.cell, level);
+				if fault == nil then break; end;
+				level = level + 1;
+			end;
 			-- no dry level here: digging into water works too, walling it off as we go. It takes
 			-- longer, so try a couple of other spots first
 			if level > low - minCover and wet >= 2 and Game.Terrain.Content and Game.Terrain.Content.Water then
-				level = math.max(low - Cfg.moleDepth, -15);
-				Mole.wetMode = true;
-				Log('Wet ground everywhere near: digging anyway, walling off water as we go');
+				-- the deepest level whose only fault is water
+				local l = math.max(low - Cfg.moleDepth, -15);
+				while l <= low - minCover and Mole.LayerFault(u.location.cell, l) do l = l + 1; end;
+				if l <= low - minCover then
+					level = l;
+					Mole.wetMode = true;
+					Log('Wet ground everywhere near: digging anyway, walling off water as we go');
+				end;
 			end;
 			if level > low - minCover then
 				Mole.wetRejects = wet + 1;
-				Log('Water below shaft cell '..Mole.shaftCell..' (ground '..low..'): picking another');
+				Log('No cavern layer below shaft cell '..Mole.shaftCell..' (ground '..low..'): '..tostring(fault)..'. Picking another');
 				Mole.shaftRejected[Mole.shaftCell] = true;
 				Mole.shaftCell = nil;
 				Mole.shaftSince = nil;
 				-- a water-logged map: no cavern anywhere near. Fight on the surface instead
 				if Mole.wetRejects >= 8 then
 					Mole.phase = 'surface';
-					Log('No dry ground for a cavern: building up on the surface instead');
+					Log('No ground fit for a cavern ('..tostring(fault)..'): building up on the surface instead');
 				end;
 				return;
 			end;
