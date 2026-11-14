@@ -2034,7 +2034,12 @@ function Economy.AssignConstructor(u, index)
 				score = math.abs(d - 9.0);
 			end;
 			score = score + n.movementCostsFromRoot * 0.05;
-			if want.kind ~= 'mine' then score = score + Needs.Spacing(loc); end;
+			if want.kind ~= 'mine' then
+				score = score + Needs.Spacing(loc);
+				-- exposed to high ground within artillery reach: towers suffer most
+				local ex = Needs.Exposure(u, loc);
+				if ex > 0 then score = score + ex * (0.3 + Needs.artyRisk) * (want.kind == 'tower' and 8 or 4); end;
+			end;
 			if bestScore == nil or score < bestScore then
 				best, bestScore = n, score;
 			end;

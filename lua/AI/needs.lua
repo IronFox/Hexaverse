@@ -294,6 +294,75 @@ function Needs.Spacing(loc)
 	return n * risk * 12 - math.min(n, 2) * (1 - risk) * 2;
 end;
 
+--[[
+Exposure: how much higher ground lies within artillery reach of a site. Around a
+mountain there is a wide ring where a tower is almost always a bad idea: artillery on
+top rains down on it, out of reach of everything below. And an adversary can make high
+ground: a terraformer building a ramp, or an artillery tank climbing one, nearby raises
+the exposure too. Returns layers of advantage an attacker would have (0 = none).
+]]
+Needs.groundCache = {};		-- cell index -> {h, round}
+Needs.exposureCache = {};	-- cell index .. '@' .. height -> {e, round}
+
+local function GroundHeight(u, cell)
+	local c = Needs.groundCache[cell.index];
+	if c and Sense.round - c.round < 15 then return c.h; end;
+	local ok, g = pcall(Game.Grid.FindHighestVehicleGround, u, cell);
+	local h = ok and g and not g.isSuborbital and g.height or nil;
+	Needs.groundCache[cell.index] = {h = h, round = Sense.round};
+	return h;
+end;
+
+function Needs.Exposure(u, loc)
+	if loc == nil or loc.isSuborbital or Map.groundRadius == nil then return 0; end;
+	local key = loc.cell.index..'@'..loc.height;
+	local c = Needs.exposureCache[key];
+	if c and Sense.round - c.round < 10 then return c.e; end;
+	local t = Types.turret and Types.turret.artillery;
+	local reach = (t and tonumber(t.flatAttackRange)) or 8;
+	local h0, h1 = Game.Grid.HeightToRadius(0), Game.Grid.HeightToRadius(1);
+	local layer = math.max(1e-3, h1 - h0);
+	local here = Map.RegionOfLoc(loc);
+	local regs = {};
+	if here then
+		regs[#regs+1] = here;
+		for nb,_ in pairs(here.neighbors) do regs[#regs+1] = Map.regions[nb]; end;
+	end;
+	local R = Map.groundRadius;
+	local function dist(a, b)
+		local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z;
+		return math.sqrt(dx*dx + dy*dy + dz*dz) * R;
+	end;
+	local e = 0;
+	for _,reg in ipairs(regs) do
+		for _,cell in ipairs(reg.cells) do
+			local d = dist(cell.center, loc.cell.center);
+			-- artillery reaches further downhill: every layer of height adds about a layer of range
+			if d <= reach + 8 * layer then
+				local h = GroundHeight(u, cell);
+				local rise = h and (h - loc.height) or 0;
+				if rise >= 2 and d <= reach + rise * layer then
+					e = math.max(e, rise - 1);
+				end;
+			end;
+		end;
+	end;
+	-- made high ground: hostile terraformers or artillery near (they may be building or climbing a ramp)
+	for _,h in pairs(Game.hostileUnits or {}) do
+		local tt = h.health > 0 and h.turret and h.turret.type;
+		if tt and not h.location.isSuborbital then
+			local d = dist(h.location.cell.center, loc.cell.center);
+			if tt.canRemoveTerrain and d <= reach * 1.5 then e = e + 1; end;
+			if tt.requiresStationaryVehicle and tt.trajectoryType == 'Artillery' and d <= reach * 1.5
+				and h.location.height > loc.height then
+				e = e + 1 + (h.location.height - loc.height);
+			end;
+		end;
+	end;
+	Needs.exposureCache[key] = {e = e, round = Sense.round};
+	return e;
+end;
+
 -- Room left in a region: 1 while half its cells are free, falling to 0 when it is full.
 -- Crowded spots block access and plant deployment, so another structure there is worth less
 function Needs.Room(reg)
