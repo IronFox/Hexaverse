@@ -1587,8 +1587,161 @@ end;
 -- Is this cell a reasonable construction site?
 Economy.plantCells = {};	-- cell index -> cell of my vehicle plants, refreshed per round
 
+--[[
+Lab array. Labs pay off in clusters (every two enabled lab neighbors add a point), so the
+first lab goes into a reserved 6-cell triangle on ground nobody else needs: no natural
+resources, nothing to harvest, safe and not exposed. Other buildings keep off it; more
+labs fill it later (1, 3, 6). If there is no room on the surface, it can go underground.
+]]
+Economy.labReserved = {};	-- cell index -> true
+
+local function CellById(idx)
+	for _,reg in ipairs(Map.regions) do
+		for _,c in ipairs(reg.cells) do if c.index == idx then return c; end; end;
+	end;
+	return nil;
+end;
+
+-- Grow a compact 6-cell cluster from a triangle of three mutually adjacent cells
+local function Triangle(a)
+	for _,b in ipairs(a.neighbors) do
+		for _,c in ipairs(b.neighbors) do
+			local ac = false;
+			for _,x in ipairs(a.neighbors) do if x == c then ac = true; break; end; end;
+			if ac and c ~= a then
+				local set, list = {[a.index]=true, [b.index]=true, [c.index]=true}, {a, b, c};
+				-- each further cell: the one touching most of the set (a triangle of 6 grows this way)
+				while #list < 6 do
+					local best, bn = nil, 1;
+					for _,m in ipairs(list) do
+						for _,cand in ipairs(m.neighbors) do
+							if not set[cand.index] then
+								local n = 0;
+								for _,cn in ipairs(cand.neighbors) do if set[cn.index] then n = n + 1; end; end;
+								if n > bn then best, bn = cand, n; end;
+							end;
+						end;
+					end;
+					if best == nil then break; end;
+					set[best.index] = true; list[#list+1] = best;
+				end;
+				if #list == 6 then return list; end;
+			end;
+		end;
+	end;
+	return nil;
+end;
+
+function Economy.IsWaterSurface(cell, loc)
+	local C = Game.Terrain and Game.Terrain.Content;
+	if not (C and C.Water and Game.Terrain.TranslateUnitCell and Game.Terrain.GetContent) then return false; end;
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+	if not ok or tc == nil then return false; end;
+	for dh = -1, 0 do
+		local okc, content = pcall(Game.Terrain.GetContent, tc, loc.height + dh);
+		if okc and content == C.Water then return true; end;
+	end;
+	return false;
+end;
+
+function Economy.LabSiteCellOK(u, cell)
+	if Sense.structureCells[cell.index] or Economy.claimed[cell.index] then return false; end;
+	local ok, res = pcall(Game.Grid.GetNaturalResourcesAt, cell);
+	if ok and res and ((res.minerals or 0) > 0 or (res.fuel or 0) > 0 or (res.uranium or 0) > 0) then return false; end;
+	if Economy.plantCells[cell.index] or Economy.IsPowerCenter(cell.index) or Economy.IsPowerRing(cell.index) then return false; end;
+	local loc = Move.GroundAt(u, cell);
+	if loc == nil or loc.isSuborbital then return false; end;
+	local reg = Map.RegionOfLoc(loc);
+	if reg == nil or not Sense.mine[reg.id] or Sense.Threat(reg) > 0 then return false; end;
+	return loc;
+end;
+
+-- Reserve the lab triangle (once), near home. Returns the reserved cells or nil
+function Economy.LabReserve(u)
+	if Mem.labCells then
+		local out = {};
+		for _,idx in ipairs(Mem.labCells) do out[#out+1] = CellById(idx); Economy.labReserved[idx] = true; end;
+		return out;
+	end;
+	local home = Mem.homeRegion and Map.regions[Mem.homeRegion];
+	if home == nil then return nil; end;
+	local cands = {};
+	for id,_ in pairs(Sense.mine) do
+		if (Sense.hops[id] or 99) <= 1 then
+			for _,c in ipairs(Map.regions[id].cells) do cands[#cands+1] = c; end;
+		end;
+	end;
+	local best, bestS = nil, nil;
+	local tried = 0;
+	local hover = u.type and u.type.vehicleBaseType == Types.base.hover;
+	for _,a in ipairs(cands) do
+		if tried > 60 then break; end;
+		if Economy.LabSiteCellOK(u, a) then
+			tried = tried + 1;
+			local tri = Triangle(a);
+			if tri then
+				local ok, score, h0 = true, 0, nil;
+				for _,c in ipairs(tri) do
+					local loc = Economy.LabSiteCellOK(u, c);
+					if not loc then ok = false; break; end;
+					h0 = h0 or loc.height;
+					score = score + math.abs(loc.height - h0) * 3 + Needs.Exposure(u, loc) * 2;
+					-- water surfaces are great: nothing grows there
+					-- (only for builders that float: a heavy-base terraformer can't get out there)
+					if hover and Economy.IsWaterSurface(c, loc) then score = score - 2; end;
+					-- nothing to harvest next door either: resource neighbors are for mines
+					for _,nb in ipairs(c.neighbors) do
+						local okr, r = pcall(Game.Grid.GetNaturalResourcesAt, nb);
+						if okr and r and ((r.minerals or 0) > 0 or (r.fuel or 0) > 0) then score = score + 1; end;
+					end;
+				end;
+				if ok then
+					score = score + Dist2(Map.WorldCenter(Map.RegionOfLoc(Move.GroundAt(u, a)) or home), Sense.baseCenter or Map.WorldCenter(home)) * 0.01;
+					if bestS == nil or score < bestS then best, bestS = tri, score; end;
+				end;
+			end;
+		end;
+	end;
+	if best == nil then return nil; end;
+	Mem.labCells = {};
+	for _,c in ipairs(best) do
+		Mem.labCells[#Mem.labCells+1] = c.index;
+		Economy.labReserved[c.index] = true;
+	end;
+	Log('Lab array reserved: cells '..table.concat(Mem.labCells, ', '));
+	return best;
+end;
+
+-- Build a lab into the reserved triangle, next to the labs already there. True if ordered
+function Economy.BuildLab(u, t)
+	local cells = Economy.LabReserve(u);
+	if cells == nil then return false; end;
+	local best, bestN, bestLoc = nil, -1, nil;
+	for _,c in ipairs(cells) do
+		if c and not Sense.structureCells[c.index] and not Economy.claimed[c.index] then
+			local n = 0;
+			for _,nb in ipairs(c.neighbors) do
+				local st = Sense.structureAt[nb.index];
+				if st and st.type == t then n = n + 1; end;
+			end;
+			local loc = Move.GroundAt(u, c);
+			Economy.allowLabSite = true;
+			local ok = loc and Economy.SiteOK(loc, false);
+			Economy.allowLabSite = false;
+			if ok and n > bestN then best, bestN, bestLoc = c, n, loc; end;
+		end;
+	end;
+	if best == nil then return false; end;
+	if Economy.BuildAt(u, bestLoc, t) then
+		Economy.claimed[best.index] = true;
+		return true;
+	end;
+	return false;
+end;
+
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
+	if Economy.labReserved[idx] and not Economy.allowLabSite then return false; end;
 	if Economy.IsPowerCenter(idx) and not Economy.allowPowerCenter then return false; end;
 	if Economy.IsPowerRing(idx) and not Economy.allowPowerRing then return false; end;
 	local bl = Mem.blacklist[idx];
@@ -1975,6 +2128,10 @@ function Economy.AssignConstructor(u, index)
 
 	local want = Economy.NextStructure(index);
 	if want == nil or want.type == nil then
+		return;
+	end;
+
+	if want.type == Types.lab and Economy.BuildLab(u, want.type) then
 		return;
 	end;
 
