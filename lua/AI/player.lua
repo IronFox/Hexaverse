@@ -2136,6 +2136,7 @@ function Economy.AssignConstructor(u, index)
 		return;
 	end;
 
+	Economy.freeBuilders = (Economy.freeBuilders or 0) + 1;
 	local want = Economy.NextStructure(index);
 	if want == nil or want.type == nil then
 		return;
@@ -2165,6 +2166,7 @@ function Economy.AssignConstructor(u, index)
 			-- why a mine order comes to nothing (logged every 5 rounds): no candidates, no ground,
 			-- unsafe or too far, site rejected, or the build order failed
 			local why = {cands = 0, noGround = 0, unsafe = 0, far = 0, site = 0, build = 0};
+			if res == want.resource then Economy.mineWhy = why; end;
 			for _,cell in ipairs(Economy.FindMineCells(res, Cfg.mineCandidates)) do
 				why.cands = why.cands + 1;
 				local dest = Move.GroundAt(u, cell);
@@ -2184,6 +2186,17 @@ function Economy.AssignConstructor(u, index)
 			if Sense.round % 5 == 0 then
 				Log(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed',
 					res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.reasons or '', why.build));
+			end;
+		end;
+		-- the requirement that is missing: no known site (survey), or the known ones are under
+		-- threat (guard them). Rejected sites and failed orders just weigh the mine down
+		do
+			local urgency = Needs.pendingUrgency or 0.5;
+			local w = Economy.mineWhy or {};
+			if w.cands == 0 or w.far + w.noGround >= w.cands then
+				Needs.Block('Mine ('..want.resource..')', 'site', urgency);
+			elseif w.unsafe > 0 and w.unsafe >= w.site + w.build then
+				Needs.Block('Mine ('..want.resource..')', 'danger', urgency * 0.8);
 			end;
 		end;
 		-- no safe known resource spot: remember that for this round and build the next best thing instead
@@ -2485,6 +2498,8 @@ function Economy.FuelMines()
 end;
 
 function Economy.Production()
+	-- every plant busy with a full queue (read by Needs: spending capacity)
+	Economy.plantsFull = #Sense.plants > 0;
 	for _,p in ipairs(Sense.plants) do
 		if p.productionCompleted or p.deploymentOptions then
 			local ok, loc = pcall(p.GetIdealDeploymentOption);
@@ -2537,6 +2552,7 @@ function Economy.Production()
 			and Economy.Count(Types.mine) < Cfg.earlyMines + 2
 			and Sense.Pressure() <= 0;
 		local maxQueue = broke and 1 or 2;
+		if queued < maxQueue then Economy.plantsFull = false; end;
 		local reserveBlocked = (cur.storage.minerals or 0) < Economy.PowerReserve() and #Sense.my.combat >= 2;
 		-- while short on mines and broke, mines under construction get the minerals first
 		if not reserveBlocked and broke and Economy.MineJobs() > 0 and #Sense.my.combat >= 2 then
@@ -2569,6 +2585,7 @@ function Economy.Constructors()
 		Economy.plantCells[p.location.cell.index] = p.location.cell;
 	end;
 	Economy.powerOrders = 0;
+	Economy.freeBuilders = 0;
 	Economy.roadOrdered = false;
 	Economy.scannerClaimed = {};
 	-- remember cells constructors are already heading to

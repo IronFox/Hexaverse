@@ -296,6 +296,19 @@ function Needs.Update()
 	v.army = math.max(v.army, v.defense * 0.8);
 
 	Needs.v = v;
+	--[[
+	Spending needs the means to spend: minerals piling up while every constructor was busy and
+	every plant queue full last round means the base can't turn income into anything. That
+	is a missing capability, not a lack of ideas: more builders and plants
+	]]
+	if minerals >= 400 and round >= 10 then
+		local noBuilder = (Economy.freeBuilders or 0) == 0;
+		local plantsFull = Economy.plantsFull ~= false;
+		if noBuilder or plantsFull then
+			Needs.Block(noBuilder and 'spending (all builders busy)' or 'spending (plants full)', 'capacity', clamp((minerals - 300) / 200));
+		end;
+	end;
+	Needs.ApplyBlocks(v);
 end;
 
 -- weight of a need key (survival* share the survival weight)
@@ -625,6 +638,61 @@ function Needs.Started()
 	Needs.pending = nil;
 end;
 
+--[[
+Requirements. An option needs more than minerals: a known site, a free builder, income to
+save from, the means to spend what comes in. When one of those is missing, the option is
+blocked, and the missing capability becomes a need of its own, as urgent as what it blocks
+(a mine the economy badly wants makes finding a site just as urgent). It fades over 10
+rounds unless the block is seen again.
+	cause -> the needs that resolve it
+]]
+Needs.resolve = {
+	site = {prospecting = 1, scouting = 0.6},	-- no known site: survey for one
+	danger = {defense = 1, army = 0.6},		-- the sites are under threat: clear or guard them
+	builder = {builders = 1},				-- nobody free to build it
+	capacity = {builders = 1, spend = 1},	-- income piles up: more builders and plants to spend it
+	income = {income = 1},					-- nothing to save from: income first
+};
+Needs.blocks = {};	-- cause -> {value, round, what}
+
+function Needs.BlockValue(cause)
+	local b = Needs.blocks[cause];
+	if b == nil then return 0; end;
+	local age = Sense.round - b.round;
+	if age > 10 then Needs.blocks[cause] = nil; return 0; end;
+	return b.value * (1 - age / 11);
+end;
+
+-- How urgent an option is: the strongest need it serves
+function Needs.Urgency(o)
+	if o == nil then return 0; end;
+	local u = 0;
+	for k,amount in pairs(o.serves or {}) do
+		u = math.max(u, (Needs.v[k] or 0) * math.min(1, amount));
+	end;
+	return u;
+end;
+
+function Needs.Block(what, cause, value)
+	value = clamp(value or 0.5);
+	local cur = Needs.BlockValue(cause);
+	Needs.blocks[cause] = {value = math.max(cur, value), round = Sense.round, what = what};
+	local keys = {};
+	for k,_ in pairs(Needs.resolve[cause] or {}) do keys[#keys+1] = k; end;
+	table.sort(keys);
+	Needs.Note(string.format('%s blocked: needs %s (%.2f), raising %s', what, cause, value, table.concat(keys, ', ')));
+end;
+
+-- Blocked requirements pass their urgency on to the needs that resolve them
+function Needs.ApplyBlocks(v)
+	for cause,map in pairs(Needs.resolve) do
+		local b = Needs.BlockValue(cause);
+		if b > 0 then
+			for k,amount in pairs(map) do v[k] = math.max(v[k] or 0, clamp(b * amount)); end;
+		end;
+	end;
+end;
+
 function Needs.Choose(options, what, budget)
 	-- storage nearly full: income is being thrown away, anything useful beats nothing
 	local full = (budget or 0) >= 450;
@@ -819,7 +887,12 @@ function Needs.NextStructure(constructorIndex)
 	local best, top = Needs.Choose(opts, 'structure', minerals);
 	-- saving up: the top option is out of reach, and nothing affordable comes close
 	-- (never with storage full: saving more is impossible, minerals are being lost)
-	if top and top ~= best and minerals < 450 and (best == nil or best.score < top.score * 0.6) then
+	-- saving needs something to save from: without mineral income, saving waits forever
+	local income = (Needs.mineralMines or 0) > 0;
+	if top and top ~= best and minerals < 450 and not income and (best == nil or best.score < top.score * 0.6) then
+		Needs.Block('saving for '..top.name, 'income', Needs.Urgency(top));
+	end;
+	if top and top ~= best and minerals < 450 and income and (best == nil or best.score < top.score * 0.6) then
 		Needs.saving = {score = top.score, cost = top.cost, name = top.name, round = Sense.round};
 		Needs.Note('saving for '..top.name..string.format(' (%.2f)', top.score));
 		return nil;
@@ -837,6 +910,7 @@ function Needs.NextStructure(constructorIndex)
 	end;
 	Needs.Note(string.format('build %s (%.2f)', best.name, best.score));
 	Needs.pending = best.name;
+	Needs.pendingUrgency = Needs.Urgency(best);
 	return want;
 end;
 
@@ -854,6 +928,13 @@ function Needs.VehicleOptions(kit)
 		return #(Sense.my[role] or {}) + 2 * (Sense.storedByRole[role] or 0);
 	end;
 	add(kit.Constructor(), {builders = 1, income = 0.2, survivalBuilder = 1});	-- the builders need already counts them
+	-- spending capacity can raise the builders need for long: beyond what the base can use,
+	-- each further constructor is worth far less
+	if #opts > 0 then
+		local nC = #Sense.my.constructor + (Sense.storedByRole.constructor or 0);
+		local capC = (Cfg.constructorsLate or 5) + 3;
+		if nC >= capC then opts[#opts].factor = 0.35 ^ (nC - capC + 1); end;
+	end;
 	local combat = #Sense.my.combat + #Sense.my.bomb;
 	-- tanks: as many as the action can use (the attack target's required force, or the
 	-- pressure at home), counted in groups of four. Beyond that only a swarm floor:
@@ -931,6 +1012,13 @@ function Needs.Report()
 		if Needs.v[k] > 0 then parts[#parts+1] = string.format('%s %.2f', k, Needs.v[k]); end;
 	end;
 	Log('Needs: '..table.concat(parts, ', '));
+	local bl = {};
+	for cause,b in pairs(Needs.blocks) do
+		local val = Needs.BlockValue(cause);
+		if val > 0 then bl[#bl+1] = string.format('%s %.2f (%s)', cause, val, b.what); end;
+	end;
+	table.sort(bl);
+	if #bl > 0 then Log('Needs blocked: '..table.concat(bl, '; ')); end;
 	local ad = {};
 	for k,m in pairs(Needs.adapt) do
 		if math.abs(m - 1) >= 0.05 then ad[#ad+1] = string.format('%s x%.2f', k, m); end;
