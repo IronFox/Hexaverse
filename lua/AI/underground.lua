@@ -145,13 +145,16 @@ function Mole.WallWater(u, cell, h, dhs, skipCenter)
 	if not (C.Water and u.BuildBlocks) then return false; end;
 	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
 	if not ok or tc == nil then return false; end;
-	local cells = skipCenter and {} or {tc};
+	local cells = {tc};
 	for _,n in ipairs(tc.neighbors or {}) do cells[#cells+1] = n; end;
 	local out = {};
-	for _,c in ipairs(cells) do
+	for i,c in ipairs(cells) do
 		for _,dh in ipairs(dhs or {0, 1, 2}) do
+			-- around, on top and underneath: only the vehicle's own spot stays open
+			if i == 1 and skipCenter and dh == 0 then goto continue; end;
 			local okc, content = pcall(Game.Terrain.GetContent, c, h + dh);
 			if okc and content == C.Water then out[#out+1] = Game.Terrain.Pack(c, h + dh); end;
+			::continue::
 		end;
 	end;
 	if #out == 0 then return false; end;
