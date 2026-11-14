@@ -347,7 +347,9 @@ function Mole.PassableSet()
 	return set;
 end;
 
-function Mole.KeepsConnected(idx)
+-- forMine: a mine may close off a short dead end (the rest of the corridor that led to
+-- it), as long as nothing of mine is in there. The mine is what the corridor was dug for
+function Mole.KeepsConnected(idx, forMine)
 	local set = Mole.PassableSet();
 	if Mole.shaftCell == nil or idx == Mole.shaftCell then return false; end;
 	local blocked = function(i) return i == idx or Economy.claimed[i]; end;
@@ -357,7 +359,7 @@ function Mole.KeepsConnected(idx)
 	for _,nb in ipairs(cell and cell.neighbors or {}) do
 		if set[nb.index] and not blocked(nb.index) then exit = true; break; end;
 	end;
-	if not exit then return false; end;
+	if not exit then Mole.cutWhy = 'no exit'; return false; end;
 	local seen, queue, n = {[Mole.shaftCell] = true}, {set[Mole.shaftCell]}, 1;
 	local head = 1;
 	while head <= #queue do
@@ -370,8 +372,28 @@ function Mole.KeepsConnected(idx)
 			end;
 		end;
 	end;
+	local cut = {};
 	for i in pairs(set) do
-		if not seen[i] and not blocked(i) then return false; end;
+		if not seen[i] and not blocked(i) then
+			if not forMine then return false; end;
+			cut[#cut+1] = i;
+		end;
+	end;
+	if #cut == 0 then return true; end;
+	if #cut > 6 then Mole.cutWhy = #cut..' cells cut off'; return false; end;
+	local inCut = {};
+	for _,i in ipairs(cut) do inCut[i] = true; end;
+	for _,role in ipairs({'constructor', 'surveyor'}) do
+		for _,v in ipairs(Sense.my[role] or {}) do
+			if inCut[v.location.cell.index] then Mole.cutWhy = 'unit beyond'; return false; end;
+		end;
+	end;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if Mole.IsBelow(st.location) then
+			for _,nb in ipairs(st.location.cell.neighbors) do
+				if inCut[nb.index] then Mole.cutWhy = 'structure beyond'; return false; end;
+			end;
+		end;
 	end;
 	return true;
 end;
@@ -817,6 +839,18 @@ function Mole.Update()
 				-- lava below: settle for the depth reached
 				Mole.level = u.location.height;
 				Log('Lava below: cavern at height '..Mole.level);
+				-- no depth gained at all: a "cavern" level with the ground around is no cavern
+				local lowest = nil;
+				for _,nb in ipairs(u.location.cell.neighbors) do
+					local okg, g = pcall(Game.Grid.FindHighestVehicleGround, u, nb);
+					if okg and g and (lowest == nil or g.height < lowest) then lowest = g.height; end;
+				end;
+				if lowest == nil or Mole.level > lowest - 2 then
+					Mole.phase = 'surface';
+					Mole.level, Mole.shaftCell, Mole.shaftSince = nil, nil, nil;
+					Log('Lava right below the surface: no cavern here, building up on the surface instead');
+					return;
+				end;
 			elseif check == 'unknown' and #Sense.my.surveyor > 0 and Sense.round - (Mole.unknownSince or Sense.round) < 3 then
 				Mole.unknownSince = Mole.unknownSince or Sense.round;
 				Mole.waitSurvey = u.location.world;
@@ -1168,7 +1202,9 @@ function Mole.LavaWatch()
 		end;
 		-- the digger gone right after a dig, deep in a tunnel: assume the worst
 		local diggerLost = false;
-		if first == nil and Mole.lastDigRound and Sense.round - Mole.lastDigRound <= 3 and Mole.tunnelGoal then
+		-- (a digger shot in a raid is no lava: only when nothing attacked me)
+		if first == nil and Mole.lastDigRound and Sense.round - Mole.lastDigRound <= 3 and Mole.tunnelGoal
+			and #(Sense.recentAttacks or {}) == 0 then
 			diggerLost = true;
 			for _,c in ipairs(Sense.my.constructor) do if c.id == Mole.digger then diggerLost = false; end; end;
 			if diggerLost and #cor >= 3 then first = #cor; end;
@@ -1184,6 +1220,12 @@ function Mole.LavaWatch()
 	end;
 	local plug = Mole.plug;
 	if plug == nil then return; end;
+	-- the corridor was reset since (a new tunnel started): nothing left to plug
+	if cor[plug.i] == nil or cor[plug.i - 1] == nil then
+		Log('The corridor to plug is gone: dropping the plug');
+		Mole.plug, Mole.plugger = nil, nil;
+		return;
+	end;
 	local cell = CellByIndex(cor[plug.i]);
 	local stand = CellByIndex(cor[plug.i - 1]);
 	local function WriteOff(done)
@@ -1273,16 +1315,23 @@ mineral site unless one is already open to build on.
 function Mole.DiggerMine(u)
 	if Types.mine == nil or not u.BuildStructure then return false; end;
 	local cost = tonumber(Types.mine.constructionCost) or 0;
-	if (Game.myFaction.currentResources.storage.minerals or 0) < cost then return false; end;
+	local short = (Game.myFaction.currentResources.storage.minerals or 0) < cost;
+	local why = nil;
 	-- minerals first; fuel once a mineral mine stands below
 	local order = Mole.MineBelow('Minerals') and {'Fuel', 'Minerals'} or {'Minerals', 'Fuel'};
 	for _,res in ipairs(order) do
 		for _,c in ipairs(Economy.FindMineCells(res, 6)) do
 			local bl = Mem.blacklist[c.index];
-			if Mole.IsOpen(c) and not Economy.claimed[c.index] and not (bl and bl > Sense.round) then
+			if Mole.IsOpen(c) and not Economy.claimed[c.index] then
 				local loc = Mole.LocAt(c);
 				local ok, stand = pcall(u.CanStandAt, loc);
-				if loc and ok and stand ~= false and Economy.SiteOK(loc, true) and Economy.BuildAt(u, loc, Types.mine) then
+				Economy.siteWhy, Mole.cutWhy = nil, nil;
+				if bl and bl > Sense.round then why = (why or '')..' '..c.index..': banned';
+				elseif short then why = (why or '')..' '..c.index..': minerals short';
+				elseif not (loc and ok and stand ~= false) then why = (why or '')..' '..c.index..': cannot stand there';
+				elseif not Economy.SiteOK(loc, true) then why = (why or '')..' '..c.index..': site rejected ('..tostring(Economy.siteWhy or ('cuts the cavern: '..tostring(Mole.cutWhy)))..')';
+				elseif not Economy.BuildAt(u, loc, Types.mine) then why = (why or '')..' '..c.index..': order failed';
+				else
 					Economy.claimed[c.index] = true;
 					-- an order that keeps coming to nothing: leave the site alone for a while
 					Mole.mineTries = Mole.mineTries or {};
@@ -1297,6 +1346,7 @@ function Mole.DiggerMine(u)
 			end;
 		end;
 	end;
+	if why and Sense.round % 5 == 0 then Log('Open mine site below, but no mine:'..why); end;
 	return false;
 end;
 
@@ -1464,6 +1514,7 @@ function Economy.SiteOK(loc, forMine)
 	-- a mine counts only on solid ground: not on top of a tunnel or the cavern. A site the
 	-- tunnel has reached (or is heading for) gets its mine below, where raids can't reach it
 	if forMine and Mole.level and not Mole.IsBelow(loc)
+		and loc.height - Mole.level >= 2 and not Mole.CenterClear(loc.cell, loc.height - 1)
 		and (Mole.IsOpen(loc.cell) or (loc.cell.index == Mole.tunnelGoal and Mole.tunnelGoal ~= Mole.prospecting)) then
 		Economy.siteWhy = 'tunnel below';
 		return false;
@@ -1478,7 +1529,7 @@ function Economy.SiteOK(loc, forMine)
 			end;
 		end;
 		-- never cut the cavern in two or wall in the builder
-		return Mole.KeepsConnected(loc.cell.index);
+		return Mole.KeepsConnected(loc.cell.index, forMine);
 	end;
 	-- a constructor shut out above the seal builds on the surface: mines, defense, whatever is weighed
 	if Mole.surfaceBuilder then return true; end;
