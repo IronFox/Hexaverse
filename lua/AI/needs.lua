@@ -630,7 +630,9 @@ function Needs.StructureOptions(constructorIndex)
 		local pf = Types.planeFactory;
 		if pf and Types.IsUnlocked(pf) and Economy.Count(pf) < (Cfg.planeFactories or 1) then
 			if Economy.FuelMines() >= 1 then
-				add({type = pf, kind = 'base'}, {planes = 1, spend = 0.3});
+				-- late game, the sensor drones it makes are the best cover for large land masses
+				local late = Sense.round >= 60 and Types.drone ~= nil;
+				add({type = pf, kind = 'base'}, {planes = 1, spend = 0.3, scouting = late and 0.6 or 0});
 				opts[#opts].have = Economy.Count(pf);
 			end;
 		end;
@@ -692,6 +694,8 @@ function Needs.StructureOptions(constructorIndex)
 		local listed = {};
 		for _,e in ipairs(Needs.DefendedRegions()) do listed[e.reg.id] = true; end;
 		local t = Types.radarTower;
+		-- with drones flying (or a factory to make them), radar towers in the hinterland matter less
+		local drones = Types.drone and Types.IsUnlocked(Types.drone) and Types.planeFactory and Economy.Count(Types.planeFactory) > 0;
 		for id,_ in pairs(Needs.blind or {}) do
 			local reg = Map.regions[id];
 			if t and not listed[id] and Economy.TowerAllowed(t) and not Economy.scannerClaimed[t.name..'@'..id]
@@ -699,7 +703,7 @@ function Needs.StructureOptions(constructorIndex)
 				local key = t.name..'@'..id;
 				local have = math.max(Economy.DefenseCounts(reg).radar, Needs.RecentOrders(key));
 				opts[#opts+1] = {want = {type = t, kind = 'tower', region = id}, serves = {scouting = 0.8},
-					cost = Cost(t), have = have, cap = 1, factor = 0.6, name = t.name..' (blind spot) @'..id, key = key};
+					cost = Cost(t), have = have, cap = 1, factor = drones and 0.25 or 0.6, name = t.name..' (blind spot) @'..id, key = key};
 			end;
 		end;
 	end;

@@ -2119,8 +2119,16 @@ function Economy.NextPlane()
 	for _,p in ipairs(Sense.stored or {}) do
 		if p.type and p.type.isSuborbitalPlane then count(p, n); count(p, parked); end;
 	end;
-	local total = n.bomber + n.raptor + n.drone;
-	if total >= Cfg.maxPlanes then return nil; end;
+	-- sensor drones: late game the best way to keep large land masses covered, and they see
+	-- planes too. Enough to cover my land (one per few regions), first wherever it is out of sight
+	local own, blind = 0, 0;
+	for id,_ in pairs(Sense.mine) do own = own + 1; end;
+	for _ in pairs(Needs.blind or {}) do blind = blind + 1; end;
+	local wantDrones = Cfg.wantDrones;
+	if Sense.round >= 60 then wantDrones = math.max(wantDrones, math.ceil(own / 4)); end;
+	-- the drones that cover my land don't count against the cap on combat planes
+	local total = n.bomber + n.raptor + math.max(0, n.drone - wantDrones);
+	if total >= Cfg.maxPlanes and n.drone >= wantDrones then return nil; end;
 	-- planes parked in a store and not taken out: probably enough of those already
 	-- (unless they are being saved up for a run)
 	if parked.bomber > 0 and not Military.bomberRun then n.bomber = n.bomber + 2; end;
@@ -2132,8 +2140,9 @@ function Economy.NextPlane()
 	local drone = Types.IsUnlocked(Types.drone) and Types.drone or nil;
 	-- hostile planes around: raptors hunt them
 	local hostileAir = Sense.AirPressure() > 0;
-	if hostileAir and raptor and n.raptor <= n.bomber then return raptor; end;
-	if drone and n.drone < Cfg.wantDrones and n.bomber + n.raptor >= 1 then return drone; end;
+	if hostileAir and raptor and n.raptor <= n.bomber and total < Cfg.maxPlanes then return raptor; end;
+	if drone and n.drone < wantDrones and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then return drone; end;
+	if total >= Cfg.maxPlanes then return nil; end;
 	local attack = n.bomber + n.raptor;
 	if bomber and n.bomber < math.ceil((attack + 1) * Cfg.bomberShare) then return bomber; end;
 	return raptor or bomber or drone;
