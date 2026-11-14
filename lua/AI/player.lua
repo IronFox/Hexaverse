@@ -89,9 +89,10 @@ Cfg = {
 	planeFactoryMines = 4,	-- mines needed before the first plane factory (it eats fuel and minerals every round)
 	planePriority = 'normal',	-- 'early': plane factories right after the first vehicle plant (air personality)
 	maxPlanes = 6,
+	doomsdayUranium = 300,	-- uranium for a doomsday payload: only then do bombers pay off in numbers
 	planeMinerals = 150,	-- queue planes only with this much in storage
 	bomberShare = 0.6,		-- bombers among attack planes (raptors are the rest)
-	wantDrones = 1,		-- sensor drones for air and ground coverage
+	wantDrones = 2,		-- sensor drones for air and ground coverage
 	bombShare = 0,			-- share of combat vehicles built as bomb vehicles (raised when fighting underground)
 	bombShareDeep = 0.33,
 	minesBelowThreat = false,	-- mine sites in threatened regions too (underground personality: mines below the fight)	-- ... once hostile underground activity was seen
@@ -112,6 +113,7 @@ Cfg = {
 		'Unlock:HeavyBase',
 		'Unlock:Artillery',
 		'Unlock:Plane',		-- plane factory (topic names: 'Unlock/...', matched by substring)
+		'Unlock:Raptor',
 		'Unlock:Bomber',
 		-- endless improvements are chosen by usage (Economy.ImprovementUsage)
 	},
@@ -2144,9 +2146,17 @@ function Economy.NextPlane()
 	if hostileAir and raptor and n.raptor <= n.bomber and total < Cfg.maxPlanes then return raptor; end;
 	if drone and n.drone < wantDrones and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then return drone; end;
 	if total >= Cfg.maxPlanes then return nil; end;
-	local attack = n.bomber + n.raptor;
-	if bomber and n.bomber < math.ceil((attack + 1) * Cfg.bomberShare) then return bomber; end;
-	return raptor or bomber or drone;
+	--[[
+	Raptors are invaluable: they hunt planes and hit ground targets twice a round on the move.
+	Without enough uranium for doomsday strikes, bombers are not that effective: one or two.
+	Raptors and artillery with lots of sensor drones tend to win the day.
+	]]
+	local uranium = Game.myFaction.currentResources.storage.uranium or 0;
+	local bomberCap = uranium >= Cfg.doomsdayUranium and math.ceil((n.bomber + n.raptor + 1) * Cfg.bomberShare) or
+		(n.raptor >= 4 and 2 or (n.raptor >= 1 and 1 or 0));
+	if not raptor then bomberCap = math.max(bomberCap, 1); end;
+	if bomber and n.bomber < bomberCap then return bomber; end;
+	return raptor or (bomber and n.bomber < bomberCap + 1 and bomber) or drone;
 end;
 
 function Economy.PlaneProduction()
@@ -3036,6 +3046,13 @@ function Military.Planes()
 					end;
 				end;
 				dive = goal ~= nil;
+				-- no planes to hunt: raptors fire at ground targets too (range 9, twice a round,
+				-- while moving). Work with the army: over the attack target, or the threatened region
+				if goal == nil then
+					local tid = (Mem.posture == 'attack' and Mem.attackTarget) or Military.DefenseRegion();
+					local treg = tid and Map.regions[tid];
+					if treg and (Mem.posture == 'attack' or Sense.Threat(treg) > 0) then goal = Map.AirCenter(treg); end;
+				end;
 				if goal == nil and #bombers > 0 then goal = bombers[1].location.world; end;
 			end;
 			if goal == nil and Mem.homeRegion then goal = Map.AirCenter(Map.regions[Mem.homeRegion]); end;

@@ -26,11 +26,11 @@ Cfg.planeFactories = 1;		-- a second one from round 50 (see below)
 Cfg.maxPlanes = 14;
 Cfg.planeMinerals = 100;
 Cfg.bomberShare = 0.55;
-Cfg.wantDrones = 1;
+Cfg.wantDrones = 3;	-- lots of sensor drones
 
 -- research: planes first, then the rest
-table.insert(Cfg.research, 1, 'Unlock:Raptor');
 table.insert(Cfg.research, 1, 'Unlock:Bomber');
+table.insert(Cfg.research, 1, 'Unlock:Raptor');
 table.insert(Cfg.research, 1, 'Unlock:PlaneFactory');
 
 -- Weights (see needs.lua): planes matter a lot, the ground army less. Saving for the
