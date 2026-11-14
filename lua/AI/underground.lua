@@ -85,10 +85,12 @@ function Mole.IsBelow(loc)
 	if Mole.level == nil or loc == nil or loc.isSuborbital or loc.height > Mole.level + 1 then return false; end;
 	if Mole.Area()[loc.cell.index] then return true; end;
 	-- outside the known cavern (e.g. a tunnel dug before a reload): rock overhead means below ground
-	local ok, up = pcall(Game.Grid.ToLocation, loc.cell, loc.height + 2);
-	if not ok or up == nil then return false; end;
-	local okc, clear = pcall(Game.Grid.IsClear, up);
-	return okc and clear == false;
+	local C = Game.Terrain and Game.Terrain.Content;
+	if C == nil then return false; end;
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, loc.cell);
+	if not ok or tc == nil then return false; end;
+	local okc, content = pcall(Game.Terrain.GetContent, tc, loc.height + 2);
+	return okc and content ~= nil and content ~= C.Clear and content ~= C.Water;
 end;
 
 Mole.areaCache = nil;
@@ -163,11 +165,31 @@ function Mole.LocAt(cell)
 	return nil;
 end;
 
-function Mole.IsOpen(cell)
-	local loc = Mole.LocAt(cell);
-	if loc == nil then return false; end;
+--[[
+Is the central terrain cell of a unit cell clear at height h? That is what a
+vehicle needs. Game.Grid.IsClear wants the central cell and all its border
+cells clear, but a horizontal dig opens only the center and the borders it
+came through, and unseen borders read Unknown: dug cells looked closed, and
+the digger dug the same cells over and over.
+]]
+function Mole.CenterClear(cell, h)
+	local C = Game.Terrain and Game.Terrain.Content;
+	if C then
+		local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+		if ok and tc then
+			local okc, content = pcall(Game.Terrain.GetContent, tc, h);
+			if okc then return content == C.Clear; end;
+		end;
+	end;
+	local okl, loc = pcall(Game.Grid.ToLocation, cell, h);
+	if not okl or loc == nil then return false; end;
 	local ok, clear = pcall(Game.Grid.IsClear, loc);
 	return ok and clear;
+end;
+
+function Mole.IsOpen(cell)
+	if Mole.level == nil then return false; end;
+	return Mole.CenterClear(cell, Mole.level);
 end;
 
 -- Cells at cavern level that hold our own structures: open, but no vehicle gets through
@@ -561,7 +583,14 @@ function Mole.Update()
 			return;
 		end;
 		if u.location.cell.index == Mole.shaftCell and Mole.level == nil then
-			Mole.level = u.location.height - Cfg.moleDepth;
+			-- deep enough below the lowest ground around the cavern: on a hilltop, the slope
+			-- next to the shaft is lower, and a shallow cavern breaks out sideways
+			local low = u.location.height;
+			for _,c in ipairs(Mole.Rings(u.location.cell, Mole.rings)) do
+				local okg, g = pcall(Game.Grid.FindHighestVehicleGround, u, c);
+				if okg and g and g.height and g.height < low then low = g.height; end;
+			end;
+			Mole.level = math.max(low - Cfg.moleDepth, -15);
 			Log('Shaft goes down to height '..Mole.level);
 		end;
 		if u.location.cell.index ~= Mole.shaftCell then
@@ -788,10 +817,7 @@ function Mole.Ceiling(u)
 	local todo, near = {}, nil;
 	for _,c in ipairs(Mole.Rings(center, Cfg.moleHighRings)) do
 		if c.index ~= Mole.shaftCell and Mole.IsOpen(c) and not Mole.ceilingFailed[c.index] then
-			local ok, up = pcall(Game.Grid.ToLocation, c, Mole.level + 1);
-			local okc, clear = false, false;
-			if ok and up then okc, clear = pcall(Game.Grid.IsClear, up); end;
-			if okc and not clear then
+			if not Mole.CenterClear(c, Mole.level + 1) then
 				todo[#todo+1] = c;
 				if c.index == here.index then near = c; end;
 				for _,nb in ipairs(here.neighbors) do
