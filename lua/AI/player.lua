@@ -131,10 +131,17 @@ function Log(msg)
 	end;
 end;
 
+-- (the same error hundreds of times a match says nothing new: three per name and round)
+local safeSeen = {round = -1, n = {}};
 function SafeCall(name, func, ...)
 	local ok, err = pcall(func, ...);
 	if not ok then
-		Game.Log(Cfg.logPrefix..'ERROR in '..name..': '..tostring(err));
+		local r = Sense and Sense.round or 0;
+		if safeSeen.round ~= r then safeSeen.round, safeSeen.n = r, {}; end;
+		safeSeen.n[name] = (safeSeen.n[name] or 0) + 1;
+		if safeSeen.n[name] <= 3 then
+			Game.Log(Cfg.logPrefix..'ERROR in '..name..': '..tostring(err));
+		end;
 	end;
 	return ok;
 end;
@@ -2304,8 +2311,14 @@ function Economy.BuildAt(u, loc, t, reachable)
 	if loc ~= u.location then
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
+			-- one of my own units in the way is no reason to give up a site: it will move
+			if not ok or path == nil or #path == 0 then
+				ok, path = pcall(u.FindShortestPath, loc, nil, true);
+			end;
 			if not ok or path == nil or #path == 0 then
 				Mem.blacklist[loc.cell.index] = Sense.round + 20;
+				Needs.Note(u.niceName..': no path to the '..t.name..' site at cell '..loc.cell.index..'/'..tostring(loc.height)
+					..' from '..u.location.cell.index..'/'..tostring(u.location.height)..(ok and '' or (' ('..tostring(path)..')')));
 				return false;
 			end;
 			reachable = path[#path];

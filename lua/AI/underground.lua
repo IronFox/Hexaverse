@@ -1815,6 +1815,15 @@ function Economy.NextVehicle()
 		local sv = Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover);
 		if sv then return sv; end;
 	end;
+	-- the cave's own surveyor stays in the cave. While hardly any resource site is known and
+	-- a plant still stands on the surface, a second one roams up there (automated)
+	local nSv = math.max(#Sense.my.surveyor, Mole.surveyors or 0) + (Sense.storedByRole.surveyor or 0);
+	local ks = Economy.knownSites or {};
+	if constructors >= 2 and nSv == 1 and below < #Sense.plants and Sense.round >= 6
+		and ((ks['Minerals'] or 9) < 2 or (ks['Fuel'] or 9) < 2) then
+		local sv = Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover);
+		if sv then Needs.Note('hardly any site known: a second surveyor to roam the surface'); return sv; end;
+	end;
 	return baseNextVehicle();
 end;
 
