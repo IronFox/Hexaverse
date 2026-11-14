@@ -616,7 +616,9 @@ function Needs.Started()
 end;
 
 function Needs.Choose(options, what, budget)
-	local best, bestS = nil, Needs.minScore;
+	-- storage nearly full: income is being thrown away, anything useful beats nothing
+	local full = (budget or 0) >= 450;
+	local best, bestS = nil, full and 0.01 or Needs.minScore;
 	local bestAny, bestAnyS = nil, 0;
 	for _,o in ipairs(options) do
 		o.score = Needs.Score(o.serves, o.cost) * (o.factor or 1) * Needs.Have(o.have, o.cap, o.swarm) * Needs.FailFactor(o.name);
@@ -784,6 +786,8 @@ function Needs.StructureOptions(constructorIndex)
 	end;
 	if Types.store and Sense.round >= 12 and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores then
 		local want, peak = Economy.StoreRegion();
+		-- a peak store needs a builder on the surface: not while the underground AI lives below
+		if peak and Mole and Mole.phase ~= 'surface' then want, peak = nil, nil; end;
 		if want then
 			add({type = Types.store, kind = 'tower', region = want, peak = peak},
 				{defense = peak and 0.8 or 0.3, army = 0.3, spend = 0.3}, peak and ('Store on peak @'..want) or nil);
@@ -804,7 +808,8 @@ function Needs.NextStructure(constructorIndex)
 	local opts = Needs.AdjustStructureOptions(Needs.StructureOptions(constructorIndex));
 	local best, top = Needs.Choose(opts, 'structure', minerals);
 	-- saving up: the top option is out of reach, and nothing affordable comes close
-	if top and top ~= best and (best == nil or best.score < top.score * 0.6) then
+	-- (never with storage full: saving more is impossible, minerals are being lost)
+	if top and top ~= best and minerals < 450 and (best == nil or best.score < top.score * 0.6) then
 		Needs.saving = {score = top.score, cost = top.cost, name = top.name, round = Sense.round};
 		Needs.Note('saving for '..top.name..string.format(' (%.2f)', top.score));
 		return nil;

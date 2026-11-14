@@ -1284,9 +1284,10 @@ function Economy.NextStructure(index)
 	-- while the cavern is dug, more income on the surface (replaced and demolished later)
 	if Mole.phase ~= 'live' then
 		if Economy.Count(Types.mine) < 3 then return Economy.MineReq('Minerals'); end;
-		-- minerals piling up while the cavern is dug: they are worth more spent than saved
+		-- minerals piling up while the cavern is dug: they are worth more spent than saved.
+		-- And under attack before the seal, the surface base needs defending (raids from round 12)
 		local minerals = Game.myFaction.currentResources.storage.minerals or 0;
-		if minerals >= 300 then
+		if minerals >= 300 or Sense.Pressure() > 0 then
 			Economy.allowSurface = true;
 			return baseNextStructure(index);
 		end;
