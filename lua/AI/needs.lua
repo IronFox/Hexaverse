@@ -778,6 +778,8 @@ function Needs.StructureOptions(constructorIndex)
 		local plants = Economy.Count(Types.plant);
 		add({type = Types.plant, kind = 'base'}, {survivalPlant = 1, spend = 1, army = 0.3});
 		opts[#opts].have = plants;
+		-- every plant queue full while minerals pile up: another plant is the missing capability
+		if Economy.plantsFull then opts[#opts].factor = 1 + 1.5 * Needs.BlockValue('capacity'); end;
 	end;
 	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
 		local uranium = (max.balance.uranium or 0) > 0 or (cur.storage.uranium or 0) > 0;
@@ -953,8 +955,14 @@ function Needs.VehicleOptions(kit)
 	-- each further constructor is worth far less
 	if #opts > 0 then
 		local nC = #Sense.my.constructor + (Sense.storedByRole.constructor or 0);
-		local capC = (Cfg.constructorsLate or 5) + 1;
-		if nC >= capC then opts[#opts].factor = 0.35 ^ (nC - capC + 1); end;
+		-- minerals piling up: the base can use more hands
+		local full = (Economy.Resources().storage.minerals or 0) >= 450;
+		local capC = (Cfg.constructorsLate or 5) + 1 + (full and 2 or 0);
+		if nC >= capC then opts[#opts].factor = 0.35 ^ (nC - capC + 1);
+		else
+			-- income piling up with every builder busy: a builder is the missing capability
+			opts[#opts].factor = 1 + 1.5 * Needs.BlockValue('capacity');
+		end;
 	end;
 	local combat = #Sense.my.combat + #Sense.my.bomb;
 	-- tanks: as many as the action can use (the attack target's required force, or the
