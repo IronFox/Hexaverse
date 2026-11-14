@@ -2238,6 +2238,7 @@ function Economy.AssignConstructor(u, index)
 				elseif Economy.BuildAt(u, dest, want.type) then
 					Economy.claimed[cell.index] = true;
 					return;
+				elseif Economy.buildWhy == 'unsafe way' then why.unsafe = why.unsafe + 1;
 				else why.build = why.build + 1; end;
 			end;
 			Needs.Note(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed',
@@ -2323,6 +2324,7 @@ function Economy.AssignConstructor(u, index)
 end;
 
 function Economy.BuildAt(u, loc, t, reachable)
+	Economy.buildWhy = nil;
 	if loc ~= u.location then
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
@@ -2335,6 +2337,19 @@ function Economy.BuildAt(u, loc, t, reachable)
 				Needs.Note(u.niceName..': no path to the '..t.name..' site at cell '..loc.cell.index..'/'..tostring(loc.height)
 					..' from '..u.location.cell.index..'/'..tostring(u.location.height)..(ok and '' or (' ('..tostring(path)..')')));
 				return false;
+			end;
+			-- the way there must be one the builder will walk: it turns back from danger (see
+			-- AssignConstructor), and an order it abandons a round later is a wasted one
+			if not Economy.shielded then
+				for _,n in ipairs(path) do
+					local nl = n.location;
+					local nr = nl and Map.RegionOfLoc(nl);
+					if nl and (Move.IsDangerous(nl) or (nr and nr.mobileThreat > nr.myStrength)) then
+						Economy.buildWhy = 'unsafe way';
+						Needs.Note(u.niceName..': the way to the '..t.name..' site at cell '..loc.cell.index..' is not safe (cell '..nl.cell.index..')');
+						return false;
+					end;
+				end;
 			end;
 			reachable = path[#path];
 		end;

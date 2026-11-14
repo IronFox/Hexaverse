@@ -1827,7 +1827,11 @@ function Economy.NextStructure(index)
 	end;
 	-- while the cavern is dug, more income on the surface (replaced and demolished later)
 	if Mole.phase ~= 'live' then
-		if Economy.Count(Types.mine) < 3 then return Economy.MineReq('Minerals'); end;
+		-- (no site for one right now: the builders do the next best thing, they don't wait)
+		if Economy.Count(Types.mine) < 3 then
+			local m = Economy.MineReq('Minerals');
+			if m then return m; end;
+		end;
 		-- minerals piling up while the cavern is dug: they are worth more spent than saved.
 		-- And under attack before the seal, the surface base needs defending (raids from round 12)
 		local minerals = Game.myFaction.currentResources.storage.minerals or 0;
