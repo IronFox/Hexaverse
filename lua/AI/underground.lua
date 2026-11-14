@@ -1434,6 +1434,13 @@ end;
 local baseScouts = Military.Scouts;
 function Military.Scouts()
 	local escort = nil;
+	-- the cave needs its own surveyor in the cave: the first one never roams off automated
+	Military.keepScripted = {};
+	if Sense.my.surveyor[1] then
+		local first = Sense.my.surveyor[1];
+		Military.keepScripted[first.id] = true;
+		if first.isAutomated and first.SetAutomation then pcall(first.SetAutomation, false); end;
+	end;
 	if Mole.phase ~= 'live' or Mole.tunnelGoal or Mole.waitSurvey then
 		escort = Sense.my.surveyor[1];
 	end;

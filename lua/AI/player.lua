@@ -80,6 +80,7 @@ Cfg = {
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
 	plantFreeCells = 3,
+	autoSurveyors = true,	-- surveyors roam automated (the game's own prospecting), replaced when lost
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
 	unseenAttackThreat = 4,	-- threat assumed at the origin of an attack whose shooter we cannot sense
 	deepBelowSurface = 3,
@@ -3394,9 +3395,27 @@ function Military.Scouts()
 	for _,u in ipairs(Sense.my.radar) do scouts[#scouts+1] = u; end;
 	for _,u in ipairs(Sense.my.surveyor) do scouts[#scouts+1] = u; end;
 
+	--[[
+	Surveyors roam on their own: the game's automation sends them prospecting, as players
+	do. If one dies, the scouting need has the plant build another. Scripted only: one that
+	sweeps my own land when something may be digging in, and those a personality keeps
+	(Military.keepScripted: the cave AI's surveyor stays in the cave).
+	]]
+	local sweeper = false;
 	for _,v in ipairs(scouts) do
 		local deep = v.turret and v.turret.type.detectsResources;
 		local layer = deep and 'deep' or 'ground';
+		local auto = deep and Cfg.autoSurveyors and v.SetAutomation and not (Military.keepScripted and Military.keepScripted[v.id]);
+		if auto and Sense.DeepMatters() and not sweeper then sweeper = true; auto = false; end;
+		if auto then
+			if not v.isAutomated then
+				Log(v.niceName..': roaming on its own (automated)');
+				pcall(v.SetAutomation, true);
+			end;
+			goto continue;
+		elseif deep and v.isAutomated and v.SetAutomation then
+			pcall(v.SetAutomation, false);
+		end;
 		SafeCall('scout '..v.niceName, function()
 			local myReg = Map.RegionOfLoc(v.location);
 			local best, bestScore = nil, nil;
@@ -3443,6 +3462,7 @@ function Military.Scouts()
 			-- scouts may step into the unknown; that's their job. They still avoid known fire
 			Move.Towards(v, Map.WorldCenter(best), best.centerCell, true, true);
 		end);
+		::continue::
 	end;
 end;
 
