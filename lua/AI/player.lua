@@ -2404,6 +2404,8 @@ function Economy.PlaneProduction()
 			local t = Economy.NextPlane();
 			if t then
 				local ok, err = pcall(f.BuildMobile, t);
+				-- planes are the air goal's spending
+				if ok then Needs.Charge({serves = {planes = 1}, cost = tonumber(t.constructionCost) or 100}); end;
 				Log(f.niceName..': '..(ok and 'producing ' or 'cannot produce ')..t.name..(ok and '' or (': '..tostring(err))));
 			end;
 		end;

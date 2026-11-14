@@ -210,6 +210,11 @@ function Needs.Update()
 			v.planes = have == 0 and 0.8 or 0.4;
 		end;
 	end;
+	-- a factory that still wants planes: the air goal keeps its share for them
+	if #(Sense.planeFactories or {}) > 0 and Economy.NextPlane and Economy.NextPlane() ~= nil then
+		v.planes = math.max(v.planes, 0.5);
+		Needs.wantCost.airpower = {cost = 150, round = round};
+	end;
 
 	v.research = 0;
 	if Types.lab and round >= 3 then
@@ -733,6 +738,7 @@ Needs.goalOf = {
 Needs.account = {};		-- goal -> minerals allocated to it and not yet spent
 Needs.committed = 0;	-- ordered but not yet drawn from storage
 Needs.goalValue = {};
+Needs.wantCost = {};	-- goal -> {cost, round}: the dearest option it wanted lately
 
 local function GoalKey(k)
 	if string.sub(k, 1, 8) == 'survival' then return 'survive'; end;
@@ -779,10 +785,50 @@ function Needs.UpdateBudgets(v, storage, income)
 	local free = storage - Needs.committed - held;
 	if free > 0 then
 		for g,x in pairs(val) do Needs.account[g] = (Needs.account[g] or 0) + free * x / sum; end;
-	elseif held > 0 then
-		local f = math.max(0, storage - Needs.committed) / held;
-		for g,a in pairs(Needs.account) do if a > 0 then Needs.account[g] = a * f; end; end;
+	elseif free < 0 then
+		-- less in storage than the accounts hold (an emergency spent it): the least valuable
+		-- goals give first, what the most valuable goal saved up is touched last
+		local order = {};
+		for g,_ in pairs(Needs.account) do order[#order+1] = g; end;
+		table.sort(order, function(a, b) return (val[a] or 0) < (val[b] or 0); end);
+		local short = -free;
+		for _,g in ipairs(order) do
+			local a = Needs.account[g];
+			if a > 0 and short > 0 then
+				local take = math.min(a, short);
+				Needs.account[g] = a - take;
+				short = short - take;
+			end;
+		end;
 	end;
+	--[[
+	No hoarding: an account holding more than its goal could spend (the dearest thing it
+	wanted lately, blocked or not) passes the surplus on to the most valuable goal that is
+	still short of what it wants. Minerals locked in a blocked goal help nobody.
+	]]
+	local order = {};
+	for g,_ in pairs(val) do order[#order+1] = g; end;
+	table.sort(order, function(a, b) return val[a] > val[b]; end);
+	local function Cap(g)
+		local wc = Needs.wantCost[g];
+		if wc and Sense.round - wc.round <= 10 then return wc.cost + 50; end;
+		return 100;
+	end;
+	local surplus = 0;
+	for _,g in ipairs(order) do
+		local over = (Needs.account[g] or 0) - Cap(g);
+		if over > 0 then Needs.account[g] = Needs.account[g] - over; surplus = surplus + over; end;
+	end;
+	for _,g in ipairs(order) do
+		if surplus <= 0 then break; end;
+		local room = Cap(g) - (Needs.account[g] or 0);
+		if room > 0 and val[g] > 0 then
+			local give = math.min(room, surplus);
+			Needs.account[g] = (Needs.account[g] or 0) + give;
+			surplus = surplus - give;
+		end;
+	end;
+	-- (whatever is left stays free: shared out by value next round, or spent at full storage)
 end;
 
 -- What this option may spend: its goal's account, or everything in an emergency
@@ -811,6 +857,13 @@ function Needs.Choose(options, what, budget)
 		-- its foundation is gone: restore that first
 		if what == 'structure' and o.want and Needs.Unsupported(o.want.type) then o.score = o.score * 0.1; end;
 		if o.score > bestAnyS then bestAny, bestAnyS = o, o.score; end;
+		if o.score > 0 then
+			local g = Needs.GoalOf(o);
+			local wc = Needs.wantCost[g];
+			if wc == nil or Sense.round - wc.round > 10 or (o.cost or 0) >= wc.cost then
+				Needs.wantCost[g] = {cost = o.cost or 0, round = Sense.round};
+			end;
+		end;
 		local avail = Needs.Available(o, budget);
 		local affordable = avail == nil or (o.cost or 0) <= avail + 50;
 		if affordable and o.score > bestS then best, bestS = o, o.score; end;
