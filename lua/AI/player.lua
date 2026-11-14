@@ -2191,6 +2191,9 @@ function Economy.AssignConstructor(u, index)
 				elseif not Economy.SiteOK(dest, true) then
 					why.site = why.site + 1;
 					why.reasons = (why.reasons or '')..' '..tostring(Economy.siteWhy);
+					-- an EMP zone stays one: drop the cell from the candidates for good, so it
+					-- doesn't crowd out usable ones
+					if Economy.siteWhy == 'emp' then Mem.blacklist[cell.index] = Sense.round + 1000; end;
 				elseif Economy.BuildAt(u, dest, want.type) then
 					Economy.claimed[cell.index] = true;
 					return;
