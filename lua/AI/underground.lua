@@ -978,10 +978,7 @@ function Mole.Demolish()
 		local t = list[1].type;
 		local replaced;
 		if t == Types.mine then
-			-- surface mines stay: they give little away, and losing the last mineral mine is fatal.
-			-- Even with two producing mines below, the faction once died 5 rounds after
-			-- demolishing its surface mine ("Lacking ... Mineral Mine")
-			replaced = false;
+			replaced = Mole.SurfaceMineToGo(list);
 		elseif t == Types.generator then
 			-- keep power: only once the cavern carries at least as many
 			replaced = (below[tn] or 0) >= #list;
@@ -1035,6 +1032,92 @@ function Mole.EssentialsBelow()
 		end;
 	end;
 	return mineral and fuel and gen;
+end;
+
+--[[
+What a mine counts for in the game's survival check (server: gameState living-check):
+fuel if its cell holds >= 10 fuel, minerals if >= 5 minerals, and only while it is
+linked to the core, i.e. every terrain layer beneath it is foundation. Digging under
+a mine breaks that link. Returns {fuel=bool, minerals=bool, linked=bool|nil}
+(linked nil: terrain below not known here).
+]]
+function Mole.MineCounts(st)
+	local cell = st.location.cell;
+	local okf, f = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', cell);
+	local okm, m = pcall(Game.Grid.GetNaturalResourceAt, 'Minerals', cell);
+	local out = {fuel = okf and (f or 0) >= 10, minerals = okm and (m or 0) >= 5, linked = true};
+	local C = Game.Terrain and Game.Terrain.Content;
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+	if not C or not ok or tc == nil or C.Foundation == nil then out.linked = nil; return out; end;
+	for h = st.location.height - 1, -16, -1 do
+		local okc, content = pcall(Game.Terrain.GetContent, tc, h);
+		if not okc then break; end;	-- below the bottom
+		if content ~= C.Foundation then
+			out.linked = (content == C.Unknown) and nil or false;
+			if out.linked == false then return out; end;
+		end;
+	end;
+	return out;
+end;
+
+--[[
+Judgement on surface mines: the goal is a base fully below ground, but a surface mine
+goes only if the faction stays alive without it. One may go when
+* it no longer counts at all (undermined, or too little resource): it only gives the base away, or
+* for each resource it counts for, another linked mine counts for it too, at least one
+  of them below ground, and the mines below have produced for a while.
+Returns the mine that may go, or nil.
+]]
+function Mole.SurfaceMineToGo(surfaceMines)
+	local all = {};
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.type == Types.mine then
+			local c = Mole.MineCounts(st);
+			c.st = st;
+			c.below = Mole.IsBelow(st.location);
+			c.proven = not c.below or (Mole.ProducingSince(st) and Sense.round - Mole.ProducingSince(st) >= Cfg.moleMineProven);
+			all[#all+1] = c;
+		end;
+	end;
+	for _,cand in ipairs(all) do
+		if not cand.below then
+			local needs = {};
+			if cand.linked ~= false then
+				if cand.fuel then needs[#needs+1] = 'fuel'; end;
+				if cand.minerals then needs[#needs+1] = 'minerals'; end;
+			end;
+			local ok = true;
+			for _,k in ipairs(needs) do
+				local others, below = 0, 0;
+				for _,c in ipairs(all) do
+					if c.st ~= cand.st and c[k] and c.linked == true and c.proven then
+						others = others + 1;
+						if c.below then below = below + 1; end;
+					end;
+				end;
+				if others == 0 or below == 0 then ok = false; break; end;
+			end;
+			if ok then
+				Log('Surface mine '..cand.st.niceName..' can go: '..(#needs == 0 and 'it no longer counts (undermined or poor)'
+					or ('replaced below for '..table.concat(needs, ', '))));
+				return cand.st;
+			end;
+		end;
+	end;
+	return nil;
+end;
+
+-- Round since which a mine below has been producing (enabled with supply), or nil
+function Mole.ProducingSince(st)
+	Mole.mineSince = Mole.mineSince or {};
+	local sup = st.balance and st.balance.supply;
+	local made = sup and ((sup.minerals or 0) + (sup.fuel or 0)) or 0;
+	if made > 0 and st.isEnabled ~= false then
+		Mole.mineSince[st.id] = Mole.mineSince[st.id] or Sense.round;
+	else
+		Mole.mineSince[st.id] = nil;
+	end;
+	return Mole.mineSince[st.id];
 end;
 
 -- Do working mines below ground outnumber these surface mines, per resource?
