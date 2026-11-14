@@ -2545,6 +2545,18 @@ function Economy.Production()
 		else
 			Economy.plantBlocked[p.id] = nil;
 		end;
+		-- no builder at all: whatever else is queued eats the minerals the constructor needs
+		if (Needs.v and (Needs.v.survivalBuilder or 0) > 0) and p.productionQueue then
+			for _,q in ipairs(p.productionQueue) do
+				local n = q.name or '';
+				local combat = string.find(n, 'Cannon') or string.find(n, 'Artillery') or string.find(n, 'Bomb')
+					or string.find(n, 'Missile') or string.find(n, 'Rocket') or string.find(n, 'Anti Aircraft') or string.find(n, 'Radar');
+				if q.id ~= nil and combat and not string.find(n, 'Terraformer') then
+					Log(p.niceName..': no builder left, aborting '..tostring(q.name));
+					pcall(q.Abort);
+				end;
+			end;
+		end;
 		-- a production that does not progress for many rounds blocks the plant: drop it
 		local head = p.productionQueue and p.productionQueue[1];
 		if head and head.id == nil then head = nil; end;

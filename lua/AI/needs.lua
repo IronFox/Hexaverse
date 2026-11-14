@@ -302,7 +302,8 @@ function Needs.Update()
 	is a missing capability, not a lack of ideas: more builders and plants
 	]]
 	if minerals >= 400 and round >= 10 then
-		local noBuilder = (Economy.freeBuilders or 0) == 0;
+		-- (no constructor at all is not a capacity problem: survivalBuilder covers it)
+		local noBuilder = (Economy.freeBuilders or 0) == 0 and constructors > 0;
 		local plantsFull = Economy.plantsFull ~= false;
 		if noBuilder or plantsFull then
 			Needs.Block(noBuilder and 'spending (all builders busy)' or 'spending (plants full)', 'capacity', clamp((minerals - 300) / 200));
@@ -952,7 +953,7 @@ function Needs.VehicleOptions(kit)
 	-- each further constructor is worth far less
 	if #opts > 0 then
 		local nC = #Sense.my.constructor + (Sense.storedByRole.constructor or 0);
-		local capC = (Cfg.constructorsLate or 5) + 3;
+		local capC = (Cfg.constructorsLate or 5) + 1;
 		if nC >= capC then opts[#opts].factor = 0.35 ^ (nC - capC + 1); end;
 	end;
 	local combat = #Sense.my.combat + #Sense.my.bomb;
@@ -997,7 +998,13 @@ function Needs.NextVehicle(kit)
 	local cur = Economy.Resources();
 	local minerals = cur.storage.minerals or 0;
 	local opts = Needs.AdjustVehicleOptions(Needs.VehicleOptions(kit));
-	local best = Needs.Choose(opts, 'vehicle', minerals);
+	local best, top = Needs.Choose(opts, 'vehicle', minerals);
+	-- no builder at all: nothing can be built or rebuilt. The constructor goes first even if it
+	-- isn't affordable yet: anything cheaper bought meanwhile only delays it
+	if (Needs.v.survivalBuilder or 0) > 0 and top and top ~= best and top.want == kit.Constructor() then
+		Needs.Note('no builder: queueing '..top.name..' first');
+		return top.want;
+	end;
 	if best == nil then return nil; end;
 	-- the constructors are saving for something that matters more: hold back
 	local s = Needs.saving;
