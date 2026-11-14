@@ -153,6 +153,9 @@ function Needs.Learn()
 	Needs.lastPlanes = planes;
 end;
 
+-- Can we elevate units to T2? (needs plantations, compounds and mechanics: not handled yet)
+function Needs.T2Capable() return false; end;
+
 function Needs.Update()
 	Needs.log = {};
 	Needs.Learn();
@@ -221,12 +224,16 @@ function Needs.Update()
 		-- cluster sizes are the triangular numbers 1, 3, 6, 10, 15, ...
 		local prevCluster, nextCluster, k = 0, 1, 1;
 		while nextCluster <= labs do k = k + 1; prevCluster = nextCluster; nextCluster = nextCluster + k; end;
+		-- before T2, lab building was THE endgame job: ever greater range. T2 makes larger lab
+		-- arrays pointless if you can afford it. This AI can't do T2 yet (plantations, compounds,
+		-- mechanics), so late and rich it keeps growing lab clusters
 		local maxLabs = math.max(Cfg.wantLabsRich or 6, 6);
+		if not Needs.T2Capable() and round >= 80 and minerals >= (Cfg.richMinerals or 400) then maxLabs = 15; end;
 		Needs.labsMidCluster = labs > prevCluster and labs < maxLabs;
 		if labs == 0 then v.research = plants > 0 and 1 or 0.4;
 		elseif Needs.labsMidCluster then v.research = clamp(0.4 + 0.4 * (labs - prevCluster) / (nextCluster - prevCluster));	-- finish the cluster
 		elseif round >= 15 and labs < Cfg.wantLabs then v.research = 0.3;
-		elseif minerals >= Cfg.richMinerals and labs < Cfg.wantLabsRich then v.research = 0.25; end;
+		elseif minerals >= Cfg.richMinerals and labs < maxLabs then v.research = 0.25; end;
 		-- what we want most is still locked: research is the way to it
 		local pfw = Types.planeFactory;
 		if pfw and not Types.IsUnlocked(pfw) and Needs.Weights().planes >= 3 and round >= 8 then
