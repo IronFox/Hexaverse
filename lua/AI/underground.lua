@@ -665,29 +665,18 @@ function Mole.Update()
 		Mole.Seal(u);
 		return;
 	end;
+	-- a mineral mine below ground before anything else
+	if Mole.UrgentMineTunnel() then
+		Mole.Tunnel(u);
+		return;
+	end;
 	-- second layer over the middle of the cavern (bounded work, before any tunnel), so parked vehicles don't block the way
 	if Mole.Ceiling(u) then
 		return;
 	end;
 	-- then tunnel to a requested mine site, otherwise widen the cavern when space runs out
 	if Mole.tunnelGoal then
-		local cell = CellByIndex(Mole.tunnelGoal);
-		if cell == nil or Mole.IsOpen(cell) then
-			if cell then Log('Tunnel reached cell '..Mole.tunnelGoal); end;
-			Mole.tunnelGoal = nil;
-			Mole.tunnelFails = 0;
-		elseif Mole.DigToward(u, cell) then
-			Mole.tunnelFails = 0;
-		else
-			-- a few rounds without progress: give up on this site for a while, so another is picked
-			Mole.tunnelFails = (Mole.tunnelFails or 0) + 1;
-			if Mole.tunnelFails >= 5 then
-				Log('Tunnel to cell '..Mole.tunnelGoal..' gives up at cell '..u.location.cell.index);
-				Economy.Blacklist(Mole.tunnelGoal, 60);
-				Mole.tunnelGoal = nil;
-				Mole.tunnelFails = 0;
-			end;
-		end;
+		Mole.Tunnel(u);
 		return;
 	end;
 	if Mole.noSpace and Mole.rings < Cfg.moleMaxRings then
@@ -791,6 +780,65 @@ the cell atop the vehicle or diagonally above it (a neighbor's upper layer).
 The shaft column is left alone: its seal goes one layer above the floor.
 Returns true if an order was given.
 ]]
+-- One step of the tunnel to Mole.tunnelGoal
+function Mole.Tunnel(u)
+	if Mole.tunnelGoal == nil then return; end;
+	local cell = CellByIndex(Mole.tunnelGoal);
+	if cell == nil or Mole.IsOpen(cell) then
+		if cell then Log('Tunnel reached cell '..Mole.tunnelGoal); end;
+		Mole.tunnelGoal = nil;
+		Mole.tunnelFails = 0;
+	elseif Mole.DigToward(u, cell) then
+		Mole.tunnelFails = 0;
+	else
+		-- a few rounds without progress: give up on this site for a while, so another is picked
+		Mole.tunnelFails = (Mole.tunnelFails or 0) + 1;
+		if Mole.tunnelFails >= 5 then
+			Log('Tunnel to cell '..Mole.tunnelGoal..' gives up at cell '..u.location.cell.index);
+			Economy.Blacklist(Mole.tunnelGoal, 60);
+			Mole.tunnelGoal = nil;
+			Mole.tunnelFails = 0;
+		end;
+	end;
+end;
+
+-- Is there a mine on a mineral (or fuel) cell below ground?
+function Mole.MineBelow(resource)
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.type == Types.mine and Mole.IsBelow(st.location) then
+			local ok, f = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', st.location.cell);
+			local fuel = ok and f and f > 0;
+			if (resource == 'Fuel') == (fuel and true or false) then return true; end;
+		end;
+	end;
+	return false;
+end;
+
+--[[
+After the seal the faction lives on its surface mines, and one raid on them
+kills it. A mineral mine below ground comes first: tunnel to the nearest
+mineral site unless one is already open to build on.
+]]
+function Mole.UrgentMineTunnel()
+	if Mole.tunnelGoal or Mole.MineBelow('Minerals') then return Mole.tunnelGoal ~= nil and Mole.urgent; end;
+	Mole.urgent = false;
+	local center = CellByIndex(Mole.shaftCell);
+	local best, bd = nil, nil;
+	for _,c in ipairs(Economy.FindMineCells('Minerals', 6)) do
+		local bl = Mem.blacklist[c.index];
+		if not (bl and bl > Sense.round) then
+			if Mole.IsOpen(c) then return false; end;	-- a site is open already: the constructors build there
+			local d = D2(c.center, center.center);
+			if bd == nil or d < bd then best, bd = c, d; end;
+		end;
+	end;
+	if best == nil then return false; end;
+	Mole.tunnelGoal = best.index;
+	Mole.urgent = true;
+	Log('No mineral mine below ground: tunnelling to mineral site at cell '..best.index);
+	return true;
+end;
+
 -- Why the digger can't get next to the shaft: log every 5 rounds
 function Mole.SealDiagnose(u, shaft)
 	if Sense.round % 5 ~= 0 then return; end;
