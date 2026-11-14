@@ -645,7 +645,12 @@ function Mole.Update()
 			Log('Cavern digging takes too long: using the '..n..' open cells');
 			closed = nil;
 		elseif Sense.round % 10 == 0 then
-			Log('Cavern still has only '..n..' open cells after '..(Sense.round - Mole.cavernSince)..' rounds');
+			Log('Cavern still has only '..n..' open cells after '..(Sense.round - Mole.cavernSince)..' rounds; digger at '
+				..u.location.cell.index..'/'..tostring(u.location.height)..'; content Clear='..tostring(Game.Terrain.Content and Game.Terrain.Content.Clear));
+			local shaft = CellByIndex(Mole.shaftCell);
+			Log('  shaft '..Mole.CellReport(shaft, Mole.level));
+			for _,nb in ipairs(shaft.neighbors) do Log('  next to shaft '..Mole.CellReport(nb, Mole.level)); end;
+			if Mole.lastDig then Log('  last dug '..Mole.CellReport(CellByIndex(Mole.lastDig), Mole.level)); end;
 		end;
 	end;
 	-- a small first chamber is enough to seal: every round with an open shaft is a round
@@ -777,11 +782,14 @@ function Mole.Seal(u)
 			return;
 		end;
 	end;
+	-- blocks can't go where a unit stands: a unit still in the shaft keeps the seal from holding.
+	-- Never give up for good (an open shaft is fatal): pause and try again
 	Mole.sealTries = Mole.sealTries + 1;
-	if Mole.sealTries > 6 then
-		if Mole.sealTries == 7 then Log('Sealing the shaft keeps failing: giving up'); end;
-		Mole.sealed = true;
-		Mole.sealFailed = true;
+	if Mole.sealTries > 4 then
+		if Mole.sealTries == 5 then
+			Log('Sealing the shaft keeps failing; shaft column: '..Mole.CellReport(CellByIndex(Mole.shaftCell), h));
+		end;
+		if Mole.sealTries >= 8 then Mole.sealTries = 0; end;
 		return;
 	end;
 	local ok, err = pcall(u.BuildBlocks, cells);
@@ -855,6 +863,28 @@ function Mole.UrgentMineTunnel()
 	Mole.urgent = true;
 	Log('No mineral mine below ground: tunnelling to mineral site at cell '..best.index);
 	return true;
+end;
+
+-- Terrain and occupants of a cell at height h, for the logs: content of the central terrain
+-- cell, Game.Grid.IsClear, structure and unit there
+function Mole.CellReport(cell, h)
+	if cell == nil then return 'nil'; end;
+	local parts = {cell.index..'@'..tostring(h)};
+	local okt, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+	if okt and tc then
+		local okc, content = pcall(Game.Terrain.GetContent, tc, h);
+		parts[#parts+1] = 'content='..tostring(okc and content or ('err '..tostring(content)));
+	end;
+	local okl, loc = pcall(Game.Grid.ToLocation, cell, h);
+	if okl and loc then
+		local okc, clear = pcall(Game.Grid.IsClear, loc);
+		parts[#parts+1] = 'isClear='..tostring(okc and clear);
+		local ok, st = pcall(Game.GetStructureAt, loc);
+		if ok and st and st.type then parts[#parts+1] = st.type.name; end;
+		local okm, m = pcall(Game.GetMobileAt, loc);
+		if okm and m and m.type then parts[#parts+1] = 'unit '..tostring(m.niceName); end;
+	end;
+	return table.concat(parts, ' ');
 end;
 
 -- Why the digger can't get next to the shaft: log every 5 rounds
