@@ -128,7 +128,10 @@ namespace Lua
 			const int h = luaHeight.GetAs<int>();
 			if (h < Grid::CellStack::BottomHeight)
 				throw Lua::Exception(parameterName+".height ("+String(h)+") falls below minimum height ("+String(Grid::CellStack::BottomHeight)+")");
-			//_might_ test top limit here, but not for now
+			// above the top layer only the sub-orbital height is valid. Anything else (e.g. Grid::CellStack::BadHeight
+			// handed back from a location that had no ground) would index past the end of the volume grids
+			if (h > Grid::CellStack::TopHeight && h != Objects::SubOrbital::Height)
+				throw Lua::Exception(parameterName+".height ("+String(h)+") exceeds maximum height ("+String(Grid::CellStack::TopHeight)+")");
 
 			return CellHToLGridCell(loc.GetField("cell"),h,parameterName+".cell");
 		}

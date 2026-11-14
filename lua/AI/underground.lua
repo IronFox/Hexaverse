@@ -205,6 +205,94 @@ function Mole.WalkToward(u, targetCell)
 	return false;
 end;
 
+--[[
+Planned building below ground: every structure must leave the cavern in one
+piece. A site is OK only if, with it blocked, every passable cavern cell can
+still be reached from the shaft, and the site has a passable neighbor for the
+builder to step out to. So a terraformer is never walled in by our own base.
+]]
+Mole.passCache = nil;
+function Mole.PassableSet()
+	if Mole.passCache and Mole.passCache.round == Sense.round then return Mole.passCache.set; end;
+	local set = {};
+	local center = Mole.shaftCell and CellByIndex(Mole.shaftCell);
+	if center then
+		local built = Mole.BelowStructureCells();
+		local function add(c)
+			if c and not set[c.index] and not built[c.index] and Mole.IsOpen(c) then set[c.index] = c; end;
+		end;
+		for _,c in ipairs(Mole.Rings(center, Mole.rings + 1)) do add(c); end;
+		for idx in pairs(Mole.dug) do add(CellByIndex(idx)); end;
+		set[center.index] = center;
+	end;
+	Mole.passCache = {round = Sense.round, set = set};
+	return set;
+end;
+
+function Mole.KeepsConnected(idx)
+	local set = Mole.PassableSet();
+	if Mole.shaftCell == nil or idx == Mole.shaftCell then return false; end;
+	local blocked = function(i) return i == idx or Economy.claimed[i]; end;
+	-- the builder needs a way out of the site
+	local cell = CellByIndex(idx);
+	local exit = false;
+	for _,nb in ipairs(cell and cell.neighbors or {}) do
+		if set[nb.index] and not blocked(nb.index) then exit = true; break; end;
+	end;
+	if not exit then return false; end;
+	local seen, queue, n = {[Mole.shaftCell] = true}, {set[Mole.shaftCell]}, 1;
+	local head = 1;
+	while head <= #queue do
+		local c = queue[head]; head = head + 1;
+		for _,nb in ipairs(c.neighbors) do
+			if set[nb.index] and not seen[nb.index] and not blocked(nb.index) then
+				seen[nb.index] = true;
+				queue[#queue+1] = nb;
+				n = n + 1;
+			end;
+		end;
+	end;
+	for i in pairs(set) do
+		if not seen[i] and not blocked(i) then return false; end;
+	end;
+	return true;
+end;
+
+--[[
+Carve a plot: the closed cell next to the passable cavern nearest to the unit,
+within one ring beyond the cavern plan. Digging it gives the next structure a
+place that blocks nobody. Returns true if a dig or move was ordered.
+]]
+function Mole.Plot(u)
+	local center = Mole.shaftCell and CellByIndex(Mole.shaftCell);
+	if center == nil then return false; end;
+	local set = Mole.PassableSet();
+	Mole.digClaims = Mole.digClaims or {};
+	local surface = Mole.SurfaceStructureCells();
+	local best, bd = nil, nil;
+	for _,c in ipairs(Mole.Rings(center, Mole.rings + 1)) do
+		if not Mole.IsOpen(c) and not Mole.digClaims[c.index] and not surface[c.index] then
+			local bl = Mem.blacklist[c.index];
+			if not (bl and bl > Sense.round) then
+				for _,nb in ipairs(c.neighbors) do
+					if set[nb.index] then
+						local d = D2(c.center, u.location.cell.center);
+						if bd == nil or d < bd then best, bd = c, d; end;
+						break;
+					end;
+				end;
+			end;
+		end;
+	end;
+	if best == nil then return false; end;
+	Mole.digClaims[best.index] = true;
+	if Mole.DigToward(u, best) then
+		Log(u.niceName..': carving a plot at cell '..best.index);
+		return true;
+	end;
+	return false;
+end;
+
 function Mole.CavernCells()
 	local center = Mole.shaftCell and CellByIndex(Mole.shaftCell);
 	if center == nil then return {}; end;
@@ -715,7 +803,8 @@ function Economy.SiteOK(loc, forMine)
 				if nb.index == loc.cell.index then return false; end;
 			end;
 		end;
-		return true;
+		-- never cut the cavern in two or wall in the builder
+		return Mole.KeepsConnected(loc.cell.index);
 	end;
 	-- surface: only what keeps the faction alive until the cavern has its own
 	-- (without a mineral mine a faction dies within a few rounds)
@@ -831,6 +920,10 @@ function Economy.AssignConstructor(u, index)
 	-- idle below ground with nothing ordered: out of space, or the mine site needs a tunnel
 	if Mole.phase == 'live' and Mem.jobs[u.id] == nil and Move.IsIdle(u) and before == nil then
 		Mole.noSpace = true;
+		-- a second terraformer carves out space for the next structure while the digger is busy
+		if u.id ~= Mole.digger and u.DigHorizontally and Mole.IsBelow(u.location) and Mole.Plot(u) then
+			return;
+		end;
 		if Mole.tunnelGoal == nil and Economy.noMineSite['Minerals'] == Sense.round then
 			local cells = {};
 			for _,res in ipairs({'Fuel', 'Minerals'}) do
