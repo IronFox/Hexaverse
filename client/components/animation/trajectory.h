@@ -47,6 +47,7 @@ namespace Animation
 			};
 		#endif
 
+		bool						skipped = false;	//attacker unknown to this client: nothing to animate
 		Objects::Component::Turret*	attackerTurret;	//reference targetEntityID to retrieve the identity of the attacker (precise attack only)
 		float						attackRange,attackAngle;
 		M::TVec3<>					attackerPosition;

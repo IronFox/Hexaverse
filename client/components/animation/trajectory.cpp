@@ -98,7 +98,13 @@ namespace Animation
 		if (!attackerTurret)
 		{
 			Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
-			ASSERT1__(attacker,targetEntityID);
+			if (!attacker)
+			{
+				//the attacker may be unknown here (not visible to this client, or already destroyed): skip the animation
+				LogEvent(EventSignificance::Common,nullptr,"Trajectory: attacker "+ToString(targetEntityID)+" not known. Skipping animation");
+				skipped = true;
+				return;
+			}
 			attackerCell = attacker->location;
 			float zOffset;
 			Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
@@ -196,6 +202,8 @@ namespace Animation
 
 	/*virtual override*/ void Trajectory::Update(float x)
 	{
+		if (skipped)
+			return;
 		#ifdef HAS_WINDOW
 			trajectoryAnimation.projectileAt = x;
 			index_t at = std::min(index_t(x * trajectoryAnimation.activeTrajectory.GetLength()),trajectoryAnimation.activeTrajectory.GetLength()-1);
@@ -208,6 +216,8 @@ namespace Animation
 
 	/*virtual override*/ void Trajectory::End()
 	{
+		if (skipped)
+			return;
 		Objects::MarkerStore::client.Foreach(Objects::MarkerType::HostileContact,
 			[this](const Objects::PMarker&m)
 			{
@@ -228,6 +238,8 @@ namespace Animation
 	#ifdef HAS_WINDOW
 		/*virtual override*/ void Trajectory::Render() const
 		{
+			if (skipped)
+				return;
 			if (attackerTurret->trajectoryType != Objects::TrajectoryType::VerticalBeam)
 			{
 				trajectoryProgression.Update(float4(trajectoryAnimation.projectileAt * trajectoryAnimation.maxProjectileProjection,1.f,5.f,1.f));

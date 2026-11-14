@@ -564,7 +564,8 @@ namespace Lua
 										}
 									}
 								}
-								if (checkMobiles && Objects::GetMobileEntity(Grid::LCellIdI(i,h)))
+								// h is badHeight if the column below is occupied: indexing the mobile grid with it is out of range
+								if (h != Objects::badHeight && checkMobiles && Objects::GetMobileEntity(Grid::LCellIdI(i,h)))
 									continue;
 								if (h != Objects::badHeight)
 								{
