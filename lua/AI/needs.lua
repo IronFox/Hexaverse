@@ -36,6 +36,8 @@ Needs = {
 	v = {},				-- current need levels
 	adapt = {},			-- per need: multiplier on its weight, learned from what happens (see Needs.Learn)
 	enemyAASeen = -1,	-- last round hostile anti-air was sensed
+	deepRisk = 0.1,		-- how likely something drills in from below (see Needs.Update)
+	blind = {},			-- my regions out of sight right now (some layer that matters)
 	ordered = {},		-- option key -> rounds it was chosen (a tower ordered for a region may stand next door)
 	enemyAirShare = 0.15,	-- how likely the enemy comes by air rather than with tanks (learned)
 	artyRisk = 0.1,		-- how likely hostile artillery shells our structures (learned)
@@ -217,6 +219,25 @@ function Needs.Update()
 	local scouts = #Sense.my.surveyor + (Sense.storedByRole.surveyor or 0) + Economy.ScannerTowers();
 	v.scouting = scouts == 0 and 0.7 or (Economy.MineShortage() and 0.4 or 0.05);
 	if Sense.DeepMatters() and #Sense.my.surveyor < Cfg.maxSurveyorsDeep then v.scouting = math.max(v.scouting, 0.5); end;
+	-- coverage of my own land: a region of mine out of sight could hide anything that slipped through
+	local own, blind = 0, 0;
+	Needs.blind = {};
+	for id,_ in pairs(Sense.mine) do
+		own = own + 1;
+		local reg = Map.regions[id];
+		local gap = not reg.seenNow
+			or (Sense.AirMatters() and not reg.seenAirNow)
+			or (Sense.DeepMatters() and not reg.seenDeepNow);
+		if gap then blind = blind + 1; Needs.blind[id] = true; end;
+	end;
+	if own > 0 then v.scouting = math.max(v.scouting, clamp(blind / own * 1.2)); end;
+	-- risk of something drilling in: certain once deep activity was seen, real whenever another
+	-- player (not the Nexus) is around, since any player can dig
+	local player = false;
+	for _,f in pairs(Game.factions or {}) do
+		if f.name ~= 'Nexus' and f ~= Game.myFaction and f.isHostile ~= false then player = true; end;
+	end;
+	Needs.deepRisk = Sense.DeepMatters() and 1 or ((player and Sense.round >= 30) and 0.35 or 0.1);
 
 	local constructors = #Sense.my.constructor + (Sense.storedByRole.constructor or 0);
 	local wantC = round < 40 and Cfg.constructorsEarly or Cfg.constructorsLate;
@@ -636,12 +657,51 @@ function Needs.StructureOptions(constructorIndex)
 			end;
 		end;
 		tower(Types.GroundTower(), c.ground, {defense = 0.6 + 0.6 * ground});
-		tower(Types.radarTower, c.radar, {scouting = 0.5, defense = 0.4});
+		tower(Types.radarTower, c.radar, {scouting = Needs.blind[reg.id] and 1 or 0.5, defense = 0.4});
 		tower(Types.aaTower, c.aa, {air = math.min(1, airShare * 3), defense = 0.6 * airShare});
 		if Mem.heavySeen >= 0 or Sense.round >= 60 then
 			tower(Types.launcherTower, c.launcher, {defense = 0.9 * ground});
 		end;
-		if Sense.DeepMatters() then tower(Types.scannerTower, c.scanner, {scouting = 0.8, defense = 0.2}); end;
+		if Needs.deepRisk >= 0.3 then
+			tower(Types.scannerTower, c.scanner, {scouting = 0.8 * Needs.deepRisk, defense = 0.2 + 0.3 * Needs.deepRisk});
+		end;
+	end;
+	--[[
+	A ring of scanner (surveyor) towers along my border, so nothing drills in unseen. With
+	research their range can rival a radar's. One per border region, weighed by deepRisk.
+	]]
+	local st = Types.scannerTower;
+	if st and Needs.deepRisk >= 0.3 and Economy.TowerAllowed(st) and Types.IsUnlocked(st) then
+		local listed = {};
+		for _,e in ipairs(Needs.DefendedRegions()) do listed[e.reg.id] = true; end;
+		for id,_ in pairs(Sense.mine) do
+			local border = false;
+			for nb,_ in pairs(Map.regions[id].neighbors) do
+				if not Sense.mine[nb] then border = true; break; end;
+			end;
+			local key = st.name..'@'..id;
+			if border and not listed[id] and not Economy.scannerClaimed[key] then
+				local have = math.max(Economy.DefenseCounts(Map.regions[id]).scanner, Needs.RecentOrders(key));
+				opts[#opts+1] = {want = {type = st, kind = 'tower', region = id}, serves = {scouting = 0.6 * Needs.deepRisk, defense = 0.3 * Needs.deepRisk},
+					cost = Cost(st), have = have, cap = 1, factor = 0.6, name = st.name..' (border ring) @'..id, key = key};
+			end;
+		end;
+	end;
+	-- blind regions of mine that are not worth guns: a radar there keeps them in sight
+	do
+		local listed = {};
+		for _,e in ipairs(Needs.DefendedRegions()) do listed[e.reg.id] = true; end;
+		local t = Types.radarTower;
+		for id,_ in pairs(Needs.blind or {}) do
+			local reg = Map.regions[id];
+			if t and not listed[id] and Economy.TowerAllowed(t) and not Economy.scannerClaimed[t.name..'@'..id]
+				and not reg.seenNow then
+				local key = t.name..'@'..id;
+				local have = math.max(Economy.DefenseCounts(reg).radar, Needs.RecentOrders(key));
+				opts[#opts+1] = {want = {type = t, kind = 'tower', region = id}, serves = {scouting = 0.8},
+					cost = Cost(t), have = have, cap = 1, factor = 0.6, name = t.name..' (blind spot) @'..id, key = key};
+			end;
+		end;
 	end;
 	if Types.store and Sense.round >= 12 and Types.IsUnlocked(Types.store) and Economy.Count(Types.store) < Cfg.maxStores then
 		local want, peak = Economy.StoreRegion();
@@ -762,6 +822,9 @@ end;
 
 function Needs.Report()
 	if Sense.round % 10 ~= 0 then return; end;
+	local nb = 0;
+	for _ in pairs(Needs.blind or {}) do nb = nb + 1; end;
+	if nb > 0 then Log('Needs: '..nb..' of my regions out of sight'); end;
 	Log(string.format('Needs: enemy air share %.2f, artillery risk %.2f, splash %.1f', Needs.enemyAirShare, Needs.artyRisk, Needs.splash));
 	local keys = {};
 	for k,_ in pairs(Needs.v) do keys[#keys+1] = k; end;

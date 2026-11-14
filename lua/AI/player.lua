@@ -1266,7 +1266,8 @@ function Economy.ImprovementUsage()
 		if t and not t.canAttack then
 			-- sensors: radar first, scanners mostly look down (odd cases only)
 			if tn == 'radar' then Add('scanningrange:radar', mobile and 1.5 or 1);
-			elseif t.detectsResources then Add('scanningrange:'..tn, 0.3);
+			-- scanners: a border ring of them watches for drilling; researched, they rival a radar
+			elseif t.detectsResources then Add('scanningrange:'..tn, ((Needs.deepRisk or 0) >= 0.3 and not mobile) and 1.2 or 0.3);
 			elseif u.type.isSuborbitalPlane then Add('scanningrange:'..tn, 1.5);
 			end;
 		end;
@@ -3010,6 +3011,7 @@ function Military.Planes()
 						local hops = Sense.hops[reg.id] or 30;
 						local sc = math.min(Sense.Staleness(reg), 60) / (1 + hops * 0.5);
 						if Sense.frontier[reg.id] then sc = sc * 2; end;
+						if Sense.mine[reg.id] then sc = sc * 2; end;	-- blind spots in my own land
 						if bs == nil or sc > bs then best, bs = reg, sc; end;
 					end;
 				end;
@@ -3106,6 +3108,8 @@ function Military.Scouts()
 					if Sense.frontier[reg.id] then importance = importance + 3; end;
 					if reg.hostileStructures > 0 then importance = importance + 2; end;
 					if #Sense.enemyRegions == 0 then importance = importance + 1; end;
+					-- my own land out of sight: I can't be sure nothing slipped through
+					if Sense.mine[reg.id] then importance = importance + 2; end;
 					local danger = Sense.Threat(reg);
 					local score = stale * importance / (1 + hops) / (1 + danger);
 					if deep then
