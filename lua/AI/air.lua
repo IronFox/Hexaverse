@@ -34,6 +34,12 @@ table.insert(Cfg.research, 1, 'Unlock:Raptor');
 table.insert(Cfg.research, 1, 'Unlock:Bomber');
 table.insert(Cfg.research, 1, 'Unlock:PlaneFactory');
 
+-- Before the plane factory: is its research still running? (it takes ~45 rounds)
+function Air.Researching()
+	local pf = Types.planeFactory;
+	return #Sense.planeFactories == 0 and (pf == nil or not Types.IsUnlocked(pf));
+end;
+
 -- Saving up for the plane factory: researched, fuel mine running, minerals short
 function Air.Saving()
 	local pf = Types.planeFactory;
@@ -52,11 +58,22 @@ function Economy.NextStructure(index)
 		and not (want.type == Types.plant and Economy.WorkingPlants() == 0) then
 		return nil;
 	end;
+	-- while the factory research runs: mines instead of towers, so income is up when it completes
+	if want and want.kind == 'tower' and Air.Researching() and Sense.Pressure() <= 3 then
+		return Economy.MineReq('Minerals');
+	end;
 	return want;
 end;
 
 -- the ground plants hold back for the plane factory (minerals for it must pile up first),
 -- and once it runs, minerals go to planes
+-- no defense towers while saving for the factory, unless under real pressure
+local baseDefenseNeed = Economy.DefenseNeed;
+function Economy.DefenseNeed(surplus, homeOnly)
+	if (Air.Saving() or Air.Researching()) and Sense.Pressure() <= 3 then return nil; end;
+	return baseDefenseNeed(surplus, homeOnly);
+end;
+
 local baseNextVehicle = Economy.NextVehicle;
 function Economy.NextVehicle()
 	local t = baseNextVehicle();
@@ -67,6 +84,13 @@ function Economy.NextVehicle()
 		local tt = t.turretType;
 		local essential = tt and (tt.canConstruct or tt.detectsResources);
 		if saving and not essential and #Sense.my.combat >= 2 and Sense.Pressure() <= 3 then
+			return nil;
+		end;
+		-- while the factory research runs, minerals go into mines (income), not into an army:
+		-- a small ground guard only, more under pressure
+		local combat = #Sense.my.combat + #Sense.my.bomb + (Sense.storedByRole.combat or 0);
+		if not essential and tt and (tt.canAttack or tt.canSelfDetonate) and combat >= Cfg.groundGuard
+			and Sense.Pressure() <= 3 then
 			return nil;
 		end;
 		return t;
