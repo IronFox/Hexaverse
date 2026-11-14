@@ -23,8 +23,10 @@ e.g. 'player,underground,air').
 
 Cfg.logPrefix = 'Underground AI: ';
 Cfg.moleDepth = 3;			-- layers below the local surface for the cavern floor
-Cfg.moleRings = 2;			-- initial cavern radius in cells around the shaft (1 + 6 + 12 cells)
-Cfg.moleMaxRings = 4;		-- expanded when there is no building space left
+Cfg.moleRings = 3;			-- initial cavern radius in cells around the shaft (1 + 6 + 12 + 18 cells)
+Cfg.moleMaxRings = 5;		-- expanded when there is no building space left
+Cfg.moleHighRings = 2;		-- the middle of the cavern is two layers high: wide and high, so parked
+							-- vehicles don't block the way (one-cell tunnels jam easily)
 Cfg.bombShare = 0.5;		-- underground, blasts beat range
 Cfg.minesBelowThreat = true;
 Cfg.attackMinRound = 80;	-- defend first, attack late
@@ -56,6 +58,7 @@ Mole = {
 	rings = Cfg.moleRings,
 	waitSurvey = nil,	-- world position a surveyor should look at before we dig on
 	moveFailed = {},	-- cell index -> round a move into it failed
+	ceilingFailed = {},	-- cell index -> true: second layer could not be cleared there
 	lastMove = nil,		-- {round, from, to} of the digger's last move order
 	sealed = false,		-- shaft plugged: nothing walks in from the surface
 	sealTries = 0,
@@ -377,6 +380,10 @@ function Mole.Update()
 			Log('Cavern still has only '..n..' open cells after '..(Sense.round - Mole.cavernSince)..' rounds');
 		end;
 	end;
+	-- once live, sealing the shaft comes before any further digging
+	if Mole.phase == 'live' and not Mole.sealed then
+		closed = nil;
+	end;
 	if closed then
 		Mole.digClaims[closed.index] = true;
 		Mole.DigToward(u, closed);
@@ -390,6 +397,10 @@ function Mole.Update()
 	-- live: seal the shaft first. An open shaft lets every other faction walk right in
 	if not Mole.sealed then
 		Mole.Seal(u);
+		return;
+	end;
+	-- second layer over the middle of the cavern (bounded work, before any tunnel), so parked vehicles don't block the way
+	if Mole.Ceiling(u) then
 		return;
 	end;
 	-- then tunnel to a requested mine site, otherwise widen the cavern when space runs out
@@ -478,6 +489,67 @@ function Mole.Seal(u)
 	else
 		Log('BuildBlocks failed: '..tostring(err));
 	end;
+end;
+
+--[[
+Clears the layer above the cavern floor in the middle rings. ClearAbove works on
+the cell atop the vehicle or diagonally above it (a neighbor's upper layer).
+The shaft column is left alone: its seal goes one layer above the floor.
+Returns true if an order was given.
+]]
+function Mole.Ceiling(u)
+	if Cfg.moleHighRings <= 0 or not u.ClearAbove then return false; end;
+	local center = CellByIndex(Mole.shaftCell);
+	local here = u.location.cell;
+	local todo, near = {}, nil;
+	for _,c in ipairs(Mole.Rings(center, Cfg.moleHighRings)) do
+		if c.index ~= Mole.shaftCell and Mole.IsOpen(c) and not Mole.ceilingFailed[c.index] then
+			local ok, up = pcall(Game.Grid.ToLocation, c, Mole.level + 1);
+			local okc, clear = false, false;
+			if ok and up then okc, clear = pcall(Game.Grid.IsClear, up); end;
+			if okc and not clear then
+				todo[#todo+1] = c;
+				if c.index == here.index then near = c; end;
+				for _,nb in ipairs(here.neighbors) do
+					if nb.index == c.index and near == nil then near = c; end;
+				end;
+			end;
+		end;
+	end;
+	if #todo == 0 then return false; end;
+	if near then
+		local up = Game.Grid.ToLocation(near, Mole.level + 1);
+		if Mole.lastCeiling == near.index then
+			-- asked for it last time and it is still there: skip it
+			Mole.ceilingFailed[near.index] = true;
+			Mole.lastCeiling = nil;
+			return true;
+		end;
+		local ok, err = pcall(u.ClearAbove, up);
+		if not ok then
+			Log('ClearAbove failed: '..tostring(err));
+			Mole.ceilingFailed[near.index] = true;
+			return true;
+		end;
+		Mole.lastCeiling = near.index;
+		Log(u.niceName..': clearing the layer above cell '..near.index);
+		return true;
+	end;
+	Mole.lastCeiling = nil;
+	-- walk to an open cell next to the nearest remaining one
+	local best, bd = nil, nil;
+	for _,c in ipairs(todo) do
+		local d = D2(c.center, here.center);
+		if bd == nil or d < bd then best, bd = c, d; end;
+	end;
+	local loc = Mole.LocAt(best);
+	local ok, path = pcall(u.FindShortestPath, loc, nil, false);
+	if ok and path and #path > 0 then
+		u.DirectTo(path[#path]);
+		return true;
+	end;
+	Mole.ceilingFailed[best.index] = true;
+	return true;
 end;
 
 -- Demolish surface structures once the cavern holds replacements. One per round
