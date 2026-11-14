@@ -55,6 +55,8 @@ Mole = {
 	tunnelGoal = nil,	-- cell index the digger tunnels towards
 	rings = Cfg.moleRings,
 	waitSurvey = nil,	-- world position a surveyor should look at before we dig on
+	moveFailed = {},	-- cell index -> round a move into it failed
+	lastMove = nil,		-- {round, from, to} of the digger's last move order
 	sealed = false,		-- shaft plugged: nothing walks in from the surface
 	sealTries = 0,
 	liveRound = nil,
@@ -167,11 +169,43 @@ function Mole.DigToward(u, targetCell)
 	local loc = Mole.LocAt(best);
 	if loc == nil then Log('No location at cell '..best.index..' height '..tostring(Mole.level)); return false; end;
 	if Mole.IsOpen(best) then
-		local ok, path = pcall(u.FindShortestPath, loc, nil, true);
-		if ok and path and #path > 0 then u.DirectTo(path[#path]); return true; end;
-		Log('Open cell '..best.index..' at height '..tostring(Mole.level)..' is not reachable from '..here.index..'/'..tostring(u.location.height));
-		Economy.Blacklist(best.index, 10);
-		return false;
+		-- walking back through dug cells can fail ("Route to destination lost"): after one
+		-- failed move towards a cell, keep digging forward instead of walking
+		local failed = Mole.moveFailed[best.index] and Sense.round - Mole.moveFailed[best.index] < 20;
+		if not failed and Mole.lastMove and Mole.lastMove.round == Sense.round - 1
+			and Mole.lastMove.from == here.index then
+			Mole.moveFailed[Mole.lastMove.to] = Sense.round;	-- still where we were: the move was aborted
+			Log('Move from cell '..here.index..' to '..Mole.lastMove.to..' failed: digging around instead');
+			failed = Mole.lastMove.to == best.index;
+		end;
+		if not failed then
+			local ok, path = pcall(u.FindShortestPath, loc, nil, true);
+			if ok and path and #path > 0 then
+				u.DirectTo(path[#path]);
+				Mole.lastMove = {round=Sense.round, from=here.index, to=best.index};
+				return true;
+			end;
+			Log('Open cell '..best.index..' at height '..tostring(Mole.level)..' has no path from '..here.index..'/'..tostring(u.location.height));
+			Mole.moveFailed[best.index] = Sense.round;
+		end;
+		-- dig a closed neighbor in the target's direction instead (it may lie outside the cavern plan)
+		local alt, ad = nil, nil;
+		for _,nb in ipairs(here.neighbors) do
+			if not Mole.IsOpen(nb) and not Mole.SurfaceStructureCells()[nb.index] then
+				local bl = Mem.blacklist[nb.index];
+				if not (bl and bl > Sense.round) then
+					local d = D2(nb.center, goal);
+					if ad == nil or d < ad then alt, ad = nb, d; end;
+				end;
+			end;
+		end;
+		if alt == nil then
+			Log('Digger at cell '..here.index..' is boxed in by open cells it cannot reach');
+			return false;
+		end;
+		best = alt;
+		loc = Mole.LocAt(best);
+		if loc == nil then return false; end;
 	end;
 	local check = Mole.DigCheck(best, Mole.level);
 	if check == 'lava' or check == 'breach' then
@@ -561,7 +595,11 @@ function Economy.NextStructure(index)
 		Economy.allowSurface = true;
 		return {type=Types.plant, kind='base'};
 	end;
-	if Mole.phase ~= 'live' then return nil; end;
+	-- while the cavern is dug, more income on the surface (replaced and demolished later)
+	if Mole.phase ~= 'live' then
+		if Economy.Count(Types.mine) < 3 then return Economy.MineReq('Minerals'); end;
+		return nil;
+	end;
 	return baseNextStructure(index);
 end;
 
