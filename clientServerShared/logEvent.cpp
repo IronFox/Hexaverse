@@ -8,6 +8,7 @@
 #include <container/production_pipe.h>
 #include "logEvent.h"
 #include <net/tcp.h>
+#include <ctime>
 
 #include "runtimeConfig.h"
 #include "./objects/faction.h"
@@ -178,9 +179,16 @@ namespace Logging
 		if (entries.Count() > 10)
 		{
 			Sorting::ByComparator::QuickSort(entries,[](const Entry&a, const Entry&b){return a.first < b.first ? -1 : (a.first == b.first ? 0 : 1);});
+			//Several clients may run at once (AI test matches start four), and on Windows the
+			//modification time of a log that is still being written is not reliably updated.
+			//So a live log of another client can look old: only delete logs older than a day
+			const FileSystem::ftime_t now = (FileSystem::ftime_t)time(nullptr);
+			const FileSystem::ftime_t minAge = 24*60*60;
 			for (index_t i = 0; i+10 <= entries.Count(); i++)
 			{
-				FileSystem::TryToUnlinkFile(entries[i].second);	//don't care if open by other program
+				if (entries[i].first + minAge > now)
+					continue;
+				FileSystem::TryToUnlinkFile(entries[i].second);
 			}
 		}
 

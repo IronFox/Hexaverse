@@ -135,8 +135,8 @@ function Mole.WaterNear(cell, h)
 end;
 
 -- Any water in the cavern area (rings + 1 around a cell) at a cavern level
-function Mole.WetArea(center, level)
-	for _,c in ipairs(Mole.Rings(center, Mole.rings + 1)) do
+function Mole.WetArea(center, level, margin)
+	for _,c in ipairs(Mole.Rings(center, Mole.rings + (margin or 1))) do
 		if Mole.WaterNear(c, level) then return true; end;
 	end;
 	return false;
@@ -561,6 +561,7 @@ function Mole.Digger()
 end;
 
 function Mole.Update()
+	if Mole.phase == 'surface' then return; end;	-- gave up digging (no dry ground)
 	local u = Mole.Digger();
 	-- a lone constructor builds the survival essentials before it digs
 	Mole.digging = u ~= nil and (#Sense.my.constructor >= 2 or Mole.EssentialsAnywhere());
@@ -624,13 +625,23 @@ function Mole.Update()
 			end;
 			-- below the water table the cavern floods: go only as deep as it stays dry, and
 			-- if it is wet even just below the ground, look for another spot
+			-- after several wet spots, settle for less: one layer of cover, no margin around the cavern
+			local wet = Mole.wetRejects or 0;
+			local minCover = wet >= 4 and 1 or 2;
+			local margin = wet >= 4 and 0 or 1;
 			local level = math.max(low - Cfg.moleDepth, -15);
-			while level <= low - 2 and Mole.WetArea(u.location.cell, level) do level = level + 1; end;
-			if level > low - 2 then
+			while level <= low - minCover and Mole.WetArea(u.location.cell, level, margin) do level = level + 1; end;
+			if level > low - minCover then
+				Mole.wetRejects = wet + 1;
 				Log('Water below shaft cell '..Mole.shaftCell..' (ground '..low..'): picking another');
 				Mole.shaftRejected[Mole.shaftCell] = true;
 				Mole.shaftCell = nil;
 				Mole.shaftSince = nil;
+				-- a water-logged map: no cavern anywhere near. Fight on the surface instead
+				if Mole.wetRejects >= 8 then
+					Mole.phase = 'surface';
+					Log('No dry ground for a cavern: building up on the surface instead');
+				end;
 				return;
 			end;
 			if level > low - Cfg.moleDepth then Log('Water table: cavern only '..(low - level)..' below ground'); end;
@@ -1261,6 +1272,10 @@ function Economy.NextStructure(index)
 			return {type=Types.generator, kind='base'};
 		end;
 	end;
+	if Mole.phase == 'surface' then
+		Economy.allowSurface = true;
+		return baseNextStructure(index);
+	end;
 	-- no vehicle plant anywhere: one on the surface for now (the cavern gets its own, then this one goes)
 	if Types.plant and Economy.Count(Types.plant) == 0 and Mole.phase ~= 'live' then
 		Economy.allowSurface = true;
@@ -1269,6 +1284,12 @@ function Economy.NextStructure(index)
 	-- while the cavern is dug, more income on the surface (replaced and demolished later)
 	if Mole.phase ~= 'live' then
 		if Economy.Count(Types.mine) < 3 then return Economy.MineReq('Minerals'); end;
+		-- minerals piling up while the cavern is dug: they are worth more spent than saved
+		local minerals = Game.myFaction.currentResources.storage.minerals or 0;
+		if minerals >= 300 then
+			Economy.allowSurface = true;
+			return baseNextStructure(index);
+		end;
 		return nil;
 	end;
 	return baseNextStructure(index);
