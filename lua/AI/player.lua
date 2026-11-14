@@ -578,6 +578,7 @@ function Sense.Update()
 	Sense.stored = {};
 	Sense.storedByRole = {};
 	Sense.structureCells = {};
+	Sense.structureAt = {};		-- cell index -> my structure there
 	Sense.structuresByType = {};
 	Sense.plants = {};
 	Sense.labs = {};
@@ -620,6 +621,7 @@ function Sense.Update()
 		else
 			Sense.myStructures[#Sense.myStructures+1] = u;
 			Sense.structureCells[u.location.cell.index] = true;
+			Sense.structureAt[u.location.cell.index] = u;
 			local tn = u.type.name;
 			Sense.structuresByType[tn] = (Sense.structuresByType[tn] or 0) + 1;
 			if Types.planeFactory and u.type == Types.planeFactory then
@@ -1348,6 +1350,7 @@ function Economy.Research()
 		end;
 	end;
 
+	Economy.pendingUnlocks = #unlocks;	-- reactor core, heavy base, artillery, planes...: all need labs
 	-- improvements ranked by current usage (re-planned every few rounds to avoid churn)
 	local replan = Sense.round - Economy.researchPlanRound >= Cfg.researchReplanRounds;
 	local improvements = {};
@@ -2046,6 +2049,15 @@ function Economy.AssignConstructor(u, index)
 			score = score + n.movementCostsFromRoot * 0.05;
 			-- on the peak itself: the highest ground of the region
 			if want.peak then score = score - (loc.height or 0) * 3; end;
+			-- clusters (labs): next to as many of the same kind as possible, each two neighbors add output
+			if want.near then
+				local nbs = 0;
+				for _,nb in ipairs(loc.cell.neighbors or {}) do
+					local st = Sense.structureAt and Sense.structureAt[nb.index];
+					if st and st.type == want.near then nbs = nbs + 1; end;
+				end;
+				score = score - nbs * 6;
+			end;
 			if want.kind ~= 'mine' and not want.peak then
 				score = score + Needs.Spacing(loc);
 				-- exposed to high ground within artillery reach: towers suffer most

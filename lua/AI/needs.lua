@@ -211,13 +211,31 @@ function Needs.Update()
 	v.research = 0;
 	if Types.lab and round >= 3 then
 		local labs = Economy.Count(Types.lab);
-		if labs == 0 then v.research = 0.6;
-		elseif labs < Cfg.wantLabs and round >= 15 then v.research = 0.3;
+		--[[
+		No lab: high priority, not before defense, but right after the first factory. More labs
+		pay off in clusters: each lab adds a point, and one more for every two enabled lab
+		neighbors. So 1, 3, 6, 10 labs: a lab that completes a cluster is worth far more than
+		one that starts a new one.
+		]]
+		local plants = Economy.WorkingPlants and Economy.WorkingPlants() or 1;
+		-- cluster sizes are the triangular numbers 1, 3, 6, 10, 15, ...
+		local prevCluster, nextCluster, k = 0, 1, 1;
+		while nextCluster <= labs do k = k + 1; prevCluster = nextCluster; nextCluster = nextCluster + k; end;
+		local maxLabs = math.max(Cfg.wantLabsRich or 6, 6);
+		Needs.labsMidCluster = labs > prevCluster and labs < maxLabs;
+		if labs == 0 then v.research = plants > 0 and 1 or 0.4;
+		elseif Needs.labsMidCluster then v.research = clamp(0.4 + 0.4 * (labs - prevCluster) / (nextCluster - prevCluster));	-- finish the cluster
+		elseif round >= 15 and labs < Cfg.wantLabs then v.research = 0.3;
 		elseif minerals >= Cfg.richMinerals and labs < Cfg.wantLabsRich then v.research = 0.25; end;
 		-- what we want most is still locked: research is the way to it
 		local pfw = Types.planeFactory;
 		if pfw and not Types.IsUnlocked(pfw) and Needs.Weights().planes >= 3 and round >= 8 then
 			v.research = math.max(v.research, labs == 0 and 1 or 0.5);
+		end;
+		-- without labs there is no reactor core, heavy base or artillery: while such unlocks are
+		-- pending, a first lab cluster is worth a lot
+		if (Economy.pendingUnlocks or 1) > 0 and labs < 3 and round >= 12 then
+			v.research = math.max(v.research, labs == 0 and 1 or 0.6);
 		end;
 		-- sitting on minerals with no lab: research is the best use
 		if labs == 0 and minerals >= 300 and round >= 8 then v.research = math.max(v.research, 0.9); end;
@@ -662,8 +680,10 @@ function Needs.StructureOptions(constructorIndex)
 		end;
 	end;
 	if Types.lab then
-		add({type = Types.lab, kind = 'base'}, {research = 1, spend = 0.3});
-		opts[#opts].have = Economy.Count(Types.lab);
+		-- labs cluster: next to the existing ones. A lab that continues a cluster counts as
+		-- the first of its kind (the cluster isn't complete yet)
+		add({type = Types.lab, kind = 'base', near = Types.lab}, {research = 1, spend = 0.3});
+		opts[#opts].have = Needs.labsMidCluster and 0 or Economy.Count(Types.lab);
 	end;
 	do
 		-- the plane factory without the mineral check: saving for it is the scorer's job
