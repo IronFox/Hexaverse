@@ -134,6 +134,36 @@ function Mole.WaterNear(cell, h)
 	return false;
 end;
 
+--[[
+Wall off water: digging into water is possible, just slower. Blocks built into the water
+cells around a cell replace the water and stop the leak; then the cell can be dug.
+Returns true if an order was given.
+]]
+Mole.wallTries = {};
+function Mole.WallWater(u, cell, h, dhs)
+	local C = Game.Terrain.Content or {};
+	if not (C.Water and u.BuildBlocks) then return false; end;
+	local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+	if not ok or tc == nil then return false; end;
+	local cells = {tc};
+	for _,n in ipairs(tc.neighbors or {}) do cells[#cells+1] = n; end;
+	local out = {};
+	for _,c in ipairs(cells) do
+		for _,dh in ipairs(dhs or {0, 1, 2}) do
+			local okc, content = pcall(Game.Terrain.GetContent, c, h + dh);
+			if okc and content == C.Water then out[#out+1] = Game.Terrain.Pack(c, h + dh); end;
+		end;
+	end;
+	if #out == 0 then return false; end;
+	local key = cell.index..'@'..h;
+	Mole.wallTries[key] = (Mole.wallTries[key] or 0) + 1;
+	if Mole.wallTries[key] > 4 then return false; end;	-- doesn't hold: give up on this one
+	local okb, err = pcall(u.BuildBlocks, out);
+	if not okb then Log('BuildBlocks (walling water) failed: '..tostring(err)); return false; end;
+	Log('Walling off water around cell '..cell.index..' at height '..h..' ('..#out..' blocks)');
+	return true;
+end;
+
 -- Any water in the cavern area (rings + 1 around a cell) at a cavern level
 function Mole.WetArea(center, level, margin)
 	for _,c in ipairs(Mole.Rings(center, Mole.rings + (margin or 1))) do
@@ -446,6 +476,8 @@ function Mole.DigToward(u, targetCell)
 		if loc == nil then return false; end;
 	end;
 	local check = Mole.DigCheck(best, Mole.level);
+	-- water: wall it off first (slower, but it works), dig once dry
+	if check == 'water' and Mole.WallWater(u, best, Mole.level) then return true; end;
 	if check == 'lava' or check == 'breach' or check == 'water' then
 		Log(({lava = 'Lava next to', breach = 'Open space above', water = 'Water next to'})[check]..' cell '..best.index..': not digging there');
 		Economy.Blacklist(best.index, 200);
@@ -631,6 +663,13 @@ function Mole.Update()
 			local margin = wet >= 4 and 0 or 1;
 			local level = math.max(low - Cfg.moleDepth, -15);
 			while level <= low - minCover and Mole.WetArea(u.location.cell, level, margin) do level = level + 1; end;
+			-- no dry level here: digging into water works too, walling it off as we go. It takes
+			-- longer, so try a couple of other spots first
+			if level > low - minCover and wet >= 2 and Game.Terrain.Content and Game.Terrain.Content.Water then
+				level = math.max(low - Cfg.moleDepth, -15);
+				Mole.wetMode = true;
+				Log('Wet ground everywhere near: digging anyway, walling off water as we go');
+			end;
 			if level > low - minCover then
 				Mole.wetRejects = wet + 1;
 				Log('Water below shaft cell '..Mole.shaftCell..' (ground '..low..'): picking another');
@@ -668,8 +707,11 @@ function Mole.Update()
 		end;
 		if Mole.level and u.location.height > Mole.level then
 			local check = Mole.DigCheck(u.location.cell, u.location.height - 2);
+			if check == 'water' and Mole.WallWater(u, u.location.cell, u.location.height - 2, {-1, 0, 1}) then
+				return;	-- walling off water around the shaft, then digging on
+			end;
 			if check == 'lava' or check == 'water' then
-				-- lava or water below: settle for the depth reached
+				-- lava (or water that won't hold) below: settle for the depth reached
 				Mole.level = u.location.height;
 				Log((check == 'lava' and 'Lava' or 'Water')..' below: cavern at height '..Mole.level);
 			elseif check == 'unknown' and #Sense.my.surveyor > 0 and Sense.round - (Mole.unknownSince or Sense.round) < 3 then

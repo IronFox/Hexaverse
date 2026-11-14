@@ -118,6 +118,7 @@ Successful underground operations need [surveyors](../units/turrets/surveyor.md)
 Dig large, roughly spherical caverns, sometimes two layers high. In narrow tunnels a parked vehicle blocks the way: stationary vehicles count as obstacles for route finding, moving ones don't.
 Building underground takes more planning than on the surface. Rather than building wherever there is room, plan each structure: have [terraformers](../units/turrets/terraformer.md) carve out the space, then build into it, and make sure the terraformer can still get out. How fast the base grows depends on how well you organize your terraformers.
 Bombs are the only weapon you really have underground: there is no room to use a tank's range. [Bomb](../units/turrets/bomb.md) vehicles it is. Towers below ground (cannon or better) only matter once someone has broken in, and by then you are lost anyway. Towers are also two layers high: to use them underground, build them submerged. Since the Nexus AI does not dig tunnels, subterranean warfare is never necessary against it.
+Digging into water is possible, just harder: build walls around you into the water, which replaces the water and prevents the leak. It takes more time. Terraformers can also drill into the water.
 
 ### Plantations and T2 Units
 
