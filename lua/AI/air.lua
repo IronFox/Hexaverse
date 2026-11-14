@@ -30,14 +30,14 @@ Cfg.wantDrones = 1;
 Cfg.groundGuard = 4;			-- combat vehicles kept at home
 
 -- research: planes first, then the rest
+table.insert(Cfg.research, 1, 'Unlock:Raptor');
 table.insert(Cfg.research, 1, 'Unlock:Bomber');
-table.insert(Cfg.research, 1, 'Unlock:Plane');
+table.insert(Cfg.research, 1, 'Unlock:PlaneFactory');
 
 -- Saving up for the plane factory: researched, fuel mine running, minerals short
 function Air.Saving()
 	local pf = Types.planeFactory;
 	return #Sense.planeFactories == 0 and pf ~= nil and Types.IsUnlocked(pf)
-		and (Types.IsUnlocked(Types.bomber) or Types.IsUnlocked(Types.raptor))
 		and Economy.FuelMines() >= 1
 		and (Game.myFaction.currentResources.storage.minerals or 0) < (tonumber(pf.constructionCost) or 200) + 50;
 end;

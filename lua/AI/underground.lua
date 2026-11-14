@@ -59,7 +59,9 @@ Mole = {
 	sealTries = 0,
 	liveRound = nil,
 };
-Cfg.moleSealAfter = 15;		-- rounds after the cavern is ready: seal even if units are still up there
+Cfg.moleSealAfter = 15;
+Cfg.moleDigTimeout = 6;		-- rounds a single dig order may take
+Cfg.moleCavernRounds = 25;	-- after this long, live with the cavern as it is (if it has some room)		-- rounds after the cavern is ready: seal even if units are still up there
 
 local function D2(a,b) local x,y,z = a.x-b.x, a.y-b.y, a.z-b.z; return x*x+y*y+z*z; end;
 
@@ -158,14 +160,17 @@ function Mole.DigToward(u, targetCell)
 	end;
 	if best == nil then return false; end;
 	if Mole.SurfaceStructureCells()[best.index] and not Mole.IsOpen(best) then
+		Log('Not digging beneath own structure at cell '..best.index);
 		Economy.Blacklist(best.index, 30);	-- don't undermine our own structures
 		return false;
 	end;
 	local loc = Mole.LocAt(best);
-	if loc == nil then return false; end;
+	if loc == nil then Log('No location at cell '..best.index..' height '..tostring(Mole.level)); return false; end;
 	if Mole.IsOpen(best) then
 		local ok, path = pcall(u.FindShortestPath, loc, nil, true);
 		if ok and path and #path > 0 then u.DirectTo(path[#path]); return true; end;
+		Log('Open cell '..best.index..' at height '..tostring(Mole.level)..' is not reachable from '..here.index..'/'..tostring(u.location.height));
+		Economy.Blacklist(best.index, 10);
 		return false;
 	end;
 	local check = Mole.DigCheck(best, Mole.level);
@@ -187,6 +192,8 @@ function Mole.DigToward(u, targetCell)
 	Mole.waitSurvey = nil;
 	local ok, err = pcall(u.DigHorizontally, loc);
 	if not ok then Log('DigHorizontally failed: '..tostring(err)); return false; end;
+	Mole.lastDig = best.index;
+	Log(u.niceName..': digging cell '..best.index..' at height '..tostring(loc.height)..' (standing at '..u.location.cell.index..'/'..tostring(u.location.height)..')');
 	return true;
 end;
 
@@ -267,7 +274,20 @@ function Mole.Update()
 	local u = Mole.Digger();
 	-- a lone constructor builds the survival essentials before it digs
 	Mole.digging = u ~= nil and (#Sense.my.constructor >= 2 or Mole.EssentialsAnywhere());
-	if not Mole.digging or not Move.IsIdle(u) then return; end;
+	if not Mole.digging then return; end;
+	-- a dig order that never completes keeps the digger busy forever: drop it after a few rounds
+	if not Move.IsIdle(u) then
+		Mole.busy = (Mole.busy or 0) + 1;
+		if Mole.busy >= Cfg.moleDigTimeout then
+			local t = u.tasks and u.tasks[1];
+			Log('Digger stuck for '..Mole.busy..' rounds on '..tostring(t and t.name)..' at height '..tostring(u.location.height)..': dropping it');
+			if Mole.lastDig then Economy.Blacklist(Mole.lastDig, 40); end;
+			u.ClearTasks();
+			Mole.busy = 0;
+		end;
+		return;
+	end;
+	Mole.busy = 0;
 
 	if Mole.phase == 'shaft' then
 		if Mole.shaftCell == nil then
@@ -313,6 +333,16 @@ function Mole.Update()
 	-- cavern: open the next closed cell next to an open one, ring by ring
 	Mole.digClaims = {};
 	local closed, want = Mole.NextClosed(u);
+	Mole.cavernSince = Mole.cavernSince or Sense.round;
+	if closed and Mole.phase == 'cavern' and Sense.round - Mole.cavernSince >= Cfg.moleCavernRounds then
+		local _, n = Mole.CavernCells();
+		if n >= 4 then
+			Log('Cavern digging takes too long: using the '..n..' open cells');
+			closed = nil;
+		elseif Sense.round % 10 == 0 then
+			Log('Cavern still has only '..n..' open cells after '..(Sense.round - Mole.cavernSince)..' rounds');
+		end;
+	end;
 	if closed then
 		Mole.digClaims[closed.index] = true;
 		Mole.DigToward(u, closed);

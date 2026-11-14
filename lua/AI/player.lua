@@ -2196,7 +2196,8 @@ function Economy.PlaneFactoryNeed()
 	local t = Types.planeFactory;
 	if t == nil or not Types.IsUnlocked(t) or Economy.Count(t) >= Cfg.planeFactories then return nil; end;
 	-- a factory without any researched plane only costs fuel and minerals
-	if not (Types.IsUnlocked(Types.bomber) or Types.IsUnlocked(Types.raptor) or Types.IsUnlocked(Types.drone)) then return nil; end;
+	-- (the air personality builds it while the plane research finishes)
+	if Cfg.planePriority ~= 'early' and not (Types.IsUnlocked(Types.bomber) or Types.IsUnlocked(Types.raptor) or Types.IsUnlocked(Types.drone)) then return nil; end;
 	if Sense.round < Cfg.planeFactoryRound or Economy.Count(Types.mine) < Cfg.planeFactoryMines then return nil; end;
 	local cur, max = Economy.Resources();
 	local demand = t.balance and t.balance.demand or {};
