@@ -179,7 +179,7 @@ function Mole.DigToward(u, targetCell)
 			failed = Mole.lastMove.to == best.index;
 		end;
 		if not failed then
-			local ok, path = pcall(u.FindShortestPath, loc, nil, true);
+			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 			if ok and path and #path > 0 then
 				u.DirectTo(path[#path]);
 				Mole.lastMove = {round=Sense.round, from=here.index, to=best.index};
@@ -459,7 +459,7 @@ function Mole.Seal(u)
 		for _,nb in ipairs(shaft.neighbors) do
 			if Mole.IsOpen(nb) then
 				local loc = Mole.LocAt(nb);
-				local ok, path = pcall(u.FindShortestPath, loc, nil, true);
+				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 				if ok and path and #path > 0 then u.DirectTo(path[#path]); return; end;
 			end;
 		end;
@@ -614,7 +614,7 @@ function Economy.AssignConstructor(u, index)
 			local target = open[(index % #open) + 1];
 			local loc = Mole.LocAt(target);
 			local ok, path = false, nil;
-			if loc then ok, path = pcall(u.FindShortestPath, loc, nil, true); end;
+			if loc then ok, path = pcall(u.FindShortestPath, loc, nil, false); end;
 			if ok and path and #path > 0 then
 				u.DirectTo(path[#path]);
 				return;
@@ -662,13 +662,33 @@ function Military.Scouts()
 		escort = Sense.my.surveyor[1];
 	end;
 	if escort then
+		-- the escort waits at the bottom of the shaft, never in the tunnel right behind the digger:
+		-- a unit parked there blocks the digger's way back ("Route to destination lost").
+		-- From the shaft bottom its deep scan still covers the cavern around it
 		local d = Mole.Digger();
-		local goal = Mole.waitSurvey or (d and d.location.world);
+		local cell = Mole.shaftCell and CellByIndex(Mole.shaftCell) or (d and d.location.cell);
+		-- not on the shaft bottom itself either (units coming down land there): an open
+		-- cavern cell next to it, away from the digger
+		if cell and Mole.phase ~= 'shaft' then
+			local best, bd = nil, nil;
+			for _,nb in ipairs(cell.neighbors) do
+				if Mole.IsOpen(nb) and not (d and nb.index == d.location.cell.index) then
+					local dd = d and -D2(nb.center, d.location.cell.center) or 0;
+					if bd == nil or dd < bd then best, bd = nb, dd; end;
+				end;
+			end;
+			if best then cell = best; end;
+		end;
+		local goal = cell and (Mole.level and Mole.LocAt(cell) or nil);
+		goal = goal and goal.world or (d and d.location.world);
 		if goal then
 			table.remove(Sense.my.surveyor, 1);
 			SafeCall('mole escort', function()
+				if escort.location.cell.index == (cell and cell.index) then
+					if not Move.IsIdle(escort) then escort.ClearSafeTasks(); end;
+					return;
+				end;
 				if not Move.IsIdle(escort) then escort.ClearSafeTasks(); end;
-				local cell = d and d.location.cell;
 				Move.Towards(escort, goal, cell, false, false);
 			end);
 		end;
