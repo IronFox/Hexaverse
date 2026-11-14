@@ -68,7 +68,6 @@ Mole = {
 	liveRound = nil,
 };
 Cfg.moleMineProven = 10;	-- rounds a mine below must have produced before a surface mine of its kind goes
-Cfg.moleSealAfter = 6;	-- rounds to wait for units still on the surface before sealing anyway
 Cfg.moleSealRings = 1;	-- seal once this many rings around the shaft are open; dig the rest sealed
 Cfg.moleDigTimeout = 6;		-- rounds a single dig order may take
 Cfg.moleShaftTimeout = 8;	-- rounds for the digger to reach the shaft cell before another is picked
@@ -713,7 +712,7 @@ end;
 Seal the shaft: fill its terrain one layer above the cavern floor with
 foundation, from a neighboring cavern cell. A unit cell's terrain is its
 central terrain cell plus the cells it shares with its neighbors.
-Waits until constructors and surveyors are down (or Cfg.moleSealAfter rounds passed).
+Waits for constructors and surveyors still above while the danger of an open shaft is lower than their worth.
 ]]
 function Mole.ShaftTerrain(h)
 	local C = Game.Terrain.Content or {};
@@ -747,8 +746,20 @@ function Mole.Seal(u)
 			if not Mole.IsBelow(v.location) then up = up + 1; end;
 		end;
 	end;
-	if up > 0 and Sense.round - (Mole.liveRound or Sense.round) < Cfg.moleSealAfter then
-		return;
+	-- a judgement call: every round the shaft stays open anyone can walk in, every unit
+	-- shut out is lost to the cavern. Seal once the danger outweighs the units still above
+	if up > 0 then
+		local open = Sense.round - (Mole.liveRound or Sense.round);
+		local danger = 0.3 + open * 0.08 + Sense.Pressure() / 4;
+		local hostileNear = Mole.shaftCell and Map.RegionOfLoc(Mole.LocAt(CellByIndex(Mole.shaftCell)) or u.location);
+		if hostileNear and (hostileNear.mobileThreat or 0) > 0 then danger = danger + 1; end;
+		local waiting = up * 0.35;
+		if danger < waiting then
+			if Sense.round % 3 == 0 then
+				Log(string.format('Shaft open for %d rounds: waiting for %d unit(s) above (danger %.2f < %.2f)', open, up, danger, waiting));
+			end;
+			return;
+		end;
 	end;
 	-- stand next to the shaft, inside the cavern
 	local shaft = CellByIndex(Mole.shaftCell);
