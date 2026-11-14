@@ -891,6 +891,11 @@ function Mole.Update()
 		Mole.Tunnel(u);
 		return;
 	end;
+	-- a mine site lies open below (a tunnel got there): the digger is on the spot, and often
+	-- the only constructor behind the seal. It builds the mine before it digs on
+	if Mole.DiggerMine(u) then
+		return;
+	end;
 	-- second layer over the middle of the cavern (bounded work, before any tunnel), so parked vehicles don't block the way
 	if Mole.Ceiling(u) then
 		return;
@@ -1264,6 +1269,37 @@ After the seal the faction lives on its surface mines, and one raid on them
 kills it. A mineral mine below ground comes first: tunnel to the nearest
 mineral site unless one is already open to build on.
 ]]
+-- The digger builds a mine on a resource cell that lies open at cavern level
+function Mole.DiggerMine(u)
+	if Types.mine == nil or not u.BuildStructure then return false; end;
+	local cost = tonumber(Types.mine.constructionCost) or 0;
+	if (Game.myFaction.currentResources.storage.minerals or 0) < cost then return false; end;
+	-- minerals first; fuel once a mineral mine stands below
+	local order = Mole.MineBelow('Minerals') and {'Fuel', 'Minerals'} or {'Minerals', 'Fuel'};
+	for _,res in ipairs(order) do
+		for _,c in ipairs(Economy.FindMineCells(res, 6)) do
+			local bl = Mem.blacklist[c.index];
+			if Mole.IsOpen(c) and not Economy.claimed[c.index] and not (bl and bl > Sense.round) then
+				local loc = Mole.LocAt(c);
+				local ok, stand = pcall(u.CanStandAt, loc);
+				if loc and ok and stand ~= false and Economy.SiteOK(loc, true) and Economy.BuildAt(u, loc, Types.mine) then
+					Economy.claimed[c.index] = true;
+					-- an order that keeps coming to nothing: leave the site alone for a while
+					Mole.mineTries = Mole.mineTries or {};
+					Mole.mineTries[c.index] = (Mole.mineTries[c.index] or 0) + 1;
+					if Mole.mineTries[c.index] >= 3 then
+						Economy.Blacklist(c.index, 40);
+						Mole.mineTries[c.index] = 0;
+					end;
+					Log('Digger builds a mine ('..res..') below ground at cell '..c.index);
+					return true;
+				end;
+			end;
+		end;
+	end;
+	return false;
+end;
+
 function Mole.UrgentMineTunnel()
 	-- (a prospecting corridor gives way to a known mineral site)
 	local prospect = Mole.tunnelGoal ~= nil and Mole.tunnelGoal == Mole.prospecting;
@@ -1425,6 +1461,13 @@ end;
 local baseSiteOK = Economy.SiteOK;
 function Economy.SiteOK(loc, forMine)
 	if not baseSiteOK(loc, forMine) then return false; end;
+	-- a mine counts only on solid ground: not on top of a tunnel or the cavern. A site the
+	-- tunnel has reached (or is heading for) gets its mine below, where raids can't reach it
+	if forMine and Mole.level and not Mole.IsBelow(loc)
+		and (Mole.IsOpen(loc.cell) or (loc.cell.index == Mole.tunnelGoal and Mole.tunnelGoal ~= Mole.prospecting)) then
+		Economy.siteWhy = 'tunnel below';
+		return false;
+	end;
 	if Mole.phase ~= 'shaft' and Mole.IsBelow(loc) then
 		-- the hub around the shaft stays free, so every part of the cavern stays reachable
 		local hub = Mole.shaftCell and CellByIndex(Mole.shaftCell);

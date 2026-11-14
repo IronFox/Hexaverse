@@ -1977,7 +1977,8 @@ function Economy.FindMineCells(resource, maxCount)
 	end;
 	if #out < (maxCount or 1) then
 		local ok, c = pcall(Game.Grid.FindHighestAvailableResourceLocationExt, resource, true, true);
-		if ok and c and not Economy.claimed[c.index] then out[#out+1] = c; end;
+		local bl = ok and c and Mem.blacklist[c.index];
+		if ok and c and not Economy.claimed[c.index] and not (bl and bl > Sense.round) then out[#out+1] = c; end;
 	end;
 	-- how many usable sites I know (read by Needs: few known sites make prospecting matter)
 	Economy.knownSites = Economy.knownSites or {};
@@ -2165,6 +2166,18 @@ function Economy.AssignConstructor(u, index)
 	Economy.busy[u.id] = nil;
 	-- detect stuck jobs: still idle at the same place where we ordered a construction
 	if job and job.cell and Sense.round - job.since >= 1 and not Sense.structureCells[job.cell] then
+		-- stopped on the way (the engine drops the whole order when something blocks the path,
+		-- often a unit that just came into view): the site is as good as before. Order it again
+		local t = Game.Type.units[job.kind];
+		local cell = Economy.Cell(job.cell);
+		local loc = cell and Move.GroundAt(u, cell);
+		if t and loc and u.location.cell.index ~= job.cell and (job.tries or 0) < 2
+			and not Move.IsDangerous(loc) and Game.GetStructureAt(loc) == nil and Economy.BuildAt(u, loc, t) then
+			Mem.jobs[u.id].tries = (job.tries or 0) + 1;
+			Economy.claimed[job.cell] = true;
+			Log(u.niceName..': '..job.kind..' at cell '..job.cell..' was interrupted on the way. Trying again');
+			return;
+		end;
 		Economy.Blacklist(job.cell, 30);
 		Log(u.niceName..': construction of '..job.kind..' at cell '..job.cell..' did not happen. Blacklisting the site');
 	end;
@@ -2211,6 +2224,8 @@ function Economy.AssignConstructor(u, index)
 				local dest = Move.GroundAt(u, cell);
 				local reg = dest and Map.RegionOfLoc(dest);
 				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= 3;
+				-- the builder would turn back from there the round it arrives (see the retreat above)
+				if safe and not Economy.shielded and reg.mobileThreat > reg.myStrength then safe = false; end;
 				if dest == nil then why.noGround = why.noGround + 1;
 				elseif not safe then
 					if reg and (Sense.hops[reg.id] or 99) > 3 then why.far = why.far + 1; else why.unsafe = why.unsafe + 1; end;
