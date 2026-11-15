@@ -1,4 +1,5 @@
 #include <global_root.h>
+#include <vector>
 #include "faction.h"
 #include "../cast.h"
 #include "mobileEntity.h"
@@ -687,10 +688,31 @@ namespace Objects
 		//	}
 		//}
 
+		/*
+		Ownership changes that are requested while another change of the same entity is still under way.
+		Re-inserting a Nexus Port can connect it to a neighboring structure of a third faction, which asks for the next
+		change before the port is back on the grid. Such requests are applied once the running change has finished.
+		*/
+		static std::vector<std::pair<PWorldEntity,PFaction> >	ownershipChangesInProgress, ownershipChangesPending;
+
 		void		ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime)
 		{
+			for (auto&p : ownershipChangesInProgress)
+				if (p.first == e)
+				{
+					LogEvent(EventClass(EventSignificance::Important,EventFlavor::Loss),e.get(),"Ownership change to '"+newOwner->GetName()+"' requested during another change. Postponing");
+					for (auto&q : ownershipChangesPending)
+						if (q.first == e)
+						{
+							q.second = newOwner;
+							return;
+						}
+					ownershipChangesPending.push_back(std::make_pair(e,PFaction(newOwner)));
+					return;
+				}
 			if (e->owner == newOwner)
 				return;
+			ownershipChangesInProgress.push_back(std::make_pair(e,PFaction(newOwner)));
 			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Loss) ,e.get(),"Changing ownership ('"+e->owner->GetName()+"' -> '"+newOwner->GetName()+"')");
 
 			OwnerParameter oldOwner = e->owner;
@@ -719,6 +741,24 @@ namespace Objects
 			}
 
 			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
+
+			for (size_t i = 0; i < ownershipChangesInProgress.size(); i++)
+				if (ownershipChangesInProgress[i].first == e)
+				{
+					ownershipChangesInProgress.erase(ownershipChangesInProgress.begin()+i);
+					break;
+				}
+			for (size_t i = 0; i < ownershipChangesPending.size(); i++)
+				if (ownershipChangesPending[i].first == e)
+				{
+					PFaction next = ownershipChangesPending[i].second;
+					ownershipChangesPending.erase(ownershipChangesPending.begin()+i);
+					//same order as in NexusPort::OnNewConnection(): disabled first, so that the new owner's counters see it being enabled
+					if (e->IsWorkingStructure())
+						To<WorkingStructure>::Cast(e)->SetEnabled(false,atTime,false);
+					ChangeOwnership(e,next,atTime);
+					break;
+				}
 		}
 
 		#ifdef ONE_COMPOUND_PER_FACTION
