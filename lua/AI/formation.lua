@@ -42,6 +42,10 @@ Formation = {
 	breakShare = 0.4,	-- broken off below this share of its peak size
 	secureRounds = 5,	-- rounds on a cleared region until it counts as taken
 	garrison = 2,		-- units of a holding formation
+	commitShare = 0.5,	-- share of the free units a taking formation asks for (if that is more than the job needs)
+	maxSize = 30,
+	stallRounds = 30,	-- gathering, or advancing without anyone arriving, for this long: give the take up
+	reportEvery = 10,	-- rounds between status lines
 };
 
 local function Dist2(a, b)
@@ -53,10 +57,11 @@ local function Name(f)
 	return 'Formation '..f.id..' ('..f.kind..' region '..f.region..')';
 end;
 
--- how many units the job needs
-function Formation.Want(kind, regionId)
+-- how many units to commit: what the job needs at least, and a good part of what stands idle
+function Formation.Want(kind, regionId, available)
 	if kind == 'hold' then return Formation.garrison; end;
-	return Military.RequiredForce(regionId);
+	local idle = math.min(Formation.maxSize, math.floor((available or 0) * Formation.commitShare));
+	return math.max(Military.RequiredForce(regionId), idle);
 end;
 
 -- where to collect: the quiet neighbour of the target that is closest to what I have
@@ -168,6 +173,8 @@ function Formation.Update()
 	for _,f in ipairs(Formation.list) do
 		local count = 0;
 		for _ in pairs(f.members) do count = count + 1; end;
+		-- while gathering, the size follows what is available
+		if f.stage == 'gather' then f.want = math.max(count, Formation.Want('take', f.region, spare + count)); end;
 		if count < f.want and f.stage ~= 'secure' then
 			-- nearest first
 			local goal = Map.WorldCenter(Map.regions[f.staging]);
@@ -209,19 +216,25 @@ function Formation.Update()
 				if reg and reg.id == f.region then inside = inside + 1; end;
 				if reg and (around[reg.id] or reg.id == f.region) then near = near + 1; end;
 			end;
+			if inside > 0 then f.lastInside = Sense.round; end;
 			local clear = target.seenNow and target.hostileStructures == 0 and target.mobileThreat == 0 and target.staticThreat == 0;
 			if f.stage ~= 'gather' and Formation.Broken(f, f.count) then
-				f.want = math.max(f.want, Formation.Want('take', f.region));
+				f.want = math.max(f.want, Formation.Want('take', f.region, 0));
 				f.staging = Formation.Staging(f.region);
 				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
 				f.peak = f.count;
 			elseif f.stage == 'gather' then
 				if Formation.Ready(f, near) then
 					SetStage(f, 'advance', 'with '..near..' of '..f.want);
+					f.lastInside = Sense.round;
+				elseif Sense.round - f.stageSince >= Formation.stallRounds and not f.gaveUp then
+					f.gaveUp = 'never gathered: '..near..' near of '..f.count..' members, wanted '..f.want;
 				end;
 			elseif f.stage == 'advance' then
 				if inside > 0 and clear then
 					SetStage(f, 'secure', 'with '..f.count..' units');
+				elseif Sense.round - (f.lastInside or f.stageSince) >= Formation.stallRounds and not f.gaveUp then
+					f.gaveUp = 'nobody reached the region: '..near..' near of '..f.count..' members';
 				end;
 			elseif f.stage == 'secure' then
 				if not clear then
@@ -230,6 +243,15 @@ function Formation.Update()
 					f.taken = true;
 					Significance.taken[f.region] = Sense.round;	-- settles the direction
 				end;
+			end;
+			if f.gaveUp and not f.gaveUpLogged then
+				f.gaveUpLogged = true;
+				Log(Name(f)..': given up at round '..Sense.round..' in '..f.stage..' ('..f.gaveUp..')');
+				Significance.gaveUp[f.region] = Sense.round;	-- settles the direction as failed
+			elseif (Sense.round - f.born) % Formation.reportEvery == 0 and Sense.round > f.born then
+				Log(string.format('%s: status round %d stage %s members %d of %d near %d inside %d seen %s structures %d mobile %.1f static %.1f',
+					Name(f), Sense.round, f.stage, f.count, f.want, near, inside, tostring(target.seenNow and true or false),
+					target.hostileStructures or 0, target.mobileThreat or 0, target.staticThreat or 0));
 			end;
 		end;
 	end;

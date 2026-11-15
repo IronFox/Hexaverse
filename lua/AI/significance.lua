@@ -373,6 +373,7 @@ Significance.directions = {};	-- active ones
 Significance.avoid = {};		-- region id -> priority
 Significance.failed = {};		-- region id -> round a take there last failed
 Significance.taken = {};		-- region id -> round a formation reported it taken (formation.lua)
+Significance.gaveUp = {};		-- region id -> round a formation gave the take up (formation.lua)
 
 local function Settle(d, how)
 	local reg = Map.regions[d.region];
@@ -389,8 +390,9 @@ function Significance.Direct()
 		local taken = Significance.taken[d.region];
 		-- (a formation needs time to gather before it goes in)
 		local limit = Significance.takeRounds * (Cfg.useFormations and 2 or 1);
+		local gaveUp = Significance.gaveUp[d.region];
 		if d.kind == 'take' and (mine or (taken and taken >= d.issued)) then Settle(d, 'achieved');
-		elseif d.kind == 'take' and age >= limit then
+		elseif d.kind == 'take' and (age >= limit or (gaveUp and gaveUp >= d.issued)) then
 			Settle(d, 'failed');
 			Significance.failed[d.region] = Sense.round;
 		elseif d.kind == 'hold' and not mine then Settle(d, 'failed');
