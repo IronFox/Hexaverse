@@ -2969,6 +2969,20 @@ end;
 
 Military = {};
 
+--[[
+Never aim at what cannot be damaged (a Nexus port). ProcessAttackTarget in vehicles.lua has
+that check too, but the client looks for required scripts in the user's script folder first
+(My Games/Hexaverse/shared/AIScripts), and an old copy of vehicles.lua there replaces the
+one next to this file. So the check is made here as well, whichever copy is loaded.
+]]
+do
+	local base = ProcessAttackTarget;
+	function ProcessAttackTarget(source, candidate, ...)
+		if candidate.isIndestructible or (candidate.type and candidate.type.isIndestructible) then return; end;
+		return base(source, candidate, ...);
+	end;
+end;
+
 -- Fire at sensed targets only. Returns true if any attack was scheduled
 function Military.Fire(v)
 	local t = v.turret;
