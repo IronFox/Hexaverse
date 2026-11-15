@@ -2386,6 +2386,35 @@ function Economy.AssignConstructor(u, index)
 	Economy.busy[u.id] = nil;
 	-- detect stuck jobs: still idle at the same place where we ordered a construction
 	if job and job.cell and Sense.round - job.since >= 1 and not Sense.structureCells[job.cell] then
+		-- a builder that has not moved a cell through several failed orders is stuck where it
+		-- stands (typically on the spot of its last construction, unable to step off by itself).
+		-- New orders would all be rejected, and each would ban a good site: step aside first
+		Economy.stuck = Economy.stuck or {};
+		local st = Economy.stuck[u.id];
+		if st and st.cell == u.location.cell.index then st.n = st.n + 1;
+		else st = {cell = u.location.cell.index, n = 1}; Economy.stuck[u.id] = st; end;
+		if st.n >= 2 then
+			Mem.jobs[u.id] = nil;
+			local okr, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed or 1), true, false, false, true);
+			local best, bd = nil, nil;
+			for _,n in ipairs(okr and reach or {}) do
+				local l = n.location;
+				if l and not l.isSuborbital and l.cell.index ~= st.cell and not Sense.structureCells[l.cell.index]
+					and not Move.IsDangerous(l) then
+					local d = n.movementCostsFromRoot or 1;
+					if bd == nil or d < bd then best, bd = n, d; end;
+				end;
+			end;
+			if best then
+				u.DirectTo(best);
+				if st.n == 2 or Sense.round % 10 == 0 then Log(u.niceName..': stuck at cell '..st.cell..'. Stepping aside to cell '..best.location.cell.index); end;
+			else
+				-- boxed in for now: no orders for a while (each would fail and ban a site)
+				st.wait = Sense.round + 10;
+				if st.n == 2 or Sense.round % 10 == 0 then Log(u.niceName..': stuck at cell '..st.cell..' with no way out'); end;
+			end;
+			return;
+		end;
 		-- stopped on the way (the engine drops the whole order when something blocks the path,
 		-- often a unit that just came into view): the site is as good as before. Order it again
 		local t = Game.Type.units[job.kind];
@@ -2402,6 +2431,10 @@ function Economy.AssignConstructor(u, index)
 		Log(u.niceName..': construction of '..job.kind..' at cell '..job.cell..' did not happen. Blacklisting the site');
 	end;
 	Mem.jobs[u.id] = nil;
+	do
+		local st = Economy.stuck and Economy.stuck[u.id];
+		if st and st.wait and st.wait > Sense.round and st.cell == u.location.cell.index then return; end;
+	end;
 
 	if not Economy.roadOrdered and Economy.TryRoad(u) then
 		Economy.roadOrdered = true;
