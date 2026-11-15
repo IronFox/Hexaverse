@@ -179,8 +179,13 @@ namespace Animation
 	/*virtual override*/ void MobileEntityMotion::Begin( bool instant )
 	{		
 		auto e = Objects::GetEntity(targetEntityID);
-		EXPECT1(e,targetEntityID);
-		EXPECT1(e->IsMobile(),e->GetNameAndOwner());
+		if (!e || !e->IsMobile())
+		{
+			//the entity is gone already (seen with strongly compressed playback): skip the motion rather than die
+			LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+ToString(targetEntityID)+" for motion");
+			allocatedTarget.reset();
+			return;
+		}
 		allocatedTarget = To<Objects::MobileEntity>::Cast(e);
 		ASSERT1__(allocatedTarget,targetEntityID);
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
@@ -199,12 +204,16 @@ namespace Animation
 
 	/*virtual override*/ void MobileEntityMotion::Update( float x )
 	{
+		if (!allocatedTarget)
+			return;
 		path.ApplyTo(allocatedTarget,currentTime);
 	}
 
 
 	/*virtual override*/ void MobileEntityMotion::End()
 	{
+		if (!allocatedTarget)
+			return;
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 		EXPECT(v);
 		path.ApplyTo(v,path.rawPath.Last().second);
