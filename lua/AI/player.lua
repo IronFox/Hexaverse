@@ -43,6 +43,8 @@ Cfg = {
 	stateVersion = 2,
 	logPrefix = 'Player AI: ',
 	useDirections = false,	-- scripts follow the strategic layer's directions (significance.lua)
+	portMineBias = 10,		-- how much better a mine site next to a Nexus port is than the same site elsewhere
+	portMineHops = 4,		-- how far from my regions such a site may be
 	useFormations = false,	-- formations carry out the directions (formation.lua); needs useDirections
 	verbose = true,
 
@@ -2187,6 +2189,41 @@ far away or under fire. This scans my regions and their quiet neighbors instead
 (cached per round), and falls back to the engine's pick if that one is safe.
 ]]
 Economy.mineCache = {};
+
+--[[
+Nexus ports decide the game, and a port without a base goes to whoever completes a connected
+structure next to it: a mine will do. Ports stand on the poles of the grid (the twelve cells
+with five neighbours), so where they can be is known from the start.
+@return cell index -> true for the cells next to a port (or pole) that is not mine
+]]
+function Economy.NextToPort()
+	if Economy.portCells == nil then
+		Economy.portCells = {};
+		for _,reg in ipairs(Map.regions) do
+			for _,cell in ipairs(reg.cells) do
+				if cell.neighbors and #cell.neighbors == 5 then Economy.portCells[cell.index] = cell; end;
+			end;
+		end;
+	end;
+	local function IsPort(u)
+		return u.type and u.type.name and string.find(u.type.name, 'Nexus Port', 1, true) and u.location and u.location.cell;
+	end;
+	for _,u in pairs(Game.hostileUnits) do
+		if IsPort(u) then Economy.portCells[u.location.cell.index] = u.location.cell; end;
+	end;
+	local mine = {};
+	for _,u in ipairs(Sense.myStructures or {}) do
+		if IsPort(u) then mine[u.location.cell.index] = true; end;
+	end;
+	local near = {};
+	for idx,cell in pairs(Economy.portCells) do
+		if not mine[idx] then
+			for _,nb in ipairs(cell.neighbors or {}) do near[nb.index] = true; end;
+		end;
+	end;
+	return near;
+end;
+
 function Economy.FindMineCells(resource, maxCount)
 	local cache = Economy.mineCache[resource];
 	if cache == nil or cache.round ~= Sense.round then
@@ -2195,8 +2232,8 @@ function Economy.FindMineCells(resource, maxCount)
 		local maxHops = 2;
 		local function Scan(reg)
 			if seen[reg.id] then return; end;
-			seen[reg.id] = true;
 			if (Sense.Threat(reg) > 0 and not Cfg.minesBelowThreat) or (Sense.hops[reg.id] or 99) > maxHops then return; end;
+			seen[reg.id] = true;
 			for _,cell in ipairs(reg.cells) do
 				if not Sense.structureCells[cell.index] then
 					local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, resource, cell);
@@ -2219,12 +2256,22 @@ function Economy.FindMineCells(resource, maxCount)
 				if (Sense.hops[id] or 99) <= 3 then Scan(reg); end;
 			end;
 		end;
+		-- sites next to a port first, also from further away
+		local near = Economy.NextToPort();
+		maxHops = Cfg.portMineHops;
+		for idx,_ in pairs(near) do
+			local rid = Map.cellRegion[idx];
+			if rid and Map.regions[rid] then Scan(Map.regions[rid]); end;
+		end;
+		for _,e in ipairs(list) do
+			if near[e.cell.index] then e.bias = Cfg.portMineBias; end;
+		end;
 		-- richer and closer first
 		if Cfg.useDirections then
 			-- sites where the strategic layer wants us first, none where it wants us out
 			for _,e in ipairs(list) do
 				local rid = Map.cellRegion[e.cell.index];
-				e.bias = (1 + 2 * math.max(Significance.Directed(rid, 'take'), Significance.Directed(rid, 'hold')))
+				e.bias = (e.bias or 1) * (1 + 2 * math.max(Significance.Directed(rid, 'take'), Significance.Directed(rid, 'hold')))
 					/ (1 + 3 * Significance.Directed(rid, 'avoid'));
 			end;
 		end;
