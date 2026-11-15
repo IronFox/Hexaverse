@@ -1117,7 +1117,8 @@ bool loop()
 		GlobalEvents::frameBegin();
 
 	#ifndef HAS_WINDOW
-		Sleep(50);
+		//(a server that compresses animations wants rounds over quickly, e.g. for AI test and training runs: don't idle through them)
+		Sleep(Network::animationTimeFactor > 10.f ? 5 : 50);
 		AI::Process(0.5_s);
 		//Sys::DisableConsoleQuickEdit();
 	#else
