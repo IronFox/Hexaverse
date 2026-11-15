@@ -226,6 +226,24 @@ function Mole.LayerFault(center, level)
 	return nil;
 end;
 
+-- Share of the planned cavern's cells that hold water at the cavern's height or just below it
+function Mole.WaterShare(center, level)
+	local C = Game.Terrain and Game.Terrain.Content;
+	if not (C and C.Water and Game.Terrain.TranslateUnitCell and Game.Terrain.GetContent) then return 0; end;
+	local n, wet = 0, 0;
+	for _,c in ipairs(Mole.Rings(center, Mole.rings)) do
+		local ok, tc = pcall(Game.Terrain.TranslateUnitCell, c);
+		if ok and tc then
+			n = n + 1;
+			for dh = -2, 1 do
+				local okc, content = pcall(Game.Terrain.GetContent, tc, level + dh);
+				if okc and content == C.Water then wet = wet + 1; break; end;
+			end;
+		end;
+	end;
+	return n > 0 and wet / n or 0;
+end;
+
 -- Water next to the shaft column anywhere between the cavern and the surface
 function Mole.WetShaft(cell, level, top)
 	for h = level, top, 3 do
@@ -861,7 +879,12 @@ function Mole.Update()
 				-- the deepest level whose only fault is water
 				local l = math.max(low - Cfg.moleDepth, bottom);
 				while l <= low - minCover and Mole.LayerFault(u.location.cell, l) do l = l + 1; end;
-				if l <= low - minCover then
+				-- (a few wet cells can be walled off. Water under most of the ground can't: land
+				-- floating on a sea, as on ice planets, holds no cavern)
+				local share = l <= low - minCover and Mole.WaterShare(u.location.cell, l) or 0;
+				if share > 0.3 then
+					fault = string.format('water under %d%% of the ground', math.floor(share * 100));
+				elseif l <= low - minCover then
 					level = l;
 					Mole.wetMode = true;
 					Log('Wet ground everywhere near: digging anyway, walling off water as we go');
