@@ -30,13 +30,32 @@ import sys
 import numpy as np
 
 LINE = re.compile(r'([^\r\n:]{1,40}): (Region inputs|Region outputs|Region graph \(id:cells:neighbours\)|Regions r=(\d+)|Reward): ?(.*)')
-TOTAL = re.compile(r'total (-?[\d.]+)')
+TOTAL = re.compile(r'total (-?\d+(?:[.,]\d+)?)')
+
+
+def numbers(text):
+    """List of 0..1 values. Also reads logs written with a decimal comma ("0,55,1,0,07"): there
+    a value is "0", "1" or "d,dd", so a two-digit piece always belongs to the piece before it."""
+    out = []
+    for piece in text.split(','):
+        if len(piece) == 2 and piece.isdigit() and out and '.' not in text:
+            out[-1] = out[-1] + float(piece) / 100.0
+        else:
+            out.append(float(piece))
+    return out
+
+
+def open_log(path):
+    if path.lower().endswith('.gz'):
+        import gzip
+        return gzip.open(path, 'rt', encoding='latin-1', errors='replace')
+    return open(path, 'r', encoding='latin-1', errors='replace')
 
 
 def parse_log(path):
     """-> list of episodes: {names, cells[N], adj[N][N], steps[(round, holder[N], X[N,F])], total}"""
     eps = {}
-    with open(path, 'r', encoding='latin-1', errors='replace') as f:
+    with open_log(path) as f:
         for line in f:
             if 'Region' not in line and 'Reward' not in line:
                 continue
@@ -61,7 +80,7 @@ def parse_log(path):
             elif kind == 'Reward':
                 t = TOTAL.search(body)
                 if t:
-                    e['total'] = float(t.group(1))
+                    e['total'] = float(t.group(1).replace(',', '.'))
             elif kind.startswith('Regions r='):
                 rnd = int(m.group(3))
                 rows = {}
@@ -72,7 +91,7 @@ def parse_log(path):
                         ok = False
                         break
                     try:
-                        rows[int(bits[0])] = (bits[1], [float(x) for x in bits[3].split(',')])
+                        rows[int(bits[0])] = (bits[1], numbers(bits[3]))
                     except ValueError:
                         ok = False
                         break
@@ -245,7 +264,7 @@ def main():
     for p in args.logs:
         if os.path.isdir(p):
             for root, _, fs in os.walk(p):
-                files += [os.path.join(root, f) for f in fs if f.lower().endswith(('.log', '.txt'))]
+                files += [os.path.join(root, f) for f in fs if f.lower().endswith(('.log', '.txt', '.gz'))]
         else:
             files += glob.glob(p) or [p]
     episodes = []

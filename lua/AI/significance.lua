@@ -295,7 +295,8 @@ function Significance.Update()
 			local function fmt(list)
 				local nums = {};
 				for i,v in ipairs(list) do
-					nums[i] = (v == 0 and '0') or (v == 1 and '1') or string.format('%.2f', v);
+					-- (always a decimal point, whatever the system's locale writes)
+					nums[i] = (v == 0 and '0') or (v == 1 and '1') or (string.gsub(string.format('%.2f', v), ',', '.'));
 				end;
 				return table.concat(nums, ',');
 			end;
@@ -420,7 +421,8 @@ function Significance.Direct()
 			d.issued = Sense.round;
 			d.deaths = Map.regions[d.region].deaths or 0;
 			keep[#keep+1] = d;
-			Log(string.format('Direction: %s region %d priority %.2f (round %d)', d.kind, d.region, d.priority, d.issued));
+			Log(string.format('Direction: %s region %d priority %s (round %d)', d.kind, d.region,
+				(string.gsub(string.format('%.2f', d.priority), ',', '.')), d.issued));
 		end;
 	end;
 end;
