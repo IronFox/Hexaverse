@@ -769,7 +769,7 @@ function Sense.Update()
 				local p = DamagePotential(e);
 				if e.type.isMobile then
 					seenMobile[id] = (seenMobile[id] or 0) + math.max(p, 1);
-				elseif e.isIndestructible then
+				elseif e.isIndestructible or e.type.isIndestructible then
 					-- (a Nexus port can't be shot: it is no hostile structure to clear out. Counting it
 					-- made the army attack its region and stay there for good)
 				else
@@ -3615,7 +3615,7 @@ function Military.BomberGoal()
 	local sensedBest, sbd = nil, nil;
 	local home = Sense.baseCenter;
 	for _,e in pairs(Game.hostileUnits) do
-		if e.health > 0 and not e.location.isSuborbital and not e.isIndestructible then
+		if e.health > 0 and not e.location.isSuborbital and not (e.isIndestructible or e.type.isIndestructible) then
 			local w = e.location.world;
 			local d = home and Dist2(w, home) or 0;
 			-- artillery and towers first: they hold ground our tanks can't take

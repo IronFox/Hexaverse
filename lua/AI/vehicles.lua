@@ -240,7 +240,8 @@ end;
 function ProcessAttackTarget(source--[[Unit]], candidate--[[Unit]],  attackTarget--[[Table: AttackTarget[] ]]
 		, attacksAirborne--[[bool]], attacksGroundTargets--[[bool]])
 	--Game.Log("Processing attack target "..candidate.niceName);
-	if (candidate.isOwnedByMe or candidate.isIndestructible) then
+	-- (the flag is a field of the unit's type)
+	if (candidate.isOwnedByMe or candidate.isIndestructible or (candidate.type and candidate.type.isIndestructible)) then
 		return;
 	end;
 	if (candidate.location.isSuborbital and not attacksAirborne) then
