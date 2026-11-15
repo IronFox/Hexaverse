@@ -394,6 +394,20 @@ namespace Objects
 						prog.metrics.Set(Metric::NexusPortsOwned,f->acquiringNexusControl + f->nexusControl);
 						prog.metrics.Set(Metric::NexusPortsControlled,f->nexusControl);
 
+						//one line per faction and main round: lets test runs and AI training read the exact numbers from the log
+						LogEvent(EventSignificance::Common,"Stats: "+f->GetLogName()
+							+" round="+String(RuntimeConfig::roundNumber.main)
+							+" score="+String(prog.metrics[Metric::WinningScore])
+							+" portsControlled="+String(prog.metrics[Metric::NexusPortsControlled])
+							+" portsOwned="+String(prog.metrics[Metric::NexusPortsOwned])
+							+" offense="+String(prog.metrics[Metric::OffensiveCapabilities])
+							+" entityValue="+String(f->GetTotalEntityValue())
+							+" entities="+String(prog.metrics[Metric::CurrentEntityCount])
+							+" sensorCoverage="+String(prog.metrics[Metric::CurrentSensorCoverage])
+							+" factories="+String(prog.metrics[Metric::NumFactories])
+							+" labs="+String(prog.metrics[Metric::NumLaboratories])
+							+" researchSpeed="+String(prog.metrics[Metric::ResearchSpeed]));
+
 						stat.totalEntities = 0;
 						stat.totalEntityMineralValue = 0;
 					}
