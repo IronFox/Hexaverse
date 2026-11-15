@@ -31,6 +31,7 @@ Structure
 --#require <util/queue.lua>
 --#require <AI/vehicles.lua>
 --#require "needs.lua"
+--#require "significance.lua"
 
 
 -------------------------------------------------------------------------------
@@ -1131,6 +1132,8 @@ function Score.Update()
 	end;
 	for _,u in ipairs(Sense.myStructures or {}) do add(u); end;
 	local surface, below = 0, 0;
+	local held = {};	-- region id -> surface cells held there
+	Score.heldByRegion = held;
 	if #armed > 0 then
 		local C = Game.Terrain.Content or {};
 		local function Held(loc)
@@ -1153,7 +1156,11 @@ function Score.Update()
 			end;
 			if g and g.h then
 				local okl, loc = pcall(Game.Grid.ToLocation, c, g.h);
-				if okl and loc and Held(loc) then surface = surface + 1; end;
+				if okl and loc and Held(loc) then
+					surface = surface + 1;
+					local rid = Map.cellRegion[c.index];
+					if rid then held[rid] = (held[rid] or 0) + 1; end;
+				end;
 				-- open space below: only where I am (my regions), and only a few cells per column
 				local reg = Map.RegionOfLoc and okl and loc and Map.RegionOfLoc(loc);
 				if reg and Sense.mine and Sense.mine[reg.id] and C.Clear and Game.Terrain.TranslateUnitCell then
@@ -3903,6 +3910,7 @@ function Execute()
 	end;
 	if not SafeCall('Sense.Update', Sense.Update) then return; end;
 	SafeCall('Score', Score.Update);
+	SafeCall('Significance', Significance.Update);
 	SafeCall('Needs', Needs.Update);
 	SafeCall('NeedsReport', Needs.Report);
 
