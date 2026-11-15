@@ -1326,8 +1326,29 @@ the reachable node closest to the goal (frontier stepping). Unknown terrain is
 only entered by units with permission (scouts).
 @return true if a motion was scheduled
 ]]
+--[[
+The server can refuse a destination the client found a path to ("Unable to plot path to
+destination. Task rejected."). The script is not told, and would give the same order every round.
+So: what a unit was sent to from a spot it then did not leave is not tried again from there.
+]]
+Move.tried = {};	-- unit id -> {from = spot, to = {destination -> true}}
+local function Spot(loc)
+	local w = loc.world;
+	return string.format('%.2f,%.2f,%.2f', w.x, w.y, w.z);
+end;
+local function Tried(u)
+	local from = Spot(u.location);
+	local t = Move.tried[u.id];
+	if t == nil or t.from ~= from then
+		t = {from = from, to = {}};
+		Move.tried[u.id] = t;
+	end;
+	return t.to;
+end;
+
 -- avoidThreat: true avoids every known threat, 'arty' only remembered artillery fire (attacking units)
 function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
+	local tried = Tried(u);
 	local danger = Move.IsDangerous;
 	if avoidThreat == 'arty' then
 		danger = function(loc) return Military.InArtilleryZone(loc.world) ~= nil; end;
@@ -1343,7 +1364,8 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 				for _,n in ipairs(path) do
 					if n.movementCostsFromRoot <= limit then pick = n; end;
 				end;
-				if not avoidThreat or not danger(pick.location) then
+				if (not avoidThreat or not danger(pick.location)) and not tried[Spot(pick.location)] then
+					tried[Spot(pick.location)] = true;
 					u.DirectTo(pick);
 					return true;
 				end;
@@ -1362,11 +1384,12 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 	local best, bestD = nil, Dist2(u.location.world, goalWorld);
 	for _,n in ipairs(reach) do
 		local d = Dist2(n.location.world, goalWorld) + n.movementCostsFromRoot * 0.01;
-		if d < bestD then
+		if d < bestD and not tried[Spot(n.location)] then
 			best, bestD = n, d;
 		end;
 	end;
 	if best then
+		tried[Spot(best.location)] = true;
 		u.DirectTo(best);
 		return true;
 	end;

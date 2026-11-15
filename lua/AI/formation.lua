@@ -168,19 +168,15 @@ function Formation.Update()
 			free[#free+1] = u;
 		end;
 	end;
-	-- what home needs stays out of it
-	local spare = #free - Formation.homeReserve - math.ceil(Sense.Pressure() / Military.UnitPotential());
+	local spare = #free - Formation.homeReserve;
 	Formation.short = nil;
 	for _,f in ipairs(Formation.list) do
 		local count = 0;
 		for _ in pairs(f.members) do count = count + 1; end;
 		-- while gathering, the size follows what is available
 		if f.stage == 'gather' then f.want = math.max(count, Formation.Want('take', f.region, spare + count)); end;
-		-- it starts with what the job needs or not at all (a few units sent ahead are lost, and missed at home)
-		local start = count > 0 or spare >= Military.RequiredForce(f.region);
-		if f.kind == 'take' and (f.gaveUp or not start) then
-			-- waits for the direction to end, or for units
-			if count == 0 and f.stage == 'gather' then f.stageSince = Sense.round; end;
+		if f.gaveUp then
+			-- waits for its direction to end
 		elseif count < f.want and f.stage ~= 'secure' then
 			-- nearest first
 			local goal = Map.WorldCenter(Map.regions[f.staging]);
