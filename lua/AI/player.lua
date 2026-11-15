@@ -1073,6 +1073,93 @@ end;
 
 
 -------------------------------------------------------------------------------
+-- Control score
+-------------------------------------------------------------------------------
+--[[
+Territory under control: what the faction is playing for, and the yardstick for comparing
+AI versions (and for training). A cell counts only if it is both seen by my sensors and
+within range of one of my weapons: seeing without reach, or reach without sight, controls
+nothing. The surface counts in full. Open cells below ground count for little, so that
+burying weapons to claim volume doesn't pay.
+Computed every few rounds, logged as "Control: ...", and kept in Score.control.
+]]
+Score = {
+	control = 0, surface = 0, underground = 0,
+	every = 5,				-- rounds between measurements
+	undergroundWeight = 0.1,	-- an open cell below ground, compared to a surface cell
+	undergroundCap = 3,		-- at most this many cells below ground per column
+	depth = 8,				-- layers below the surface that are looked at
+	ground = {},			-- cell index -> {h, round}: cached surface height
+};
+
+function Score.Update()
+	if Sense.round % Score.every ~= 0 or Score.lastRound == Sense.round then return; end;
+	if not (Game.Terrain and Game.Terrain.GetLowestSensorStrength and Game.Grid.ToLocation) then return; end;
+	Score.lastRound = Sense.round;
+	-- my weapons, and a vehicle to ask for the ground height
+	local armed, probe = {}, nil;
+	local function add(u)
+		if u.health and u.health > 0 and u.turret and u.turret.type and u.turret.type.canAttack and u.turret.IsInRange then
+			armed[#armed+1] = u.turret;
+		end;
+	end;
+	for _,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do
+			add(u);
+			if probe == nil and u.location and not u.location.isSuborbital and u.type and not u.type.isSuborbitalPlane then probe = u; end;
+		end;
+	end;
+	for _,u in ipairs(Sense.myStructures or {}) do add(u); end;
+	local surface, below = 0, 0;
+	if #armed > 0 then
+		local C = Game.Terrain.Content or {};
+		local function Held(loc)
+			local oks, seen = pcall(Game.Terrain.GetLowestSensorStrength, loc, 1);
+			if not (oks and seen and seen > 0) then return false; end;
+			local w = loc.world;
+			for _,t in ipairs(armed) do
+				local okr, hit = pcall(t.IsInRange, w);
+				if okr and hit then return true; end;
+			end;
+			return false;
+		end;
+		for _,c in ipairs(Game.Grid.unitCells) do
+			-- surface height: cached, refreshed now and then (terrain changes slowly)
+			local g = Score.ground[c.index];
+			if (g == nil or Sense.round - g.round >= 40) and probe then
+				local okg, loc = pcall(Game.Grid.FindHighestVehicleGround, probe, c);
+				g = {h = okg and loc and loc.height or false, round = Sense.round};
+				Score.ground[c.index] = g;
+			end;
+			if g and g.h then
+				local okl, loc = pcall(Game.Grid.ToLocation, c, g.h);
+				if okl and loc and Held(loc) then surface = surface + 1; end;
+				-- open space below: only where I am (my regions), and only a few cells per column
+				local reg = Map.RegionOfLoc and okl and loc and Map.RegionOfLoc(loc);
+				if reg and Sense.mine and Sense.mine[reg.id] and C.Clear and Game.Terrain.TranslateUnitCell then
+					local okt, tc = pcall(Game.Terrain.TranslateUnitCell, c);
+					local n = 0;
+					for h = g.h - 2, g.h - Score.depth, -1 do
+						if n >= Score.undergroundCap then break; end;
+						local okc, content = false, nil;
+						if okt and tc then okc, content = pcall(Game.Terrain.GetContent, tc, h); end;
+						if okc and content == C.Clear then
+							local okb, bl = pcall(Game.Grid.ToLocation, c, h);
+							if okb and bl and Held(bl) then n = n + 1; end;
+						end;
+					end;
+					below = below + n;
+				end;
+			end;
+		end;
+	end;
+	Score.surface, Score.underground = surface, below;
+	Score.control = surface + below * Score.undergroundWeight;
+	Log(string.format('Control: %.1f (surface %d, underground %d x %.2f, %d weapons)',
+		Score.control, surface, below, Score.undergroundWeight, #armed));
+end;
+
+-------------------------------------------------------------------------------
 -- Motion helpers (3D handled by the engine)
 -------------------------------------------------------------------------------
 
@@ -3648,6 +3735,7 @@ function Execute()
 		SafeCall('ApplyImport', ApplyImport);
 	end;
 	if not SafeCall('Sense.Update', Sense.Update) then return; end;
+	SafeCall('Score', Score.Update);
 	SafeCall('Needs', Needs.Update);
 	SafeCall('NeedsReport', Needs.Report);
 
