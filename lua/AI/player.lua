@@ -32,6 +32,7 @@ Structure
 --#require <AI/vehicles.lua>
 --#require "needs.lua"
 --#require "significance.lua"
+--#require "formation.lua"
 
 
 -------------------------------------------------------------------------------
@@ -42,6 +43,7 @@ Cfg = {
 	stateVersion = 2,
 	logPrefix = 'Player AI: ',
 	useDirections = false,	-- scripts follow the strategic layer's directions (significance.lua)
+	useFormations = false,	-- formations carry out the directions (formation.lua); needs useDirections
 	verbose = true,
 
 	-- desired unit counts
@@ -3063,6 +3065,14 @@ function Military.RequiredForce(id)
 end;
 
 function Military.UpdatePosture()
+	if Cfg.useFormations then
+		-- formations do the attacking; whoever is in none defends
+		if Mem.posture ~= 'defend' then
+			Mem.posture = 'defend';
+			Mem.attackTarget = nil;
+		end;
+		return;
+	end;
 	local n = Military.ArmyStrength();
 	if Mem.posture == 'defend' then
 		-- before attackMinRound only clear chances: twice the force a target needs
@@ -3186,6 +3196,15 @@ function Military.Stores()
 		local st = Military.NearestStore(Mem.attackTarget);
 		if st then
 			budget = budget - Military.DeployFrom(st, budget, Map.WorldCenter(Map.regions[Mem.attackTarget]));
+		end;
+	end;
+	-- a formation short of units: fill it from the store nearest to where it gathers
+	if storedCombat > 0 and budget > 0 and Cfg.useFormations and Formation.short then
+		local st = Military.NearestStore(Formation.short.region);
+		if st then
+			local n = Military.DeployFrom(st, math.min(budget, Formation.short.count), Map.WorldCenter(Map.regions[Formation.short.region]));
+			budget = budget - n;
+			storedCombat = storedCombat - n;
 		end;
 	end;
 
@@ -3500,6 +3519,8 @@ function Military.Combat()
 			if Mem.posture == 'attack' and Mem.attackTarget then
 				goalId = Mem.attackTarget;
 			end;
+			local fGoal, fAttack, fPost = Formation.Orders(v);
+			if fGoal then goalId = fGoal; end;
 			-- offloaded onto a peak: hold it while anything is near, then go back into storage
 			local peak = Military.peakGuard[v.id];
 			if peak then
@@ -3519,7 +3540,7 @@ function Military.Combat()
 			local reg = Map.regions[goalId];
 			local goal = Map.WorldCenter(reg);
 			-- stragglers regroup first
-			if Mem.posture == 'attack' and centroid and Dist2(v.location.world, centroid) > 100 then
+			if fGoal == nil and Mem.posture == 'attack' and centroid and Dist2(v.location.world, centroid) > 100 then
 				goal = centroid;
 			end;
 			-- don't crowd the defense region center: spread a bit
@@ -3529,9 +3550,10 @@ function Military.Combat()
 				goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
 			end;
 			local attacking = Mem.posture == 'attack';
+			if fGoal then attacking = fAttack; end;
 			if Military.NeedsStationary(v) then
 				-- artillery: get onto high ground and stay there. Moving costs it the round's fire
-				local post = Military.PostFor(v, Military.PostRegion(goalId), takenPosts);
+				local post = Military.PostFor(v, fPost or Military.PostRegion(goalId), takenPosts);
 				if post then
 					takenPosts[post.key] = true;
 					if Dist2(v.location.world, post.loc.world) < 0.01 then
@@ -3933,6 +3955,7 @@ function Execute()
 	SafeCall('Production', Economy.Production);
 	SafeCall('PlaneProduction', Economy.PlaneProduction);
 	SafeCall('Constructors', Economy.Constructors);
+	SafeCall('Formations', Formation.Update);
 	SafeCall('Posture', Military.UpdatePosture);
 	SafeCall('Towers', Military.Towers);
 	SafeCall('Stores', Military.Stores);

@@ -371,6 +371,8 @@ Significance.takeRounds = 40;
 Significance.holdRounds = 30;
 Significance.directions = {};	-- active ones
 Significance.avoid = {};		-- region id -> priority
+Significance.failed = {};		-- region id -> round a take there last failed
+Significance.taken = {};		-- region id -> round a formation reported it taken (formation.lua)
 
 local function Settle(d, how)
 	local reg = Map.regions[d.region];
@@ -384,8 +386,13 @@ function Significance.Direct()
 	for _,d in ipairs(Significance.directions) do
 		local mine = Sense.mine[d.region] and true or false;
 		local age = Sense.round - d.issued;
-		if d.kind == 'take' and mine then Settle(d, 'achieved');
-		elseif d.kind == 'take' and age >= Significance.takeRounds then Settle(d, 'failed');
+		local taken = Significance.taken[d.region];
+		-- (a formation needs time to gather before it goes in)
+		local limit = Significance.takeRounds * (Cfg.useFormations and 2 or 1);
+		if d.kind == 'take' and (mine or (taken and taken >= d.issued)) then Settle(d, 'achieved');
+		elseif d.kind == 'take' and age >= limit then
+			Settle(d, 'failed');
+			Significance.failed[d.region] = Sense.round;
 		elseif d.kind == 'hold' and not mine then Settle(d, 'failed');
 		elseif d.kind == 'hold' and age >= Significance.holdRounds then Settle(d, 'achieved');
 		else
@@ -406,7 +413,10 @@ function Significance.Direct()
 				-- what is worth much and under threat comes first
 				cand[#cand+1] = {kind = 'hold', region = reg.id, priority = o[1] * (0.5 + 0.5 * o[3])};
 			else
-				cand[#cand+1] = {kind = 'take', region = reg.id, priority = o[2] * (1 - 0.5 * o[3])};
+				-- (what just failed is not tried again at once: something else first)
+				local again = Significance.failed[reg.id];
+				local damp = (again and Sense.round - again < 100) and 0.3 or 1;
+				cand[#cand+1] = {kind = 'take', region = reg.id, priority = o[2] * (1 - 0.5 * o[3]) * damp};
 			end;
 		end;
 		if o and not Sense.mine[reg.id] and o[3] >= 0.6 then Significance.avoid[reg.id] = o[3]; end;

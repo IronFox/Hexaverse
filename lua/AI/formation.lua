@@ -1,0 +1,249 @@
+--[[
+Formations: the layer between strategy and units
+================================================
+
+The strategic layer says what it wants (significance.lua: take region 12, hold region 3).
+A formation takes over one such direction and sees it through: it claims units for it,
+moves them as a group, and reports how it went. Units that belong to no formation stay
+with the home defence.
+
+A formation that takes a region goes through stages:
+  gather    members collect in a staging region next to the target, outside its reach
+  advance   they go in together
+  secure    the region is clear (seen, nothing hostile left): they stay on it, so that
+            builders can follow. After Formation.secureRounds the direction counts as
+            achieved, whether or not something is built there yet
+It breaks off (back to gather) when too few are left, and ends with its direction:
+achieved, or failed when the direction runs out.
+
+A formation that holds a region is a garrison: a few units that stay there.
+
+What it logs is what a formation is judged by, and what a learned one is trained on later,
+with the strategic layer held fixed:
+  Formation 4 (take region 12): created, wants 6 units, staging region 9
+  Formation 4 (take region 12): gather -> advance at round 84 with 5 of 6
+  Formation result: 4 take region 12: achieved at round 131 after 61 rounds, peak 7 units, lost 2
+The decisions worth learning are few: how many units to commit (Formation.Want), where to
+gather (Formation.Staging), when to go in (Formation.Ready) and when to break off
+(Formation.Broken). Each is one function, so each can be replaced on its own.
+
+Active only with Cfg.useFormations (which needs the directions of significance.lua).
+]]
+
+Formation = {
+	list = {},			-- active formations
+	of = {},			-- unit id -> its formation
+	nextId = 1,
+	maxTake = 2,		-- formations taking regions at the same time
+	homeReserve = 2,	-- combat units never claimed
+	gatherShare = 0.8,	-- share of the wanted units that must have arrived to go in
+	gatherRounds = 25,	-- after this long, go in with less (Formation.lateShare)
+	lateShare = 0.6,
+	breakShare = 0.4,	-- broken off below this share of its peak size
+	secureRounds = 5,	-- rounds on a cleared region until it counts as taken
+	garrison = 2,		-- units of a holding formation
+};
+
+local function Dist2(a, b)
+	local dx, dy, dz = a.x-b.x, a.y-b.y, a.z-b.z;
+	return dx*dx + dy*dy + dz*dz;
+end;
+
+local function Name(f)
+	return 'Formation '..f.id..' ('..f.kind..' region '..f.region..')';
+end;
+
+-- how many units the job needs
+function Formation.Want(kind, regionId)
+	if kind == 'hold' then return Formation.garrison; end;
+	return Military.RequiredForce(regionId);
+end;
+
+-- where to collect: the quiet neighbour of the target that is closest to what I have
+function Formation.Staging(regionId)
+	local best, bestH = nil, nil;
+	for nb,_ in pairs(Map.regions[regionId].neighbors) do
+		local reg = Map.regions[nb];
+		local h = Sense.hops[nb] or 99;
+		if Sense.Threat(reg) <= 0 and Significance.Directed(nb, 'avoid') <= 0 and (bestH == nil or h < bestH) then
+			best, bestH = nb, h;
+		end;
+	end;
+	return best or Mem.homeRegion or regionId;
+end;
+
+-- enough of them together to go in?
+function Formation.Ready(f, arrived)
+	local share = (Sense.round - f.stageSince >= Formation.gatherRounds) and Formation.lateShare or Formation.gatherShare;
+	return arrived >= math.max(2, math.ceil(f.want * share));
+end;
+
+-- too few left to go on?
+function Formation.Broken(f, count)
+	return f.peak >= 3 and count < math.max(2, math.ceil(f.peak * Formation.breakShare));
+end;
+
+local function SetStage(f, stage, note)
+	Log(Name(f)..': '..f.stage..' -> '..stage..' at round '..Sense.round..(note and (' '..note) or ''));
+	f.stage = stage;
+	f.stageSince = Sense.round;
+end;
+
+local function Finish(f, how)
+	Log(string.format('Formation result: %d %s region %d: %s at round %d after %d rounds, peak %d units, lost %d',
+		f.id, f.kind, f.region, how, Sense.round, Sense.round - f.born, f.peak, f.lost));
+	for id,_ in pairs(f.members) do Formation.of[id] = nil; end;
+	f.members = {};
+	f.over = true;
+end;
+
+function Formation.Update()
+	if not Cfg.useFormations then return; end;
+	local alive = {};
+	for _,u in ipairs(Sense.my.combat) do alive[u.id] = u; end;
+
+	-- 1. formations follow the directions: end what is no longer asked for, start what is new
+	local asked = {};
+	for _,d in ipairs(Significance.directions) do
+		asked[d.kind..':'..d.region] = d;
+	end;
+	local keep, have, takes = {}, {}, 0;
+	for _,f in ipairs(Formation.list) do
+		local d = asked[f.kind..':'..f.region];
+		if d == nil or d.issued ~= f.issued then
+			-- the direction was settled: by its own rules, or by this formation reporting the region taken
+			local mine = Sense.mine[f.region] and true or false;
+			local won = (f.kind == 'take' and (mine or f.taken)) or (f.kind == 'hold' and mine);
+			Finish(f, won and 'achieved' or 'failed');
+		else
+			keep[#keep+1] = f;
+			have[f.kind..':'..f.region] = true;
+			if f.kind == 'take' then takes = takes + 1; end;
+		end;
+	end;
+	Formation.list = keep;
+	for _,kind in ipairs({'take', 'hold'}) do
+		for _,d in ipairs(Significance.Directions(kind)) do
+			if not have[kind..':'..d.region] and (kind ~= 'take' or takes < Formation.maxTake) then
+				local f = {
+					id = Formation.nextId, kind = kind, region = d.region, issued = d.issued, priority = d.priority,
+					members = {}, want = Formation.Want(kind, d.region), peak = 0, lost = 0,
+					stage = kind == 'take' and 'gather' or 'garrison', born = Sense.round, stageSince = Sense.round,
+				};
+				Formation.nextId = Formation.nextId + 1;
+				f.staging = kind == 'take' and Formation.Staging(d.region) or d.region;
+				Formation.list[#Formation.list+1] = f;
+				if kind == 'take' then takes = takes + 1; end;
+				Log(Name(f)..': created, wants '..f.want..' units, staging region '..f.staging);
+			end;
+		end;
+	end;
+
+	-- 2. members: forget the dead, claim free units (what matters most claims first)
+	table.sort(Formation.list, function(a, b)
+		if a.kind ~= b.kind then return a.kind == 'take'; end;
+		if a.priority ~= b.priority then return a.priority > b.priority; end;
+		return a.id < b.id;
+	end);
+	local free = {};
+	for _,f in ipairs(Formation.list) do
+		for id,_ in pairs(f.members) do
+			if alive[id] == nil then
+				f.members[id] = nil;
+				Formation.of[id] = nil;
+				f.lost = f.lost + 1;
+			end;
+		end;
+	end;
+	for id,_ in pairs(Formation.of) do
+		if alive[id] == nil then Formation.of[id] = nil; end;
+	end;
+	for _,u in ipairs(Sense.my.combat) do
+		if Formation.of[u.id] == nil and not Military.stashing[u.id] and not Military.peakGuard[u.id] then
+			free[#free+1] = u;
+		end;
+	end;
+	local spare = #free - Formation.homeReserve;
+	Formation.short = nil;
+	for _,f in ipairs(Formation.list) do
+		local count = 0;
+		for _ in pairs(f.members) do count = count + 1; end;
+		if count < f.want and f.stage ~= 'secure' then
+			-- nearest first
+			local goal = Map.WorldCenter(Map.regions[f.staging]);
+			table.sort(free, function(a, b) return Dist2(a.location.world, goal) < Dist2(b.location.world, goal) end);
+			local i = 1;
+			while count < f.want and spare > 0 and i <= #free do
+				local u = free[i];
+				if Formation.of[u.id] == nil then
+					f.members[u.id] = true;
+					Formation.of[u.id] = f;
+					count = count + 1;
+					spare = spare - 1;
+				end;
+				i = i + 1;
+			end;
+			local rest = {};
+			for _,u in ipairs(free) do
+				if Formation.of[u.id] == nil then rest[#rest+1] = u; end;
+			end;
+			free = rest;
+			-- still short: units waiting in stores can fill it (Military.Stores reads this)
+			if count < f.want and Formation.short == nil then
+				Formation.short = {region = f.staging, count = f.want - count};
+			end;
+		end;
+		f.count = count;
+		if count > f.peak then f.peak = count; end;
+	end;
+
+	-- 3. stages
+	for _,f in ipairs(Formation.list) do
+		if f.kind == 'take' then
+			local target = Map.regions[f.region];
+			local near, inside = 0, 0;
+			local around = {[f.staging] = true};
+			for nb,_ in pairs(Map.regions[f.staging].neighbors) do around[nb] = true; end;
+			for id,_ in pairs(f.members) do
+				local reg = Map.RegionOfLoc(alive[id].location);
+				if reg and reg.id == f.region then inside = inside + 1; end;
+				if reg and (around[reg.id] or reg.id == f.region) then near = near + 1; end;
+			end;
+			local clear = target.seenNow and target.hostileStructures == 0 and target.mobileThreat == 0 and target.staticThreat == 0;
+			if f.stage ~= 'gather' and Formation.Broken(f, f.count) then
+				f.want = math.max(f.want, Formation.Want('take', f.region));
+				f.staging = Formation.Staging(f.region);
+				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
+				f.peak = f.count;
+			elseif f.stage == 'gather' then
+				if Formation.Ready(f, near) then
+					SetStage(f, 'advance', 'with '..near..' of '..f.want);
+				end;
+			elseif f.stage == 'advance' then
+				if inside > 0 and clear then
+					SetStage(f, 'secure', 'with '..f.count..' units');
+				end;
+			elseif f.stage == 'secure' then
+				if not clear then
+					SetStage(f, 'advance', 'region contested again');
+				elseif Sense.round - f.stageSince >= Formation.secureRounds and not f.taken then
+					f.taken = true;
+					Significance.taken[f.region] = Sense.round;	-- settles the direction
+				end;
+			end;
+		end;
+	end;
+end;
+
+--[[
+For Military.Combat: where a member goes this round.
+Returns region id, whether it may go into danger, and the region for stationary shooters
+(artillery keeps to the staging region while the others go in).
+]]
+function Formation.Orders(v)
+	local f = Cfg.useFormations and Formation.of[v.id];
+	if not f or f.over then return nil; end;
+	if f.kind == 'hold' then return f.region, false, f.region; end;
+	if f.stage == 'gather' then return f.staging, false, f.staging; end;
+	return f.region, true, (f.stage == 'secure') and f.region or f.staging;
+end;
