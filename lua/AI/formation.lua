@@ -44,7 +44,8 @@ Formation = {
 	garrison = 2,		-- units of a holding formation
 	commitShare = 0.5,	-- share of the free units a taking formation asks for (if that is more than the job needs)
 	maxSize = 30,
-	stallRounds = 30,	-- gathering, or advancing without anyone arriving, for this long: send the units home
+	stallRounds = 30,	-- gathered units not arriving, or advancing without anyone getting in, for this long: start over
+	restRounds = 10,	-- after starting over, no units are claimed for this long
 	reportEvery = 10,	-- rounds between status lines
 };
 
@@ -168,15 +169,16 @@ function Formation.Update()
 			free[#free+1] = u;
 		end;
 	end;
-	local spare = #free - Formation.homeReserve;
+	-- what the pressure at home needs stays out of it
+	local spare = #free - Formation.homeReserve - math.ceil(Sense.Pressure() / Military.UnitPotential());
 	Formation.short = nil;
 	for _,f in ipairs(Formation.list) do
 		local count = 0;
 		for _ in pairs(f.members) do count = count + 1; end;
 		-- while gathering, the size follows what is available
 		if f.stage == 'gather' then f.want = math.max(count, Formation.Want('take', f.region, spare + count)); end;
-		if f.gaveUp then
-			-- waits for its direction to end
+		if f.restUntil and Sense.round < f.restUntil then
+			-- just started over
 		elseif count < f.want and f.stage ~= 'secure' then
 			-- nearest first
 			local goal = Map.WorldCenter(Map.regions[f.staging]);
@@ -222,9 +224,7 @@ function Formation.Update()
 			end;
 			if inside > 0 then f.lastInside = Sense.round; end;
 			local clear = target.seenNow and target.hostileStructures == 0 and target.mobileThreat == 0 and target.staticThreat == 0;
-			if f.gaveUp then
-				-- waits for its direction to end
-			elseif f.stage ~= 'gather' and Formation.Broken(f, f.count) then
+			if f.stage ~= 'gather' and Formation.Broken(f, f.count) then
 				f.want = math.max(f.want, Formation.Want('take', f.region, 0));
 				f.staging = Formation.Staging(f.region);
 				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
@@ -233,13 +233,14 @@ function Formation.Update()
 				if Formation.Ready(f, near) then
 					SetStage(f, 'advance', 'with '..near..' of '..f.want);
 					f.lastInside = Sense.round;
-				elseif Sense.round - f.stageSince >= Formation.stallRounds and not f.gaveUp then
+				elseif Sense.round - f.stageSince >= Formation.stallRounds and f.count >= math.max(2, math.ceil(f.want * Formation.lateShare)) then
+					-- (with too few members it is waiting for units, which is no fault of theirs)
 					f.gaveUp = 'never gathered: '..near..' near of '..f.count..' members, wanted '..f.want;
 				end;
 			elseif f.stage == 'advance' then
 				if inside > 0 and clear then
 					SetStage(f, 'secure', 'with '..f.count..' units');
-				elseif Sense.round - (f.lastInside or f.stageSince) >= Formation.stallRounds and not f.gaveUp then
+				elseif Sense.round - (f.lastInside or f.stageSince) >= Formation.stallRounds then
 					f.gaveUp = 'nobody reached the region: '..near..' near of '..f.count..' members';
 				end;
 			elseif f.stage == 'secure' then
@@ -250,14 +251,17 @@ function Formation.Update()
 					Significance.taken[f.region] = Sense.round;	-- settles the direction
 				end;
 			end;
-			if f.gaveUp and not f.gaveUpLogged then
-				-- the units go home; the direction stays (builders may still get there)
-				f.gaveUpLogged = true;
+			if f.gaveUp then
+				-- the units go home and it starts over, with others and maybe from elsewhere; the direction stays
 				Log(Name(f)..': given up at round '..Sense.round..' in '..f.stage..' ('..f.gaveUp..')');
 				for id,_ in pairs(f.members) do Formation.of[id] = nil; end;
 				f.members = {};
-				f.count = 0;
-			elseif not f.gaveUp and (Sense.round - f.born) % Formation.reportEvery == 0 and Sense.round > f.born then
+				f.count, f.peak, f.gaveUp = 0, 0, nil;
+				f.stage, f.stageSince, f.lastInside = 'gather', Sense.round, nil;
+				f.staging = Formation.Staging(f.region);
+				f.restUntil = Sense.round + Formation.restRounds;
+				f.restarts = (f.restarts or 0) + 1;
+			elseif (Sense.round - f.born) % Formation.reportEvery == 0 and Sense.round > f.born then
 				local where = {};
 				for id,n in pairs(at) do where[#where+1] = id..'x'..n; end;
 				table.sort(where);
