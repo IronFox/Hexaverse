@@ -332,14 +332,72 @@ namespace Objects
 			
 			location = cell;
 			int fallingHeight = 0;
+			//A fall is physics, not a decision: whatever stands below stops it, whether the owner can see it or not.
+			//(NoMobileEntityHereExcept() ignores entities the owner cannot see: the faller would pass through a hidden
+			//unit and end up in its cell, which the grid rejects with a fatal exception)
+			PMobileEntity landedOn;
 			while (location.height-fallingHeight > -Grid::CellStack::HalfRange 
-					&& World::actual.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
-					&& NoMobileEntityHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
+					&& World::actual.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1)))
+			{
+				const Grid::LCellIdI below(location.stackID, location.height - fallingHeight - 1);
+				const PMobileEntity occupant = GetMobileEntity(below);
+				if (occupant && occupant.get() != this)
+				{
+					//falling onto a unit: a collision, unless the owner saw it and merely tried to drive there (rejected below as before)
+					if (fallingHeight > 0 && (cell.stackID == old.stackID || NoMobileEntityHereExcept(below,this)))
+						landedOn = occupant;
+					break;
+				}
 				fallingHeight ++;
+			}
 			//if (fallingHeight > 0)
 			{
 				timeCost += Times::Fall * fallingHeight;
 				location = location - fallingHeight;
+				if (landedOn)
+				{
+					//The falling vehicle is destroyed and deals its own health as damage to what it lands on
+					const int damage = health;
+					LogEvent(EventSignificance::Common,this,"Fell onto "+landedOn->GetName()+" at "+ToString(landedOn->location)+". Destroyed, dealing "+String(damage)+" damage");
+					if (isCreated)
+					{
+						RemoveFromGrid(shared_from_this(),old);
+						if (timeCost > 0)
+							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,entityTime,timeCost);
+						entityTime += timeCost;
+						InsertIntoGrid(shared_from_this(),location);
+					}
+					float t = entityTime;
+					if (!landedOn->IsIndestructible() && damage > 0)
+					{
+						const UINT32 d = (UINT32)M::Min(damage,landedOn->health);
+						owner->statistics.SignalDamageDealtTo(shared_from_this(),landedOn->owner,d);
+						landedOn->owner->statistics.SignalDamageReceivedFrom(landedOn,owner,d);
+						landedOn->health -= damage;
+						if (landedOn->IsDeadOrGhost())
+						{
+							owner->statistics.SignalDestructionOfHostile(shared_from_this(),landedOn);
+							landedOn->owner->statistics.SignalLossOf(landedOn,owner,false);
+							landedOn->SyncTime(t);
+							Remove(landedOn,RemovalType::UncontrolledExplosion,t);
+						}
+						else
+							landedOn->SignalChangeByExternalCause(WorldEntity::HealthChanged,t);
+					}
+					if (failIsFatal)
+					{
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+ToString(cell)+") is above another vehicle. Destruction event");
+						FATAL__("Critical abort");
+					}
+					if (isCreated && cell.stackID != old.stackID)
+					{
+						//mid-motion: the motion code does not expect PlacementFailedMobileDestroyed, but handles a vehicle that died during placement
+						if (isInserted)
+							Remove(shared_from_this(),RemovalType::UncontrolledExplosion,entityTime);
+						return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
+					}
+					return MobilePlacementResult::PlacementFailedMobileDestroyed;	//destroyed by the caller, as with any other fatal fall
+				}
 				if (!CanClimb(-fallingHeight) || !CanStandOn(World::actual,location-1))
 				{
 					if (cell.stackID != old.stackID)	//at least some horizontal motion
