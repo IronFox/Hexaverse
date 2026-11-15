@@ -377,7 +377,7 @@ Significance.taken = {};		-- region id -> round a formation reported it taken (f
 local function Settle(d, how)
 	local reg = Map.regions[d.region];
 	Log(string.format('Direction result: %s region %d from round %d: %s at round %d, losses %d',
-		d.kind, d.region, d.issued, how, Sense.round, math.max(0, (reg.deaths or 0) - d.deaths)));
+		d.kind, d.region, d.issued, how, Sense.round, math.max(0, (reg.lost or 0) - d.deaths)));
 end;
 
 function Significance.Direct()
@@ -429,7 +429,7 @@ function Significance.Direct()
 		if count[d.kind] < Significance.maxDirections and d.priority >= 0.1 then
 			count[d.kind] = count[d.kind] + 1;
 			d.issued = Sense.round;
-			d.deaths = Map.regions[d.region].deaths or 0;
+			d.deaths = Map.regions[d.region].lost or 0;
 			keep[#keep+1] = d;
 			Log(string.format('Direction: %s region %d priority %s (round %d)', d.kind, d.region,
 				(string.gsub(string.format('%.2f', d.priority), ',', '.')), d.issued));

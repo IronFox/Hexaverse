@@ -808,6 +808,7 @@ function Sense.Update()
 				local reg = Map.RegionOfLoc(m.location);
 				if reg then
 					reg.deaths = reg.deaths + 1;
+					reg.lost = (reg.lost or 0) + 1;	-- (never reset: for what a direction or formation cost)
 					-- a loss inside my territory that no sensed hostile explains: maybe undermined
 					if (reg.myStructures > 0 or reg.id == Mem.homeRegion) and reg.mobileThreat == 0 and reg.staticThreat == 0 then
 						if reg.airThreat > 0 or Mem.airSeen >= round - 3 then
