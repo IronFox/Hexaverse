@@ -1189,13 +1189,16 @@ Reward: how the last rounds went, as one number built from signals that each mea
   units       a little for each hostile unit or tower destroyed, a little off for each own one lost
   structures  a lot for each hostile structure destroyed that is no tower (plants, labs, mines,
               generators, ...), a lot off for each own one lost
+  mining      what the mines bring in per round (minerals, and fuel at half value), counted at
+              every measurement: mining early and keeping it up pays all match long. Minerals
+              mined into a full storage are wasted and count a quarter
 Own losses are exact. Kills are an estimate from what the client sees: a hostile that was in
 reach of my weapons, is gone now, and whose place I still see. (The server knows exactly; a
 referee there can replace the estimate.) Structures I demolish myself are no loss.
 Logged with the control score as "Reward: ..."; Score.reward is the sum since the last
 measurement, Score.total the sum over the match.
 ]]
-Score.w = {control = 1, reserve = 10, unit = 2, structure = 20};
+Score.w = {control = 1, reserve = 10, unit = 2, structure = 20, mining = 0.2};
 Score.reward, Score.total = 0, 0;
 Score.parts = {control = 0, reserve = 0, units = 0, structures = 0};
 Score.mineBefore = {};		-- id -> {tower, structure} of my units and structures last round
@@ -1266,10 +1269,18 @@ function Score.Settle()
 	if Score.controlBefore ~= nil then
 		P.control = Score.control - Score.controlBefore;
 		P.reserve = reserve - Score.reserveBefore;
-		Score.reward = w.control * P.control + w.reserve * P.reserve + w.unit * P.units + w.structure * P.structures;
+		-- mining speed: supply of the working mines; a full storage wastes it
+		local cur, max = Economy.Resources();
+		local sup = cur and cur.supply or {};
+		local minerals = sup.minerals or 0;
+		local cap = max and max.storage and max.storage.minerals or 0;
+		if cap > 0 and (cur.storage.minerals or 0) >= cap - 1 then minerals = minerals * 0.25; end;
+		P.mining = minerals + (sup.fuel or 0) * 0.5;
+		Score.reward = w.control * P.control + w.reserve * P.reserve + w.unit * P.units + w.structure * P.structures
+			+ w.mining * P.mining;
 		Score.total = Score.total + Score.reward;
-		Log(string.format('Reward: %+.1f (control %+.1f, reserve %+.2f, units %+d, structures %+d); total %.1f; combat units %d',
-			Score.reward, P.control, P.reserve, P.units, P.structures, Score.total, n));
+		Log(string.format('Reward: %+.1f (control %+.1f, reserve %+.2f, units %+d, structures %+d, mining %.1f); total %.1f; combat units %d',
+			Score.reward, P.control, P.reserve, P.units, P.structures, P.mining, Score.total, n));
 	end;
 	Score.controlBefore, Score.reserveBefore = Score.control, reserve;
 	P.control, P.reserve, P.units, P.structures = 0, 0, 0, 0;
