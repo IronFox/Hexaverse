@@ -1092,7 +1092,26 @@ Score = {
 	ground = {},			-- cell index -> {h, round}: cached surface height
 };
 
+--[[
+Variants for comparing and training: a script that requires this one (or a personality) and
+then overrides settings, e.g.
+	--#require "player.lua"
+	Cfg.logPrefix = 'gen_017: ';
+	Cfg.needWeights = {defense = 4.2, army = 2.1, income = 2.6};
+Selected like any other script (Rules/AIPlayers/script). The weights in use are logged once
+at the start, the reward as it accrues.
+]]
+function Score.Announce()
+	if Score.announced then return; end;
+	Score.announced = true;
+	local w, parts = Needs.Weights(), {};
+	for k,x in pairs(w) do parts[#parts+1] = string.format('%s=%.3g', k, x); end;
+	table.sort(parts);
+	Log('Weights: '..table.concat(parts, ', '));
+end;
+
 function Score.Update()
+	Score.Announce();
 	Score.Track();
 	if Sense.round % Score.every ~= 0 or Score.lastRound == Sense.round then return; end;
 	if not (Game.Terrain and Game.Terrain.GetLowestSensorStrength and Game.Grid.ToLocation) then return; end;
@@ -1164,7 +1183,9 @@ end;
 --[[
 Reward: how the last rounds went, as one number built from signals that each mean something.
   control     gained territory is positive, lost territory negative (change of Score.control)
-  reserve     combat units at hand, with diminishing returns (change of sqrt(n))
+  reserve     combat units at hand, flattening fast: n / (n + 2). One or two spare tanks are
+              almost always good; a hundred are worth hardly more than ten, unless they are
+              sent at the enemy, and then they earn through territory and kills
   units       a little for each hostile unit or tower destroyed, a little off for each own one lost
   structures  a lot for each hostile structure destroyed that is no tower (plants, labs, mines,
               generators, ...), a lot off for each own one lost
@@ -1174,7 +1195,7 @@ referee there can replace the estimate.) Structures I demolish myself are no los
 Logged with the control score as "Reward: ..."; Score.reward is the sum since the last
 measurement, Score.total the sum over the match.
 ]]
-Score.w = {control = 1, reserve = 5, unit = 2, structure = 20};
+Score.w = {control = 1, reserve = 10, unit = 2, structure = 20};
 Score.reward, Score.total = 0, 0;
 Score.parts = {control = 0, reserve = 0, units = 0, structures = 0};
 Score.mineBefore = {};		-- id -> {tower, structure} of my units and structures last round
@@ -1240,14 +1261,15 @@ end;
 -- with each control measurement: turn the signals into the reward since the last one
 function Score.Settle()
 	local P, w = Score.parts, Score.w;
-	local reserve = math.sqrt(#Sense.my.combat + (Sense.storedByRole and Sense.storedByRole.combat or 0));
+	local n = #Sense.my.combat + (Sense.storedByRole and Sense.storedByRole.combat or 0);
+	local reserve = n / (n + 2);
 	if Score.controlBefore ~= nil then
 		P.control = Score.control - Score.controlBefore;
 		P.reserve = reserve - Score.reserveBefore;
 		Score.reward = w.control * P.control + w.reserve * P.reserve + w.unit * P.units + w.structure * P.structures;
 		Score.total = Score.total + Score.reward;
-		Log(string.format('Reward: %+.1f (control %+.1f, reserve %+.2f, units %+d, structures %+d); total %.1f',
-			Score.reward, P.control, P.reserve, P.units, P.structures, Score.total));
+		Log(string.format('Reward: %+.1f (control %+.1f, reserve %+.2f, units %+d, structures %+d); total %.1f; combat units %d',
+			Score.reward, P.control, P.reserve, P.units, P.structures, Score.total, n));
 	end;
 	Score.controlBefore, Score.reserveBefore = Score.control, reserve;
 	P.control, P.reserve, P.units, P.structures = 0, 0, 0, 0;
