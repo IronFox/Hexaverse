@@ -769,6 +769,9 @@ function Sense.Update()
 				local p = DamagePotential(e);
 				if e.type.isMobile then
 					seenMobile[id] = (seenMobile[id] or 0) + math.max(p, 1);
+				elseif e.isIndestructible then
+					-- (a Nexus port can't be shot: it is no hostile structure to clear out. Counting it
+					-- made the army attack its region and stay there for good)
 				else
 					seenStatic[id] = (seenStatic[id] or 0) + p;
 					seenStructs[id] = (seenStructs[id] or 0) + 1;
