@@ -1586,6 +1586,7 @@ function Mole.Demolish()
 		if replaced then
 			local s = type(replaced) == 'table' and replaced or list[1];
 			Log('Demolishing surface '..s.niceName);
+			if Score and s.id then Score.demolished[s.id] = true; end;	-- my own doing: no loss
 			pcall(s.Destroy);
 			return;
 		end;

@@ -1093,6 +1093,7 @@ Score = {
 };
 
 function Score.Update()
+	Score.Track();
 	if Sense.round % Score.every ~= 0 or Score.lastRound == Sense.round then return; end;
 	if not (Game.Terrain and Game.Terrain.GetLowestSensorStrength and Game.Grid.ToLocation) then return; end;
 	Score.lastRound = Sense.round;
@@ -1157,6 +1158,99 @@ function Score.Update()
 	Score.control = surface + below * Score.undergroundWeight;
 	Log(string.format('Control: %.1f (surface %d, underground %d x %.2f, %d weapons)',
 		Score.control, surface, below, Score.undergroundWeight, #armed));
+	Score.Settle();
+end;
+
+--[[
+Reward: how the last rounds went, as one number built from signals that each mean something.
+  control     gained territory is positive, lost territory negative (change of Score.control)
+  reserve     combat units at hand, with diminishing returns (change of sqrt(n))
+  units       a little for each hostile unit or tower destroyed, a little off for each own one lost
+  structures  a lot for each hostile structure destroyed that is no tower (plants, labs, mines,
+              generators, ...), a lot off for each own one lost
+Own losses are exact. Kills are an estimate from what the client sees: a hostile that was in
+reach of my weapons, is gone now, and whose place I still see. (The server knows exactly; a
+referee there can replace the estimate.) Structures I demolish myself are no loss.
+Logged with the control score as "Reward: ..."; Score.reward is the sum since the last
+measurement, Score.total the sum over the match.
+]]
+Score.w = {control = 1, reserve = 5, unit = 2, structure = 20};
+Score.reward, Score.total = 0, 0;
+Score.parts = {control = 0, reserve = 0, units = 0, structures = 0};
+Score.mineBefore = {};		-- id -> {tower, structure} of my units and structures last round
+Score.hostileBefore = {};	-- id -> {loc, tower, structure, reach} of hostiles last round
+Score.demolished = {};		-- ids I took down myself
+
+local function IsTower(u)
+	return u.type and u.type.isStructure and u.type.turretType ~= nil and u.type.turretType.canAttack and true or false;
+end;
+
+-- every round: who is gone since the last one?
+function Score.Track()
+	local P = Score.parts;
+	-- my own
+	local now = {};
+	local function mine(u)
+		if u.id then now[u.id] = {structure = u.type and u.type.isStructure and true or false, tower = IsTower(u)}; end;
+	end;
+	for _,list in pairs(Sense.my) do for _,u in ipairs(list) do mine(u); end; end;
+	for _,u in ipairs(Sense.stored or {}) do mine(u); end;
+	for _,u in ipairs(Sense.myStructures or {}) do mine(u); end;
+	for id,e in pairs(Score.mineBefore) do
+		if now[id] == nil and not Score.demolished[id] then
+			if e.structure and not e.tower then P.structures = P.structures - 1; else P.units = P.units - 1; end;
+		end;
+	end;
+	Score.mineBefore = now;
+	-- theirs: gone from a place I still see, and it was in reach of my weapons
+	local armed = {};
+	for _,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do
+			if u.turret and u.turret.type and u.turret.type.canAttack and u.turret.IsInRange then armed[#armed+1] = u.turret; end;
+		end;
+	end;
+	for _,u in ipairs(Sense.myStructures or {}) do
+		if u.turret and u.turret.type and u.turret.type.canAttack and u.turret.IsInRange then armed[#armed+1] = u.turret; end;
+	end;
+	local known = {};
+	for id,e in pairs(Game.hostileUnits or {}) do
+		if e.health and e.health > 0 and e.location then
+			local reach = false;
+			local w = e.location.world;
+			for _,t in ipairs(armed) do
+				local ok, hit = pcall(t.IsInRange, w);
+				if ok and hit then reach = true; break; end;
+			end;
+			known[id] = {loc = e.location, structure = e.type and e.type.isStructure and true or false, tower = IsTower(e), reach = reach};
+		end;
+	end;
+	if Game.Terrain and Game.Terrain.GetLowestSensorStrength then
+		for id,e in pairs(Score.hostileBefore) do
+			if known[id] == nil and e.reach and (Game.hostileUnits or {})[id] == nil then
+				local ok, seen = pcall(Game.Terrain.GetLowestSensorStrength, e.loc, 1);
+				if ok and seen and seen > 0 then
+					if e.structure and not e.tower then P.structures = P.structures + 1; else P.units = P.units + 1; end;
+				end;
+			end;
+		end;
+	end;
+	Score.hostileBefore = known;
+end;
+
+-- with each control measurement: turn the signals into the reward since the last one
+function Score.Settle()
+	local P, w = Score.parts, Score.w;
+	local reserve = math.sqrt(#Sense.my.combat + (Sense.storedByRole and Sense.storedByRole.combat or 0));
+	if Score.controlBefore ~= nil then
+		P.control = Score.control - Score.controlBefore;
+		P.reserve = reserve - Score.reserveBefore;
+		Score.reward = w.control * P.control + w.reserve * P.reserve + w.unit * P.units + w.structure * P.structures;
+		Score.total = Score.total + Score.reward;
+		Log(string.format('Reward: %+.1f (control %+.1f, reserve %+.2f, units %+d, structures %+d); total %.1f',
+			Score.reward, P.control, P.reserve, P.units, P.structures, Score.total));
+	end;
+	Score.controlBefore, Score.reserveBefore = Score.control, reserve;
+	P.control, P.reserve, P.units, P.structures = 0, 0, 0, 0;
 end;
 
 -------------------------------------------------------------------------------
@@ -3496,6 +3590,7 @@ function Military.Bombs()
 				end;
 				if not own and b.SelfDetonate then
 					b.ClearTasks();
+					if b.id then Score.demolished[b.id] = true; end;	-- spent on purpose: no loss
 					b.SelfDetonate();
 					Log(b.niceName..': detonating');
 					return;
