@@ -581,6 +581,7 @@ namespace Game
 	namespace Config
 	{
 		int			roundTimer = -1;
+		float		maxAnimationLength = 10.f;
 		#ifndef NO_HIBERNATION
 			UINT32		uplinkBandwidth = 500;
 		#endif

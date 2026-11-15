@@ -1430,6 +1430,7 @@ namespace Reflection
 		parser->EnterNewFolder("Server")->attachment = persistenceAttachment;
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
+			VAR(maxAnimationLength,Game::Config,0.f,10.f,Variable::Persistence::ConfigOnly);
 			parser->SetVariable(CLI::PVariable(new Variable::Password("password")));
 		parser->ExitFolder();
 

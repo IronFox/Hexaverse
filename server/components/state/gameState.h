@@ -142,6 +142,7 @@ namespace Game
 
 
 		extern int		roundTimer/* = -1*/;
+		extern float	maxAnimationLength/* = 10.f*/;	//seconds the server waits at most for clients to play back a round. Near 0 for training/test servers
 		#ifndef NO_HIBERNATION
 			extern UINT32	uplinkBandwidth/* = 500*/;
 		#endif

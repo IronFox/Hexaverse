@@ -1406,7 +1406,8 @@ int main( int argc, const char* argv[])
 
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			{
-				if (Game::lastPhaseChange.ElapsedSeconds() >= Game::effectiveAnimationLength+0.5f)
+				//(the half second of tolerance shrinks with Server/maxAnimationLength: a training server waits for nobody)
+				if (Game::lastPhaseChange.ElapsedSeconds() >= Game::effectiveAnimationLength+std::min(0.5f,Game::Config::maxAnimationLength))
 				{
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
@@ -1425,7 +1426,7 @@ int main( int argc, const char* argv[])
 				if (!Game::ContinueRoundProcessing())
 				{
 					float animationLength = Game::GetEvolver()->animationLength;
-					Game::effectiveAnimationLength = std::min(10.f,animationLength);
+					Game::effectiveAnimationLength = std::min(Game::Config::maxAnimationLength,animationLength);
 					Game::Network::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
 				}
 				Game::ProcessChanges(true);
