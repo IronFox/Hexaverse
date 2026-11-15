@@ -1427,7 +1427,9 @@ int main( int argc, const char* argv[])
 				{
 					float animationLength = Game::GetEvolver()->animationLength;
 					Game::effectiveAnimationLength = std::min(Game::Config::maxAnimationLength,animationLength);
-					Game::Network::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
+					//the factor tells the clients how much faster to play the round back, so that it fits into the wait.
+					//With a tiny maxAnimationLength it gets huge: windowless AI clients then finish the playback in one step
+					Game::Network::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / std::max(0.0001f,Game::Config::maxAnimationLength)));
 				}
 				Game::ProcessChanges(true);
 			}
