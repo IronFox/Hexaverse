@@ -16,7 +16,8 @@ namespace Objects
 		bool TurretBase::WouldAutoAttack(const PWorldEntity&target, TurretBase::TargetChoice&outTarget, float entityTime)
 		{
 			auto&e = ToEntity();
-			if (!CanAttack() || e.empDamageLevel != 0 || e.IsHibernating() || e.owner->IsAlliedWith(target->owner))
+			//(nothing is gained from shooting what cannot be damaged, e.g. a Nexus Port: it only costs ammunition)
+			if (!CanAttack() || e.empDamageLevel != 0 || e.IsHibernating() || e.owner->IsAlliedWith(target->owner) || target->IsIndestructible())
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
