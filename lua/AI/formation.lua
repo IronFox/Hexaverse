@@ -44,7 +44,7 @@ Formation = {
 	garrison = 2,		-- units of a holding formation
 	commitShare = 0.5,	-- share of the free units a taking formation asks for (if that is more than the job needs)
 	maxSize = 30,
-	stallRounds = 30,	-- gathering, or advancing without anyone arriving, for this long: give the take up
+	stallRounds = 30,	-- gathering, or advancing without anyone arriving, for this long: send the units home
 	reportEvery = 10,	-- rounds between status lines
 };
 
@@ -168,14 +168,20 @@ function Formation.Update()
 			free[#free+1] = u;
 		end;
 	end;
-	local spare = #free - Formation.homeReserve;
+	-- what home needs stays out of it
+	local spare = #free - Formation.homeReserve - math.ceil(Sense.Pressure() / Military.UnitPotential());
 	Formation.short = nil;
 	for _,f in ipairs(Formation.list) do
 		local count = 0;
 		for _ in pairs(f.members) do count = count + 1; end;
 		-- while gathering, the size follows what is available
 		if f.stage == 'gather' then f.want = math.max(count, Formation.Want('take', f.region, spare + count)); end;
-		if count < f.want and f.stage ~= 'secure' then
+		-- it starts with what the job needs or not at all (a few units sent ahead are lost, and missed at home)
+		local start = count > 0 or spare >= Military.RequiredForce(f.region);
+		if f.kind == 'take' and (f.gaveUp or not start) then
+			-- waits for the direction to end, or for units
+			if count == 0 and f.stage == 'gather' then f.stageSince = Sense.round; end;
+		elseif count < f.want and f.stage ~= 'secure' then
 			-- nearest first
 			local goal = Map.WorldCenter(Map.regions[f.staging]);
 			table.sort(free, function(a, b) return Dist2(a.location.world, goal) < Dist2(b.location.world, goal) end);
@@ -208,17 +214,21 @@ function Formation.Update()
 	for _,f in ipairs(Formation.list) do
 		if f.kind == 'take' then
 			local target = Map.regions[f.region];
-			local near, inside = 0, 0;
+			local near, inside, at = 0, 0, {};
 			local around = {[f.staging] = true};
 			for nb,_ in pairs(Map.regions[f.staging].neighbors) do around[nb] = true; end;
 			for id,_ in pairs(f.members) do
 				local reg = Map.RegionOfLoc(alive[id].location);
 				if reg and reg.id == f.region then inside = inside + 1; end;
+				local k = reg and reg.id or -1;
+				at[k] = (at[k] or 0) + 1;
 				if reg and (around[reg.id] or reg.id == f.region) then near = near + 1; end;
 			end;
 			if inside > 0 then f.lastInside = Sense.round; end;
 			local clear = target.seenNow and target.hostileStructures == 0 and target.mobileThreat == 0 and target.staticThreat == 0;
-			if f.stage ~= 'gather' and Formation.Broken(f, f.count) then
+			if f.gaveUp then
+				-- waits for its direction to end
+			elseif f.stage ~= 'gather' and Formation.Broken(f, f.count) then
 				f.want = math.max(f.want, Formation.Want('take', f.region, 0));
 				f.staging = Formation.Staging(f.region);
 				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
@@ -245,13 +255,19 @@ function Formation.Update()
 				end;
 			end;
 			if f.gaveUp and not f.gaveUpLogged then
+				-- the units go home; the direction stays (builders may still get there)
 				f.gaveUpLogged = true;
 				Log(Name(f)..': given up at round '..Sense.round..' in '..f.stage..' ('..f.gaveUp..')');
-				Significance.gaveUp[f.region] = Sense.round;	-- settles the direction as failed
-			elseif (Sense.round - f.born) % Formation.reportEvery == 0 and Sense.round > f.born then
-				Log(string.format('%s: status round %d stage %s members %d of %d near %d inside %d seen %s structures %d mobile %.1f static %.1f',
+				for id,_ in pairs(f.members) do Formation.of[id] = nil; end;
+				f.members = {};
+				f.count = 0;
+			elseif not f.gaveUp and (Sense.round - f.born) % Formation.reportEvery == 0 and Sense.round > f.born then
+				local where = {};
+				for id,n in pairs(at) do where[#where+1] = id..'x'..n; end;
+				table.sort(where);
+				Log(string.format('%s: status round %d stage %s members %d of %d near %d inside %d seen %s structures %d mobile %.1f static %.1f staging %d at %s',
 					Name(f), Sense.round, f.stage, f.count, f.want, near, inside, tostring(target.seenNow and true or false),
-					target.hostileStructures or 0, target.mobileThreat or 0, target.staticThreat or 0));
+					target.hostileStructures or 0, target.mobileThreat or 0, target.staticThreat or 0, f.staging, table.concat(where, ' ')));
 			end;
 		end;
 	end;
