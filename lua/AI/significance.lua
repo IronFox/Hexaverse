@@ -304,6 +304,7 @@ function Significance.Update()
 		end;
 		Log('Regions r='..Sense.round..': '..table.concat(parts, ';'));
 	end;
+	Significance.Direct();
 	Log(string.format('Significance: %s, %d regions, highest region %s (%.2f)%s',
 		net and 'network' or 'estimate', #Map.regions, tostring(top), topV,
 		timer and string.format(', %.3fs', timer()) or ''));
@@ -338,4 +339,109 @@ function Significance.Best(fromReg, maxHops, score)
 		end;
 	end;
 	return best, bestV;
+end;
+
+
+--[[
+Directions: what the strategic layer hands down
+-----------------------------------------------
+The layers below (today the scripts, later trained ones) do not read raw values, they get
+directions. The format is fixed, so that either side can be retrained without the other
+having to learn a new language:
+
+	{kind = 'take' | 'hold' | 'avoid', region = id, priority = 0..1, issued = round}
+
+  take    get this region: build there, or drive out who holds it
+  hold    keep this region: defend it, rebuild what is lost there
+  avoid   stay out unless ordered in (no building, no lone units)
+
+A few of each at a time (Significance.maxDirections). A direction stays until it is settled:
+  take    achieved when the region is mine; failed after Significance.takeRounds
+  hold    achieved when still mine after Significance.holdRounds; failed when lost before
+  avoid   just lapses with the next evaluation
+Both the direction and how it ended are logged ("Direction: ...", "Direction result: ..."),
+with what it cost (units lost there). That is the score of the layers below: was the
+direction carried out, how fast, at what price. The scripts follow directions only with
+Cfg.useDirections; they are issued and settled either way, so matches without it show what
+happens to directions nobody acts on.
+]]
+Significance.maxDirections = 3;
+Significance.takeRounds = 40;
+Significance.holdRounds = 30;
+Significance.directions = {};	-- active ones
+Significance.avoid = {};		-- region id -> priority
+
+local function Settle(d, how)
+	local reg = Map.regions[d.region];
+	Log(string.format('Direction result: %s region %d from round %d: %s at round %d, losses %d',
+		d.kind, d.region, d.issued, how, Sense.round, math.max(0, (reg.deaths or 0) - d.deaths)));
+end;
+
+function Significance.Direct()
+	-- settle what is due
+	local keep, busy = {}, {};
+	for _,d in ipairs(Significance.directions) do
+		local mine = Sense.mine[d.region] and true or false;
+		local age = Sense.round - d.issued;
+		if d.kind == 'take' and mine then Settle(d, 'achieved');
+		elseif d.kind == 'take' and age >= Significance.takeRounds then Settle(d, 'failed');
+		elseif d.kind == 'hold' and not mine then Settle(d, 'failed');
+		elseif d.kind == 'hold' and age >= Significance.holdRounds then Settle(d, 'achieved');
+		else
+			keep[#keep+1] = d;
+			busy[d.region] = true;
+		end;
+	end;
+	Significance.directions = keep;
+	-- issue new ones, best first
+	local count = {take = 0, hold = 0};
+	for _,d in ipairs(keep) do count[d.kind] = count[d.kind] + 1; end;
+	local cand = {};
+	Significance.avoid = {};
+	for _,reg in ipairs(Map.regions) do
+		local o = Significance.out[reg.id];
+		if o and not busy[reg.id] then
+			if Sense.mine[reg.id] then
+				-- what is worth much and under threat comes first
+				cand[#cand+1] = {kind = 'hold', region = reg.id, priority = o[1] * (0.5 + 0.5 * o[3])};
+			else
+				cand[#cand+1] = {kind = 'take', region = reg.id, priority = o[2] * (1 - 0.5 * o[3])};
+			end;
+		end;
+		if o and not Sense.mine[reg.id] and o[3] >= 0.6 then Significance.avoid[reg.id] = o[3]; end;
+	end;
+	table.sort(cand, function(a, b)
+		if a.priority ~= b.priority then return a.priority > b.priority; end;
+		return a.region < b.region;
+	end);
+	for _,d in ipairs(cand) do
+		if count[d.kind] < Significance.maxDirections and d.priority >= 0.1 then
+			count[d.kind] = count[d.kind] + 1;
+			d.issued = Sense.round;
+			d.deaths = Map.regions[d.region].deaths or 0;
+			keep[#keep+1] = d;
+			Log(string.format('Direction: %s region %d priority %.2f (round %d)', d.kind, d.region, d.priority, d.issued));
+		end;
+	end;
+end;
+
+-- priority of the active direction of this kind for a region, or 0
+function Significance.Directed(regOrId, kind)
+	local id = type(regOrId) == 'table' and regOrId.id or regOrId;
+	if id == nil then return 0; end;
+	if kind == 'avoid' then return Significance.avoid[id] or 0; end;
+	for _,d in ipairs(Significance.directions) do
+		if d.region == id and d.kind == kind then return d.priority; end;
+	end;
+	return 0;
+end;
+
+-- the active directions of a kind, highest priority first
+function Significance.Directions(kind)
+	local out = {};
+	for _,d in ipairs(Significance.directions) do
+		if d.kind == kind then out[#out+1] = d; end;
+	end;
+	table.sort(out, function(a, b) return a.priority > b.priority end);
+	return out;
 end;

@@ -41,6 +41,7 @@ Structure
 Cfg = {
 	stateVersion = 2,
 	logPrefix = 'Player AI: ',
+	useDirections = false,	-- scripts follow the strategic layer's directions (significance.lua)
 	verbose = true,
 
 	-- desired unit counts
@@ -2190,7 +2191,15 @@ function Economy.FindMineCells(resource, maxCount)
 			end;
 		end;
 		-- richer and closer first
-		table.sort(list, function(a,b) return a.level / (1 + a.hops) > b.level / (1 + b.hops) end);
+		if Cfg.useDirections then
+			-- sites where the strategic layer wants us first, none where it wants us out
+			for _,e in ipairs(list) do
+				local rid = Map.cellRegion[e.cell.index];
+				e.bias = (1 + 2 * math.max(Significance.Directed(rid, 'take'), Significance.Directed(rid, 'hold')))
+					/ (1 + 3 * Significance.Directed(rid, 'avoid'));
+			end;
+		end;
+		table.sort(list, function(a,b) return a.level * (a.bias or 1) / (1 + a.hops) > b.level * (b.bias or 1) / (1 + b.hops) end);
 		cache = {round=Sense.round, list=list};
 		Economy.mineCache[resource] = cache;
 	end;
@@ -3033,6 +3042,8 @@ function Military.ChooseAttackTarget()
 			end;
 			local defense = Military.DefenseAt(reg) / pot;	-- in our units
 			local score = value / (1 + defense * 0.5) / (1 + hops * 0.3) / (1 + Sense.Staleness(reg) * 0.02);
+			-- the strategic layer's word: what it wants taken comes first
+			if Cfg.useDirections then score = score * (1 + 3 * Significance.Directed(id, 'take')); end;
 			if score > bestScore then
 				best, bestScore = id, score;
 			end;
@@ -3271,6 +3282,10 @@ function Military.DefenseRegion()
 	end;
 	-- quiet at home: hold the high ground over our resources before someone else does
 	if bestT <= 0 then
+		if Cfg.useDirections then
+			local d = Significance.Directions('hold')[1];
+			if d then return d.region; end;
+		end;
 		local ow = Needs.Overwatch();
 		if ow then
 			if Military.overwatch ~= ow then Log('Holding high ground at region '..ow..' over our resources'); end;
