@@ -242,8 +242,8 @@ function Bridge.State()
 		Add(L, 'minerals changed by %+d since you were last asked (round %s); lost %d units in the last %d rounds (%d builders)',
 			minerals - (Bridge.prevMinerals or minerals), tostring(Bridge.prevAsked or '-'), lost, math.max(1, since), builders);
 		Bridge.prevMinerals, Bridge.prevAsked = minerals, Sense.round;
-		local capacity = '?';
-		pcall(function() capacity = tostring(Game.myFaction.maxResources.storage.minerals); end);
+		-- (the faction's maxResources.storage does not cover every network: count the containers)
+		local capacity = 'about '..(500 * Economy.Count(Types.mineralContainer))..' (500 per container)';
 		Add(L, 'VITAL (the faction dies without a mineral container, a generator, a mineral mine and a fuel mine): mineral containers %d, generators %d, mines %d, builders %d, vehicle plants %d; mineral storage capacity %s',
 			Economy.Count(Types.mineralContainer), Economy.Count(Types.generator), Economy.Count(Types.mine), #(Sense.my.constructor or {}),
 			Types.plant and Economy.Count(Types.plant) or -1, capacity);
