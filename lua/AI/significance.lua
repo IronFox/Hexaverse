@@ -49,6 +49,7 @@ Significance = {
 		'myStructures', 'myMobiles', 'myStrength', 'myMines', 'held',
 		'mobileThreat', 'staticThreat', 'airThreat', 'hostileStructures', 'deaths',
 		'seenNow', 'unseenFor', 'portMine', 'portOther', 'isHome', 'round',
+		'controlled', 'contested',		-- share of the region's cells (Control in player.lua)
 	},
 };
 
@@ -173,6 +174,7 @@ function Significance.Describe()
 			port == 'mine' and 1 or 0, port == 'other' and 1 or 0,
 			reg.id == Mem.homeRegion and 1 or 0,
 			Clamp01(round / 300),
+			Control and Control.Of(reg.id, 'controlled') or 1, Control and Control.Of(reg.id, 'contested') or 0,
 		};
 		Significance.nbThreat[reg.id] = nb.threat;
 	end;

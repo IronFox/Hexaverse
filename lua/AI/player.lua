@@ -43,6 +43,8 @@ Cfg = {
 	stateVersion = 2,
 	logPrefix = 'Player AI: ',
 	useDirections = false,	-- scripts follow the strategic layer's directions (significance.lua)
+	controlMinReach = 3,	-- cells: firing range assumed of hostiles before any weapon of theirs was seen
+	useControl = true,		-- valuable structures only on controlled ground (Control)
 	portMineBias = 10,		-- how much better a mine site next to a Nexus port is than the same site elsewhere
 	portMineHops = 4,		-- how far from my regions such a site may be
 	useFormations = false,	-- formations carry out the directions (formation.lua); needs useDirections
@@ -709,6 +711,7 @@ function Sense.Update()
 		Mem.homeRegion = home;
 	end;
 
+	Sense.airObservers = airObservers;
 	-- which regions are observed right now, per layer: region center within an observer's range
 	local function Covered(list, groundCenter, airCenter)
 		for _,o in ipairs(list) do
@@ -832,6 +835,7 @@ function Sense.Update()
 		if ok and list then
 			for _,a in ipairs(list) do
 				if a.isHostile and a.source then
+					Control.Attack(a);
 					local src, len = Map.RegionOfWorld(a.source);
 					local hit = Map.RegionOfWorld(a.impact);
 					local layer = Sense.AttackLayer(a, src, len);
@@ -1306,6 +1310,245 @@ function Score.Settle()
 	end;
 	Score.controlBefore, Score.reserveBefore = Score.control, reserve;
 	P.control, P.reserve, P.units, P.structures = 0, 0, 0, 0;
+end;
+
+-------------------------------------------------------------------------------
+-- Control: how much is a location mine?
+-------------------------------------------------------------------------------
+--[[
+The one question everything that builds asks first. Per surface cell:
+  0  not seen       outside my sensors. What I cannot see I do not control
+  1  contested      seen, but
+                    * within firing range of something I cannot see, or
+                    * within sensor or firing range of a hostile unit seen, or of an attack on
+                      anything of mine, now or in the last rounds (Control.memory), or
+                    * overlooked by higher ground within firing range that is not controlled
+                      itself: a valley is contested unless the peaks around it are mine, or
+                    * with planes about (Sense.AirMatters): not watched in the air layer, that
+                      is, beyond the reach of my AA and planes. Towers that cannot shoot upwards
+                      do not change that; what is contested only for this is in Control.air
+  2  controlled     what is left: seen, quiet, and no blind or hostile spot can reach it
+"Firing range" is the longest weapon range seen on a hostile so far, and Cfg.controlMinReach
+cells before any was seen.
+
+Sightings and attacks count at once (every round); sensor coverage and the heights are gone
+through every Control.every rounds. Valuable structures (mines, plants, labs, power) go only
+where the level is 2. The contested belt gets what pushes the edge outwards: radar and
+defences. Before the first evaluation everything counts as controlled (the start position).
+Logged as "Control map: ...".
+]]
+Control = {
+	every = 5,
+	memory = 15,		-- rounds a sighting or an attack keeps its surroundings contested
+	peakMargin = 2,		-- height levels above a cell from which ground overlooks it
+	level = {},			-- cell index -> 0, 1, 2
+	air = {},			-- cell index -> true: contested only because the air above is not watched
+	zones = {},			-- key -> {x, y, z, r2, round}
+	reach = 0,			-- longest hostile weapon range seen (world units)
+	byRegion = {},		-- region id -> {controlled = share, contested = share}
+	attackCount = 0,
+};
+
+function Control.At(cellOrLoc)
+	local cell = cellOrLoc and (cellOrLoc.cell or cellOrLoc);
+	local l = cell and cell.index and Control.level[cell.index];
+	if l == nil then return 2; end;
+	return l;
+end;
+
+function Control.Of(regId, what)
+	local r = Control.byRegion[regId];
+	if r == nil then return what == 'controlled' and 1 or 0; end;
+	return r[what] or 0;
+end;
+
+function Control.Spacing()
+	if Control.spacing == nil then
+		local c = Game.Grid.unitCells and Game.Grid.unitCells[1];
+		local n = c and c.neighbors and c.neighbors[1];
+		if n then
+			Control.spacing = math.sqrt(Dist2(c.center, n.center)) * Map.groundRadius;
+		end;
+	end;
+	return Control.spacing or 1;
+end;
+
+function Control.Reach()
+	return math.max(Control.reach, Control.Spacing() * Cfg.controlMinReach);
+end;
+
+-- everything around this position is contested from now on
+function Control.Note(key, pos, range)
+	if pos == nil then return; end;
+	local r = math.max(range or 0, Control.Reach());
+	local z = {x = pos.x, y = pos.y, z = pos.z, r2 = r * r, round = Sense.round};
+	Control.zones[key] = z;
+	Control.fresh[#Control.fresh+1] = z;
+end;
+
+-- called for every hostile shot seen (Sense.Update)
+function Control.Attack(a)
+	Control.fresh = Control.fresh or {};
+	Control.attackCount = Control.attackCount + 1;
+	local reachBack = (a.source and a.impact) and math.sqrt(Dist2(a.source, a.impact)) * 1.1 or 0;
+	if reachBack > Control.reach then Control.reach = reachBack; end;
+	Control.Note('a'..Control.attackCount, a.source, reachBack);
+	Control.Note('i'..Control.attackCount, a.impact, 0);
+end;
+
+local function InZone(zones, c, R)
+	local x, y, z = c.center.x * R, c.center.y * R, c.center.z * R;
+	for _,zn in pairs(zones) do
+		local dx, dy, dz = x - zn.x, y - zn.y, z - zn.z;
+		if dx*dx + dy*dy + dz*dz <= zn.r2 then return true; end;
+	end;
+	return false;
+end;
+
+function Control.Update()
+	if not (Game.Terrain and Game.Terrain.GetLowestSensorStrength and Game.Grid.ToLocation and Game.Grid.unitCells) then return; end;
+	Control.fresh = Control.fresh or {};
+	local round, R = Sense.round, Map.groundRadius;
+	-- hostiles in sight: where they are, and as far as they see or shoot
+	for _,e in pairs(Game.hostileUnits) do
+		local tt = e.turret and e.turret.type;
+		if e.health and e.health > 0 and e.location and not (e.isIndestructible or e.type.isIndestructible)
+				and (e.type.isMobile or (tt and tt.canAttack)) then
+			local range = (tt and tt.canAttack and tt.flatAttackRange or 0) * 1.25;
+			if range > Control.reach then Control.reach = range; end;
+			Control.Note('u'..tostring(e.id), e.location.world, math.max(range, e.type.scanningRange or 0));
+		end;
+	end;
+	for key,z in pairs(Control.zones) do
+		if round - z.round > Control.memory then Control.zones[key] = nil; end;
+	end;
+	local full = round % Control.every == 0 or Control.lastFull == nil;
+	if not full then
+		-- at once: what a new sighting or attack reaches is no longer controlled
+		if #Control.fresh > 0 then
+			for _,c in ipairs(Game.Grid.unitCells) do
+				if Control.level[c.index] == 2 and InZone(Control.fresh, c, R) then Control.level[c.index] = 1; end;
+			end;
+		end;
+		Control.fresh = {};
+		return;
+	end;
+	Control.fresh = {};
+	Control.lastFull = round;
+	local probe = nil;
+	for _,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do
+			if probe == nil and u.location and not u.location.isSuborbital and u.type and not u.type.isSuborbitalPlane then probe = u; end;
+		end;
+	end;
+	local cells = Game.Grid.unitCells;
+	local seen, height, first = {}, {}, {};
+	-- 1. what my sensors see, at the surface
+	local queue, dist = {}, {};
+	for _,c in ipairs(cells) do
+		local g = Score.ground[c.index];
+		if (g == nil or round - g.round >= 40) and probe then
+			local okg, loc = pcall(Game.Grid.FindHighestVehicleGround, probe, c);
+			g = {h = okg and loc and loc.height or false, round = round};
+			Score.ground[c.index] = g;
+		end;
+		local s = false;
+		if g and g.h then
+			height[c.index] = g.h;
+			local okl, loc = pcall(Game.Grid.ToLocation, c, g.h);
+			if okl and loc then
+				local oks, strength = pcall(Game.Terrain.GetLowestSensorStrength, loc, 1);
+				s = (oks and strength and strength > 0) or false;
+			end;
+		end;
+		seen[c.index] = s;
+		if not s then
+			queue[#queue+1] = c;
+			dist[c.index] = 0;
+		end;
+	end;
+	-- 2. the belt within firing range of what I cannot see
+	local rings = math.max(1, math.ceil(Control.Reach() / Control.Spacing()));
+	local at = 1;
+	while at <= #queue do
+		local c = queue[at];
+		at = at + 1;
+		local d = dist[c.index];
+		if d < rings then
+			for _,nb in ipairs(c.neighbors) do
+				if dist[nb.index] == nil then
+					dist[nb.index] = d + 1;
+					queue[#queue+1] = nb;
+				end;
+			end;
+		end;
+	end;
+	local zones = 0;
+	for _ in pairs(Control.zones) do zones = zones + 1; end;
+	for _,c in ipairs(cells) do
+		first[c.index] = seen[c.index] and dist[c.index] == nil and not (zones > 0 and InZone(Control.zones, c, R));
+	end;
+	-- 3. higher ground within range that is not controlled overlooks what lies below it:
+	-- the highest such ground around each cell, spread ring by ring
+	local high = {};
+	for _,c in ipairs(cells) do
+		high[c.index] = (not first[c.index]) and (height[c.index] or -100) or -100;
+	end;
+	for _ = 1,rings do
+		local nextHigh = {};
+		for _,c in ipairs(cells) do
+			local h = high[c.index];
+			for _,nb in ipairs(c.neighbors) do
+				local x = high[nb.index];
+				if x and x > h then h = x; end;
+			end;
+			nextHigh[c.index] = h;
+		end;
+		high = nextHigh;
+	end;
+	local counts = {[0] = 0, [1] = 0, [2] = 0};
+	local per = {};
+	local planes = Sense.AirMatters();
+	local watchers = Sense.airObservers or {};
+	local airR = Map.airRadius or R;
+	local airOnly = 0;
+	Control.air = {};
+	for _,c in ipairs(cells) do
+		local l = 0;
+		if seen[c.index] then
+			l = (first[c.index] and high[c.index] < (height[c.index] or 0) + Control.peakMargin) and 2 or 1;
+		end;
+		if l == 2 and planes then
+			local x, y, z = c.center.x * airR, c.center.y * airR, c.center.z * airR;
+			local watched = false;
+			for _,o in ipairs(watchers) do
+				local dx, dy, dz = x - o.pos.x, y - o.pos.y, z - o.pos.z;
+				if dx*dx + dy*dy + dz*dz <= o.range * o.range then watched = true; break; end;
+			end;
+			if not watched then
+				l = 1;
+				Control.air[c.index] = true;
+				airOnly = airOnly + 1;
+			end;
+		end;
+		Control.level[c.index] = l;
+		counts[l] = counts[l] + 1;
+		local rid = Map.cellRegion[c.index];
+		if rid then
+			local p = per[rid];
+			if p == nil then p = {n = 0, [0] = 0, [1] = 0, [2] = 0}; per[rid] = p; end;
+			p.n = p.n + 1;
+			p[l] = p[l] + 1;
+		end;
+	end;
+	Control.byRegion = {};
+	for rid,p in pairs(per) do
+		Control.byRegion[rid] = {controlled = p[2] / p.n, contested = p[1] / p.n};
+	end;
+	if round % 20 == 0 then
+		Log(string.format('Control map: %d cells controlled, %d contested (%d only for the air above), %d not seen; firing range %.1f cells, %d sightings and attacks remembered',
+			counts[2], counts[1], airOnly, counts[0], Control.Reach() / Control.Spacing(), zones));
+	end;
 end;
 
 -------------------------------------------------------------------------------
@@ -2027,6 +2270,11 @@ function Economy.SiteOK(loc, forMine)
 	end;
 	-- don't build where remembered or sensed hostiles can hit
 	if Move.IsDangerous(loc) then Economy.siteWhy = 'danger'; return false; end;
+	-- what is worth something only on ground that is mine (radar and defences push the edge out)
+	if Cfg.useControl and not Economy.fringeOK and Control.At(loc) < 2 then
+		Economy.siteWhy = (Control.air[loc.cell.index] and 'open to planes') or (Control.At(loc) == 1 and 'contested') or 'not seen';
+		return false;
+	end;
 	-- never box in a vehicle plant: finished vehicles need somewhere to deploy
 	for _,nb in ipairs(loc.cell.neighbors) do
 		if Economy.plantCells[nb.index] then
@@ -2230,6 +2478,8 @@ function Economy.FindMineCells(resource, maxCount)
 		local list = {};
 		local seen = {};
 		local maxHops = 2;
+		local heldBack = {[0] = 0, [1] = 0, port = 0};
+		local portNear = Economy.NextToPort();
 		local function Scan(reg)
 			if seen[reg.id] then return; end;
 			if (Sense.Threat(reg) > 0 and not Cfg.minesBelowThreat) or (Sense.hops[reg.id] or 99) > maxHops then return; end;
@@ -2238,7 +2488,14 @@ function Economy.FindMineCells(resource, maxCount)
 				if not Sense.structureCells[cell.index] then
 					local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, resource, cell);
 					if ok and lvl and lvl > 0 then
-						list[#list+1] = {cell=cell, level=lvl, hops=Sense.hops[reg.id] or 0};
+						-- a mine only on ground that is mine (Control)
+						local c = Cfg.useControl and Control.At(cell) or 2;
+						if c == 2 then
+							list[#list+1] = {cell=cell, level=lvl, hops=Sense.hops[reg.id] or 0};
+						else
+							heldBack[c] = heldBack[c] + 1;
+							if portNear and portNear[cell.index] then heldBack.port = heldBack.port + 1; end;
+						end;
 					end;
 				end;
 			end;
@@ -2257,7 +2514,7 @@ function Economy.FindMineCells(resource, maxCount)
 			end;
 		end;
 		-- sites next to a port first, also from further away
-		local near = Economy.NextToPort();
+		local near = portNear;
 		maxHops = Cfg.portMineHops;
 		for idx,_ in pairs(near) do
 			local rid = Map.cellRegion[idx];
@@ -2277,8 +2534,9 @@ function Economy.FindMineCells(resource, maxCount)
 		Economy.portLogged = Economy.portLogged or {};
 		if Sense.round - (Economy.portLogged[resource] or -99) >= 20 then
 			Economy.portLogged[resource] = Sense.round;
-			Log(string.format('Port sites for %s at round %d: %d ports or poles known, %d cells next to those not mine, %d of them usable sites (of %d sites), bias %s, last obstacle: %s',
-				resource, Sense.round, poles, nearCount, sites, #list, tostring(Cfg.portMineBias), tostring(Economy.portWhy or 'none')));
+			Log(string.format('Port sites for %s at round %d: %d ports or poles known, %d cells next to those not mine, %d of them usable sites (of %d sites), bias %s, last obstacle: %s; held back: %d sites contested, %d not seen, %d of those next to a port',
+				resource, Sense.round, poles, nearCount, sites, #list, tostring(Cfg.portMineBias), tostring(Economy.portWhy or 'none'),
+				heldBack[1], heldBack[0], heldBack.port));
 			Economy.portWhy = nil;
 		end;
 		-- richer and closer first
@@ -2657,6 +2915,8 @@ function Economy.AssignConstructor(u, index)
 	end;
 	Util.AddCurrentToReach(reach, u);
 	local best, bestScore = nil, nil;
+	-- defences may stand on contested ground: they are what makes it mine
+	Economy.fringeOK = want.kind == 'tower';
 	for _,n in ipairs(reach) do
 		local loc = n.location;
 		if not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false) then
@@ -2689,6 +2949,7 @@ function Economy.AssignConstructor(u, index)
 			end;
 		end;
 	end;
+	Economy.fringeOK = false;
 	if best then
 		Economy.claimed[best.location.cell.index] = true;
 		Economy.BuildAt(u, best.location, want.type, best);
@@ -4062,6 +4323,7 @@ function Execute()
 	end;
 	if not SafeCall('Sense.Update', Sense.Update) then return; end;
 	SafeCall('Score', Score.Update);
+	SafeCall('Control', Control.Update);
 	SafeCall('Significance', Significance.Update);
 	SafeCall('Needs', Needs.Update);
 	SafeCall('NeedsReport', Needs.Report);
