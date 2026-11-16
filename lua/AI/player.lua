@@ -91,6 +91,7 @@ Cfg = {
 	wallAA = 2,					-- AA towers inside the wall, whether planes were seen or not (sensor drones show the Nexus where to strike)
 	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
 	mechanicFromRound = 15,
+	portNeedsArmy = true,		-- ports beyond the home region only where my units stand in strength
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
@@ -2841,7 +2842,7 @@ function Economy.TryPort(u)
 			-- A port away from home only where my units already stand in strength: its owner sees the
 			-- construction and comes for it, and a lone builder there gives the base away and is lost
 			-- (in 19 of 24 matches the one try for the second port was a lone builder around round 25)
-			local home = (Sense.hops[rid] or 99) <= 1;
+			local home = not Cfg.portNeedsArmy or (Sense.hops[rid] or 99) <= 1;
 			if not beside and ((held and econ) or (home and near and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
 					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength))) then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
