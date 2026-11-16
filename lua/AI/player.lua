@@ -87,6 +87,7 @@ Cfg = {
 	wallHold = 60,				-- rounds a finished wall is kept shut and mended: it buys time, not for long. Then a gate is opened
 	wallGiveUp = 120,			-- rounds after which an unfinished wall is left as it is
 	wallBuilders = 3,			-- terraformers on the wall at the same time
+	earlyAA = 1,				-- AA towers at home as soon as the economy stands, whoever the opponent
 	wallAA = 2,					-- AA towers inside the wall, whether planes were seen or not (sensor drones show the Nexus where to strike)
 	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
 	mechanicFromRound = 15,

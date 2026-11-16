@@ -1153,16 +1153,22 @@ function Needs.NextStructure(constructorIndex)
 		end;
 	end;
 	-- AA inside the wall, seen planes or not: the Nexus scouts with sensor drones, and what they see gets raided
-	if (Mem.wall or Mem.wallSkipped) and Types.aaTower and Types.IsUnlocked(Types.aaTower) and Mem.homeRegion
-			and Economy.Count(Types.aaTower) < Cfg.wallAA and minerals >= Cost(Types.aaTower) then
-		Needs.Note('AA Tower ordered inside the wall: '..Economy.Count(Types.aaTower)..' standing');
-		return {type = Types.aaTower, kind = 'tower', region = Mem.homeRegion};
-	end;
-	-- ... and eyes on the wall: a wall that is not seen is likely not there any more
-	if (Mem.wall or Mem.wallSkipped) and Types.radarTower and Types.IsUnlocked(Types.radarTower) and Mem.homeRegion
-			and Economy.Count(Types.radarTower) < 1 and minerals >= Cost(Types.radarTower) then
-		Needs.Note('Radar Tower ordered inside the wall');
-		return {type = Types.radarTower, kind = 'tower', region = Mem.homeRegion};
+	-- (one AA tower early as insurance, whoever the opponent is; the second and the radar once aircraft
+	-- were seen or are due: between two AIs without planes the full set cost the economy its lead)
+	do
+		local settled = Sense.round >= 12 and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2;
+		local wantAA = settled and (Sense.AirMatters() and Cfg.wallAA or Cfg.earlyAA) or 0;
+		if Types.aaTower and Types.IsUnlocked(Types.aaTower) and Mem.homeRegion
+				and Economy.Count(Types.aaTower) < wantAA and minerals >= Cost(Types.aaTower) then
+			Needs.Note('AA Tower ordered at home: '..Economy.Count(Types.aaTower)..' standing');
+			return {type = Types.aaTower, kind = 'tower', region = Mem.homeRegion};
+		end;
+		-- ... and eyes on the base and its wall: what is not seen is likely not there any more
+		if settled and (Sense.AirMatters() or Mem.wall) and Types.radarTower and Types.IsUnlocked(Types.radarTower) and Mem.homeRegion
+				and Economy.Count(Types.radarTower) < 1 and minerals >= Cost(Types.radarTower) then
+			Needs.Note('Radar Tower ordered at home');
+			return {type = Types.radarTower, kind = 'tower', region = Mem.homeRegion};
+		end;
 	end;
 	-- the same for what makes the energy and the vehicles: never none, and generators not below a floor
 	if Sense.round >= 20 then
