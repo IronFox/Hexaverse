@@ -54,6 +54,8 @@ Cfg = {
 	-- desired unit counts
 	constructorsEarly = 3,
 	constructorsLate = 5,
+	maxArmy = 36,				-- combat units of all kinds; more than the ground carries jam the paths
+	maxPlants = 4,				-- vehicle plants worth having
 	mineralReserve = 200,		-- minerals left untouched by everything the faction does not live on
 	reserveFromRound = 30,
 	minGenerators = 3,			-- rebuilt before anything else from round 20

@@ -976,6 +976,7 @@ function Needs.StructureOptions(constructorIndex)
 		local plants = Economy.Count(Types.plant);
 		add({type = Types.plant, kind = 'base'}, {survivalPlant = 1, spend = 1, army = 0.3});
 		opts[#opts].have = plants;
+		opts[#opts].cap = Cfg.maxPlants;
 		-- every plant queue full while minerals pile up: another plant is the missing capability
 		if Economy.plantsFull then opts[#opts].factor = 1 + 1.5 * Needs.BlockValue('capacity'); end;
 	end;
@@ -1237,6 +1238,18 @@ function Needs.VehicleOptions(kit)
 		-- at all (a large army used to make every radar look like the first: they drained the minerals)
 		opts[#opts].have = have('radar');
 		opts[#opts].cap = math.max(1, math.ceil(combat / Cfg.radarPerCombat));
+	end;
+	-- An army beyond what the ground carries blocks its own paths and those of the builders
+	-- (60 heavy units in one region: every move order refused, no port retaken). At the cap
+	-- only builders, air defence and scouts are still produced; losses are replaced.
+	local army = #Sense.my.combat + #Sense.my.bomb;		-- (ground units: planes don't block paths)
+	if army >= Cfg.maxArmy then
+		local kept = {};
+		for _,o in ipairs(opts) do
+			if not (o.serves.army or o.serves.survivalGarrison) or o.serves.survivalBuilder then kept[#kept+1] = o; end;
+		end;
+		if #kept < #opts then Needs.Note('army at its cap ('..army..' of '..Cfg.maxArmy..'): no more combat units'); end;
+		opts = kept;
 	end;
 	return opts;
 end;
