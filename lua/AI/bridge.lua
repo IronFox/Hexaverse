@@ -601,7 +601,9 @@ function Bridge.RunPosted()
 			end;
 			-- (fires as soon as the target is in range, on the way to the post too, and says so once it has arrived)
 			if post.fire and u.location and (inReach or post.arrived or u.location.cell.index == post.cell) then fired = FireAtCell(u, post);
-			else fired = Military.Fire(u); end;
+			-- (what fires uranium, and what has a target of its own, holds its fire for that target:
+			-- an EMP posted for a tower spent every 50 uranium on passing vehicles)
+			elseif not post.fire and not string.find(u.type.name or '', 'EMP') and not string.find(u.type.name or '', 'Bomb') then fired = Military.Fire(u); end;
 			if fired and not u.motionIgnoresAttack then return; end;
 			if u.location and u.location.cell.index == post.cell then
 				if not post.arrived then
