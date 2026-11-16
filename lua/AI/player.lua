@@ -54,7 +54,7 @@ Cfg = {
 	-- desired unit counts
 	constructorsEarly = 3,
 	constructorsLate = 5,
-	earlyTowers = 2,			-- rocket towers at home before the first raid (with a Nexus on the planet they come by round 20 to 35)
+	earlyTowers = 3,			-- rocket towers at home before the first raid (with a Nexus on the planet they come by round 20 to 35)
 	portAttackValue = 12,		-- what a port that is not mine adds to a region as an attack target (a hostile structure counts 3)
 	stuckTries = 3,				-- refused orders from one spot before a unit is left alone
 	stuckRest = 12,				-- for this many rounds

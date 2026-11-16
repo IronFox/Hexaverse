@@ -1155,12 +1155,18 @@ function Needs.NextStructure(constructorIndex)
 			Needs.Note('Radar Tower ordered at home for the towers');
 			return {type = rdr, kind = 'tower', region = Mem.homeRegion};
 		end;
-		if rt and Mem.homeRegion and Sense.round <= 80 and Types.IsUnlocked(rt)
-				and Economy.Count(rt) < Cfg.earlyTowers and minerals >= Cost(rt)
+		-- with the radar standing, the long arm: a missile launcher tower reaches 7 cells but sees 2,
+		-- a rocket tower reaches 4 and sees 3
+		local lt = Types.launcherTower;
+		local long = lt and rdr and Types.IsUnlocked(lt) and Economy.Count(rdr) >= 1 and minerals >= Cost(lt);
+		local et = long and lt or rt;
+		local standing = Economy.Count(rt) + Economy.Count(lt);
+		if et and Mem.homeRegion and Sense.round <= 80 and Types.IsUnlocked(et)
+				and standing < Cfg.earlyTowers and minerals >= Cost(et)
 				and (nextDoor or (Sense.nexus and Mem.nexusActive and Sense.round >= 6
 					and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2)) then
-			Needs.Note('early Rocket Launcher Tower ordered at home: '..Economy.Count(rt)..' standing'..(nextDoor and ' (a port next door)' or ''));
-			return {type = rt, kind = 'tower', region = Mem.homeRegion};
+			Needs.Note('early '..et.name..' ordered at home: '..standing..' standing'..(nextDoor and ' (a port next door)' or ''));
+			return {type = et, kind = 'tower', region = Mem.homeRegion};
 		end;
 	end;
 	-- AA inside the wall, seen planes or not: the Nexus scouts with sensor drones, and what they see gets raided
