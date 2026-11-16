@@ -582,6 +582,11 @@ function Bridge.TakePosted()
 	end;
 end;
 
+local function Dist2(a,b)
+	local dx,dy,dz = a.x-b.x, a.y-b.y, a.z-b.z;
+	return dx*dx+dy*dy+dz*dz;
+end;
+
 function Bridge.RunPosted()
 	for _,u in ipairs(Bridge.posted or {}) do
 		SafeCall('posted '..tostring(u.niceName), function()
@@ -616,7 +621,30 @@ function Bridge.RunPosted()
 				-- the whole way at once, through my own units if they stand in it; why not, if not
 				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 				if not ok or path == nil or #path == 0 then ok, path = pcall(u.FindShortestPath, loc, nil, true); end;
-				if ok and path and #path > 0 then
+				-- (the engine can refuse a path the unit itself found, round after round: after 5 rounds
+				-- on the spot the unit goes step by step, to the reachable cell nearest the post)
+				local stuck = post.at and post.at.cell == u.location.cell.index and Sense.round - post.at.round >= 5;
+				if stuck then
+					local best, bestD;
+					local okR, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed), true, false, false, true);
+					if okR and reach then
+						for _,n in ipairs(reach) do
+							local l = n.location;
+							if l and not l.isSuborbital and l.cell.index ~= u.location.cell.index and Game.GetMobileAt(l) == nil
+								and not Game.Grid.AffectedByEMP(l) then
+								local d = Dist2(l.world, loc.world);
+								if bestD == nil or d < bestD then best, bestD = l, d; end;
+							end;
+						end;
+					end;
+					if best and bestD < Dist2(u.location.world, loc.world) then
+						pcall(u.DirectTo, best);
+					elseif not post.toldWall then
+						post.toldWall = true;
+						Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') on cell '..u.location.cell.index..': the engine refuses its path to cell '..post.cell
+							..' and no cell within one move lies nearer ('..(okR and reach and #reach or 0)..' cells in reach). Post it by another way, cell by cell.';
+					end;
+				elseif ok and path and #path > 0 then
 					local ok2, err = pcall(u.DirectTo, path[#path]);
 					if not ok2 and not post.told then post.told = true; Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..': the move order was refused: '..tostring(err); end;
 				elseif not Move.Towards(u, loc.world, cell, false, true) and not post.told then
