@@ -2996,7 +2996,7 @@ function Wall.Try(u)
 		local ok, err = pcall(u.BuildBlocks, blocks);
 		if not ok then Log('Wall: BuildBlocks failed: '..tostring(err)); return false; end;
 		Mem.jobs[u.id] = {kind = 'Wall', since = Sense.round};
-		if Sense.round % 5 == 0 then Log(string.format('Wall: %s blocks %d cells from cell %d, %d of %d still open', u.niceName, count, here.index, open, #w.ring)); end;
+		Log(string.format('Wall: %s blocks %d cells from cell %d, %d of %d still open (round %d)', u.niceName, count, here.index, open, #w.ring, Sense.round));
 		return true;
 	end;
 	if best then
@@ -3004,6 +3004,7 @@ function Wall.Try(u)
 		if ok and path and #path > 0 then
 			u.DirectTo(path[#path]);
 			Mem.jobs[u.id] = {kind = 'Wall', since = Sense.round};
+			Log(string.format('Wall: %s goes to cell %d, %d of %d still open (round %d)', u.niceName, best.cell.index, open, #w.ring, Sense.round));
 			return true;
 		end;
 	end;
@@ -3578,7 +3579,7 @@ function Economy.AssignMechanic(u)
 		local th = tonumber(best.height) or tonumber(best.type.height) or 1;
 		local ok, err = pcall(u.Repair, {cell = tc, height = best.location.height + th - 1});
 		if not ok then Log('Repair failed: '..tostring(err));
-		elseif Sense.round % 5 == 0 then
+		else
 			Log(string.format('%s repairs %s on cell %d (%s of %s health)', u.niceName, best.niceName or best.type.name, tc.index, tostring(best.health), tostring(best.maxHealth)));
 		end;
 		return;
@@ -3595,8 +3596,13 @@ function Economy.AssignMechanic(u)
 	end;
 	if dest then
 		local ok, path = pcall(u.FindShortestPath, dest, nil, false);
-		if ok and path and #path > 0 then u.DirectTo(path[#path]); end;
+		if ok and path and #path > 0 then
+			u.DirectTo(path[#path]);
+			Log(string.format('%s goes to repair %s on cell %d (%s of %s health)', u.niceName, best.niceName or best.type.name, tc.index, tostring(best.health), tostring(best.maxHealth)));
+			return;
+		end;
 	end;
+	if Sense.round % 10 == 0 then Log(u.niceName..': no way to '..(best.niceName or best.type.name)..' on cell '..tc.index..' to repair it'); end;
 end;
 
 Economy.plantHead = {};	-- plant id -> {id=production id, since=round}
