@@ -2940,7 +2940,9 @@ function Wall.Try(u)
 		if not Wall.Plan(u) then return false; end;
 	end;
 	local w = Mem.wall;
-	if w.complete then return false; end;
+	-- (a finished wall is looked over every few rounds: shells blast holes into it, and a wall holds
+	-- only as long as someone mends it)
+	if w.complete and Sense.round % 3 ~= 0 then return false; end;
 	local busy = 0;
 	for _,job in pairs(Mem.jobs) do if job.kind == 'Wall' then busy = busy + 1; end; end;
 	if busy >= Cfg.wallBuilders then return false; end;
@@ -2978,9 +2980,17 @@ function Wall.Try(u)
 		end;
 	end;
 	if open == 0 then
-		w.complete = Sense.round;
-		Log(string.format('Wall complete at round %d: %d cells, begun at round %d', Sense.round, #w.ring, w.since));
+		if not w.complete then
+			w.complete = Sense.round;
+			Wall.tries = {};
+			Log(string.format('Wall complete at round %d: %d cells, begun at round %d', Sense.round, #w.ring, w.since));
+		end;
 		return false;
+	end;
+	if w.complete then
+		Log(string.format('Wall breached at round %d: %d cells open. Mending', Sense.round, open));
+		w.breaches = (w.breaches or 0) + 1;
+		w.complete = nil;
 	end;
 	if count > 0 then
 		local ok, err = pcall(u.BuildBlocks, blocks);
