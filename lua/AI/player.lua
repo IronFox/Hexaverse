@@ -692,6 +692,9 @@ function Sense.Update()
 			Sense.structureAt[u.location.cell.index] = u;
 			local tn = u.type.name;
 			Sense.structuresByType[tn] = (Sense.structuresByType[tn] or 0) + 1;
+			-- (a standing tower is named 'Turret:Tower', the type to build 'Turret Tower': counted under both)
+			local alias = string.gsub(tn, ':Tower$', ' Tower');
+			if alias ~= tn then Sense.structuresByType[alias] = (Sense.structuresByType[alias] or 0) + 1; end;
 			if Types.planeFactory and u.type == Types.planeFactory then
 				Sense.planeFactories[#Sense.planeFactories+1] = u;
 			elseif u.type.isMobileEntityProducer and not u.type.isHangar then

@@ -107,6 +107,7 @@ end;
 
 -- No more of this structure type than n (nil lifts the cap). Labs also follow wantLabsRich and wantLabsMax.
 function Bridge.Cap(typeName, n)
+	typeName = string.gsub(tostring(typeName), ':Tower$', ' Tower');
 	if Game.Type.units[typeName] == nil then error('no such type: '..tostring(typeName), 2); end;
 	Cfg.caps[typeName] = n and tonumber(n) or nil;
 end;
@@ -114,8 +115,9 @@ end;
 -- Switches structures of a type off or on (off: they draw no power). Returns how many were switched.
 function Bridge.Switch(typeName, on, count)
 	local n = 0;
+	typeName = string.gsub(tostring(typeName), ':Tower$', ' Tower');
 	for _,st in ipairs(Sense.myStructures or {}) do
-		if st.type and st.type.name == typeName and st.Enable and (count == nil or n < count) and (st.isEnabled == nil or st.isEnabled ~= on) then
+		if st.type and string.gsub(st.type.name, ':Tower$', ' Tower') == typeName and st.Enable and (count == nil or n < count) and (st.isEnabled == nil or st.isEnabled ~= on) then
 			if pcall(st.Enable, on) then n = n + 1; end;
 		end;
 	end;
@@ -189,14 +191,77 @@ function Bridge.Cells(region)
 	for _,e in pairs(Game.hostileUnits) do
 		if e.health and e.health > 0 and e.location then what[e.location.cell.index] = 'HOSTILE '..tostring(e.type and e.type.name); end;
 	end;
-	Bridge.Out('CELLS of region %d (id h=ground height state [what] > neighbours; a * marks neighbours in other regions):', reg.id);
+	Bridge.Out('CELLS of region %d (id h=ground height state, water, resources [what] > neighbours; h=? means no ground a builder can stand on; a * marks neighbours in other regions):', reg.id);
 	for _,cell in ipairs(reg.cells) do
 		local loc = probe and Move.GroundAt(probe, cell);
 		local nb = {};
 		for _,n in ipairs(cell.neighbors or {}) do nb[#nb+1] = n.index..(Map.cellRegion[n.index] ~= reg.id and '*' or ''); end;
-		Bridge.Out('  %d h=%s %s%s > %s', cell.index, loc and tostring(loc.height) or '?', CellState(cell),
+		local extra = '';
+		if loc and Economy.IsWaterSurface(cell, loc) then extra = extra..' water'; end;
+		for _,res in ipairs({'Minerals', 'Fuel', 'Uranium'}) do
+			local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, res, cell);
+			if ok and lvl and lvl > 0 then extra = extra..' '..string.lower(res)..'='..tostring(lvl); end;
+		end;
+		Bridge.Out('  %d h=%s %s%s%s > %s', cell.index, loc and tostring(loc.height) or '?', CellState(cell), extra,
 			what[cell.index] and (' ['..what[cell.index]..']') or '', table.concat(nb, ' '));
 	end;
+end;
+
+-- Cell steps from a cell: returns {cell index -> steps} up to maxSteps.
+local function Steps(from, maxSteps)
+	local dist, edge = {[from.index] = 0}, {from};
+	for d = 1, maxSteps do
+		local nextEdge = {};
+		for _,c in ipairs(edge) do
+			for _,n in ipairs(c.neighbors or {}) do
+				if dist[n.index] == nil then dist[n.index] = d; nextEdge[#nextEdge+1] = n; end;
+			end;
+		end;
+		edge = nextEdge;
+	end;
+	return dist;
+end;
+
+-- Hostiles in sight one by one: type, cell, region, health, firing range in cells (structures marked).
+function Bridge.Hostiles()
+	Bridge.Out('HOSTILES IN SIGHT (type, cell, region, health, range):');
+	for _,e in pairs(Game.hostileUnits) do
+		if e.health and e.health > 0 and e.location then
+			local reg = Map.RegionOfLoc(e.location);
+			local tt = e.turret and e.turret.type;
+			Bridge.Out('  %s%s, cell %d, region %s, h=%s, health %s, range %s', tostring(e.type and e.type.name), (e.type and e.type.isStructure) and ' (structure)' or '',
+				e.location.cell.index, reg and tostring(reg.id) or '?', tostring(e.location.height), tostring(e.health), tt and tostring(tt.attackRange or tt.range or '?') or '-');
+		end;
+	end;
+end;
+
+-- The cells exactly `steps` away from a cell (or up to it with all = true), with their state: where to
+-- stand just inside my own range of a target, or just outside its range.
+function Bridge.Ring(cell, steps, all)
+	local c = Economy.Cell(tonumber(cell));
+	if c == nil then error('no such cell: '..tostring(cell), 2); end;
+	steps = math.min(12, math.floor(tonumber(steps) or 1));
+	local dist = Steps(c, steps);
+	local probe = (Sense.my.constructor or {})[1] or (Sense.my.combat or {})[1];
+	local rows = {};
+	for idx,d in pairs(dist) do
+		if d == steps or (all and d > 0) then
+			local cc = Economy.Cell(idx);
+			local loc = probe and Move.GroundAt(probe, cc);
+			rows[#rows+1] = string.format('%d(%dst r%s h=%s %s)', idx, d, tostring(Map.cellRegion[idx] or '?'), loc and tostring(loc.height) or '?', CellState(cc));
+		end;
+	end;
+	table.sort(rows);
+	Bridge.Out('CELLS %s%d steps from cell %d: %s', all and 'within ' or '', steps, c.index, table.concat(rows, ' '));
+end;
+
+-- Steps between two cells (nil beyond 30).
+function Bridge.Dist(a, b)
+	local ca, cb = Economy.Cell(tonumber(a)), Economy.Cell(tonumber(b));
+	if ca == nil or cb == nil then error('no such cell', 2); end;
+	local d = Steps(ca, 30)[cb.index];
+	Bridge.Out('cell %d to cell %d: %s steps', ca.index, cb.index, tostring(d or 'more than 30'));
+	return d;
 end;
 
 -- My units one by one (all, or those in a region): id, type, cell, region, health, post.
@@ -341,12 +406,35 @@ end;
 do
 	local base = Economy.NextStructure;
 	function Economy.NextStructure(constructorIndex)
-		local job = table.remove(Bridge.build, 1);
-		if job == nil then return base(constructorIndex); end;
+		local me = Sense.my.constructor[constructorIndex];
+		local job, at = nil, nil;
+		for i,j in ipairs(Bridge.build) do
+			-- an exact cell goes to a builder that has ground there and has not failed at it yet
+			if j.cell == nil or me == nil or (not (j.failed and j.failed[tostring(me.id)]) and Move.GroundAt(me, Economy.Cell(j.cell)) ~= nil) then
+				job, at = j, i; break;
+			end;
+		end;
+		if job then table.remove(Bridge.build, at); end;
+		if job == nil then
+			local want = base(constructorIndex);
+			-- (caps hold for whatever the scripts choose, their direct rules included)
+			local cap = want and want.type and Cfg.caps[want.type.name];
+			if cap and Economy.Count(want.type) >= cap then return nil; end;
+			return want;
+		end;
 		if job.cell then
 			return {type = job.type, kind = 'base', cell = job.cell, done = function(why, u)
 				local line = 'BuildAt '..job.type.name..' at cell '..job.cell..': '
 					..(why and ('FAILED, '..why) or 'a builder is on its way')..(u and (' ('..tostring(u.niceName)..')') or '');
+				if why and u then
+					job.failed = job.failed or {};
+					job.failed[tostring(u.id)] = true;
+					job.tries = (job.tries or 0) + 1;
+					if job.tries < 4 then
+						Bridge.build[#Bridge.build+1] = job;
+						line = line..'; another builder will try';
+					end;
+				end;
 				Log('Bridge: '..line);
 				Bridge.results[#Bridge.results+1] = line;
 			end};
@@ -561,6 +649,9 @@ function Bridge.Help()
 	Add(L, '  Bridge.Units([region]) my units one by one (id, type, cell, health)');
 	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
+	Add(L, '  Bridge.Hostiles()   hostiles in sight one by one with cell and firing range');
+	Add(L, '  Bridge.Ring(cell, steps [, true])   the cells that many steps from a cell (true: all up to it), with region, height, state');
+	Add(L, '  Bridge.Dist(cellA, cellB)   steps between two cells');
 	Add(L, '  Bridge.Cap(typeName, n)    the scripts buy no more of this structure than n (nil lifts it); nothing that draws power is');
 	Add(L, '                             bought while energy spare is 0 anyway.   Bridge.Switch(typeName, false [, count])  switches them off');
 	Add(L, 'Directions and posture stand until you change them. Anything else is plain Lua with the game API.');
