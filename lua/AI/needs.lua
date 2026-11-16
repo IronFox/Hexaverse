@@ -1145,10 +1145,13 @@ function Needs.NextStructure(constructorIndex)
 	-- were raided at round 11 to 33 with 2 to 4 units and no tower.)
 	do
 		local rt = Game.Type.units['Rocket Launcher Tower'];
-		if rt and Sense.nexus and Mem.nexusActive and Mem.homeRegion and Sense.round >= 6 and Sense.round <= 80 and Types.IsUnlocked(rt)
+		-- ... and at once, before anything else, with a second claimable port next door
+		local nextDoor = Cfg.nextDoorHops > 0 and Sense.PortNextDoor();
+		if rt and Mem.homeRegion and Sense.round <= 80 and Types.IsUnlocked(rt)
 				and Economy.Count(rt) < Cfg.earlyTowers and minerals >= Cost(rt)
-				and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2 then
-			Needs.Note('early Rocket Launcher Tower ordered at home: '..Economy.Count(rt)..' standing');
+				and (nextDoor or (Sense.nexus and Mem.nexusActive and Sense.round >= 6
+					and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2)) then
+			Needs.Note('early Rocket Launcher Tower ordered at home: '..Economy.Count(rt)..' standing'..(nextDoor and ' (a port next door)' or ''));
 			return {type = rt, kind = 'tower', region = Mem.homeRegion};
 		end;
 	end;

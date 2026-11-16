@@ -92,6 +92,7 @@ Cfg = {
 	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
 	mechanicFromRound = 15,
 	portNeedsArmy = true,		-- ports beyond the home region only where my units stand in strength
+	nextDoorHops = 2,			-- a second claimable port this close to home means towers first
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
@@ -1121,6 +1122,28 @@ function Sense.UnderEMP(cell)
 	-- (the API wants a location, not a cell; EMP goes by the cell stack, any height does)
 	local ok, e = pcall(Game.Grid.AffectedByEMP, {cell = cell, height = 0});
 	return ok and e and true or false;
+end;
+
+-- A second port close to home that can be claimed (not under EMP, not mine), besides the nearest
+-- one: contested ground next door. Whoever holds it, or wants it, is a neighbour from round one.
+-- (Against the Nexus the raids of rounds 7 to 12 all came from the base at such a port.)
+function Sense.PortNextDoor()
+	if Sense.portNextDoorAt == Sense.round then return Sense.portNextDoor; end;
+	Sense.portNextDoorAt = Sense.round;
+	Sense.portNextDoor = false;
+	local okp = pcall(Economy.NextToPort);
+	local list = {};
+	for idx,cell in pairs(okp and Economy.portCells or {}) do
+		local rid = Map.cellRegion[idx];
+		local hops = rid and Sense.hops[rid];
+		if hops and not Sense.UnderEMP(cell) then list[#list+1] = {idx = idx, hops = hops}; end;
+	end;
+	table.sort(list, function(a, b) return a.hops < b.hops; end);
+	local st = Sense.structureAt or {};
+	for i = 2, #list do
+		if list[i].hops <= Cfg.nextDoorHops and not st[list[i].idx] then Sense.portNextDoor = true; break; end;
+	end;
+	return Sense.portNextDoor;
 end;
 
 function Sense.IsNexus(f)
