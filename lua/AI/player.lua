@@ -2860,6 +2860,20 @@ function Economy.AssignConstructor(u, index)
 		return;
 	end;
 
+	-- a site chosen from outside (bridge.lua): there or not at all, and the reason is told
+	if want.cell then
+		local cell = Economy.Cell(want.cell);
+		local dest = cell and Move.GroundAt(u, cell);
+		local why = nil;
+		if dest == nil then why = 'no ground there a builder can stand on';
+		elseif Game.Grid.AffectedByEMP(dest) then why = 'the cell lies in an EMP zone';
+		elseif Game.GetStructureAt(dest) ~= nil then why = 'a structure stands there already';
+		elseif not Economy.BuildAt(u, dest, want.type) then why = Economy.buildWhy or 'no path there for the builder';
+		else Economy.claimed[cell.index] = true; end;
+		if want.done then want.done(why, u); end;
+		return;
+	end;
+
 	if want.type == Types.lab and Economy.BuildLab(u, want.type) then
 		return;
 	end;

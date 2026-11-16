@@ -1185,7 +1185,12 @@ function Needs.VehicleOptions(kit)
 	add(Types.Vehicle(Types.turret.surveyor, Types.base.heavy) or Types.Vehicle(Types.turret.surveyor, Types.base.hover), {scouting = 1, prospecting = 1});
 	if #opts > 0 then opts[#opts].have = have('surveyor'); opts[#opts].cap = 3; end;
 	add(Types.Vehicle(Types.turret.radar, Types.base.hover), {scouting = 0.5, defense = 0.3});
-	if #opts > 0 then opts[#opts].have = math.floor(have('radar') * Cfg.radarPerCombat / math.max(1, combat)); end;
+	if #opts > 0 then
+		-- each further one counts for less, and beyond one per radarPerCombat combat units hardly
+		-- at all (a large army used to make every radar look like the first: they drained the minerals)
+		opts[#opts].have = have('radar');
+		opts[#opts].cap = math.max(1, math.ceil(combat / Cfg.radarPerCombat));
+	end;
 	return opts;
 end;
 

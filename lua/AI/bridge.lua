@@ -30,6 +30,9 @@ Helpers for the orders file:
   Bridge.Build(typeName, region [, count])   next free builders put this structure near that region
                                      (a builder builds within a few moves of where it is; mines are
                                      not ordered this way, they follow Bridge.Take)
+  Bridge.BuildAt(typeName, cell)     the next free builder builds it on exactly that cell (mines too);
+                                     if it cannot, the reason comes with the next state
+  Bridge.Research(text)              research this next (part of a topic name, for example 'unlock:artillery')
   Bridge.Weights{army = 3, defense = 6, ...} how much each need counts (see "Weights:" in the state)
   Bridge.Set(name, value)            any setting of Cfg (for example Bridge.Set('attackMinUnits', 8))
   Bridge.Every(rounds)               how often to be asked
@@ -48,7 +51,8 @@ Bridge = {
 	name = 'p1',
 	every = 10,
 	patience = 900,			-- seconds to wait for orders
-	alarmAfter = 5,			-- rounds without an attack after which a new attack asks at once
+	alarmAfter = 15,		-- rounds without an attack after which a new attack asks at once
+	alarmGap = 4,			-- but not within this many rounds of the last time asked
 	pins = {},				-- region id -> {kind, priority}
 	posture = nil,			-- nil (scripts decide), 'defend', or a region id to attack
 	build = {},				-- queue of {type, region}
@@ -100,9 +104,30 @@ function Bridge.Weights(w)
 	for k,v in pairs(w) do Cfg.needWeights[k] = tonumber(v); end;
 end;
 
-function Bridge.Build(typeName, region, count)
+local function Structure(typeName)
 	local t = Game.Type.units[typeName];
-	if t == nil or not t.isStructure then error('no such structure type: '..tostring(typeName), 2); end;
+	if t == nil or not t.isStructure then error('no such structure type: '..tostring(typeName), 3); end;
+	if not Types.IsUnlocked(t) then error(typeName..' is not researched yet (see "Can build" in the state; Bridge.Research gets it)', 3); end;
+	return t;
+end;
+
+function Bridge.BuildAt(typeName, cell)
+	local t = Structure(typeName);
+	cell = tonumber(cell);
+	if cell == nil or Economy.Cell(cell) == nil then error('no such cell: '..tostring(cell), 2); end;
+	Bridge.build[#Bridge.build+1] = {type = t, cell = cell};
+end;
+
+function Bridge.Research(text)
+	text = tostring(text);
+	for i,w in ipairs(Cfg.research) do
+		if w == text then table.remove(Cfg.research, i); break; end;
+	end;
+	table.insert(Cfg.research, 1, text);
+end;
+
+function Bridge.Build(typeName, region, count)
+	local t = Structure(typeName);
 	if t == Types.mine then error('mines are placed by the scripts where the resources are: use Bridge.Take(region) to get them built there', 2); end;
 	region = Region(region);
 	for _ = 1,(count or 1) do Bridge.build[#Bridge.build+1] = {type = t, region = region}; end;
@@ -165,6 +190,14 @@ do
 	function Economy.NextStructure(constructorIndex)
 		local job = table.remove(Bridge.build, 1);
 		if job == nil then return base(constructorIndex); end;
+		if job.cell then
+			return {type = job.type, kind = 'base', cell = job.cell, done = function(why, u)
+				local line = 'BuildAt '..job.type.name..' at cell '..job.cell..': '
+					..(why and ('FAILED, '..why) or 'a builder is on its way')..(u and (' ('..tostring(u.niceName)..')') or '');
+				Log('Bridge: '..line);
+				Bridge.results[#Bridge.results+1] = line;
+			end};
+		end;
 		Log('Bridge: builder sent to build '..job.type.name..' near region '..job.region);
 		return {type = job.type, kind = job.type.turretType and 'tower' or 'base', region = job.region};
 	end;
@@ -201,6 +234,28 @@ function Bridge.State()
 		Mem.attackTarget and (' -> region '..Mem.attackTarget) or '');
 	Add(L, 'home region %s; planes about: %s; firing range assumed %.1f cells', tostring(Mem.homeRegion),
 		Sense.AirMatters() and 'yes' or 'no', Control.Reach() / Control.Spacing());
+	do
+		local since = math.min(12, Sense.round - (Bridge.prevAsked or 0));
+		local lost, builders = Sense.RecentLosses(math.max(1, since));
+		local minerals = cur.storage.minerals or 0;
+		Add(L, 'minerals changed by %+d since you were last asked (round %s); lost %d units in the last %d rounds (%d builders)',
+			minerals - (Bridge.prevMinerals or minerals), tostring(Bridge.prevAsked or '-'), lost, math.max(1, since), builders);
+		Bridge.prevMinerals, Bridge.prevAsked = minerals, Sense.round;
+		local can, cannot = {}, {};
+		for name,t in pairs(Game.Type.units) do
+			if t.isStructure then
+				if Types.IsUnlocked(t) then can[#can+1] = name; else cannot[#cannot+1] = name; end;
+			end;
+		end;
+		table.sort(can); table.sort(cannot);
+		Add(L, 'Can build: %s', table.concat(can, ', '));
+		Add(L, 'Not researched yet: %s', #cannot > 0 and table.concat(cannot, ', ') or 'nothing');
+		local q = {};
+		local ok = pcall(function()
+			for _,t in ipairs(Game.Research.myQueue or {}) do q[#q+1] = tostring(t.fullName or t.name or t); end;
+		end);
+		Add(L, 'Research queue: %s', (ok and #q > 0) and table.concat(q, '; ') or 'empty or unknown');
+	end;
 	-- mine
 	local units, unitsAt, structs, structsAt = {}, {}, {}, {};
 	for _,list in pairs(Sense.my) do CountByType(list, units, unitsAt); end;
@@ -216,6 +271,38 @@ function Bridge.State()
 	end;
 	CountByType(seen, foes, foesAt);
 	Add(L, 'HOSTILE IN SIGHT: %s', #seen > 0 and Listing(foes) or 'nothing');
+	-- ports: where a structure would have to stand, and what is in the way
+	do
+		Economy.NextToPort();
+		local mine = {};
+		for _,u in ipairs(Sense.myStructures or {}) do
+			if u.type and u.type.name and string.find(u.type.name, 'Nexus Port', 1, true) and u.location then mine[u.location.cell.index] = true; end;
+		end;
+		Add(L, '');
+		Add(L, 'PORTS AND POLES (a structure of yours on a cell next to one takes it; cells listed as cell:state,');
+		Add(L, ' state = ok, emp (EMP zone, cannot be built on), built, unseen, contested):');
+		local ids = {};
+		for idx,_ in pairs(Economy.portCells or {}) do ids[#ids+1] = idx; end;
+		table.sort(ids);
+		for _,idx in ipairs(ids) do
+			local cell = Economy.portCells[idx];
+			local rid = Map.cellRegion[idx];
+			local hops = rid and Sense.hops[rid] or 99;
+			if mine[idx] or hops <= 6 then
+				local parts = {};
+				for _,nb in ipairs(cell.neighbors or {}) do
+					local state = 'ok';
+					local ok, emp = pcall(Game.Grid.AffectedByEMP, nb);
+					if ok and emp then state = 'emp';
+					elseif Sense.structureCells[nb.index] then state = 'built';
+					elseif Control.At(nb) == 0 then state = 'unseen';
+					elseif Control.hot[nb.index] then state = 'contested'; end;
+					parts[#parts+1] = nb.index..':'..state;
+				end;
+				Add(L, '  cell %d in region %s (%s hops)%s: %s', idx, tostring(rid), tostring(hops), mine[idx] and ' MINE' or '', table.concat(parts, ' '));
+			end;
+		end;
+	end;
 	-- needs of the scripts
 	local w, parts = Needs.Weights(), {};
 	for k,x in pairs(w) do parts[#parts+1] = string.format('%s=%.3g', k, x); end;
@@ -258,6 +345,11 @@ function Bridge.State()
 			for id,_ in pairs(reg.neighbors) do nb[#nb+1] = id; end;
 			table.sort(nb);
 			local o = Significance.out[reg.id] or {0, 0, 0};
+			local emp = 0;
+			for _,cell in ipairs(reg.cells) do
+				local ok, e = pcall(Game.Grid.AffectedByEMP, cell);
+				if ok and e then emp = emp + 1; end;
+			end;
 			local line = string.format('  %3d %s hops %d cells %d nb %s | ctl %.2f cont %.2f%s | res %.2f,%.2f height %.1f | threat %.1f,%.1f,%.1f hostile structures %d, lost here %d%s | sig %.2f,%.2f,%.2f',
 				reg.id, Sense.mine[reg.id] and 'MINE' or (reg.seenNow and 'seen' or (reg.lastSeen >= 0 and ('last seen r'..reg.lastSeen) or 'never seen')),
 				hops, #reg.cells, table.concat(nb, ','),
@@ -267,6 +359,7 @@ function Bridge.State()
 				reg.mobileThreat or 0, reg.staticThreat or 0, reg.airThreat or 0, reg.hostileStructures or 0, reg.lost or 0,
 				port and (' | NEXUS PORT ('..(port == 'mine' and 'mine' or 'not mine')..')') or '',
 				o[1] or 0, o[2] or 0, o[3] or 0);
+			if emp > 0 then line = line..string.format(' | EMP ZONE %d%% (nothing can be built or driven there)', math.floor(100 * emp / math.max(1, #reg.cells) + 0.5)); end;
 			Add(L, line);
 			if structsAt[reg.id] then Add(L, '        my structures: %s', Listing(structsAt[reg.id])); end;
 			if unitsAt[reg.id] then Add(L, '        my units: %s', Listing(unitsAt[reg.id])); end;
@@ -289,6 +382,10 @@ function Bridge.Help()
 	Add(L, '  Bridge.Attack(region)  the army goes there now      Bridge.Defend()  stays home      Bridge.Auto()  scripts decide');
 	Add(L, '  Bridge.Build(typeName, region [, count])   next free builders build it near that region (within a few moves of the builder).');
 	Add(L, '                                             Not for mines: the scripts place those where resources are, in regions you Take.');
+	Add(L, '  Bridge.BuildAt(typeName, cell)             the next free builder builds it on exactly that cell (mines too, for a port:');
+	Add(L, '                                             see PORTS AND POLES in the state); a failure and its reason come with the next state');
+	Add(L, '  Bridge.Research(text)                      research this next (part of a topic name, for example "unlock:artillery")');
+	Add(L, '  Structures that are not researched yet are refused with an error (see "Can build" in the state).');
 	Add(L, '  Bridge.Weights{army = 3, defense = 6}      how much each need of the scripts counts');
 	Add(L, '  Bridge.Set(name, value)   a Cfg setting      Bridge.Every(rounds)      Bridge.Say(text)  your reasoning, kept in the log');
 	Add(L, 'Directions and posture stand until you change them. Anything else is plain Lua with the game API.');
@@ -321,7 +418,7 @@ function Bridge.Turn()
 		Game.BridgeWrite('help_'..Bridge.name..'.txt', Bridge.Help());
 	end;
 	local attacked = #(Sense.recentAttacks or {}) > 0;
-	local alarm = attacked and round - Bridge.lastAttack > Bridge.alarmAfter;
+	local alarm = attacked and round - Bridge.lastAttack > Bridge.alarmAfter and (Bridge.lastAsked == nil or round - Bridge.lastAsked >= Bridge.alarmGap);
 	if attacked then Bridge.lastAttack = round; end;
 	if alarm then Bridge.results[#Bridge.results+1] = 'ATTACKED this round after a quiet spell (asked at once)'; end;
 	if not (alarm or Bridge.lastAsked == nil or round - Bridge.lastAsked >= Bridge.every) then return; end;
@@ -375,7 +472,8 @@ do
 	local base = Log;
 	function Log(msg)
 		if type(msg) == 'string' and (string.find(msg, 'Direction result:', 1, true) or string.find(msg, 'Port mine ordered', 1, true)
-				or string.find(msg, 'Attacked ', 1, true) == 1) and #Bridge.results < 30 then
+				or string.find(msg, 'Attacked ', 1, true) == 1 or string.find(msg, 'BuildStructure failed', 1, true)
+				or string.find(msg, 'did not happen', 1, true) or string.find(msg, 'no path to the', 1, true)) and #Bridge.results < 30 then
 			Bridge.results[#Bridge.results+1] = msg;
 		end;
 		return base(msg);
