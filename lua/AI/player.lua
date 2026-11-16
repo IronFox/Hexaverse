@@ -1634,7 +1634,11 @@ function Control.Update()
 			local e = m.type == 'HostileContact' and m.unitReference;
 			if e and e.location and e.type and not e.isOwnedByMe and not sensed[e.location.cell.index] then
 				local tt = e.turret and e.turret.type;
-				if (m.age or 0) > 0 and (Control.level[e.location.cell.index] or 0) > 0 and m.Destroy then
+				Control.markersGone = Control.markersGone or {};
+				if Control.markersGone[m.id] then
+					-- (already given up; the list may lag a round)
+				elseif (m.age or 0) > 0 and (Control.level[e.location.cell.index] or 0) > 0 and m.Destroy then
+					Control.markersGone[m.id] = true;
 					pcall(m.Destroy);	-- seen empty
 				elseif not (e.isIndestructible or e.type.isIndestructible) and tt and tt.canAttack
 						and (not e.type.isMobile or (m.age or 0) < 10) then
@@ -5183,11 +5187,22 @@ function Military.ClearPlants()
 		for _,nb in ipairs(p.location.cell.neighbors) do near[nb.index] = true; end;
 	end;
 	if next(near) == nil then return; end;
+	-- beside a plant whose finished vehicle cannot get out, everything makes room at once, builders
+	-- too (in the batches most matches lost a plant to its own units parked around it, builders mostly)
+	local urgent = {};
+	for _,p in ipairs(Sense.plants) do
+		if Economy.plantBlocked[p.id] then
+			for _,nb in ipairs(p.location.cell.neighbors) do urgent[nb.index] = true; end;
+		end;
+	end;
 	-- only units that have been sitting there for a while (not ones just ordered elsewhere)
 	local parked = {};
 	for role,list in pairs(Sense.my) do
 		for _,u in ipairs(list) do
-			if role ~= 'constructor' and u.type.isMobile and near[u.location.cell.index] then
+			local idx = u.location and u.location.cell.index;
+			if u.type.isMobile and idx and urgent[idx] then
+				parked[u.id] = 2;
+			elseif role ~= 'constructor' and u.type.isMobile and idx and near[idx] then
 				parked[u.id] = (Military.parked[u.id] or 0) + 1;
 			end;
 		end;
@@ -5195,7 +5210,7 @@ function Military.ClearPlants()
 	Military.parked = parked;
 	for role,list in pairs(Sense.my) do
 		for _,u in ipairs(list) do
-			if (parked[u.id] or 0) >= 2 and Move.IsIdle(u) and u.GetReach then
+			if (parked[u.id] or 0) >= 2 and (Move.IsIdle(u) or (role ~= 'constructor' and urgent[u.location.cell.index])) and u.GetReach then
 				SafeCall('clear plant '..u.niceName, function()
 					local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed * 2), false, false, false, true);
 					if not ok or reach == nil then return; end;
