@@ -2778,7 +2778,9 @@ function Economy.TryPort(u)
 	end;
 	-- the economy first: ports taken with nothing behind them were lost again with the match
 	-- (2 or 3 ports by round 30 and dead before round 100, three times out of six)
-	if Economy.Count(Types.mine) < Cfg.portMinMines or Economy.Count(Types.generator) < Cfg.portMinGenerators then return false; end;
+	-- ... except the port at home: that one comes first, with its mines (the order a human plays:
+	-- port and mines, wall, AA, and only then expansion)
+	local econ = Economy.Count(Types.mine) >= Cfg.portMinMines and Economy.Count(Types.generator) >= Cfg.portMinGenerators;
 	local builders = #(Sense.my.constructor or {});
 	local rich = (Economy.Resources().storage.minerals or 0) >= Cfg.richMinerals;
 	if under >= Cfg.portBuilders * (rich and 2 or 1) or under >= math.max(1, math.floor(builders / (rich and 2 or 3))) then return false; end;
@@ -2808,7 +2810,7 @@ function Economy.TryPort(u)
 		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round and not Sense.UnderEMP(cell)
 				and rid then
 			local reg = Map.regions[rid];
-			local near = (Sense.hops[rid] or 99) <= maxHops;
+			local near = (Sense.hops[rid] or 99) <= (econ and maxHops or 1);
 			-- (something of mine beside it already and the port still not mine: more of the same won't help)
 			local beside = false;
 			for _,nb in ipairs(cell.neighbors or {}) do
@@ -2818,7 +2820,7 @@ function Economy.TryPort(u)
 			-- were builders walking into a missile tower beside a port)
 			-- ... unless the army stands there in strength: that is how a lost port is taken back
 			local held = (reg.myStrength or 0) > (reg.staticThreat or 0) + (reg.mobileThreat or 0) and (reg.myStrength or 0) > 0;
-			if not beside and (held or (near and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
+			if not beside and ((held and econ) or (near and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
 					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength))) then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
 				if bestD == nil or d < bestD then best, bestD = cell, d; end;
@@ -2827,7 +2829,7 @@ function Economy.TryPort(u)
 	end;
 	-- a new port first; with none in reach, a second structure beside a port of mine
 	local guarding = false;
-	if best == nil then best, guarding = guard, true; end;
+	if best == nil and econ then best, guarding = guard, true; end;
 	if best == nil then return false; end;
 	Economy.portTried[best.index] = Sense.round + Cfg.portRetry;
 	local why = 'no free cell beside it';
