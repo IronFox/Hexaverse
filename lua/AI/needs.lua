@@ -1158,6 +1158,12 @@ function Needs.NextStructure(constructorIndex)
 		Needs.Note('AA Tower ordered inside the wall: '..Economy.Count(Types.aaTower)..' standing');
 		return {type = Types.aaTower, kind = 'tower', region = Mem.homeRegion};
 	end;
+	-- ... and eyes on the wall: a wall that is not seen is likely not there any more
+	if Mem.wall and Types.radarTower and Types.IsUnlocked(Types.radarTower) and Mem.homeRegion
+			and Economy.Count(Types.radarTower) < 1 and minerals >= Cost(Types.radarTower) then
+		Needs.Note('Radar Tower ordered inside the wall');
+		return {type = Types.radarTower, kind = 'tower', region = Mem.homeRegion};
+	end;
 	-- the same for what makes the energy and the vehicles: never none, and generators not below a floor
 	if Sense.round >= 20 then
 		if Types.plant and Types.IsUnlocked(Types.plant) and Economy.Count(Types.plant) == 0 and minerals >= Cost(Types.plant) then
