@@ -3712,6 +3712,8 @@ end;
 function Economy.BuildAt(u, loc, t, reachable)
 	Economy.buildWhy = nil;
 	if Economy.Capped(t) then Economy.buildWhy = 'capped'; return false; end;
+	-- (generators standing idle for lack of fuel: another one would stand idle too)
+	if t == Types.generator and ((Sense.offByKind or {}).generator or 0) > 0 then Economy.buildWhy = 'no fuel for another generator'; return false; end;
 	if loc ~= u.location then
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);

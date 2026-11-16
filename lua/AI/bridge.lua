@@ -64,6 +64,7 @@ Bridge = {
 	notes = {},
 	lastAsked = nil,
 	lastAttack = -100,
+	known = {},				-- cell index -> hostile structure seen there
 	upgrades = {},
 	posts = {},				-- unit id -> {cell}: units placed by the outside player
 	results = {},			-- "Direction result" and other lines since the last state
@@ -252,6 +253,54 @@ local function Steps(from, maxSteps)
 	return dist;
 end;
 
+--[[
+Hostile structures the faction has seen stay known after they drop out of sight (a structure
+does not walk away). Only what was sensed is kept: nothing here comes from anywhere else.
+]]
+function Bridge.Remember()
+	for _,e in pairs(Game.hostileUnits) do
+		if e.health and e.health > 0 and e.location and e.type and e.type.isStructure then
+			Bridge.known[e.location.cell.index] = {name = e.type.name, loc = e.location, round = Sense.round};
+		end;
+	end;
+end;
+
+-- Fire at a cell for some rounds (default 3), seen or not: for artillery-like weapons (artillery, EMP)
+-- against a structure remembered there. The unit must be posted and in range; what happened comes
+-- with the next state.
+function Bridge.FireAt(unitId, cell, rounds)
+	local post = Bridge.posts[tostring(unitId)];
+	if post == nil then error('unit #'..tostring(unitId)..' is not posted: Bridge.Post it within range first', 2); end;
+	cell = tonumber(cell);
+	if cell == nil or Economy.Cell(cell) == nil then error('no such cell: '..tostring(cell), 2); end;
+	post.fire = {cell = cell, left = math.max(1, math.floor(tonumber(rounds) or 3))};
+end;
+
+local function FireAtCell(u, post)
+	local f = post.fire;
+	local known = Bridge.known[f.cell];
+	local loc = (known and known.loc) or Move.GroundAt(u, Economy.Cell(f.cell));
+	local why = nil;
+	if loc == nil then why = 'no known height for that cell (nothing was ever seen there and there is no ground)';
+	elseif not (u.turret and u.Attack) then why = 'the unit has no weapon';
+	else
+		local t = u.turret;
+		if t.ammoDemandPerShot and t.ammoAvailability and t.ammoDemandPerShot > t.ammoAvailability then why = 'no ammunition (needs '..tostring(t.ammoDemandPerShot)..')';
+		else
+			local okr, inRange = pcall(t.IsInRange, loc.world);
+			if okr and inRange == false then why = 'out of range from cell '..tostring(u.location.cell.index);
+			else
+				local ok, err = pcall(u.Attack, {loc});
+				if not ok then why = 'refused: '..tostring(err); end;
+			end;
+		end;
+	end;
+	Bridge.results[#Bridge.results+1] = 'FireAt cell '..f.cell..' by unit #'..tostring(u.id)..' in round '..Sense.round..': '..(why or 'fired');
+	f.left = f.left - 1;
+	if why or f.left <= 0 then post.fire = nil; end;
+	return why == nil;
+end;
+
 -- Hostiles in sight one by one: type, cell, region, health, firing range in cells (structures marked).
 function Bridge.Hostiles()
 	Bridge.Out('HOSTILES IN SIGHT (type, cell, region, health, range):');
@@ -434,7 +483,8 @@ function Bridge.RunPosted()
 		SafeCall('posted '..tostring(u.niceName), function()
 			local post = Bridge.posts[tostring(u.id)];
 			local fired = false;
-			fired = Military.Fire(u);
+			if post.fire and u.location and (post.arrived or u.location.cell.index == post.cell) then fired = FireAtCell(u, post);
+			else fired = Military.Fire(u); end;
 			if fired and not u.motionIgnoresAttack then return; end;
 			if u.location and u.location.cell.index == post.cell then
 				if not post.arrived then
@@ -651,6 +701,14 @@ function Bridge.State()
 	end;
 	CountByType(seen, foes, foesAt);
 	Add(L, 'HOSTILE IN SIGHT: %s', #seen > 0 and Listing(foes) or 'nothing');
+	do
+		local rows = {};
+		for idx,k in pairs(Bridge.known) do
+			rows[#rows+1] = string.format('%s at cell %d (region %s, h=%s, seen r%d)', k.name, idx, tostring(Map.cellRegion[idx] or '?'), tostring(k.loc.height), k.round);
+		end;
+		table.sort(rows);
+		if #rows > 0 then Add(L, 'HOSTILE STRUCTURES SEEN SO FAR (remembered; may be gone): %s', table.concat(rows, '; ')); end;
+	end;
 	-- ports: where a structure would have to stand, and what is in the way
 	do
 		Economy.NextToPort();
@@ -773,6 +831,8 @@ function Bridge.Help()
 	Add(L, '  Bridge.Units([region]) my units one by one (id, type, cell, health)');
 	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
+	Add(L, '  Bridge.FireAt(unitId, cell [, rounds])   a posted unit fires at that cell, seen or not (artillery, EMP), for instance at a hostile');
+	Add(L, '                             structure listed under HOSTILE STRUCTURES SEEN SO FAR; out of range, no ammunition or fired comes with the next state');
 	Add(L, '  Bridge.Deploy(unitId)   brings a stored unit out of its vehicle store (Bridge.Units() lists the stored ones)');
 	Add(L, '  Bridge.Upgrade(mechanicId, unitId)   the mechanic goes to the unit and upgrades it to T2 (composite materials); result in the next state');
 	Add(L, '  Bridge.Hostiles()   hostiles in sight one by one with cell and firing range');
@@ -859,6 +919,7 @@ do
 	local base = Needs.Update;
 	function Needs.Update()
 		SafeCall('Bridge', Bridge.Turn);
+		SafeCall('BridgeRemember', Bridge.Remember);
 		SafeCall('BridgeUpgrades', Bridge.RunUpgrades);
 		SafeCall('BridgePosts', Bridge.TakePosted);
 		return base();
