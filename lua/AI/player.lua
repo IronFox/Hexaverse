@@ -1102,7 +1102,8 @@ end;
 -- True if the cell lies in a locked EMP zone (with EMP zones on, only some ports can be reached)
 function Sense.UnderEMP(cell)
 	if cell == nil then return false; end;
-	local ok, e = pcall(Game.Grid.AffectedByEMP, cell);
+	-- (the API wants a location, not a cell; EMP goes by the cell stack, any height does)
+	local ok, e = pcall(Game.Grid.AffectedByEMP, {cell = cell, height = 0});
 	return ok and e and true or false;
 end;
 

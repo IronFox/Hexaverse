@@ -300,7 +300,7 @@ function Bridge.State()
 				local parts = {};
 				for _,nb in ipairs(cell.neighbors or {}) do
 					local state = 'ok';
-					local ok, emp = pcall(Game.Grid.AffectedByEMP, nb);
+					local ok, emp = true, Sense.UnderEMP(nb);
 					if ok and emp then state = 'emp';
 					elseif Sense.structureCells[nb.index] then state = 'built';
 					elseif Control.At(nb) == 0 then state = 'unseen';
@@ -355,7 +355,7 @@ function Bridge.State()
 			local o = Significance.out[reg.id] or {0, 0, 0};
 			local emp = 0;
 			for _,cell in ipairs(reg.cells) do
-				local ok, e = pcall(Game.Grid.AffectedByEMP, cell);
+				local ok, e = true, Sense.UnderEMP(cell);
 				if ok and e then emp = emp + 1; end;
 			end;
 			local line = string.format('  %3d %s hops %d cells %d nb %s | ctl %.2f cont %.2f%s | res %.2f,%.2f height %.1f | threat %.1f,%.1f,%.1f hostile structures %d, lost here %d%s | sig %.2f,%.2f,%.2f',
