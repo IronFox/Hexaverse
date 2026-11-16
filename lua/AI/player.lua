@@ -92,8 +92,9 @@ Cfg = {
 	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
 	mechanicFromRound = 15,
 	portNeedsArmy = true,		-- ports other than the nearest one only where my units stand in strength
+	berthHome = false,			-- true: the home region is exempt from the berth
 	berthCells = 11,			-- structures keep this many cell steps from a claimable port that is not mine (0: off)
-	nextDoorHops = 2,			-- a second claimable port this close to home means towers first
+	nextDoorHops = 0,			-- a second claimable port this close to home means towers first (off: two towers did not stop the raids and add to what calls them)
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
@@ -2455,7 +2456,7 @@ function Economy.SiteOK(loc, forMine)
 		if b and b < Cfg.berthCells then
 			local rid = Map.cellRegion[idx];
 			-- (... and the first mines aside: without income nothing else matters)
-			if not (rid and rid == Mem.homeRegion) and not (forMine and Economy.Count(Types.mine) < (Cfg.minMines or 3)) then
+			if not (Cfg.berthHome and rid and rid == Mem.homeRegion) and not (forMine and Economy.Count(Types.mine) < (Cfg.minMines or 3)) then
 				Economy.siteWhy = 'too close to a foreign port'; return false;
 			end;
 		end;
