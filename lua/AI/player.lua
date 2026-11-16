@@ -58,6 +58,8 @@ Cfg = {
 	spareContainerRound = 10,	-- from this round the spare one is built (in another region than the first)
 	portConnectors = true,		-- free builders claim near ports with a structure on a cell beside them
 	portStructure = 'Connector',
+	portMinMines = 2,			-- mines and generators standing before a builder is spared for a port
+	portMinGenerators = 2,
 	portBuilders = 2,			-- builders on their way to a port at the same time
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
@@ -2709,7 +2711,11 @@ function Economy.TryPort(u)
 	for _,job in pairs(Mem.jobs) do
 		if job.port then busy[job.port] = true; under = under + 1; end;
 	end;
-	if under >= Cfg.portBuilders then return false; end;
+	-- the economy first: ports taken with nothing behind them were lost again with the match
+	-- (2 or 3 ports by round 30 and dead before round 100, three times out of six)
+	if Economy.Count(Types.mine) < Cfg.portMinMines or Economy.Count(Types.generator) < Cfg.portMinGenerators then return false; end;
+	local builders = #(Sense.my.constructor or {});
+	if under >= Cfg.portBuilders or under >= math.max(1, math.floor(builders / 3)) then return false; end;
 	local here = Map.RegionOfLoc(u.location);
 	local best, bestD = nil, nil;
 	for idx,cell in pairs(Economy.portCells or {}) do

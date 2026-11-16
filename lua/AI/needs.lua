@@ -1097,7 +1097,8 @@ function Needs.NextStructure(constructorIndex)
 	local mc = Types.mineralContainer;
 	if mc and Types.IsUnlocked(mc) and Sense.round >= 5 then
 		local n = Economy.Count(mc);
-		if n == 0 or (n < Cfg.minContainers and Sense.round >= Cfg.spareContainerRound and minerals >= Cost(mc)) then
+		if n == 0 or (n < Cfg.minContainers and Sense.round >= Cfg.spareContainerRound and minerals >= Cost(mc)
+				and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2) then
 			Needs.Note('Mineral Container ordered: '..n..' standing, '..Cfg.minContainers..' wanted');
 			-- not all in one place: one raid or bomber run must not take them all
 			local with, region = {}, nil;
