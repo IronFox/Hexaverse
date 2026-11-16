@@ -1099,7 +1099,16 @@ function Needs.NextStructure(constructorIndex)
 		local n = Economy.Count(mc);
 		if n == 0 or (n < Cfg.minContainers and Sense.round >= Cfg.spareContainerRound and minerals >= Cost(mc)) then
 			Needs.Note('Mineral Container ordered: '..n..' standing, '..Cfg.minContainers..' wanted');
-			return {type = mc, kind = 'base'};
+			-- not all in one place: one raid or bomber run must not take them all
+			local with, region = {}, nil;
+			for _,s in ipairs(Sense.myStructures or {}) do
+				local reg = s.type == mc and s.location and Map.RegionOfLoc(s.location);
+				if reg then with[reg.id] = true; end;
+			end;
+			for id,_ in pairs(Sense.mine) do
+				if not with[id] and Sense.Threat(Map.regions[id]) <= 0 and (region == nil or id < region) then region = id; end;
+			end;
+			return {type = mc, kind = 'base', region = n > 0 and region or nil};
 		end;
 	end;
 	local opts = Needs.AdjustStructureOptions(Needs.StructureOptions(constructorIndex));

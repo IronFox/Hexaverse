@@ -54,8 +54,12 @@ Cfg = {
 	-- desired unit counts
 	constructorsEarly = 3,
 	constructorsLate = 5,
-	minContainers = 2,			-- mineral containers kept (the faction dies without one)
-	spareContainerRound = 40,	-- from this round the spare one is built
+	minContainers = 3,			-- mineral containers kept (the faction dies without one)
+	spareContainerRound = 10,	-- from this round the spare one is built (in another region than the first)
+	portConnectors = true,		-- free builders claim near ports with a structure on a cell beside them
+	portStructure = 'Connector',
+	portBuilders = 2,			-- builders on their way to a port at the same time
+	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
 	maxSurveyorsDeep = 3,		-- once underground activity is suspected
@@ -2684,6 +2688,67 @@ local function NoRoad(why)
 	return false;
 end;
 
+--[[
+A port goes to whoever completes a structure next to it, whatever the structure. So a free
+builder near a port that is not mine puts the cheapest thing there is (a connector) on a cell
+beside it, on that exact cell: no waiting for a resource cell to turn up next to the port.
+(Learned from the matches played through bridge.lua: five ports by round 30 this way, where the
+port mines alone took one or none.)
+]]
+Economy.portTried = {};		-- port cell index -> round until which it is left alone
+function Economy.TryPort(u)
+	local t = Game.Type.units[Cfg.portStructure];
+	if not Cfg.portConnectors or t == nil or not Types.IsUnlocked(t) or Sense.round < 2 then return false; end;
+	Economy.NextToPort();
+	local mine = {};
+	for _,s in ipairs(Sense.myStructures or {}) do
+		if s.type and s.type.name and string.find(s.type.name, 'Nexus Port', 1, true) and s.location then mine[s.location.cell.index] = true; end;
+	end;
+	-- one builder per port, and not every builder at once
+	local busy, under = {}, 0;
+	for _,job in pairs(Mem.jobs) do
+		if job.port then busy[job.port] = true; under = under + 1; end;
+	end;
+	if under >= Cfg.portBuilders then return false; end;
+	local here = Map.RegionOfLoc(u.location);
+	local best, bestD = nil, nil;
+	for idx,cell in pairs(Economy.portCells or {}) do
+		local rid = Map.cellRegion[idx];
+		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round
+				and rid and (Sense.hops[rid] or 99) <= Cfg.portMineHops then
+			local reg = Map.regions[rid];
+			-- (something of mine beside it already and the port still not mine: more of the same won't help)
+			local beside = false;
+			for _,nb in ipairs(cell.neighbors or {}) do
+				if Sense.structureCells[nb.index] then beside = true; break; end;
+			end;
+			if not beside and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength) then
+				local d = Dist2(Map.WorldCenter(reg), u.location.world);
+				if bestD == nil or d < bestD then best, bestD = cell, d; end;
+			end;
+		end;
+	end;
+	if best == nil then return false; end;
+	Economy.portTried[best.index] = Sense.round + Cfg.portRetry;
+	local why = 'no free cell beside it';
+	for _,nb in ipairs(best.neighbors or {}) do
+		local dest = Move.GroundAt(u, nb);
+		if dest and not Economy.claimed[nb.index] and not Sense.structureCells[nb.index] and Game.GetStructureAt(dest) == nil
+				and not Game.Grid.AffectedByEMP(dest) and not Control.hot[nb.index] and not Move.IsDangerous(dest) then
+			if Economy.BuildAt(u, dest, t) then
+				Economy.claimed[nb.index] = true;
+				Mem.jobs[u.id].port = best.index;
+				Log(string.format('Port structure ordered: %s on cell %d beside the port on cell %d in region %s at round %d',
+					t.name, nb.index, best.index, tostring(Map.cellRegion[best.index]), Sense.round));
+				return true;
+			end;
+			why = Economy.buildWhy or 'no path';
+		end;
+	end;
+	Needs.Note('Port on cell '..best.index..' not claimed: '..why);
+	return false;
+end;
+
 function Economy.TryRoad(u)
 	if not u.BuildRoadTo then return NoRoad('constructor cannot pave'); end;
 	if Sense.round < Cfg.roadMinRound or #Sense.my.constructor < 2 then return false; end;
@@ -2849,6 +2914,11 @@ function Economy.AssignConstructor(u, index)
 	do
 		local st = Economy.stuck and Economy.stuck[u.id];
 		if st and st.wait and st.wait > Sense.round and st.cell == u.location.cell.index then return; end;
+	end;
+
+	if not Economy.portOrdered and Economy.TryPort(u) then
+		Economy.portOrdered = true;
+		return;
 	end;
 
 	if not Economy.roadOrdered and Economy.TryRoad(u) then
@@ -3374,6 +3444,7 @@ function Economy.Constructors()
 	Economy.powerOrders = 0;
 	Economy.freeBuilders = 0;
 	Economy.roadOrdered = false;
+	Economy.portOrdered = false;
 	Economy.scannerClaimed = {};
 	-- remember cells constructors are already heading to
 	for id,job in pairs(Mem.jobs) do
