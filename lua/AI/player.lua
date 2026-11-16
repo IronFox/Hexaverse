@@ -2263,8 +2263,23 @@ function Economy.FindMineCells(resource, maxCount)
 			local rid = Map.cellRegion[idx];
 			if rid and Map.regions[rid] then Scan(Map.regions[rid]); end;
 		end;
+		Economy.nearPort = near;
+		local sites, nearCount, poles = 0, 0, 0;
+		for _ in pairs(near) do nearCount = nearCount + 1; end;
+		for _ in pairs(Economy.portCells) do poles = poles + 1; end;
 		for _,e in ipairs(list) do
-			if near[e.cell.index] then e.bias = Cfg.portMineBias; end;
+			if near[e.cell.index] then
+				e.bias = Cfg.portMineBias;
+				sites = sites + 1;
+			end;
+		end;
+		-- what became of the search for a port site (every 20 rounds per resource)
+		Economy.portLogged = Economy.portLogged or {};
+		if Sense.round - (Economy.portLogged[resource] or -99) >= 20 then
+			Economy.portLogged[resource] = Sense.round;
+			Log(string.format('Port sites for %s at round %d: %d ports or poles known, %d cells next to those not mine, %d of them usable sites (of %d sites), bias %s, last obstacle: %s',
+				resource, Sense.round, poles, nearCount, sites, #list, tostring(Cfg.portMineBias), tostring(Economy.portWhy or 'none')));
+			Economy.portWhy = nil;
 		end;
 		-- richer and closer first
 		if Cfg.useDirections then
@@ -2568,21 +2583,33 @@ function Economy.AssignConstructor(u, index)
 				why.cands = why.cands + 1;
 				local dest = Move.GroundAt(u, cell);
 				local reg = dest and Map.RegionOfLoc(dest);
-				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= 3;
+				-- (a site next to a port is worth a longer way)
+				local portSite = Economy.nearPort and Economy.nearPort[cell.index];
+				local reach = portSite and math.max(3, Cfg.portMineHops) or 3;
+				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= reach;
 				-- the builder would turn back from there the round it arrives (see the retreat above)
 				if safe and not Economy.shielded and reg.mobileThreat > reg.myStrength then safe = false; end;
 				if dest == nil then why.noGround = why.noGround + 1;
 				elseif not safe then
-					if reg and (Sense.hops[reg.id] or 99) > 3 then why.far = why.far + 1; else why.unsafe = why.unsafe + 1; end;
+					if reg and (Sense.hops[reg.id] or 99) > reach then why.far = why.far + 1; else why.unsafe = why.unsafe + 1; end;
+					if portSite then Economy.portWhy = (reg and (Sense.hops[reg.id] or 99) > reach) and 'too far' or 'unsafe'; end;
 				elseif not Economy.SiteOK(dest, true) then
 					why.site = why.site + 1;
 					why.reasons = (why.reasons or '')..' '..tostring(Economy.siteWhy);
 					-- an EMP zone stays one: drop the cell from the candidates for good, so it
 					-- doesn't crowd out usable ones
 					if Economy.siteWhy == 'emp' then Mem.blacklist[cell.index] = Sense.round + 1000; end;
+					if portSite then Economy.portWhy = 'site rejected: '..tostring(Economy.siteWhy); end;
 				elseif Economy.BuildAt(u, dest, want.type) then
 					Economy.claimed[cell.index] = true;
+					if portSite then
+						Log(string.format('Port mine ordered: cell %d in region %d (%d regions out) for %s at round %d',
+							cell.index, reg.id, Sense.hops[reg.id] or -1, res, Sense.round));
+					end;
 					return;
+				elseif portSite then
+					Economy.portWhy = 'build failed: '..tostring(Economy.buildWhy);
+					why.build = why.build + 1;
 				elseif Economy.buildWhy == 'unsafe way' then why.unsafe = why.unsafe + 1;
 				else why.build = why.build + 1; end;
 			end;
