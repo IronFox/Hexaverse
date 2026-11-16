@@ -1,0 +1,383 @@
+--#require "player.lua"
+--[[
+Bridge: an outside player decides, the scripts do the handwork
+=============================================================
+
+For a person or a model to play a faction through the same interface the AIs use. Every
+Bridge.every rounds (and at once when something of mine is attacked after a quiet spell) the
+script writes what the faction knows to a file and waits for orders. The orders are Lua, run
+inside the AI with everything the scripts have, plus a few helpers for the usual decisions
+(below). Between the orders the player.lua scripts carry on: they build, produce, move and
+shoot, following the directions given.
+
+Files, in the folder named by the environment variable HEXAVERSE_AI_BRIDGE (the bridge is off
+without it, and this script then plays exactly like player.lua with directions):
+  help_<name>.txt           written once: this text and the type names
+  state_<name>_<round>.txt  what the faction knows that round
+  orders_<name>_<round>.lua answered by the outside player; an empty file means "carry on"
+  result_<name>_<round>.txt what became of the orders (errors, what was accepted)
+<name> is Bridge.name ('p1' unless a variant sets it). The game waits for the orders file up to
+Bridge.patience seconds, then carries on with the standing orders.
+
+Helpers for the orders file:
+  Bridge.Take(region [, priority])   direction: get this region (build there, drive out who holds it)
+  Bridge.Hold(region [, priority])   direction: keep this region, defend it
+  Bridge.Avoid(region)               stay out of it
+  Bridge.Drop(region)                withdraw what was said about the region
+  Bridge.Attack(region)              the army goes for this region now, however strong it is
+  Bridge.Defend()                    the army stays home
+  Bridge.Auto()                      posture is left to the scripts again
+  Bridge.Build(typeName, region [, count])   next free builders put this structure near that region
+                                     (a builder builds within a few moves of where it is; mines are
+                                     not ordered this way, they follow Bridge.Take)
+  Bridge.Weights{army = 3, defense = 6, ...} how much each need counts (see "Weights:" in the state)
+  Bridge.Set(name, value)            any setting of Cfg (for example Bridge.Set('attackMinUnits', 8))
+  Bridge.Every(rounds)               how often to be asked
+  Bridge.Say(text)                   a note for the log (why this decision), kept with the match
+Directions and posture stand until changed. Anything else is plain Lua with the game API
+(Game, Sense, Map, Economy, Military, Control, Significance ...).
+
+Everything decided here is logged ("Bridge orders r=N: ...", and the directions as
+"Direction: ..." like any other), so that matches played this way can be learned from.
+]]
+
+Cfg.logPrefix = 'bridge: ';
+Cfg.useDirections = true;
+
+Bridge = {
+	name = 'p1',
+	every = 10,
+	patience = 900,			-- seconds to wait for orders
+	alarmAfter = 5,			-- rounds without an attack after which a new attack asks at once
+	pins = {},				-- region id -> {kind, priority}
+	posture = nil,			-- nil (scripts decide), 'defend', or a region id to attack
+	build = {},				-- queue of {type, region}
+	notes = {},
+	lastAsked = nil,
+	lastAttack = -100,
+	results = {},			-- "Direction result" and other lines since the last state
+};
+
+local function Add(lines, fmt, ...)
+	lines[#lines+1] = (select('#', ...) > 0) and string.format(fmt, ...) or fmt;
+end;
+
+function Bridge.On()
+	if Bridge.on == nil then
+		Bridge.on = Game.BridgeWrite ~= nil and Game.BridgeWrite('alive_'..Bridge.name..'.txt', 'bridge '..Bridge.name) or false;
+		Log('Bridge: '..(Bridge.on and ('on as '..Bridge.name..', asking every '..Bridge.every..' rounds') or 'off (no HEXAVERSE_AI_BRIDGE folder): playing as player.lua'));
+	end;
+	return Bridge.on;
+end;
+
+-------------------------------------------------------------------------------
+-- helpers for the orders
+-------------------------------------------------------------------------------
+
+local function Region(id)
+	id = tonumber(id);
+	if id == nil or Map.regions[id] == nil then error('no such region: '..tostring(id), 3); end;
+	return id;
+end;
+
+function Bridge.Take(region, priority) Bridge.pins[Region(region)] = {kind = 'take', priority = priority or 1}; end;
+function Bridge.Hold(region, priority) Bridge.pins[Region(region)] = {kind = 'hold', priority = priority or 1}; end;
+function Bridge.Avoid(region) Bridge.pins[Region(region)] = {kind = 'avoid', priority = 1}; end;
+function Bridge.Drop(region) Bridge.pins[Region(region)] = nil; end;
+function Bridge.Attack(region) Bridge.posture = Region(region); end;
+function Bridge.Defend() Bridge.posture = 'defend'; end;
+function Bridge.Auto() Bridge.posture = nil; end;
+function Bridge.Every(rounds) Bridge.every = math.max(1, math.floor(tonumber(rounds) or 10)); end;
+function Bridge.Say(text) Bridge.notes[#Bridge.notes+1] = tostring(text); end;
+
+function Bridge.Set(name, value)
+	if Cfg[name] == nil then error('no such setting: '..tostring(name), 2); end;
+	Cfg[name] = value;
+end;
+
+function Bridge.Weights(w)
+	Cfg.needWeights = Cfg.needWeights or {};
+	for k,v in pairs(w) do Cfg.needWeights[k] = tonumber(v); end;
+end;
+
+function Bridge.Build(typeName, region, count)
+	local t = Game.Type.units[typeName];
+	if t == nil or not t.isStructure then error('no such structure type: '..tostring(typeName), 2); end;
+	if t == Types.mine then error('mines are placed by the scripts where the resources are: use Bridge.Take(region) to get them built there', 2); end;
+	region = Region(region);
+	for _ = 1,(count or 1) do Bridge.build[#Bridge.build+1] = {type = t, region = region}; end;
+end;
+
+-------------------------------------------------------------------------------
+-- hooks into the scripts
+-------------------------------------------------------------------------------
+
+-- directions: what the outside player pinned comes first and stays
+do
+	local base = Significance.Direct;
+	function Significance.Direct()
+		base();
+		local have = {};
+		local keep = {};
+		for _,d in ipairs(Significance.directions) do
+			local pin = Bridge.pins[d.region];
+			-- (the layer's own direction for a pinned region gives way)
+			if pin == nil or pin.kind == d.kind then
+				keep[#keep+1] = d;
+				have[d.kind..':'..d.region] = d;
+			end;
+		end;
+		for region,pin in pairs(Bridge.pins) do
+			if pin.kind == 'avoid' then
+				Significance.avoid[region] = 1;
+			else
+				local d = have[pin.kind..':'..region];
+				if d then
+					d.priority = pin.priority;
+				else
+					keep[#keep+1] = {kind = pin.kind, region = region, priority = pin.priority, issued = Sense.round,
+						deaths = Map.regions[region].lost or 0, pinned = true};
+					Log(string.format('Direction: %s region %d priority %s (round %d) by the outside player', pin.kind, region,
+						(string.gsub(string.format('%.2f', pin.priority), ',', '.')), Sense.round));
+				end;
+				-- a taken region is held from then on
+				if pin.kind == 'take' and Sense.mine[region] then Bridge.pins[region] = {kind = 'hold', priority = pin.priority}; end;
+			end;
+		end;
+		Significance.directions = keep;
+	end;
+end;
+
+do
+	local base = Military.UpdatePosture;
+	function Military.UpdatePosture()
+		if Bridge.posture == nil or Cfg.useFormations then return base(); end;
+		if Bridge.posture == 'defend' then
+			Mem.posture, Mem.attackTarget = 'defend', nil;
+		else
+			Mem.posture, Mem.attackTarget = 'attack', Bridge.posture;
+		end;
+	end;
+end;
+
+do
+	local base = Economy.NextStructure;
+	function Economy.NextStructure(constructorIndex)
+		local job = table.remove(Bridge.build, 1);
+		if job == nil then return base(constructorIndex); end;
+		Log('Bridge: builder sent to build '..job.type.name..' near region '..job.region);
+		return {type = job.type, kind = job.type.turretType and 'tower' or 'base', region = job.region};
+	end;
+end;
+
+-------------------------------------------------------------------------------
+-- what the faction knows
+-------------------------------------------------------------------------------
+
+local function CountByType(list, into, where)
+	for _,u in ipairs(list) do
+		local name = u.type and u.type.name or '?';
+		local reg = u.location and Map.RegionOfLoc(u.location);
+		local rid = reg and reg.id or 0;
+		into[name] = (into[name] or 0) + 1;
+		where[rid] = where[rid] or {};
+		where[rid][name] = (where[rid][name] or 0) + 1;
+	end;
+end;
+
+local function Listing(counts)
+	local parts = {};
+	for name,n in pairs(counts) do parts[#parts+1] = n..' '..name; end;
+	table.sort(parts);
+	return table.concat(parts, ', ');
+end;
+
+function Bridge.State()
+	local L = {};
+	local cur = Game.myFaction.currentResources;
+	Add(L, 'ROUND %d   faction %s', Sense.round, Bridge.name);
+	Add(L, 'minerals %d, energy out %d (spare %d), posture %s%s', cur.storage.minerals or 0,
+		(Game.myFaction.maxResources.supply or {}).energy or 0, cur.balance.energy or 0, Mem.posture,
+		Mem.attackTarget and (' -> region '..Mem.attackTarget) or '');
+	Add(L, 'home region %s; planes about: %s; firing range assumed %.1f cells', tostring(Mem.homeRegion),
+		Sense.AirMatters() and 'yes' or 'no', Control.Reach() / Control.Spacing());
+	-- mine
+	local units, unitsAt, structs, structsAt = {}, {}, {}, {};
+	for _,list in pairs(Sense.my) do CountByType(list, units, unitsAt); end;
+	CountByType(Sense.myStructures or {}, structs, structsAt);
+	Add(L, '');
+	Add(L, 'MY UNITS: %s', Listing(units));
+	Add(L, 'MY STRUCTURES: %s', Listing(structs));
+	-- hostile, as sensed now
+	local foes, foesAt = {}, {};
+	local seen = {};
+	for _,e in pairs(Game.hostileUnits) do
+		if e.health and e.health > 0 then seen[#seen+1] = e; end;
+	end;
+	CountByType(seen, foes, foesAt);
+	Add(L, 'HOSTILE IN SIGHT: %s', #seen > 0 and Listing(foes) or 'nothing');
+	-- needs of the scripts
+	local w, parts = Needs.Weights(), {};
+	for k,x in pairs(w) do parts[#parts+1] = string.format('%s=%.3g', k, x); end;
+	table.sort(parts);
+	Add(L, 'Weights: %s', table.concat(parts, ', '));
+	parts = {};
+	for k,x in pairs(Needs.v or {}) do
+		if x > 0 then parts[#parts+1] = string.format('%s %.2f', k, x); end;
+	end;
+	table.sort(parts);
+	Add(L, 'Needs as the scripts see them: %s', table.concat(parts, ', '));
+	-- standing orders
+	Add(L, '');
+	parts = {};
+	for region,pin in pairs(Bridge.pins) do parts[#parts+1] = pin.kind..' '..region; end;
+	table.sort(parts);
+	Add(L, 'YOUR STANDING ORDERS: directions %s; posture %s; build queue %d', #parts > 0 and table.concat(parts, ', ') or 'none',
+		Bridge.posture == nil and 'auto' or (Bridge.posture == 'defend' and 'defend' or ('attack region '..Bridge.posture)), #Bridge.build);
+	parts = {};
+	for _,d in ipairs(Significance.directions) do parts[#parts+1] = string.format('%s %d (%.2f, since r%d)', d.kind, d.region, d.priority, d.issued); end;
+	Add(L, 'Active directions: %s', #parts > 0 and table.concat(parts, '; ') or 'none');
+	if #Bridge.results > 0 then
+		Add(L, 'Since you were last asked:');
+		for _,line in ipairs(Bridge.results) do Add(L, '  %s', line); end;
+	end;
+	Bridge.results = {};
+	-- regions
+	Add(L, '');
+	Add(L, 'REGIONS (only those known or near; hops = regions from what is mine; ctl/cont = share controlled/contested;');
+	Add(L, ' res = minerals,fuel 0..1; threat = mobile,static,air; sig = how the strategic layer rates hold,take,danger)');
+	local F = Significance.index or {};
+	for _,reg in ipairs(Map.regions) do
+		local f = Significance.features[reg.id];
+		local hops = Sense.hops[reg.id] or 99;
+		local port = Significance.ports[reg.id];
+		local interesting = hops <= 3 or port or reg.hostileStructures > 0 or reg.mobileThreat > 0 or reg.staticThreat > 0
+			or Bridge.pins[reg.id] or foesAt[reg.id];
+		if interesting then
+			local nb = {};
+			for id,_ in pairs(reg.neighbors) do nb[#nb+1] = id; end;
+			table.sort(nb);
+			local o = Significance.out[reg.id] or {0, 0, 0};
+			local line = string.format('  %3d %s hops %d cells %d nb %s | ctl %.2f cont %.2f%s | res %.2f,%.2f height %.1f | threat %.1f,%.1f,%.1f hostile structures %d, lost here %d%s | sig %.2f,%.2f,%.2f',
+				reg.id, Sense.mine[reg.id] and 'MINE' or (reg.seenNow and 'seen' or (reg.lastSeen >= 0 and ('last seen r'..reg.lastSeen) or 'never seen')),
+				hops, #reg.cells, table.concat(nb, ','),
+				Control.Of(reg.id, 'controlled'), Control.Of(reg.id, 'contested'),
+				reg.id == Mem.homeRegion and ' HOME' or '',
+				f and f[F.minerals or 1] or 0, f and f[F.fuel or 2] or 0, (Significance.static[reg.id] or {}).height or 0,
+				reg.mobileThreat or 0, reg.staticThreat or 0, reg.airThreat or 0, reg.hostileStructures or 0, reg.lost or 0,
+				port and (' | NEXUS PORT ('..(port == 'mine' and 'mine' or 'not mine')..')') or '',
+				o[1] or 0, o[2] or 0, o[3] or 0);
+			Add(L, line);
+			if structsAt[reg.id] then Add(L, '        my structures: %s', Listing(structsAt[reg.id])); end;
+			if unitsAt[reg.id] then Add(L, '        my units: %s', Listing(unitsAt[reg.id])); end;
+			if foesAt[reg.id] then Add(L, '        hostile in sight: %s', Listing(foesAt[reg.id])); end;
+		end;
+	end;
+	Add(L, '');
+	Add(L, 'Answer by writing orders_%s_%d.lua into this folder (see help_%s.txt). An empty file means carry on.', Bridge.name, Sense.round, Bridge.name);
+	return table.concat(L, '\n')..'\n';
+end;
+
+function Bridge.Help()
+	local L = {};
+	Add(L, 'Hexaverse bridge: you decide for faction %s, the player.lua scripts do the handwork.', Bridge.name);
+	Add(L, 'Every %d rounds (and when attacked after a quiet spell) state_%s_<round>.txt is written and the game waits', Bridge.every, Bridge.name);
+	Add(L, 'up to %d seconds for orders_%s_<round>.lua. Orders are Lua. Helpers:', Bridge.patience, Bridge.name);
+	Add(L, '  Bridge.Take(region [, priority])   get this region (build there, drive out who holds it)');
+	Add(L, '  Bridge.Hold(region [, priority])   keep and defend this region');
+	Add(L, '  Bridge.Avoid(region)   Bridge.Drop(region)');
+	Add(L, '  Bridge.Attack(region)  the army goes there now      Bridge.Defend()  stays home      Bridge.Auto()  scripts decide');
+	Add(L, '  Bridge.Build(typeName, region [, count])   next free builders build it near that region (within a few moves of the builder).');
+	Add(L, '                                             Not for mines: the scripts place those where resources are, in regions you Take.');
+	Add(L, '  Bridge.Weights{army = 3, defense = 6}      how much each need of the scripts counts');
+	Add(L, '  Bridge.Set(name, value)   a Cfg setting      Bridge.Every(rounds)      Bridge.Say(text)  your reasoning, kept in the log');
+	Add(L, 'Directions and posture stand until you change them. Anything else is plain Lua with the game API.');
+	Add(L, '');
+	Add(L, 'How the game is won: hold Nexus ports. A port goes to whoever completes a connected structure (a mine will do) next');
+	Add(L, 'to it, and is lost when that structure is destroyed. Structures are only built on ground that is controlled:');
+	Add(L, 'seen by sensors, out of firing range of anything unseen or hostile, not overlooked by uncontrolled higher ground.');
+	Add(L, '');
+	local structs, mobiles = {}, {};
+	for name,t in pairs(Game.Type.units) do
+		if t.isStructure then structs[#structs+1] = name; else mobiles[#mobiles+1] = name; end;
+	end;
+	table.sort(structs);
+	table.sort(mobiles);
+	Add(L, 'Structure types: %s', table.concat(structs, ', '));
+	Add(L, 'Unit types: %s', table.concat(mobiles, ', '));
+	return table.concat(L, '\n')..'\n';
+end;
+
+-------------------------------------------------------------------------------
+-- the turn of the outside player
+-------------------------------------------------------------------------------
+
+function Bridge.Turn()
+	if not Bridge.On() then return; end;
+	local round = Sense.round;
+	if Bridge.lastAsked == round then return; end;
+	if Bridge.helpWritten == nil then
+		Bridge.helpWritten = true;
+		Game.BridgeWrite('help_'..Bridge.name..'.txt', Bridge.Help());
+	end;
+	local attacked = #(Sense.recentAttacks or {}) > 0;
+	local alarm = attacked and round - Bridge.lastAttack > Bridge.alarmAfter;
+	if attacked then Bridge.lastAttack = round; end;
+	if alarm then Bridge.results[#Bridge.results+1] = 'ATTACKED this round after a quiet spell (asked at once)'; end;
+	if not (alarm or Bridge.lastAsked == nil or round - Bridge.lastAsked >= Bridge.every) then return; end;
+	Bridge.lastAsked = round;
+	if not Game.BridgeWrite('state_'..Bridge.name..'_'..round..'.txt', Bridge.State()) then
+		Log('Bridge: could not write the state for round '..round);
+		return;
+	end;
+	local file = 'orders_'..Bridge.name..'_'..round..'.lua';
+	local timer = Game.MeasureSecondsFromNow();
+	local text = Game.BridgeRead(file);
+	while (text == nil or text == '') and timer() < Bridge.patience do
+		Game.BridgeWait(500);
+		text = Game.BridgeRead(file);
+		-- (an empty orders file means carry on: it is told apart from "not there yet" by its marker)
+		if (text == nil or text == '') and Game.BridgeRead('orders_'..Bridge.name..'_'..round..'.none') ~= '' then text = '-- carry on'; end;
+	end;
+	local result = {};
+	if text == nil or text == '' then
+		Add(result, 'no orders within %d seconds: carrying on', Bridge.patience);
+	else
+		Bridge.notes = {};
+		local chunk, err = load(text, file, 't');
+		if chunk == nil then
+			Add(result, 'ERROR, nothing done: %s', tostring(err));
+		else
+			local ok, msg = pcall(chunk);
+			Add(result, ok and 'orders run' or ('ERROR while running (what came before it stands): '..tostring(msg)));
+			-- directions take effect this round
+			SafeCall('Directions', Significance.Direct);
+		end;
+		Log('Bridge orders r='..round..': '..(string.gsub(text, '%s+', ' ')));
+		for _,note in ipairs(Bridge.notes) do Log('Bridge says r='..round..': '..note); end;
+	end;
+	Add(result, 'waited %.0f seconds', timer());
+	Log('Bridge: round '..round..': '..result[1]);
+	Game.BridgeWrite('result_'..Bridge.name..'_'..round..'.txt', table.concat(result, '\n')..'\n');
+end;
+
+-- asked after the picture of the round is complete and before anything acts on it
+do
+	local base = Needs.Update;
+	function Needs.Update()
+		SafeCall('Bridge', Bridge.Turn);
+		return base();
+	end;
+end;
+
+-- what happened to directions is told with the next state
+do
+	local base = Log;
+	function Log(msg)
+		if type(msg) == 'string' and (string.find(msg, 'Direction result:', 1, true) or string.find(msg, 'Port mine ordered', 1, true)
+				or string.find(msg, 'Attacked ', 1, true) == 1) and #Bridge.results < 30 then
+			Bridge.results[#Bridge.results+1] = msg;
+		end;
+		return base(msg);
+	end;
+end;

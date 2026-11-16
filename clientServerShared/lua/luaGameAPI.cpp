@@ -1,5 +1,12 @@
 #include <global_root.h>
 #include "luaGameAPI.h"
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include "logEvent.h"
 #include "grid/stack.h"
 #include "grid/resources.h"
@@ -10,6 +17,27 @@
 #include "../objects/structure/vehiclePlant.h"
 #include "../objects/structure/planeFactory.h"
 
+
+namespace
+{
+	/** Full path of a bridge file, or empty if the bridge is off or the name is not a plain file name (see Game.BridgeWrite) */
+	std::string BridgePath(const char*name)
+	{
+		#pragma warning(suppress: 4996)
+		const char*folder = std::getenv("HEXAVERSE_AI_BRIDGE");
+		if (!folder || !*folder || !name || !*name)
+			return std::string();
+		for (const char*c = name; *c; c++)
+		{
+			const bool ok = (*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-' || *c == '.';
+			if (!ok)
+				return std::string();
+		}
+		if (name[0] == '.')
+			return std::string();
+		return std::string(folder) + "\\" + name;
+	}
+}
 
 namespace Lua
 {
@@ -1209,6 +1237,44 @@ namespace Lua
 			{
 				return start.Elapsed().ToSecondsD();
 			});
+		});
+
+		/*
+		Bridge to an outside player (for example a person or a model deciding in place of a script).
+		Off unless the environment variable HEXAVERSE_AI_BRIDGE names an existing folder. Files are
+		plain text inside that folder; names may hold letters, digits, '_', '-' and '.' only.
+		*/
+		gameTable.SetFunction("BridgeWrite",[](const String&name, const String&text)->bool
+		{
+			const std::string path = BridgePath(name.c_str());
+			if (path.empty())
+				return false;
+			const std::string tmp = path + ".tmp";
+			{
+				std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
+				if (!out)
+					return false;
+				out << text.c_str();
+			}
+			std::remove(path.c_str());
+			return std::rename(tmp.c_str(), path.c_str()) == 0;
+		});
+		gameTable.SetFunction("BridgeRead",[](const String&name)->String
+		{
+			const std::string path = BridgePath(name.c_str());
+			if (path.empty())
+				return String();
+			std::ifstream in(path, std::ios::binary);
+			if (!in)
+				return String();
+			std::stringstream buffer;
+			buffer << in.rdbuf();
+			return String(buffer.str().c_str());
+		});
+		gameTable.SetFunction("BridgeWait",[](int milliseconds)
+		{
+			if (milliseconds > 0)
+				std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds < 2000 ? milliseconds : 2000));
 		});
 
 		gameTable.SetFunction("GetRound",[]()
