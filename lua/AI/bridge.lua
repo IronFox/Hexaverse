@@ -260,6 +260,18 @@ that memory itself, as ghosts (hostile units with health 0 or less); what is lis
 ghosts plus what was sensed while this script watched. Nothing here comes from anywhere else.
 ]]
 function Bridge.Remember()
+	-- the game's own memory: markers of hostile contacts carry the unit as it was last seen (a ghost).
+	-- Ghost entries are rebuilt from the markers every round, so they go when the game drops them.
+	for idx,k in pairs(Bridge.known) do if k.ghost then Bridge.known[idx] = nil; end; end;
+	for _,m in pairs(Game.myMarkers or {}) do
+		local e = m.type == 'HostileContact' and m.unitReference;
+		if e and e.location and e.type and e.type.isStructure and not e.isOwnedByMe then
+			local idx = e.location.cell.index;
+			if Bridge.known[idx] == nil then
+				Bridge.known[idx] = {name = e.type.name, loc = e.location, round = Sense.round - (m.age or 0), ghost = true};
+			end;
+		end;
+	end;
 	for _,e in pairs(Game.hostileUnits) do
 		if e.health and e.location and e.type and e.type.isStructure and not e.isOwnedByMe then
 			local idx = e.location.cell.index;
@@ -273,7 +285,7 @@ function Bridge.Remember()
 	end;
 	for idx,k in pairs(Bridge.known) do
 		if Sense.structureCells[idx] then Bridge.known[idx] = nil;	-- mine now
-		elseif k.round < Sense.round and Control.At(k.loc) > 0 then
+		elseif not k.ghost and k.round < Sense.round and Control.At(k.loc) > 0 then
 			-- the cell is in sight and nothing hostile stands there any more
 			Bridge.results[#Bridge.results+1] = k.name..' at cell '..idx..' is gone (the cell is in sight and empty)';
 			Bridge.known[idx] = nil;
@@ -783,7 +795,7 @@ function Bridge.State()
 	do
 		local rows = {};
 		for idx,k in pairs(Bridge.known) do
-			rows[#rows+1] = string.format('%s at cell %d (region %s, h=%s, %s r%d)', k.name, idx, tostring(Map.cellRegion[idx] or '?'), tostring(k.loc.height), k.ghost and 'ghost, noted' or 'seen', k.round);
+			rows[#rows+1] = string.format('%s at cell %d (region %s, h=%s, %s r%d)', k.name, idx, tostring(Map.cellRegion[idx] or '?'), tostring(k.loc.height), k.ghost and 'ghost, last seen' or 'seen', k.round);
 		end;
 		table.sort(rows);
 		if #rows > 0 then Add(L, 'HOSTILE STRUCTURES SEEN SO FAR (remembered; may be gone): %s', table.concat(rows, '; ')); end;
