@@ -64,7 +64,9 @@ Cfg = {
 	-- those are deprecated, the game window no longer offers them and the scripts must not use them)
 	-- Nothing the faction lives on: beside a port is the front line (with Mineral Container in this
 	-- list every lost match had lost all its containers there).
-	portStructures = {'Radar Tower', 'Rocket Launcher Tower', 'Surveyor Tower'},
+	-- In order of preference, the first that is researched and paid for. (Radar towers beside a
+	-- port never got built, "construction did not happen", in every match: not in this list.)
+	portStructures = {'Rocket Launcher Tower', 'Fuel Container'},
 	portMinMines = 2,			-- mines and generators standing before a builder is spared for a port
 	portMinGenerators = 2,
 	portBuilders = 2,			-- builders on their way to a port at the same time
@@ -2713,11 +2715,9 @@ function Economy.TryPort(u)
 	for _,name in ipairs(Cfg.portStructures) do
 		local c = Game.Type.units[name];
 		local cc = c and (tonumber(c.constructionCost) or 100);
-		if c and not Types.deprecated[name] and Types.IsUnlocked(c) and (cost == nil or cc < cost) then t, cost = c, cc; end;
+		if t == nil and c and not Types.deprecated[name] and Types.IsUnlocked(c) and (Economy.Resources().storage.minerals or 0) >= cc then t, cost = c, cc; end;
 	end;
 	if not Cfg.portConnectors or t == nil or Sense.round < 2 then return false; end;
-	local cur = Economy.Resources();
-	if (cur.storage.minerals or 0) < cost then return false; end;
 	Economy.NextToPort();
 	local mine = {};
 	for _,s in ipairs(Sense.myStructures or {}) do
