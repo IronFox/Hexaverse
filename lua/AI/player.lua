@@ -2935,7 +2935,8 @@ function Wall.Try(u)
 		for _,st in ipairs(Sense.myStructures or {}) do
 			if st.type and st.type.name and string.find(st.type.name, 'Nexus Port', 1, true) then port = true; break; end;
 		end;
-		if not (port or Sense.round >= Cfg.wallFromRound) or Economy.Count(Types.mine) < 2 or Economy.Count(Types.generator) < 2 then return false; end;
+		-- (no economy gate: a poor start with one mine needs the wall most)
+		if not (port or Sense.round >= Cfg.wallFromRound) then return false; end;
 		if not Wall.Plan(u) then return false; end;
 	end;
 	local w = Mem.wall;
@@ -3556,11 +3557,35 @@ function Economy.AssignMechanic(u)
 		end;
 	end;
 	if best == nil then return; end;
-	local ok, err = pcall(u.Repair, best.location);
-	if ok then
-		if Sense.round % 5 == 0 then Log(string.format('%s repairs %s on cell %d (%s of %s health)', u.niceName, best.niceName or best.type.name, best.location.cell.index, tostring(best.health), tostring(best.maxHealth))); end;
-	else
-		Log('Repair failed: '..tostring(err));
+	-- The engine takes a repair only from a cell beside the target (at most one level off), and
+	-- wants the target's topmost cell as the choice (a tower is two cells high)
+	local tc = best.location.cell;
+	local beside = false;
+	for _,nb in ipairs(u.location.cell.neighbors or {}) do
+		if nb == tc or nb.index == tc.index then beside = true; break; end;
+	end;
+	if beside and math.abs(u.location.height - best.location.height) <= 1 then
+		local th = tonumber(best.height) or tonumber(best.type.height) or 1;
+		local ok, err = pcall(u.Repair, {cell = tc, height = best.location.height + th - 1});
+		if not ok then Log('Repair failed: '..tostring(err));
+		elseif Sense.round % 5 == 0 then
+			Log(string.format('%s repairs %s on cell %d (%s of %s health)', u.niceName, best.niceName or best.type.name, tc.index, tostring(best.health), tostring(best.maxHealth)));
+		end;
+		return;
+	end;
+	local dest, bd = nil, nil;
+	for _,nb in ipairs(tc.neighbors or {}) do
+		if not Sense.structureCells[nb.index] then
+			local loc = Move.GroundAt(u, nb);
+			if loc and not loc.isSuborbital and math.abs(loc.height - best.location.height) <= 1 and not Move.IsDangerous(loc) then
+				local d = Dist2(loc.world, u.location.world);
+				if bd == nil or d < bd then dest, bd = loc, d; end;
+			end;
+		end;
+	end;
+	if dest then
+		local ok, path = pcall(u.FindShortestPath, dest, nil, false);
+		if ok and path and #path > 0 then u.DirectTo(path[#path]); end;
 	end;
 end;
 
