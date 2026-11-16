@@ -37,6 +37,11 @@ Helpers for the orders file:
   Bridge.Set(name, value)            any setting of Cfg (for example Bridge.Set('attackMinUnits', 8))
   Bridge.Every(rounds)               how often to be asked
   Bridge.Say(text)                   a note for the log (why this decision), kept with the match
+  Bridge.Out(text)                   comes back in the result file of these orders (ask and get the answer at once)
+  Bridge.Cells(region)               the region cell by cell into the result file: id, height, state, what stands there, neighbours
+  Bridge.Units([region])             my units one by one into the result file: id, type, cell, health
+  Bridge.Post(unitId, cell)          that unit goes to the cell and stays, shooting what comes in range (scout, guard, artillery post)
+  Bridge.Free(unitId)                gives it back to the scripts
 Directions and posture stand until changed. Anything else is plain Lua with the game API
 (Game, Sense, Map, Economy, Military, Control, Significance ...).
 
@@ -59,6 +64,7 @@ Bridge = {
 	notes = {},
 	lastAsked = nil,
 	lastAttack = -100,
+	posts = {},				-- unit id -> {cell}: units placed by the outside player
 	results = {},			-- "Direction result" and other lines since the last state
 };
 
@@ -132,6 +138,125 @@ function Bridge.Build(typeName, region, count)
 	if t == Types.mine then error('mines are placed by the scripts where the resources are: use Bridge.Take(region) to get them built there', 2); end;
 	region = Region(region);
 	for _ = 1,(count or 1) do Bridge.build[#Bridge.build+1] = {type = t, region = region}; end;
+end;
+
+-- Anything said with Bridge.Out comes back in the result file of these orders: a question asked
+-- in the orders is answered at once, without waiting for the next state.
+function Bridge.Out(fmt, ...)
+	Bridge.out = Bridge.out or {};
+	if #Bridge.out < 400 then Bridge.out[#Bridge.out+1] = (select('#', ...) > 0) and string.format(fmt, ...) or tostring(fmt); end;
+end;
+
+local function CellState(cell)
+	if Sense.UnderEMP(cell) then return 'emp'; end;
+	if Sense.structureCells[cell.index] then return 'built'; end;
+	if Control.At(cell) == 0 then return 'unseen'; end;
+	if Control.hot[cell.index] then return 'contested'; end;
+	return 'ok';
+end;
+
+-- The cells of a region, one per line: cell id, ground height, state, what stands there, neighbours.
+function Bridge.Cells(region)
+	local reg = Map.regions[Region(region)];
+	local probe = (Sense.my.constructor or {})[1] or (Sense.my.combat or {})[1];
+	local what = {};
+	for _,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do
+			if u.location then what[u.location.cell.index] = 'my '..u.type.name..' #'..tostring(u.id); end;
+		end;
+	end;
+	for _,u in ipairs(Sense.myStructures or {}) do
+		if u.location then what[u.location.cell.index] = 'my '..u.type.name; end;
+	end;
+	for _,e in pairs(Game.hostileUnits) do
+		if e.health and e.health > 0 and e.location then what[e.location.cell.index] = 'HOSTILE '..tostring(e.type and e.type.name); end;
+	end;
+	Bridge.Out('CELLS of region %d (id h=ground height state [what] > neighbours; a * marks neighbours in other regions):', reg.id);
+	for _,cell in ipairs(reg.cells) do
+		local loc = probe and Move.GroundAt(probe, cell);
+		local nb = {};
+		for _,n in ipairs(cell.neighbors or {}) do nb[#nb+1] = n.index..(Map.cellRegion[n.index] ~= reg.id and '*' or ''); end;
+		Bridge.Out('  %d h=%s %s%s > %s', cell.index, loc and tostring(loc.height) or '?', CellState(cell),
+			what[cell.index] and (' ['..what[cell.index]..']') or '', table.concat(nb, ' '));
+	end;
+end;
+
+-- My units one by one (all, or those in a region): id, type, cell, region, health, post.
+function Bridge.Units(region)
+	region = region and Region(region);
+	Bridge.Out('UNITS%s (#id type, cell, region, health, post):', region and (' in region '..region) or '');
+	local told = {};
+	local function One(u, role)
+		if told[tostring(u.id)] then return; end;
+		told[tostring(u.id)] = true;
+		local reg = u.location and Map.RegionOfLoc(u.location);
+		if region == nil or (reg and reg.id == region) then
+			local post = Bridge.posts[tostring(u.id)];
+			Bridge.Out('  #%s %s (%s), cell %s, region %s, health %s%s', tostring(u.id), u.type.name, role, u.location and tostring(u.location.cell.index) or '?',
+				reg and tostring(reg.id) or '?', tostring(u.health), post and (', POSTED at cell '..post.cell) or '');
+		end;
+	end;
+	for role,list in pairs(Sense.my) do for _,u in ipairs(list) do One(u, role); end; end;
+	for _,u in ipairs(Bridge.posted or {}) do One(u, 'posted'); end;
+end;
+
+-- A unit of mine goes to that cell and stays there, shooting what comes in range, until freed.
+-- The scripts leave it alone meanwhile (a posted builder builds nothing, a posted mechanic repairs nothing).
+function Bridge.Post(unitId, cell)
+	cell = tonumber(cell);
+	if cell == nil or Economy.Cell(cell) == nil then error('no such cell: '..tostring(cell), 2); end;
+	Bridge.posts[tostring(unitId)] = {cell = cell, since = Sense.round};
+end;
+function Bridge.Free(unitId) Bridge.posts[tostring(unitId)] = nil; end;
+
+-- Posted units are taken out of the scripts' lists for the round and handled here.
+function Bridge.TakePosted()
+	Bridge.posted = {};
+	if next(Bridge.posts) == nil then return; end;
+	local alive = {};
+	for role,list in pairs(Sense.my) do
+		for i = #list, 1, -1 do
+			local u = list[i];
+			if Bridge.posts[tostring(u.id)] then
+				alive[tostring(u.id)] = true;
+				u.bridgeRole = role;
+				Bridge.posted[#Bridge.posted+1] = u;
+				table.remove(list, i);
+			end;
+		end;
+	end;
+	for id,post in pairs(Bridge.posts) do
+		if not alive[id] then
+			Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(id)..' (cell '..post.cell..') is gone: lost, stored or never existed';
+			Bridge.posts[id] = nil;
+		end;
+	end;
+end;
+
+function Bridge.RunPosted()
+	for _,u in ipairs(Bridge.posted or {}) do
+		SafeCall('posted '..tostring(u.niceName), function()
+			local post = Bridge.posts[tostring(u.id)];
+			local fired = false;
+			fired = Military.Fire(u);
+			if fired and not u.motionIgnoresAttack then return; end;
+			if u.location and u.location.cell.index == post.cell then
+				if not post.arrived then
+					post.arrived = Sense.round;
+					Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') arrived at cell '..post.cell..' in round '..Sense.round;
+				end;
+				return;
+			end;
+			post.arrived = nil;
+			local cell = Economy.Cell(post.cell);
+			local loc = Move.GroundAt(u, cell);
+			if loc == nil then
+				if not post.told then post.told = true; Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..': no ground for it on cell '..post.cell; end;
+				return;
+			end;
+			if Move.IsIdle(u) or (Sense.round - post.since) % 5 == 0 then Move.Towards(u, loc.world, cell, false, true); end;
+		end);
+	end;
 end;
 
 -------------------------------------------------------------------------------
@@ -247,6 +372,14 @@ function Bridge.State()
 		Add(L, 'VITAL (the faction dies without a mineral container, a generator, a mineral mine and a fuel mine): mineral containers %d, generators %d, mines %d, builders %d, vehicle plants %d; mineral storage capacity %s',
 			Economy.Count(Types.mineralContainer), Economy.Count(Types.generator), Economy.Count(Types.mine), #(Sense.my.constructor or {}),
 			Types.plant and Economy.Count(Types.plant) or -1, capacity);
+		do
+			local bal, sup = cur.balance or {}, Game.myFaction.maxResources.supply or {};
+			local parts = {};
+			for k,v in pairs(bal) do parts[#parts+1] = string.format('%s %+g (supply %s)', tostring(k), tonumber(v) or 0, tostring(sup[k] or '?')); end;
+			table.sort(parts);
+			Add(L, 'Balance per round: %s. Energy spare 0 means plants, labs and towers wait for power: more generators (and fuel mines to feed them).', table.concat(parts, ', '));
+			if Economy.siteWhy then Add(L, 'Last building site refused by the scripts because: %s', tostring(Economy.siteWhy)); end;
+		end;
 		if Economy.Count(Types.mineralContainer) <= 1 then Add(L, 'WARNING: %d mineral container(s). Minerals at 0 with mines standing means the container is gone.', Economy.Count(Types.mineralContainer)); end;
 		local can, cannot = {}, {};
 		for name,t in pairs(Game.Type.units) do
@@ -396,6 +529,11 @@ function Bridge.Help()
 	Add(L, '  Structures that are not researched yet are refused with an error (see "Can build" in the state).');
 	Add(L, '  Bridge.Weights{army = 3, defense = 6}      how much each need of the scripts counts');
 	Add(L, '  Bridge.Set(name, value)   a Cfg setting      Bridge.Every(rounds)      Bridge.Say(text)  your reasoning, kept in the log');
+	Add(L, '  Bridge.Out(text)  comes back in result_%s_<round>.txt of the same orders. With it, ask and get the answer at once:', Bridge.name);
+	Add(L, '  Bridge.Cells(region)   the region cell by cell (id, ground height, state, what stands there, neighbours), for BuildAt and Post');
+	Add(L, '  Bridge.Units([region]) my units one by one (id, type, cell, health)');
+	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
+	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
 	Add(L, 'Directions and posture stand until you change them. Anything else is plain Lua with the game API.');
 	Add(L, '');
 	Add(L, 'How the game is won: hold Nexus ports. A port goes to whoever completes a connected structure (a mine will do) next');
@@ -450,6 +588,7 @@ function Bridge.Turn()
 		Add(result, 'no orders within %d seconds: carrying on', Bridge.patience);
 	else
 		Bridge.notes = {};
+		Bridge.out = {};
 		local chunk, err = load(text, file, 't');
 		if chunk == nil then
 			Add(result, 'ERROR, nothing done: %s', tostring(err));
@@ -463,6 +602,8 @@ function Bridge.Turn()
 		for _,note in ipairs(Bridge.notes) do Log('Bridge says r='..round..': '..note); end;
 	end;
 	Add(result, 'waited %.0f seconds', timer());
+	for _,line in ipairs(Bridge.out or {}) do result[#result+1] = line; end;
+	Bridge.out = nil;
 	Log('Bridge: round '..round..': '..result[1]);
 	Game.BridgeWrite('result_'..Bridge.name..'_'..round..'.txt', table.concat(result, '\n')..'\n');
 end;
@@ -472,6 +613,15 @@ do
 	local base = Needs.Update;
 	function Needs.Update()
 		SafeCall('Bridge', Bridge.Turn);
+		SafeCall('BridgePosts', Bridge.TakePosted);
+		return base();
+	end;
+end;
+
+do
+	local base = Military.Combat;
+	function Military.Combat()
+		SafeCall('BridgePosted', Bridge.RunPosted);
 		return base();
 	end;
 end;
@@ -482,7 +632,8 @@ do
 	function Log(msg)
 		if type(msg) == 'string' and (string.find(msg, 'Direction result:', 1, true) or string.find(msg, 'Port mine ordered', 1, true)
 				or string.find(msg, 'Attacked ', 1, true) == 1 or string.find(msg, 'BuildStructure failed', 1, true)
-				or string.find(msg, 'did not happen', 1, true) or string.find(msg, 'no path to the', 1, true)) and #Bridge.results < 30 then
+				or string.find(msg, 'did not happen', 1, true) or string.find(msg, 'no path to the', 1, true)
+				or string.find(msg, 'came to nothing', 1, true) or string.find(msg, 'no site', 1, true) or string.find(msg, 'No mine', 1, true)) and #Bridge.results < 30 then
 			Bridge.results[#Bridge.results+1] = msg;
 		end;
 		return base(msg);
