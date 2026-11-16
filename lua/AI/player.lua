@@ -54,6 +54,8 @@ Cfg = {
 	-- desired unit counts
 	constructorsEarly = 3,
 	constructorsLate = 5,
+	minContainers = 2,			-- mineral containers kept (the faction dies without one)
+	spareContainerRound = 40,	-- from this round the spare one is built
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
 	maxSurveyorsDeep = 3,		-- once underground activity is suspected

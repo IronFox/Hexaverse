@@ -1091,6 +1091,17 @@ function Needs.NextStructure(constructorIndex)
 	if Needs.pending then Needs.Failed(Needs.pending); Needs.pending = nil; end;
 	local cur = Economy.Resources();
 	local minerals = cur.storage.minerals or 0;
+	-- A faction without a mineral container is dead by the server's rule, and with its only one
+	-- gone it stores nothing: production stops and the builders die out. So: never none, and a
+	-- second one once the base stands (one bomber run on the first used to end the match).
+	local mc = Types.mineralContainer;
+	if mc and Types.IsUnlocked(mc) and Sense.round >= 5 then
+		local n = Economy.Count(mc);
+		if n == 0 or (n < Cfg.minContainers and Sense.round >= Cfg.spareContainerRound and minerals >= Cost(mc)) then
+			Needs.Note('Mineral Container ordered: '..n..' standing, '..Cfg.minContainers..' wanted');
+			return {type = mc, kind = 'base'};
+		end;
+	end;
 	local opts = Needs.AdjustStructureOptions(Needs.StructureOptions(constructorIndex));
 	local best, top = Needs.Choose(opts, 'structure', minerals);
 	-- saving up: the top option is out of reach, and nothing affordable comes close
