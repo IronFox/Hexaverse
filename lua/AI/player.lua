@@ -703,7 +703,7 @@ function Sense.Update()
 			A mine switched off earns nothing, a Nexus Port switched off is no longer controlled.
 			(Plants and plane factories switch themselves off with an empty queue: not counted.)
 			]]
-			if u.isEnabled == false and u.type ~= Types.plant and u.type ~= Types.planeFactory then
+			if u.isEnabled == false and u.type ~= Types.plant and u.type ~= Types.planeFactory and not (Mem.keepOff and Mem.keepOff[u.id]) then
 				Sense.off[#Sense.off+1] = u;
 				local kind = (u.type == Types.generator and 'generator') or (u.type == Types.mine and 'mine')
 					or (string.find(tn, 'Nexus Port', 1, true) and 'port') or 'other';

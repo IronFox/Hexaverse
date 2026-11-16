@@ -121,7 +121,12 @@ function Bridge.Switch(typeName, on, count)
 	typeName = string.gsub(tostring(typeName), ':Tower$', ' Tower');
 	for _,st in ipairs(Sense.myStructures or {}) do
 		if st.type and string.gsub(st.type.name, ':Tower$', ' Tower') == typeName and st.Enable and (count == nil or n < count) and (st.isEnabled == nil or st.isEnabled ~= on) then
-			if pcall(st.Enable, on) then n = n + 1; end;
+			if pcall(st.Enable, on) then
+				n = n + 1;
+				-- (what the outside player switched off stays off: the power care leaves it alone)
+				Mem.keepOff = Mem.keepOff or {};
+				Mem.keepOff[st.id] = (not on) and true or nil;
+			end;
 		end;
 	end;
 	Bridge.Out('%d %s switched %s', n, typeName, on and 'on' or 'off');
@@ -590,7 +595,25 @@ function Bridge.RunPosted()
 				if not post.told then post.told = true; Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..': no ground for it on cell '..post.cell; end;
 				return;
 			end;
-			if Move.IsIdle(u) or (Sense.round - post.since) % 5 == 0 then Move.Towards(u, loc.world, cell, false, true); end;
+			if Move.IsIdle(u) or (Sense.round - post.since) % 5 == 0 then
+				-- the whole way at once, through my own units if they stand in it; why not, if not
+				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
+				if not ok or path == nil or #path == 0 then ok, path = pcall(u.FindShortestPath, loc, nil, true); end;
+				if ok and path and #path > 0 then
+					local ok2, err = pcall(u.DirectTo, path[#path]);
+					if not ok2 and not post.told then post.told = true; Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..': the move order was refused: '..tostring(err); end;
+				elseif not Move.Towards(u, loc.world, cell, false, true) and not post.told then
+					post.told = true;
+					Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') finds no path from cell '..u.location.cell.index..' to cell '..post.cell
+						..(ok and '' or (' ('..tostring(path)..')'))..': choose a cell it can reach (Bridge.Cells shows ground; heavy bases need level ground or roads)';
+				end;
+			end;
+			post.at = post.at or {cell = u.location.cell.index, round = Sense.round};
+			if post.at.cell ~= u.location.cell.index then post.at = {cell = u.location.cell.index, round = Sense.round};
+			elseif Sense.round - post.at.round >= 10 and not post.toldStuck then
+				post.toldStuck = true;
+				Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') has stood on cell '..u.location.cell.index..' for 10 rounds without reaching cell '..post.cell;
+			end;
 		end);
 	end;
 end;
