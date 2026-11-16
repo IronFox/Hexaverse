@@ -120,6 +120,7 @@ Cfg = {
 
 	-- structures
 	wantLabs = 3,
+	powerCare = true,		-- switch structures the engine switched off on again in order of need, labs give way
 	wantLabsMax = 15,		-- labs late and rich, while T2 is out of reach
 	caps = {},				-- structure type name -> most to have (empty: no caps)
 	wantLabsRich = 6,		-- labs while minerals pile up
@@ -648,6 +649,7 @@ function Sense.Update()
 	Sense.structureCells = {};
 	Sense.structureAt = {};		-- cell index -> my structure there
 	Sense.structuresByType = {};
+	Sense.standingByType = {};
 	Sense.off = {};			-- structures of mine the engine switched off
 	Sense.offByKind = {generator = 0, mine = 0, port = 0, other = 0};
 	Sense.plants = {};
@@ -694,7 +696,6 @@ function Sense.Update()
 			Sense.structureAt[u.location.cell.index] = u;
 			local tn = u.type.name;
 			Sense.structuresByType[tn] = (Sense.structuresByType[tn] or 0) + 1;
-			-- (a standing tower is named 'Turret:Tower', the type to build 'Turret Tower': counted under both)
 			--[[
 			The faction's structures share one balance. When any resource runs negative (fuel for the
 			generators, energy for the rest), the engine switches structures off until it holds, and
@@ -708,8 +709,15 @@ function Sense.Update()
 					or (string.find(tn, 'Nexus Port', 1, true) and 'port') or 'other';
 				Sense.offByKind[kind] = Sense.offByKind[kind] + 1;
 			end;
+			--[[
+			A standing tower is named 'Turret:Tower', the type to build 'Turret Tower'. Economy.Count asks by
+			the build name and so never saw standing towers, only those on order: the needs took every tower
+			for the first of its kind. Counting them right (one batch and 12 duels) cost three times the
+			structures and half the ports held, so the needs keep their generous count, and what really
+			stands is kept apart for caps and reports (Economy.Standing).
+			]]
 			local alias = string.gsub(tn, ':Tower$', ' Tower');
-			if alias ~= tn then Sense.structuresByType[alias] = (Sense.structuresByType[alias] or 0) + 1; end;
+			Sense.standingByType[alias] = (Sense.standingByType[alias] or 0) + 1;
 			if Types.planeFactory and u.type == Types.planeFactory then
 				Sense.planeFactories[#Sense.planeFactories+1] = u;
 			elseif u.type.isMobileEntityProducer and not u.type.isHangar then
@@ -1916,6 +1924,88 @@ end;
 function Economy.Count(t)
 	if t == nil then return 0; end;
 	return Sense.structuresByType[t.name] or 0;
+end;
+
+-- What really stands or is on order of a type to build (towers included, see Sense.Update)
+function Economy.Standing(t)
+	if t == nil then return 0; end;
+	local alias = string.gsub(t.name, ':Tower$', ' Tower');
+	local n = Sense.standingByType[alias] or 0;
+	for _,u in ipairs(Sense.my.constructor or {}) do
+		for _,task in ipairs(u.tasks or {}) do
+			if task.job and task.job.buildingType == alias then n = n + 1; end;
+		end;
+	end;
+	return n;
+end;
+
+function Economy.Capped(t)
+	local cap = t and Cfg.caps and Cfg.caps[(string.gsub(t.name, ':Tower$', ' Tower'))];
+	return cap ~= nil and Economy.Standing(t) >= cap;
+end;
+
+--[[
+Keeping the lights on. The engine switches structures off when fuel or energy runs negative, in
+no useful order (the port and the mines as readily as a lab), and does not reliably switch them
+on again when there is power to spare. So: whatever is off and matters most is switched on as
+soon as the spare carries it (generators need 10 fuel, the rest 10 energy), and while a port,
+mine or generator is off for lack of energy, labs give way.
+]]
+local function OffRank(u)
+	local n = u.type.name;
+	if string.find(n, 'Nexus Port', 1, true) then return 1; end;
+	if u.type == Types.mine then return 2; end;
+	if u.type == Types.generator then return 3; end;
+	if u.type == Types.mineralContainer then return 4; end;
+	if u.type == Types.lab then return 9; end;
+	return 6;
+end;
+
+function Economy.Power()
+	if #Sense.off == 0 or not Cfg.powerCare then return; end;
+	Mem.shed = Mem.shed or {};
+	local cur = Economy.Resources();
+	local energy, fuel = cur.balance.energy or 0, cur.balance.fuel or 0;
+	local list = {};
+	for _,u in ipairs(Sense.off) do
+		-- (what I switched off myself to make room comes back last, and only with room to spare)
+		if u.Enable then list[#list+1] = u; end;
+	end;
+	table.sort(list, function(a, b)
+		local ra, rb = OffRank(a) + (Mem.shed[a.id] and 10 or 0), OffRank(b) + (Mem.shed[b.id] and 10 or 0);
+		if ra ~= rb then return ra < rb; end;
+		return tostring(a.id) < tostring(b.id);
+	end);
+	local on = 0;
+	local vitalWaits = false;
+	for _,u in ipairs(list) do
+		local isGen = u.type == Types.generator;
+		local need = 10;
+		local have = isGen and fuel or energy;
+		local shed = Mem.shed[u.id];
+		if have >= need + (shed and 20 or 0) and on < 2 then
+			if pcall(u.Enable, true) then
+				on = on + 1;
+				if isGen then fuel = fuel - need; else energy = energy - need; end;
+				Mem.shed[u.id] = nil;
+				Log(string.format('Switched on again at round %d: %s (spare energy %d, fuel %d)', Sense.round, u.type.name, energy, fuel));
+			end;
+		elseif not isGen and OffRank(u) <= 3 then
+			vitalWaits = true;
+		end;
+	end;
+	-- a port or mine waits for energy: a lab gives way (one a round)
+	if vitalWaits and on == 0 and Types.lab then
+		for _,st in ipairs(Sense.myStructures) do
+			if st.type == Types.lab and st.isEnabled ~= false and st.Enable then
+				if pcall(st.Enable, false) then
+					Mem.shed[st.id] = Sense.round;
+					Log(string.format('Laboratory switched off at round %d: a port or mine waits for energy', Sense.round));
+				end;
+				break;
+			end;
+		end;
+	end;
 end;
 
 local function NormName(n)
@@ -3614,6 +3704,7 @@ end;
 
 function Economy.BuildAt(u, loc, t, reachable)
 	Economy.buildWhy = nil;
+	if Economy.Capped(t) then Economy.buildWhy = 'capped'; return false; end;
 	if loc ~= u.location then
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
@@ -5063,6 +5154,7 @@ function Execute()
 	SafeCall('Needs', Needs.Update);
 	SafeCall('NeedsReport', Needs.Report);
 
+	SafeCall('Power', Economy.Power);
 	SafeCall('Research', Economy.Research);
 	SafeCall('Production', Economy.Production);
 	SafeCall('PlaneProduction', Economy.PlaneProduction);

@@ -64,6 +64,7 @@ Bridge = {
 	notes = {},
 	lastAsked = nil,
 	lastAttack = -100,
+	upgrades = {},
 	posts = {},				-- unit id -> {cell}: units placed by the outside player
 	results = {},			-- "Direction result" and other lines since the last state
 };
@@ -147,6 +148,22 @@ end;
 
 function Bridge.Research(text)
 	text = tostring(text);
+	-- (say what it matches: a name that matches nothing would otherwise do nothing, silently)
+	do
+		local parts, hits = {}, {};
+		for p in string.gmatch(string.lower(text), '[^:]+') do parts[#parts+1] = p; end;
+		for name,topic in pairs(Game.Research.topics) do
+			local fn = string.lower(topic.fullName or name);
+			local match = true;
+			for _,p in ipairs(parts) do if not string.find(fn, p, 1, true) then match = false; break; end; end;
+			if match then
+				hits[#hits+1] = tostring(topic.fullName or name)..(topic.isCompleted and ' (done)' or ((topic.dependency and not topic.dependency.isCompleted)
+					and (' (waits for '..tostring(topic.dependency.fullName or topic.dependency.name or '?')..')') or ''));
+			end;
+		end;
+		table.sort(hits);
+		Bridge.Out('Research "%s" matches: %s', text, #hits > 0 and table.concat(hits, '; ') or 'NOTHING (see Game.Research.topics for the names)');
+	end;
 	for i,w in ipairs(Cfg.research) do
 		if w == text then table.remove(Cfg.research, i); break; end;
 	end;
@@ -281,11 +298,94 @@ function Bridge.Units(region)
 	end;
 	for role,list in pairs(Sense.my) do for _,u in ipairs(list) do One(u, role); end; end;
 	for _,u in ipairs(Bridge.posted or {}) do One(u, 'posted'); end;
+	if region == nil then
+		for _,u in ipairs(Sense.stored or {}) do
+			Bridge.Out('  #%s %s, STORED in a vehicle store (Bridge.Deploy(id) brings it out)', tostring(u.id), u.type.name);
+		end;
+	end;
+end;
+
+local function Stored(unitId)
+	for _,u in ipairs(Sense.stored or {}) do
+		if tostring(u.id) == tostring(unitId) then return u; end;
+	end;
+end;
+
+local function MyUnit(unitId)
+	for _,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do if tostring(u.id) == tostring(unitId) then return u; end; end;
+	end;
+	for _,u in ipairs(Bridge.posted or {}) do if tostring(u.id) == tostring(unitId) then return u; end; end;
+end;
+
+-- Brings a stored unit out of its vehicle store (next to the store). True if it came out.
+function Bridge.Deploy(unitId)
+	local u = Stored(unitId);
+	if u == nil then error('unit #'..tostring(unitId)..' is not in a store', 2); end;
+	local store = u.storedIn;
+	local ok, options = pcall(function() return store.GetStoredDeploymentOptions(u); end);
+	if not ok or options == nil or #options == 0 then Bridge.Out('unit #%s cannot leave its store: no free cell beside it', tostring(unitId)); return false; end;
+	local ok2, err = pcall(store.DeployStored, u, options[1]);
+	Bridge.Out(ok2 and 'unit #%s deployed to cell %s' or 'unit #%s: deploying failed (%s)', tostring(unitId), ok2 and tostring(options[1].cell.index) or tostring(err));
+	return ok2;
+end;
+
+-- The mechanic goes to the unit and upgrades it (T2; costs composite materials). Both are taken out of
+-- their stores if need be and kept from the scripts until it is done or given up (30 rounds).
+function Bridge.Upgrade(mechanicId, unitId)
+	Bridge.upgrades[#Bridge.upgrades+1] = {mech = tostring(mechanicId), unit = tostring(unitId), since = Sense.round, calls = 0};
+end;
+
+function Bridge.RunUpgrades()
+	for i = #Bridge.upgrades, 1, -1 do
+		local job = Bridge.upgrades[i];
+		local done = nil;
+		local mech, unit = MyUnit(job.mech), MyUnit(job.unit);
+		if Sense.round - job.since > 30 then done = 'given up after 30 rounds';
+		elseif (mech == nil and Stored(job.mech) == nil) or (unit == nil and Stored(job.unit) == nil) then done = 'the mechanic or the unit is gone';
+		else
+			if mech == nil then pcall(Bridge.Deploy, job.mech); end;
+			if unit == nil then pcall(Bridge.Deploy, job.unit); end;
+			if mech and unit and mech.location and unit.location then
+				local uc = unit.location.cell;
+				Bridge.posts[job.unit] = Bridge.posts[job.unit] or {cell = uc.index, since = Sense.round, forUpgrade = true};
+				local beside = false;
+				for _,n in ipairs(uc.neighbors or {}) do if n.index == mech.location.cell.index then beside = true; break; end; end;
+				if beside then
+					if mech.Upgrade == nil then done = 'unit #'..job.mech..' cannot upgrade (not a mechanic?)';
+					else
+						local ok, err = pcall(mech.Upgrade, unit.location);
+						job.calls = job.calls + 1;
+						if not ok then done = 'refused: '..tostring(err);
+						elseif job.calls >= 2 then done = 'ordered (see the unit and the composite materials in the next state)'; end;
+					end;
+				else
+					local p = Bridge.posts[job.mech];
+					if p == nil or not p.forUpgrade or p.target ~= uc.index then
+						local to = nil;
+						for _,n in ipairs(uc.neighbors or {}) do
+							if not Sense.structureCells[n.index] and Move.GroundAt(mech, n) ~= nil and to == nil then to = n.index; end;
+						end;
+						if to == nil then done = 'no free cell beside the unit';
+						else Bridge.posts[job.mech] = {cell = to, since = Sense.round, forUpgrade = true, target = uc.index}; end;
+					end;
+				end;
+			end;
+		end;
+		if done then
+			Bridge.results[#Bridge.results+1] = 'Upgrade of unit #'..job.unit..' by mechanic #'..job.mech..': '..done;
+			for _,id in ipairs({job.mech, job.unit}) do
+				if Bridge.posts[id] and Bridge.posts[id].forUpgrade then Bridge.posts[id] = nil; end;
+			end;
+			table.remove(Bridge.upgrades, i);
+		end;
+	end;
 end;
 
 -- A unit of mine goes to that cell and stays there, shooting what comes in range, until freed.
 -- The scripts leave it alone meanwhile (a posted builder builds nothing, a posted mechanic repairs nothing).
 function Bridge.Post(unitId, cell)
+	if Stored(unitId) then error('unit #'..tostring(unitId)..' is in a vehicle store: Bridge.Deploy('..tostring(unitId)..') first', 2); end;
 	cell = tonumber(cell);
 	if cell == nil or Economy.Cell(cell) == nil then error('no such cell: '..tostring(cell), 2); end;
 	Bridge.posts[tostring(unitId)] = {cell = cell, since = Sense.round};
@@ -418,8 +518,7 @@ do
 		if job == nil then
 			local want = base(constructorIndex);
 			-- (caps hold for whatever the scripts choose, their direct rules included)
-			local cap = want and want.type and Cfg.caps[want.type.name];
-			if cap and Economy.Count(want.type) >= cap then return nil; end;
+			if want and want.type and Economy.Capped(want.type) then return nil; end;
 			return want;
 		end;
 		if job.cell then
@@ -654,6 +753,8 @@ function Bridge.Help()
 	Add(L, '  Bridge.Units([region]) my units one by one (id, type, cell, health)');
 	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
+	Add(L, '  Bridge.Deploy(unitId)   brings a stored unit out of its vehicle store (Bridge.Units() lists the stored ones)');
+	Add(L, '  Bridge.Upgrade(mechanicId, unitId)   the mechanic goes to the unit and upgrades it to T2 (composite materials); result in the next state');
 	Add(L, '  Bridge.Hostiles()   hostiles in sight one by one with cell and firing range');
 	Add(L, '  Bridge.Ring(cell, steps [, true])   the cells that many steps from a cell (true: all up to it), with region, height, state');
 	Add(L, '  Bridge.Dist(cellA, cellB)   steps between two cells');
@@ -738,6 +839,7 @@ do
 	local base = Needs.Update;
 	function Needs.Update()
 		SafeCall('Bridge', Bridge.Turn);
+		SafeCall('BridgeUpgrades', Bridge.RunUpgrades);
 		SafeCall('BridgePosts', Bridge.TakePosted);
 		return base();
 	end;

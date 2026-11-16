@@ -1135,9 +1135,8 @@ function Needs.StructureOptions(constructorIndex)
 		local keep = {};
 		for _,o in ipairs(opts) do
 			local t = o.want.type;
-			local cap = Cfg.caps and Cfg.caps[t.name];
 			local drop = nil;
-			if cap and Economy.Count(t) >= cap then drop = 'capped at '..cap;
+			if Economy.Capped(t) then drop = 'capped';
 			elseif t == Types.lab and labs >= labCap then drop = 'lab limit '..labCap;
 			elseif starved and (t == Types.lab or t == Types.planeFactory or (t == Types.plant and Economy.Count(t) >= 1)) then drop = 'no power to spare'; end;
 			if drop then
