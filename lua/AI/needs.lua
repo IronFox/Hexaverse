@@ -1147,6 +1147,14 @@ function Needs.NextStructure(constructorIndex)
 		local rt = Game.Type.units['Rocket Launcher Tower'];
 		-- ... and at once, before anything else, with a second claimable port next door
 		local nextDoor = Cfg.nextDoorHops > 0 and Sense.PortNextDoor();
+		-- A tower shoots as far as someone sees for it: the first tower gets a radar tower before the second
+		-- (two rocket towers without radar killed 0 to 3 raiders and lost up to 9 structures)
+		local rdr = Types.radarTower;
+		if rt and rdr and Mem.homeRegion and Types.IsUnlocked(rdr) and Economy.Count(rt) >= 1 and Economy.Count(rdr) < 1
+				and minerals >= Cost(rdr) then
+			Needs.Note('Radar Tower ordered at home for the towers');
+			return {type = rdr, kind = 'tower', region = Mem.homeRegion};
+		end;
 		if rt and Mem.homeRegion and Sense.round <= 80 and Types.IsUnlocked(rt)
 				and Economy.Count(rt) < Cfg.earlyTowers and minerals >= Cost(rt)
 				and (nextDoor or (Sense.nexus and Mem.nexusActive and Sense.round >= 6
