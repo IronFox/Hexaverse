@@ -1099,6 +1099,13 @@ end;
 -- Does a layer currently matter? Weight decays if the enemy hasn't shown that capability for a while
 -- (the faction is called '<Nexus>': the test for 'Nexus' never matched, and everything that
 -- depended on it was dead until this was found in the logs)
+-- True if the cell lies in a locked EMP zone (with EMP zones on, only some ports can be reached)
+function Sense.UnderEMP(cell)
+	if cell == nil then return false; end;
+	local ok, e = pcall(Game.Grid.AffectedByEMP, cell);
+	return ok and e and true or false;
+end;
+
 function Sense.IsNexus(f)
 	return f ~= nil and type(f.name) == 'string' and string.find(f.name, 'Nexus', 1, true) ~= nil;
 end;
@@ -2798,7 +2805,7 @@ function Economy.TryPort(u)
 	end;
 	for idx,cell in pairs(Economy.portCells or {}) do
 		local rid = Map.cellRegion[idx];
-		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round
+		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round and not Sense.UnderEMP(cell)
 				and rid then
 			local reg = Map.regions[rid];
 			local near = (Sense.hops[rid] or 99) <= maxHops;
@@ -3645,7 +3652,8 @@ function Military.ChooseAttackTarget()
 			-- The match is won with ports: a region with a port that is not mine is worth the trip.
 			-- (Nothing aimed at ports before: the army went for whatever hostile structures were
 			-- near and weak, and no lost port was ever retaken.)
-			if Significance.ports and Significance.ports[id] and Significance.ports[id] ~= 'mine' then
+			-- (not a port under an EMP zone: it cannot be claimed, and the army would only take damage there)
+			if Significance.ports and Significance.ports[id] and Significance.ports[id] ~= 'mine' and not Sense.UnderEMP(reg.centerCell) then
 				value = value + Cfg.portAttackValue;
 			end;
 			local hops = Sense.hops[id] or 20;
