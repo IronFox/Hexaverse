@@ -433,6 +433,8 @@ function Bridge.Plants()
 			p.isEnabled == false and 'OFF' or 'on', tostring(p.productionCompleted or 'nothing'), p.deploymentOptions and tostring(#p.deploymentOptions) or '?',
 			table.concat(q, ', '), h and (', head unchanged since r'..h.since) or '',
 			Economy.plantBlocked[p.id] and (', BLOCKED since r'..Economy.plantBlocked[p.id]) or '');
+		local ex, why = Economy.Exits(p.location);
+		Bridge.Out('    exits by terrain: %d of %d neighbours (plant height %s)%s', ex, #p.location.cell.neighbors, tostring(p.location.height), why ~= '' and ('; no exit: '..why) or '');
 	end;
 end;
 

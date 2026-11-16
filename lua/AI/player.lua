@@ -135,6 +135,7 @@ Cfg = {
 	roadMinerals = 200,		-- and minerals pile up
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
+	plantScrap = 60,	-- a plant with no exit by the terrain for this many rounds is scrapped (false: never)
 	plantBlockedRounds = 30,	-- a finished vehicle that cannot deploy is given up after this many rounds
 	plantFreeCells = 3,
 	autoSurveyors = true,	-- surveyors roam automated (the game's own prospecting), replaced when lost
@@ -2068,7 +2069,7 @@ function Economy.Power()
 		local tried = Mem.onTried[u.id];
 		if tried and Sense.round < tried.round + tried.wait then
 			-- wait
-		elseif have >= need + (shed and 10 or 0) and on < 2 then
+		elseif have >= need + ((shed and Sense.round - shed < 50) and 10 or 0) and on < 2 then	-- (the extra margin lapses after 50 rounds)
 			if pcall(u.Enable, true) then
 				Mem.onTried[u.id] = {round = Sense.round, wait = (tried and Sense.round - tried.round <= 2 * tried.wait) and math.min(80, tried.wait * 2) or 5};
 				on = on + 1;
@@ -2515,6 +2516,7 @@ function Economy.TowersIn(reg)
 end;
 
 -- Is this cell a reasonable construction site?
+Economy.plantDead = {};	-- plant id -> round since which it has no exit by the terrain
 Economy.plantCells = {};	-- cell index -> cell of my vehicle plants, refreshed per round
 
 --[[
@@ -2669,6 +2671,49 @@ function Economy.BuildLab(u, t)
 	return false;
 end;
 
+--[[
+Where a vehicle plant standing at loc could put a finished vehicle, by the engine's own rules
+(GetProductionChoices / CanDeployHere): a neighbouring cell at the plant's height, one below or
+one above, that is clear, has solid ground right beneath, lies in no EMP zone and holds no
+structure or unit. A neighbour whose ground lies two levels lower, or a slope the cell is not
+clear of, is no exit, however free it looks on the map.
+Returns the number of exits (units ignored: they move) and a line telling why not, per cell.
+]]
+function Economy.Exits(loc, skipIdx)
+	local n, why = 0, {};
+	local h = loc.height or 0;
+	local function Clear(cell, hh)
+		local ok, c = pcall(Game.Grid.IsClear, {cell = cell, height = hh});
+		return ok and c and true or false;
+	end;
+	for _,nb in ipairs(loc.cell.neighbors or {}) do
+		local r;
+		if nb.index == skipIdx then r = 'to be built on';
+		elseif Sense.structureCells and Sense.structureCells[nb.index] then r = 'structure';
+		elseif Economy.claimed and Economy.claimed[nb.index] then r = 'claimed';
+		elseif Sense.UnderEMP(nb) then r = 'EMP zone';
+		else
+			local found;
+			for j = -1, 1 do
+				if Clear(nb, h + j) and not Clear(nb, h + j - 1) and (j >= 0 or Clear(nb, h)) then found = j; break; end;
+			end;
+			if found == nil then
+				-- where is the ground then?
+				local at;
+				for j = -6, 6 do
+					if Clear(nb, h + j) and not Clear(nb, h + j - 1) then at = j; break; end;
+				end;
+				if at == nil then r = 'no clear cell with ground within 6 levels';
+				elseif at < -1 then r = 'ground '..(-at)..' levels lower';
+				elseif at > 1 then r = 'ground '..at..' levels higher';
+				else r = 'not clear (slope)'; end;
+			end;
+		end;
+		if r == nil then n = n + 1; else why[#why+1] = nb.index..' '..r; end;
+	end;
+	return n, table.concat(why, '; ');
+end;
+
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
 	-- a mine may take a reserved lab cell: income beats a lab slot (the reserve once locked a faction out of its last mine sites)
@@ -2718,6 +2763,13 @@ function Economy.SiteOK(loc, forMine)
 				if pn.index ~= idx and not Sense.structureCells[pn.index] and not Economy.claimed[pn.index] then pfree = pfree + 1; end;
 			end;
 			if pfree < Cfg.plantFreeCells then Economy.siteWhy = 'boxes in plant'; return false; end;
+			-- (and of those, the ones a vehicle can really leave by: never take the last two)
+			local pl = Economy.plantLocs and Economy.plantLocs[nb.index];
+			if pl then
+				local ex = Economy.Exits(pl);
+				local exWithout = Economy.Exits(pl, idx);
+				if exWithout < ex and exWithout < 2 then Economy.siteWhy = 'takes a plant exit'; return false; end;
+			end;
 		end;
 	end;
 	-- the constructor must be able to move off the finished structure
@@ -3782,7 +3834,9 @@ function Economy.AssignConstructor(u, index)
 	Economy.fringeOK = want.kind == 'tower';
 	for _,n in ipairs(reach) do
 		local loc = n.location;
-		if not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false) then
+		if not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false)
+			-- (a vehicle plant only where its vehicles can leave: level ground beside it)
+			and (want.type ~= Types.plant or Economy.Exits(loc) >= Cfg.plantFreeCells) then
 			local d = Dist2(loc.world, goal);
 			-- towers prefer the edge of the base, everything else the middle
 			local score = d;
@@ -4165,9 +4219,22 @@ function Economy.Production()
 				Economy.plantBlocked[p.id] = nil;
 			else
 				Economy.plantBlocked[p.id] = Economy.plantBlocked[p.id] or Sense.round;
+				local exits, exWhy = Economy.Exits(p.location);
 				if Sense.round % 10 == 0 then
-					Log(p.niceName..': cannot deploy '..tostring(p.productionCompleted)..', no deployment option');
+					Log(p.niceName..': cannot deploy '..tostring(p.productionCompleted)..', no deployment option ('..exits..' exits by terrain; '..exWhy..')');
 				end;
+				--[[
+				No exit at all by the terrain (a plant in a pit, on a knoll or at the rim of an EMP zone)
+				and blocked for 60 rounds: this plant will never deliver. Scrap it while a builder lives,
+				so that the next one goes up where vehicles can leave.
+				]]
+				if Cfg.plantScrap and exits == 0 and Sense.round - (Economy.plantDead[p.id] or Sense.round) >= Cfg.plantScrap
+					and #Sense.my.constructor > 0 and p.Destroy then
+					local okD, errD = pcall(p.Destroy);
+					Log(p.niceName..' on cell '..p.location.cell.index..': no exit by terrain for '..Cfg.plantScrap..' rounds, scrapping it'
+						..(okD and '' or (' (refused: '..tostring(errD)..')')));
+				end;
+				if exits == 0 then Economy.plantDead[p.id] = Economy.plantDead[p.id] or Sense.round; else Economy.plantDead[p.id] = nil; end;
 				--[[
 				A finished vehicle that cannot leave blocks the plant for good (one match stood still
 				for 200 rounds behind a heavy tank with no level ground beside the plant). After 30
@@ -4249,8 +4316,10 @@ end;
 function Economy.Constructors()
 	Economy.claimed = {};
 	Economy.plantCells = {};
+	Economy.plantLocs = {};
 	for _,p in ipairs(Sense.plants) do
 		Economy.plantCells[p.location.cell.index] = p.location.cell;
+		Economy.plantLocs[p.location.cell.index] = p.location;
 	end;
 	Economy.powerOrders = 0;
 	Economy.freeBuilders = 0;
