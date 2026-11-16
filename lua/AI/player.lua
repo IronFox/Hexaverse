@@ -91,7 +91,7 @@ Cfg = {
 	wallAA = 2,					-- AA towers inside the wall, whether planes were seen or not (sensor drones show the Nexus where to strike)
 	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
 	mechanicFromRound = 15,
-	portNeedsArmy = false,		-- ports beyond the home region only where my units stand in strength (off: cost half the ports in duels)
+	portNeedsArmy = true,		-- ports other than the nearest one only where my units stand in strength
 	nextDoorHops = 2,			-- a second claimable port this close to home means towers first
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
@@ -2831,6 +2831,13 @@ function Economy.TryPort(u)
 	local maxHops = (army >= Cfg.portFarArmy) and Cfg.portFarHops or Cfg.portMineHops;
 	local best, bestD = nil, nil;
 	local guard, guardD = nil, nil;
+	-- the nearest claimable port counts as the home port, however far (in duels it lay beyond the home region)
+	local nearestPort, nearestHops = nil, nil;
+	for idx,cell in pairs(Economy.portCells or {}) do
+		local rid = Map.cellRegion[idx];
+		local hp = rid and Sense.hops[rid];
+		if hp and not Sense.UnderEMP(cell) and (nearestHops == nil or hp < nearestHops) then nearestPort, nearestHops = idx, hp; end;
+	end;
 	for idx,_ in pairs(mine) do
 		local cell = Economy.portCells[idx];
 		local rid = Map.cellRegion[idx];
@@ -2865,7 +2872,7 @@ function Economy.TryPort(u)
 			-- A port away from home only where my units already stand in strength: its owner sees the
 			-- construction and comes for it, and a lone builder there gives the base away and is lost
 			-- (in 19 of 24 matches the one try for the second port was a lone builder around round 25)
-			local home = not Cfg.portNeedsArmy or (Sense.hops[rid] or 99) <= 1;
+			local home = not Cfg.portNeedsArmy or (Sense.hops[rid] or 99) <= 1 or idx == nearestPort;
 			if not beside and ((held and econ) or (home and near and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
 					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength))) then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
