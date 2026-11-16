@@ -264,8 +264,13 @@ function Bridge.Remember()
 			Bridge.known[e.location.cell.index] = {name = e.type.name, loc = e.location, round = Sense.round};
 		end;
 	end;
-	for idx,_ in pairs(Bridge.known) do
-		if Sense.structureCells[idx] then Bridge.known[idx] = nil; end;	-- mine now
+	for idx,k in pairs(Bridge.known) do
+		if Sense.structureCells[idx] then Bridge.known[idx] = nil;	-- mine now
+		elseif k.round < Sense.round and Control.At(k.loc) > 0 then
+			-- the cell is in sight and nothing hostile stands there any more
+			Bridge.results[#Bridge.results+1] = k.name..' at cell '..idx..' is gone (the cell is in sight and empty)';
+			Bridge.known[idx] = nil;
+		end;
 	end;
 	-- what became of the builders sent to exact cells
 	for cell,p in pairs(Bridge.pending) do
@@ -358,6 +363,40 @@ function Bridge.Ring(cell, steps, all)
 	Bridge.Out('CELLS %s%d steps from cell %d: %s', all and 'within ' or '', steps, c.index, table.concat(rows, ' '));
 end;
 
+-- How far a unit of mine reaches from where it stands, in cell steps, and from which cells around a
+-- target it could hit that target (ranges are distances in space, not steps: height counts).
+function Bridge.Reach(unitId, targetCell)
+	local u = Bridge.MyUnit(unitId);
+	if u == nil or not (u.turret and u.turret.IsInRange) then error('no armed unit of mine #'..tostring(unitId), 2); end;
+	local dist = Steps(u.location.cell, 14);
+	local far = 0;
+	for idx,d in pairs(dist) do
+		if d > far then
+			local loc = Move.GroundAt(u, Economy.Cell(idx));
+			local ok, hit = pcall(function() return u.turret.IsInRange(loc.world); end);
+			if ok and hit == true then far = d; end;
+		end;
+	end;
+	Bridge.Out('unit #%s (%s) reaches %d steps from cell %d', tostring(unitId), u.type.name, far, u.location.cell.index);
+	if targetCell and u.turret.IsInRangeFrom then
+		local tc = Economy.Cell(tonumber(targetCell));
+		if tc == nil then error('no such cell: '..tostring(targetCell), 2); end;
+		local k = Bridge.known[tc.index];
+		local tloc = (k and k.loc) or Move.GroundAt(u, tc);
+		local rows = {};
+		for idx,d in pairs(Steps(tc, 14)) do
+			local from = Move.GroundAt(u, Economy.Cell(idx));
+			if from and tloc then
+				local ok, hit = pcall(u.turret.IsInRangeFrom, from, tloc.world);
+				if ok and hit == true and d >= 6 then rows[#rows+1] = string.format('%d(%dst r%s %s)', idx, d, tostring(Map.cellRegion[idx] or '?'), CellState(Economy.Cell(idx))); end;
+			end;
+		end;
+		table.sort(rows);
+		Bridge.Out('cells 6 or more steps from cell %d from which it can hit that cell: %s', tc.index, #rows > 0 and table.concat(rows, ' ') or 'none');
+	end;
+	return far;
+end;
+
 -- Steps between two cells (nil beyond 30).
 function Bridge.Dist(a, b)
 	local ca, cb = Economy.Cell(tonumber(a)), Economy.Cell(tonumber(b));
@@ -397,7 +436,7 @@ local function Stored(unitId)
 	end;
 end;
 
-local function MyUnit(unitId)
+function Bridge.MyUnit(unitId)
 	for _,list in pairs(Sense.my) do
 		for _,u in ipairs(list) do if tostring(u.id) == tostring(unitId) then return u; end; end;
 	end;
@@ -426,7 +465,7 @@ function Bridge.RunUpgrades()
 	for i = #Bridge.upgrades, 1, -1 do
 		local job = Bridge.upgrades[i];
 		local done = nil;
-		local mech, unit = MyUnit(job.mech), MyUnit(job.unit);
+		local mech, unit = Bridge.MyUnit(job.mech), Bridge.MyUnit(job.unit);
 		if Sense.round - job.since > 30 then done = 'given up after 30 rounds';
 		elseif (mech == nil and Stored(job.mech) == nil) or (unit == nil and Stored(job.unit) == nil) then done = 'the mechanic or the unit is gone';
 		else
@@ -507,7 +546,15 @@ function Bridge.RunPosted()
 		SafeCall('posted '..tostring(u.niceName), function()
 			local post = Bridge.posts[tostring(u.id)];
 			local fired = false;
-			if post.fire and u.location and (post.arrived or u.location.cell.index == post.cell) then fired = FireAtCell(u, post);
+			local inReach = false;
+			if post.fire and u.location and u.turret and u.turret.IsInRange then
+				local k = Bridge.known[post.fire.cell];
+				local loc = (k and k.loc) or Move.GroundAt(u, Economy.Cell(post.fire.cell));
+				local okr, hit = pcall(function() return u.turret.IsInRange(loc.world); end);
+				inReach = okr and hit == true;
+			end;
+			-- (fires as soon as the target is in range, on the way to the post too, and says so once it has arrived)
+			if post.fire and u.location and (inReach or post.arrived or u.location.cell.index == post.cell) then fired = FireAtCell(u, post);
 			else fired = Military.Fire(u); end;
 			if fired and not u.motionIgnoresAttack then return; end;
 			if u.location and u.location.cell.index == post.cell then
@@ -858,6 +905,7 @@ function Bridge.Help()
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
 	Add(L, '  Bridge.FireAt(unitId, cell [, rounds])   a posted unit fires at that cell, seen or not (artillery, EMP), for instance at a hostile');
 	Add(L, '                             structure listed under HOSTILE STRUCTURES SEEN SO FAR; out of range, no ammunition or fired comes with the next state');
+	Add(L, '  Bridge.Reach(unitId [, targetCell])   how many steps that unit reaches from where it stands, and the cells from which it could hit the target cell');
 	Add(L, '  Bridge.Deploy(unitId)   brings a stored unit out of its vehicle store (Bridge.Units() lists the stored ones)');
 	Add(L, '  Bridge.Upgrade(mechanicId, unitId)   the mechanic goes to the unit and upgrades it to T2 (composite materials); result in the next state');
 	Add(L, '  Bridge.Hostiles()   hostiles in sight one by one with cell and firing range');
