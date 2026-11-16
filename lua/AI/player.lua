@@ -3076,7 +3076,8 @@ function Wall.Try(u)
 	if w.complete and Sense.round % 3 ~= 0 then return false; end;
 	local busy = 0;
 	for _,job in pairs(Mem.jobs) do if job.kind == 'Wall' then busy = busy + 1; end; end;
-	if busy >= Cfg.wallBuilders then return false; end;
+	-- (never more than half the builders: in duels the wall cost half the economy)
+	if busy >= Cfg.wallBuilders or busy >= math.max(1, math.floor(#(Sense.my.constructor or {}) / 2)) then return false; end;
 	local here = u.location.cell;
 	if not w.inside[here.index] then return false; end;	-- (builders outside come home through the build sites, all inside now)
 	-- the ring cells next to where it stands: block them
