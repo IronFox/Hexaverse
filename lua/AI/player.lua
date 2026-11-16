@@ -2011,6 +2011,40 @@ function Economy.Power()
 	Mem.shed = Mem.shed or {};
 	local cur = Economy.Resources();
 	local energy, fuel = cur.balance.energy or 0, cur.balance.fuel or 0;
+	--[[
+	The trade that breaks the deadlock: a fuel mine is off, there is no energy to spare for it, and
+	the fuel does not carry another generator (or generators already stand idle). Then no generator
+	can ever bring the energy, because the fuel for it is in the mine that is off. A running
+	mineral mine is switched off and the fuel mine on, in the same round (done by hand it took
+	fuel from 12 to 61 and energy from 20 to 120 within 20 rounds; the engine then brings the
+	rest back, or the lines below do).
+	]]
+	if energy < 10 and (fuel < 10 or (Sense.offByKind.generator or 0) > 0) then
+		local fuelMine = nil;
+		for _,u in ipairs(Sense.off) do
+			if u.Enable and u.type == Types.mine and not fuelMine then
+				local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', u.location.cell);
+				if ok and lvl and lvl > 0 then fuelMine = u; end;
+			end;
+		end;
+		if fuelMine then
+			local give, running = nil, 0;
+			for _,st in ipairs(Sense.myStructures) do
+				if st.type == Types.mine and st.isEnabled ~= false and st.Enable then
+					local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', st.location.cell);
+					if not (ok and lvl and lvl > 0) then running = running + 1; give = give or st; end;
+				end;
+			end;
+			-- (no mineral mine running to trade: a lab or tower gives way instead, below)
+			if give and pcall(give.Enable, false) then
+				Mem.shed[give.id] = Sense.round;
+				local okOn = pcall(fuelMine.Enable, true);
+				Log(string.format('Mineral mine switched off at round %d for the fuel mine on cell %d (%s): energy spare %d, fuel spare %d, %d generator(s) idle',
+					Sense.round, fuelMine.location.cell.index, okOn and 'switched on' or 'could not be switched on', energy, fuel, Sense.offByKind.generator or 0));
+				return;
+			end;
+		end;
+	end;
 	local list = {};
 	for _,u in ipairs(Sense.off) do
 		-- (what I switched off myself to make room comes back last, and only with room to spare)
@@ -3788,6 +3822,11 @@ end;
 function Economy.BuildAt(u, loc, t, reachable)
 	Economy.buildWhy = nil;
 	if Economy.Capped(t) then Economy.buildWhy = 'capped'; return false; end;
+	-- a generator burns 10 fuel a round: one the fuel does not carry stands idle (12 built, 10 idle, in one match).
+	-- (The first is always built; with a fuel mine off for energy, Economy.Power trades it in.)
+	if t == Types.generator and Economy.Count(t) >= 1 and (Economy.Resources().balance.fuel or 0) < 10 then
+		Economy.buildWhy = 'the fuel does not carry another generator (fuel mine first)'; return false;
+	end;
 	if loc ~= u.location then
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
