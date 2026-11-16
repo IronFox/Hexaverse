@@ -80,10 +80,12 @@ Cfg = {
 	portFarArmy = 16,
 	portGuard = 2,				-- structures of mine beside each port of mine (one tower alone lost the port again)
 	walls = true,				-- wall off the home base (port, mines, plants): the Nexus does not cross or attack walls
-	wallMargin = 3,				-- free cells between my structures and the wall
-	wallMaxCells = 70,			-- a longer ring gets a smaller margin
+	wallMargin = 2,				-- free cells between my structures and the wall
+	wallMaxCells = 40,			-- a longer ring gets a smaller margin
 	wallFromRound = 25,			-- ... or as soon as the home port is mine
-	wallBuilders = 2,			-- terraformers on the wall at the same time
+	wallHold = 60,				-- rounds a finished wall is kept shut and mended: it buys time, not for long. Then a gate is opened
+	wallGiveUp = 120,			-- rounds after which an unfinished wall is left as it is
+	wallBuilders = 3,			-- terraformers on the wall at the same time
 	wallAA = 2,					-- AA towers inside the wall, whether planes were seen or not (sensor drones show the Nexus where to strike)
 	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
 	mechanicFromRound = 15,
@@ -2902,29 +2904,90 @@ function Wall.Plan(u)
 			end;
 			edge = nextEdge;
 		end;
-		local ring, seen = {}, {};
+		local ring, seen, natural = {}, {}, 0;
 		for _,cell in ipairs(edge) do
 			for _,nb in ipairs(cell.neighbors or {}) do
 				if not inside[nb.index] and not seen[nb.index] then
 					seen[nb.index] = true;
 					local loc = Move.GroundAt(u, nb);
 					if loc and not loc.isSuborbital and Game.GetStructureAt(loc) == nil then
-						ring[#ring+1] = {idx = nb.index, h = loc.height};
+						-- a step of two levels to every cell inside is a wall already
+						local step = false;
+						for _,inb in ipairs(nb.neighbors or {}) do
+							if inside[inb.index] then
+								local il = Move.GroundAt(u, inb);
+								if il and not il.isSuborbital and math.abs(il.height - loc.height) < 2 then step = true; break; end;
+							end;
+						end;
+						if step then ring[#ring+1] = {idx = nb.index, h = loc.height}; else natural = natural + 1; end;
 					end;
 				end;
 			end;
 		end;
 		if #ring <= Cfg.wallMaxCells or margin == 1 then
-			Mem.wall = {inside = inside, ring = ring, since = Sense.round, margin = margin};
-			Log(string.format('Wall planned at round %d: %d ring cells around %d structures, margin %d', Sense.round, #ring, n, margin));
+			Mem.wall = {inside = inside, ring = ring, since = Sense.round, margin = margin, built = {}};
+			Log(string.format('Wall planned at round %d: %d ring cells around %d structures, margin %d (%d more are cliffs already)', Sense.round, #ring, n, margin, natural));
 			return true;
 		end;
 	end;
 	return false;
 end;
 
+-- Sites are kept inside only while the wall stands shut (nothing could get out to build there)
 function Wall.Inside(idx)
-	return Mem.wall == nil or Mem.wall.inside[idx] == true;
+	local w = Mem.wall;
+	return w == nil or not w.complete or w.lifted or w.inside[idx] == true;
+end;
+
+-- The wall has done its time: open a gate in it and stop mending
+local function WallGate(u, w)
+	if w.gateOpen or not u.RemoveBlocks then return false; end;
+	if w.gate == nil then
+		for _,e in ipairs(w.ring) do
+			if (Wall.tries[e.idx] or 0) >= 1 or w.built and w.built[e.idx] then w.gate = e; break; end;
+		end;
+		if w.gate == nil then w.gateOpen = true; return false; end;
+	end;
+	local e = w.gate;
+	local cell = Economy.Cell(e.idx);
+	local loc = cell and Move.GroundAt(u, cell);
+	if loc and not loc.isSuborbital and loc.height < e.h + 2 then
+		w.gateOpen = true;
+		Log(string.format('Wall gate open on cell %d at round %d', e.idx, Sense.round));
+		return false;
+	end;
+	for _,job in pairs(Mem.jobs) do if job.kind == 'Wall gate' then return false; end; end;
+	local here = u.location.cell;
+	if not w.inside[here.index] then return false; end;
+	local stand, sd = nil, nil;
+	for _,nb in ipairs(cell and cell.neighbors or {}) do
+		if nb.index == here.index then
+			local ok, tc = pcall(Game.Terrain.TranslateUnitCell, cell);
+			if not (ok and tc) then return false; end;
+			local okr, err = pcall(u.RemoveBlocks, {Game.Terrain.Pack(tc, e.h + 1), Game.Terrain.Pack(tc, e.h + 2)});
+			if not okr then Log('Wall gate: RemoveBlocks failed: '..tostring(err)); w.gateOpen = true; return false; end;
+			Mem.jobs[u.id] = {kind = 'Wall gate', since = Sense.round};
+			w.gateTries = (w.gateTries or 0) + 1;
+			if w.gateTries > 4 then w.gate = nil; w.gateTries = 0; Wall.tries[e.idx] = 0; if w.built then w.built[e.idx] = nil; end; end;
+			Log(string.format('Wall gate: %s opens cell %d (round %d)', u.niceName, e.idx, Sense.round));
+			return true;
+		elseif w.inside[nb.index] and not Sense.structureCells[nb.index] then
+			local l = Move.GroundAt(u, nb);
+			if l and not l.isSuborbital then
+				local d = Dist2(l.world, u.location.world);
+				if sd == nil or d < sd then stand, sd = l, d; end;
+			end;
+		end;
+	end;
+	if stand then
+		local ok, path = pcall(u.FindShortestPath, stand, nil, false);
+		if ok and path and #path > 0 then
+			u.DirectTo(path[#path]);
+			Mem.jobs[u.id] = {kind = 'Wall gate', since = Sense.round};
+			return true;
+		end;
+	end;
+	return false;
 end;
 
 -- One wall order for this builder. True if it got one (a move to the wall counts)
@@ -2940,6 +3003,16 @@ function Wall.Try(u)
 		if not Wall.Plan(u) then return false; end;
 	end;
 	local w = Mem.wall;
+	if not w.lifted then
+		if w.complete and Sense.round >= (w.firstComplete or w.complete) + Cfg.wallHold then
+			w.lifted = Sense.round;
+			Log(string.format('Wall lifted at round %d after holding since round %d: opening a gate', Sense.round, w.firstComplete or w.complete));
+		elseif not w.complete and not w.firstComplete and Sense.round >= w.since + Cfg.wallGiveUp then
+			w.lifted = Sense.round; w.gateOpen = true;
+			Log(string.format('Wall given up at round %d: not closed since round %d', Sense.round, w.since));
+		end;
+	end;
+	if w.lifted then return WallGate(u, w); end;
 	-- (a finished wall is looked over every few rounds: shells blast holes into it, and a wall holds
 	-- only as long as someone mends it)
 	if w.complete and Sense.round % 3 ~= 0 then return false; end;
@@ -2962,26 +3035,32 @@ function Wall.Try(u)
 					blocks[#blocks+1] = Game.Terrain.Pack(tc, e.h + 1);
 					blocks[#blocks+1] = Game.Terrain.Pack(tc, e.h + 2);
 					Wall.tries[e.idx] = (Wall.tries[e.idx] or 0) + 1;
+					if w.built then w.built[e.idx] = true; end;
 					count = count + 1;
 				end;
 			else
 				-- a cell inside to stand on, beside this ring cell
 				local cell = Economy.Cell(e.idx);
+				local any = false;
 				for _,nb in ipairs(cell and cell.neighbors or {}) do
 					if w.inside[nb.index] and not Sense.structureCells[nb.index] and not Economy.claimed[nb.index] then
 						local loc = Move.GroundAt(u, nb);
 						if loc and not loc.isSuborbital and not Move.IsDangerous(loc) then
+							any = true;
 							local d = Dist2(loc.world, u.location.world);
 							if bestD == nil or d < bestD then best, bestD = loc, d; end;
 						end;
 					end;
 				end;
+				-- nowhere inside to stand beside it, time and again: leave that cell
+				if not any then Wall.tries[e.idx] = (Wall.tries[e.idx] or 0) + 0.1; end;
 			end;
 		end;
 	end;
 	if open == 0 then
 		if not w.complete then
 			w.complete = Sense.round;
+			w.firstComplete = w.firstComplete or Sense.round;
 			Wall.tries = {};
 			Log(string.format('Wall complete at round %d: %d cells, begun at round %d', Sense.round, #w.ring, w.since));
 		end;
