@@ -120,6 +120,7 @@ Cfg = {
 
 	-- structures
 	wantLabs = 3,
+	useMarkers = true,		-- remembered hostile contacts (the game's markers) keep their reach contested
 	powerCare = true,		-- switch structures the engine switched off on again in order of need, labs give way
 	wantLabsMax = 15,		-- labs late and rich, while T2 is out of reach
 	caps = {},				-- structure type name -> most to have (empty: no caps)
@@ -1614,6 +1615,37 @@ function Control.Update()
 			local range = (tt and tt.canAttack and tt.flatAttackRange or 0) * 1.25;
 			if range > Control.reach then Control.reach = range; end;
 			Control.Note('u'..tostring(e.id), e.location.world, math.max(range, e.type.scanningRange or 0));
+		end;
+	end;
+	--[[
+	What was seen and is out of sight now: the game keeps a marker for each hostile contact, with the
+	unit as it was last seen (the Nexus AI remembers where its enemies are the same way). A tower
+	remembered there still reaches as far as it did; a vehicle is taken to have moved on after 10
+	rounds. A marker whose cell is in sight again with nothing hostile on it is done with.
+	]]
+	if Cfg.useMarkers and Game.myMarkers then
+		local sensed = {};
+		for _,e in pairs(Game.hostileUnits) do
+			if e.health and e.health > 0 and e.location then sensed[e.location.cell.index] = true; end;
+		end;
+		local n = 0;
+		for _,m in pairs(Game.myMarkers) do
+			local e = m.type == 'HostileContact' and m.unitReference;
+			if e and e.location and e.type and not e.isOwnedByMe and not sensed[e.location.cell.index] then
+				local tt = e.turret and e.turret.type;
+				if (m.age or 0) > 0 and (Control.level[e.location.cell.index] or 0) > 0 and m.Destroy then
+					pcall(m.Destroy);	-- seen empty
+				elseif not (e.isIndestructible or e.type.isIndestructible) and tt and tt.canAttack
+						and (not e.type.isMobile or (m.age or 0) < 10) then
+					local range = (tt.flatAttackRange or 0) * 1.25;
+					Control.Note('m'..tostring(m.id), e.location.world, math.max(range, e.type.scanningRange or 0));
+					n = n + 1;
+				end;
+			end;
+		end;
+		if n ~= Control.markerZones then
+			Control.markerZones = n;
+			Log('Control: '..n..' remembered hostile weapon(s) out of sight keep their ground contested (round '..round..')');
 		end;
 	end;
 	for key,z in pairs(Control.zones) do
