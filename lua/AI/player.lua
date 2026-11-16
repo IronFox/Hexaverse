@@ -1983,8 +1983,15 @@ function Economy.Power()
 		local need = 10;
 		local have = isGen and fuel or energy;
 		local shed = Mem.shed[u.id];
-		if have >= need + (shed and 20 or 0) and on < 2 then
+		-- (what went off again right after it was switched on lacks something else, an input for
+		-- instance: tried again after 5 rounds, then 10, 20, ... 80)
+		Mem.onTried = Mem.onTried or {};
+		local tried = Mem.onTried[u.id];
+		if tried and Sense.round < tried.round + tried.wait then
+			-- wait
+		elseif have >= need + (shed and 10 or 0) and on < 2 then
 			if pcall(u.Enable, true) then
+				Mem.onTried[u.id] = {round = Sense.round, wait = (tried and Sense.round - tried.round <= 2 * tried.wait) and math.min(80, tried.wait * 2) or 5};
 				on = on + 1;
 				if isGen then fuel = fuel - need; else energy = energy - need; end;
 				Mem.shed[u.id] = nil;

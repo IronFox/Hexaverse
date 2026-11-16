@@ -163,6 +163,19 @@ function Bridge.Research(text)
 		end;
 		table.sort(hits);
 		Bridge.Out('Research "%s" matches: %s', text, #hits > 0 and table.concat(hits, '; ') or 'NOTHING (see Game.Research.topics for the names)');
+		-- into the faction's queue now, in place of the last entry if it is full
+		for name,topic in pairs(Game.Research.topics) do
+			local fn = string.lower(topic.fullName or name);
+			local match = not topic.isEndless and not topic.isCompleted and not topic.isQueued
+				and (topic.dependency == nil or topic.dependency.isCompleted);
+			for _,p in ipairs(parts) do if not string.find(fn, p, 1, true) then match = false; break; end; end;
+			if match then
+				local queue = Game.Research.myQueue or {};
+				if #queue >= (Game.Research.maxQueueLength or 3) and queue[#queue].Dequeue then pcall(queue[#queue].Dequeue); end;
+				local ok, err = pcall(topic.Enqueue);
+				Bridge.Out(ok and 'queued now: %s' or 'could not queue %s: %s', tostring(topic.fullName or name), tostring(err));
+			end;
+		end;
 	end;
 	for i,w in ipairs(Cfg.research) do
 		if w == text then table.remove(Cfg.research, i); break; end;
@@ -515,6 +528,13 @@ do
 			end;
 		end;
 		if job then table.remove(Bridge.build, at); end;
+		for _,j in ipairs(Bridge.build) do
+			j.asked = j.asked or Sense.round;
+			if j.cell and Sense.round - j.asked >= 20 and not j.toldWaiting then
+				j.toldWaiting = true;
+				Bridge.results[#Bridge.results+1] = 'BuildAt '..j.type.name..' at cell '..j.cell..': waiting 20 rounds, no free builder has ground to stand on there (hover builders reach more; Bridge.Units shows the builders)';
+			end;
+		end;
 		if job == nil then
 			local want = base(constructorIndex);
 			-- (caps hold for whatever the scripts choose, their direct rules included)
