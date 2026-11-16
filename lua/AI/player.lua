@@ -55,6 +55,9 @@ Cfg = {
 	constructorsEarly = 3,
 	constructorsLate = 5,
 	earlyTowers = 2,			-- rocket towers at home before the first raid (with a Nexus on the planet they come by round 20 to 35)
+	portAttackValue = 12,		-- what a port that is not mine adds to a region as an attack target (a hostile structure counts 3)
+	stuckTries = 3,				-- refused orders from one spot before a unit is left alone
+	stuckRest = 12,				-- for this many rounds
 	maxArmy = 36,				-- combat units of all kinds; more than the ground carries jam the paths
 	maxPlants = 4,				-- vehicle plants worth having
 	mineralReserve = 200,		-- minerals left untouched by everything the faction does not live on
@@ -1675,7 +1678,25 @@ local function Tried(u)
 end;
 
 -- avoidThreat: true avoids every known threat, 'arty' only remembered artillery fire (attacking units)
+--[[
+A unit that has had Cfg.stuckTries orders from the same spot and still stands there is boxed in
+(by structures or by its own side): each further order is refused by the server too, a dozen
+neighbours one after the other, a hundred rounds long. It is left alone for Cfg.stuckRest rounds
+and then tried afresh. (Three parked AA units made over 300 of the 699 refusals in one match.)
+]]
+function Move.Stuck(u)
+	local t = Move.tried[u.id];
+	if t == nil or t.from ~= Spot(u.location) then return false; end;
+	local n = 0;
+	for _ in pairs(t.to) do n = n + 1; end;
+	if n < Cfg.stuckTries then return false; end;
+	if t.rest == nil then t.rest = Sense.round + Cfg.stuckRest; end;
+	if Sense.round >= t.rest then Move.tried[u.id] = nil; return false; end;
+	return true;
+end;
+
 function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
+	if Move.Stuck(u) then return false; end;
 	local tried = Tried(u);
 	local danger = Move.IsDangerous;
 	if avoidThreat == 'arty' then
@@ -2762,8 +2783,10 @@ function Economy.TryPort(u)
 			end;
 			-- (never towards hostile towers: the first units lost in the matches against the Nexus
 			-- were builders walking into a missile tower beside a port)
-			if not beside and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
-					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength) then
+			-- ... unless the army stands there in strength: that is how a lost port is taken back
+			local held = (reg.myStrength or 0) > (reg.staticThreat or 0) + (reg.mobileThreat or 0) and (reg.myStrength or 0) > 0;
+			if not beside and (held or ((reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
+					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength))) then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
 				if bestD == nil or d < bestD then best, bestD = cell, d; end;
 			end;
@@ -3590,6 +3613,12 @@ function Military.ChooseAttackTarget()
 		if not Sense.mine[id] then
 			-- what is there, plus what holding it gives: a peak over resource valleys can decide the match
 			local value = reg.hostileStructures * 3 + reg.mobileThreat * 0.2 + Needs.StrategicValue(reg) * 0.5;
+			-- The match is won with ports: a region with a port that is not mine is worth the trip.
+			-- (Nothing aimed at ports before: the army went for whatever hostile structures were
+			-- near and weak, and no lost port was ever retaken.)
+			if Significance.ports and Significance.ports[id] and Significance.ports[id] ~= 'mine' then
+				value = value + Cfg.portAttackValue;
+			end;
 			local hops = Sense.hops[id] or 20;
 			if Economy.MineShortage() or Economy.Count(Types.mine) < Cfg.minMines then
 				value = value + Economy.ResourceCells(reg) * 2;
@@ -4410,6 +4439,11 @@ function Military.AA()
 				-- guarding: hold the highest ground of the assigned region
 				local t = targets[((i-1) % math.max(1,#targets)) + 1];
 				local post = t and Military.PostFor(v, t.reg.id, aaPosts);
+				-- cannot get there: it guards from where it stands
+				if post and Move.Stuck(v) and Dist2(v.location.world, post.loc.world) >= 0.01 then
+					post = {region = post.region, key = post.key, cell = v.location.cell, loc = v.location};
+					Military.posts[v.id] = post;
+				end;
 				if post then
 					aaPosts[post.key] = true;
 					if Dist2(v.location.world, post.loc.world) >= 0.01 and MayMove(v) then
