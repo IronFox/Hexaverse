@@ -93,6 +93,7 @@ Cfg = {
 	mechanicFromRound = 15,
 	portNeedsArmy = true,		-- ports other than the nearest one only where my units stand in strength
 	berthHome = false,			-- true: the home region is exempt from the berth
+	berthProbe = 40,			-- the berth holds this many rounds unproven; after that only if the port owner showed forces
 	berthCells = 11,			-- structures keep this many cell steps from a claimable port that is not mine (0: off)
 	nextDoorHops = 2,			-- a second claimable port this close to home means towers first, with a radar tower
 	portRetry = 15,				-- rounds a port is left alone after an order for it
@@ -2058,6 +2059,14 @@ function Economy.Research()
 		end;
 	end;
 
+	-- contested ground next door, or a raiding port owner: the long-range tower comes before everything else
+	if Mem.nexusActive or Sense.PortNextDoor() then
+		for i,t in ipairs(unlocks) do
+			if i > 1 and string.find(string.lower(t.fullName or ''), 'missilelauncher', 1, true) then
+				table.remove(unlocks, i); table.insert(unlocks, 1, t); break;
+			end;
+		end;
+	end;
 	Economy.pendingUnlocks = #unlocks;	-- reactor core, heavy base, artillery, planes...: all need labs
 	-- improvements ranked by current usage (re-planned every few rounds to avoid churn)
 	local replan = Sense.round - Economy.researchPlanRound >= Cfg.researchReplanRounds;
@@ -2451,7 +2460,8 @@ function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
 	-- a mine may take a reserved lab cell: income beats a lab slot (the reserve once locked a faction out of its last mine sites)
 	-- a wide berth around a foreign port, the home region aside (there is no moving that)
-	if Cfg.berthCells > 0 and not Economy.portSite then
+	-- (only while the port's owner may still answer: once the probe rounds pass without it stirring, the ground is free)
+	if Cfg.berthCells > 0 and not Economy.portSite and (Mem.nexusActive or Sense.round < Cfg.berthProbe) then
 		local b = Sense.Berth(idx);
 		if b and b < Cfg.berthCells then
 			local rid = Map.cellRegion[idx];
