@@ -421,6 +421,21 @@ function Bridge.Reach(unitId, targetCell)
 	return far;
 end;
 
+-- The vehicle plants one by one: on or off, what waits finished inside and whether it can get out,
+-- what is queued and since when the head of the queue has not changed.
+function Bridge.Plants()
+	Bridge.Out('PLANTS (a finished vehicle that cannot deploy blocks everything behind it; heavy bases need level ground beside the plant):');
+	for _,p in ipairs(Sense.plants or {}) do
+		local q = {};
+		for _,item in ipairs(p.productionQueue or {}) do q[#q+1] = tostring(item.name or item.id or '?'); end;
+		local h = Economy.plantHead[p.id];
+		Bridge.Out('  %s at cell %s: %s; finished inside: %s; deployment options %s; queue [%s]%s%s', tostring(p.niceName or p.type.name), tostring(p.location.cell.index),
+			p.isEnabled == false and 'OFF' or 'on', tostring(p.productionCompleted or 'nothing'), p.deploymentOptions and tostring(#p.deploymentOptions) or '?',
+			table.concat(q, ', '), h and (', head unchanged since r'..h.since) or '',
+			Economy.plantBlocked[p.id] and (', BLOCKED since r'..Economy.plantBlocked[p.id]) or '');
+	end;
+end;
+
 -- Steps between two cells (nil beyond 30).
 function Bridge.Dist(a, b)
 	local ca, cb = Economy.Cell(tonumber(a)), Economy.Cell(tonumber(b));
@@ -948,6 +963,7 @@ function Bridge.Help()
 	Add(L, '  Bridge.FireAt(unitId, cell [, rounds])   a posted unit fires at that cell, seen or not (artillery, EMP), for instance at a hostile');
 	Add(L, '                             structure listed under HOSTILE STRUCTURES SEEN SO FAR; out of range, no ammunition or fired comes with the next state');
 	Add(L, '  Bridge.Reach(unitId [, targetCell])   how many steps that unit reaches from where it stands, and the cells from which it could hit the target cell');
+	Add(L, '  Bridge.Plants()   the vehicle plants: on or off, what waits finished inside, deployment options, queue, blocked since');
 	Add(L, '  Bridge.Deploy(unitId)   brings a stored unit out of its vehicle store (Bridge.Units() lists the stored ones)');
 	Add(L, '  Bridge.Upgrade(mechanicId, unitId)   the mechanic goes to the unit and upgrades it to T2 (composite materials); result in the next state');
 	Add(L, '  Bridge.Hostiles()   hostiles in sight one by one with cell and firing range');
@@ -1056,6 +1072,7 @@ do
 		if type(msg) == 'string' and (string.find(msg, 'Direction result:', 1, true) or string.find(msg, 'Port mine ordered', 1, true)
 				or string.find(msg, 'Attacked ', 1, true) == 1 or string.find(msg, 'BuildStructure failed', 1, true)
 				or string.find(msg, 'did not happen', 1, true) or string.find(msg, 'no path to the', 1, true)
+				or string.find(msg, 'cannot deploy', 1, true) or string.find(msg, 'is stuck. Aborting', 1, true)
 				or string.find(msg, 'came to nothing', 1, true) or string.find(msg, 'no site', 1, true) or string.find(msg, 'No mine', 1, true)) and #Bridge.results < 30 then
 			Bridge.results[#Bridge.results+1] = msg;
 		end;
