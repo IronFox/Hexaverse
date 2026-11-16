@@ -43,6 +43,7 @@ Cfg = {
 	stateVersion = 2,
 	logPrefix = 'Player AI: ',
 	useDirections = false,	-- scripts follow the strategic layer's directions (significance.lua)
+	controlCoreHops = 1,	-- regions from mine that still count as the core, where quiet contested ground may be built on
 	controlMinReach = 3,	-- cells: firing range assumed of hostiles before any weapon of theirs was seen
 	useControl = true,		-- valuable structures only on controlled ground (Control)
 	portMineBias = 10,		-- how much better a mine site next to a Nexus port is than the same site elsewhere
@@ -1148,6 +1149,8 @@ function Score.Update()
 	local surface, below = 0, 0;
 	local held = {};	-- region id -> surface cells held there
 	Score.heldByRegion = held;
+	local heldCell = {};	-- cell index -> true: seen and within range of one of my weapons
+	Score.heldCell = heldCell;
 	if #armed > 0 then
 		local C = Game.Terrain.Content or {};
 		local function Held(loc)
@@ -1172,6 +1175,7 @@ function Score.Update()
 				local okl, loc = pcall(Game.Grid.ToLocation, c, g.h);
 				if okl and loc and Held(loc) then
 					surface = surface + 1;
+					heldCell[c.index] = true;
 					local rid = Map.cellRegion[c.index];
 					if rid then held[rid] = (held[rid] or 0) + 1; end;
 				end;
@@ -1335,9 +1339,18 @@ The one question everything that builds asks first. Per surface cell:
 cells before any was seen.
 
 Sightings and attacks count at once (every round); sensor coverage and the heights are gone
-through every Control.every rounds. Valuable structures (mines, plants, labs, power) go only
-where the level is 2. The contested belt gets what pushes the edge outwards: radar and
-defences. Before the first evaluation everything counts as controlled (the start position).
+through every Control.every rounds.
+
+What may be built where (Control.Allows):
+  controlled                 anything
+  hostiles near (seen or     nothing of value, wherever it is
+  attacking, Control.hot)
+  the core: my regions and   also on ground that is contested only for the quiet reasons (near the
+  those next to them         edge of sight, below unwatched heights, open air): a base has to start
+                             somewhere, and at the start nothing at all is controlled
+  the fringe, further out    only on controlled ground; a mine also where my weapons cover the cell
+                             (so a port mine out there waits for the towers or the army)
+  towers                     anywhere: they, and radar, are what makes ground mine
 Logged as "Control map: ...".
 ]]
 Control = {
@@ -1346,6 +1359,7 @@ Control = {
 	peakMargin = 2,		-- height levels above a cell from which ground overlooks it
 	level = {},			-- cell index -> 0, 1, 2
 	air = {},			-- cell index -> true: contested only because the air above is not watched
+	hot = {},			-- cell index -> true: within reach of a hostile seen or an attack remembered
 	zones = {},			-- key -> {x, y, z, r2, round}
 	reach = 0,			-- longest hostile weapon range seen (world units)
 	byRegion = {},		-- region id -> {controlled = share, contested = share}
@@ -1359,6 +1373,20 @@ function Control.At(cellOrLoc)
 	local l = cell and cell.index and Control.level[cell.index];
 	if l == nil then return 2; end;
 	return l;
+end;
+
+-- may something of value be built here? (second result: why not)
+function Control.Allows(loc, forMine)
+	local cell = loc.cell or loc;
+	local idx = cell.index;
+	local l = Control.At(cell);
+	if l == 2 then return true; end;
+	if Control.hot[idx] then return false, 'hostiles near'; end;
+	local rid = Map.cellRegion[idx];
+	if rid and (Sense.hops[rid] or 99) <= Cfg.controlCoreHops then return true; end;
+	if l == 0 then return false, 'not seen'; end;
+	if forMine and Score.heldCell and Score.heldCell[idx] then return true; end;
+	return false, Control.air[idx] and 'open to planes' or 'contested';
 end;
 
 function Control.Of(regId, what)
@@ -1436,7 +1464,10 @@ function Control.Update()
 		-- at once: what a new sighting or attack reaches is no longer controlled
 		if #Control.fresh > 0 then
 			for _,c in ipairs(Game.Grid.unitCells) do
-				if Control.level[c.index] == 2 and InZone(Control.fresh, c, R) then Control.level[c.index] = 1; end;
+				if not Control.hot[c.index] and InZone(Control.fresh, c, R) then
+					Control.hot[c.index] = true;
+					if Control.level[c.index] == 2 then Control.level[c.index] = 1; end;
+				end;
 			end;
 		end;
 		Control.fresh = {};
@@ -1494,8 +1525,15 @@ function Control.Update()
 	end;
 	local zones = 0;
 	for _ in pairs(Control.zones) do zones = zones + 1; end;
+	Control.hot = {};
+	local hotCount = 0;
 	for _,c in ipairs(cells) do
-		first[c.index] = seen[c.index] and dist[c.index] == nil and not (zones > 0 and InZone(Control.zones, c, R));
+		local hot = zones > 0 and InZone(Control.zones, c, R);
+		if hot then
+			Control.hot[c.index] = true;
+			hotCount = hotCount + 1;
+		end;
+		first[c.index] = seen[c.index] and dist[c.index] == nil and not hot;
 	end;
 	-- 3. higher ground within range that is not controlled overlooks what lies below it:
 	-- the highest such ground around each cell, spread ring by ring
@@ -1556,8 +1594,8 @@ function Control.Update()
 		Control.byRegion[rid] = {controlled = p[2] / p.n, contested = p[1] / p.n};
 	end;
 	if round % 20 == 0 then
-		Log(string.format('Control map: %d cells controlled, %d contested (%d only for the air above%s), %d not seen; firing range %.1f cells, %d sightings and attacks remembered',
-			counts[2], counts[1], airOnly, bombers and ', bombers about' or (planes and ', planes about' or ''), counts[0], Control.Reach() / Control.Spacing(), zones));
+		Log(string.format('Control map: %d cells controlled, %d contested (%d only for the air above%s), %d not seen; %d cells with hostiles near; firing range %.1f cells, %d sightings and attacks remembered',
+			counts[2], counts[1], airOnly, bombers and ', bombers about' or (planes and ', planes about' or ''), counts[0], hotCount, Control.Reach() / Control.Spacing(), zones));
 	end;
 end;
 
@@ -2281,9 +2319,9 @@ function Economy.SiteOK(loc, forMine)
 	-- don't build where remembered or sensed hostiles can hit
 	if Move.IsDangerous(loc) then Economy.siteWhy = 'danger'; return false; end;
 	-- what is worth something only on ground that is mine (radar and defences push the edge out)
-	if Cfg.useControl and not Economy.fringeOK and Control.At(loc) < 2 then
-		Economy.siteWhy = (Control.air[loc.cell.index] and 'open to planes') or (Control.At(loc) == 1 and 'contested') or 'not seen';
-		return false;
+	if Cfg.useControl and not Economy.fringeOK then
+		local ok, why = Control.Allows(loc, forMine);
+		if not ok then Economy.siteWhy = why; return false; end;
 	end;
 	-- never box in a vehicle plant: finished vehicles need somewhere to deploy
 	for _,nb in ipairs(loc.cell.neighbors) do
@@ -2500,7 +2538,7 @@ function Economy.FindMineCells(resource, maxCount)
 					if ok and lvl and lvl > 0 then
 						-- a mine only on ground that is mine (Control)
 						local c = Cfg.useControl and Control.At(cell) or 2;
-						if c == 2 then
+						if c == 2 or Control.Allows(cell, true) then
 							list[#list+1] = {cell=cell, level=lvl, hops=Sense.hops[reg.id] or 0};
 						else
 							heldBack[c] = heldBack[c] + 1;
