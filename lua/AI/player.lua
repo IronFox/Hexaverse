@@ -2697,6 +2697,21 @@ function Economy.Exits(loc, skipIdx)
 			for j = -1, 1 do
 				if Clear(nb, h + j) and not Clear(nb, h + j - 1) and (j >= 0 or Clear(nb, h)) then found = j; break; end;
 			end;
+			if found ~= nil then
+				-- (an exit that leads nowhere is a pocket: the first vehicle out stays on it for good.
+				-- It needs a way on, to a cell beyond the plant's ring, within one level)
+				local ring = {[loc.cell.index] = true};
+				for _,r2 in ipairs(loc.cell.neighbors) do ring[r2.index] = true; end;
+				local on = false;
+				for _,far in ipairs(nb.neighbors or {}) do
+					if not on and not ring[far.index] and not (Sense.structureCells and Sense.structureCells[far.index]) then
+						for j2 = -1, 1 do
+							if Clear(far, h + found + j2) and not Clear(far, h + found + j2 - 1) then on = true; break; end;
+						end;
+					end;
+				end;
+				if not on then r = 'pocket (no way on)'; end;
+			end;
 			if found == nil then
 				-- where is the ground then?
 				local at;
@@ -5336,7 +5351,10 @@ function Military.ClearPlants()
 							end;
 						end;
 					end;
-					if best then u.DirectTo(best); end;
+					if best then u.DirectTo(best);
+					elseif urgent[u.location.cell.index] and Sense.round % 10 == 0 then
+						Log(u.niceName..' stands on an exit of a blocked plant (cell '..u.location.cell.index..') and has nowhere to go ('..#reach..' cells in reach)');
+					end;
 				end);
 			end;
 		end;
