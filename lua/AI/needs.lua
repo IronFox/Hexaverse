@@ -1152,6 +1152,12 @@ function Needs.NextStructure(constructorIndex)
 			return {type = rt, kind = 'tower', region = Mem.homeRegion};
 		end;
 	end;
+	-- AA inside the wall, seen planes or not: the Nexus scouts with sensor drones, and what they see gets raided
+	if Mem.wall and Types.aaTower and Types.IsUnlocked(Types.aaTower) and Mem.homeRegion
+			and Economy.Count(Types.aaTower) < Cfg.wallAA and minerals >= Cost(Types.aaTower) then
+		Needs.Note('AA Tower ordered inside the wall: '..Economy.Count(Types.aaTower)..' standing');
+		return {type = Types.aaTower, kind = 'tower', region = Mem.homeRegion};
+	end;
 	-- the same for what makes the energy and the vehicles: never none, and generators not below a floor
 	if Sense.round >= 20 then
 		if Types.plant and Types.IsUnlocked(Types.plant) and Economy.Count(Types.plant) == 0 and minerals >= Cost(Types.plant) then

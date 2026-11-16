@@ -79,6 +79,12 @@ Cfg = {
 	portFarHops = 12,			-- ... and how far once the army is portFarArmy strong: winning takes most ports, not the near ones
 	portFarArmy = 16,
 	portGuard = 2,				-- structures of mine beside each port of mine (one tower alone lost the port again)
+	walls = true,				-- wall off the home base (port, mines, plants): the Nexus does not cross or attack walls
+	wallMargin = 3,				-- free cells between my structures and the wall
+	wallMaxCells = 70,			-- a longer ring gets a smaller margin
+	wallFromRound = 25,			-- ... or as soon as the home port is mine
+	wallBuilders = 2,			-- terraformers on the wall at the same time
+	wallAA = 2,					-- AA towers inside the wall, whether planes were seen or not (sensor drones show the Nexus where to strike)
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
@@ -2368,6 +2374,8 @@ end;
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
 	-- a mine may take a reserved lab cell: income beats a lab slot (the reserve once locked a faction out of its last mine sites)
+	-- nothing outside the wall, and nothing on it
+	if not Wall.Inside(idx) then Economy.siteWhy = 'outside the wall'; return false; end;
 	if Economy.labReserved[idx] and not Economy.allowLabSite and not forMine then Economy.siteWhy = 'lab reserve'; return false; end;
 	if Economy.IsPowerCenter(idx) and not Economy.allowPowerCenter then Economy.siteWhy = 'power center'; return false; end;
 	-- a resource cell on a planned generator ring still goes to a mine: income beats a ring slot
@@ -2808,7 +2816,7 @@ function Economy.TryPort(u)
 	end;
 	for idx,cell in pairs(Economy.portCells or {}) do
 		local rid = Map.cellRegion[idx];
-		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round and not Sense.UnderEMP(cell)
+		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round and not Sense.UnderEMP(cell) and Wall.Inside(idx)
 				and rid then
 			local reg = Map.regions[rid];
 			local near = (Sense.hops[rid] or 99) <= (econ and maxHops or 1);
@@ -2849,6 +2857,140 @@ function Economy.TryPort(u)
 		end;
 	end;
 	Needs.Note('Port on cell '..best.index..' not claimed: '..why);
+	return false;
+end;
+
+--[[
+The wall. A human player's order against the Nexus: port and mines, wall it off, AA, and only
+then expansion. Walls of two levels keep ground units out, and the Nexus does not attack a wall
+unless it sees units on or right behind it.
+The ring: every cell next to the base area (my home structures, widened by Cfg.wallMargin
+cells) that is not part of it. A terraformer standing inside puts two blocks on each ring cell
+next to it (BuildBlocks at ground + 1 and + 2). Nothing is built outside the ring from then on.
+]]
+Wall = {tries = {}};
+
+local function WallCellClosed(u, e)
+	if Wall.tries[e.idx] and Wall.tries[e.idx] > 4 then return true; end;	-- does not hold: leave it
+	local cell = Economy.Cell(e.idx);
+	local loc = cell and Move.GroundAt(u, cell);
+	return loc == nil or loc.isSuborbital or loc.height >= e.h + 2;
+end;
+
+function Wall.Plan(u)
+	local seed, n = {}, 0;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		local cell = st.location and st.location.cell;
+		local rid = cell and Map.cellRegion[cell.index];
+		if cell and rid and (Sense.hops[rid] or 99) <= 1 and not seed[cell.index] then seed[cell.index] = cell; n = n + 1; end;
+	end;
+	if n < 4 then return false; end;
+	for margin = Cfg.wallMargin, 1, -1 do
+		local inside, edge = {}, {};
+		for idx,cell in pairs(seed) do inside[idx] = true; edge[#edge+1] = cell; end;
+		for _ = 1, margin do
+			local nextEdge = {};
+			for _,cell in ipairs(edge) do
+				for _,nb in ipairs(cell.neighbors or {}) do
+					if not inside[nb.index] then inside[nb.index] = true; nextEdge[#nextEdge+1] = nb; end;
+				end;
+			end;
+			edge = nextEdge;
+		end;
+		local ring, seen = {}, {};
+		for _,cell in ipairs(edge) do
+			for _,nb in ipairs(cell.neighbors or {}) do
+				if not inside[nb.index] and not seen[nb.index] then
+					seen[nb.index] = true;
+					local loc = Move.GroundAt(u, nb);
+					if loc and not loc.isSuborbital and Game.GetStructureAt(loc) == nil then
+						ring[#ring+1] = {idx = nb.index, h = loc.height};
+					end;
+				end;
+			end;
+		end;
+		if #ring <= Cfg.wallMaxCells or margin == 1 then
+			Mem.wall = {inside = inside, ring = ring, since = Sense.round, margin = margin};
+			Log(string.format('Wall planned at round %d: %d ring cells around %d structures, margin %d', Sense.round, #ring, n, margin));
+			return true;
+		end;
+	end;
+	return false;
+end;
+
+function Wall.Inside(idx)
+	return Mem.wall == nil or Mem.wall.inside[idx] == true;
+end;
+
+-- One wall order for this builder. True if it got one (a move to the wall counts)
+function Wall.Try(u)
+	if not Cfg.walls or not u.BuildBlocks or not (Game.Terrain and Game.Terrain.TranslateUnitCell and Game.Terrain.Pack) then return false; end;
+	if Mem.wall == nil then
+		local port = false;
+		for _,st in ipairs(Sense.myStructures or {}) do
+			if st.type and st.type.name and string.find(st.type.name, 'Nexus Port', 1, true) then port = true; break; end;
+		end;
+		if not (port or Sense.round >= Cfg.wallFromRound) or Economy.Count(Types.mine) < 2 or Economy.Count(Types.generator) < 2 then return false; end;
+		if not Wall.Plan(u) then return false; end;
+	end;
+	local w = Mem.wall;
+	if w.complete then return false; end;
+	local busy = 0;
+	for _,job in pairs(Mem.jobs) do if job.kind == 'Wall' then busy = busy + 1; end; end;
+	if busy >= Cfg.wallBuilders then return false; end;
+	local here = u.location.cell;
+	if not w.inside[here.index] then return false; end;	-- (builders outside come home through the build sites, all inside now)
+	-- the ring cells next to where it stands: block them
+	local open, blocks, count = 0, {}, 0;
+	local nextTo = {};
+	for _,nb in ipairs(here.neighbors or {}) do nextTo[nb.index] = nb; end;
+	local best, bestD = nil, nil;
+	for _,e in ipairs(w.ring) do
+		if not WallCellClosed(u, e) then
+			open = open + 1;
+			if nextTo[e.idx] then
+				local ok, tc = pcall(Game.Terrain.TranslateUnitCell, nextTo[e.idx]);
+				if ok and tc then
+					blocks[#blocks+1] = Game.Terrain.Pack(tc, e.h + 1);
+					blocks[#blocks+1] = Game.Terrain.Pack(tc, e.h + 2);
+					Wall.tries[e.idx] = (Wall.tries[e.idx] or 0) + 1;
+					count = count + 1;
+				end;
+			else
+				-- a cell inside to stand on, beside this ring cell
+				local cell = Economy.Cell(e.idx);
+				for _,nb in ipairs(cell and cell.neighbors or {}) do
+					if w.inside[nb.index] and not Sense.structureCells[nb.index] and not Economy.claimed[nb.index] then
+						local loc = Move.GroundAt(u, nb);
+						if loc and not loc.isSuborbital and not Move.IsDangerous(loc) then
+							local d = Dist2(loc.world, u.location.world);
+							if bestD == nil or d < bestD then best, bestD = loc, d; end;
+						end;
+					end;
+				end;
+			end;
+		end;
+	end;
+	if open == 0 then
+		w.complete = Sense.round;
+		Log(string.format('Wall complete at round %d: %d cells, begun at round %d', Sense.round, #w.ring, w.since));
+		return false;
+	end;
+	if count > 0 then
+		local ok, err = pcall(u.BuildBlocks, blocks);
+		if not ok then Log('Wall: BuildBlocks failed: '..tostring(err)); return false; end;
+		Mem.jobs[u.id] = {kind = 'Wall', since = Sense.round};
+		if Sense.round % 5 == 0 then Log(string.format('Wall: %s blocks %d cells from cell %d, %d of %d still open', u.niceName, count, here.index, open, #w.ring)); end;
+		return true;
+	end;
+	if best then
+		local ok, path = pcall(u.FindShortestPath, best, nil, false);
+		if ok and path and #path > 0 then
+			u.DirectTo(path[#path]);
+			Mem.jobs[u.id] = {kind = 'Wall', since = Sense.round};
+			return true;
+		end;
+	end;
 	return false;
 end;
 
@@ -3023,6 +3165,8 @@ function Economy.AssignConstructor(u, index)
 		Economy.portOrdered = true;
 		return;
 	end;
+
+	if Wall.Try(u) then return; end;
 
 	if not Economy.roadOrdered and Economy.TryRoad(u) then
 		Economy.roadOrdered = true;
