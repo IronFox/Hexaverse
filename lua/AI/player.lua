@@ -648,6 +648,8 @@ function Sense.Update()
 	Sense.structureCells = {};
 	Sense.structureAt = {};		-- cell index -> my structure there
 	Sense.structuresByType = {};
+	Sense.off = {};			-- structures of mine the engine switched off
+	Sense.offByKind = {generator = 0, mine = 0, port = 0, other = 0};
 	Sense.plants = {};
 	Sense.labs = {};
 
@@ -693,6 +695,19 @@ function Sense.Update()
 			local tn = u.type.name;
 			Sense.structuresByType[tn] = (Sense.structuresByType[tn] or 0) + 1;
 			-- (a standing tower is named 'Turret:Tower', the type to build 'Turret Tower': counted under both)
+			--[[
+			The faction's structures share one balance. When any resource runs negative (fuel for the
+			generators, energy for the rest), the engine switches structures off until it holds, and
+			the spare then reads 0, not negative: only the switched-off structures show the shortage.
+			A mine switched off earns nothing, a Nexus Port switched off is no longer controlled.
+			(Plants and plane factories switch themselves off with an empty queue: not counted.)
+			]]
+			if u.isEnabled == false and u.type ~= Types.plant and u.type ~= Types.planeFactory then
+				Sense.off[#Sense.off+1] = u;
+				local kind = (u.type == Types.generator and 'generator') or (u.type == Types.mine and 'mine')
+					or (string.find(tn, 'Nexus Port', 1, true) and 'port') or 'other';
+				Sense.offByKind[kind] = Sense.offByKind[kind] + 1;
+			end;
 			local alias = string.gsub(tn, ':Tower$', ' Tower');
 			if alias ~= tn then Sense.structuresByType[alias] = (Sense.structuresByType[alias] or 0) + 1; end;
 			if Types.planeFactory and u.type == Types.planeFactory then

@@ -493,6 +493,11 @@ function Bridge.State()
 			for k,v in pairs(bal) do if k ~= 'minerals' then parts[#parts+1] = string.format('%s %+g (supply %s)', tostring(k), tonumber(v) or 0, tostring(sup[k] or '?')); end; end;
 			table.sort(parts);
 			Add(L, 'Balance per round: %s. Energy spare 0 means plants, labs and towers wait for power: more generators (and fuel mines to feed them).', table.concat(parts, ', '));
+			if #(Sense.off or {}) > 0 then
+				local names = {};
+				for _,u in ipairs(Sense.off) do names[u.type.name] = (names[u.type.name] or 0) + 1; end;
+				Add(L, 'SWITCHED OFF BY THE ENGINE (a balance ran negative: generators off = short of fuel, others off = short of energy; a port off is not controlled): %s', Listing(names));
+			end;
 			if Economy.siteWhy then Add(L, 'Last building site refused by the scripts because: %s', tostring(Economy.siteWhy)); end;
 		end;
 		if Economy.Count(Types.mineralContainer) <= 1 then Add(L, 'WARNING: %d mineral container(s). Minerals at 0 with mines standing means the container is gone.', Economy.Count(Types.mineralContainer)); end;

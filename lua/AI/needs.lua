@@ -182,6 +182,21 @@ function Needs.Update()
 		if (cur.balance.energy or 0) <= 0 and gens < 2 then v.energy = math.max(v.energy, 0.7); end;
 	end;
 	v.fuel = (bal.fuel or 0) <= 0 and 0.8 or 0;
+	-- what the engine switched off tells what is short (the spare itself never reads negative)
+	do
+		local off = Sense.offByKind or {};
+		if (off.generator or 0) > 0 then
+			v.fuel = 1;		-- generators off: no fuel for them
+		elseif (off.mine or 0) + (off.port or 0) + (off.other or 0) > 0 then
+			v.energy = 1;	-- generators run, others are off: no power for them
+		end;
+		local n = #(Sense.off or {});
+		if n > 0 and (Needs.offTold ~= n or Sense.round % 10 == 0) then
+			Needs.offTold = n;
+			Log(string.format('Switched off by the balance at round %d: %d generator(s), %d mine(s), %d port(s), %d other: short of %s',
+				Sense.round, off.generator, off.mine, off.port, off.other, off.generator > 0 and 'fuel' or 'energy'));
+		elseif n == 0 then Needs.offTold = nil; end;
+	end;
 
 	local mines = Economy.Count(Types.mine);
 	local wantMines = math.min(Cfg.earlyMines + math.floor(round / 10), 12);
@@ -1113,6 +1128,7 @@ function Needs.StructureOptions(constructorIndex)
 	]]
 	do
 		local starved = (cur.balance.energy or 0) <= 0 and Sense.round >= 20 and Economy.Count(Types.generator) >= 1;
+		if #(Sense.off or {}) > 0 then starved = true; end;
 		local labs = Types.lab and Economy.Count(Types.lab) or 0;
 		local labCap = Cfg.wantLabsRich or 6;
 		if not Needs.T2Capable() and Sense.round >= 80 and minerals >= (Cfg.richMinerals or 400) then labCap = math.max(labCap, Cfg.wantLabsMax or 15); end;
