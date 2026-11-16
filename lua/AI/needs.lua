@@ -1128,6 +1128,18 @@ function Needs.NextStructure(constructorIndex)
 			return {type = mc, kind = 'base', region = n > 0 and region or nil};
 		end;
 	end;
+	-- The first raid comes before the needs see a threat: with a Nexus on the planet, two rocket
+	-- towers at home as soon as two mines and two generators stand. (The matches that died early
+	-- were raided at round 11 to 33 with 2 to 4 units and no tower.)
+	do
+		local rt = Game.Type.units['Rocket Launcher Tower'];
+		if rt and Sense.nexus and Mem.homeRegion and Sense.round >= 6 and Sense.round <= 80 and Types.IsUnlocked(rt)
+				and Economy.Count(rt) < Cfg.earlyTowers and minerals >= Cost(rt)
+				and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2 then
+			Needs.Note('early Rocket Launcher Tower ordered at home: '..Economy.Count(rt)..' standing');
+			return {type = rt, kind = 'tower', region = Mem.homeRegion};
+		end;
+	end;
 	-- the same for what makes the energy and the vehicles: never none, and generators not below a floor
 	if Sense.round >= 20 then
 		if Types.plant and Types.IsUnlocked(Types.plant) and Economy.Count(Types.plant) == 0 and minerals >= Cost(Types.plant) then

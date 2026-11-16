@@ -54,6 +54,7 @@ Cfg = {
 	-- desired unit counts
 	constructorsEarly = 3,
 	constructorsLate = 5,
+	earlyTowers = 2,			-- rocket towers at home before the first raid (with a Nexus on the planet they come by round 20 to 35)
 	maxArmy = 36,				-- combat units of all kinds; more than the ground carries jam the paths
 	maxPlants = 4,				-- vehicle plants worth having
 	mineralReserve = 200,		-- minerals left untouched by everything the faction does not live on
@@ -2747,7 +2748,10 @@ function Economy.TryPort(u)
 			for _,nb in ipairs(cell.neighbors or {}) do
 				if Sense.structureCells[nb.index] then beside = true; break; end;
 			end;
-			if not beside and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength) then
+			-- (never towards hostile towers: the first units lost in the matches against the Nexus
+			-- were builders walking into a missile tower beside a port)
+			if not beside and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
+					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength) then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
 				if bestD == nil or d < bestD then best, bestD = cell, d; end;
 			end;
