@@ -76,6 +76,9 @@ Cfg = {
 	portMinMines = 2,			-- mines and generators standing before a builder is spared for a port
 	portMinGenerators = 2,
 	portBuilders = 2,			-- builders on their way to a port at the same time
+	portFarHops = 12,			-- ... and how far once the army is portFarArmy strong: winning takes most ports, not the near ones
+	portFarArmy = 16,
+	portGuard = 2,				-- structures of mine beside each port of mine (one tower alone lost the port again)
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
@@ -2770,14 +2773,35 @@ function Economy.TryPort(u)
 	-- (2 or 3 ports by round 30 and dead before round 100, three times out of six)
 	if Economy.Count(Types.mine) < Cfg.portMinMines or Economy.Count(Types.generator) < Cfg.portMinGenerators then return false; end;
 	local builders = #(Sense.my.constructor or {});
-	if under >= Cfg.portBuilders or under >= math.max(1, math.floor(builders / 3)) then return false; end;
+	local rich = (Economy.Resources().storage.minerals or 0) >= Cfg.richMinerals;
+	if under >= Cfg.portBuilders * (rich and 2 or 1) or under >= math.max(1, math.floor(builders / (rich and 2 or 3))) then return false; end;
 	local here = Map.RegionOfLoc(u.location);
+	local army = #(Sense.my.combat or {}) + #(Sense.my.bomb or {});
+	local maxHops = (army >= Cfg.portFarArmy) and Cfg.portFarHops or Cfg.portMineHops;
 	local best, bestD = nil, nil;
+	local guard, guardD = nil, nil;
+	for idx,_ in pairs(mine) do
+		local cell = Economy.portCells[idx];
+		local rid = Map.cellRegion[idx];
+		local reg = rid and Map.regions[rid];
+		if cell and reg and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round
+				and (reg.staticThreat or 0) <= 0 and (reg.mobileThreat or 0) <= (reg.myStrength or 0) then
+			local n = 0;
+			for _,nb in ipairs(cell.neighbors or {}) do
+				if Sense.structureCells[nb.index] or Economy.claimed[nb.index] then n = n + 1; end;
+			end;
+			if n < Cfg.portGuard then
+				local d = Dist2(Map.WorldCenter(reg), u.location.world);
+				if guardD == nil or d < guardD then guard, guardD = cell, d; end;
+			end;
+		end;
+	end;
 	for idx,cell in pairs(Economy.portCells or {}) do
 		local rid = Map.cellRegion[idx];
 		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round
-				and rid and (Sense.hops[rid] or 99) <= Cfg.portMineHops then
+				and rid then
 			local reg = Map.regions[rid];
+			local near = (Sense.hops[rid] or 99) <= maxHops;
 			-- (something of mine beside it already and the port still not mine: more of the same won't help)
 			local beside = false;
 			for _,nb in ipairs(cell.neighbors or {}) do
@@ -2787,13 +2811,16 @@ function Economy.TryPort(u)
 			-- were builders walking into a missile tower beside a port)
 			-- ... unless the army stands there in strength: that is how a lost port is taken back
 			local held = (reg.myStrength or 0) > (reg.staticThreat or 0) + (reg.mobileThreat or 0) and (reg.myStrength or 0) > 0;
-			if not beside and (held or ((reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
+			if not beside and (held or (near and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
 					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength))) then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
 				if bestD == nil or d < bestD then best, bestD = cell, d; end;
 			end;
 		end;
 	end;
+	-- a new port first; with none in reach, a second structure beside a port of mine
+	local guarding = false;
+	if best == nil then best, guarding = guard, true; end;
 	if best == nil then return false; end;
 	Economy.portTried[best.index] = Sense.round + Cfg.portRetry;
 	local why = 'no free cell beside it';
@@ -2804,8 +2831,8 @@ function Economy.TryPort(u)
 			if Economy.BuildAt(u, dest, t) then
 				Economy.claimed[nb.index] = true;
 				Mem.jobs[u.id].port = best.index;
-				Log(string.format('Port structure ordered: %s on cell %d beside the port on cell %d in region %s at round %d',
-					t.name, nb.index, best.index, tostring(Map.cellRegion[best.index]), Sense.round));
+				Log(string.format('Port %s ordered: %s on cell %d beside the port on cell %d in region %s at round %d',
+					guarding and 'guard' or 'structure', t.name, nb.index, best.index, tostring(Map.cellRegion[best.index]), Sense.round));
 				return true;
 			end;
 			why = Economy.buildWhy or 'no path';
