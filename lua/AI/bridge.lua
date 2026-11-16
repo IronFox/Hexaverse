@@ -64,6 +64,7 @@ Bridge = {
 	notes = {},
 	lastAsked = nil,
 	lastAttack = -100,
+	pending = {},			-- cell -> {job, unit}: builders on their way to exact cells
 	known = {},				-- cell index -> hostile structure seen there
 	upgrades = {},
 	posts = {},				-- unit id -> {cell}: units placed by the outside player
@@ -259,8 +260,31 @@ does not walk away). Only what was sensed is kept: nothing here comes from anywh
 ]]
 function Bridge.Remember()
 	for _,e in pairs(Game.hostileUnits) do
-		if e.health and e.health > 0 and e.location and e.type and e.type.isStructure then
+		if e.health and e.health > 0 and e.location and e.type and e.type.isStructure and not e.isOwnedByMe then
 			Bridge.known[e.location.cell.index] = {name = e.type.name, loc = e.location, round = Sense.round};
+		end;
+	end;
+	for idx,_ in pairs(Bridge.known) do
+		if Sense.structureCells[idx] then Bridge.known[idx] = nil; end;	-- mine now
+	end;
+	-- what became of the builders sent to exact cells
+	for cell,p in pairs(Bridge.pending) do
+		local job = Mem.jobs[p.unit];
+		local line = nil;
+		if Sense.structureCells[cell] then line = 'built (or under construction)';
+		elseif job == nil or job.cell ~= cell then
+			line = 'the builder gave it up (danger on its way or at the site, or it was lost)';
+			p.job.tries = (p.job.tries or 0) + 1;
+			if p.job.tries < 4 then
+				Bridge.build[#Bridge.build+1] = p.job;
+				line = line..'; it will be tried again';
+			else
+				line = line..'; given up after 4 tries: make the site and the way safe first';
+			end;
+		end;
+		if line then
+			Bridge.results[#Bridge.results+1] = 'BuildAt '..p.job.type.name..' at cell '..cell..': '..line;
+			Bridge.pending[cell] = nil;
 		end;
 	end;
 end;
@@ -595,6 +619,7 @@ do
 			return {type = job.type, kind = 'base', cell = job.cell, done = function(why, u)
 				local line = 'BuildAt '..job.type.name..' at cell '..job.cell..': '
 					..(why and ('FAILED, '..why) or 'a builder is on its way')..(u and (' ('..tostring(u.niceName)..')') or '');
+				if not why and u then Bridge.pending[job.cell] = {job = job, unit = u.id}; end;
 				if why and u then
 					job.failed = job.failed or {};
 					job.failed[tostring(u.id)] = true;

@@ -1951,8 +1951,16 @@ on again when there is power to spare. So: whatever is off and matters most is s
 soon as the spare carries it (generators need 10 fuel, the rest 10 energy), and while a port,
 mine or generator is off for lack of energy, labs give way.
 ]]
+local function IsFuelMine(u)
+	if u.type ~= Types.mine or not u.location then return false; end;
+	local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', u.location.cell);
+	return ok and lvl ~= nil and lvl > 0;
+end;
+
 local function OffRank(u)
 	local n = u.type.name;
+	-- (generators idle for fuel: the fuel mine comes before everything, or nothing else ever comes back)
+	if ((Sense.offByKind or {}).generator or 0) > 0 and IsFuelMine(u) then return 0; end;
 	if string.find(n, 'Nexus Port', 1, true) then return 1; end;
 	if u.type == Types.mine then return 2; end;
 	if u.type == Types.generator then return 3; end;
@@ -2009,7 +2017,24 @@ function Economy.Power()
 					Mem.shed[st.id] = Sense.round;
 					Log(string.format('Laboratory switched off at round %d: a port or mine waits for energy', Sense.round));
 				end;
-				break;
+				return;
+			end;
+		end;
+	end;
+	-- no lab left to give way, generators idle for fuel and a fuel mine waiting for energy: a
+	-- mineral mine gives way to it (the deadlock of a match that stood still for 280 rounds)
+	if vitalWaits and on == 0 and (Sense.offByKind.generator or 0) > 0 then
+		local fuelWaits = false;
+		for _,u in ipairs(list) do if IsFuelMine(u) then fuelWaits = true; break; end; end;
+		if fuelWaits then
+			for _,st in ipairs(Sense.myStructures) do
+				if st.type == Types.mine and st.isEnabled ~= false and st.Enable and not IsFuelMine(st) then
+					if pcall(st.Enable, false) then
+						Mem.shed[st.id] = Sense.round;
+						Log(string.format('Mineral mine switched off at round %d: the fuel mine needs its energy, the generators stand idle for fuel', Sense.round));
+					end;
+					return;
+				end;
 			end;
 		end;
 	end;
@@ -3712,8 +3737,6 @@ end;
 function Economy.BuildAt(u, loc, t, reachable)
 	Economy.buildWhy = nil;
 	if Economy.Capped(t) then Economy.buildWhy = 'capped'; return false; end;
-	-- (generators standing idle for lack of fuel: another one would stand idle too)
-	if t == Types.generator and ((Sense.offByKind or {}).generator or 0) > 0 then Economy.buildWhy = 'no fuel for another generator'; return false; end;
 	if loc ~= u.location then
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);

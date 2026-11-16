@@ -1130,7 +1130,6 @@ function Needs.StructureOptions(constructorIndex)
 		local starved = (cur.balance.energy or 0) <= 0 and Sense.round >= 20 and Economy.Count(Types.generator) >= 1;
 		local off = Sense.offByKind or {};
 		if (off.mine or 0) + (off.port or 0) > 0 then starved = true; end;
-		local noFuel = (off.generator or 0) > 0;	-- generators stand idle for lack of fuel: another one would too
 		local labs = Types.lab and Economy.Count(Types.lab) or 0;
 		local labCap = Cfg.wantLabsRich or 6;
 		if not Needs.T2Capable() and Sense.round >= 80 and minerals >= (Cfg.richMinerals or 400) then labCap = math.max(labCap, Cfg.wantLabsMax or 15); end;
@@ -1140,7 +1139,6 @@ function Needs.StructureOptions(constructorIndex)
 			local drop = nil;
 			if Economy.Capped(t) then drop = 'capped';
 			elseif t == Types.lab and labs >= labCap then drop = 'lab limit '..labCap;
-			elseif noFuel and t == Types.generator then drop = 'no fuel for it';
 			elseif starved and (t == Types.lab or t == Types.planeFactory or (t == Types.plant and Economy.Count(t) >= 1)) then drop = 'no power to spare'; end;
 			if drop then
 				if Sense.round % 10 == 0 then Needs.Note(o.name..' not on offer: '..drop); end;
