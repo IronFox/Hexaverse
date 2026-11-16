@@ -2709,7 +2709,13 @@ function Economy.Exits(loc, skipIdx)
 				else r = 'not clear (slope)'; end;
 			end;
 		end;
-		if r == nil then n = n + 1; else why[#why+1] = nb.index..' '..r; end;
+		if r == nil then
+			n = n + 1;
+			-- (a unit on an exit blocks it for the moment: told, not counted against the site)
+			local okm, m = pcall(Game.GetMobileAt, {cell = nb, height = h});
+			for j = -1, 1 do if not (okm and m) then okm, m = pcall(Game.GetMobileAt, {cell = nb, height = h + j}); end; end;
+			if okm and m then why[#why+1] = nb.index..' unit '..tostring(m.type and m.type.name or '?')..(m.isOwnedByMe and '' or ' (foreign)'); end;
+		else why[#why+1] = nb.index..' '..r; end;
 	end;
 	return n, table.concat(why, '; ');
 end;
@@ -2768,7 +2774,7 @@ function Economy.SiteOK(loc, forMine)
 			if pl then
 				local ex = Economy.Exits(pl);
 				local exWithout = Economy.Exits(pl, idx);
-				if exWithout < ex and exWithout < 2 then Economy.siteWhy = 'takes a plant exit'; return false; end;
+				if exWithout < ex and exWithout < Cfg.plantFreeCells then Economy.siteWhy = 'takes a plant exit'; return false; end;
 			end;
 		end;
 	end;
