@@ -2838,7 +2838,11 @@ function Economy.TryPort(u)
 			-- were builders walking into a missile tower beside a port)
 			-- ... unless the army stands there in strength: that is how a lost port is taken back
 			local held = (reg.myStrength or 0) > (reg.staticThreat or 0) + (reg.mobileThreat or 0) and (reg.myStrength or 0) > 0;
-			if not beside and ((held and econ) or (near and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
+			-- A port away from home only where my units already stand in strength: its owner sees the
+			-- construction and comes for it, and a lone builder there gives the base away and is lost
+			-- (in 19 of 24 matches the one try for the second port was a lone builder around round 25)
+			local home = (Sense.hops[rid] or 99) <= 1;
+			if not beside and ((held and econ) or (home and near and (reg.staticThreat or 0) <= 0 and (reg.hostileStructures or 0) <= 0
 					and (Sense.Threat(reg) <= 0 or reg.mobileThreat <= reg.myStrength))) then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
 				if bestD == nil or d < bestD then best, bestD = cell, d; end;
