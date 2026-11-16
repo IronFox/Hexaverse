@@ -665,7 +665,7 @@ function Sense.Update()
 				observers[#observers+1] = {pos=w, range=u.groundScanningRange, air=true};
 			end;
 			if u.scanningRange and u.scanningRange > 0 then
-				airObservers[#airObservers+1] = {pos=w, range=u.scanningRange};
+				airObservers[#airObservers+1] = {pos=w, range=u.scanningRange, armed=(u.turret and u.turret.type.canAttack) or false};
 			end;
 		else
 			if u.scanningRange and u.scanningRange > 0 then
@@ -674,7 +674,8 @@ function Sense.Update()
 			if u.suborbitalScanningRange and u.suborbitalScanningRange > 0 then
 				local ok, sub = pcall(Util.ToSuborbit, u.location);
 				if ok and sub then
-					airObservers[#airObservers+1] = {pos=sub.world, range=u.suborbitalScanningRange};
+					airObservers[#airObservers+1] = {pos=sub.world, range=u.suborbitalScanningRange,
+						armed=(u.turret and u.turret.type.name == 'Anti Aircraft') or false};
 				end;
 			end;
 			if u.turret and u.turret.type.detectsResources and u.scanningRange then
@@ -1324,9 +1325,11 @@ The one question everything that builds asks first. Per surface cell:
                       anything of mine, now or in the last rounds (Control.memory), or
                     * overlooked by higher ground within firing range that is not controlled
                       itself: a valley is contested unless the peaks around it are mine, or
-                    * with planes about (Sense.AirMatters): not watched in the air layer, that
-                      is, beyond the reach of my AA and planes. Towers that cannot shoot upwards
-                      do not change that; what is contested only for this is in Control.air
+                    * with planes about (Sense.AirMatters): not watched in the air layer. Seeing
+                      what flies there is enough until a bomber shows up (or anything of mine
+                      is hit from the air); from then on only what my AA and armed planes
+                      watch counts. Towers that cannot shoot upwards change nothing here; what
+                      is contested only for this reason is in Control.air
   2  controlled     what is left: seen, quiet, and no blind or hostile spot can reach it
 "Firing range" is the longest weapon range seen on a hostile so far, and Cfg.controlMinReach
 cells before any was seen.
@@ -1347,6 +1350,8 @@ Control = {
 	reach = 0,			-- longest hostile weapon range seen (world units)
 	byRegion = {},		-- region id -> {controlled = share, contested = share}
 	attackCount = 0,
+	bomberSeen = nil,	-- round a hostile bomber was last seen, or something of mine hit from the air
+	bomberMemory = 80,
 };
 
 function Control.At(cellOrLoc)
@@ -1410,8 +1415,12 @@ function Control.Update()
 	Control.fresh = Control.fresh or {};
 	local round, R = Sense.round, Map.groundRadius;
 	-- hostiles in sight: where they are, and as far as they see or shoot
+	for _,a in ipairs(Sense.recentAttacks or {}) do
+		if a.layer == 'air' then Control.bomberSeen = round; end;
+	end;
 	for _,e in pairs(Game.hostileUnits) do
 		local tt = e.turret and e.turret.type;
+		if e.health and e.health > 0 and e.type.name and string.find(e.type.name, 'Bomber', 1, true) then Control.bomberSeen = round; end;
 		if e.health and e.health > 0 and e.location and not (e.isIndestructible or e.type.isIndestructible)
 				and (e.type.isMobile or (tt and tt.canAttack)) then
 			local range = (tt and tt.canAttack and tt.flatAttackRange or 0) * 1.25;
@@ -1512,6 +1521,7 @@ function Control.Update()
 	local watchers = Sense.airObservers or {};
 	local airR = Map.airRadius or R;
 	local airOnly = 0;
+	local bombers = Control.bomberSeen ~= nil and round - Control.bomberSeen <= Control.bomberMemory;
 	Control.air = {};
 	for _,c in ipairs(cells) do
 		local l = 0;
@@ -1523,7 +1533,7 @@ function Control.Update()
 			local watched = false;
 			for _,o in ipairs(watchers) do
 				local dx, dy, dz = x - o.pos.x, y - o.pos.y, z - o.pos.z;
-				if dx*dx + dy*dy + dz*dz <= o.range * o.range then watched = true; break; end;
+				if (o.armed or not bombers) and dx*dx + dy*dy + dz*dz <= o.range * o.range then watched = true; break; end;
 			end;
 			if not watched then
 				l = 1;
@@ -1546,8 +1556,8 @@ function Control.Update()
 		Control.byRegion[rid] = {controlled = p[2] / p.n, contested = p[1] / p.n};
 	end;
 	if round % 20 == 0 then
-		Log(string.format('Control map: %d cells controlled, %d contested (%d only for the air above), %d not seen; firing range %.1f cells, %d sightings and attacks remembered',
-			counts[2], counts[1], airOnly, counts[0], Control.Reach() / Control.Spacing(), zones));
+		Log(string.format('Control map: %d cells controlled, %d contested (%d only for the air above%s), %d not seen; firing range %.1f cells, %d sightings and attacks remembered',
+			counts[2], counts[1], airOnly, bombers and ', bombers about' or (planes and ', planes about' or ''), counts[0], Control.Reach() / Control.Spacing(), zones));
 	end;
 end;
 
