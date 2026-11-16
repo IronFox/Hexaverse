@@ -255,13 +255,20 @@ local function Steps(from, maxSteps)
 end;
 
 --[[
-Hostile structures the faction has seen stay known after they drop out of sight (a structure
-does not walk away). Only what was sensed is kept: nothing here comes from anywhere else.
+Hostile structures the faction has seen stay known after they drop out of sight. The game keeps
+that memory itself, as ghosts (hostile units with health 0 or less); what is listed here is those
+ghosts plus what was sensed while this script watched. Nothing here comes from anywhere else.
 ]]
 function Bridge.Remember()
 	for _,e in pairs(Game.hostileUnits) do
-		if e.health and e.health > 0 and e.location and e.type and e.type.isStructure and not e.isOwnedByMe then
-			Bridge.known[e.location.cell.index] = {name = e.type.name, loc = e.location, round = Sense.round};
+		if e.health and e.location and e.type and e.type.isStructure and not e.isOwnedByMe then
+			local idx = e.location.cell.index;
+			if e.health > 0 then
+				Bridge.known[idx] = {name = e.type.name, loc = e.location, round = Sense.round};
+			elseif Bridge.known[idx] == nil and Control.At(e.location) == 0 then
+				-- the game's own memory: a ghost (health 0 or less) is what was seen there and is out of sight now
+				Bridge.known[idx] = {name = e.type.name, loc = e.location, round = Sense.round, ghost = true};
+			end;
 		end;
 	end;
 	for idx,k in pairs(Bridge.known) do
@@ -776,7 +783,7 @@ function Bridge.State()
 	do
 		local rows = {};
 		for idx,k in pairs(Bridge.known) do
-			rows[#rows+1] = string.format('%s at cell %d (region %s, h=%s, seen r%d)', k.name, idx, tostring(Map.cellRegion[idx] or '?'), tostring(k.loc.height), k.round);
+			rows[#rows+1] = string.format('%s at cell %d (region %s, h=%s, %s r%d)', k.name, idx, tostring(Map.cellRegion[idx] or '?'), tostring(k.loc.height), k.ghost and 'ghost, noted' or 'seen', k.round);
 		end;
 		table.sort(rows);
 		if #rows > 0 then Add(L, 'HOSTILE STRUCTURES SEEN SO FAR (remembered; may be gone): %s', table.concat(rows, '; ')); end;
