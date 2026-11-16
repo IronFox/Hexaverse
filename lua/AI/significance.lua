@@ -373,6 +373,27 @@ Significance.directions = {};	-- active ones
 Significance.avoid = {};		-- region id -> priority
 Significance.failed = {};		-- region id -> round a take there last failed
 Significance.taken = {};		-- region id -> round a formation reported it taken (formation.lua)
+--[[
+Exploring, to gather what the strategic layer is trained on: with this probability a candidate
+gets a random priority instead of its own, so that directions are also tried which the current
+judgement would not give. Such a direction is logged with "explored". What it was worth is read
+afterwards from how the score's speed changed (tools/ai_train).
+]]
+Significance.explore = 0;
+
+local seeded = false;
+local function Random()
+	if not seeded then
+		seeded = true;
+		local seed = (os and os.time and os.time() or 0) + (Sense.round or 0) * 7919;
+		for _,u in ipairs(Sense.myStructures or {}) do
+			local w = u.location and u.location.world;
+			if w then seed = seed + math.floor((w.x * 31 + w.y * 17 + w.z * 7) * 1000); end;
+		end;
+		math.randomseed(math.floor(seed) % 2147483647);
+	end;
+	return math.random();
+end;
 
 local function Settle(d, how)
 	local reg = Map.regions[d.region];
@@ -409,15 +430,22 @@ function Significance.Direct()
 	for _,reg in ipairs(Map.regions) do
 		local o = Significance.out[reg.id];
 		if o and not busy[reg.id] then
+			local c;
 			if Sense.mine[reg.id] then
 				-- what is worth much and under threat comes first
-				cand[#cand+1] = {kind = 'hold', region = reg.id, priority = o[1] * (0.5 + 0.5 * o[3])};
+				c = {kind = 'hold', region = reg.id, priority = o[1] * (0.5 + 0.5 * o[3])};
 			else
 				-- (what just failed is not tried again at once: something else first)
 				local again = Significance.failed[reg.id];
 				local damp = (again and Sense.round - again < 100) and 0.3 or 1;
-				cand[#cand+1] = {kind = 'take', region = reg.id, priority = o[2] * (1 - 0.5 * o[3]) * damp};
+				c = {kind = 'take', region = reg.id, priority = o[2] * (1 - 0.5 * o[3]) * damp};
 			end;
+			-- (exploring only where we could get to)
+			if Significance.explore > 0 and (c.kind == 'hold' or (Sense.hops[reg.id] or 99) <= 3) and Random() < Significance.explore then
+				c.priority = 0.1 + 0.9 * Random();
+				c.explored = true;
+			end;
+			cand[#cand+1] = c;
 		end;
 		if o and not Sense.mine[reg.id] and o[3] >= 0.6 then Significance.avoid[reg.id] = o[3]; end;
 	end;
@@ -431,8 +459,8 @@ function Significance.Direct()
 			d.issued = Sense.round;
 			d.deaths = Map.regions[d.region].lost or 0;
 			keep[#keep+1] = d;
-			Log(string.format('Direction: %s region %d priority %s (round %d)', d.kind, d.region,
-				(string.gsub(string.format('%.2f', d.priority), ',', '.')), d.issued));
+			Log(string.format('Direction: %s region %d priority %s (round %d)%s', d.kind, d.region,
+				(string.gsub(string.format('%.2f', d.priority), ',', '.')), d.issued, d.explored and ' explored' or ''));
 		end;
 	end;
 end;
