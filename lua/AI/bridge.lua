@@ -105,6 +105,24 @@ function Bridge.Set(name, value)
 	Cfg[name] = value;
 end;
 
+-- No more of this structure type than n (nil lifts the cap). Labs also follow wantLabsRich and wantLabsMax.
+function Bridge.Cap(typeName, n)
+	if Game.Type.units[typeName] == nil then error('no such type: '..tostring(typeName), 2); end;
+	Cfg.caps[typeName] = n and tonumber(n) or nil;
+end;
+
+-- Switches structures of a type off or on (off: they draw no power). Returns how many were switched.
+function Bridge.Switch(typeName, on, count)
+	local n = 0;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.type and st.type.name == typeName and st.Enable and (count == nil or n < count) and (st.isEnabled == nil or st.isEnabled ~= on) then
+			if pcall(st.Enable, on) then n = n + 1; end;
+		end;
+	end;
+	Bridge.Out('%d %s switched %s', n, typeName, on and 'on' or 'off');
+	return n;
+end;
+
 function Bridge.Weights(w)
 	Cfg.needWeights = Cfg.needWeights or {};
 	for k,v in pairs(w) do Cfg.needWeights[k] = tonumber(v); end;
@@ -302,7 +320,16 @@ end;
 do
 	local base = Military.UpdatePosture;
 	function Military.UpdatePosture()
-		if Bridge.posture == nil or Cfg.useFormations then return base(); end;
+		if Bridge.posture == nil or Cfg.useFormations then
+			base();
+			-- (the scripts' own choice never goes where the outside player said to stay out)
+			local pin = Mem.attackTarget and Bridge.pins[Mem.attackTarget];
+			if pin and pin.kind == 'avoid' then
+				Log('Bridge: the scripts wanted to attack region '..Mem.attackTarget..', which is to be avoided: staying home');
+				Mem.posture, Mem.attackTarget = 'defend', nil;
+			end;
+			return;
+		end;
 		if Bridge.posture == 'defend' then
 			Mem.posture, Mem.attackTarget = 'defend', nil;
 		else
@@ -375,7 +402,7 @@ function Bridge.State()
 		do
 			local bal, sup = cur.balance or {}, Game.myFaction.maxResources.supply or {};
 			local parts = {};
-			for k,v in pairs(bal) do parts[#parts+1] = string.format('%s %+g (supply %s)', tostring(k), tonumber(v) or 0, tostring(sup[k] or '?')); end;
+			for k,v in pairs(bal) do if k ~= 'minerals' then parts[#parts+1] = string.format('%s %+g (supply %s)', tostring(k), tonumber(v) or 0, tostring(sup[k] or '?')); end; end;
 			table.sort(parts);
 			Add(L, 'Balance per round: %s. Energy spare 0 means plants, labs and towers wait for power: more generators (and fuel mines to feed them).', table.concat(parts, ', '));
 			if Economy.siteWhy then Add(L, 'Last building site refused by the scripts because: %s', tostring(Economy.siteWhy)); end;
@@ -534,6 +561,8 @@ function Bridge.Help()
 	Add(L, '  Bridge.Units([region]) my units one by one (id, type, cell, health)');
 	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
+	Add(L, '  Bridge.Cap(typeName, n)    the scripts buy no more of this structure than n (nil lifts it); nothing that draws power is');
+	Add(L, '                             bought while energy spare is 0 anyway.   Bridge.Switch(typeName, false [, count])  switches them off');
 	Add(L, 'Directions and posture stand until you change them. Anything else is plain Lua with the game API.');
 	Add(L, '');
 	Add(L, 'How the game is won: hold Nexus ports. A port goes to whoever completes a connected structure (a mine will do) next');

@@ -232,8 +232,8 @@ function Needs.Update()
 		-- before T2, lab building was THE endgame job: ever greater range. T2 makes larger lab
 		-- arrays pointless if you can afford it. This AI can't do T2 yet (plantations, compounds,
 		-- mechanics), so late and rich it keeps growing lab clusters
-		local maxLabs = math.max(Cfg.wantLabsRich or 6, 6);
-		if not Needs.T2Capable() and round >= 80 and minerals >= (Cfg.richMinerals or 400) then maxLabs = 15; end;
+		local maxLabs = Cfg.wantLabsRich or 6;
+		if not Needs.T2Capable() and round >= 80 and minerals >= (Cfg.richMinerals or 400) then maxLabs = math.max(maxLabs, Cfg.wantLabsMax or 15); end;
 		Needs.labsMidCluster = labs > prevCluster and labs < maxLabs;
 		if labs == 0 then v.research = plants > 0 and 1 or 0.4;
 		elseif Needs.labsMidCluster then v.research = clamp(0.4 + 0.4 * (labs - prevCluster) / (nextCluster - prevCluster));	-- finish the cluster
@@ -1105,6 +1105,32 @@ function Needs.StructureOptions(constructorIndex)
 				{defense = peak and 0.8 or 0.3, army = 0.3, spend = 0.3}, peak and ('Store on peak @'..want) or nil);
 			opts[#opts].have = Economy.Count(Types.store);
 		end;
+	end;
+	--[[
+	What draws power is not bought while there is none to spare: a lab, plant or plane factory
+	without power stands idle and takes the minerals (and the site) the generator needed. And
+	nothing is bought beyond its cap (Cfg.caps: type name -> most to have; labs: the lab limits).
+	]]
+	do
+		local starved = (cur.balance.energy or 0) <= 0 and Sense.round >= 20 and Economy.Count(Types.generator) >= 1;
+		local labs = Types.lab and Economy.Count(Types.lab) or 0;
+		local labCap = Cfg.wantLabsRich or 6;
+		if not Needs.T2Capable() and Sense.round >= 80 and minerals >= (Cfg.richMinerals or 400) then labCap = math.max(labCap, Cfg.wantLabsMax or 15); end;
+		local keep = {};
+		for _,o in ipairs(opts) do
+			local t = o.want.type;
+			local cap = Cfg.caps and Cfg.caps[t.name];
+			local drop = nil;
+			if cap and Economy.Count(t) >= cap then drop = 'capped at '..cap;
+			elseif t == Types.lab and labs >= labCap then drop = 'lab limit '..labCap;
+			elseif starved and (t == Types.lab or t == Types.planeFactory or (t == Types.plant and Economy.Count(t) >= 1)) then drop = 'no power to spare'; end;
+			if drop then
+				if Sense.round % 10 == 0 then Needs.Note(o.name..' not on offer: '..drop); end;
+			else
+				keep[#keep+1] = o;
+			end;
+		end;
+		opts = keep;
 	end;
 	return opts;
 end;

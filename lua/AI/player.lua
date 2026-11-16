@@ -120,6 +120,8 @@ Cfg = {
 
 	-- structures
 	wantLabs = 3,
+	wantLabsMax = 15,		-- labs late and rich, while T2 is out of reach
+	caps = {},				-- structure type name -> most to have (empty: no caps)
 	wantLabsRich = 6,		-- labs while minerals pile up
 	richMinerals = 400,		-- minerals from which surplus spending kicks in
 	wantTowersPerFrontier = 1,
