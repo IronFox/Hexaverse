@@ -135,6 +135,7 @@ Cfg = {
 	roadMinerals = 200,		-- and minerals pile up
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
+	plantBlockedRounds = 30,	-- a finished vehicle that cannot deploy is given up after this many rounds
 	plantFreeCells = 3,
 	autoSurveyors = true,	-- surveyors roam automated (the game's own prospecting), replaced when lost
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
@@ -3616,6 +3617,20 @@ function Economy.AssignConstructor(u, index)
 		if dest == nil then why = 'no ground there a builder can stand on';
 		elseif Game.Grid.AffectedByEMP(dest) then why = 'the cell lies in an EMP zone';
 		elseif Game.GetStructureAt(dest) ~= nil then why = 'a structure stands there already';
+		else
+			-- (never box in a vehicle plant, by order from outside either)
+			for _,nb in ipairs(cell.neighbors or {}) do
+				local pc = Economy.plantCells[nb.index];
+				if pc and why == nil then
+					local pfree = 0;
+					for _,pn in ipairs(pc.neighbors) do
+						if pn.index ~= cell.index and not Sense.structureCells[pn.index] and not Economy.claimed[pn.index] then pfree = pfree + 1; end;
+					end;
+					if pfree < Cfg.plantFreeCells then why = 'it would box in the vehicle plant on cell '..nb.index..' (finished vehicles need free cells beside it)'; end;
+				end;
+			end;
+		end;
+		if why then -- told below
 		elseif not Economy.BuildAt(u, dest, want.type) then why = Economy.buildWhy or 'no path there for the builder';
 		else Economy.claimed[cell.index] = true; end;
 		if want.done then want.done(why, u); end;
@@ -4109,6 +4124,19 @@ function Economy.Production()
 				Economy.plantBlocked[p.id] = Economy.plantBlocked[p.id] or Sense.round;
 				if Sense.round % 10 == 0 then
 					Log(p.niceName..': cannot deploy '..tostring(p.productionCompleted)..', no deployment option');
+				end;
+				--[[
+				A finished vehicle that cannot leave blocks the plant for good (one match stood still
+				for 200 rounds behind a heavy tank with no level ground beside the plant). After 30
+				rounds it is given up, so that what is queued behind it, of another base perhaps, gets
+				its turn.
+				]]
+				local head = p.productionQueue and p.productionQueue[1];
+				if Sense.round - Economy.plantBlocked[p.id] >= Cfg.plantBlockedRounds and head and head.Abort then
+					local okA, err = pcall(head.Abort);
+					Log(p.niceName..': '..tostring(p.productionCompleted)..' could not deploy for '..Cfg.plantBlockedRounds..' rounds, giving it up'
+						..(okA and '' or (' (refused: '..tostring(err)..')')));
+					Economy.plantBlocked[p.id] = Sense.round;	-- (count anew, for the next one or another try)
 				end;
 			end;
 		else
