@@ -2356,7 +2356,8 @@ end;
 
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
-	if Economy.labReserved[idx] and not Economy.allowLabSite then Economy.siteWhy = 'lab reserve'; return false; end;
+	-- a mine may take a reserved lab cell: income beats a lab slot (the reserve once locked a faction out of its last mine sites)
+	if Economy.labReserved[idx] and not Economy.allowLabSite and not forMine then Economy.siteWhy = 'lab reserve'; return false; end;
 	if Economy.IsPowerCenter(idx) and not Economy.allowPowerCenter then Economy.siteWhy = 'power center'; return false; end;
 	-- a resource cell on a planned generator ring still goes to a mine: income beats a ring slot
 	if Economy.IsPowerRing(idx) and not Economy.allowPowerRing and not forMine then Economy.siteWhy = 'power ring'; return false; end;
