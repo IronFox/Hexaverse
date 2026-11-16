@@ -282,7 +282,7 @@ function Needs.Update()
 	-- player (not the Nexus) is around, since any player can dig
 	local player = false;
 	for _,f in pairs(Game.factions or {}) do
-		if f.name ~= 'Nexus' and f ~= Game.myFaction and f.isHostile ~= false then player = true; end;
+		if not Sense.IsNexus(f) and f ~= Game.myFaction and f.isHostile ~= false then player = true; end;
 	end;
 	-- can drones cover my land? (a plane factory, drones researched, and enough of them flying)
 	local drones = 0;
@@ -977,8 +977,18 @@ function Needs.StructureOptions(constructorIndex)
 		add({type = Types.plant, kind = 'base'}, {survivalPlant = 1, spend = 1, army = 0.3});
 		opts[#opts].have = plants;
 		opts[#opts].cap = Cfg.maxPlants;
+		-- a hard stop, counting the ones on order (the "plants full" factor below outweighed the
+		-- soft cap, and plants ordered but not finished were not counted: five orders in 11 rounds)
+		local pending = 0;
+		for _,job in pairs(Mem.jobs) do
+			if job.kind == Types.plant.name then pending = pending + 1; end;
+		end;
+		if plants + pending >= Cfg.maxPlants then
+			opts[#opts] = nil;
 		-- every plant queue full while minerals pile up: another plant is the missing capability
-		if Economy.plantsFull then opts[#opts].factor = 1 + 1.5 * Needs.BlockValue('capacity'); end;
+		elseif Economy.plantsFull then
+			opts[#opts].factor = 1 + 1.5 * Needs.BlockValue('capacity');
+		end;
 	end;
 	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
 		local uranium = (max.balance.uranium or 0) > 0 or (cur.storage.uranium or 0) > 0;

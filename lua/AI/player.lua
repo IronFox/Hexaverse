@@ -770,6 +770,12 @@ function Sense.Update()
 	-- hostile presence: what is sensed now replaces memory of seen regions
 	local seenMobile, seenStatic, seenStructs, seenAir = {}, {}, {}, {};
 	for _,e in pairs(Game.hostileUnits) do
+		-- a Nexus that does more than own ports (bases, vehicles, planes): it will raid and bomb
+		if not Mem.nexusActive and e.health > 0 and e.owner and Sense.IsNexus(e.owner)
+				and not (e.type and e.type.name and string.find(e.type.name, 'Nexus Port', 1, true)) then
+			Mem.nexusActive = round;
+			Log('Nexus is active: '..tostring(e.type and e.type.name)..' seen at round '..round);
+		end;
 		if e.health > 0 and e.location.isSuborbital then
 			local reg = Map.RegionOfLoc(e.location);
 			if reg then
@@ -1085,9 +1091,15 @@ function Sense.Staleness(reg, layer)
 end;
 
 -- Does a layer currently matter? Weight decays if the enemy hasn't shown that capability for a while
+-- (the faction is called '<Nexus>': the test for 'Nexus' never matched, and everything that
+-- depended on it was dead until this was found in the logs)
+function Sense.IsNexus(f)
+	return f ~= nil and type(f.name) == 'string' and string.find(f.name, 'Nexus', 1, true) ~= nil;
+end;
+
 function Sense.NexusPresent()
 	for _,f in pairs(Game.factions) do
-		if f.name == 'Nexus' then return true; end;
+		if Sense.IsNexus(f) then return true; end;
 	end;
 	return false;
 end;
@@ -1098,7 +1110,7 @@ function Sense.AirMatters()
 	end;
 	-- Against the Nexus, prepare before its planes arrive. ShouldBuildPlanes() reflects the server's
 	-- public rule (minRoundForPlanes), not anything sensed
-	if Sense.nexus then
+	if Sense.nexus and Mem.nexusActive then
 		if Sense.round >= Cfg.nexusAirPrepRound then return true; end;
 		local ok, rs = pcall(function() return Game.AI and Game.AI.ShouldBuildPlanes and Game.AI.ShouldBuildPlanes() end);
 		if ok and rs then return true; end;
