@@ -29,6 +29,8 @@ namespace RuntimeConfig
 	inline bool IsAIPlayer() {return aiMode && aiPlayerName.IsNotEmpty();}
 	extern String serverPassword;
 	extern bool udpListen;
+	/** Port of the MCP interface for playing (client/components/ai/mcpServer.h) on 127.0.0.1; 0 = off */
+	extern unsigned mcpPort;
 	extern Time::Stamp				programStart;
 
 	extern Network::ServerAddress	serverAddress;

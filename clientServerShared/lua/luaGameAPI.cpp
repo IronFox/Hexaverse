@@ -16,10 +16,31 @@
 #include "../objects/gridAndChoices.h"
 #include "../objects/structure/vehiclePlant.h"
 #include "../objects/structure/planeFactory.h"
+#include "bridgeHook.h"
 
+
+namespace BridgeHook
+{
+	std::function<bool(const std::string&, const std::string&)>	write;
+	std::function<std::string(const std::string&)>					read;
+}
 
 namespace
 {
+	/** True if name is a plain bridge file name: letters, digits, '_', '-' and '.', not starting with '.' */
+	bool	IsBridgeName(const char*name)
+	{
+		if (!name || !*name || name[0] == '.')
+			return false;
+		for (const char*c = name; *c; c++)
+		{
+			const bool ok = (*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') || (*c >= '0' && *c <= '9') || *c == '_' || *c == '-' || *c == '.';
+			if (!ok)
+				return false;
+		}
+		return true;
+	}
+
 	/** Full path of a bridge file, or empty if the bridge is off or the name is not a plain file name (see Game.BridgeWrite) */
 	std::string BridgePath(const char*name)
 	{
@@ -1243,24 +1264,31 @@ namespace Lua
 		Bridge to an outside player (for example a person or a model deciding in place of a script).
 		Off unless the environment variable HEXAVERSE_AI_BRIDGE names an existing folder. Files are
 		plain text inside that folder; names may hold letters, digits, '_', '-' and '.' only.
+		If a client sets BridgeHook (its MCP server, mcpPort=<n>), the bridge is on through that route
+		instead: reads come from the hook, writes go to the hook and, if the folder is set, to files too.
 		*/
 		gameTable.SetFunction("BridgeWrite",[](const String&name, const String&text)->bool
 		{
+			bool hooked = false;
+			if (BridgeHook::write && IsBridgeName(name.c_str()))
+				hooked = BridgeHook::write(std::string(name.c_str()), std::string(text.c_str()));
 			const std::string path = BridgePath(name.c_str());
 			if (path.empty())
-				return false;
+				return hooked;
 			const std::string tmp = path + ".tmp";
 			{
 				std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
 				if (!out)
-					return false;
+					return hooked;
 				out << text.c_str();
 			}
 			std::remove(path.c_str());
-			return std::rename(tmp.c_str(), path.c_str()) == 0;
+			return std::rename(tmp.c_str(), path.c_str()) == 0 || hooked;
 		});
 		gameTable.SetFunction("BridgeRead",[](const String&name)->String
 		{
+			if (BridgeHook::read)
+				return IsBridgeName(name.c_str()) ? String(BridgeHook::read(std::string(name.c_str())).c_str()) : String();
 			const std::string path = BridgePath(name.c_str());
 			if (path.empty())
 				return String();

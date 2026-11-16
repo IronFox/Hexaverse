@@ -39,6 +39,7 @@
 #include <objects/nexus/nexusThreatEstimation.h>
 #include <boot.h>
 
+#include "components/ai/mcpServer.h"
 #include "components/visual/scene/explosions.h"
 #include "components/visual/scene/objectRendering.h"
 #include "components/visual/objectSelection.h"
@@ -1122,6 +1123,7 @@ bool loop()
 		AI::Process(0.5_s);
 		//Sys::DisableConsoleQuickEdit();
 	#else
+		Mcp::MainThreadFrame();
 
 		if (Animation::AllDone())
 			Objects::SubOrbital::planes.Foreach([](const Objects::SubOrbital::PPlane&plane)
@@ -1578,6 +1580,14 @@ bool loop()
 				textout.PopState();
 			}
 
+			//MCP screenshot: the whole frame as the player sees it, HUD and menus included (last thing drawn before present)
+			if (Mcp::ScreenshotWanted())
+			{
+				Image frame;
+				display.Capture(frame);
+				Mcp::DeliverScreenshot(frame);
+			}
+
 	#endif
 		//textout << "direction: "<<scene.GetViewingDirection()<< nl;
 		//textout << "position: " << scene.location << nl;
@@ -1754,6 +1764,13 @@ void ParseKeyValue(const String&key, const String&value)
 			if (!convert(value.c_str(), RuntimeConfig::udpListen))
 				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse udpListen='" + value + "' to bool");
 		}
+		elif (key == "mcpPort")
+		{
+			const int port = atoi(value.c_str());
+			if (port <= 0 || port > 65535)
+				throw Except::Program::ParameterFault(CLOCATION, "Unable to parse mcpPort='" + value + "' to a port number");
+			RuntimeConfig::mcpPort = unsigned(port);
+		}
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
@@ -1859,6 +1876,22 @@ bool ConfigureClient()
 				logPrefix = "client "+safeName+" ";
 			}
 			Logging::Begin(RuntimeConfig::myConfig.Lookup(FileSystem::StringToPath("logs/"+logPrefix+Logging::TimeStamp(true)+ ".v" PRODUCT_VERSION ".log")));
+		}
+		{
+			//MCP interface for playing: mcpPort=<n>, or (for an AI player client launched by the server) HEXAVERSE_AI_MCP_PORT
+			if (!RuntimeConfig::mcpPort && RuntimeConfig::IsAIPlayer())
+			{
+				#pragma warning(suppress: 4996)
+				const char*env = std::getenv("HEXAVERSE_AI_MCP_PORT");
+				if (env && *env)
+				{
+					const int port = atoi(env);
+					if (port > 0 && port <= 65535)
+						RuntimeConfig::mcpPort = unsigned(port);
+				}
+			}
+			if (RuntimeConfig::mcpPort)
+				Mcp::Start(RuntimeConfig::mcpPort);
 		}
 	}
 	catch (const std::exception&e)

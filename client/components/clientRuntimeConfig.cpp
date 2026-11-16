@@ -12,6 +12,7 @@ namespace RuntimeConfig
 	bool aiNewFaction = false;
 	String serverPassword;
 	bool udpListen = true;
+	unsigned mcpPort = 0;
 	bool nexusBases=false,	nexusPortsOnAllPoles=false;
 	Time::Stamp				programStart;
 
