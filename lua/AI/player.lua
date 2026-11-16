@@ -3899,7 +3899,7 @@ function Economy.BuildAt(u, loc, t, reachable)
 	if Economy.Capped(t) then Economy.buildWhy = 'capped'; return false; end;
 	-- a generator burns 10 fuel a round: one the fuel does not carry stands idle (12 built, 10 idle, in one match).
 	-- (The first is always built; with a fuel mine off for energy, Economy.Power trades it in.)
-	if t == Types.generator and Economy.Count(t) >= 1 and (Economy.Resources().balance.fuel or 0) < 10 then
+	if t == Types.generator and Economy.Count(t) >= 1 and (Economy.Resources().balance.fuel or 0) < 10 and (Sense.offByKind.generator or 0) > 0 then	-- (only while one already stands idle: the bare fuel number left a quarter of the starts with one generator)
 		Economy.buildWhy = 'the fuel does not carry another generator (fuel mine first)'; return false;
 	end;
 	if loc ~= u.location then
@@ -5318,10 +5318,15 @@ function Military.ClearPlants()
 	if next(near) == nil then return; end;
 	-- beside a plant whose finished vehicle cannot get out, everything makes room at once, builders
 	-- too (in the batches most matches lost a plant to its own units parked around it, builders mostly)
-	local urgent = {};
+	local urgent, urgentLong = {}, {};
 	for _,p in ipairs(Sense.plants) do
 		if Economy.plantBlocked[p.id] then
-			for _,nb in ipairs(p.location.cell.neighbors) do urgent[nb.index] = true; end;
+			for _,nb in ipairs(p.location.cell.neighbors) do
+				urgent[nb.index] = true;
+				-- (blocked for 10 rounds: a builder at work on the exit leaves too. One stood there
+				-- for good, told by the engine to "move manually to finish" its generator)
+				if Sense.round - Economy.plantBlocked[p.id] >= 10 then urgentLong[nb.index] = true; end;
+			end;
 		end;
 	end;
 	-- only units that have been sitting there for a while (not ones just ordered elsewhere)
@@ -5339,7 +5344,7 @@ function Military.ClearPlants()
 	Military.parked = parked;
 	for role,list in pairs(Sense.my) do
 		for _,u in ipairs(list) do
-			if (parked[u.id] or 0) >= 2 and (Move.IsIdle(u) or (role ~= 'constructor' and urgent[u.location.cell.index])) and u.GetReach then
+			if (parked[u.id] or 0) >= 2 and (Move.IsIdle(u) or (role ~= 'constructor' and urgent[u.location.cell.index]) or urgentLong[u.location.cell.index]) and u.GetReach then
 				SafeCall('clear plant '..u.niceName, function()
 					local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed * 2), false, false, false, true);
 					if not ok or reach == nil then return; end;
