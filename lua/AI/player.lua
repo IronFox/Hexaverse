@@ -92,6 +92,7 @@ Cfg = {
 	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
 	mechanicFromRound = 15,
 	portNeedsArmy = true,		-- ports other than the nearest one only where my units stand in strength
+	berthCells = 11,			-- structures keep this many cell steps from a claimable port that is not mine (0: off)
 	nextDoorHops = 2,			-- a second claimable port this close to home means towers first
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
@@ -1144,6 +1145,47 @@ function Sense.PortNextDoor()
 		if list[i].hops <= Cfg.nextDoorHops and not st[list[i].idx] then Sense.portNextDoor = true; break; end;
 	end;
 	return Sense.portNextDoor;
+end;
+
+--[[
+The berth. Whoever holds a port answers to what stands near it: the closer, the stronger the answer
+(the Nexus counts everything within 20 cell steps of its base port, seen or not, a third at 11 to 20
+steps, in full from 11, double under 8, and builds forces to match). So structures keep
+Cfg.berthCells steps away from a claimable port that is not mine, the nearest one (home) aside.
+Returns the steps from the cell to the nearest such port, or nil beyond 20.
+]]
+function Sense.Berth(idx)
+	local okp = pcall(Economy.NextToPort);
+	if not okp then return nil; end;
+	local list = {};
+	for pidx,cell in pairs(Economy.portCells or {}) do
+		local rid = Map.cellRegion[pidx];
+		local hops = rid and Sense.hops[rid];
+		if hops and not Sense.UnderEMP(cell) then list[#list+1] = {idx = pidx, hops = hops, cell = cell}; end;
+	end;
+	table.sort(list, function(a, b) if a.hops ~= b.hops then return a.hops < b.hops; end; return a.idx < b.idx; end);
+	local st = Sense.structureAt or {};
+	local key, src = '', {};
+	for i = 2, #list do
+		if not st[list[i].idx] then key = key..list[i].idx..','; src[#src+1] = list[i].cell; end;
+	end;
+	if Sense.berthKey ~= key then
+		Sense.berthKey = key;
+		local dist, edge = {}, {};
+		for _,c in ipairs(src) do dist[c.index] = 0; edge[#edge+1] = c; end;
+		for d = 1, 20 do
+			local nextEdge = {};
+			for _,c in ipairs(edge) do
+				for _,nb in ipairs(c.neighbors or {}) do
+					if dist[nb.index] == nil then dist[nb.index] = d; nextEdge[#nextEdge+1] = nb; end;
+				end;
+			end;
+			edge = nextEdge;
+		end;
+		Sense.berth = dist;
+		if #src > 0 then Log('Berth: '..#src..' claimable port(s) not mine besides the nearest, at cell(s) '..key); end;
+	end;
+	return Sense.berth[idx];
 end;
 
 function Sense.IsNexus(f)
@@ -2407,6 +2449,17 @@ end;
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
 	-- a mine may take a reserved lab cell: income beats a lab slot (the reserve once locked a faction out of its last mine sites)
+	-- a wide berth around a foreign port, the home region aside (there is no moving that)
+	if Cfg.berthCells > 0 and not Economy.portSite then
+		local b = Sense.Berth(idx);
+		if b and b < Cfg.berthCells then
+			local rid = Map.cellRegion[idx];
+			-- (... and the first mines aside: without income nothing else matters)
+			if not (rid and rid == Mem.homeRegion) and not (forMine and Economy.Count(Types.mine) < (Cfg.minMines or 3)) then
+				Economy.siteWhy = 'too close to a foreign port'; return false;
+			end;
+		end;
+	end;
 	-- nothing outside the wall, and nothing on it
 	if not Wall.Inside(idx) then Economy.siteWhy = 'outside the wall'; return false; end;
 	if Economy.labReserved[idx] and not Economy.allowLabSite and not forMine then Economy.siteWhy = 'lab reserve'; return false; end;
