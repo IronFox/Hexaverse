@@ -1696,7 +1696,8 @@ function Move.Stuck(u)
 end;
 
 function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
-	if Move.Stuck(u) then return false; end;
+	-- (Move.Stuck is not applied to every unit here: with it the losers against the Nexus died at
+	-- a median of round 67 where it had been 137. It is used where the cause is known, the AA posts.)
 	local tried = Tried(u);
 	local danger = Move.IsDangerous;
 	if avoidThreat == 'arty' then
