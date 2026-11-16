@@ -85,6 +85,8 @@ Cfg = {
 	wallFromRound = 25,			-- ... or as soon as the home port is mine
 	wallBuilders = 2,			-- terraformers on the wall at the same time
 	wallAA = 2,					-- AA towers inside the wall, whether planes were seen or not (sensor drones show the Nexus where to strike)
+	mechanics = 1,				-- always at least this many mechanics: they repair what the raids damage
+	mechanicFromRound = 15,
 	portRetry = 15,				-- rounds a port is left alone after an order for it
 	radarPerCombat = 6,			-- one radar per N combat units
 	maxSurveyors = 1,
@@ -314,6 +316,9 @@ function Types.Role(u)
 	end;
 	if tt.canConstruct then
 		return 'constructor';
+	end;
+	if tt.name == 'Mechanic' then
+		return 'mechanic';
 	end;
 	if tt.canSelfDetonate then
 		return 'bomb';
@@ -623,7 +628,7 @@ end;
 function Sense.Update()
 	local round = Game.GetMainRoundNumber();
 	Sense.round = round;
-	Sense.my = {constructor={}, combat={}, radar={}, surveyor={}, aa={}, plane={}, bomb={}, other={}};
+	Sense.my = {constructor={}, combat={}, radar={}, surveyor={}, aa={}, plane={}, bomb={}, mechanic={}, other={}};
 	Sense.planeFactories = {};
 	Sense.myStructures = {};
 	Sense.stores = {};
@@ -3521,8 +3526,42 @@ function Economy.NextVehicle()
 		end;
 		return Types.Vehicle(Types.turret.cannon, base) or Types.Vehicle(Types.turret.cannon, hover);
 	end;
+	-- a mechanic, always: towers and walls hold only as long as someone repairs them
+	local mt = Game.Type.turrets['Mechanic'];
+	if mt and Cfg.mechanics > 0 and Sense.round >= Cfg.mechanicFromRound and #my.constructor >= 2
+			and #(my.mechanic or {}) + (Sense.storedByRole.mechanic or 0) < Cfg.mechanics
+			and (Mem.mechanicOrdered or -99) + 25 <= Sense.round then
+		local m = Types.Vehicle(mt, hover) or Types.Vehicle(mt, base);
+		local cost = m and (tonumber(m.constructionCost) or 100);
+		if m and (Economy.Resources().storage.minerals or 0) >= cost then
+			Mem.mechanicOrdered = Sense.round;
+			Log('Mechanic ordered at round '..Sense.round);
+			return m;
+		end;
+	end;
 	-- weigh the current needs against every vehicle option (see needs.lua)
 	return Needs.NextVehicle({Constructor = Constructor, Tank = Tank});
+end;
+
+-- The mechanic repairs the most damaged thing of mine it can find, structures first
+function Economy.AssignMechanic(u)
+	if not u.Repair or not Move.IsIdle(u) then return; end;
+	local best, bestS = nil, nil;
+	for _,t in pairs(Game.myUnits) do
+		if t ~= u and t.location and not t.location.isSuborbital and t.storedIn == nil
+				and t.health and t.maxHealth and t.maxHealth > 0 and t.health < t.maxHealth then
+			local d = math.sqrt(Dist2(t.location.world, u.location.world));
+			local s = (1 - t.health / t.maxHealth) * (t.type.isMobile and 1 or 2) - d * 0.5;
+			if bestS == nil or s > bestS then best, bestS = t, s; end;
+		end;
+	end;
+	if best == nil then return; end;
+	local ok, err = pcall(u.Repair, best.location);
+	if ok then
+		if Sense.round % 5 == 0 then Log(string.format('%s repairs %s on cell %d (%s of %s health)', u.niceName, best.niceName or best.type.name, best.location.cell.index, tostring(best.health), tostring(best.maxHealth))); end;
+	else
+		Log('Repair failed: '..tostring(err));
+	end;
 end;
 
 Economy.plantHead = {};	-- plant id -> {id=production id, since=round}
@@ -3699,6 +3738,9 @@ function Economy.Constructors()
 	end;
 	for i,u in ipairs(Sense.my.constructor) do
 		SafeCall('constructor '..u.niceName, Economy.AssignConstructor, u, i);
+	end;
+	for _,u in ipairs(Sense.my.mechanic or {}) do
+		SafeCall('mechanic '..u.niceName, Economy.AssignMechanic, u);
 	end;
 end;
 
