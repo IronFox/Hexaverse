@@ -80,8 +80,9 @@ Cfg = {
 	portFarArmy = 16,
 	portGuard = 2,				-- structures of mine beside each port of mine (one tower alone lost the port again)
 	walls = true,				-- wall off the home base (port, mines, plants): the Nexus does not cross or attack walls
-	wallMargin = 2,				-- free cells between my structures and the wall
-	wallMaxCells = 40,			-- a longer ring gets a smaller margin
+	wallMargin = 1,				-- free cells between my structures and the wall, at least
+	wallReach = 6,				-- cells out from my structures that count as the outside
+	wallMaxCells = 20,			-- no wall where it would take more cells than this: open ground is held by towers
 	wallFromRound = 25,			-- ... or as soon as the home port is mine
 	wallHold = 60,				-- rounds a finished wall is kept shut and mended: it buys time, not for long. Then a gate is opened
 	wallGiveUp = 120,			-- rounds after which an unfinished wall is left as it is
@@ -2884,6 +2885,10 @@ local function WallCellClosed(u, e)
 	return loc == nil or loc.isSuborbital or loc.height >= e.h + 2;
 end;
 
+-- The wall goes where the ground makes it short: the smallest set of cells that separates the
+-- base (my home structures and the cells around them) from everything Cfg.wallReach cells out,
+-- counting only steps a vehicle can take (at most one level). Cliffs and pits do the rest.
+-- On open ground no such set is short, and then there is no wall: towers have to do.
 function Wall.Plan(u)
 	local seed, n = {}, 0;
 	for _,st in ipairs(Sense.myStructures or {}) do
@@ -2892,45 +2897,97 @@ function Wall.Plan(u)
 		if cell and rid and (Sense.hops[rid] or 99) <= 1 and not seed[cell.index] then seed[cell.index] = cell; n = n + 1; end;
 	end;
 	if n < 4 then return false; end;
-	for margin = Cfg.wallMargin, 1, -1 do
-		local inside, edge = {}, {};
-		for idx,cell in pairs(seed) do inside[idx] = true; edge[#edge+1] = cell; end;
-		for _ = 1, margin do
-			local nextEdge = {};
-			for _,cell in ipairs(edge) do
-				for _,nb in ipairs(cell.neighbors or {}) do
-					if not inside[nb.index] then inside[nb.index] = true; nextEdge[#nextEdge+1] = nb; end;
-				end;
-			end;
-			edge = nextEdge;
-		end;
-		local ring, seen, natural = {}, {}, 0;
+	-- the area, ring by ring: depth 0 = structures, up to wallMargin = core, wallReach = the outside
+	local depth, cells, edge = {}, {}, {};
+	for idx,cell in pairs(seed) do depth[idx] = 0; cells[idx] = cell; edge[#edge+1] = cell; end;
+	for d = 1, Cfg.wallReach do
+		local nextEdge = {};
 		for _,cell in ipairs(edge) do
 			for _,nb in ipairs(cell.neighbors or {}) do
-				if not inside[nb.index] and not seen[nb.index] then
-					seen[nb.index] = true;
-					local loc = Move.GroundAt(u, nb);
-					if loc and not loc.isSuborbital and Game.GetStructureAt(loc) == nil then
-						-- a step of two levels to every cell inside is a wall already
-						local step = false;
-						for _,inb in ipairs(nb.neighbors or {}) do
-							if inside[inb.index] then
-								local il = Move.GroundAt(u, inb);
-								if il and not il.isSuborbital and math.abs(il.height - loc.height) < 2 then step = true; break; end;
-							end;
-						end;
-						if step then ring[#ring+1] = {idx = nb.index, h = loc.height}; else natural = natural + 1; end;
-					end;
-				end;
+				if depth[nb.index] == nil then depth[nb.index] = d; cells[nb.index] = nb; nextEdge[#nextEdge+1] = nb; end;
 			end;
 		end;
-		if #ring <= Cfg.wallMaxCells or margin == 1 then
-			Mem.wall = {inside = inside, ring = ring, since = Sense.round, margin = margin, built = {}};
-			Log(string.format('Wall planned at round %d: %d ring cells around %d structures, margin %d (%d more are cliffs already)', Sense.round, #ring, n, margin, natural));
-			return true;
+		edge = nextEdge;
+	end;
+	local h, fixed = {}, {};
+	for idx,cell in pairs(cells) do
+		local loc = Move.GroundAt(u, cell);
+		if loc and not loc.isSuborbital then
+			h[idx] = loc.height;
+			if Sense.structureCells[idx] or Game.GetStructureAt(loc) ~= nil then fixed[idx] = true; end;
 		end;
 	end;
-	return false;
+	-- flow network: every cell is an entry and an exit node; a wall cell carries one unit
+	local INF = 1e9;
+	local adj = {};
+	local function node(k) adj[k] = adj[k] or {}; return adj[k]; end;
+	local function link(a, b, cap)
+		local ea = {to = b, cap = cap};
+		local eb = {to = a, cap = 0};
+		ea.rev, eb.rev = eb, ea;
+		local na, nb = node(a), node(b);
+		na[#na+1] = ea; nb[#nb+1] = eb;
+	end;
+	local S, T = 's', 't';
+	for idx,cell in pairs(cells) do
+		if h[idx] then
+			local d = depth[idx];
+			local free = d <= Cfg.wallMargin or d >= Cfg.wallReach or fixed[idx];
+			link('i'..idx, 'o'..idx, free and INF or 1);
+			if d <= Cfg.wallMargin then link(S, 'i'..idx, INF); end;
+			if d >= Cfg.wallReach then link('o'..idx, T, INF); end;
+			for _,nb in ipairs(cell.neighbors or {}) do
+				if h[nb.index] and math.abs(h[nb.index] - h[idx]) <= 1 then link('o'..idx, 'i'..nb.index, INF); end;
+			end;
+		end;
+	end;
+	node(S); node(T);
+	local flow = 0;
+	while flow <= Cfg.wallMaxCells do
+		local prev, queue, qi = {[S] = true}, {S}, 1;
+		while qi <= #queue and not prev[T] do
+			local k = queue[qi]; qi = qi + 1;
+			for _,e in ipairs(adj[k]) do
+				if e.cap > 0 and not prev[e.to] then prev[e.to] = e; queue[#queue+1] = e.to; end;
+			end;
+		end;
+		if not prev[T] then break; end;
+		local k = T;
+		while k ~= S do
+			local e = prev[k];
+			e.cap = e.cap - 1; e.rev.cap = e.rev.cap + 1;
+			k = e.rev.to;
+		end;
+		flow = flow + 1;
+	end;
+	if flow > Cfg.wallMaxCells then
+		Mem.wallSkipped = Sense.round;
+		Log(string.format('No wall at round %d: the ground around the %d home structures is open (more than %d cells needed)', Sense.round, n, Cfg.wallMaxCells));
+		return false;
+	end;
+	-- the cut: cells entered from the base side whose exit is not reached any more
+	local seen, queue, qi = {[S] = true}, {S}, 1;
+	while qi <= #queue do
+		local k = queue[qi]; qi = qi + 1;
+		for _,e in ipairs(adj[k]) do
+			if e.cap > 0 and not seen[e.to] then seen[e.to] = true; queue[#queue+1] = e.to; end;
+		end;
+	end;
+	local inside, ring = {}, {};
+	for idx,_ in pairs(cells) do
+		if h[idx] then
+			if seen['o'..idx] then inside[idx] = true;
+			elseif seen['i'..idx] then ring[#ring+1] = {idx = idx, h = h[idx]}; end;
+		end;
+	end;
+	if #ring == 0 then
+		Mem.wallSkipped = Sense.round;
+		Log(string.format('No wall at round %d: the base is closed off by the ground itself', Sense.round));
+		return false;
+	end;
+	Mem.wall = {inside = inside, ring = ring, since = Sense.round, built = {}};
+	Log(string.format('Wall planned at round %d: %d cells close off the %d home structures (reach %d)', Sense.round, #ring, n, Cfg.wallReach));
+	return true;
 end;
 
 -- Sites are kept inside only while the wall stands shut (nothing could get out to build there)
@@ -2994,6 +3051,7 @@ end;
 function Wall.Try(u)
 	if not Cfg.walls or not u.BuildBlocks or not (Game.Terrain and Game.Terrain.TranslateUnitCell and Game.Terrain.Pack) then return false; end;
 	if Mem.wall == nil then
+		if Mem.wallSkipped then return false; end;
 		local port = false;
 		for _,st in ipairs(Sense.myStructures or {}) do
 			if st.type and st.type.name and string.find(st.type.name, 'Nexus Port', 1, true) then port = true; break; end;

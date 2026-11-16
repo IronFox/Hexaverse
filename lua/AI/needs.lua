@@ -1153,13 +1153,13 @@ function Needs.NextStructure(constructorIndex)
 		end;
 	end;
 	-- AA inside the wall, seen planes or not: the Nexus scouts with sensor drones, and what they see gets raided
-	if Mem.wall and Types.aaTower and Types.IsUnlocked(Types.aaTower) and Mem.homeRegion
+	if (Mem.wall or Mem.wallSkipped) and Types.aaTower and Types.IsUnlocked(Types.aaTower) and Mem.homeRegion
 			and Economy.Count(Types.aaTower) < Cfg.wallAA and minerals >= Cost(Types.aaTower) then
 		Needs.Note('AA Tower ordered inside the wall: '..Economy.Count(Types.aaTower)..' standing');
 		return {type = Types.aaTower, kind = 'tower', region = Mem.homeRegion};
 	end;
 	-- ... and eyes on the wall: a wall that is not seen is likely not there any more
-	if Mem.wall and Types.radarTower and Types.IsUnlocked(Types.radarTower) and Mem.homeRegion
+	if (Mem.wall or Mem.wallSkipped) and Types.radarTower and Types.IsUnlocked(Types.radarTower) and Mem.homeRegion
 			and Economy.Count(Types.radarTower) < 1 and minerals >= Cost(Types.radarTower) then
 		Needs.Note('Radar Tower ordered inside the wall');
 		return {type = Types.radarTower, kind = 'tower', region = Mem.homeRegion};
