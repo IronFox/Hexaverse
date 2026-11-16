@@ -59,7 +59,9 @@ Cfg = {
 	portConnectors = true,		-- free builders claim near ports with a structure on a cell beside them
 	-- what is put beside a port, the cheapest of these that is researched (never a Connector:
 	-- those are deprecated, the game window no longer offers them and the scripts must not use them)
-	portStructures = {'Radar Tower', 'Generator', 'Mineral Container', 'Rocket Launcher Tower', 'Fuel Container'},
+	-- Nothing the faction lives on: beside a port is the front line (with Mineral Container in this
+	-- list every lost match had lost all its containers there).
+	portStructures = {'Radar Tower', 'Rocket Launcher Tower', 'Surveyor Tower'},
 	portMinMines = 2,			-- mines and generators standing before a builder is spared for a port
 	portMinGenerators = 2,
 	portBuilders = 2,			-- builders on their way to a port at the same time
