@@ -1138,12 +1138,14 @@ function Needs.NextStructure(constructorIndex)
 			return {type = mc, kind = 'base', region = n > 0 and region or nil};
 		end;
 	end;
+	-- (Only against a Nexus that has shown more than ports, Mem.nexusActive: where it merely owns
+	-- the ports, as in a duel, the 110 minerals cost the second and third mine and the match: 0 of 12.)
 	-- The first raid comes before the needs see a threat: with a Nexus on the planet, two rocket
 	-- towers at home as soon as two mines and two generators stand. (The matches that died early
 	-- were raided at round 11 to 33 with 2 to 4 units and no tower.)
 	do
 		local rt = Game.Type.units['Rocket Launcher Tower'];
-		if rt and Sense.nexus and Mem.homeRegion and Sense.round >= 6 and Sense.round <= 80 and Types.IsUnlocked(rt)
+		if rt and Sense.nexus and Mem.nexusActive and Mem.homeRegion and Sense.round >= 6 and Sense.round <= 80 and Types.IsUnlocked(rt)
 				and Economy.Count(rt) < Cfg.earlyTowers and minerals >= Cost(rt)
 				and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2 then
 			Needs.Note('early Rocket Launcher Tower ordered at home: '..Economy.Count(rt)..' standing');
