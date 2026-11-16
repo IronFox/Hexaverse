@@ -107,6 +107,7 @@ end;
 local function Structure(typeName)
 	local t = Game.Type.units[typeName];
 	if t == nil or not t.isStructure then error('no such structure type: '..tostring(typeName), 3); end;
+	if Types.deprecated[typeName] then error(typeName..' is deprecated and must not be built: use a regular structure', 3); end;
 	if not Types.IsUnlocked(t) then error(typeName..' is not researched yet (see "Can build" in the state; Bridge.Research gets it)', 3); end;
 	return t;
 end;
@@ -250,7 +251,8 @@ function Bridge.State()
 		local can, cannot = {}, {};
 		for name,t in pairs(Game.Type.units) do
 			if t.isStructure then
-				if Types.IsUnlocked(t) then can[#can+1] = name; else cannot[#cannot+1] = name; end;
+				if Types.deprecated[name] then -- (not offered)
+				elseif Types.IsUnlocked(t) then can[#can+1] = name; else cannot[#cannot+1] = name; end;
 			end;
 		end;
 		table.sort(can); table.sort(cannot);
@@ -402,7 +404,8 @@ function Bridge.Help()
 	Add(L, '');
 	local structs, mobiles = {}, {};
 	for name,t in pairs(Game.Type.units) do
-		if t.isStructure then structs[#structs+1] = name; else mobiles[#mobiles+1] = name; end;
+		if Types.deprecated[name] then -- (not offered)
+		elseif t.isStructure then structs[#structs+1] = name; else mobiles[#mobiles+1] = name; end;
 	end;
 	table.sort(structs);
 	table.sort(mobiles);

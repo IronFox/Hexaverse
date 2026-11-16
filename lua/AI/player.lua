@@ -57,7 +57,9 @@ Cfg = {
 	minContainers = 3,			-- mineral containers kept (the faction dies without one)
 	spareContainerRound = 10,	-- from this round the spare one is built (in another region than the first)
 	portConnectors = true,		-- free builders claim near ports with a structure on a cell beside them
-	portStructure = 'Connector',
+	-- what is put beside a port, the cheapest of these that is researched (never a Connector:
+	-- those are deprecated, the game window no longer offers them and the scripts must not use them)
+	portStructures = {'Radar Tower', 'Generator', 'Mineral Container', 'Rocket Launcher Tower', 'Fuel Container'},
 	portMinMines = 2,			-- mines and generators standing before a builder is spared for a port
 	portMinGenerators = 2,
 	portBuilders = 2,			-- builders on their way to a port at the same time
@@ -241,6 +243,9 @@ function Types.GroundTower()
 	end;
 	return nil;
 end;
+
+-- still in the type table for old saves, but not to be built
+Types.deprecated = {Connector = true};
 
 function Types.IsUnlocked(t)
 	if t == nil then
@@ -2692,15 +2697,22 @@ end;
 
 --[[
 A port goes to whoever completes a structure next to it, whatever the structure. So a free
-builder near a port that is not mine puts the cheapest thing there is (a connector) on a cell
-beside it, on that exact cell: no waiting for a resource cell to turn up next to the port.
+builder near a port that is not mine puts the cheapest regular structure on a cell
+beside it (never a Connector, see Cfg.portStructures), on that exact cell: no waiting for a resource cell to turn up next to the port.
 (Learned from the matches played through bridge.lua: five ports by round 30 this way, where the
 port mines alone took one or none.)
 ]]
 Economy.portTried = {};		-- port cell index -> round until which it is left alone
 function Economy.TryPort(u)
-	local t = Game.Type.units[Cfg.portStructure];
-	if not Cfg.portConnectors or t == nil or not Types.IsUnlocked(t) or Sense.round < 2 then return false; end;
+	local t, cost = nil, nil;
+	for _,name in ipairs(Cfg.portStructures) do
+		local c = Game.Type.units[name];
+		local cc = c and (tonumber(c.constructionCost) or 100);
+		if c and not Types.deprecated[name] and Types.IsUnlocked(c) and (cost == nil or cc < cost) then t, cost = c, cc; end;
+	end;
+	if not Cfg.portConnectors or t == nil or Sense.round < 2 then return false; end;
+	local cur = Economy.Resources();
+	if (cur.storage.minerals or 0) < cost then return false; end;
 	Economy.NextToPort();
 	local mine = {};
 	for _,s in ipairs(Sense.myStructures or {}) do
