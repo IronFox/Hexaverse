@@ -869,6 +869,13 @@ function Needs.Charge(o)
 	Needs.committed = Needs.committed + (o.cost or 0);
 end;
 
+function Needs.Vital(o)
+	local s = o.serves or {};
+	if s.survivalBuilder or s.survivalMineral then return true; end;
+	local t = o.want and o.want.type;
+	return t ~= nil and (t == Types.generator or t == Types.mineralContainer or t == Types.plant or t == Types.mine);
+end;
+
 function Needs.Choose(options, what, budget)
 	-- storage nearly full: income is being thrown away, anything useful beats nothing
 	local full = (budget or 0) >= 450;
@@ -888,6 +895,14 @@ function Needs.Choose(options, what, budget)
 		end;
 		local avail = Needs.Available(o, budget);
 		local affordable = avail == nil or (o.cost or 0) <= avail + 50;
+		-- The reserve: what the faction lives on (generator, container, plant, mine, builder) must
+		-- stay replaceable. Everything else leaves that much in the store. (Every match lost to the
+		-- Nexus ended with the minerals spent to nothing on towers and stores while the generators
+		-- and plants were shot away one by one.)
+		if affordable and Sense.round >= Cfg.reserveFromRound and not Needs.Vital(o)
+				and (budget or 0) - (o.cost or 0) < Cfg.mineralReserve then
+			affordable = false;
+		end;
 		if affordable and o.score > bestS then best, bestS = o, o.score; end;
 	end;
 	return best, bestAny;
@@ -1110,6 +1125,17 @@ function Needs.NextStructure(constructorIndex)
 				if not with[id] and Sense.Threat(Map.regions[id]) <= 0 and (region == nil or id < region) then region = id; end;
 			end;
 			return {type = mc, kind = 'base', region = n > 0 and region or nil};
+		end;
+	end;
+	-- the same for what makes the energy and the vehicles: never none, and generators not below a floor
+	if Sense.round >= 20 then
+		if Types.plant and Types.IsUnlocked(Types.plant) and Economy.Count(Types.plant) == 0 and minerals >= Cost(Types.plant) then
+			Needs.Note('Vehicle Plant ordered: none standing');
+			return {type = Types.plant, kind = 'base'};
+		end;
+		if Types.generator and Economy.Count(Types.generator) < Cfg.minGenerators and minerals >= Cost(Types.generator) then
+			Needs.Note('Generator ordered: '..Economy.Count(Types.generator)..' standing, '..Cfg.minGenerators..' wanted');
+			return {type = Types.generator, kind = 'base'};
 		end;
 	end;
 	local opts = Needs.AdjustStructureOptions(Needs.StructureOptions(constructorIndex));

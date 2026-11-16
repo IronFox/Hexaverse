@@ -54,6 +54,9 @@ Cfg = {
 	-- desired unit counts
 	constructorsEarly = 3,
 	constructorsLate = 5,
+	mineralReserve = 200,		-- minerals left untouched by everything the faction does not live on
+	reserveFromRound = 30,
+	minGenerators = 3,			-- rebuilt before anything else from round 20
 	minContainers = 3,			-- mineral containers kept (the faction dies without one)
 	spareContainerRound = 10,	-- from this round the spare one is built (in another region than the first)
 	portConnectors = true,		-- free builders claim near ports with a structure on a cell beside them
