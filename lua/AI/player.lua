@@ -5350,7 +5350,7 @@ function Military.ClearPlants()
 				urgent[nb.index] = true;
 				-- (blocked for 10 rounds: a builder at work on the exit leaves too. One stood there
 				-- for good, told by the engine to "move manually to finish" its generator)
-				if Sense.round - Economy.plantBlocked[p.id] >= 10 then urgentLong[nb.index] = true; end;
+				if Sense.round - Economy.plantBlocked[p.id] >= 3 then urgentLong[nb.index] = true; end;
 			end;
 		end;
 	end;
@@ -5361,7 +5361,9 @@ function Military.ClearPlants()
 			local idx = u.location and u.location.cell.index;
 			if u.type.isMobile and idx and urgent[idx] then
 				parked[u.id] = 2;
-			elseif role ~= 'constructor' and u.type.isMobile and idx and near[idx] then
+			-- (an idle builder beside a plant makes room like everybody else: three of them, fresh
+			-- from the plant and with nothing to build, stood on its three exits and shut it)
+			elseif (role ~= 'constructor' or Move.IsIdle(u)) and u.type.isMobile and idx and near[idx] then
 				parked[u.id] = (Military.parked[u.id] or 0) + 1;
 			end;
 		end;
