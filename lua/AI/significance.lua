@@ -441,13 +441,17 @@ function Significance.Direct()
 				local again = Significance.failed[reg.id];
 				local damp = (again and Sense.round - again < 100) and 0.3 or 1;
 				c = {kind = 'take', region = reg.id, priority = o[2] * (1 - 0.5 * o[3]) * damp};
+				-- (a region that is mostly a locked EMP zone cannot be taken: nothing drives or is
+				-- built there. Two such directions stood beside the one for the open way and drew
+				-- the army apart)
+				if Map.EmpShare and Map.EmpShare(reg.id) >= 0.5 then c = nil; end;
 			end;
 			-- (exploring only where we could get to)
-			if Significance.explore > 0 and (c.kind == 'hold' or (Sense.hops[reg.id] or 99) <= 3) and Random() < Significance.explore then
+			if c and Significance.explore > 0 and (c.kind == 'hold' or (Sense.hops[reg.id] or 99) <= 3) and Random() < Significance.explore then
 				c.priority = 0.1 + 0.9 * Random();
 				c.explored = true;
 			end;
-			cand[#cand+1] = c;
+			if c then cand[#cand+1] = c; end;
 		end;
 		if o and not Sense.mine[reg.id] and o[3] >= 0.6 then Significance.avoid[reg.id] = o[3]; end;
 	end;

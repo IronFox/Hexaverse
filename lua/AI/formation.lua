@@ -71,7 +71,7 @@ function Formation.Staging(regionId)
 	for nb,_ in pairs(Map.regions[regionId].neighbors) do
 		local reg = Map.regions[nb];
 		local h = Sense.hops[nb] or 99;
-		if Sense.Threat(reg) <= 0 and Significance.Directed(nb, 'avoid') <= 0 and (bestH == nil or h < bestH) then
+		if Sense.Threat(reg) <= 0 and Significance.Directed(nb, 'avoid') <= 0 and Map.EmpShare(nb) < 0.5 and (bestH == nil or h < bestH) then	-- (never in an EMP zone: nobody gets there)
 			best, bestH = nb, h;
 		end;
 	end;
