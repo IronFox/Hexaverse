@@ -2969,6 +2969,31 @@ function Economy.Exits(loc, skipIdx)
 					end;
 				end;
 				if on < 2 then r = 'pocket (no way on)'; end;
+				-- (and the ground beyond must be open country, not a yard: three exits that led
+				-- only to each other took every unit a plant made, ten of them. From the exit, at
+				-- least ten cells must be within walking, a level up or down per step)
+				if r == nil then
+					local seen, edge, count = {[loc.cell.index] = true, [nb.index] = true}, {{nb, h + found}}, 1;
+					if skipIdx then seen[skipIdx] = true; end;
+					while #edge > 0 and count < 10 do
+						local cur = table.remove(edge);
+						for _,far in ipairs(cur[1].neighbors or {}) do
+							if not seen[far.index] then
+								seen[far.index] = true;
+								if not (Sense.structureCells and Sense.structureCells[far.index]) then
+									for j2 = -1, 1 do
+										if Clear(far, cur[2] + j2) and not Clear(far, cur[2] + j2 - 1) then
+											count = count + 1;
+											edge[#edge+1] = {far, cur[2] + j2};
+											break;
+										end;
+									end;
+								end;
+							end;
+						end;
+					end;
+					if count < 10 then r = 'pocket (closed in, '..count..' cells)'; end;
+				end;
 			end;
 			if found == nil then
 				-- where is the ground then?
@@ -5793,6 +5818,8 @@ function Military.ClearPlants()
 		if Economy.plantBlocked[p.id] then
 			for _,nb in ipairs(p.location.cell.neighbors) do
 				urgent[nb.index] = true;
+				Military.exitOf = Military.exitOf or {};
+				Military.exitOf[nb.index] = p;
 				-- (blocked for 10 rounds: a builder at work on the exit leaves too. One stood there
 				-- for good, told by the engine to "move manually to finish" its generator)
 				if Sense.round - Economy.plantBlocked[p.id] >= 3 then urgentLong[nb.index] = true; end;
@@ -5884,6 +5911,18 @@ function Military.ClearPlants()
 						if t.n >= 10 then
 							Log(string.format('%s is shut in on the exit of a blocked plant (cell %d, %d cells in reach) for %d rounds: scrapped at round %d to free the plant', u.niceName, t.cell, #reach, t.n, Sense.round));
 							Military.trapped[u.id] = nil;
+							-- (a plant whose exits shut in whatever it makes is the fault, not the units:
+							-- after two scrapped units the plant goes instead)
+							local pl = Military.exitOf and Military.exitOf[t.cell];
+							Military.scraps = Military.scraps or {};
+							local k = pl and pl.id;
+							if k then Military.scraps[k] = (Military.scraps[k] or 0) + 1; end;
+							if k and Military.scraps[k] > 2 and pl.Destroy then
+								Log(string.format('%s on cell %d shuts in what it makes (%d units scrapped on its exits): the plant is scrapped at round %d', pl.niceName, pl.location.cell.index, Military.scraps[k] - 1, Sense.round));
+								Economy.Blacklist(pl.location.cell.index, 500);
+								pcall(pl.Destroy);
+								return;
+							end;
 							pcall(u.Destroy);
 						end;
 					end;
