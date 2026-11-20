@@ -135,6 +135,7 @@ Cfg = {
 	roadMinerals = 200,		-- and minerals pile up
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
+	unitCaps = {},	-- turret name -> most vehicles of that kind (set from outside)
 	plantScrap = 60,	-- a plant with no exit by the terrain for this many rounds is scrapped (false: never)
 	plantBlockedRounds = 30,	-- a finished vehicle that cannot deploy is given up after this many rounds
 	plantFreeCells = 3,
@@ -4140,7 +4141,26 @@ function Economy.NextVehicle()
 		end;
 	end;
 	-- weigh the current needs against every vehicle option (see needs.lua)
-	return Needs.NextVehicle({Constructor = Constructor, Tank = Tank});
+	local t = Needs.NextVehicle({Constructor = Constructor, Tank = Tank});
+	-- a cap on a kind of vehicle (Cfg.unitCaps, by turret name, set from outside): what stands,
+	-- is stored or queued counts; a capped choice becomes a tank
+	if t and t.turretType and next(Cfg.unitCaps or {}) then
+		local tn = t.turretType.name;
+		local cap = Cfg.unitCaps[tn];
+		if cap then
+			local n = 0;
+			for _,list in pairs(my) do
+				for _,u in ipairs(list) do if u.turret and u.turret.type == t.turretType then n = n + 1; end; end;
+			end;
+			for _,p in ipairs(Sense.plants) do
+				for _,q in ipairs(p.productionQueue or {}) do if string.find(q.name or '', tn, 1, true) then n = n + 1; end; end;
+			end;
+			if n >= cap then
+				if Cfg.unitCaps['Cannon'] == nil and tn ~= 'Cannon' and tn ~= 'Artillery' then t = Tank(); else t = nil; end;
+			end;
+		end;
+	end;
+	return t;
 end;
 
 -- The mechanic repairs the most damaged thing of mine it can find, structures first

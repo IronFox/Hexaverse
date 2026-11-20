@@ -111,7 +111,14 @@ end;
 -- No more of this structure type than n (nil lifts the cap). Labs also follow wantLabsRich and wantLabsMax.
 function Bridge.Cap(typeName, n)
 	typeName = string.gsub(tostring(typeName), ':Tower$', ' Tower');
-	if Game.Type.units[typeName] == nil then error('no such type: '..tostring(typeName), 2); end;
+	-- (vehicles are capped by their turret: 'Terraformer', 'Surveyor', 'Radar', 'Mechanic', ... whatever the base)
+	local turret = string.match(typeName, '^([^:]+)');
+	if Game.Type.units[typeName] == nil and Game.Type.turrets and Game.Type.turrets[turret] ~= nil then
+		Cfg.unitCaps[turret] = n and tonumber(n) or nil;
+		Bridge.Out('vehicles with a %s turret capped at %s (standing and queued count; a capped choice becomes a tank)', turret, tostring(n));
+		return;
+	end;
+	if Game.Type.units[typeName] == nil then error('no such type: '..tostring(typeName)..' (structures by their name, vehicles by their turret, e.g. Terraformer)', 2); end;
 	Cfg.caps[typeName] = n and tonumber(n) or nil;
 end;
 
