@@ -75,13 +75,15 @@ end;
 -- where to collect: the quiet neighbour of the target that is closest to what I have
 Formation.minSize = {};	-- target region -> units wanted at least before going in (Bridge.Take)
 Formation.stageAt = {};	-- target region -> staging region chosen from outside (Bridge.Stage)
+Formation.badStage = {};	-- region -> round it cost a gathering formation four members: no staging there for 150 rounds
 function Formation.Staging(regionId)
-	if Formation.stageAt[regionId] then return Formation.stageAt[regionId]; end;
+	local function Bad(id) return Formation.badStage[id] and Sense.round - Formation.badStage[id] < 150; end;
+	if Formation.stageAt[regionId] and not Bad(Formation.stageAt[regionId]) then return Formation.stageAt[regionId]; end;
 	local best, bestH = nil, nil;
 	for nb,_ in pairs(Map.regions[regionId].neighbors) do
 		local reg = Map.regions[nb];
 		local h = Sense.hops[nb] or 99;
-		if Sense.Threat(reg) <= 0 and Significance.Directed(nb, 'avoid') <= 0 and Map.EmpShare(nb) < 0.5 and (bestH == nil or h < bestH) then	-- (never in an EMP zone: nobody gets there)
+		if not Bad(nb) and Sense.Threat(reg) <= 0 and Significance.Directed(nb, 'avoid') <= 0 and Map.EmpShare(nb) < 0.5 and (bestH == nil or h < bestH) then	-- (never in an EMP zone: nobody gets there)
 			best, bestH = nb, h;
 		end;
 	end;
@@ -175,6 +177,7 @@ function Formation.Update()
 				f.members[id] = nil;
 				Formation.of[id] = nil;
 				f.lost = f.lost + 1;
+				if f.stage == 'gather' then f.lostGather = (f.lostGather or 0) + 1; end;
 			end;
 		end;
 	end;
@@ -303,6 +306,20 @@ function Formation.Update()
 				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
 				f.peak = f.count;
 			elseif f.stage == 'gather' then
+				-- (a staging ground that eats those who gather there is none: the neighbour of the
+				-- target chosen for one match was the road of the enemy's raids, and 36 tanks and six
+				-- stores were lost on it, one by one. Back to my own ground, and all go out together)
+				if (f.lostGather or 0) >= 4 and f.staging ~= Mem.homeRegion and not Sense.mine[f.staging] then
+					Formation.badStage[f.staging] = Sense.round;
+					local was = f.staging;
+					f.staging = Formation.Staging(f.region);
+					if Formation.badStage[f.staging] or f.staging == was then f.staging = Mem.homeRegion or f.staging; end;
+					f.lostGather = 0;
+					f.rally = nil;
+					Log(Name(f)..': four members lost gathering at region '..was..', staging moves to region '..f.staging..' at round '..Sense.round);
+				elseif (f.lostGather or 0) >= 4 then
+					f.lostGather = 0;
+				end;
 				if Formation.minSize[f.region] then f.want = math.max(f.want, Formation.minSize[f.region]); f.stageSince = math.max(f.stageSince, Sense.round - Formation.stallRounds + 1); end;
 				if Formation.Ready(f, near) and f.parked > 0 then
 					-- (all out first, then all go: Military.Stores empties the stores, six a store a round)

@@ -5123,7 +5123,9 @@ function Military.Stores()
 		for _,u in ipairs(Sense.stored) do
 			local f = Formation.of[u.id];
 			local st = u.storedIn;
-			if f and (f.unload or f.stage ~= 'gather' or f.over) and st and st.DeployStored then
+			local sr = st and st.location and Map.RegionOfLoc(st.location);
+			-- (also out: who is parked where the formation no longer gathers)
+			if f and (f.unload or f.stage ~= 'gather' or f.over or (sr and sr.id ~= f.staging)) and st and st.DeployStored then
 				local goal = Map.WorldCenter(Map.regions[f.region]);
 				local ok, options = pcall(st.GetStoredDeploymentOptions, u);
 				local best, bestD = nil, nil;
