@@ -5170,8 +5170,11 @@ function Military.Stores()
 		-- in: members gathering in the staging region drive into a store that stands there
 		for _,v in ipairs(Sense.my.combat) do
 			local f = Formation.Parks(v);
+			-- (gathering at home nobody parks: a parked tank defends nothing, and home is where the
+			-- raids come. The stores are for a staging ground forward, to come out of in one go)
+			if f and f.atHome then f = nil; end;
 			local reg = f and Map.RegionOfLoc(v.location);
-			local quiet = reg and Sense.Threat(reg) <= 0;
+			local quiet = reg and (reg.mobileThreat or 0) <= 0;
 			if quiet then
 				for nb,_ in pairs(reg.neighbors) do
 					if Map.regions[nb].mobileThreat > 0 then quiet = false; break; end;

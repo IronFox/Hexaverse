@@ -1285,7 +1285,9 @@ function Needs.NextStructure(constructorIndex)
 	-- stores where a take formation gathers: it waits inside and comes out in one go
 	if Cfg.useFormations and (Cfg.assaultStores or 0) > 0 and Types.store and Types.IsUnlocked(Types.store) and minerals >= Cost(Types.store) then
 		for _,f in ipairs(Formation.list or {}) do
-			if not f.over and f.kind == 'take' and f.stage == 'gather' and f.staging then
+			-- (not on my own ground: there the members are the defence and stay out, see Military.Stores)
+			if not f.over and f.kind == 'take' and f.stage == 'gather' and f.staging and not f.atHome
+				and not Sense.mine[f.staging] and f.staging ~= Mem.homeRegion then
 				local n = 0;
 				for _,st in ipairs(Sense.stores) do
 					local r = Map.RegionOfLoc(st.location);
