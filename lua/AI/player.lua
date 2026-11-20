@@ -2772,7 +2772,14 @@ function Economy.SiteOK(loc, forMine)
 		if b and b < Cfg.berthCells then
 			local rid = Map.cellRegion[idx];
 			-- (... and the first mines aside: without income nothing else matters)
-			if not (Cfg.berthHome and rid and rid == Mem.homeRegion) and not (forMine and Economy.Count(Types.mine) < (Cfg.minMines or 3)) then
+			-- (... and a fuel mine while fuel is what everything waits for: one start stood still on
+			-- 3 generators with five fuel cells in reach, all refused for the berth)
+			local fuelNow = false;
+			if forMine and Needs.v and (Needs.v.fuel or 0) >= 1 then
+				local okf, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', loc.cell);
+				fuelNow = okf and lvl ~= nil and lvl > 0;
+			end;
+			if not fuelNow and not (Cfg.berthHome and rid and rid == Mem.homeRegion) and not (forMine and Economy.Count(Types.mine) < (Cfg.minMines or 3)) then
 				Economy.siteWhy = 'too close to a foreign port'; return false;
 			end;
 		end;
