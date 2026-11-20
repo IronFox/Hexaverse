@@ -297,10 +297,16 @@ function Bridge.Remember()
 	end;
 	for idx,k in pairs(Bridge.known) do
 		if Sense.structureCells[idx] then Bridge.known[idx] = nil;	-- mine now
-		elseif not k.ghost and k.round < Sense.round and Control.At(k.loc) > 0 then
-			-- the cell is in sight and nothing hostile stands there any more
-			Bridge.results[#Bridge.results+1] = k.name..' at cell '..idx..' is gone (the cell is in sight and empty)';
-			Bridge.known[idx] = nil;
+		elseif not k.ghost and k.round < Sense.round and Control.At(k.loc) > 0 and not string.find(k.name, 'Nexus Port', 1, true) then
+			-- the cell is in sight and nothing hostile stands there any more: three rounds running,
+			-- since a structure can be missing from one round's list (a port, which cannot go, was
+			-- called gone and came back; ports are never dropped)
+			k.missing = (k.missingAt == Sense.round - 1) and (k.missing or 0) + 1 or 1;
+			k.missingAt = Sense.round;
+			if k.missing >= 3 then
+				Bridge.results[#Bridge.results+1] = k.name..' at cell '..idx..' is gone (the cell was in sight and empty for 3 rounds)';
+				Bridge.known[idx] = nil;
+			end;
 		end;
 	end;
 	-- what became of the builders sent to exact cells
