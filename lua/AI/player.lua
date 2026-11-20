@@ -5782,8 +5782,38 @@ function Military.ClearPlants()
 							end;
 						end;
 					end;
-					if best then u.DirectTo(best);
-					elseif urgent[u.location.cell.index] and Sense.round % 10 == 0 then
+					if best then u.DirectTo(best); return; end;
+					-- (nothing in its short reach: look up to four cells out for open ground away from
+					-- the plants and ask for a path there. A surveyor and two heavy builders stood on a
+					-- blocked plant's exits for 20 rounds while a path to a cell two steps off existed)
+					if urgent[u.location.cell.index] then
+						local seen, edge = {[u.location.cell.index] = true}, {u.location.cell};
+						for d = 1, 4 do
+							local nextEdge = {};
+							for _,c in ipairs(edge) do
+								for _,n in ipairs(c.neighbors or {}) do
+									if not seen[n.index] then
+										seen[n.index] = true;
+										nextEdge[#nextEdge+1] = n;
+										if not near[n.index] and not Sense.structureCells[n.index] then
+											local loc = Move.GroundAt(u, n);
+											if loc and not Move.IsDangerous(loc) and select(2, pcall(Game.GetMobileAt, loc)) == nil then
+												local okp, path = pcall(u.FindShortestPath, loc, nil, false);
+												if okp and path and #path > 0 then
+													if u.ClearSafeTasks then pcall(u.ClearSafeTasks); end;
+													u.DirectTo(path[#path]);
+													Log(u.niceName..' leaves the exit of a blocked plant (cell '..u.location.cell.index..') for cell '..n.index);
+													return;
+												end;
+											end;
+										end;
+									end;
+								end;
+							end;
+							edge = nextEdge;
+						end;
+					end;
+					if urgent[u.location.cell.index] and Sense.round % 10 == 0 then
 						Log(u.niceName..' stands on an exit of a blocked plant (cell '..u.location.cell.index..') and has nowhere to go ('..#reach..' cells in reach)');
 					end;
 				end);
