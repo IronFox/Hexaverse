@@ -4417,8 +4417,15 @@ function Economy.Production()
 					if not Move.IsDangerous(o) then loc = o; ok = true; break; end;
 				end;
 			end;
+			-- (planes about: not into a store while there is hope for open ground. Three tanks went
+			-- from the plant straight into a store under bombers and never came out. After five
+			-- blocked rounds the store beats a blocked plant)
+			if ok and loc and Cfg.storesEmptyUnderAir and Sense.AirMatters() and Game.GetStructureAt(loc) ~= nil
+				and Sense.round - (Economy.plantBlocked[p.id] or Sense.round) < 5 then
+				ok = false;
+			end;
 			if ok and loc then
-				Log(p.niceName..': deploying '..tostring(p.productionCompleted));
+				Log(p.niceName..': deploying '..tostring(p.productionCompleted)..(Game.GetStructureAt(loc) ~= nil and ' into a store (no open ground)' or ''));
 				p.DeployProductionAt(loc);
 				Economy.plantBlocked[p.id] = nil;
 			else
