@@ -783,10 +783,21 @@ do
 		local me = Sense.my.constructor[constructorIndex];
 		local job, at = nil, nil;
 		for i,j in ipairs(Bridge.build) do
-			-- an exact cell goes to a builder that has ground there and has not failed at it yet
-			if j.cell == nil or me == nil or (not (j.failed and j.failed[tostring(me.id)]) and Move.GroundAt(me, Economy.Cell(j.cell)) ~= nil) then
-				job, at = j, i; break;
+			-- an exact cell goes to a builder that has ground there and has not failed at it yet,
+			-- and of those to the nearest (the first asked was one at home, and from home there was
+			-- "no path" to a berth that a builder two regions on could have reached)
+			local mine = j.cell == nil or me == nil;
+			if not mine and not (j.failed and j.failed[tostring(me.id)]) and Move.GroundAt(me, Economy.Cell(j.cell)) ~= nil then
+				mine = true;
+				local c = Economy.Cell(j.cell);
+				local w = {x = c.center.x * Map.groundRadius, y = c.center.y * Map.groundRadius, z = c.center.z * Map.groundRadius};
+				local myD = Dist2(me.location.world, w);
+				for _,o in ipairs(Sense.my.constructor) do
+					if o.id ~= me.id and not (j.failed and j.failed[tostring(o.id)]) and Move.IsIdle(o) and Dist2(o.location.world, w) < myD
+						and Move.GroundAt(o, c) ~= nil then mine = false; break; end;
+				end;
 			end;
+			if mine then job, at = j, i; break; end;
 		end;
 		if job then table.remove(Bridge.build, at); end;
 		for _,j in ipairs(Bridge.build) do
