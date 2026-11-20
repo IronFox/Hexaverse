@@ -1343,6 +1343,28 @@ function Needs.NextStructure(constructorIndex)
 			end;
 		end;
 	end;
+	--[[
+	Minerals piling up with every plant queue full: the next plant now, and the power for it.
+	Two matches stood at two plants till round 130 with the store at its cap for 31 and 77
+	rounds; the army stayed at 14 and the base fell to an assault of twenty.
+	]]
+	if Sense.round >= 40 and minerals >= (Cfg.plantFloorMinerals or 1000) and Economy.plantsFull ~= false
+		and Types.plant and Types.IsUnlocked(Types.plant) and Needs.plantFloorRound ~= Sense.round then
+		local plants, pending = Economy.Count(Types.plant), 0;
+		for _,job in pairs(Mem.jobs) do
+			if job.kind == Types.plant.name then pending = pending + 1; end;
+		end;
+		if plants >= 1 and pending == 0 and plants < Cfg.maxPlants and not Economy.Capped(Types.plant) then
+			Needs.plantFloorRound = Sense.round;	-- (one builder a round)
+			if (cur.balance.energy or 0) >= (Cfg.spareEnergy or 15) then
+				Needs.Note('Vehicle Plant ordered: '..minerals..' minerals lie unspent and every plant is busy ('..plants..' standing)');
+				do local w = Needs.Floor({type = Types.plant, kind = 'base'}); if w then return w; end; end;
+			elseif Types.generator and not Economy.Capped(Types.generator) and Economy.FuelForGenerator() >= 10 then
+				Needs.Note('Generator ordered: power for the next Vehicle Plant ('..minerals..' minerals unspent)');
+				do local w = Needs.Floor({type = Types.generator, kind = 'base'}); if w then return w; end; end;
+			end;
+		end;
+	end;
 	local opts = Needs.AdjustStructureOptions(Needs.StructureOptions(constructorIndex));
 	local best, top = Needs.Choose(opts, 'structure', minerals);
 	-- saving up: the top option is out of reach, and nothing affordable comes close
