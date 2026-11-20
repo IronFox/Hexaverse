@@ -2052,7 +2052,9 @@ function Economy.Power()
 		if u.Enable then list[#list+1] = u; end;
 	end;
 	table.sort(list, function(a, b)
-		local ra, rb = OffRank(a) + (Mem.shed[a.id] and 10 or 0), OffRank(b) + (Mem.shed[b.id] and 10 or 0);
+		local ra, rb = OffRank(a), OffRank(b);
+		if ra > 0 and Mem.shed[a.id] then ra = ra + 10; end;
+		if rb > 0 and Mem.shed[b.id] then rb = rb + 10; end;
 		if ra ~= rb then return ra < rb; end;
 		return tostring(a.id) < tostring(b.id);
 	end);
@@ -2067,6 +2069,10 @@ function Economy.Power()
 		-- instance: tried again after 5 rounds, then 10, 20, ... 80)
 		Mem.onTried = Mem.onTried or {};
 		local tried = Mem.onTried[u.id];
+		-- (a fuel mine while generators stand idle for fuel comes first and at once, whatever was
+		-- tried before: with exactly 10 energy to spare one sat off for 100 rounds beside 7 idle generators)
+		local fuelFirst = (Sense.offByKind.generator or 0) > 0 and u.type == Types.mine and IsFuelMine(u);
+		if fuelFirst then tried = nil; shed = nil; end;
 		if tried and Sense.round < tried.round + tried.wait then
 			-- wait
 		elseif have >= need + ((shed and Sense.round - shed < 50) and 10 or 0) and on < 2 then	-- (the extra margin lapses after 50 rounds)
