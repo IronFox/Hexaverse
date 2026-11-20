@@ -136,6 +136,7 @@ Cfg = {
 	roadMinerals = 200,		-- and minerals pile up
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
+	storesEmptyUnderAir = true,	-- with planes about, nothing is parked in vehicle stores
 	unitCaps = {},	-- turret name -> most vehicles of that kind (set from outside)
 	plantScrap = 60,	-- a plant with no exit by the terrain for this many rounds is scrapped (false: never)
 	plantBlockedRounds = 30,	-- a finished vehicle that cannot deploy is given up after this many rounds
@@ -4732,6 +4733,20 @@ function Military.Stores()
 		end;
 	end;
 
+	--[[
+	Planes about: the stores are emptied. Bombers go for them, and eight tanks died parked in
+	two stores within three rounds.
+	]]
+	if storedCombat > 0 and Cfg.storesEmptyUnderAir and Sense.AirMatters() then
+		local home = Sense.baseCenter or (Mem.homeRegion and Map.WorldCenter(Map.regions[Mem.homeRegion]));
+		for _,st in ipairs(Sense.stores) do
+			if budget <= 0 or storedCombat <= 0 then break; end;
+			local n = Military.DeployFrom(st, math.min(budget, storedCombat), home);
+			budget = budget - n;
+			storedCombat = storedCombat - n;
+		end;
+	end;
+
 	-- attack: everything stored joins, exiting as close to the target as possible
 	if storedCombat > 0 and Mem.posture == 'attack' and Mem.attackTarget then
 		local st = Military.NearestStore(Mem.attackTarget);
@@ -4804,7 +4819,8 @@ function Military.Stores()
 	end;
 
 	-- stash surplus defenders that have nothing to do
-	if Mem.posture == 'defend' and #Sense.my.combat > Cfg.garrison then
+	-- (not with planes about: a store is one target, and what is parked in it dies with it)
+	if Mem.posture == 'defend' and #Sense.my.combat > Cfg.garrison and not (Cfg.storesEmptyUnderAir and Sense.AirMatters()) then
 		local surplus = #Sense.my.combat - Cfg.garrison;
 		for i = #Sense.my.combat, 1, -1 do
 			if surplus <= 0 then break; end;
