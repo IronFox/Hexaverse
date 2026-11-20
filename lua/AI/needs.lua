@@ -1282,6 +1282,27 @@ function Needs.NextStructure(constructorIndex)
 			do local w = Needs.Floor({type = Types.radarTower, kind = 'tower', region = Mem.homeRegion}); if w then return w; end; end;
 		end;
 	end;
+	-- stores where a take formation gathers: it waits inside and comes out in one go
+	if Cfg.useFormations and (Cfg.assaultStores or 0) > 0 and Types.store and Types.IsUnlocked(Types.store) and minerals >= Cost(Types.store) then
+		for _,f in ipairs(Formation.list or {}) do
+			if not f.over and f.kind == 'take' and f.stage == 'gather' and f.staging then
+				local n = 0;
+				for _,st in ipairs(Sense.stores) do
+					local r = Map.RegionOfLoc(st.location);
+					if r and r.id == f.staging then n = n + 1; end;
+				end;
+				for _,job in pairs(Mem.jobs) do
+					if job.kind == Types.store.name and job.region == f.staging then n = n + 1; end;
+				end;
+				local wantN = math.min(5, math.max(Cfg.assaultStores, math.ceil((f.want or 0) / 6)));
+				if n < wantN then
+					if Sense.round % 10 == 0 then Needs.Note('Vehicle Store ordered for the gathering at region '..f.staging..' ('..n..' of '..wantN..')'); end;
+					local w = Needs.Floor({type = Types.store, kind = 'tower', region = f.staging});
+					if w then return w; end;
+				end;
+			end;
+		end;
+	end;
 	-- the same for what makes the energy and the vehicles: never none, and generators not below a floor
 	if Sense.round >= 20 then
 		if Types.plant and Types.IsUnlocked(Types.plant) and Economy.Count(Types.plant) == 0 and minerals >= Cost(Types.plant) then

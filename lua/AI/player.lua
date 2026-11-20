@@ -139,6 +139,7 @@ Cfg = {
 	roadMinerals = 200,		-- and minerals pile up
 	roadRepaveRounds = 80,
 	roadMaxPressure = 3,	-- no road works while threatened more than this (see Sense.Pressure)	-- each road target at most once in this many rounds
+	assaultStores = 2,	-- vehicle stores built where a take formation gathers (up to one per six units, five at most; 0: none)
 	storesEmptyUnderAir = true,	-- with planes about, nothing is parked in vehicle stores
 	unitCaps = {},	-- turret name -> most vehicles of that kind (set from outside)
 	plantScrap = 60,	-- a plant with no exit by the terrain for this many rounds is scrapped (false: never)
@@ -5053,7 +5054,7 @@ function Military.DeployFrom(store, count, goalWorld, filter, out, role)
 	local used = {};
 	for _,u in ipairs(Sense.stored) do
 		if deployed >= count then break; end;
-		if Types.Role(u) == (role or 'combat') and store.DeployStored and (filter == nil or filter(u)) then
+		if Types.Role(u) == (role or 'combat') and store.DeployStored and (filter == nil or filter(u)) and not Formation.Parks(u) then
 			local ok, options = pcall(store.GetStoredDeploymentOptions, u);
 			if ok and options and #options > 0 then
 				local best, bestD = nil, nil;
@@ -5089,6 +5090,52 @@ function Military.Stores()
 	end;
 	local budget = Cfg.maxDeploysPerRound;
 	local storedCombat = Sense.storedByRole.combat or 0;
+
+	--[[
+	Stores at the staging ground (Cfg.assaultStores): a take formation gathers inside them, out of
+	sight and out of the fire, and comes out in one go, six a store a round, when it is ready.
+	Standing in the open the army was seen, bombed and drawn into the towers one by one.
+	]]
+	if Cfg.useFormations and (Cfg.assaultStores or 0) > 0 then
+		-- out: every parked member of a formation that is ready
+		local used = {};
+		local out = 0;
+		for _,u in ipairs(Sense.stored) do
+			local f = Formation.of[u.id];
+			local st = u.storedIn;
+			if f and (f.unload or f.stage ~= 'gather' or f.over) and st and st.DeployStored then
+				local goal = Map.WorldCenter(Map.regions[f.region]);
+				local ok, options = pcall(st.GetStoredDeploymentOptions, u);
+				local best, bestD = nil, nil;
+				for _,loc in ipairs(ok and options or {}) do
+					if not used[loc.cell.index] then
+						local d = Dist2(loc.world, goal);
+						if bestD == nil or d < bestD then best, bestD = loc, d; end;
+					end;
+				end;
+				if best and pcall(st.DeployStored, u, best) then used[best.cell.index] = true; out = out + 1; end;
+			end;
+		end;
+		if out > 0 then Log('Formation members out of the stores: '..out..' in round '..Sense.round); end;
+		storedCombat = math.max(0, storedCombat - out);
+		-- in: members gathering in the staging region drive into a store that stands there
+		for _,v in ipairs(Sense.my.combat) do
+			local f = Formation.Parks(v);
+			local reg = f and Map.RegionOfLoc(v.location);
+			if f and reg and reg.id == f.staging and v.CanStandAt and not Military.NeedsStationary(v) then
+				local ok, reach = pcall(v.GetReach, nil, math.max(2, v.movementSpeed * 2), false, true, true, true);
+				for _,n in ipairs(ok and reach or {}) do
+					local hr = n.hangar and Map.RegionOfLoc(n.location);
+					if n.hangar and hr and hr.id == f.staging and (not n.hangar.CanStore or n.hangar.CanStore(v)) then
+						v.ClearSafeTasks();
+						v.DirectTo(n);
+						Military.stashing[v.id] = true;
+						break;
+					end;
+				end;
+			end;
+		end;
+	end;
 
 	-- parked constructors build nothing: take them out while builders are short
 	local storedC = Sense.storedByRole.constructor or 0;

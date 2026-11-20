@@ -116,6 +116,11 @@ function Formation.Update()
 	if not Cfg.useFormations then return; end;
 	local alive = {};
 	for _,u in ipairs(Sense.my.combat) do alive[u.id] = u; end;
+	-- (members parked in a vehicle store while their formation gathers are not lost)
+	local parked = {};
+	for _,u in ipairs(Sense.stored or {}) do
+		if Formation.of[u.id] then alive[u.id] = u; parked[u.id] = true; end;
+	end;
 
 	-- 1. formations follow the directions: end what is no longer asked for, start what is new
 	local asked = {};
@@ -235,7 +240,8 @@ function Formation.Update()
 			-- "gathered" in the round it was created, its six members in six regions)
 			local around = {[f.staging] = true};
 			for id,_ in pairs(f.members) do
-				local reg = Map.RegionOfLoc(alive[id].location);
+				local m = alive[id];
+				local reg = Map.RegionOfLoc(m.location or (m.storedIn and m.storedIn.location));
 				if reg and reg.id == f.region then inside = inside + 1; end;
 				local k = reg and reg.id or -1;
 				at[k] = (at[k] or 0) + 1;
@@ -243,6 +249,11 @@ function Formation.Update()
 			end;
 			if inside > 0 then f.lastInside = Sense.round; end;
 			f.near = near;
+			f.parked = 0;
+			for id,_ in pairs(f.members) do
+				if parked[id] then f.parked = f.parked + 1; end;
+			end;
+			if f.stage ~= 'gather' then f.unload = nil; end;
 			-- (one way in for all: the cell of the target region nearest to where they gathered.
 			-- Each going for a cell of its own, half the army came in from the far side, alone)
 			if f.entryFor ~= f.staging then
@@ -263,7 +274,11 @@ function Formation.Update()
 				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
 				f.peak = f.count;
 			elseif f.stage == 'gather' then
-				if Formation.Ready(f, near) then
+				if Formation.Ready(f, near) and f.parked > 0 then
+					-- (all out first, then all go: Military.Stores empties the stores, six a store a round)
+					if not f.unload then Log(Name(f)..': ready with '..near..' of '..f.want..', '..f.parked..' come out of the stores at round '..Sense.round); end;
+					f.unload = true;
+				elseif Formation.Ready(f, near) then
 					SetStage(f, 'advance', 'with '..near..' of '..f.want);
 					f.lastInside = Sense.round;
 				elseif Sense.round - f.stageSince >= Formation.stallRounds and f.count >= math.max(2, math.ceil(f.want * Formation.lateShare)) then
@@ -326,6 +341,13 @@ function Formation.Orders(v)
 	if f.kind == 'hold' then return f.region, false, f.region; end;
 	if f.stage == 'gather' then return f.staging, false, f.staging; end;
 	return f.region, true, (f.stage == 'secure') and f.region or f.staging, (f.stage == 'advance') and f.entry or nil;
+end;
+
+-- The take formation whose members wait in stores for the word (nil: the unit is free to be deployed)
+function Formation.Parks(u)
+	local f = Cfg.useFormations and Formation.of[u.id];
+	if f and not f.over and f.kind == 'take' and f.stage == 'gather' and not f.unload then return f; end;
+	return nil;
 end;
 
 -- How far a take of that region has gathered (0..1), 1 once it has set out; nil if there is none
