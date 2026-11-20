@@ -1146,7 +1146,9 @@ function Needs.StructureOptions(constructorIndex)
 	do
 		local starved = (cur.balance.energy or 0) <= 0 and Sense.round >= 20 and Economy.Count(Types.generator) >= 1;
 		local off = Sense.offByKind or {};
-		if (off.mine or 0) + (off.port or 0) > 0 then starved = true; end;
+		-- (a mine or the port switched off counts only while the balance is thin: with 80 energy to
+		-- spare and a mine rested on purpose, the second plant was refused for 200 rounds)
+		if (off.mine or 0) + (off.port or 0) > 0 and (cur.balance.energy or 0) < (Cfg.spareEnergy or 15) then starved = true; end;
 		local labs = Types.lab and Economy.Count(Types.lab) or 0;
 		local labCap = Cfg.wantLabsRich or 6;
 		if not Needs.T2Capable() and Sense.round >= 80 and minerals >= (Cfg.richMinerals or 400) then labCap = math.max(labCap, Cfg.wantLabsMax or 15); end;

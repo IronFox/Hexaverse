@@ -352,12 +352,16 @@ end;
 -- Fire at a cell for some rounds (default 3), seen or not: for artillery-like weapons (artillery, EMP)
 -- against a structure remembered there. The unit must be posted and in range; what happened comes
 -- with the next state.
-function Bridge.FireAt(unitId, cell, rounds)
+function Bridge.FireAt(unitId, cell, rounds, every, whenTake)
 	local post = Bridge.posts[tostring(unitId)];
 	if post == nil then error('unit #'..tostring(unitId)..' is not posted: Bridge.Post it within range first', 2); end;
 	cell = tonumber(cell);
 	if cell == nil or Economy.Cell(cell) == nil then error('no such cell: '..tostring(cell), 2); end;
-	post.fire = {cell = cell, left = math.max(1, math.floor(tonumber(rounds) or 3))};
+	-- (every: rounds between two shots; whenTake: hold the fire until the take of that region has
+	-- gathered four fifths. An EMP fired round on round before the army stood ready had nothing left
+	-- when it went in)
+	post.fire = {cell = cell, left = math.max(1, math.floor(tonumber(rounds) or 3)),
+		every = every and math.max(1, math.floor(tonumber(every) or 1)) or nil, whenTake = whenTake and Region(whenTake) or nil};
 end;
 
 local function FireAtCell(u, post)
@@ -365,6 +369,11 @@ local function FireAtCell(u, post)
 	local known = Bridge.known[f.cell];
 	local loc = (known and known.loc) or Move.GroundAt(u, Economy.Cell(f.cell));
 	local why = nil;
+	if f.next and Sense.round < f.next then return false; end;
+	if f.whenTake then
+		local g = Formation.Gathered(f.whenTake);
+		if g == nil or g < 0.8 then return false; end;
+	end;
 	if loc == nil then why = 'no known height for that cell (nothing was ever seen there and there is no ground)';
 	elseif not (u.turret and u.Attack) then why = 'the unit has no weapon';
 	else
@@ -381,6 +390,7 @@ local function FireAtCell(u, post)
 	end;
 	Bridge.results[#Bridge.results+1] = 'FireAt cell '..f.cell..' by unit #'..tostring(u.id)..' in round '..Sense.round..': '..(why or 'fired');
 	f.left = f.left - 1;
+	if f.every then f.next = Sense.round + f.every; end;
 	if why or f.left <= 0 then post.fire = nil; end;
 	return why == nil;
 end;
@@ -1037,6 +1047,7 @@ function Bridge.Help()
 	Add(L, '  Bridge.Units([region]) my units one by one (id, type, cell, health)');
 	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
+	Add(L, '  Bridge.FireAt(unitId, cell [, rounds [, every [, whenTake]]])   (every: rounds between shots; whenTake: region, fire only once its take has gathered 4/5)');
 	Add(L, '  Bridge.FireAt(unitId, cell [, rounds])   a posted unit fires at that cell, seen or not (artillery, EMP), for instance at a hostile');
 	Add(L, '                             structure listed under HOSTILE STRUCTURES SEEN SO FAR; out of range, no ammunition or fired comes with the next state');
 	Add(L, '  Bridge.Reach(unitId [, targetCell])   how many steps that unit reaches from where it stands, and the cells from which it could hit the target cell');

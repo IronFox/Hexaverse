@@ -1928,6 +1928,12 @@ function Move.Cost(loc, cost)
 	return ok and rs or cost;
 end;
 
+function Move.CostLost(loc, cost)
+	local d = Move.deaths[loc.cell.index];
+	if d and Sense.round - d.round < 80 then return cost + 15 * math.min(4, d.n); end;
+	return cost;
+end;
+
 function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 	-- (Move.Stuck is not applied to every unit here: with it the losers against the Nexus died at
 	-- a median of round 67 where it had been 137. It is used where the cause is known, the AA posts.)
@@ -1940,7 +1946,11 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 		local dest = Move.GroundAt(u, goalCell);
 		if dest and dest ~= u.location then
 			-- (keeping out of danger: the way that costs least with danger priced in)
-			local ok, path = pcall(u.FindShortestPath, dest, (avoidThreat and Cfg.safeWays) and Move.Cost or nil, false);
+			-- (who goes in to attack pays for cells where vehicles were lost, not for the reach of the
+			-- towers it is sent against: priced in full, part of an army went three regions round)
+			local price = nil;
+			if avoidThreat and Cfg.safeWays then price = (avoidThreat == 'arty' and mayEnterUnknown) and Move.CostLost or Move.Cost; end;
+			local ok, path = pcall(u.FindShortestPath, dest, price, false);
 			if ok and path and #path > 0 then
 				local limit = math.max(1, u.movementSpeed * 3);
 				local pick = path[#path];
@@ -5436,7 +5446,7 @@ function Military.Combat()
 			if Mem.posture == 'attack' and Mem.attackTarget then
 				goalId = Mem.attackTarget;
 			end;
-			local fGoal, fAttack, fPost = Formation.Orders(v);
+			local fGoal, fAttack, fPost, fEntry = Formation.Orders(v);
 			if fGoal then goalId = fGoal; end;
 			-- offloaded onto a peak: hold it while anything is near, then go back into storage
 			local peak = Military.peakGuard[v.id];
@@ -5465,6 +5475,14 @@ function Military.Combat()
 			if #reg.cells > 1 then
 				cell = reg.cells[((i * 7) % #reg.cells) + 1];
 				goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
+			end;
+			-- a formation going in takes one way: all make for the same cell until they are inside
+			if fEntry then
+				local at = Map.RegionOfLoc(v.location);
+				if not (at and at.id == goalId) then
+					cell = fEntry;
+					goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
+				end;
 			end;
 			local attacking = Mem.posture == 'attack';
 			if fGoal then attacking = fAttack; end;

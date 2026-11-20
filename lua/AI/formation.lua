@@ -242,6 +242,20 @@ function Formation.Update()
 				if reg and (around[reg.id] or reg.id == f.region) then near = near + 1; end;
 			end;
 			if inside > 0 then f.lastInside = Sense.round; end;
+			f.near = near;
+			-- (one way in for all: the cell of the target region nearest to where they gathered.
+			-- Each going for a cell of its own, half the army came in from the far side, alone)
+			if f.entryFor ~= f.staging then
+				f.entryFor = f.staging;
+				f.entry = nil;
+				local from = Map.WorldCenter(Map.regions[f.staging]);
+				local bestD = nil;
+				for _,c in ipairs(target.cells or {}) do
+					local w = {x = c.center.x * Map.groundRadius, y = c.center.y * Map.groundRadius, z = c.center.z * Map.groundRadius};
+					local dd = Dist2(w, from);
+					if bestD == nil or dd < bestD then bestD, f.entry = dd, c; end;
+				end;
+			end;
 			local clear = target.seenNow and target.hostileStructures == 0 and target.mobileThreat == 0 and target.staticThreat == 0;
 			if f.stage ~= 'gather' and Formation.Broken(f, f.count) then
 				f.want = math.max(f.want, Formation.Want('take', f.region, 0));
@@ -311,5 +325,16 @@ function Formation.Orders(v)
 	if not f or f.over then return nil; end;
 	if f.kind == 'hold' then return f.region, false, f.region; end;
 	if f.stage == 'gather' then return f.staging, false, f.staging; end;
-	return f.region, true, (f.stage == 'secure') and f.region or f.staging;
+	return f.region, true, (f.stage == 'secure') and f.region or f.staging, (f.stage == 'advance') and f.entry or nil;
+end;
+
+-- How far a take of that region has gathered (0..1), 1 once it has set out; nil if there is none
+function Formation.Gathered(regionId)
+	for _,f in ipairs(Formation.list) do
+		if not f.over and f.kind == 'take' and f.region == regionId then
+			if f.stage ~= 'gather' then return 1; end;
+			return (f.near or 0) / math.max(1, f.want);
+		end;
+	end;
+	return nil;
 end;
