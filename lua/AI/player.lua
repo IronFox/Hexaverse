@@ -2000,7 +2000,12 @@ end;
 local function OffRank(u)
 	local n = u.type.name;
 	-- (generators idle for fuel: the fuel mine comes before everything, or nothing else ever comes back)
-	if ((Sense.offByKind or {}).generator or 0) > 0 and IsFuelMine(u) then return 0; end;
+	if ((Sense.offByKind or {}).generator or 0) > 0 and IsFuelMine(u) then
+		-- (the richest fuel cell first: a mine yields by the level of its cell, and only one that
+		-- carries a generator changes anything)
+		local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', u.location.cell);
+		return 0 - math.min(0.9, ((ok and lvl) or 0) / 1000);
+	end;
 	if string.find(n, 'Nexus Port', 1, true) then return 1; end;
 	if u.type == Types.mine then return 2; end;
 	if u.type == Types.generator then return 3; end;
@@ -2074,16 +2079,21 @@ function Economy.Power()
 		-- (a fuel mine while generators stand idle for fuel comes first and at once, whatever was
 		-- tried before: with exactly 10 energy to spare one sat off for 100 rounds beside 7 idle generators)
 		local fuelFirst = (Sense.offByKind.generator or 0) > 0 and u.type == Types.mine and IsFuelMine(u);
-		if fuelFirst then tried = nil; shed = nil; end;
+		-- (tried again after 4 rounds at the most, so that the fuel mines take turns: with no wait
+		-- at all the same mine was switched on every round and went off again every round)
+		if fuelFirst then
+			shed = nil;
+			if tried and tried.wait > 4 then tried = {round = tried.round, wait = 4}; end;
+		end;
 		if tried and Sense.round < tried.round + tried.wait then
 			-- wait
 		elseif have >= need + ((shed and Sense.round - shed < 50) and 10 or 0) and on < 2 then	-- (the extra margin lapses after 50 rounds)
 			if pcall(u.Enable, true) then
-				Mem.onTried[u.id] = {round = Sense.round, wait = (tried and Sense.round - tried.round <= 2 * tried.wait) and math.min(80, tried.wait * 2) or 5};
+				Mem.onTried[u.id] = {round = Sense.round, wait = fuelFirst and 4 or ((tried and Sense.round - tried.round <= 2 * tried.wait) and math.min(80, tried.wait * 2) or 5)};
 				on = on + 1;
 				if isGen then fuel = fuel - need; else energy = energy - need; end;
 				Mem.shed[u.id] = nil;
-				Log(string.format('Switched on again at round %d: %s (spare energy %d, fuel %d)', Sense.round, u.type.name, energy, fuel));
+				Log(string.format('Switched on again at round %d: %s on cell %d (spare energy left %d, fuel %d)', Sense.round, u.type.name, u.location.cell.index, energy, fuel));
 			end;
 		elseif not isGen and OffRank(u) <= 3 then
 			vitalWaits = true;
