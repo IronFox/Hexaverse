@@ -252,6 +252,32 @@ function Formation.Update()
 			end;
 			if inside > 0 then f.lastInside = Sense.round; end;
 			f.near = near;
+			-- (where to gather: beside a store of the staging region if one stands, else on the cell
+			-- of it that lies farthest from the target. Spread over all its cells, some stood in
+			-- the reach of the target's towers)
+			if f.stage == 'gather' and (f.rally == nil or f.rallyFor ~= f.staging or Sense.round % 10 == 0) then
+				f.rallyFor = f.staging;
+				f.rally = nil;
+				local tc = Map.WorldCenter(target);
+				local bestD = nil;
+				for _,st in ipairs(Sense.stores or {}) do
+					local sr = Map.RegionOfLoc(st.location);
+					if sr and sr.id == f.staging then
+						for _,nb in ipairs(st.location.cell.neighbors or {}) do
+							local w = {x = nb.center.x * Map.groundRadius, y = nb.center.y * Map.groundRadius, z = nb.center.z * Map.groundRadius};
+							local dd = Dist2(w, tc);
+							if not Sense.structureCells[nb.index] and (bestD == nil or dd > bestD) then bestD, f.rally = dd, nb; end;
+						end;
+					end;
+				end;
+				if f.rally == nil then
+					for _,c in ipairs(Map.regions[f.staging].cells or {}) do
+						local w = {x = c.center.x * Map.groundRadius, y = c.center.y * Map.groundRadius, z = c.center.z * Map.groundRadius};
+						local dd = Dist2(w, tc);
+						if not Sense.structureCells[c.index] and not Sense.UnderEMP(c) and (bestD == nil or dd > bestD) then bestD, f.rally = dd, c; end;
+					end;
+				end;
+			end;
 			f.parked = 0;
 			for id,_ in pairs(f.members) do
 				if parked[id] then f.parked = f.parked + 1; end;
@@ -343,7 +369,7 @@ function Formation.Orders(v)
 	local f = Cfg.useFormations and Formation.of[v.id];
 	if not f or f.over then return nil; end;
 	if f.kind == 'hold' then return f.region, false, f.region; end;
-	if f.stage == 'gather' then return f.staging, false, f.staging; end;
+	if f.stage == 'gather' then return f.staging, false, f.staging, nil, f.rally; end;
 	return f.region, true, (f.stage == 'secure') and f.region or f.staging, (f.stage == 'advance') and f.entry or nil;
 end;
 

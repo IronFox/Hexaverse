@@ -1304,9 +1304,14 @@ function Needs.NextStructure(constructorIndex)
 				for _,c in ipairs(Sense.my.constructor) do
 					if c.id == who then there = true; break; end;
 				end;
+				-- (nor does it stay with one that is never free to be asked)
+				Needs.storeAsked = Needs.storeAsked or {};
+				if there and me and me.id ~= who and Sense.round - (Needs.storeAsked[f.staging] or Sense.round) > 10 then there = false; end;
 				if not there and me then who = me.id; Needs.storeBuilder[f.staging] = who; end;
+				if me and me.id == who then Needs.storeAsked[f.staging] = Sense.round; end;
+				Needs.storeAsked[f.staging] = Needs.storeAsked[f.staging] or Sense.round;
 				if n < wantN and me and me.id == who then
-					if Sense.round % 10 == 0 then Needs.Note('Vehicle Store ordered for the gathering at region '..f.staging..' ('..n..' of '..wantN..')'); end;
+					if Sense.round % 5 == 0 then Needs.Note('Vehicle Store ordered for the gathering at region '..f.staging..' ('..n..' of '..wantN..') from '..me.niceName); end;
 					local w = Needs.Floor({type = Types.store, kind = 'tower', region = f.staging, inRegion = true});
 					if w then return w; end;
 				end;

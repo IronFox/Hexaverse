@@ -4263,14 +4263,19 @@ function Economy.AssignConstructor(u, index)
 	Economy.fringeOK = false;
 	if best then
 		Economy.claimed[best.location.cell.index] = true;
-		Economy.BuildAt(u, best.location, want.type, best);
+		local built = Economy.BuildAt(u, best.location, want.type, best);
+		if want.inRegion and not built then
+			Needs.Note(u.niceName..': '..want.type.name..' for region '..want.region..' at cell '..best.location.cell.index..' refused: '..tostring(Economy.buildWhy or 'no path'));
+		end;
 	elseif want.inRegion then
 		-- (it is wanted in that region and nowhere else: the builder goes there, round by round,
 		-- by the safe way. "At region 10" used to mean the nearest cell to it in reach, at home)
 		local reg = Map.regions[want.region];
 		if Move.Towards(u, goal, reg.centerCell, true, false) then
 			Needs.Started();
-			if Sense.round % 10 == 0 then Needs.Note(u.niceName..' is on its way to region '..want.region..' to build '..want.type.name..' there'); end;
+			if Sense.round % 5 == 0 then Needs.Note(u.niceName..' is on its way to region '..want.region..' to build '..want.type.name..' there (at cell '..u.location.cell.index..')'); end;
+		else
+			Needs.Note(u.niceName..' at cell '..u.location.cell.index..' finds no way towards region '..want.region..' to build '..want.type.name..' there');
 		end;
 	end;
 end;
@@ -5508,7 +5513,7 @@ function Military.Combat()
 			if Mem.posture == 'attack' and Mem.attackTarget then
 				goalId = Mem.attackTarget;
 			end;
-			local fGoal, fAttack, fPost, fEntry = Formation.Orders(v);
+			local fGoal, fAttack, fPost, fEntry, fRally = Formation.Orders(v);
 			if fGoal then goalId = fGoal; end;
 			-- offloaded onto a peak: hold it while anything is near, then go back into storage
 			local peak = Military.peakGuard[v.id];
@@ -5536,6 +5541,11 @@ function Military.Combat()
 			local cell = reg.centerCell;
 			if #reg.cells > 1 then
 				cell = reg.cells[((i * 7) % #reg.cells) + 1];
+				goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
+			end;
+			-- gathering: all at one spot on the far side from the target, by the stores if any stand there
+			if fRally then
+				cell = fRally;
 				goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
 			end;
 			-- a formation going in takes one way: all make for the same cell until they are inside
