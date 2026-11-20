@@ -245,6 +245,13 @@ function Formation.Update()
 			-- (gathered means in the staging region itself: counting its neighbours too, a formation
 			-- "gathered" in the round it was created, its six members in six regions)
 			local around = {[f.staging] = true};
+			-- (gathering on my own ground: the members stay what they were, the defence of it, and
+			-- count wherever they stand on it. Called to one cell among the base's buildings they
+			-- found no path, stood apart and were picked off by the raids, 23 of them)
+			f.atHome = (Sense.mine[f.staging] or f.staging == Mem.homeRegion) and true or false;
+			if f.atHome then
+				for id,_ in pairs(Sense.mine) do around[id] = true; end;
+			end;
 			for id,_ in pairs(f.members) do
 				local m = alive[id];
 				local reg = Map.RegionOfLoc(m.location or (m.storedIn and m.storedIn.location));
@@ -386,6 +393,7 @@ function Formation.Orders(v)
 	local f = Cfg.useFormations and Formation.of[v.id];
 	if not f or f.over then return nil; end;
 	if f.kind == 'hold' then return f.region, false, f.region; end;
+	if f.stage == 'gather' and f.atHome then return nil; end;
 	if f.stage == 'gather' then return f.staging, false, f.staging, nil, f.rally; end;
 	return f.region, true, (f.stage == 'secure') and f.region or f.staging, (f.stage == 'advance') and f.entry or nil;
 end;

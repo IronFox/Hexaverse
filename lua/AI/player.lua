@@ -5099,7 +5099,9 @@ function Military.DeployFrom(store, count, goalWorld, filter, out, role)
 	local used = {};
 	for _,u in ipairs(Sense.stored) do
 		if deployed >= count then break; end;
-		if Types.Role(u) == (role or 'combat') and store.DeployStored and (filter == nil or filter(u)) and not Formation.Parks(u) then
+		if Types.Role(u) == (role or 'combat') and store.DeployStored and (filter == nil or filter(u))
+			-- (who waits in a store for its formation stays, but comes out to defend the ground it waits on)
+			and not (Formation.Parks(u) and (Military.emptying or not Formation.Parks(u).atHome)) then
 			local ok, options = pcall(store.GetStoredDeploymentOptions, u);
 			if ok and options and #options > 0 then
 				local best, bestD = nil, nil;
@@ -5150,7 +5152,7 @@ function Military.Stores()
 			local st = u.storedIn;
 			local sr = st and st.location and Map.RegionOfLoc(st.location);
 			-- (also out: who is parked where the formation no longer gathers)
-			if f and (f.unload or f.stage ~= 'gather' or f.over or (sr and sr.id ~= f.staging)) and st and st.DeployStored then
+			if f and (f.unload or f.stage ~= 'gather' or f.over or (sr and sr.id ~= f.staging and not (f.atHome and Sense.mine[sr.id]))) and st and st.DeployStored then
 				local goal = Map.WorldCenter(Map.regions[f.region]);
 				local ok, options = pcall(st.GetStoredDeploymentOptions, u);
 				local best, bestD = nil, nil;
@@ -5169,11 +5171,17 @@ function Military.Stores()
 		for _,v in ipairs(Sense.my.combat) do
 			local f = Formation.Parks(v);
 			local reg = f and Map.RegionOfLoc(v.location);
-			if f and reg and reg.id == f.staging and v.CanStandAt and not Military.NeedsStationary(v) then
+			local quiet = reg and Sense.Threat(reg) <= 0;
+			if quiet then
+				for nb,_ in pairs(reg.neighbors) do
+					if Map.regions[nb].mobileThreat > 0 then quiet = false; break; end;
+				end;
+			end;
+			if f and reg and quiet and (reg.id == f.staging or (f.atHome and Sense.mine[reg.id])) and v.CanStandAt and not Military.NeedsStationary(v) then
 				local ok, reach = pcall(v.GetReach, nil, math.max(2, v.movementSpeed * 2), false, true, true, true);
 				for _,n in ipairs(ok and reach or {}) do
 					local hr = n.hangar and Map.RegionOfLoc(n.location);
-					if n.hangar and hr and hr.id == f.staging and (not n.hangar.CanStore or n.hangar.CanStore(v)) then
+					if n.hangar and hr and (hr.id == f.staging or (f.atHome and Sense.mine[hr.id])) and (not n.hangar.CanStore or n.hangar.CanStore(v)) then
 						v.ClearSafeTasks();
 						v.DirectTo(n);
 						Military.stashing[v.id] = true;
@@ -5205,7 +5213,9 @@ function Military.Stores()
 		local home = Sense.baseCenter or (Mem.homeRegion and Map.WorldCenter(Map.regions[Mem.homeRegion]));
 		for _,st in ipairs(Sense.stores) do
 			if budget <= 0 or storedCombat <= 0 then break; end;
+			Military.emptying = true;
 			local n = Military.DeployFrom(st, math.min(budget, storedCombat), home);
+			Military.emptying = false;
 			budget = budget - n;
 			storedCombat = storedCombat - n;
 		end;
