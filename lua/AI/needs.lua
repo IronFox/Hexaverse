@@ -1388,6 +1388,15 @@ function Needs.NextVehicle(kit)
 	local cur = Economy.Resources();
 	local minerals = cur.storage.minerals or 0;
 	local opts = Needs.AdjustVehicleOptions(Needs.VehicleOptions(kit));
+	-- (a kind at its cap is no option: left in, the capped builder stayed the top choice round
+	-- after round, each time became a tank, and the surveyor behind it was never made)
+	if next(Cfg.unitCaps or {}) then
+		local keep = {};
+		for _,o in ipairs(opts) do
+			if not Economy.UnitCapped(o.want) then keep[#keep+1] = o; end;
+		end;
+		opts = keep;
+	end;
 	local best, top = Needs.Choose(opts, 'vehicle', minerals);
 	-- no builder at all: nothing can be built or rebuilt. The constructor goes first even if it
 	-- isn't affordable yet: anything cheaper bought meanwhile only delays it

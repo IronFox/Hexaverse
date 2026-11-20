@@ -4248,6 +4248,46 @@ function Economy.PlaneProduction()
 end;
 
 -- What should a vehicle plant produce next?
+-- How many vehicles with this turret I have: standing and stored
+function Economy.TurretCount(tn)
+	local n = 0;
+	for _,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do if u.type and u.type.turretType and u.type.turretType.name == tn then n = n + 1; end; end;	-- (u.turret is the attacking turret only: nil on builders and surveyors)
+	end;
+	-- (those parked in vehicle stores too: five surveyors once came out of one at a stroke)
+	for _,u in ipairs(Sense.stored or {}) do
+		if u.type and u.type.turretType and u.type.turretType.name == tn then n = n + 1; end;
+	end;
+	return n;
+end;
+
+--[[
+Is this kind of vehicle at its cap (Cfg.unitCaps, by turret name, set from outside)? What stands
+or is stored counts, and what the plants were told to make in the last 25 rounds and has not
+come out yet (a queue shows names like 'Hoverformer', not the turret, so three plants each queued
+one more than the cap). An order is taken to have come out when the count has grown past what
+it was when the order was given: counted for the full 25 rounds, every builder counted twice
+and a cap of 5 held the builders at 3.
+]]
+function Economy.UnitCapped(t)
+	if not (t and t.turretType and Cfg.unitCaps) then return false; end;
+	local tn = t.turretType.name;
+	local cap = Cfg.unitCaps[tn];
+	if not cap then return false; end;
+	local n = Economy.TurretCount(tn);
+	Economy.capOrders = Economy.capOrders or {};
+	local keep, base = {}, nil;
+	for _,o in ipairs(Economy.capOrders[tn] or {}) do
+		if Sense.round - o.round < 25 then
+			keep[#keep+1] = o;
+			if base == nil or o.had < base then base = o.had; end;
+		end;
+	end;
+	Economy.capOrders[tn] = keep;
+	local pending = #keep - math.max(0, n - (base or n));
+	return n + math.max(0, pending) >= cap;
+end;
+
 function Economy.NextVehicle()
 	local my = Sense.my;
 	local base = Types.GroundBase();
@@ -4297,32 +4337,11 @@ function Economy.NextVehicle()
 	end;
 	-- weigh the current needs against every vehicle option (see needs.lua)
 	local t = Needs.NextVehicle({Constructor = Constructor, Tank = Tank});
-	-- a cap on a kind of vehicle (Cfg.unitCaps, by turret name, set from outside): what stands,
-	-- is stored or queued counts; a capped choice becomes a tank
-	if t and t.turretType and next(Cfg.unitCaps or {}) then
+	-- a cap on a kind of vehicle (Cfg.unitCaps, by turret name, set from outside): the needs leave
+	-- capped kinds out of their choice; one that still comes through (a direct rule) becomes a tank
+	if t and Economy.UnitCapped(t) then
 		local tn = t.turretType.name;
-		local cap = Cfg.unitCaps[tn];
-		if cap then
-			local n = 0;
-			for _,list in pairs(my) do
-				for _,u in ipairs(list) do if u.type and u.type.turretType and (u.type.turretType == t.turretType or u.type.turretType.name == tn) then n = n + 1; end; end;	-- (u.turret is the attacking turret only: nil on builders and surveyors)
-			end;
-			-- (those parked in vehicle stores too: five surveyors once came out of one at a stroke)
-			for _,u in ipairs(Sense.stored or {}) do
-				if u.type and u.type.turretType and u.type.turretType.name == tn then n = n + 1; end;
-			end;
-			-- (what the plants were told to make in the last 25 rounds: a queue shows names like
-			-- 'Hoverformer', not the turret, so three plants each queued one more than the cap)
-			Economy.capOrders = Economy.capOrders or {};
-			local keep = {};
-			for _,r in ipairs(Economy.capOrders[tn] or {}) do
-				if Sense.round - r < 25 then keep[#keep+1] = r; n = n + 1; end;
-			end;
-			Economy.capOrders[tn] = keep;
-			if n >= cap then
-				if Cfg.unitCaps['Cannon'] == nil and tn ~= 'Cannon' and tn ~= 'Artillery' then t = Tank(); else t = nil; end;
-			end;
-		end;
+		if Cfg.unitCaps['Cannon'] == nil and tn ~= 'Cannon' and tn ~= 'Artillery' then t = Tank(); else t = nil; end;
 	end;
 	return t;
 end;
@@ -4562,7 +4581,7 @@ function Economy.Production()
 						Economy.capOrders = Economy.capOrders or {};
 						local tn = t.turretType.name;
 						Economy.capOrders[tn] = Economy.capOrders[tn] or {};
-						table.insert(Economy.capOrders[tn], Sense.round);
+						table.insert(Economy.capOrders[tn], {round = Sense.round, had = Economy.TurretCount(tn)});
 					end;
 					Log(p.niceName..': producing '..t.name);
 				else
