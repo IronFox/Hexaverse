@@ -1251,8 +1251,20 @@ function Needs.NextStructure(constructorIndex)
 			return {type = Types.plant, kind = 'base'};
 		end;
 		if Types.generator and Economy.Count(Types.generator) < Cfg.minGenerators and minerals >= Cost(Types.generator) then
-			Needs.Note('Generator ordered: '..Economy.Count(Types.generator)..' standing, '..Cfg.minGenerators..' wanted');
-			return {type = Types.generator, kind = 'base'};
+			-- (only one the fuel carries: Economy.BuildAt refuses any other, and with the floor
+			-- handing every free builder a generator that is refused, nothing was built at all for
+			-- 130 to 170 rounds in two duels. Short of fuel, a fuel mine is what the floor asks for;
+			-- with no site for one the ordinary choice goes on)
+			if Economy.Count(Types.generator) < 1 or Economy.FuelForGenerator() >= 10 then
+				Needs.Note('Generator ordered: '..Economy.Count(Types.generator)..' standing, '..Cfg.minGenerators..' wanted');
+				return {type = Types.generator, kind = 'base'};
+			end;
+			local fm = (Needs.floorFuelTried ~= Sense.round) and Economy.MineReq('Fuel') or nil;
+			if fm and minerals >= Cost(Types.mine) then
+				Needs.floorFuelTried = Sense.round;	-- (one builder a round: the rest take the ordinary choice)
+				Needs.Note('Fuel mine ordered: '..Economy.Count(Types.generator)..' generator(s) standing, '..Cfg.minGenerators..' wanted, the fuel carries no further one');
+				return fm;
+			end;
 		end;
 	end;
 	local opts = Needs.AdjustStructureOptions(Needs.StructureOptions(constructorIndex));
