@@ -523,14 +523,38 @@ function Map.Hops(startIds)
 	end;
 	while Queue.IsNotEmpty(q) do
 		local id = Queue.PopLeft(q);
-		for nb,_ in pairs(Map.regions[id].neighbors) do
-			if dist[nb] == nil then
-				dist[nb] = dist[id] + 1;
-				Queue.PushRight(q, nb);
+		-- (no way leads through a region that is mostly a locked EMP zone: nothing drives there.
+		-- It keeps its distance as a place to reach, but the count does not go on through it. An
+		-- army sent to the second port by the shortest count stood still for 50 rounds, the
+		-- region in between being 90% EMP zone, while three open regions led around it)
+		if dist[id] == 0 or Map.EmpShare(id) < 0.5 then
+			for nb,_ in pairs(Map.regions[id].neighbors) do
+				if dist[nb] == nil then
+					dist[nb] = dist[id] + 1;
+					Queue.PushRight(q, nb);
+				end;
 			end;
 		end;
 	end;
 	return dist;
+end;
+
+-- Share of a region's cells that lie in a locked EMP zone (0..1), read again every 100 rounds
+Map.empShare = {};
+function Map.EmpShare(id)
+	local round = (Sense and Sense.round) or 0;
+	local e = Map.empShare[id];
+	if e and round - e.round < 100 then return e.share; end;
+	local reg = Map.regions[id];
+	local n, emp = 0, 0;
+	for _,c in ipairs(reg and reg.cells or {}) do
+		n = n + 1;
+		local ok, v = pcall(Game.Grid.AffectedByEMP, {cell = c, height = 0});
+		if ok and v then emp = emp + 1; end;
+	end;
+	local share = n > 0 and emp / n or 0;
+	Map.empShare[id] = {round = round, share = share};
+	return share;
 end;
 
 
