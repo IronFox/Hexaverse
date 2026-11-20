@@ -4231,12 +4231,19 @@ function Economy.AssignConstructor(u, index)
 	local best, bestScore = nil, nil;
 	-- defences may stand on contested ground: they are what makes it mine
 	Economy.fringeOK = want.kind == 'tower';
+	-- (its own cell is no site for a builder that cannot step off it: the order was refused there,
+	-- "no cell to step off to", and chosen again, ten times for one uranium storage)
+	local stepOff = false;
+	for _,n in ipairs(reach) do
+		local l = n.location;
+		if l and not l.isSuborbital and l.cell.index ~= u.location.cell.index and not Sense.structureCells[l.cell.index] then stepOff = true; break; end;
+	end;
 	for _,n in ipairs(reach) do
 		local loc = n.location;
-		local inReg = true;
+		local inReg = stepOff or loc.cell.index ~= u.location.cell.index;
 		if want.inRegion then
 			local lr = Map.RegionOfLoc(loc);
-			inReg = lr ~= nil and lr.id == want.region;
+			inReg = inReg and lr ~= nil and lr.id == want.region;
 		end;
 		if inReg and not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false)
 			-- (a vehicle plant only where its vehicles can leave: level ground beside it)
@@ -5578,7 +5585,7 @@ function Military.Combat()
 			if Mem.posture == 'attack' and Mem.attackTarget then
 				goalId = Mem.attackTarget;
 			end;
-			local fGoal, fAttack, fPost, fEntry, fRally = Formation.Orders(v);
+			local fGoal, fAttack, fPost, fEntry, fRally, fHold = Formation.Orders(v);
 			if fGoal then goalId = fGoal; end;
 			-- offloaded onto a peak: hold it while anything is near, then go back into storage
 			local peak = Military.peakGuard[v.id];
@@ -5616,7 +5623,7 @@ function Military.Combat()
 			-- a formation going in takes one way: all make for the same cell until they are inside
 			if fEntry then
 				local at = Map.RegionOfLoc(v.location);
-				if not (at and at.id == goalId) then
+				if fHold or not (at and at.id == goalId) then
 					cell = fEntry;
 					goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
 				end;

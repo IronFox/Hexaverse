@@ -296,16 +296,69 @@ function Formation.Update()
 			if f.stage ~= 'gather' then f.unload = nil; end;
 			-- (one way in for all: the cell of the target region nearest to where they gathered.
 			-- Each going for a cell of its own, half the army came in from the far side, alone)
-			if f.entryFor ~= f.staging then
-				f.entryFor = f.staging;
-				f.entry = nil;
-				local from = Map.WorldCenter(Map.regions[f.staging]);
-				local bestD = nil;
-				for _,c in ipairs(target.cells or {}) do
-					local w = {x = c.center.x * Map.groundRadius, y = c.center.y * Map.groundRadius, z = c.center.z * Map.groundRadius};
-					local dd = Dist2(w, from);
-					if bestD == nil or dd < bestD then bestD, f.entry = dd, c; end;
+			--[[
+			And one way there, region by region: the route is laid once (fewest regions, none that
+			is mostly EMP zone, towers on the way counted against it), and the formation moves to
+			the next region on it only when seven in ten stand in the one before, or after 15
+			rounds. Twenty that set out from three regions of mine for one entry cell were in six
+			regions eight rounds later and met six missile towers one by one.
+			]]
+			if f.stage == 'advance' then
+				if f.route == nil or f.routeFor ~= f.staging then
+					f.routeFor = f.staging;
+					local dist, prev, done = {[f.staging] = 0}, {}, {};
+					while true do
+						local at, atD = nil, nil;
+						for id,d in pairs(dist) do
+							if not done[id] and (atD == nil or d < atD) then at, atD = id, d; end;
+						end;
+						if at == nil or at == f.region then break; end;
+						done[at] = true;
+						for nb,_ in pairs(Map.regions[at].neighbors) do
+							local r = Map.regions[nb];
+							local step = 1 + ((Map.EmpShare(nb) >= 0.5) and 1000 or 0) + ((nb ~= f.region and (r.staticThreat or 0) > 0) and 1.5 or 0)
+								+ ((Significance.Directed(nb, 'avoid') > 0) and 3 or 0);
+							if dist[nb] == nil or atD + step < dist[nb] then dist[nb] = atD + step; prev[nb] = at; end;
+						end;
+					end;
+					f.route = {f.region};
+					local at = f.region;
+					while prev[at] do at = prev[at]; table.insert(f.route, 1, at); end;
+					if f.route[1] ~= f.staging then f.route = {f.staging, f.region}; end;
+					f.leg = math.min(2, #f.route);
+					f.legSince = Sense.round;
+					f.entryLeg = nil;
+					Log(Name(f)..': route '..table.concat(f.route, ' > ')..' at round '..Sense.round);
 				end;
+				local ahead = {};
+				for k = f.leg, #f.route do ahead[f.route[k]] = true; end;
+				local arrived = 0;
+				for id,_ in pairs(f.members) do
+					local m = alive[id];
+					local reg = Map.RegionOfLoc(m.location or (m.storedIn and m.storedIn.location));
+					if reg and ahead[reg.id] then arrived = arrived + 1; end;
+				end;
+				if f.leg < #f.route then
+					f.lastInside = Sense.round;	-- (on the march: not stalled)
+					if arrived >= math.ceil(f.count * 0.7) or Sense.round - f.legSince >= 15 then
+						f.leg = f.leg + 1;
+						f.legSince = Sense.round;
+						Log(Name(f)..': on to region '..f.route[f.leg]..' at round '..Sense.round..' with '..arrived..' of '..f.count..' up');
+					end;
+				end;
+				if f.entryLeg ~= f.leg then
+					f.entryLeg = f.leg;
+					f.entry = nil;
+					local from = Map.WorldCenter(Map.regions[f.route[f.leg - 1] or f.staging]);
+					local bestD = nil;
+					for _,c in ipairs(Map.regions[f.route[f.leg]].cells or {}) do
+						local w = {x = c.center.x * Map.groundRadius, y = c.center.y * Map.groundRadius, z = c.center.z * Map.groundRadius};
+						local dd = Dist2(w, from);
+						if not Sense.structureCells[c.index] and (bestD == nil or dd < bestD) then bestD, f.entry = dd, c; end;
+					end;
+				end;
+			else
+				f.route = nil;
 			end;
 			local clear = target.seenNow and target.hostileStructures == 0 and target.mobileThreat == 0 and target.staticThreat == 0;
 			if f.stage ~= 'gather' and Formation.Broken(f, f.count) then
@@ -396,7 +449,11 @@ function Formation.Orders(v)
 	if f.kind == 'hold' then return f.region, false, f.region; end;
 	if f.stage == 'gather' and f.atHome then return nil; end;
 	if f.stage == 'gather' then return f.staging, false, f.staging, nil, f.rally; end;
-	return f.region, true, (f.stage == 'secure') and f.region or f.staging, (f.stage == 'advance') and f.entry or nil;
+	if f.stage == 'advance' and f.route and f.entry then
+		-- (short of the last region the whole formation holds at the entry cell of the one it is on)
+		return f.route[f.leg], true, f.staging, f.entry, nil, f.leg < #f.route;
+	end;
+	return f.region, true, (f.stage == 'secure') and f.region or f.staging, nil;
 end;
 
 -- The take formation whose members wait in stores for the word (nil: the unit is free to be deployed)
