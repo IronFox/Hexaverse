@@ -189,6 +189,9 @@ function Needs.Update()
 			v.fuel = 1;		-- generators off: no fuel for them
 		elseif (off.mine or 0) + (off.port or 0) + (off.other or 0) > 0 then
 			v.energy = 1;	-- generators run, others are off: no power for them
+			-- (... and no fuel for one more generator: the fuel mine is what is missing. A start
+			-- stood at 3 generators and 7 fuel to spare for 40 rounds, labs and two mines off)
+			if (bal.fuel or 0) < 10 then v.fuel = 1; end;
 		end;
 		local n = #(Sense.off or {});
 		if n > 0 and (Needs.offTold ~= n or Sense.round % 10 == 0) then
@@ -1012,6 +1015,11 @@ function Needs.StructureOptions(constructorIndex)
 		else
 			add(Economy.MineReq('Uranium'), {energy = 0.4}, 'Mine (uranium)');
 		end;
+	elseif Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.Count(Types.reactor) < 1
+		and (cur.storage.uranium or 0) >= 100 and (max.balance.uranium or 0) >= 5 and (cur.balance.fuel or 0) < 10 then
+		-- no generator ring to put it into, the fuel carries no further generator and uranium lies
+		-- in store: one reactor core on plain ground (40 energy for 5 uranium a round)
+		add({type = Types.reactor, kind = 'base'}, {energy = 1.5, spend = 0.3}, 'Reactor Core (plain site)');
 	end;
 	if Types.lab then
 		-- labs cluster: next to the existing ones. A lab that continues a cluster counts as

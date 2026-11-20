@@ -4198,6 +4198,10 @@ function Economy.NextVehicle()
 			for _,list in pairs(my) do
 				for _,u in ipairs(list) do if u.type and u.type.turretType and (u.type.turretType == t.turretType or u.type.turretType.name == tn) then n = n + 1; end; end;	-- (u.turret is the attacking turret only: nil on builders and surveyors)
 			end;
+			-- (those parked in vehicle stores too: five surveyors once came out of one at a stroke)
+			for _,u in ipairs(Sense.stored or {}) do
+				if u.type and u.type.turretType and u.type.turretType.name == tn then n = n + 1; end;
+			end;
 			for _,p in ipairs(Sense.plants) do
 				for _,q in ipairs(p.productionQueue or {}) do if string.find(q.name or '', tn, 1, true) then n = n + 1; end; end;
 			end;
