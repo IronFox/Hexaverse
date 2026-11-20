@@ -79,6 +79,7 @@ Cfg = {
 	portFarHops = 12,			-- ... and how far once the army is portFarArmy strong: winning takes most ports, not the near ones
 	portFarArmy = 16,
 	portGuard = 2,				-- structures of mine beside each port of mine (one tower alone lost the port again)
+	wallTakeDown = true,		-- once lifted, the whole wall is removed again, not just a gate
 	walls = true,				-- wall off the home base (port, mines, plants): the Nexus does not cross or attack walls
 	wallMargin = 1,				-- free cells between my structures and the wall, at least
 	wallReach = 6,				-- cells out from my structures that count as the outside
@@ -3410,17 +3411,32 @@ end;
 local function WallGate(u, w)
 	if w.gateOpen or not u.RemoveBlocks then return false; end;
 	if w.gate == nil then
+		w.down = w.down or {};
 		for _,e in ipairs(w.ring) do
-			if (Wall.tries[e.idx] or 0) >= 1 or w.built and w.built[e.idx] then w.gate = e; break; end;
+			if not w.down[e.idx] and ((Wall.tries[e.idx] or 0) >= 1 or w.built and w.built[e.idx]) then w.gate = e; break; end;
 		end;
-		if w.gate == nil then w.gateOpen = true; return false; end;
+		if w.gate == nil then
+			w.gateOpen = true;
+			if next(w.down) then Log(string.format('Wall taken down by round %d', Sense.round)); end;
+			return false;
+		end;
 	end;
 	local e = w.gate;
 	local cell = Economy.Cell(e.idx);
 	local loc = cell and Move.GroundAt(u, cell);
 	if loc and not loc.isSuborbital and loc.height < e.h + 2 then
-		w.gateOpen = true;
 		Log(string.format('Wall gate open on cell %d at round %d', e.idx, Sense.round));
+		--[[
+		The whole wall comes down, cell by cell, not just a gate: the base grows across the ring, and
+		blocks two high between the structures left plants, reactor sites and vehicles cut off (in
+		matches with the wall the home ground stood 3 to 6 levels up by round 280, without it level).
+		]]
+		if Cfg.wallTakeDown then
+			w.down = w.down or {};
+			w.down[e.idx] = true; w.gate = nil; w.gateTries = 0;
+			return false;
+		end;
+		w.gateOpen = true;
 		return false;
 	end;
 	for _,job in pairs(Mem.jobs) do if job.kind == 'Wall gate' then return false; end; end;
