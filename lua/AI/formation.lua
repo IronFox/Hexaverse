@@ -245,6 +245,14 @@ function Formation.Update()
 				end;
 			elseif f.stage == 'secure' then
 				if not clear then
+					-- (a region that is cleared and contested again and again is under fire from
+					-- outside it: two formations went round this loop 13 times and bled out. After
+					-- the third time it is given up for 40 rounds)
+					f.flips = (f.flips or 0) + 1;
+					if f.flips >= 3 then
+						f.gaveUp = 'contested again '..f.flips..' times after being cleared';
+						f.longRest = true;
+					end;
 					SetStage(f, 'advance', 'region contested again');
 				elseif Sense.round - f.stageSince >= Formation.secureRounds and not f.taken then
 					f.taken = true;
@@ -259,7 +267,8 @@ function Formation.Update()
 				f.count, f.peak, f.gaveUp = 0, 0, nil;
 				f.stage, f.stageSince, f.lastInside = 'gather', Sense.round, nil;
 				f.staging = Formation.Staging(f.region);
-				f.restUntil = Sense.round + Formation.restRounds;
+				f.restUntil = Sense.round + (f.longRest and 40 or Formation.restRounds);
+				f.longRest, f.flips = nil, nil;
 				f.restarts = (f.restarts or 0) + 1;
 			elseif (Sense.round - f.born) % Formation.reportEvery == 0 and Sense.round > f.born then
 				local where = {};

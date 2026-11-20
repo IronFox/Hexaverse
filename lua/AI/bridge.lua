@@ -701,8 +701,12 @@ do
 		local keep = {};
 		for _,d in ipairs(Significance.directions) do
 			local pin = Bridge.pins[d.region];
-			-- (the layer's own direction for a pinned region gives way)
-			if pin == nil or pin.kind == d.kind then
+			-- (the layer's own direction for a pinned region gives way; and with Bridge.Defend() the
+			-- scripts take nothing on their own: with formations on they kept taking three regions
+			-- in turn, "secure, contested again", and lost 60 units in 80 rounds of "defend")
+			if d.kind == 'take' and not d.pinned and Bridge.posture == 'defend' then
+				-- dropped
+			elseif pin == nil or pin.kind == d.kind then
 				keep[#keep+1] = d;
 				have[d.kind..':'..d.region] = d;
 			end;

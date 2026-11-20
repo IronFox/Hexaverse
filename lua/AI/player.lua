@@ -2072,9 +2072,13 @@ function Economy.UraniumCare()
 	Mem.uraniumRest = Mem.uraniumRest or {};
 	local cur = Economy.Resources();
 	local store, energy = cur.storage.uranium or 0, cur.balance.energy or 0;
+	-- (what is off and matters: mines, generators, the port. Labs off do not count, they are
+	-- what gives way to the EMP's uranium)
+	local ob = Sense.offByKind or {};
+	local vitalOff = (ob.mine or 0) + (ob.generator or 0) + (ob.port or 0);
 	for _,st in ipairs(Sense.myStructures) do
 		if st.type == Types.reactor and Mem.uraniumRest[st.id] and st.Enable then
-			if store >= Cfg.uraniumReserve + 50 or #Sense.off > 0 then
+			if store >= Cfg.uraniumReserve + 50 or vitalOff > 0 then
 				if pcall(st.Enable, true) then
 					Mem.uraniumRest[st.id] = nil;
 					if Mem.keepOff then Mem.keepOff[st.id] = nil; end;
@@ -2084,7 +2088,15 @@ function Economy.UraniumCare()
 			return;
 		end;
 	end;
-	if store >= Cfg.uraniumReserve or energy < 50 or #Sense.off > 0 then return; end;
+	if store >= Cfg.uraniumReserve or vitalOff > 0 then return; end;
+	-- (the 40 energy it gives must be to spare, or come from labs that then rest with it: an
+	-- EMP stood without ammunition before a tower while the reactor burned what came in)
+	local labsOn = {};
+	for _,st in ipairs(Sense.myStructures) do
+		if st.type == Types.lab and st.isEnabled ~= false and st.Enable then labsOn[#labsOn+1] = st; end;
+	end;
+	local short = math.max(0, math.ceil((50 - energy) / 10));
+	if short > #labsOn then return; end;
 	local fires = false;
 	local function look(u)
 		local tt = u.type and u.type.turretType;
@@ -2096,6 +2108,11 @@ function Economy.UraniumCare()
 	for _,st in ipairs(Sense.myStructures) do
 		if st.type == Types.reactor and st.isEnabled ~= false and st.Enable and not (Mem.keepOff and Mem.keepOff[st.id]) then
 			if pcall(st.Enable, false) then
+				Mem.shed = Mem.shed or {};
+				for i = 1, short do
+					if pcall(labsOn[i].Enable, false) then Mem.shed[labsOn[i].id] = Sense.round; end;
+				end;
+				if short > 0 then Log(string.format('%d laboratory(ies) switched off with the reactor core at round %d', short, Sense.round)); end;
 				Mem.uraniumRest[st.id] = Sense.round;
 				Mem.keepOff = Mem.keepOff or {};
 				Mem.keepOff[st.id] = true;
