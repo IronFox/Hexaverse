@@ -3968,7 +3968,7 @@ function Economy.BuildAt(u, loc, t, reachable)
 	if Economy.Capped(t) then Economy.buildWhy = 'capped'; return false; end;
 	-- a generator burns 10 fuel a round: one the fuel does not carry stands idle (12 built, 10 idle, in one match).
 	-- (The first is always built; with a fuel mine off for energy, Economy.Power trades it in.)
-	if t == Types.generator and Economy.Count(t) >= 1 and (Economy.Resources().balance.fuel or 0) < 10 and (Sense.offByKind.generator or 0) > 0 then	-- (only while one already stands idle: the bare fuel number left a quarter of the starts with one generator)
+	if t == Types.generator and Economy.Count(t) >= 1 and (Economy.Resources().balance.fuel or 0) < 10 then	-- (only while one already stands idle: the bare fuel number left a quarter of the starts with one generator)
 		Economy.buildWhy = 'the fuel does not carry another generator (fuel mine first)'; return false;
 	end;
 	if loc ~= u.location then
