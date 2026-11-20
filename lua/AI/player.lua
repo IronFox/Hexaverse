@@ -2708,15 +2708,17 @@ function Economy.Exits(loc, skipIdx)
 				-- It needs a way on, to a cell beyond the plant's ring, within one level)
 				local ring = {[loc.cell.index] = true};
 				for _,r2 in ipairs(loc.cell.neighbors) do ring[r2.index] = true; end;
-				local on = false;
+				-- (two ways on, so that one structure or parked unit does not close it: builders and a
+				-- tank stood on such exits with not a single cell in reach)
+				local on = 0;
 				for _,far in ipairs(nb.neighbors or {}) do
-					if not on and not ring[far.index] and not (Sense.structureCells and Sense.structureCells[far.index]) then
+					if not ring[far.index] and not (Sense.structureCells and Sense.structureCells[far.index]) then
 						for j2 = -1, 1 do
-							if Clear(far, h + found + j2) and not Clear(far, h + found + j2 - 1) then on = true; break; end;
+							if Clear(far, h + found + j2) and not Clear(far, h + found + j2 - 1) then on = on + 1; break; end;
 						end;
 					end;
 				end;
-				if not on then r = 'pocket (no way on)'; end;
+				if on < 2 then r = 'pocket (no way on)'; end;
 			end;
 			if found == nil then
 				-- where is the ground then?

@@ -809,7 +809,7 @@ function Bridge.State()
 	local cur = Game.myFaction.currentResources;
 	Add(L, 'ROUND %d   faction %s', Sense.round, Bridge.name);
 	Add(L, 'minerals %d, energy out %d (spare %d), posture %s%s', cur.storage.minerals or 0,
-		(Game.myFaction.maxResources.supply or {}).energy or 0, cur.balance.energy or 0, Mem.posture,
+		(cur.supply or Game.myFaction.maxResources.supply or {}).energy or 0, cur.balance.energy or 0, Mem.posture,
 		Mem.attackTarget and (' -> region '..Mem.attackTarget) or '');
 	Add(L, 'home region %s; planes about: %s; firing range assumed %.1f cells', tostring(Mem.homeRegion),
 		Sense.AirMatters() and 'yes' or 'no', Control.Reach() / Control.Spacing());
@@ -828,7 +828,7 @@ function Bridge.State()
 		do
 			local bal, sup = cur.balance or {}, Game.myFaction.maxResources.supply or {};
 			local parts = {};
-			for k,v in pairs(bal) do if k ~= 'minerals' then parts[#parts+1] = string.format('%s %+g (supply %s)', tostring(k), tonumber(v) or 0, tostring(sup[k] or '?')); end; end;
+			for k,v in pairs(bal) do if k ~= 'minerals' then parts[#parts+1] = string.format('%s %+g (supply %s now, %s if everything ran)', tostring(k), tonumber(v) or 0, tostring((cur.supply or {})[k] or '?'), tostring(sup[k] or '?')); end; end;
 			table.sort(parts);
 			Add(L, 'Balance per round: %s. Energy spare 0 means plants, labs and towers wait for power: more generators (and fuel mines to feed them).', table.concat(parts, ', '));
 			if #(Sense.off or {}) > 0 then
