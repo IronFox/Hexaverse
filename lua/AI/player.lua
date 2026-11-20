@@ -4040,7 +4040,10 @@ function Economy.AssignConstructor(u, index)
 			Economy.reactorFails = (Economy.reactorFails or 0) + 1;
 			Needs.Note(string.format('%s: no Reactor Core in the generator ring (%s), try %d', u.niceName,
 				loc and ('build refused: '..tostring(Economy.buildWhy or 'no path')) or ('no site: '..tostring(Economy.siteWhy or 'no ground at the centre')), Economy.reactorFails));
-			if Economy.reactorFails < 3 then return; end;
+			-- (and only the first core: four builders each took the fallback in three rounds, four
+			-- cores stood and burned the uranium to nothing)
+			if Economy.reactorFails < 3 or Economy.Count(Types.reactor) >= 1 then return; end;
+			Economy.reactorFails = 0;
 		end;
 		want = {type = want.type, kind = 'base'};	-- no ring possible here: plain placement
 	end;

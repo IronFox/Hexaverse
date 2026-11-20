@@ -1010,10 +1010,12 @@ function Needs.StructureOptions(constructorIndex)
 		end;
 	end;
 	if Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.ReactorSiteReady() then
-		local uranium = (max.balance.uranium or 0) > 0 or (cur.storage.uranium or 0) > 0;
+		-- (a core burns 5 uranium a round: another one only when that much still comes in beyond
+		-- what the standing ones burn, or none stands and there is a store to live off)
+		local uranium = (max.balance.uranium or 0) >= 5 or (Economy.Count(Types.reactor) < 1 and (cur.storage.uranium or 0) > 0);
 		if uranium then
 			add({type = Types.reactor, kind = 'power'}, {energy = 1.5, spend = 0.3});
-		else
+		elseif Economy.Count(Types.reactor) < 1 then
 			add(Economy.MineReq('Uranium'), {energy = 0.4}, 'Mine (uranium)');
 		end;
 	elseif Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.Count(Types.reactor) < 1
