@@ -1259,7 +1259,7 @@ function Needs.NextStructure(constructorIndex)
 				Needs.Note('Generator ordered: '..Economy.Count(Types.generator)..' standing, '..Cfg.minGenerators..' wanted');
 				return {type = Types.generator, kind = 'base'};
 			end;
-			local fm = (Needs.floorFuelTried ~= Sense.round) and Economy.MineReq('Fuel') or nil;
+			local fm = (Needs.floorFuelTried ~= Sense.round and (Economy.noMineSite.Fuel or -99) < Sense.round - 10) and Economy.MineReq('Fuel') or nil;	-- (no site found: asked again after 10 rounds)
 			if fm and minerals >= Cost(Types.mine) then
 				Needs.floorFuelTried = Sense.round;	-- (one builder a round: the rest take the ordinary choice)
 				Needs.Note('Fuel mine ordered: '..Economy.Count(Types.generator)..' generator(s) standing, '..Cfg.minGenerators..' wanted, the fuel carries no further one');
