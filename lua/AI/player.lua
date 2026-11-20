@@ -4017,7 +4017,13 @@ function Economy.AssignConstructor(u, index)
 			return;
 		end;
 		if want.type == Types.reactor then
-			return;
+			-- (the centre of the generator ring cannot be had: said why, and after three tries the
+			-- core goes on plain ground instead. One match asked for it 58 times and built none,
+			-- with 500 uranium in store and the plants waiting for power)
+			Economy.reactorFails = (Economy.reactorFails or 0) + 1;
+			Needs.Note(string.format('%s: no Reactor Core in the generator ring (%s), try %d', u.niceName,
+				loc and ('build refused: '..tostring(Economy.buildWhy or 'no path')) or ('no site: '..tostring(Economy.siteWhy or 'no ground at the centre')), Economy.reactorFails));
+			if Economy.reactorFails < 3 then return; end;
 		end;
 		want = {type = want.type, kind = 'base'};	-- no ring possible here: plain placement
 	end;

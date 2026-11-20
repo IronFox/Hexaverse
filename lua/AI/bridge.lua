@@ -146,7 +146,7 @@ function Bridge.Switch(typeName, on, count)
 			reads[#reads+1] = string.format('cell %d %s', st.location.cell.index, st.isEnabled == false and 'off' or 'on');
 		end;
 	end;
-	Bridge.Out('%d %s switched %s (the game now reads: %s)', n, typeName, on and 'on' or 'off', table.concat(reads, ', '));
+	Bridge.Out('%d %s switched %s (read this round, before the switch shows: %s; the next state has the result)', n, typeName, on and 'on' or 'off', table.concat(reads, ', '));
 	return n;
 end;
 
