@@ -3729,6 +3729,25 @@ function Economy.AssignConstructor(u, index)
 		elseif Game.Grid.AffectedByEMP(dest) then why = 'the cell lies in an EMP zone';
 		elseif Game.GetStructureAt(dest) ~= nil then why = 'a structure stands there already';
 		else
+			-- (a unit of mine on the cell is told to step off, and the order waits for it: it used
+			-- to come back as "no path" four times and was then given up)
+			local okm, m = pcall(Game.GetMobileAt, dest);
+			if okm and m and m.id ~= u.id then
+				if not m.isOwnedByMe then why = 'a foreign unit ('..tostring(m.type and m.type.name or '?')..') stands on the cell';
+				else
+					why = 'a unit of mine ('..tostring(m.type and m.type.name or '?')..' #'..tostring(m.id)..') stands on the cell; it was told to step off, order again next round';
+					pcall(function()
+						local reach = m.GetReach(nil, math.max(2, m.movementSpeed), false, false, false, true);
+						local best, bestC;
+						for _,n in ipairs(reach or {}) do
+							local l = n.location;
+							if l.cell.index ~= cell.index and not l.isSuborbital and Game.GetMobileAt(l) == nil and not Move.IsDangerous(l)
+								and (bestC == nil or n.movementCostsFromRoot < bestC) then best, bestC = n, n.movementCostsFromRoot; end;
+						end;
+						if best then m.DirectTo(best); end;
+					end);
+				end;
+			end;
 			-- (never box in a vehicle plant, by order from outside either)
 			for _,nb in ipairs(cell.neighbors or {}) do
 				local pc = Economy.plantCells[nb.index];

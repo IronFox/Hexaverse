@@ -756,7 +756,15 @@ do
 				local line = 'BuildAt '..job.type.name..' at cell '..job.cell..': '
 					..(why and ('FAILED, '..why) or 'a builder is on its way')..(u and (' ('..tostring(u.niceName)..')') or '');
 				if not why and u then Bridge.pending[job.cell] = {job = job, unit = u.id}; end;
-				if why and u then
+				if why and string.find(why, 'step off', 1, true) then
+					-- (the cell is being cleared: the same order again, not counted as a failure, 10 times at most)
+					job.waits = (job.waits or 0) + 1;
+					if job.waits <= 10 then
+						Bridge.build[#Bridge.build+1] = job;
+						if job.waits > 1 then return; end;
+						line = line..'; the order stays';
+					end;
+				elseif why and u then
 					job.failed = job.failed or {};
 					job.failed[tostring(u.id)] = true;
 					job.tries = (job.tries or 0) + 1;
