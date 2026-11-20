@@ -2027,6 +2027,9 @@ local function OffRank(u)
 	if u.type == Types.generator then return 3; end;
 	if u.type == Types.mineralContainer then return 4; end;
 	if u.type == Types.lab then return 9; end;
+	-- (with planes about the AA towers come right after the mines: only they see and reach the
+	-- sub orbit, and two bombers nobody saw took a base apart in 40 rounds)
+	if Types.aaTower and u.type and u.type.turretType == Types.aaTower.turretType and u.type.isStructure and Sense.AirMatters() then return 2.5; end;
 	return 6;
 end;
 
