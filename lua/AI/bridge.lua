@@ -415,7 +415,7 @@ end;
 function Bridge.Reach(unitId, targetCell)
 	local u = Bridge.MyUnit(unitId);
 	if u == nil or not (u.turret and u.turret.IsInRange) then error('no armed unit of mine #'..tostring(unitId), 2); end;
-	local dist = Steps(u.location.cell, 14);
+	local dist = Steps(u.location.cell, 22);
 	local far = 0;
 	for idx,d in pairs(dist) do
 		if d > far then
@@ -431,7 +431,7 @@ function Bridge.Reach(unitId, targetCell)
 		local k = Bridge.known[tc.index];
 		local tloc = (k and k.loc) or Move.GroundAt(u, tc);
 		local rows = {};
-		for idx,d in pairs(Steps(tc, 14)) do
+		for idx,d in pairs(Steps(tc, 22)) do
 			local from = Move.GroundAt(u, Economy.Cell(idx));
 			if from and tloc then
 				local ok, hit = pcall(u.turret.IsInRangeFrom, from, tloc.world);

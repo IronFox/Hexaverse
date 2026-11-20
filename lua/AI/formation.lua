@@ -62,7 +62,14 @@ end;
 function Formation.Want(kind, regionId, available)
 	if kind == 'hold' then return Formation.garrison; end;
 	local idle = math.min(Formation.maxSize, math.floor((available or 0) * Formation.commitShare));
-	return math.max(Military.RequiredForce(regionId), idle);
+	local need = Military.RequiredForce(regionId);
+	-- (a region with someone else's port is a base: what is sensed of it from afar is a fraction.
+	-- Five units were asked for the Nexus port region; they cleared it for one round. Everything
+	-- that can be spared goes, and never fewer than twice the count)
+	if Significance.ports and Significance.ports[regionId] and Significance.ports[regionId] ~= 'mine' then
+		return math.max(need * 2, math.min(Formation.maxSize, available or 0));
+	end;
+	return math.max(need, idle);
 end;
 
 -- where to collect: the quiet neighbour of the target that is closest to what I have
@@ -213,8 +220,9 @@ function Formation.Update()
 		if f.kind == 'take' then
 			local target = Map.regions[f.region];
 			local near, inside, at = 0, 0, {};
+			-- (gathered means in the staging region itself: counting its neighbours too, a formation
+			-- "gathered" in the round it was created, its six members in six regions)
 			local around = {[f.staging] = true};
-			for nb,_ in pairs(Map.regions[f.staging].neighbors) do around[nb] = true; end;
 			for id,_ in pairs(f.members) do
 				local reg = Map.RegionOfLoc(alive[id].location);
 				if reg and reg.id == f.region then inside = inside + 1; end;
