@@ -1952,7 +1952,9 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 			-- (who goes in to attack pays for cells where vehicles were lost, not for the reach of the
 			-- towers it is sent against: priced in full, part of an army went three regions round)
 			local price = nil;
-			if avoidThreat and Cfg.safeWays then price = (avoidThreat == 'arty' and mayEnterUnknown) and Move.CostLost or Move.Cost; end;
+			-- (nor for the cells where others fell: with those priced, the last leg of an advance
+			-- went round by twelve regions)
+			if avoidThreat and Cfg.safeWays and not (avoidThreat == 'arty' and mayEnterUnknown) then price = Move.Cost; end;
 			local ok, path = pcall(u.FindShortestPath, dest, price, false);
 			if ok and path and #path > 0 then
 				local limit = math.max(1, u.movementSpeed * 3);

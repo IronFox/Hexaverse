@@ -207,7 +207,7 @@ function Formation.Update()
 		end;
 		if f.restUntil and Sense.round < f.restUntil then
 			-- just started over
-		elseif count < f.want and f.stage ~= 'secure' then
+		elseif count < f.want and (f.stage == 'gather' or f.kind ~= 'take') then	-- (no one joins a take on the march: each came after it alone)
 			-- nearest first
 			local goal = Map.WorldCenter(Map.regions[f.staging]);
 			table.sort(free, function(a, b) return Dist2(a.location.world, goal) < Dist2(b.location.world, goal) end);
@@ -340,7 +340,8 @@ function Formation.Update()
 				end;
 				if f.leg < #f.route then
 					f.lastInside = Sense.round;	-- (on the march: not stalled)
-					if arrived >= math.ceil(f.count * 0.7) or Sense.round - f.legSince >= 15 then
+					local waited = Sense.round - f.legSince;
+					if arrived >= math.ceil(f.count * 0.7) or (waited >= 25 and arrived >= math.ceil(f.count * 0.5)) or waited >= 40 then
 						f.leg = f.leg + 1;
 						f.legSince = Sense.round;
 						Log(Name(f)..': on to region '..f.route[f.leg]..' at round '..Sense.round..' with '..arrived..' of '..f.count..' up');
@@ -451,7 +452,8 @@ function Formation.Orders(v)
 	if f.stage == 'gather' then return f.staging, false, f.staging, nil, f.rally; end;
 	if f.stage == 'advance' and f.route and f.entry then
 		-- (short of the last region the whole formation holds at the entry cell of the one it is on)
-		return f.route[f.leg], true, f.staging, f.entry, nil, f.leg < #f.route;
+		-- (the stationary shooters follow one region behind: posted in the staging region they stayed home)
+		return f.route[f.leg], true, f.route[math.max(1, f.leg - 1)], f.entry, nil, f.leg < #f.route;
 	end;
 	return f.region, true, (f.stage == 'secure') and f.region or f.staging, nil;
 end;
