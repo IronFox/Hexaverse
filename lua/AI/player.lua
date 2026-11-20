@@ -3970,12 +3970,25 @@ function Economy.AssignConstructor(u, index)
 	end;
 end;
 
+-- Fuel that is really to spare for one more generator: what the balance shows, less 10 for each
+-- generator a builder is on its way to (five were ordered in one round, each seeing the same
+-- 23 to spare), and nothing while one stands idle
+function Economy.FuelForGenerator()
+	local fuel = Economy.Resources().balance.fuel or 0;
+	if ((Sense.offByKind or {}).generator or 0) > 0 then return 0; end;
+	local gname = Types.generator and Types.generator.name;
+	for _,job in pairs(Mem.jobs or {}) do
+		if job.kind == gname then fuel = fuel - 10; end;
+	end;
+	return fuel;
+end;
+
 function Economy.BuildAt(u, loc, t, reachable)
 	Economy.buildWhy = nil;
 	if Economy.Capped(t) then Economy.buildWhy = 'capped'; return false; end;
 	-- a generator burns 10 fuel a round: one the fuel does not carry stands idle (12 built, 10 idle, in one match).
 	-- (The first is always built; with a fuel mine off for energy, Economy.Power trades it in.)
-	if t == Types.generator and Economy.Count(t) >= 1 and (Economy.Resources().balance.fuel or 0) < 10 then	-- (only while one already stands idle: the bare fuel number left a quarter of the starts with one generator)
+	if t == Types.generator and Economy.Count(t) >= 1 and Economy.FuelForGenerator() < 10 then	-- (only while one already stands idle: the bare fuel number left a quarter of the starts with one generator)
 		Economy.buildWhy = 'the fuel does not carry another generator (fuel mine first)'; return false;
 	end;
 	if loc ~= u.location then

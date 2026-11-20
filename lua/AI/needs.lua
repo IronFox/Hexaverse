@@ -1139,7 +1139,7 @@ function Needs.StructureOptions(constructorIndex)
 			local drop = nil;
 			if Economy.Capped(t) then drop = 'capped';
 			elseif t == Types.lab and labs >= labCap then drop = 'lab limit '..labCap;
-			elseif t == Types.generator and Economy.Count(t) >= 1 and (cur.balance.fuel or 0) < 10 then drop = 'the fuel does not carry it';
+			elseif t == Types.generator and Economy.Count(t) >= 1 and Economy.FuelForGenerator() < 10 then drop = 'the fuel does not carry it';
 			elseif starved and (t == Types.lab or t == Types.planeFactory or (t == Types.plant and Economy.Count(t) >= 1)) then drop = 'no power to spare'; end;
 			if drop then
 				if Sense.round % 10 == 0 then Needs.Note(o.name..' not on offer: '..drop); end;
