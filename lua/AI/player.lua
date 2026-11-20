@@ -143,6 +143,8 @@ Cfg = {
 	unitCaps = {},	-- turret name -> most vehicles of that kind (set from outside)
 	plantScrap = 60,	-- a plant with no exit by the terrain for this many rounds is scrapped (false: never)
 	plantBlockedRounds = 30,	-- a finished vehicle that cannot deploy is given up after this many rounds
+	scrapTrapped = true,	-- a unit shut in for ten rounds on the exit of a blocked plant is scrapped
+	plantKeepExits = 4,		-- exits of a standing plant that no structure may take (the site itself needs plantFreeCells)
 	plantFreeCells = 3,
 	autoSurveyors = true,	-- surveyors roam automated (the game's own prospecting), replaced when lost
 	mineCandidates = 6,		-- resource cells a constructor tries per mine order		-- free cells to keep around each vehicle plant for deployment
@@ -3005,13 +3007,13 @@ function Economy.SiteOK(loc, forMine)
 			for _,pn in ipairs(Economy.plantCells[nb.index].neighbors) do
 				if pn.index ~= idx and not Sense.structureCells[pn.index] and not Economy.claimed[pn.index] then pfree = pfree + 1; end;
 			end;
-			if pfree < Cfg.plantFreeCells then Economy.siteWhy = 'boxes in plant'; return false; end;
+			if pfree < Cfg.plantKeepExits then Economy.siteWhy = 'boxes in plant'; return false; end;
 			-- (and of those, the ones a vehicle can really leave by: never take the last two)
 			local pl = Economy.plantLocs and Economy.plantLocs[nb.index];
 			if pl then
 				local ex = Economy.Exits(pl);
 				local exWithout = Economy.Exits(pl, idx);
-				if exWithout < ex and exWithout < Cfg.plantFreeCells then Economy.siteWhy = 'takes a plant exit'; return false; end;
+				if exWithout < ex and exWithout < Cfg.plantKeepExits then Economy.siteWhy = 'takes a plant exit'; return false; end;
 			end;
 		end;
 	end;
@@ -3027,7 +3029,7 @@ function Economy.SiteOK(loc, forMine)
 		if two then
 			local ex = Economy.Exits(pl);
 			local exWithout = Economy.Exits(pl, idx);
-			if exWithout < ex and exWithout < Cfg.plantFreeCells then Economy.siteWhy = 'takes a way on from a plant exit'; return false; end;
+			if exWithout < ex and exWithout < Cfg.plantKeepExits then Economy.siteWhy = 'takes a way on from a plant exit'; return false; end;
 		end;
 	end;
 	-- the constructor must be able to move off the finished structure
@@ -4149,6 +4151,9 @@ function Economy.AssignConstructor(u, index)
 				score = math.abs(d - 9.0);
 			end;
 			score = score + n.movementCostsFromRoot * 0.05;
+			-- (a plant goes where it has the most exits, even a few cells further out: with three
+			-- exits and a base growing around it, two parked units shut it, match after match)
+			if want.type == Types.plant then score = score + (6 - (Economy.Exits(loc))) * 12; end;
 			-- on the peak itself: the highest ground of the region
 			if want.peak then score = score - (loc.height or 0) * 3; end;
 			-- clusters (labs): next to as many of the same kind as possible, each two neighbors add output
@@ -5760,6 +5765,14 @@ function Military.ClearPlants()
 			local idx = u.location and u.location.cell.index;
 			if u.type.isMobile and idx and urgent[idx] then
 				parked[u.id] = 2;
+				-- (a surveyor roaming under the game's automation walks back onto the exit each
+				-- time it is moved: from here on it follows the scripts)
+				if u.isAutomated and u.SetAutomation then
+					pcall(u.SetAutomation, false);
+					Military.keepScripted = Military.keepScripted or {};
+					Military.keepScripted[u.id] = true;
+					Log(u.niceName..': automation off, it stood on the exit of a blocked plant (cell '..idx..')');
+				end;
 			-- (an idle builder beside a plant makes room like everybody else: three of them, fresh
 			-- from the plant and with nothing to build, stood on its three exits and shut it)
 			elseif (role ~= 'constructor' or Move.IsIdle(u)) and u.type.isMobile and idx and near[idx] then
@@ -5815,6 +5828,23 @@ function Military.ClearPlants()
 					end;
 					if urgent[u.location.cell.index] and Sense.round % 10 == 0 then
 						Log(u.niceName..' stands on an exit of a blocked plant (cell '..u.location.cell.index..') and has nowhere to go ('..#reach..' cells in reach)');
+					end;
+					--[[
+					Truly shut in on the exit of a plant that has been blocked for a while: the unit can
+					never leave and the plant never delivers again (a builder with 0 cells in reach held
+					a plant shut for 90 rounds, a cannon in a dead end another; the army stayed at 3 with
+					minerals at the cap). After ten such rounds the unit is scrapped: one unit for a plant.
+					]]
+					if urgentLong[u.location.cell.index] and Cfg.scrapTrapped and u.Destroy then
+						Military.trapped = Military.trapped or {};
+						local t = Military.trapped[u.id];
+						if t and t.cell == u.location.cell.index and Sense.round - t.last <= 2 then t.n = t.n + 1; t.last = Sense.round;
+						else t = {cell = u.location.cell.index, n = 1, last = Sense.round}; Military.trapped[u.id] = t; end;
+						if t.n >= 10 then
+							Log(string.format('%s is shut in on the exit of a blocked plant (cell %d, %d cells in reach) for %d rounds: scrapped at round %d to free the plant', u.niceName, t.cell, #reach, t.n, Sense.round));
+							Military.trapped[u.id] = nil;
+							pcall(u.Destroy);
+						end;
 					end;
 				end);
 			end;
