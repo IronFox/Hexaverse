@@ -3502,7 +3502,7 @@ function Wall.Try(u)
 			w.lifted = Sense.round;
 			Log(string.format('Wall lifted at round %d after holding since round %d: opening a gate', Sense.round, w.firstComplete or w.complete));
 		elseif not w.complete and not w.firstComplete and Sense.round >= w.since + Cfg.wallGiveUp then
-			w.lifted = Sense.round; w.gateOpen = true;
+			w.lifted = Sense.round; w.gateOpen = not Cfg.wallTakeDown;	-- (what was built of it comes down again)
 			Log(string.format('Wall given up at round %d: not closed since round %d', Sense.round, w.since));
 		end;
 	end;
