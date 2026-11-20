@@ -4061,8 +4061,31 @@ function Economy.BuildAt(u, loc, t, reachable)
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 			-- one of my own units in the way is no reason to give up a site: it will move
+			local past = false;
 			if not ok or path == nil or #path == 0 then
 				ok, path = pcall(u.FindShortestPath, loc, nil, true);
+				past = true;
+			end;
+			-- (but not when the unit in the way stands right in front of it: two builders boxed
+			-- in beside a plant took orders the game rejected ("Unable to plot path"), and the
+			-- rejected construction then blocked every later job of theirs for 30 rounds and more)
+			if past and ok and path and #path > 0 then
+				if Economy.unitCellsRound ~= Sense.round then
+					Economy.unitCellsRound, Economy.unitCells = Sense.round, {};
+					for _,list in pairs(Sense.my) do
+						for _,v in ipairs(list) do
+							if v.location then Economy.unitCells[v.location.cell.index] = true; end;
+						end;
+					end;
+				end;
+				for i = 1, math.min(2, #path) do
+					local nl = path[i].location;
+					if nl and nl.cell.index ~= u.location.cell.index and Economy.unitCells[nl.cell.index] then
+						Economy.buildWhy = 'boxed in by my own units';
+						Needs.Note(u.niceName..': the way to the '..t.name..' site at cell '..loc.cell.index..' starts over cell '..nl.cell.index..', where a unit of mine stands. Waiting');
+						return false;
+					end;
+				end;
 			end;
 			if not ok or path == nil or #path == 0 then
 				Mem.blacklist[loc.cell.index] = Sense.round + 20;
