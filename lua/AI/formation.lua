@@ -73,6 +73,7 @@ function Formation.Want(kind, regionId, available)
 end;
 
 -- where to collect: the quiet neighbour of the target that is closest to what I have
+Formation.minSize = {};	-- target region -> units wanted at least before going in (Bridge.Take)
 Formation.stageAt = {};	-- target region -> staging region chosen from outside (Bridge.Stage)
 function Formation.Staging(regionId)
 	if Formation.stageAt[regionId] then return Formation.stageAt[regionId]; end;
@@ -90,6 +91,8 @@ end;
 -- enough of them together to go in?
 function Formation.Ready(f, arrived)
 	local share = (Sense.round - f.stageSince >= Formation.gatherRounds) and Formation.lateShare or Formation.gatherShare;
+	local least = f.kind == 'take' and Formation.minSize[f.region];
+	if least and arrived < math.ceil(least * Formation.gatherShare) then return false; end;
 	return arrived >= math.max(2, math.ceil(f.want * share));
 end;
 
@@ -274,6 +277,7 @@ function Formation.Update()
 				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
 				f.peak = f.count;
 			elseif f.stage == 'gather' then
+				if Formation.minSize[f.region] then f.want = math.max(f.want, Formation.minSize[f.region]); f.stageSince = math.max(f.stageSince, Sense.round - Formation.stallRounds + 1); end;
 				if Formation.Ready(f, near) and f.parked > 0 then
 					-- (all out first, then all go: Military.Stores empties the stores, six a store a round)
 					if not f.unload then Log(Name(f)..': ready with '..near..' of '..f.want..', '..f.parked..' come out of the stores at round '..Sense.round); end;

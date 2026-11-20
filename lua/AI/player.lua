@@ -4218,7 +4218,12 @@ function Economy.AssignConstructor(u, index)
 	Economy.fringeOK = want.kind == 'tower';
 	for _,n in ipairs(reach) do
 		local loc = n.location;
-		if not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false)
+		local inReg = true;
+		if want.inRegion then
+			local lr = Map.RegionOfLoc(loc);
+			inReg = lr ~= nil and lr.id == want.region;
+		end;
+		if inReg and not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false)
 			-- (a vehicle plant only where its vehicles can leave: level ground beside it)
 			and (want.type ~= Types.plant or Economy.Exits(loc) >= Cfg.plantFreeCells) then
 			local d = Dist2(loc.world, goal);
@@ -4233,6 +4238,8 @@ function Economy.AssignConstructor(u, index)
 			if want.type == Types.plant then score = score + (6 - (Economy.Exits(loc))) * 12; end;
 			-- on the peak itself: the highest ground of the region
 			if want.peak then score = score - (loc.height or 0) * 3; end;
+			-- (a store the army comes out of wants all six cells around it free)
+			if want.inRegion and want.type == Types.store then score = score + (6 - Economy.Exits(loc)) * 12; end;
 			-- clusters (labs): next to as many of the same kind as possible, each two neighbors add output
 			if want.near then
 				local nbs = 0;
@@ -4257,6 +4264,14 @@ function Economy.AssignConstructor(u, index)
 	if best then
 		Economy.claimed[best.location.cell.index] = true;
 		Economy.BuildAt(u, best.location, want.type, best);
+	elseif want.inRegion then
+		-- (it is wanted in that region and nowhere else: the builder goes there, round by round,
+		-- by the safe way. "At region 10" used to mean the nearest cell to it in reach, at home)
+		local reg = Map.regions[want.region];
+		if Move.Towards(u, goal, reg.centerCell, true, false) then
+			Needs.Started();
+			if Sense.round % 10 == 0 then Needs.Note(u.niceName..' is on its way to region '..want.region..' to build '..want.type.name..' there'); end;
+		end;
 	end;
 end;
 

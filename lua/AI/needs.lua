@@ -1295,9 +1295,19 @@ function Needs.NextStructure(constructorIndex)
 					if job.kind == Types.store.name and job.region == f.staging then n = n + 1; end;
 				end;
 				local wantN = math.min(5, math.max(Cfg.assaultStores, math.ceil((f.want or 0) / 6)));
-				if n < wantN then
+				-- (one builder has the job and keeps it till it is lost: asked of whoever came first,
+				-- every builder would walk off to the staging ground)
+				local me = Sense.my.constructor[constructorIndex];
+				Needs.storeBuilder = Needs.storeBuilder or {};
+				local who = Needs.storeBuilder[f.staging];
+				local there = false;
+				for _,c in ipairs(Sense.my.constructor) do
+					if c.id == who then there = true; break; end;
+				end;
+				if not there and me then who = me.id; Needs.storeBuilder[f.staging] = who; end;
+				if n < wantN and me and me.id == who then
 					if Sense.round % 10 == 0 then Needs.Note('Vehicle Store ordered for the gathering at region '..f.staging..' ('..n..' of '..wantN..')'); end;
-					local w = Needs.Floor({type = Types.store, kind = 'tower', region = f.staging});
+					local w = Needs.Floor({type = Types.store, kind = 'tower', region = f.staging, inRegion = true});
 					if w then return w; end;
 				end;
 			end;

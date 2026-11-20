@@ -101,7 +101,11 @@ function Bridge.Stage(region, staging)
 		if f.kind == 'take' and f.region == Region(region) and f.stage == 'gather' then f.staging = Formation.Staging(f.region); end;
 	end;
 end;
-function Bridge.Take(region, priority) Bridge.pins[Region(region)] = {kind = 'take', priority = priority or 1}; end;
+function Bridge.Take(region, priority, units)
+	Bridge.pins[Region(region)] = {kind = 'take', priority = priority or 1};
+	-- (units: it gathers until four fifths of that many stand ready, however long it takes)
+	Formation.minSize[Region(region)] = units and math.max(1, math.floor(tonumber(units) or 1)) or nil;
+end;
 function Bridge.Hold(region, priority) Bridge.pins[Region(region)] = {kind = 'hold', priority = priority or 1}; end;
 function Bridge.Avoid(region) Bridge.pins[Region(region)] = {kind = 'avoid', priority = 1}; end;
 function Bridge.Drop(region) Bridge.pins[Region(region)] = nil; end;
@@ -1030,7 +1034,7 @@ function Bridge.Help()
 	Add(L, 'Hexaverse bridge: you decide for faction %s, the player.lua scripts do the handwork.', Bridge.name);
 	Add(L, 'Every %d rounds (and when attacked after a quiet spell) state_%s_<round>.txt is written and the game waits', Bridge.every, Bridge.name);
 	Add(L, 'up to %d seconds for orders_%s_<round>.lua. Orders are Lua. Helpers:', Bridge.patience, Bridge.name);
-	Add(L, '  Bridge.Take(region [, priority])   get this region (build there, drive out who holds it)');
+	Add(L, '  Bridge.Take(region [, priority [, units]])   get this region (build there, drive out who holds it); units: do not go in with fewer than 4/5 of that many');
 	Add(L, '  Bridge.Hold(region [, priority])   keep and defend this region');
 	Add(L, '  Bridge.Avoid(region)   Bridge.Drop(region)');
 	Add(L, '  Bridge.Attack(region)  the army goes there now      Bridge.Defend()  stays home      Bridge.Auto()  scripts decide');
