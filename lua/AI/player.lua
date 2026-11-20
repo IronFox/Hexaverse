@@ -143,6 +143,7 @@ Cfg = {
 	unitCaps = {},	-- turret name -> most vehicles of that kind (set from outside)
 	plantScrap = 60,	-- a plant with no exit by the terrain for this many rounds is scrapped (false: never)
 	plantBlockedRounds = 30,	-- a finished vehicle that cannot deploy is given up after this many rounds
+	safeWays = true,		-- units not attacking take the way round known danger and round where vehicles were lost
 	scrapTrapped = true,	-- a unit shut in for ten rounds on the exit of a blocked plant is scrapped
 	plantKeepExits = 4,		-- exits of a standing plant that no structure may take (the site itself needs plantFreeCells)
 	plantFreeCells = 3,
@@ -1437,7 +1438,8 @@ function Score.Track()
 	-- my own
 	local now = {};
 	local function mine(u)
-		if u.id then now[u.id] = {structure = u.type and u.type.isStructure and true or false, tower = IsTower(u)}; end;
+		if u.id then now[u.id] = {structure = u.type and u.type.isStructure and true or false, tower = IsTower(u),
+			cell = u.location and not u.location.isSuborbital and u.location.cell or nil, mobile = u.type and u.type.isMobile and u.storedIn == nil}; end;
 	end;
 	for _,list in pairs(Sense.my) do for _,u in ipairs(list) do mine(u); end; end;
 	for _,u in ipairs(Sense.stored or {}) do mine(u); end;
@@ -1445,6 +1447,8 @@ function Score.Track()
 	for id,e in pairs(Score.mineBefore) do
 		if now[id] == nil and not Score.demolished[id] then
 			if e.structure and not e.tower then P.structures = P.structures - 1; else P.units = P.units - 1; end;
+			-- (where a vehicle of mine was lost: ways are counted around it for a while, see Move.Cost)
+			if e.mobile and e.cell and Move and Move.NoteDeath then Move.NoteDeath(e.cell); end;
 		end;
 	end;
 	Score.mineBefore = now;
@@ -1888,6 +1892,42 @@ function Move.Stuck(u)
 	return true;
 end;
 
+--[[
+Ways around what kills. The game's shortest path knows nothing of towers: units sent to gather
+next door took the straight way through the reach of two missile towers, one of them never
+sensed, and of an army of 30 a third was lost on the way to its own staging region, while the
+rest, refusing the dangerous step, never left home. So the path is asked for with a price on
+cells in reach of known hostile weapons and on cells where vehicles of mine were lost in the
+last 80 rounds (and their neighbours): the way goes round if there is one.
+]]
+Move.deaths = {};	-- cell index -> {round, n}
+function Move.NoteDeath(cell)
+	local function mark(c, w)
+		local d = Move.deaths[c.index];
+		if d and Sense.round - d.round < 80 then d.n = d.n + w; d.round = Sense.round;
+		else Move.deaths[c.index] = {round = Sense.round, n = w}; end;
+	end;
+	mark(cell, 2);
+	for _,nb in ipairs(cell.neighbors or {}) do mark(nb, 1); end;
+end;
+Move.costCache = {round = -1, at = {}};
+function Move.Cost(loc, cost)
+	local ok, rs = pcall(function()
+		if Move.costCache.round ~= Sense.round then Move.costCache = {round = Sense.round, at = {}}; end;
+		local idx = loc.cell.index;
+		local extra = Move.costCache.at[idx];
+		if extra == nil then
+			extra = 0;
+			local d = Move.deaths[idx];
+			if d and Sense.round - d.round < 80 then extra = extra + 15 * math.min(4, d.n); end;
+			if Move.IsDangerous(loc) then extra = extra + 40; end;
+			Move.costCache.at[idx] = extra;
+		end;
+		return cost + extra;
+	end);
+	return ok and rs or cost;
+end;
+
 function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 	-- (Move.Stuck is not applied to every unit here: with it the losers against the Nexus died at
 	-- a median of round 67 where it had been 137. It is used where the cause is known, the AA posts.)
@@ -1899,7 +1939,8 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 	if goalCell then
 		local dest = Move.GroundAt(u, goalCell);
 		if dest and dest ~= u.location then
-			local ok, path = pcall(u.FindShortestPath, dest, nil, false);
+			-- (keeping out of danger: the way that costs least with danger priced in)
+			local ok, path = pcall(u.FindShortestPath, dest, (avoidThreat and Cfg.safeWays) and Move.Cost or nil, false);
 			if ok and path and #path > 0 then
 				local limit = math.max(1, u.movementSpeed * 3);
 				local pick = path[#path];

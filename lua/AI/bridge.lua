@@ -652,7 +652,7 @@ function Bridge.RunPosted()
 			end;
 			if Move.IsIdle(u) or (Sense.round - post.since) % 5 == 0 then
 				-- the whole way at once, through my own units if they stand in it; why not, if not
-				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
+				local ok, path = pcall(u.FindShortestPath, loc, Cfg.safeWays and Move.Cost or nil, false);	-- (round known danger and where vehicles were lost: an EMP posted next door walked through two towers' reach)
 				if not ok or path == nil or #path == 0 then ok, path = pcall(u.FindShortestPath, loc, nil, true); end;
 				-- (the engine can refuse a path the unit itself found, round after round: after 5 rounds
 				-- on the spot the unit goes step by step, to the reachable cell nearest the post)
