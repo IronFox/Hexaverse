@@ -133,6 +133,9 @@ function Bridge.Switch(typeName, on, count)
 				-- (what the outside player switched off stays off: the power care leaves it alone)
 				Mem.keepOff = Mem.keepOff or {};
 				Mem.keepOff[st.id] = (not on) and true or nil;
+				-- (and what was switched on from outside is not traded away for 30 rounds)
+				Mem.keepOn = Mem.keepOn or {};
+				Mem.keepOn[st.id] = on and Sense.round or nil;
 			end;
 		end;
 	end;

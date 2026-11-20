@@ -1994,7 +1994,10 @@ mine or generator is off for lack of energy, labs give way.
 local function IsFuelMine(u)
 	if u.type ~= Types.mine or not u.location then return false; end;
 	local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', u.location.cell);
-	return ok and lvl ~= nil and lvl > 0;
+	if ok and lvl ~= nil and lvl > 0 then return true; end;
+	-- (asked both ways: a mine on a fuel cell was once traded away as a mineral mine)
+	local ok2, all = pcall(Game.Grid.GetNaturalResourcesAt, u.location.cell);
+	return ok2 and all ~= nil and (all.fuel or 0) > 0;
 end;
 
 local function OffRank(u)
@@ -2038,17 +2041,21 @@ function Economy.Power()
 		if fuelMine then
 			local give, running = nil, 0;
 			for _,st in ipairs(Sense.myStructures) do
-				if st.type == Types.mine and st.isEnabled ~= false and st.Enable then
-					local ok, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', st.location.cell);
-					if not (ok and lvl and lvl > 0) then running = running + 1; give = give or st; end;
+				-- (never one that was switched on in the last 20 rounds, by the care or from outside)
+				local t0 = Mem.onTried and Mem.onTried[st.id];
+				if st.type == Types.mine and st.isEnabled ~= false and st.Enable and not IsFuelMine(st)
+					and not (t0 and Sense.round - t0.round < 20) and not (Mem.keepOn and Mem.keepOn[st.id] and Sense.round - Mem.keepOn[st.id] < 30) then
+					running = running + 1; give = give or st;
 				end;
 			end;
 			-- (no mineral mine running to trade: a lab or tower gives way instead, below)
 			if give and pcall(give.Enable, false) then
 				Mem.shed[give.id] = Sense.round;
 				local okOn = pcall(fuelMine.Enable, true);
-				Log(string.format('Mineral mine switched off at round %d for the fuel mine on cell %d (%s): energy spare %d, fuel spare %d, %d generator(s) idle',
-					Sense.round, fuelMine.location.cell.index, okOn and 'switched on' or 'could not be switched on', energy, fuel, Sense.offByKind.generator or 0));
+				local gl = select(2, pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', give.location.cell));
+				local gm = select(2, pcall(Game.Grid.GetNaturalResourceAt, 'Minerals', give.location.cell));
+				Log(string.format('Mineral mine on cell %d (fuel %s, minerals %s) switched off at round %d for the fuel mine on cell %d (%s): energy spare %d, fuel spare %d, %d generator(s) idle',
+					give.location.cell.index, tostring(gl), tostring(gm), Sense.round, fuelMine.location.cell.index, okOn and 'switched on' or 'could not be switched on', energy, fuel, Sense.offByKind.generator or 0));
 				return;
 			end;
 		end;
