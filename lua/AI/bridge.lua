@@ -120,6 +120,7 @@ function Bridge.Cap(typeName, n)
 	end;
 	if Game.Type.units[typeName] == nil then error('no such type: '..tostring(typeName)..' (structures by their name, vehicles by their turret, e.g. Terraformer)', 2); end;
 	Cfg.caps[typeName] = n and tonumber(n) or nil;
+	Bridge.Out('%s capped at %s (standing or on order now: %d; what stands stays, nothing more is built)', typeName, tostring(n), Economy.Standing(Game.Type.units[typeName]));
 end;
 
 -- Switches structures of a type off or on (off: they draw no power). Returns how many were switched.
@@ -139,7 +140,13 @@ function Bridge.Switch(typeName, on, count)
 			end;
 		end;
 	end;
-	Bridge.Out('%d %s switched %s', n, typeName, on and 'on' or 'off');
+	local reads = {};
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.type and string.gsub(st.type.name, ':Tower$', ' Tower') == typeName then
+			reads[#reads+1] = string.format('cell %d %s', st.location.cell.index, st.isEnabled == false and 'off' or 'on');
+		end;
+	end;
+	Bridge.Out('%d %s switched %s (the game now reads: %s)', n, typeName, on and 'on' or 'off', table.concat(reads, ', '));
 	return n;
 end;
 

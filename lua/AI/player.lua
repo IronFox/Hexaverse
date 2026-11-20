@@ -124,6 +124,8 @@ Cfg = {
 	useMarkers = true,		-- remembered hostile contacts (the game's markers) keep their reach contested
 	powerCare = true,		-- switch structures the engine switched off on again in order of need, labs give way
 	wantLabsMax = 15,		-- labs late and rich, while T2 is out of reach
+	towersPerRegionMax = 2,	-- towers of one kind for each region held (plus one), unless capped from outside
+	uraniumReserve = 150,	-- uranium kept for what fires it (EMP): below it a reactor core rests while the energy carries that
 	caps = {},				-- structure type name -> most to have (empty: no caps)
 	wantLabsRich = 6,		-- labs while minerals pile up
 	richMinerals = 400,		-- minerals from which surplus spending kicks in
@@ -1982,7 +1984,16 @@ function Economy.Standing(t)
 end;
 
 function Economy.Capped(t)
-	local cap = t and Cfg.caps and Cfg.caps[(string.gsub(t.name, ':Tower$', ' Tower'))];
+	if t == nil then return false; end;
+	local cap = Cfg.caps and Cfg.caps[(string.gsub(t.name, ':Tower$', ' Tower'))];
+	-- (towers without a cap from outside: so many of a kind for each region held and no more. With
+	-- minerals at the cap one match put up 22 rocket, 21 missile and 17 radar towers while the
+	-- plants stood blocked)
+	if cap == nil and t.isStructure and t.turretType ~= nil and Cfg.towersPerRegionMax then
+		local regs = 0;
+		for _ in pairs(Sense.mine or {}) do regs = regs + 1; end;
+		cap = Cfg.towersPerRegionMax * math.max(1, regs) + 1;
+	end;
 	return cap ~= nil and Economy.Standing(t) >= cap;
 end;
 
@@ -2017,6 +2028,52 @@ local function OffRank(u)
 	if u.type == Types.mineralContainer then return 4; end;
 	if u.type == Types.lab then return 9; end;
 	return 6;
+end;
+
+--[[
+Uranium for what fires it. A reactor core burns what a port brings in (5 a round), so with one
+running the store never grows and an EMP has nothing to fire (one match: 85 to 125 in 100
+rounds). While a unit of mine fires uranium and the store is under the reserve, a reactor core
+rests if the energy carries that (40 to spare and nothing off for lack of power); it comes back
+when the store is filled or something goes off.
+]]
+function Economy.UraniumCare()
+	if not Cfg.powerCare or not Types.reactor or not Cfg.uraniumReserve then return; end;
+	Mem.uraniumRest = Mem.uraniumRest or {};
+	local cur = Economy.Resources();
+	local store, energy = cur.storage.uranium or 0, cur.balance.energy or 0;
+	for _,st in ipairs(Sense.myStructures) do
+		if st.type == Types.reactor and Mem.uraniumRest[st.id] and st.Enable then
+			if store >= Cfg.uraniumReserve + 50 or #Sense.off > 0 then
+				if pcall(st.Enable, true) then
+					Mem.uraniumRest[st.id] = nil;
+					if Mem.keepOff then Mem.keepOff[st.id] = nil; end;
+					Log(string.format('Reactor Core on cell %d switched on again at round %d (uranium %d, %d structure(s) off)', st.location.cell.index, Sense.round, store, #Sense.off));
+				end;
+			end;
+			return;
+		end;
+	end;
+	if store >= Cfg.uraniumReserve or energy < 50 or #Sense.off > 0 then return; end;
+	local fires = false;
+	local function look(u)
+		local tt = u.type and u.type.turretType;
+		if tt and tt.name and (string.find(tt.name, 'EMP', 1, true) or string.find(tt.name, 'Doomsday', 1, true)) then fires = true; end;
+	end;
+	for _,list in pairs(Sense.my) do for _,u in ipairs(list) do look(u); end; end;
+	for _,u in ipairs(Sense.stored or {}) do look(u); end;
+	if not fires then return; end;
+	for _,st in ipairs(Sense.myStructures) do
+		if st.type == Types.reactor and st.isEnabled ~= false and st.Enable and not (Mem.keepOff and Mem.keepOff[st.id]) then
+			if pcall(st.Enable, false) then
+				Mem.uraniumRest[st.id] = Sense.round;
+				Mem.keepOff = Mem.keepOff or {};
+				Mem.keepOff[st.id] = true;
+				Log(string.format('Reactor Core on cell %d rests from round %d: uranium %d under the reserve of %d for what fires it, energy spare %d', st.location.cell.index, Sense.round, store, Cfg.uraniumReserve, energy));
+			end;
+			return;
+		end;
+	end;
 end;
 
 function Economy.Power()
@@ -5547,6 +5604,7 @@ function Execute()
 	SafeCall('Needs', Needs.Update);
 	SafeCall('NeedsReport', Needs.Report);
 
+	SafeCall('UraniumCare', Economy.UraniumCare);
 	SafeCall('Power', Economy.Power);
 	SafeCall('Research', Economy.Research);
 	SafeCall('Production', Economy.Production);
