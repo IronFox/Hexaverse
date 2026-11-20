@@ -265,7 +265,8 @@ function Formation.Update()
 			-- (where to gather: beside a store of the staging region if one stands, else on the cell
 			-- of it that lies farthest from the target. Spread over all its cells, some stood in
 			-- the reach of the target's towers)
-			if f.stage == 'gather' and (f.rally == nil or f.rallyFor ~= f.staging or Sense.round % 10 == 0) then
+			if f.atHome then f.rally = nil; end;
+			if f.stage == 'gather' and not f.atHome and (f.rally == nil or f.rallyFor ~= f.staging or Sense.round % 10 == 0) then
 				f.rallyFor = f.staging;
 				f.rally = nil;
 				local tc = Map.WorldCenter(target);

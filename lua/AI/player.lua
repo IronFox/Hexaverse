@@ -5188,6 +5188,31 @@ function Military.Stores()
 						break;
 					end;
 				end;
+				-- (no store in reach: towards the nearest one that may hold it)
+				if not Military.stashing[v.id] then
+					local bestSt, bestD = nil, nil;
+					for _,st in ipairs(Sense.stores) do
+						local sr = Map.RegionOfLoc(st.location);
+						if sr and (sr.id == f.staging or (f.atHome and Sense.mine[sr.id])) and (not st.CanStore or select(2, pcall(st.CanStore, v)) ~= false) then
+							local d = Dist2(v.location.world, st.location.world);
+							if bestD == nil or d < bestD then bestSt, bestD = st, d; end;
+						end;
+					end;
+					if bestSt then
+						local nbBest, nbD = nil, nil;
+						for _,nb in ipairs(bestSt.location.cell.neighbors or {}) do
+							if not Sense.structureCells[nb.index] then
+								local w = {x = nb.center.x * Map.groundRadius, y = nb.center.y * Map.groundRadius, z = nb.center.z * Map.groundRadius};
+								local d = Dist2(v.location.world, w);
+								if nbD == nil or d < nbD then nbBest, nbD = nb, d; end;
+							end;
+						end;
+						if nbBest and nbBest.index ~= v.location.cell.index then
+							if not Move.IsIdle(v) then v.ClearSafeTasks(); end;
+							if Move.Towards(v, bestSt.location.world, nbBest, true, false) then Military.stashing[v.id] = true; end;
+						end;
+					end;
+				end;
 			end;
 		end;
 	end;

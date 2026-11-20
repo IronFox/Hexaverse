@@ -413,7 +413,7 @@ function Significance.Direct()
 		-- (a formation needs time to gather before it goes in)
 		local limit = Significance.takeRounds * (Cfg.useFormations and 2 or 1);
 		if d.kind == 'take' and (mine or (taken and taken >= d.issued)) then Settle(d, 'achieved');
-		elseif d.kind == 'take' and age >= limit then
+		elseif d.kind == 'take' and age >= limit and not d.pinned then	-- (what the outside player ordered stands till it is withdrawn: its formation waits for its size)
 			Settle(d, 'failed');
 			Significance.failed[d.region] = Sense.round;
 		elseif d.kind == 'hold' and not mine then Settle(d, 'failed');
