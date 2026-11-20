@@ -2712,7 +2712,7 @@ function Economy.Exits(loc, skipIdx)
 				-- tank stood on such exits with not a single cell in reach)
 				local on = 0;
 				for _,far in ipairs(nb.neighbors or {}) do
-					if not ring[far.index] and not (Sense.structureCells and Sense.structureCells[far.index]) then
+					if not ring[far.index] and far.index ~= skipIdx and not (Sense.structureCells and Sense.structureCells[far.index]) then
 						for j2 = -1, 1 do
 							if Clear(far, h + found + j2) and not Clear(far, h + found + j2 - 1) then on = on + 1; break; end;
 						end;
@@ -2799,6 +2799,21 @@ function Economy.SiteOK(loc, forMine)
 				local exWithout = Economy.Exits(pl, idx);
 				if exWithout < ex and exWithout < Cfg.plantFreeCells then Economy.siteWhy = 'takes a plant exit'; return false; end;
 			end;
+		end;
+	end;
+	-- (nor the ways on from its exits, one ring further out: a plant went from 4 exits to none as
+	-- the base grew around it, each structure taking a way on from an exit)
+	for pidx,pl in pairs(Economy.plantLocs or {}) do
+		local two = false;
+		for _,nb in ipairs(loc.cell.neighbors) do
+			if not two then
+				for _,n2 in ipairs(nb.neighbors or {}) do if n2.index == pidx then two = true; break; end; end;
+			end;
+		end;
+		if two then
+			local ex = Economy.Exits(pl);
+			local exWithout = Economy.Exits(pl, idx);
+			if exWithout < ex and exWithout < Cfg.plantFreeCells then Economy.siteWhy = 'takes a way on from a plant exit'; return false; end;
 		end;
 	end;
 	-- the constructor must be able to move off the finished structure
