@@ -4061,6 +4061,22 @@ function Economy.BuildAt(u, loc, t, reachable)
 	if t == Types.generator and Economy.Count(t) >= 1 and Economy.FuelForGenerator() < 10 then	-- (only while one already stands idle: the bare fuel number left a quarter of the starts with one generator)
 		Economy.buildWhy = 'the fuel does not carry another generator (fuel mine first)'; return false;
 	end;
+	-- (on the cell it stands on, the builder has to step off to finish: with nowhere to step to,
+	-- the game keeps the begun construction for good, "Unable to automatically relocate", 85 rounds
+	-- in one match)
+	if loc.cell.index == u.location.cell.index then
+		local okr, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed or 1), true, false, false, true);
+		local free = false;
+		for _,n in ipairs(okr and reach or {}) do
+			local l = n.location;
+			if l and not l.isSuborbital and l.cell.index ~= loc.cell.index and not Sense.structureCells[l.cell.index] then free = true; break; end;
+		end;
+		if not free then
+			Economy.buildWhy = 'no cell to step off to';
+			Needs.Note(u.niceName..': not building '..t.name..' on its own cell '..loc.cell.index..', it has no cell to step off to');
+			return false;
+		end;
+	end;
 	if loc ~= u.location then
 		if reachable == nil then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
