@@ -73,7 +73,9 @@ function Formation.Want(kind, regionId, available)
 end;
 
 -- where to collect: the quiet neighbour of the target that is closest to what I have
+Formation.stageAt = {};	-- target region -> staging region chosen from outside (Bridge.Stage)
 function Formation.Staging(regionId)
+	if Formation.stageAt[regionId] then return Formation.stageAt[regionId]; end;
 	local best, bestH = nil, nil;
 	for nb,_ in pairs(Map.regions[regionId].neighbors) do
 		local reg = Map.regions[nb];
@@ -139,7 +141,7 @@ function Formation.Update()
 		for _,d in ipairs(Significance.Directions(kind)) do
 			if not have[kind..':'..d.region] and (kind ~= 'take' or takes < Formation.maxTake) then
 				local f = {
-					id = Formation.nextId, kind = kind, region = d.region, issued = d.issued, priority = d.priority,
+					id = Formation.nextId, kind = kind, region = d.region, issued = d.issued, priority = d.priority, pinned = d.pinned,
 					members = {}, want = Formation.Want(kind, d.region), peak = 0, lost = 0,
 					stage = kind == 'take' and 'gather' or 'garrison', born = Sense.round, stageSince = Sense.round,
 				};
@@ -184,6 +186,14 @@ function Formation.Update()
 		for _ in pairs(f.members) do count = count + 1; end;
 		-- while gathering, the size follows what is available
 		if f.stage == 'gather' then f.want = math.max(count, Formation.Want('take', f.region, spare + count)); end;
+		-- (a take the outside player ordered gets all but the home reserve, whatever the pressure
+		-- at home: 9 of 47 units went for the port, the pressure rule kept the rest, and they
+		-- died at home's edge all the same)
+		local spareHere = spare;
+		if f.pinned and f.kind == 'take' then
+			spareHere = #free - Formation.homeReserve;
+			if f.stage == 'gather' then f.want = math.max(f.want, math.min(Formation.maxSize, count + math.max(0, spareHere))); end;
+		end;
 		if f.restUntil and Sense.round < f.restUntil then
 			-- just started over
 		elseif count < f.want and f.stage ~= 'secure' then
@@ -191,13 +201,14 @@ function Formation.Update()
 			local goal = Map.WorldCenter(Map.regions[f.staging]);
 			table.sort(free, function(a, b) return Dist2(a.location.world, goal) < Dist2(b.location.world, goal) end);
 			local i = 1;
-			while count < f.want and spare > 0 and i <= #free do
+			while count < f.want and spareHere > 0 and i <= #free do
 				local u = free[i];
 				if Formation.of[u.id] == nil then
 					f.members[u.id] = true;
 					Formation.of[u.id] = f;
 					count = count + 1;
 					spare = spare - 1;
+					spareHere = spareHere - 1;
 				end;
 				i = i + 1;
 			end;

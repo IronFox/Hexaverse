@@ -22,6 +22,7 @@ Bridge.patience seconds, then carries on with the standing orders.
 Helpers for the orders file:
   Bridge.Take(region [, priority])   direction: get this region (build there, drive out who holds it)
   Bridge.Hold(region [, priority])   direction: keep this region, defend it
+  Bridge.Stage(region, staging)      with formations on: the units for Take(region) gather in that staging region first
   Bridge.Avoid(region)               stay out of it
   Bridge.Drop(region)                withdraw what was said about the region
   Bridge.Attack(region)              the army goes for this region now, however strong it is
@@ -93,6 +94,13 @@ local function Region(id)
 	return id;
 end;
 
+-- A take formation for this region gathers in that region (nil: the scripts choose again)
+function Bridge.Stage(region, staging)
+	Formation.stageAt[Region(region)] = staging and Region(staging) or nil;
+	for _,f in ipairs(Formation.list or {}) do
+		if f.kind == 'take' and f.region == Region(region) and f.stage == 'gather' then f.staging = Formation.Staging(f.region); end;
+	end;
+end;
 function Bridge.Take(region, priority) Bridge.pins[Region(region)] = {kind = 'take', priority = priority or 1}; end;
 function Bridge.Hold(region, priority) Bridge.pins[Region(region)] = {kind = 'hold', priority = priority or 1}; end;
 function Bridge.Avoid(region) Bridge.pins[Region(region)] = {kind = 'avoid', priority = 1}; end;
@@ -706,6 +714,8 @@ do
 			-- in turn, "secure, contested again", and lost 60 units in 80 rounds of "defend")
 			if d.kind == 'take' and not d.pinned and Bridge.posture == 'defend' then
 				-- dropped
+			elseif d.pinned and (pin == nil or pin.kind ~= d.kind) then
+				-- (what the outside player withdrew is gone at once: a dropped take stood on for 10 rounds and more)
 			elseif pin == nil or pin.kind == d.kind then
 				keep[#keep+1] = d;
 				have[d.kind..':'..d.region] = d;
