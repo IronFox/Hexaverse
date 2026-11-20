@@ -682,6 +682,7 @@ end;
 -- A structure order was placed: the pending choice worked out
 function Needs.Started()
 	Needs.pending = nil;
+	if Needs.floorPending then Needs.floorFails[Needs.floorPending] = 0; Needs.floorPending = nil; end;
 end;
 
 --[[
@@ -1169,9 +1170,37 @@ end;
 -- Personalities may adjust options here (veto, boost)
 function Needs.AdjustStructureOptions(opts) return opts; end;
 
+--[[
+The floors below (never no plant, generators and containers not under a minimum, towers at
+home) hand a builder their order before anything is weighed. One that cannot be built must not
+hold up everything else: the generator floor did (130 to 170 rounds in two duels), then the
+container floor (54 rounds, minerals at the cap, two generators left). So every floor order
+goes through here: if it did not become a build order three times running, that floor rests
+for 15 rounds and the ordinary choice goes on.
+]]
+Needs.floorFails, Needs.floorOff = {}, {};
+function Needs.Floor(want)
+	if want == nil or want.type == nil then return want; end;
+	local k = want.type.name;
+	if (Needs.floorOff[k] or -1) > Sense.round then return nil; end;
+	Needs.floorPending = k;
+	return want;
+end;
+
 function Needs.NextStructure(constructorIndex)
 	-- the last choice never turned into an order
 	if Needs.pending then Needs.Failed(Needs.pending); Needs.pending = nil; end;
+	-- (a floor's order that did not turn into a build order three times running rests for 15 rounds)
+	if Needs.floorPending then
+		local k = Needs.floorPending;
+		Needs.floorPending = nil;
+		Needs.floorFails[k] = (Needs.floorFails[k] or 0) + 1;
+		if Needs.floorFails[k] >= 3 then
+			Needs.floorFails[k] = 0;
+			Needs.floorOff[k] = Sense.round + 15;
+			Needs.Note('the floor for '..k..' came to nothing three times: the ordinary choice goes on for 15 rounds');
+		end;
+	end;
 	local cur = Economy.Resources();
 	local minerals = cur.storage.minerals or 0;
 	-- A faction without a mineral container is dead by the server's rule, and with its only one
@@ -1192,7 +1221,7 @@ function Needs.NextStructure(constructorIndex)
 			for id,_ in pairs(Sense.mine) do
 				if not with[id] and Sense.Threat(Map.regions[id]) <= 0 and (region == nil or id < region) then region = id; end;
 			end;
-			return {type = mc, kind = 'base', region = n > 0 and region or nil};
+			do local w = Needs.Floor({type = mc, kind = 'base', region = n > 0 and region or nil}); if w then return w; end; end;
 		end;
 	end;
 	-- (Only against a Nexus that has shown more than ports, Mem.nexusActive: where it merely owns
@@ -1210,7 +1239,7 @@ function Needs.NextStructure(constructorIndex)
 		if rt and rdr and Mem.homeRegion and Types.IsUnlocked(rdr) and Economy.Count(rt) >= 1 and Economy.Count(rdr) < 1
 				and minerals >= Cost(rdr) then
 			Needs.Note('Radar Tower ordered at home for the towers');
-			return {type = rdr, kind = 'tower', region = Mem.homeRegion};
+			do local w = Needs.Floor({type = rdr, kind = 'tower', region = Mem.homeRegion}); if w then return w; end; end;
 		end;
 		-- with the radar standing, the long arm: a missile launcher tower reaches 7 cells but sees 2,
 		-- a rocket tower reaches 4 and sees 3
@@ -1223,7 +1252,7 @@ function Needs.NextStructure(constructorIndex)
 				and (nextDoor or (Sense.nexus and Mem.nexusActive and Sense.round >= 6
 					and Economy.Count(Types.mine) >= 2 and Economy.Count(Types.generator) >= 2)) then
 			Needs.Note('early '..et.name..' ordered at home: '..standing..' standing'..(nextDoor and ' (a port next door)' or ''));
-			return {type = et, kind = 'tower', region = Mem.homeRegion};
+			do local w = Needs.Floor({type = et, kind = 'tower', region = Mem.homeRegion}); if w then return w; end; end;
 		end;
 	end;
 	-- AA inside the wall, seen planes or not: the Nexus scouts with sensor drones, and what they see gets raided
@@ -1235,7 +1264,7 @@ function Needs.NextStructure(constructorIndex)
 		if Types.aaTower and Types.IsUnlocked(Types.aaTower) and Mem.homeRegion
 				and Economy.Count(Types.aaTower) < wantAA and minerals >= Cost(Types.aaTower) then
 			Needs.Note('AA Tower ordered at home: '..Economy.Count(Types.aaTower)..' standing');
-			return {type = Types.aaTower, kind = 'tower', region = Mem.homeRegion};
+			do local w = Needs.Floor({type = Types.aaTower, kind = 'tower', region = Mem.homeRegion}); if w then return w; end; end;
 		end;
 		-- (and one within sight of whatever a bomber goes for, see Economy.AAGap)
 		if settled and minerals >= Cost(Types.aaTower or Types.mine) and not Economy.Capped(Types.aaTower) then
@@ -1246,14 +1275,14 @@ function Needs.NextStructure(constructorIndex)
 		if settled and (Sense.AirMatters() or Mem.wall) and Types.radarTower and Types.IsUnlocked(Types.radarTower) and Mem.homeRegion
 				and Economy.Count(Types.radarTower) < 1 and minerals >= Cost(Types.radarTower) then
 			Needs.Note('Radar Tower ordered at home');
-			return {type = Types.radarTower, kind = 'tower', region = Mem.homeRegion};
+			do local w = Needs.Floor({type = Types.radarTower, kind = 'tower', region = Mem.homeRegion}); if w then return w; end; end;
 		end;
 	end;
 	-- the same for what makes the energy and the vehicles: never none, and generators not below a floor
 	if Sense.round >= 20 then
 		if Types.plant and Types.IsUnlocked(Types.plant) and Economy.Count(Types.plant) == 0 and minerals >= Cost(Types.plant) then
 			Needs.Note('Vehicle Plant ordered: none standing');
-			return {type = Types.plant, kind = 'base'};
+			do local w = Needs.Floor({type = Types.plant, kind = 'base'}); if w then return w; end; end;
 		end;
 		if Types.generator and Economy.Count(Types.generator) < Cfg.minGenerators and minerals >= Cost(Types.generator) then
 			-- (only one the fuel carries: Economy.BuildAt refuses any other, and with the floor
@@ -1262,13 +1291,13 @@ function Needs.NextStructure(constructorIndex)
 			-- with no site for one the ordinary choice goes on)
 			if Economy.Count(Types.generator) < 1 or Economy.FuelForGenerator() >= 10 then
 				Needs.Note('Generator ordered: '..Economy.Count(Types.generator)..' standing, '..Cfg.minGenerators..' wanted');
-				return {type = Types.generator, kind = 'base'};
+				do local w = Needs.Floor({type = Types.generator, kind = 'base'}); if w then return w; end; end;
 			end;
 			local fm = (Needs.floorFuelTried ~= Sense.round and (Economy.noMineSite.Fuel or -99) < Sense.round - 10) and Economy.MineReq('Fuel') or nil;	-- (no site found: asked again after 10 rounds)
 			if fm and minerals >= Cost(Types.mine) then
 				Needs.floorFuelTried = Sense.round;	-- (one builder a round: the rest take the ordinary choice)
 				Needs.Note('Fuel mine ordered: '..Economy.Count(Types.generator)..' generator(s) standing, '..Cfg.minGenerators..' wanted, the fuel carries no further one');
-				return fm;
+				do local w = Needs.Floor(fm); if w then return w; end; end;
 			end;
 		end;
 	end;
