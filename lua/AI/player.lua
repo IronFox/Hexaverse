@@ -225,6 +225,7 @@ function Types.Resolve()
 	Types.plant = u['Vehicle Plant'];
 	Types.lab = u['Laboratory'];
 	Types.store = u['Vehicle Store'];
+	Types.uraniumStorage = u['Uranium Storage'];
 	Types.mineralContainer = u['Mineral Container'];
 	Types.planeFactory = u['Plane Factory'];
 	Types.bomber = u['Bomber'];
@@ -4210,9 +4211,14 @@ function Economy.NextVehicle()
 			for _,u in ipairs(Sense.stored or {}) do
 				if u.type and u.type.turretType and u.type.turretType.name == tn then n = n + 1; end;
 			end;
-			for _,p in ipairs(Sense.plants) do
-				for _,q in ipairs(p.productionQueue or {}) do if string.find(q.name or '', tn, 1, true) then n = n + 1; end; end;
+			-- (what the plants were told to make in the last 25 rounds: a queue shows names like
+			-- 'Hoverformer', not the turret, so three plants each queued one more than the cap)
+			Economy.capOrders = Economy.capOrders or {};
+			local keep = {};
+			for _,r in ipairs(Economy.capOrders[tn] or {}) do
+				if Sense.round - r < 25 then keep[#keep+1] = r; n = n + 1; end;
 			end;
+			Economy.capOrders[tn] = keep;
 			if n >= cap then
 				if Cfg.unitCaps['Cannon'] == nil and tn ~= 'Cannon' and tn ~= 'Artillery' then t = Tank(); else t = nil; end;
 			end;
@@ -4445,6 +4451,12 @@ function Economy.Production()
 			if t then
 				local ok, err = pcall(p.BuildMobile, t);
 				if ok then
+					if t.turretType and Cfg.unitCaps and Cfg.unitCaps[t.turretType.name] then
+						Economy.capOrders = Economy.capOrders or {};
+						local tn = t.turretType.name;
+						Economy.capOrders[tn] = Economy.capOrders[tn] or {};
+						table.insert(Economy.capOrders[tn], Sense.round);
+					end;
 					Log(p.niceName..': producing '..t.name);
 				else
 					Log(p.niceName..': cannot produce '..t.name..': '..tostring(err));

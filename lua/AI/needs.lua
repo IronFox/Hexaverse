@@ -1021,6 +1021,12 @@ function Needs.StructureOptions(constructorIndex)
 		-- in store: one reactor core on plain ground (40 energy for 5 uranium a round)
 		add({type = Types.reactor, kind = 'base'}, {energy = 1.5, spend = 0.3}, 'Reactor Core (plain site)');
 	end;
+	-- uranium comes in (a port gives 5 a round) and nothing keeps it: one store, once the economy
+	-- stands. What fires uranium (EMP, bombs) and a reactor in lean rounds live off it
+	if Types.uraniumStorage and Types.IsUnlocked(Types.uraniumStorage) and Economy.Count(Types.uraniumStorage) < 1
+		and (max.balance.uranium or 0) > 0 and Economy.Count(Types.mine) >= 5 and Economy.Count(Types.generator) >= 3 then
+		add({type = Types.uraniumStorage, kind = 'base'}, {energy = 0.4, spend = 0.5}, 'Uranium Storage');
+	end;
 	if Types.lab then
 		-- labs cluster: next to the existing ones. A lab that continues a cluster counts as
 		-- the first of its kind (the cluster isn't complete yet)
