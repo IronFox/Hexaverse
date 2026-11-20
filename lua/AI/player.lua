@@ -2963,6 +2963,26 @@ structure or unit. A neighbour whose ground lies two levels lower, or a slope th
 clear of, is no exit, however free it looks on the map.
 Returns the number of exits (units ignored: they move) and a line telling why not, per cell.
 ]]
+-- An EMP zone within that many cells? (No plant there: what came out beside the zone stood with
+-- "0 cells in reach" on open level ground, an EMP unit and the units of two plants, for good)
+function Economy.NearEMP(cell, steps)
+	local seen, edge = {[cell.index] = true}, {cell};
+	for _ = 1, steps do
+		local nxt = {};
+		for _,c in ipairs(edge) do
+			for _,nb in ipairs(c.neighbors or {}) do
+				if not seen[nb.index] then
+					seen[nb.index] = true;
+					if Sense.UnderEMP(nb) then return true; end;
+					nxt[#nxt+1] = nb;
+				end;
+			end;
+		end;
+		edge = nxt;
+	end;
+	return false;
+end;
+
 function Economy.Exits(loc, skipIdx)
 	local n, why = 0, {};
 	local h = loc.height or 0;
@@ -4249,7 +4269,7 @@ function Economy.AssignConstructor(u, index)
 		end;
 		if inReg and not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false)
 			-- (a vehicle plant only where its vehicles can leave: level ground beside it)
-			and (want.type ~= Types.plant or Economy.Exits(loc) >= Cfg.plantFreeCells) then
+			and (want.type ~= Types.plant or (Economy.Exits(loc) >= Cfg.plantFreeCells and not Economy.NearEMP(loc.cell, 2))) then
 			local d = Dist2(loc.world, goal);
 			-- towers prefer the edge of the base, everything else the middle
 			local score = d;
