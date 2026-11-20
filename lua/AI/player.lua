@@ -1943,8 +1943,10 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 	if avoidThreat == 'arty' then
 		danger = function(loc) return Military.InArtilleryZone(loc.world) ~= nil; end;
 	end;
+	Move.why = nil;
 	if goalCell then
 		local dest = Move.GroundAt(u, goalCell);
+		if dest == nil then Move.why = 'no ground for it at cell '..goalCell.index; end;
 		if dest and dest ~= u.location then
 			-- (keeping out of danger: the way that costs least with danger priced in)
 			-- (who goes in to attack pays for cells where vehicles were lost, not for the reach of the
@@ -1959,11 +1961,24 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 				for _,n in ipairs(path) do
 					if n.movementCostsFromRoot <= limit then pick = n; end;
 				end;
+				-- (the way was priced for danger and is the best there is: up to the last step
+				-- before the danger, not none at all)
+				if avoidThreat and danger(pick.location) then
+					local short = nil;
+					for _,n in ipairs(path) do
+						if n.movementCostsFromRoot > limit or danger(n.location) then break; end;
+						short = n;
+					end;
+					if short then pick = short; end;
+				end;
 				if (not avoidThreat or not danger(pick.location)) and not tried[Spot(pick.location)] then
 					tried[Spot(pick.location)] = true;
 					u.DirectTo(pick);
 					return true;
 				end;
+				Move.why = danger(pick.location) and ('the way to cell '..goalCell.index..' enters danger at once (cell '..pick.location.cell.index..')') or 'the step was tried already';
+			else
+				Move.why = 'no path to cell '..goalCell.index;
 			end;
 		end;
 	end;
@@ -4271,11 +4286,21 @@ function Economy.AssignConstructor(u, index)
 		-- (it is wanted in that region and nowhere else: the builder goes there, round by round,
 		-- by the safe way. "At region 10" used to mean the nearest cell to it in reach, at home)
 		local reg = Map.regions[want.region];
-		if Move.Towards(u, goal, reg.centerCell, true, false) then
+		local at = Map.RegionOfLoc(u.location);
+		if at and at.id == want.region then
+			-- (there already and no site in reach: another builder's turn, this one is barred for 30 rounds)
+			Needs.Note(u.niceName..' at cell '..u.location.cell.index..' is in region '..want.region..' and finds no site for '..want.type.name..' in reach');
+			Needs.storeBar = Needs.storeBar or {};
+			Needs.storeBar[u.id] = Sense.round + 30;
+			if Needs.storeBuilder then Needs.storeBuilder[want.region] = nil; end;
+		elseif Move.Towards(u, goal, reg.centerCell, true, false) then
 			Needs.Started();
 			if Sense.round % 5 == 0 then Needs.Note(u.niceName..' is on its way to region '..want.region..' to build '..want.type.name..' there (at cell '..u.location.cell.index..')'); end;
 		else
-			Needs.Note(u.niceName..' at cell '..u.location.cell.index..' finds no way towards region '..want.region..' to build '..want.type.name..' there');
+			Needs.Note(u.niceName..' at cell '..u.location.cell.index..' finds no way towards region '..want.region..' to build '..want.type.name..' there ('..tostring(Move.why)..')');
+			Needs.storeBar = Needs.storeBar or {};
+			Needs.storeBar[u.id] = Sense.round + 30;
+			if Needs.storeBuilder then Needs.storeBuilder[want.region] = nil; end;
 		end;
 	end;
 end;
@@ -5574,7 +5599,11 @@ function Military.Combat()
 				end;
 			end;
 			-- never walk into remembered artillery fire, attacking or not: a rush is decided above
-			Move.Towards(v, goal, cell, (not attacking) or 'arty', attacking);
+			local moved = Move.Towards(v, goal, cell, (not attacking) or 'arty', attacking);
+			if fRally and Sense.round % 10 == 0 and (not moved or Move.why) then
+				Log(string.format('Gathering: %s at cell %d (region %s) towards cell %d: %s%s', v.niceName, v.location.cell.index,
+					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer')));
+			end;
 		end);
 	end;
 end;

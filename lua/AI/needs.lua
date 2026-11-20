@@ -1307,7 +1307,9 @@ function Needs.NextStructure(constructorIndex)
 				-- (nor does it stay with one that is never free to be asked)
 				Needs.storeAsked = Needs.storeAsked or {};
 				if there and me and me.id ~= who and Sense.round - (Needs.storeAsked[f.staging] or Sense.round) > 10 then there = false; end;
-				if not there and me then who = me.id; Needs.storeBuilder[f.staging] = who; end;
+				if me and ((Needs.storeBar or {})[me.id] or 0) > Sense.round then
+					if who == me.id then who = nil; Needs.storeBuilder[f.staging] = nil; end;
+				elseif not there and me then who = me.id; Needs.storeBuilder[f.staging] = who; end;
 				if me and me.id == who then Needs.storeAsked[f.staging] = Sense.round; end;
 				Needs.storeAsked[f.staging] = Needs.storeAsked[f.staging] or Sense.round;
 				if n < wantN and me and me.id == who then

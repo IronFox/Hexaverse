@@ -371,7 +371,7 @@ function Formation.Update()
 				table.sort(where);
 				Log(string.format('%s: status round %d stage %s members %d of %d near %d inside %d seen %s structures %d mobile %.1f static %.1f staging %d at %s',
 					Name(f), Sense.round, f.stage, f.count, f.want, near, inside, tostring(target.seenNow and true or false),
-					target.hostileStructures or 0, target.mobileThreat or 0, target.staticThreat or 0, f.staging, table.concat(where, ' ')));
+					target.hostileStructures or 0, target.mobileThreat or 0, target.staticThreat or 0, f.staging, table.concat(where, ' ')..(f.rally and (' rally cell '..f.rally.index) or '')..' parked '..tostring(f.parked or 0)));
 			end;
 		end;
 	end;
