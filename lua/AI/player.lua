@@ -3806,6 +3806,10 @@ function Economy.AssignConstructor(u, index)
 		end;
 		-- stopped on the way (the engine drops the whole order when something blocks the path,
 		-- often a unit that just came into view): the site is as good as before. Order it again
+		-- (whatever is left of the order goes first: a construction the game had accepted from
+		-- afar while rejecting the way to it stayed with two builders for 90 rounds, "Unable to
+		-- automatically relocate", and every later job queued up behind it)
+		if u.ClearTasks then pcall(u.ClearTasks); end;
 		local t = Game.Type.units[job.kind];
 		local cell = Economy.Cell(job.cell);
 		local loc = cell and Move.GroundAt(u, cell);
@@ -4560,6 +4564,19 @@ function Economy.Constructors()
 	for _,p in ipairs(Sense.plants) do
 		Economy.plantCells[p.location.cell.index] = p.location.cell;
 		Economy.plantLocs[p.location.cell.index] = p.location;
+	end;
+	-- (a plant on order keeps its exits too: a container was put on the third exit of the first
+	-- plant ten rounds after it was ordered, and units on the other two then made it a pocket)
+	if Types.plant then
+		for uid,job in pairs(Mem.jobs or {}) do
+			if job.kind == Types.plant.name and job.cell and not Economy.plantLocs[job.cell] then
+				local c = Economy.Cell(job.cell);
+				local b = nil;
+				for _,v in ipairs(Sense.my.constructor or {}) do if v.id == uid then b = v; break; end; end;
+				local l = c and b and Move.GroundAt(b, c);
+				if l then Economy.plantLocs[job.cell] = l; end;
+			end;
+		end;
 	end;
 	Economy.powerOrders = 0;
 	Economy.freeBuilders = 0;
