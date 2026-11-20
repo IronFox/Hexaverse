@@ -124,6 +124,7 @@ Cfg = {
 	useMarkers = true,		-- remembered hostile contacts (the game's markers) keep their reach contested
 	powerCare = true,		-- switch structures the engine switched off on again in order of need, labs give way
 	wantLabsMax = 15,		-- labs late and rich, while T2 is out of reach
+	aaBySight = true,		-- with planes about, an AA tower within its sight of every storage, reactor, plant, container and mine
 	towersPerRegionMax = 2,	-- towers of one kind for each region held (plus one), unless capped from outside
 	uraniumReserve = 150,	-- uranium kept for what fires it (EMP): below it a reactor core rests while the energy carries that
 	caps = {},				-- structure type name -> most to have (empty: no caps)
@@ -1993,6 +1994,8 @@ function Economy.Capped(t)
 		local regs = 0;
 		for _ in pairs(Sense.mine or {}) do regs = regs + 1; end;
 		cap = Cfg.towersPerRegionMax * math.max(1, regs) + 1;
+		-- (AA towers see only about 4 cells into the sub orbit: cover takes more of them)
+		if Types.aaTower and t.turretType == Types.aaTower.turretType and Sense.AirMatters() then cap = cap * 2; end;
 	end;
 	return cap ~= nil and Economy.Standing(t) >= cap;
 end;
@@ -2570,6 +2573,88 @@ function Economy.DefenseCounts(reg)
 		end;
 	end;
 	return c;
+end;
+
+--[[
+Air cover by sight, not by reach. An AA tower shoots 9 cells and more, but sees into the sub
+orbit only as far as its suborbitalScanningRange in world units, and up there a cell step is
+about 2.3 of those: 9 gives 4 cells, less the cell or two a bomber stands off its target. Four
+AA towers, all on and "in range", never saw the two bombers that took a base apart from 5 to 8
+cells away. So with planes about: what the bombers go for (uranium storage, reactor, plants,
+containers, mines) gets an AA tower within that sight, the least covered first.
+@return a build request on an exact cell, or nil
+]]
+Economy.aaTried = {};
+function Economy.AAGap()
+	if not (Cfg.aaBySight and Types.aaTower and Types.IsUnlocked(Types.aaTower) and Sense.AirMatters()) then return nil; end;
+	if Economy.aaGapRound and Sense.round - Economy.aaGapRound < 5 then return nil; end;
+	local range = 9;
+	local edge, dist = {}, {};
+	local aaTurret = Types.aaTower.turretType;
+	for _,st in ipairs(Sense.myStructures) do
+		if st.type and st.type.isStructure and st.type.turretType == aaTurret then
+			if st.suborbitalScanningRange and st.suborbitalScanningRange > 0 then range = math.max(range, st.suborbitalScanningRange); end;
+			if dist[st.location.cell.index] == nil then dist[st.location.cell.index] = 0; edge[#edge+1] = st.location.cell; end;
+		end;
+	end;
+	for _,job in pairs(Mem.jobs or {}) do
+		if job.kind == Types.aaTower.name and job.cell then
+			local c = Economy.Cell(job.cell);
+			if c and dist[c.index] == nil then dist[c.index] = 0; edge[#edge+1] = c; end;
+		end;
+	end;
+	local reach = math.max(2, math.floor(range / 2.3) - 1);
+	for d = 1, reach do
+		local nextEdge = {};
+		for _,c in ipairs(edge) do
+			for _,n in ipairs(c.neighbors or {}) do
+				if dist[n.index] == nil then dist[n.index] = d; nextEdge[#nextEdge+1] = n; end;
+			end;
+		end;
+		edge = nextEdge;
+	end;
+	local function Worth(st)
+		local t = st.type;
+		if t == Types.uraniumStorage or t == Types.reactor then return 5; end;
+		if t == Types.plant then return 4; end;
+		if t == Types.mineralContainer or t == Types.fuelContainer then return 3; end;
+		if t == Types.mine then return 2; end;
+		return 0;
+	end;
+	local best, bestW = nil, 0;
+	for _,st in ipairs(Sense.myStructures) do
+		local w = Worth(st);
+		if w > bestW and dist[st.location.cell.index] == nil then best, bestW = st, w; end;
+	end;
+	if best == nil then return nil; end;
+	-- a free cell beside it (or one further out), off the plants' exits
+	local function Free(c)
+		if Sense.structureCells[c.index] or Economy.claimed[c.index] or Sense.UnderEMP(c) then return false; end;
+		if (Economy.aaTried[c.index] or -99) > Sense.round - 60 then return false; end;
+		local bl = Mem.blacklist[c.index];
+		if bl and bl > Sense.round then return false; end;
+		for _,n in ipairs(c.neighbors or {}) do
+			if Economy.plantCells[n.index] then return false; end;
+		end;
+		return true;
+	end;
+	local site = nil;
+	for _,n in ipairs(best.location.cell.neighbors or {}) do
+		if Free(n) then site = n; break; end;
+	end;
+	if site == nil then
+		for _,n in ipairs(best.location.cell.neighbors or {}) do
+			for _,m in ipairs(n.neighbors or {}) do
+				if m.index ~= best.location.cell.index and Free(m) then site = m; break; end;
+			end;
+			if site then break; end;
+		end;
+	end;
+	if site == nil then return nil; end;
+	Economy.aaGapRound = Sense.round;
+	Economy.aaTried[site.index] = Sense.round;
+	Log(string.format('AA by sight: %s on cell %d has no AA tower within %d cells (sight %.1f). One is ordered on cell %d', best.type.name, best.location.cell.index, reach, range, site.index));
+	return {type = Types.aaTower, kind = 'base', cell = site.index};
 end;
 
 function Economy.AATowersIn(reg)

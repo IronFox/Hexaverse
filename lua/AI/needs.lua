@@ -1237,6 +1237,11 @@ function Needs.NextStructure(constructorIndex)
 			Needs.Note('AA Tower ordered at home: '..Economy.Count(Types.aaTower)..' standing');
 			return {type = Types.aaTower, kind = 'tower', region = Mem.homeRegion};
 		end;
+		-- (and one within sight of whatever a bomber goes for, see Economy.AAGap)
+		if settled and minerals >= Cost(Types.aaTower or Types.mine) and not Economy.Capped(Types.aaTower) then
+			local gap = Economy.AAGap();
+			if gap then return gap; end;
+		end;
 		-- ... and eyes on the base and its wall: what is not seen is likely not there any more
 		if settled and (Sense.AirMatters() or Mem.wall) and Types.radarTower and Types.IsUnlocked(Types.radarTower) and Mem.homeRegion
 				and Economy.Count(Types.radarTower) < 1 and minerals >= Cost(Types.radarTower) then
