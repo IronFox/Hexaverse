@@ -1648,7 +1648,9 @@ end;
 -- everything around this position is contested from now on
 function Control.Note(key, pos, range)
 	if pos == nil then return; end;
-	local r = math.max(range or 0, Control.Reach());
+	-- (as far as this one reaches, not as far as the longest weapon ever met: with one EMP seen,
+	-- every scout made 20 cells around it contested, half the planet, and nothing was built)
+	local r = math.max(range or 0, Control.Spacing() * Cfg.controlMinReach);
 	local z = {x = pos.x, y = pos.y, z = pos.z, r2 = r * r, round = Sense.round};
 	Control.zones[key] = z;
 	Control.fresh[#Control.fresh+1] = z;
@@ -1778,7 +1780,7 @@ function Control.Update()
 		end;
 	end;
 	-- 2. the belt within firing range of what I cannot see
-	local rings = math.max(1, math.ceil(Control.Reach() / Control.Spacing()));
+	local rings = math.max(1, math.ceil(math.min(Control.Reach(), Control.Spacing() * (Cfg.controlBeltMax or 8)) / Control.Spacing()));
 	local at = 1;
 	while at <= #queue do
 		local c = queue[at];
