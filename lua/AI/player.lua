@@ -5642,6 +5642,18 @@ function Military.Combat()
 			local cell = reg.centerCell;
 			if #reg.cells > 1 then
 				cell = reg.cells[((i * 7) % #reg.cells) + 1];
+				-- (not a cell where vehicles of mine fell lately, nor one in known reach of a weapon:
+				-- "defending" the regions beside the enemy's port, the army stood in the reach of two
+				-- towers it never saw and lost 26 before any attack was ordered)
+				if not (Mem.posture == 'attack') and not (fGoal and fAttack) and Cfg.safeWays then
+					for k = 0, 6 do
+						local c = reg.cells[((i * 7 + k * 13) % #reg.cells) + 1];
+						local d = Move.deaths[c.index];
+						local g = Move.GroundAt(v, c);
+						if not (d and Sense.round - d.round < 80) and not (g and Move.IsDangerous(g)) then cell = c; break; end;
+						if k == 6 then cell = v.location.cell; end;	-- (none found: stay)
+					end;
+				end;
 				goal = {x=cell.center.x*Map.groundRadius, y=cell.center.y*Map.groundRadius, z=cell.center.z*Map.groundRadius};
 			end;
 			-- gathering: all at one spot on the far side from the target, by the stores if any stand there
