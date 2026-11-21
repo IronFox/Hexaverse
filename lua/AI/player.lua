@@ -4269,7 +4269,7 @@ function Economy.AssignConstructor(u, index)
 		end;
 		if inReg and not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false)
 			-- (a vehicle plant only where its vehicles can leave: level ground beside it)
-			and (want.type ~= Types.plant or (Economy.Exits(loc) >= Cfg.plantFreeCells and not Economy.NearEMP(loc.cell, 2))) then
+			and (want.type ~= Types.plant or Economy.Exits(loc) >= Cfg.plantFreeCells) then
 			local d = Dist2(loc.world, goal);
 			-- towers prefer the edge of the base, everything else the middle
 			local score = d;
