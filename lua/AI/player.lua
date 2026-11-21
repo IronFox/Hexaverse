@@ -5679,7 +5679,10 @@ function Military.Combat()
 			end;
 			local attacking = Mem.posture == 'attack';
 			if fGoal then attacking = fAttack; end;
-			if Military.NeedsStationary(v) then
+			-- (on the march the artillery goes with the others, cell for cell: posted a region behind
+			-- it never came up, and an army that was mostly artillery stood at home for 150 rounds
+			-- while the march waited for it, "0 of 16 up")
+			if Military.NeedsStationary(v) and not fHold then
 				-- artillery: get onto high ground and stay there. Moving costs it the round's fire
 				local post = Military.PostFor(v, fPost or Military.PostRegion(goalId), takenPosts);
 				if post then
