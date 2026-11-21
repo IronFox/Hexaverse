@@ -2021,6 +2021,25 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 			-- went round by twelve regions)
 			if avoidThreat and Cfg.safeWays and not (avoidThreat == 'arty' and mayEnterUnknown) then price = Move.Cost; end;
 			local ok, path = pcall(u.FindShortestPath, dest, price, false);
+			-- (my own vehicles in the way are no wall: they move too. With them counted as blocking,
+			-- a group standing close had "no path" and "0 cells in reach" for half its members, at
+			-- home and on the march, and went in piecemeal. The way is planned through them and
+			-- taken as far as it is free)
+			local through = false;
+			if not (ok and path and #path > 0) then
+				ok, path = pcall(u.FindShortestPath, dest, price, true);
+				through = true;
+			end;
+			if ok and path and #path > 0 and through then
+				local free = {};
+				for _,n in ipairs(path) do
+					local okm, m = pcall(Game.GetMobileAt, n.location);
+					if okm and m ~= nil then break; end;
+					free[#free+1] = n;
+				end;
+				path = free;
+				if #path == 0 then Move.why = 'a vehicle of mine stands on the next step to cell '..goalCell.index; end;
+			end;
 			if ok and path and #path > 0 then
 				local limit = math.max(1, u.movementSpeed * 3);
 				local pick = path[#path];
@@ -2044,7 +2063,7 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 					return true;
 				end;
 				Move.why = danger(pick.location) and ('the way to cell '..goalCell.index..' enters danger at once (cell '..pick.location.cell.index..')') or 'the step was tried already';
-			else
+			elseif not Move.why then
 				Move.why = 'no path to cell '..goalCell.index;
 			end;
 		end;
