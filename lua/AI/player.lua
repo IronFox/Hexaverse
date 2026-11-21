@@ -2030,6 +2030,25 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 				ok, path = pcall(u.FindShortestPath, dest, price, true);
 				through = true;
 			end;
+			-- (a goal cell that is taken, by a vehicle or a structure, has no path to it at all: then
+			-- the way goes to a free cell beside it. "No path to cell 1596" with 16 cells in reach)
+			if not (ok and path and #path > 0) then
+				local okm, m = pcall(Game.GetMobileAt, dest);
+				local oks, st = pcall(Game.GetStructureAt, dest);
+				if (okm and m ~= nil and m.id ~= u.id) or (oks and st ~= nil) then
+					for _,nb in ipairs(goalCell.neighbors or {}) do
+						local nd = Move.GroundAt(u, nb);
+						if nd and nd ~= u.location then
+							local okn, mn = pcall(Game.GetMobileAt, nd);
+							local okt, sn = pcall(Game.GetStructureAt, nd);
+							if not (okn and mn ~= nil) and not (okt and sn ~= nil) then
+								ok, path = pcall(u.FindShortestPath, nd, price, true);
+								if ok and path and #path > 0 then break; end;
+							end;
+						end;
+					end;
+				end;
+			end;
 			if ok and path and #path > 0 and through then
 				local free = {};
 				for _,n in ipairs(path) do
