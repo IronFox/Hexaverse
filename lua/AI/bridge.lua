@@ -106,7 +106,16 @@ function Bridge.Take(region, priority, units)
 	-- (units: it gathers until four fifths of that many stand ready, however long it takes)
 	Formation.minSize[Region(region)] = units and math.max(1, math.floor(tonumber(units) or 1)) or nil;
 end;
-function Bridge.Hold(region, priority) Bridge.pins[Region(region)] = {kind = 'hold', priority = priority or 1}; end;
+-- (a hold does not replace a take that still stands: it turned an advance into waiting at home
+-- for 200 rounds. Bridge.Drop(region) first, if that is meant)
+function Bridge.Hold(region, priority)
+	local pin = Bridge.pins[Region(region)];
+	if pin and pin.kind == 'take' then
+		Bridge.results[#Bridge.results+1] = 'Hold('..tostring(region)..') not set: the take of that region still stands. Hold it once it is secure, or Bridge.Drop('..tostring(region)..') first';
+		return;
+	end;
+	Bridge.pins[Region(region)] = {kind = 'hold', priority = priority or 1};
+end;
 function Bridge.Avoid(region) Bridge.pins[Region(region)] = {kind = 'avoid', priority = 1}; end;
 function Bridge.Drop(region) Bridge.pins[Region(region)] = nil; end;
 function Bridge.Attack(region) Bridge.posture = Region(region); end;
