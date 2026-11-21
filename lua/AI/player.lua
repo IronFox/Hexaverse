@@ -3541,17 +3541,24 @@ function Economy.TryPort(u)
 		local hp = rid and Sense.hops[rid];
 		if hp and not Sense.UnderEMP(cell) and (nearestHops == nil or hp < nearestHops) then nearestPort, nearestHops = idx, hp; end;
 	end;
+	-- (the last port is the faction's life: with its one structure beside it gone, the port went
+	-- back to its owner and the faction died five rounds later, 29 units strong, to one bomb on
+	-- one tower. Four structures beside the only port, whatever roams there, and before any new port)
+	local ports = 0;
+	for _ in pairs(mine) do ports = ports + 1; end;
+	local last = ports == 1;
+	local needGuard = last and math.max(Cfg.portGuard, Cfg.portGuardLast or 4) or Cfg.portGuard;
 	for idx,_ in pairs(mine) do
 		local cell = Economy.portCells[idx];
 		local rid = Map.cellRegion[idx];
 		local reg = rid and Map.regions[rid];
 		if cell and reg and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round
-				and (reg.staticThreat or 0) <= 0 and (reg.mobileThreat or 0) <= (reg.myStrength or 0) then
+				and (last or ((reg.staticThreat or 0) <= 0 and (reg.mobileThreat or 0) <= (reg.myStrength or 0))) then
 			local n = 0;
 			for _,nb in ipairs(cell.neighbors or {}) do
 				if Sense.structureCells[nb.index] or Economy.claimed[nb.index] then n = n + 1; end;
 			end;
-			if n < Cfg.portGuard then
+			if n < needGuard then
 				local d = Dist2(Map.WorldCenter(reg), u.location.world);
 				if guardD == nil or d < guardD then guard, guardD = cell, d; end;
 			end;
@@ -3585,7 +3592,8 @@ function Economy.TryPort(u)
 	end;
 	-- a new port first; with none in reach, a second structure beside a port of mine
 	local guarding = false;
-	if best == nil and econ then best, guarding = guard, true; end;
+	if guard and last then best, guarding = guard, true;
+	elseif best == nil and econ then best, guarding = guard, true; end;
 	if best == nil then return false; end;
 	Economy.portTried[best.index] = Sense.round + Cfg.portRetry;
 	local why = 'no free cell beside it';
