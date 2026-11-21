@@ -357,6 +357,28 @@ function Formation.Update()
 						local dd = Dist2(w, from);
 						if not Sense.structureCells[c.index] and (bestD == nil or dd < bestD) then bestD, f.entry = dd, c; end;
 					end;
+					-- (a cell each, around the entry cell and inside the region: sent to the one cell,
+					-- the first stood on it and the others had "no path" to an occupied cell; of 21
+					-- only three or four ever came up, match after match)
+					f.spots, f.slot, f.nextSlot = {}, {}, 1;
+					if f.entry then
+						local wr = f.route[f.leg];
+						local seen, edge = {[f.entry.index] = true}, {f.entry};
+						f.spots[1] = f.entry;
+						while #edge > 0 and #f.spots < f.count + 8 do
+							local c = table.remove(edge, 1);
+							for _,nb in ipairs(c.neighbors or {}) do
+								if not seen[nb.index] then
+									seen[nb.index] = true;
+									local nr = Map.RegionOfLoc({cell = nb, height = 0});
+									if nr and nr.id == wr and not Sense.structureCells[nb.index] and not Sense.UnderEMP(nb) then
+										f.spots[#f.spots+1] = nb;
+										edge[#edge+1] = nb;
+									end;
+								end;
+							end;
+						end;
+					end;
 				end;
 			else
 				f.route = nil;
@@ -453,7 +475,12 @@ function Formation.Orders(v)
 	if f.stage == 'advance' and f.route and f.entry then
 		-- (short of the last region the whole formation holds at the entry cell of the one it is on)
 		-- (the stationary shooters follow one region behind: posted in the staging region they stayed home)
-		return f.route[f.leg], true, f.route[math.max(1, f.leg - 1)], f.entry, nil, f.leg < #f.route;
+		local spot = f.entry;
+		if f.spots and #f.spots > 0 then
+			if not f.slot[v.id] then f.slot[v.id] = f.nextSlot; f.nextSlot = f.nextSlot + 1; end;
+			spot = f.spots[((f.slot[v.id] - 1) % #f.spots) + 1];
+		end;
+		return f.route[f.leg], true, f.route[math.max(1, f.leg - 1)], spot, nil, f.leg < #f.route;
 	end;
 	return f.region, true, (f.stage == 'secure') and f.region or f.staging, nil;
 end;
