@@ -341,7 +341,9 @@ function Formation.Update()
 				if f.leg < #f.route then
 					f.lastInside = Sense.round;	-- (on the march: not stalled)
 					local waited = Sense.round - f.legSince;
-					if arrived >= math.ceil(f.count * 0.7) or (waited >= 25 and arrived >= math.ceil(f.count * 0.5)) or waited >= 40 then
+					-- (not on with a handful because time is up: "on to region 38 with 5 of 19 up" fed the last
+					-- leg half a group at a time, six advances in a row)
+					if arrived >= math.ceil(f.count * 0.7) or (waited >= (Cfg.marchWait or 30) and arrived >= math.ceil(f.count * 0.5)) or waited >= (Cfg.marchWaitMax or 90) then
 						f.leg = f.leg + 1;
 						f.legSince = Sense.round;
 						Log(Name(f)..': on to region '..f.route[f.leg]..' at round '..Sense.round..' with '..arrived..' of '..f.count..' up');
