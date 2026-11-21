@@ -311,10 +311,39 @@ function Types.GroundBase()
 	if Types.base.cat and Types.IsUnlocked(Types.base.cat) and Economy and Economy.PlanetStyle() == 'cat' then
 		return Types.base.cat;
 	end;
-	if Types.IsUnlocked(Types.base.heavy) and Game.GetMainRoundNumber() > 30 then
+	if Types.IsUnlocked(Types.base.heavy) and Game.GetMainRoundNumber() > 30 and not Types.HeavyStuck() then
 		return Types.base.heavy;
 	end;
 	return Types.base.hover;
+end;
+
+-- Heavy bases need level ground: on rough ground they stand where the plant put them, boxed in
+-- by slopes, structures and each other (21 members of a take never left home, "0 of 16 up",
+-- while the hover cannons before them had arrived). Measured, not assumed: when the heavy
+-- vehicles that stand about cannot make a step, the next ones are built on hover bases.
+function Types.HeavyStuck()
+	local round = Game.GetMainRoundNumber();
+	local m = Types.heavyCheck;
+	if m and round - m.round < 10 then return m.stuck; end;
+	local n, stuck = 0, 0;
+	for _,list in pairs((Sense and Sense.my) or {}) do
+		for _,u in ipairs(list) do
+			local base = u.type and u.type.vehicleBaseType;
+			if base and base.name == 'Heavy Base' and u.location and not u.storedIn and u.GetReach then
+				n = n + 1;
+				local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed or 1), true, false, false, true);
+				if not ok or reach == nil or #reach == 0 then stuck = stuck + 1; end;
+			end;
+		end;
+	end;
+	local was = m and m.stuck;
+	-- (once found stuck it stays so until most of them move again)
+	local now = (stuck >= 3 and stuck * 10 >= n * 4) or (was and stuck * 10 >= n * 2 and stuck >= 2) or false;
+	Types.heavyCheck = {round = round, stuck = now};
+	if now ~= (was or false) and Log then
+		Log(string.format('Heavy bases: %d of %d cannot make a step. %s', stuck, n, now and 'New ground vehicles get hover bases' or 'Heavy bases again'));
+	end;
+	return now;
 end;
 
 function Types.Vehicle(turret, base)
