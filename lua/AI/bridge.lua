@@ -694,13 +694,21 @@ function Bridge.RunPosted()
 					end;
 					if best and bestD < Dist2(u.location.world, loc.world) then
 						pcall(u.DirectTo, best);
+						post.at.round = Sense.round - 3;	-- (then the leg-wise way gets two rounds again before the next single step)
 					elseif not post.toldWall then
 						post.toldWall = true;
 						Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') on cell '..u.location.cell.index..': the engine refuses its path to cell '..post.cell
 							..' and no cell within one move lies nearer ('..(okR and reach and #reach or 0)..' cells in reach). Post it by another way, cell by cell.';
 					end;
 				elseif ok and path and #path > 0 then
-					local ok2, err = pcall(u.DirectTo, path[#path]);
+					-- (a leg of the way at a time, as the scripts' own units go: the engine drops the whole
+					-- order when anything on a long way blocks it, and posted surveyors stood for 250 rounds)
+					local pick, limit = path[#path], math.max(1, (u.movementSpeed or 1) * 3);
+					for _,n in ipairs(path) do
+						if (n.movementCostsFromRoot or 0) <= limit then pick = n; end;
+					end;
+					if (path[#path].movementCostsFromRoot or 0) <= limit then pick = path[#path]; end;
+					local ok2, err = pcall(u.DirectTo, pick);
 					if not ok2 and not post.told then post.told = true; Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..': the move order was refused: '..tostring(err); end;
 				elseif not Move.Towards(u, loc.world, cell, false, true) and not post.told then
 					post.told = true;
