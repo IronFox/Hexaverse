@@ -619,6 +619,13 @@ function Bridge.Post(unitId, cell)
 	Bridge.posts[tostring(unitId)] = {cell = cell, since = Sense.round};
 end;
 function Bridge.Free(unitId) Bridge.posts[tostring(unitId)] = nil; end;
+-- A builder of mine paves a road, leg by leg, to that cell and stays there (through danger too: it
+-- is posted and does not turn back). Roads bridge gaps and shafts: what stands below ground has no
+-- clear line to what drives on them.
+function Bridge.RoadTo(unitId, cell)
+	Bridge.Post(unitId, cell);
+	Bridge.posts[tostring(unitId)].road = true;
+end;
 
 -- Posted units are taken out of the scripts' lists for the round and handled here.
 function Bridge.TakePosted()
@@ -681,7 +688,12 @@ function Bridge.RunPosted()
 				if not post.told then post.told = true; Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..': no ground for it on cell '..post.cell; end;
 				return;
 			end;
-			if Move.IsIdle(u) or (Sense.round - post.since) % 5 == 0 then
+			if post.road and not u.BuildRoadTo and not post.told then
+				post.told = true;
+				Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') cannot pave roads: it goes there without';
+			end;
+			local paves = post.road and u.BuildRoadTo ~= nil;
+			if Move.IsIdle(u) or (not paves and (Sense.round - post.since) % 5 == 0) then
 				-- the whole way at once, through my own units if they stand in it; why not, if not
 				local ok, path = pcall(u.FindShortestPath, loc, Cfg.safeWays and Move.Cost or nil, false);	-- (round known danger and where vehicles were lost: an EMP posted next door walked through two towers' reach)
 				if not ok or path == nil or #path == 0 then ok, path = pcall(u.FindShortestPath, loc, nil, true); end;
@@ -717,7 +729,11 @@ function Bridge.RunPosted()
 						if (n.movementCostsFromRoot or 0) <= limit then pick = n; end;
 					end;
 					if (path[#path].movementCostsFromRoot or 0) <= limit then pick = path[#path]; end;
-					local ok2, err = pcall(u.DirectTo, pick);
+					local ok2, err = pcall(paves and u.BuildRoadTo or u.DirectTo, pick);
+					if paves and ok2 and post.roadLeg ~= pick.location.cell.index then
+						post.roadLeg = pick.location.cell.index;
+						Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' paves from cell '..u.location.cell.index..' to cell '..post.roadLeg..' (round '..Sense.round..')';
+					end;
 					if not ok2 and not post.told then post.told = true; Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..': the move order was refused: '..tostring(err); end;
 				elseif not Move.Towards(u, loc.world, cell, false, true) and not post.told then
 					post.told = true;
@@ -1094,6 +1110,7 @@ function Bridge.Help()
 	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
 	Add(L, '  Bridge.FireAt(unitId, cell [, rounds [, every [, whenTake]]])   (every: rounds between shots; whenTake: region, fire only once its take has gathered 4/5)');
+	Add(L, '  Bridge.RoadTo(unitId, cell)   a builder paves a road to that cell, leg by leg, through danger too, and stays (Bridge.Free ends it)');
 	Add(L, '  Bridge.FireAt(unitId, cell [, rounds])   a posted unit fires at that cell, seen or not (artillery, EMP), for instance at a hostile');
 	Add(L, '                             structure listed under HOSTILE STRUCTURES SEEN SO FAR; out of range, no ammunition or fired comes with the next state');
 	Add(L, '  Bridge.Reach(unitId [, targetCell])   how many steps that unit reaches from where it stands, and the cells from which it could hit the target cell');
