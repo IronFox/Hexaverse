@@ -1204,3 +1204,54 @@ do
 		return base(msg);
 	end;
 end;
+
+-------------------------------------------------------------------------------
+-- the outside player's standing orders outlive a restart of the client
+-- (the server replaced the client in mid-match: caps, pins and posture were gone, a second
+-- take fired and ten terraformers were built). Flat strings only, as the saved state wants.
+-------------------------------------------------------------------------------
+do
+	local function Pack(t)
+		local parts = {};
+		for k,v in pairs(t or {}) do parts[#parts+1] = tostring(k)..'='..tostring(v); end;
+		return table.concat(parts, ';');
+	end;
+	local function Unpack(s, each)
+		for k,v in string.gmatch(type(s) == 'string' and s or '', '([^;=]+)=([^;]*)') do each(k, v); end;
+	end;
+	local baseExport = ExportState;
+	function ExportState()
+		local r = baseExport();
+		if type(r) == 'table' and Map.built then
+			local pins = {};
+			for region,pin in pairs(Bridge.pins or {}) do pins[region] = pin.kind..','..tostring(pin.priority or 1)..','..tostring(Formation.minSize[region] or 0); end;
+			r.brPins = Pack(pins);
+			r.brPosture = Bridge.posture == nil and '' or tostring(Bridge.posture);
+			r.brCaps = Pack(Cfg.caps);
+			r.brUnitCaps = Pack(Cfg.unitCaps);
+			r.brEvery = Bridge.every or 0;
+		end;
+		return r;
+	end;
+	local baseApply = ApplyImport;
+	function ApplyImport()
+		local s = Mem.pendingImport;
+		if type(s) == 'table' and s.brPins ~= nil then
+			Unpack(s.brPins, function(k, v)
+				local kind, pr, size = string.match(v, '^(%a+),([%d%.]+),(%d+)$');
+				local region = tonumber(k);
+				if kind and region then
+					Bridge.pins[region] = {kind = kind, priority = tonumber(pr) or 1};
+					if (tonumber(size) or 0) > 0 then Formation.minSize[region] = tonumber(size); end;
+				end;
+			end);
+			if s.brPosture == 'defend' then Bridge.posture = 'defend';
+			elseif tonumber(s.brPosture) then Bridge.posture = tonumber(s.brPosture); end;
+			Unpack(s.brCaps, function(k, v) Cfg.caps[k] = tonumber(v); end);
+			Unpack(s.brUnitCaps, function(k, v) Cfg.unitCaps[k] = tonumber(v); end);
+			if (tonumber(s.brEvery) or 0) > 0 then Bridge.every = tonumber(s.brEvery); end;
+			Bridge.results[#Bridge.results+1] = 'The client was restarted: pins, posture and caps were restored from the saved state; posts, fire orders and dares were not and must be given again';
+		end;
+		baseApply();
+	end;
+end;
