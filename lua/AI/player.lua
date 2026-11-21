@@ -3951,7 +3951,9 @@ function Economy.AssignConstructor(u, index)
 	-- danger: get out first, build later
 	local reg = Map.RegionOfLoc(u.location);
 	-- (Economy.shielded: sealed in below ground, what roams the surface can't reach it)
-	if not Economy.shielded and (Move.IsDangerous(u.location) or (reg and reg.mobileThreat > reg.myStrength)) then
+	Economy.dared = Economy.dared or {};
+	local dares = (Economy.dared[u.id] or 0) > Sense.round;	-- (sent into danger on purpose by the outside player)
+	if not Economy.shielded and not dares and (Move.IsDangerous(u.location) or (reg and reg.mobileThreat > reg.myStrength)) then
 		local safest, bestS = nil, -1;
 		for id,_ in pairs(Sense.mine) do
 			local r = Map.regions[id];
@@ -4132,9 +4134,14 @@ function Economy.AssignConstructor(u, index)
 				end;
 			end;
 		end;
+		Economy.forceBuild = want.force and true or false;
 		if why then -- told below
 		elseif not Economy.BuildAt(u, dest, want.type) then why = Economy.buildWhy or 'no path there for the builder';
-		else Economy.claimed[cell.index] = true; end;
+		else
+			Economy.claimed[cell.index] = true;
+			if want.force then Economy.dared = Economy.dared or {}; Economy.dared[u.id] = Sense.round + 40; end;
+		end;
+		Economy.forceBuild = false;
 		if want.done then want.done(why, u); end;
 		return;
 	end;
@@ -4409,7 +4416,7 @@ function Economy.BuildAt(u, loc, t, reachable)
 			end;
 			-- the way there must be one the builder will walk: it turns back from danger (see
 			-- AssignConstructor), and an order it abandons a round later is a wasted one
-			if not Economy.shielded then
+			if not Economy.shielded and not Economy.forceBuild then
 				for _,n in ipairs(path) do
 					local nl = n.location;
 					local nr = nl and Map.RegionOfLoc(nl);

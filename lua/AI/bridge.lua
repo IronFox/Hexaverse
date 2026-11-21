@@ -175,11 +175,12 @@ local function Structure(typeName)
 	return t;
 end;
 
-function Bridge.BuildAt(typeName, cell)
+function Bridge.BuildAt(typeName, cell, dare)
 	local t = Structure(typeName);
 	cell = tonumber(cell);
 	if cell == nil or Economy.Cell(cell) == nil then error('no such cell: '..tostring(cell), 2); end;
-	Bridge.build[#Bridge.build+1] = {type = t, cell = cell};
+	-- (dare: the builder goes though the way or the site is not safe, and does not turn back for 40 rounds)
+	Bridge.build[#Bridge.build+1] = {type = t, cell = cell, force = dare and true or nil};
 end;
 
 function Bridge.Research(text)
@@ -814,7 +815,7 @@ do
 			return want;
 		end;
 		if job.cell then
-			return {type = job.type, kind = 'base', cell = job.cell, done = function(why, u)
+			return {type = job.type, kind = 'base', cell = job.cell, force = job.force, done = function(why, u)
 				local line = 'BuildAt '..job.type.name..' at cell '..job.cell..': '
 					..(why and ('FAILED, '..why) or 'a builder is on its way')..(u and (' ('..tostring(u.niceName)..')') or '');
 				if not why and u then Bridge.pending[job.cell] = {job = job, unit = u.id}; end;
