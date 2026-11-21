@@ -5736,6 +5736,13 @@ function Military.Combat()
 			local avoid = (not attacking) or 'arty';
 			if fGoal and fAttack then avoid = false; end;
 			local moved = Move.Towards(v, goal, cell, avoid, attacking);
+			-- (why a member of a formation on the march does not come up)
+			if fGoal and fAttack and Sense.round % 10 == 0 and (not moved or Move.why) then
+				local okR, reach = pcall(v.GetReach, nil, math.max(2, v.movementSpeed or 1), true, false, false, true);
+				Log(string.format('March: %s (%s) at cell %d (region %s) towards cell %d (region %s): %s%s; %d cells in reach', v.niceName, tostring(v.type.name), v.location.cell.index,
+					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, tostring(goalId), moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer'),
+					okR and reach and #reach or 0));
+			end;
 			if fRally and Sense.round % 10 == 0 and (not moved or Move.why) then
 				Log(string.format('Gathering: %s at cell %d (region %s) towards cell %d: %s%s', v.niceName, v.location.cell.index,
 					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer')));
