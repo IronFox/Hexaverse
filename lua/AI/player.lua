@@ -965,6 +965,9 @@ function Sense.Update()
 					local tt0 = a.turretType;
 					Sense.recentAttacks[#Sense.recentAttacks+1] = {src=src, hit=hit, layer=layer, precise=a.precise, turretType=tt0,
 						splash=a.explosionRadius, arty=(layer == 'ground' and tt0 and tt0.requiresStationaryVehicle and tt0.trajectoryType == 'Artillery') or false};
+					-- (what shoots from below ground is never seen, but each shot gives its source
+					-- away: remembered by cell and depth, so that it can be looked for and shot at)
+					if layer == 'deep' and src then pcall(Sense.NoteSource, a, src); end;
 					local tt = a.turretType;
 					-- artillery proper: cannons share the ballistic trajectory but fire on the move
 					if layer == 'ground' and tt and tt.requiresStationaryVehicle and tt.trajectoryType == 'Artillery' and a.impact then
@@ -1166,6 +1169,37 @@ function Sense.Pressure()
 	end;
 	local lost = Sense.RecentLosses(6);
 	return p + lost * 3;
+end;
+
+Sense.sources = {};	-- cell index -> {round, n, name, h}: where shots from below ground came from
+function Sense.NoteSource(a, reg)
+	local s = a.source;
+	local len = math.sqrt(s.x * s.x + s.y * s.y + s.z * s.z);
+	if len <= 0 then return; end;
+	local best, bestDot = nil, nil;
+	local function try(cells)
+		for _,c in ipairs(cells or {}) do
+			local d = (c.center.x * s.x + c.center.y * s.y + c.center.z * s.z) / len;
+			if bestDot == nil or d > bestDot then best, bestDot = c, d; end;
+		end;
+	end;
+	try(reg.cells);
+	for nb,_ in pairs(reg.neighbors or {}) do try(Map.regions[nb].cells); end;
+	if best == nil then return; end;
+	local h, hD = 0, nil;
+	for k = -30, 10 do
+		local okr, r = pcall(Game.Grid.HeightToRadius, k);
+		if okr and r then
+			local d = math.abs(r - len);
+			if hD == nil or d < hD then h, hD = k, d; end;
+		end;
+	end;
+	local rec = Sense.sources[best.index] or {n = 0};
+	rec.n = rec.n + 1;
+	rec.round = Sense.round;
+	rec.h = h;
+	rec.name = (a.turretType and a.turretType.name) or rec.name or '?';
+	Sense.sources[best.index] = rec;
 end;
 
 function Sense.Threat(reg)
@@ -5696,7 +5730,10 @@ function Military.Combat()
 				end;
 			end;
 			-- never walk into remembered artillery fire, attacking or not: a rush is decided above
-			local moved = Move.Towards(v, goal, cell, (not attacking) or 'arty', attacking);
+			-- (... except a formation on its ordered way: it goes)
+			local avoid = (not attacking) or 'arty';
+			if fGoal and fAttack then avoid = false; end;
+			local moved = Move.Towards(v, goal, cell, avoid, attacking);
 			if fRally and Sense.round % 10 == 0 and (not moved or Move.why) then
 				Log(string.format('Gathering: %s at cell %d (region %s) towards cell %d: %s%s', v.niceName, v.location.cell.index,
 					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer')));

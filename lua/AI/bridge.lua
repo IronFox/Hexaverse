@@ -372,7 +372,14 @@ end;
 local function FireAtCell(u, post)
 	local f = post.fire;
 	local known = Bridge.known[f.cell];
-	local loc = (known and known.loc) or Move.GroundAt(u, Economy.Cell(f.cell));
+	local loc = (known and known.loc) or nil;
+	-- (a source of shots from below: aimed at its depth, not at the ground above it)
+	local srcRec = (Sense.sources or {})[f.cell];
+	if loc == nil and srcRec and Game.Grid.ToLocation then
+		local okl, l = pcall(Game.Grid.ToLocation, Economy.Cell(f.cell), srcRec.h);
+		if okl and l then loc = l; end;
+	end;
+	loc = loc or Move.GroundAt(u, Economy.Cell(f.cell));
 	local why = nil;
 	if f.next and Sense.round < f.next then return false; end;
 	if f.whenTake then
@@ -940,6 +947,12 @@ function Bridge.State()
 		end;
 		table.sort(rows);
 		if #rows > 0 then Add(L, 'HOSTILE STRUCTURES SEEN SO FAR (remembered; may be gone): %s', table.concat(rows, '; ')); end;
+		local deep = {};
+		for idx,s in pairs(Sense.sources or {}) do
+			deep[#deep+1] = string.format('%s under cell %d (region %s, h=%d, %d shots, last r%d)', s.name, idx, tostring(Map.cellRegion[idx] or '?'), s.h, s.n, s.round);
+		end;
+		table.sort(deep);
+		if #deep > 0 then Add(L, 'SHOTS FROM BELOW GROUND came from (never seen; Bridge.FireAt takes these cells and aims at that depth): %s', table.concat(deep, '; ')); end;
 	end;
 	-- ports: where a structure would have to stand, and what is in the way
 	do
