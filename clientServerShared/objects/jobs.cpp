@@ -227,7 +227,7 @@ namespace Objects
 				PMobileEntity other = GetMobileEntity(focus);
 				if (other && other.get() != &v)
 				{
-					LogEvent(EventClass::Preset::operationAborted,&v,"'"+GetName()+"': "+focus.ToString()+" is occupied by "+other->GetName()+". Delaying operation.");
+					LogEvent(EventClass::Preset::operationAborted,&v,"'"+GetName()+"': cell "+String(focus.stackID)+" is occupied by "+other->GetName()+". Delaying operation.");
 					return JobDelayed;
 				}
 			}
