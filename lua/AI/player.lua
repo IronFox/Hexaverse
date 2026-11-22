@@ -5693,6 +5693,122 @@ function Military.PostFor(v, regionId, taken)
 	return best;
 end;
 
+--[[
+Passages. Vehicles of mine that find no way for a long time (boxed in by ground, pits, cliffs or
+what I built around them) get one cut: a terraformer uses the game's "Dig Tunnel or Bridge to",
+which digs through what stands in the way, cuts single steps where the way leads up and decks
+gaps, so that what it leaves can be driven. One passage at a time, a few cells per order.
+If the terraformer cannot get to the vehicle, it cuts towards the vehicle; if it can, both stand
+in the same pocket and it cuts towards where the vehicle wants to go, until it has a way itself.
+]]
+Passage = {stuck = {}, job = nil, cool = 0};
+
+function Passage.Note(v, goalCell)
+	if not (Move.why and string.find(Move.why, 'no path', 1, true)) then return; end;
+	local key = tostring(v.id);
+	local s = Passage.stuck[key];
+	if s == nil or s.cell ~= v.location.cell.index or Sense.round - s.last > 20 then
+		s = {key = key, cell = v.location.cell.index, n = 0, name = v.niceName};
+		Passage.stuck[key] = s;
+	end;
+	s.n = s.n + 1;
+	s.last = Sense.round;
+	s.goal = goalCell.index;
+end;
+
+local function PassageReaches(t, cell)
+	local loc = Move.GroundAt(t, cell);
+	if not loc then return false; end;
+	local ok, path = pcall(t.FindShortestPath, loc, nil, true);
+	return ok and path ~= nil and #path > 0;
+end;
+
+function Passage.End(t, s, why)
+	Log('Passage: ended, '..why);
+	if s then s.given = true; end;
+	if t and not Move.IsIdle(t) then pcall(t.ClearSafeTasks); end;
+	Passage.job = nil;
+	Passage.cool = Sense.round + 30;
+end;
+
+function Passage.Step(t, s, job)
+	local from, goal = Economy.Cell(s.cell), Economy.Cell(s.goal);
+	if from == nil or goal == nil then return Passage.End(t, s, 'the cells are not known'); end;
+	local here = t.location.cell;
+	local beside = here.index == from.index;
+	for _,nb in ipairs(from.neighbors) do
+		if beside then break; end;
+		if nb.index == here.index or PassageReaches(t, nb) then beside = true; end;
+	end;
+	local target = from;
+	if beside then
+		if PassageReaches(t, goal) then
+			return Passage.End(t, s, 'the terraformer has a way from '..s.name..' at cell '..s.cell..' to cell '..s.goal..(job.cut and ': the passage is open' or ': ground is not what holds the vehicle'));
+		end;
+		target = goal;
+	end;
+	local at = here;
+	for _ = 1, 4 do
+		local best, bestD = nil, nil;
+		for _,nb in ipairs(at.neighbors) do
+			local d = Dist2(nb.center, target.center);
+			if bestD == nil or d < bestD then best, bestD = nb, d; end;
+		end;
+		if best == nil or bestD >= Dist2(at.center, target.center) then break; end;
+		if Sense.structureCells[best.index] or (not beside and best.index == from.index) then break; end;
+		at = best;
+	end;
+	local hop = at.index ~= here.index and Move.GroundAt(t, at) or nil;
+	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' (a structure of mine stands in the line)'); end;
+	local ok, err = pcall(t.DigTunnelBridgeTo, hop);
+	if not ok then return Passage.End(t, s, 'the order was refused: '..tostring(err)); end;
+	job.cut = true;
+	Log(string.format('Passage: %s cuts from cell %d to cell %d, towards %s', t.niceName, here.index, at.index,
+		beside and ('cell '..s.goal..' where '..s.name..' wants to go') or (s.name..' at cell '..s.cell)));
+end;
+
+function Passage.Tick()
+	local r = Sense.round;
+	for k,s in pairs(Passage.stuck) do
+		if r - s.last > 25 then Passage.stuck[k] = nil; end;
+	end;
+	local list = Sense.my.constructor or {};
+	local job = Passage.job;
+	if job then
+		local t, ti;
+		for i,u in ipairs(list) do
+			if u.id == job.id then t, ti = u, i; break; end;
+		end;
+		local s = Passage.stuck[job.key];
+		if t == nil then return Passage.End(nil, s, 'the terraformer is gone'); end;
+		if s == nil then return Passage.End(t, nil, 'the vehicle it was cut for moves again'); end;
+		if r - job.since > (Cfg.passageRounds or 150) then return Passage.End(t, s, 'not through after '..(r - job.since)..' rounds'); end;
+		table.remove(list, ti);		-- (it is on this job: no other work for it this round)
+		if Move.IsIdle(t) then Passage.Step(t, s, job); end;
+		return;
+	end;
+	if r % 10 ~= 0 or r < Passage.cool then return; end;
+	local pick;
+	for _,s in pairs(Passage.stuck) do
+		if not s.given and s.n >= (Cfg.passageAfter or 3) and (pick == nil or s.n > pick.n) then pick = s; end;
+	end;
+	if pick == nil then return; end;
+	local from = Economy.Cell(pick.cell);
+	if from == nil then return; end;
+	local spacing = from.neighbors[1] and Dist2(from.center, from.neighbors[1].center) or 0;
+	local far = spacing * (Cfg.passageReach or 12) ^ 2;
+	local best, bestD;
+	for _,u in ipairs(list) do
+		if u.DigTunnelBridgeTo and Move.IsIdle(u) and not (Mem.jobs and Mem.jobs[u.id]) then
+			local d = Dist2(u.location.cell.center, from.center);
+			if d <= far and (bestD == nil or d < bestD) then best, bestD = u, d; end;
+		end;
+	end;
+	if best == nil then return; end;
+	Passage.job = {id = best.id, key = pick.key, since = r};
+	Log(string.format('Passage: %s at cell %d has found no way to cell %d for %d rounds: %s at cell %d cuts one', pick.name, pick.cell, pick.goal, pick.n * 10, best.niceName, best.location.cell.index));
+end;
+
 function Military.Combat()
 	local defense = Military.DefenseRegion();
 	local takenPosts = {};
@@ -5810,6 +5926,7 @@ function Military.Combat()
 					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, tostring(goalId), moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer'),
 					okR and reach and #reach or 0));
 			end;
+			if (fGoal and fAttack or fRally) and Sense.round % 10 == 0 and not moved then Passage.Note(v, cell); end;
 			if fRally and Sense.round % 10 == 0 and (not moved or Move.why) then
 				Log(string.format('Gathering: %s at cell %d (region %s) towards cell %d: %s%s', v.niceName, v.location.cell.index,
 					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer')));
@@ -6300,6 +6417,7 @@ function Execute()
 	SafeCall('Research', Economy.Research);
 	SafeCall('Production', Economy.Production);
 	SafeCall('PlaneProduction', Economy.PlaneProduction);
+	SafeCall('Passage', Passage.Tick);
 	SafeCall('Constructors', Economy.Constructors);
 	SafeCall('Formations', Formation.Update);
 	SafeCall('Posture', Military.UpdatePosture);
