@@ -5751,15 +5751,21 @@ function Passage.Step(t, s, job)
 	for _ = 1, 4 do
 		local best, bestD = nil, nil;
 		for _,nb in ipairs(at.neighbors) do
+			-- (round my own structures: the nearest cell to the goal that holds none)
 			local d = Dist2(nb.center, target.center);
-			if bestD == nil or d < bestD then best, bestD = nb, d; end;
+			if not Sense.structureCells[nb.index] and (bestD == nil or d < bestD) then best, bestD = nb, d; end;
 		end;
 		if best == nil or bestD >= Dist2(at.center, target.center) then break; end;
-		if Sense.structureCells[best.index] or (not beside and best.index == from.index) then break; end;
+		if not beside and best.index == from.index then break; end;
+		-- (not into an EMP zone, where the game places no vehicle, and not down or up a shaft: a
+		-- terraformer that dug itself five levels down towards a cell at h-12 was destroyed by its own dig)
+		local g = Move.GroundAt(t, best);
+		local okE, emp = pcall(Game.Grid.AffectedByEMP, g);
+		if g == nil or (okE and emp) or math.abs((g.height or 0) - (t.location.height or 0)) > (Cfg.passageStep or 2) then break; end;
 		at = best;
 	end;
 	local hop = at.index ~= here.index and Move.GroundAt(t, at) or nil;
-	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' (a structure of mine stands in the line)'); end;
+	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' (my structures, an EMP zone, or more than '..(Cfg.passageStep or 2)..' levels up or down)'); end;
 	local ok, err = pcall(t.DigTunnelBridgeTo, hop);
 	if not ok then return Passage.End(t, s, 'the order was refused: '..tostring(err)); end;
 	job.cut = true;
