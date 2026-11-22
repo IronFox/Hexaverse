@@ -5701,7 +5701,7 @@ gaps, so that what it leaves can be driven. One passage at a time, a few cells p
 If the terraformer cannot get to the vehicle, it cuts towards the vehicle; if it can, both stand
 in the same pocket and it cuts towards where the vehicle wants to go, until it has a way itself.
 ]]
-Passage = {stuck = {}, job = nil, cool = 0};
+Passage = {stuck = {}, job = nil, cool = 0, done = {}, tired = {}};
 
 function Passage.Note(v, goalCell)
 	if not (Move.why and string.find(Move.why, 'no path', 1, true)) then return; end;
@@ -5725,7 +5725,13 @@ end;
 
 function Passage.End(t, s, why)
 	Log('Passage: ended, '..why);
-	if s then s.given = true; end;
+	-- (not again for this vehicle on this cell, and not with this terraformer from where it stands, for a
+	-- while: one terraformer was sent eight times, every 40 rounds, and stopped at once each time)
+	if s then
+		s.given = true;
+		Passage.done[s.key..':'..s.cell] = Sense.round;
+	end;
+	if t and Passage.job and not Passage.job.cut then Passage.tired[tostring(t.id)..':'..t.location.cell.index] = Sense.round; end;
 	if t and not Move.IsIdle(t) then pcall(t.ClearSafeTasks); end;
 	Passage.job = nil;
 	Passage.cool = Sense.round + 30;
@@ -5796,7 +5802,8 @@ function Passage.Tick()
 	if r % 10 ~= 0 or r < Passage.cool then return; end;
 	local pick;
 	for _,s in pairs(Passage.stuck) do
-		if not s.given and s.n >= (Cfg.passageAfter or 3) and (pick == nil or s.n > pick.n) then pick = s; end;
+		local was = Passage.done[s.key..':'..s.cell];
+		if not s.given and not (was and r - was < (Cfg.passageAgain or 300)) and s.n >= (Cfg.passageAfter or 3) and (pick == nil or s.n > pick.n) then pick = s; end;
 	end;
 	if pick == nil then return; end;
 	local from = Economy.Cell(pick.cell);
@@ -5805,7 +5812,8 @@ function Passage.Tick()
 	local far = spacing * (Cfg.passageReach or 12) ^ 2;
 	local best, bestD;
 	for _,u in ipairs(list) do
-		if u.DigTunnelBridgeTo and Move.IsIdle(u) and not (Mem.jobs and Mem.jobs[u.id]) then
+		local tired = Passage.tired[tostring(u.id)..':'..u.location.cell.index];
+		if u.DigTunnelBridgeTo and Move.IsIdle(u) and not (Mem.jobs and Mem.jobs[u.id]) and not (tired and r - tired < (Cfg.passageAgain or 300)) then
 			local d = Dist2(u.location.cell.center, from.center);
 			if d <= far and (bestD == nil or d < bestD) then best, bestD = u, d; end;
 		end;
