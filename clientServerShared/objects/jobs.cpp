@@ -222,6 +222,15 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	DigHorizontal::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{			
+			//another mobile in the cell to enter: wait for it to leave. Reporting the job as done without having moved would break every job queued behind this one
+			{
+				PMobileEntity other = GetMobileEntity(focus);
+				if (other && other.get() != &v)
+				{
+					LogEvent(EventClass::Preset::operationAborted,&v,"'"+GetName()+"': "+focus.ToString()+" is occupied by "+other->GetName()+". Delaying operation.");
+					return JobDelayed;
+				}
+			}
 			World::actual.Clear(focus,v.entityTime);
 			if (v.IsGroundBoundVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
 					World::actual.Overwrite(focus-1,Grid::Content::Water,v.entityTime);

@@ -663,10 +663,14 @@ namespace Objects
 									else
 										break;
 									ASSERT__(!TasksAreLocked());
+									//the cell climbed onto needs ground beneath it just as any other cell entered
+									if (bridgeGaps && needsDeckBeneath(node->cell))
+										RegisterNewJob("", PVehicleJob(new VehicleJob::BuildRoad(*this,true)),&node->cell);
 
 									myTasks << Task("Move To",node->cell,true,Task::MoveTo);
 									RegisterChange(TasksChanged);
-									myTasks.GetNewest().Replot(pointOfOrigin, this,FocusChangeType::FullChange,true);
+									//plotted from where the vehicle will stand by then (c), not from where the whole order began: the second and later steps up of one order start elsewhere
+									myTasks.GetNewest().Replot(c, this,FocusChangeType::FullChange,true);
 								}
 
 							}
