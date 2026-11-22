@@ -559,11 +559,34 @@ namespace Objects
 					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
+				case CursorMode::DigTunnelBridgeMode:
 					if (!turret->CanDo(Component::Operation::RemoveTerrain))
+						return false;
+					if (mode == CursorMode::DigTunnelBridgeMode && !turret->CanDo(Component::Operation::AddTerrain))
 						return false;
 					if (leftClick)
 					{
 						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
+						/*
+						DigTunnelBridgeMode: before the vehicle enters a cell horizontally or from above, a foundation deck is laid
+						beneath that cell (BuildRoad in bridge mode, focused on the cell to enter), unless the faction KNOWS that
+						there is ground to stand on already. Unknown ground gets a deck, too: the passage must be drivable
+						whatever turns out to be there. Steps up are cut into existing ground as in DigTunnelMode (headroom above
+						the lower cell, then the cell to climb onto), and get no deck.
+						*/
+						const bool bridgeGaps = mode == CursorMode::DigTunnelBridgeMode;
+						const auto needsDeckBeneath = [this](const Grid::LCellIdI&toEnter) -> bool
+						{
+							const Grid::LCellIdI ground = toEnter-1;
+							if (ground.height < Grid::CellStack::BottomHeight)
+								return false;
+							if (GetStructure(ground))
+								return false;
+							Grid::Content weakest,strongest;
+							if (owner->knownWorld.GetStrengthRange(ground,weakest,strongest,true))
+								return true;	//partially or entirely unknown
+							return Grid::CellStack::Cell::typeStrength[strongest] <= Grid::CellStack::Cell::typeStrength[Grid::Content::Water];	//air, lava, or water
+						};
 
 						Vector<PathNode> path;
 						Pathfinding::TWays	possibilities;
@@ -618,11 +641,17 @@ namespace Objects
 								break;
 
 							if (node->cell.height == c.height)
+							{
+								if (bridgeGaps && needsDeckBeneath(node->cell))
+									RegisterNewJob("", PVehicleJob(new VehicleJob::BuildRoad(*this,true)),&node->cell);
 								RegisterNewJob("", PVehicleJob(new VehicleJob::DigHorizontal(*this,node->cell)),&node->cell);
+							}
 							else
 							{
 								if (node->cell.height < c.height)
 								{
+									if (bridgeGaps && needsDeckBeneath(node->cell))
+										RegisterNewJob("", PVehicleJob(new VehicleJob::BuildRoad(*this,true)),&node->cell);
 									RegisterNewJob("", PVehicleJob(new VehicleJob::DigDown(*this,node->cell)),&node->cell);
 								}
 								else

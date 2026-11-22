@@ -626,6 +626,14 @@ function Bridge.RoadTo(unitId, cell)
 	Bridge.Post(unitId, cell);
 	Bridge.posts[tostring(unitId)].road = true;
 end;
+-- A terraformer of mine cuts a passage to that cell in a straight line, whatever the ground: it digs
+-- through what stands in the way, cuts steps where the way leads up and lays a deck over gaps
+-- (the game's "Dig Tunnel or Bridge to"; needs a game build that has DigTunnelBridgeTo). It goes
+-- a few cells at a time and stays at the cell (Bridge.Free ends it).
+function Bridge.PassageTo(unitId, cell)
+	Bridge.Post(unitId, cell);
+	Bridge.posts[tostring(unitId)].passage = true;
+end;
 
 -- Posted units are taken out of the scripts' lists for the round and handled here.
 function Bridge.TakePosted()
@@ -691,6 +699,39 @@ function Bridge.RunPosted()
 			if post.road and not u.BuildRoadTo and not post.told then
 				post.told = true;
 				Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') cannot pave roads: it goes there without';
+			end;
+			if post.passage then
+				if not u.DigTunnelBridgeTo then
+					if not post.told then
+						post.told = true;
+						Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' ('..u.type.name..') cannot cut a passage (no DigTunnelBridgeTo: not a terraformer, or the game build lacks it): it goes there as it can';
+					end;
+				elseif Move.IsIdle(u) then
+					-- (the game plots a direct line only over short distances: a few cells at a time)
+					local at, goalC = u.location.cell, cell.center;
+					for _ = 1, 5 do
+						if at.index == cell.index then break; end;
+						local best, bestD = nil, nil;
+						for _,nb in ipairs(at.neighbors) do
+							local d = Dist2(nb.center, goalC);
+							if bestD == nil or d < bestD then best, bestD = nb, d; end;
+						end;
+						if best == nil or bestD >= Dist2(at.center, goalC) then break; end;
+						at = best;
+					end;
+					local hop = Move.GroundAt(u, at) or (at.index == cell.index and loc) or nil;
+					if hop and at.index ~= u.location.cell.index then
+						local okp, err = pcall(u.DigTunnelBridgeTo, hop);
+						if post.passageHop ~= at.index then
+							post.passageHop = at.index;
+							Bridge.results[#Bridge.results+1] = 'Posted unit #'..tostring(u.id)..' cuts a passage from cell '..u.location.cell.index..' to cell '..at.index..' on its way to cell '..post.cell
+								..' (round '..Sense.round..')'..(okp and '' or (': refused, '..tostring(err)));
+						end;
+						if okp then return; end;
+					end;
+				else
+					return;
+				end;
 			end;
 			local paves = post.road and u.BuildRoadTo ~= nil;
 			if Move.IsIdle(u) or (not paves and (Sense.round - post.since) % 5 == 0) then
@@ -1110,6 +1151,7 @@ function Bridge.Help()
 	Add(L, '  Bridge.Post(unitId, cell)  that unit goes to the cell and stays there, shooting what comes in range, until Bridge.Free(unitId).');
 	Add(L, '                             For eyes on a spot, a guard, an artillery post. The scripts leave a posted unit alone.');
 	Add(L, '  Bridge.FireAt(unitId, cell [, rounds [, every [, whenTake]]])   (every: rounds between shots; whenTake: region, fire only once its take has gathered 4/5)');
+	Add(L, '  Bridge.PassageTo(unitId, cell)   a terraformer cuts a straight passage to that cell: digs, cuts steps up, decks gaps (needs DigTunnelBridgeTo in the game build)');
 	Add(L, '  Bridge.RoadTo(unitId, cell)   a builder paves a road to that cell, leg by leg, through danger too, and stays (Bridge.Free ends it)');
 	Add(L, '  Bridge.FireAt(unitId, cell [, rounds])   a posted unit fires at that cell, seen or not (artillery, EMP), for instance at a hostile');
 	Add(L, '                             structure listed under HOSTILE STRUCTURES SEEN SO FAR; out of range, no ammunition or fired comes with the next state');

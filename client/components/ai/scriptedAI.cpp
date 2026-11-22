@@ -348,6 +348,16 @@ namespace AI::Script
 				Network::Channels::entityDirectCommand.SendTo(Network::client, cmd);
 			}
 
+			void	TargetedDirectTo(const TUniqueID&entityID, const ArrayRef<Grid::LCellIdI>&targets, Objects::CursorMode mode)
+			{
+				Protocol::EntityDirectCommand cmd;
+				cmd.id = entityID;
+				cmd.mode = (UINT16)mode;
+				cmd.path = targets;
+				cmd.directFlags = ObjectHelper::AssembleMotionFlags(false, true, false);
+				Network::Channels::entityDirectCommand.SendTo(Network::client, cmd);
+			}
+
 			void	SimpleJobStart(const TUniqueID&entityID, ConstName jobName, ConstName parameterName)
 			{
 				Protocol::StandardJob	job;
@@ -1035,6 +1045,7 @@ namespace AI::Script
 
 		api.onAttackTargets = Callback::AttackTargets;
 		api.onDetailedDirectTo = Callback::DetailedDirectTo;
+		api.onTargetedDirectTo = Callback::TargetedDirectTo;
 		api.onDropAllTasks = Callback::DropAllTasks;
 		api.onDropSafeTasks = Callback::DropSafeTasks;
 		api.onEnableWorkingStructure = Callback::EnableWorkingStructure;

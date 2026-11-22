@@ -23,6 +23,7 @@ namespace Objects
 		PlaceStructureMode,
 		BuildLowWallChainMode,
 		UpgradeMode,
+		DigTunnelBridgeMode,	//like DigTunnelMode, but lays a foundation deck wherever the passage would otherwise have no known solid ground beneath it
 	};
 
 	#ifdef HAS_WINDOW

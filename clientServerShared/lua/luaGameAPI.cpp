@@ -2328,6 +2328,25 @@ namespace Lua
 						else
 							throw Lua::Exception(CLOCATION,"ClearAbove(): onChoiceIntersection not set");
 					});
+					t.SetFunction("DigTunnelTo",[this,id](const Lua::Table&luaLoc)
+					{
+						Array<Grid::LCellIdI> targets(1);
+						targets[0] = Detail::ToLGridCell(luaLoc,"DigTunnelTo(): Loc parameter");
+						if (onTargetedDirectTo)
+							onTargetedDirectTo(id,targets, Objects::CursorMode::DigTunnelMode);
+						else
+							throw Lua::Exception(CLOCATION,"DigTunnelTo(): onTargetedDirectTo not set");
+					});
+					if (m->turret->CanDo(Objects::Component::Operation::AddTerrain))
+						t.SetFunction("DigTunnelBridgeTo",[this,id](const Lua::Table&luaLoc)
+						{
+							Array<Grid::LCellIdI> targets(1);
+							targets[0] = Detail::ToLGridCell(luaLoc,"DigTunnelBridgeTo(): Loc parameter");
+							if (onTargetedDirectTo)
+								onTargetedDirectTo(id,targets, Objects::CursorMode::DigTunnelBridgeMode);
+							else
+								throw Lua::Exception(CLOCATION,"DigTunnelBridgeTo(): onTargetedDirectTo not set");
+						});
 				}
 
 				if (m->turret->CanDo(Objects::Component::Operation::Construct))
@@ -2376,6 +2395,8 @@ namespace Lua
 				t.UnsetField("BuildStructure");
 				t.UnsetField("ClearAbove");
 				t.UnsetField("DigHorizontally");
+				t.UnsetField("DigTunnelTo");
+				t.UnsetField("DigTunnelBridgeTo");
 				t.UnsetField("RemoveBlocks");
 				t.UnsetField("DigDown");
 				t.UnsetField("BuildBridgeTo");

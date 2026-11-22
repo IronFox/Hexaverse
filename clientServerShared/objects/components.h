@@ -95,6 +95,7 @@ namespace Objects
 			case CursorMode::BuildLowWallChainMode:
 			case CursorMode::AttackMode:
 			case CursorMode::DigTunnelMode:
+			case CursorMode::DigTunnelBridgeMode:
 			case CursorMode::PlaceStructureMode:
 				return true;
 		}

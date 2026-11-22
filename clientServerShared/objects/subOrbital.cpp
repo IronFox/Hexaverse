@@ -329,6 +329,7 @@ namespace Objects
 						return PlotCourse(waypoints,detailedPath);
 					break;
 					case CursorMode::DigTunnelMode:
+					case CursorMode::DigTunnelBridgeMode:
 						return false;
 
 					case CursorMode::BuildConnectorChainMode:

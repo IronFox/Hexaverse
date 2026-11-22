@@ -1,4 +1,6 @@
 v0.9.18
+	+ Added 'Dig Tunnel or Bridge to' command for Terraformers: like 'Dig Tunnel to', but lays a foundation deck wherever no solid ground is known beneath the passage, so it also crosses gaps, water and lava
+	+ AI: Added DigTunnelTo() and DigTunnelBridgeTo() for terraforming vehicles
 	+ The server list now shows a random planet preset in the background
 	> Sleep on vehicle plants, plane factories and mechanic vehicles is now persistent: queuing new jobs no longer wakes them up. Wake them up manually to start the queued jobs
 	* Anti Aircraft no longer targets ground units on high plateaus inside its range. It only engages airborne targets

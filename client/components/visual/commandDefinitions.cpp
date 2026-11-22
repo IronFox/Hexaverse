@@ -1135,6 +1135,8 @@ namespace Objects
 			}
 
 			terraformRemoveGround->Add( new Command::IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
+			//like "Dig Tunnel to", but bridges gaps on the way: decks are laid wherever no solid ground is known beneath the passage (shares the tunnel icon)
+			terraformRemoveGround->Add( new Command::CustomIconCommand("Dig Tunnel or Bridge to", "Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelBridgeMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelBridgeMode>));
 			terraformAddGround->Add( new Command::IconCommand("Build Low Wall to", &CommonCmd::ToggleMode<CursorMode::BuildLowWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildLowWallChainMode>,NoCosts));
 			terraformAddGround->Add( new Command::IconCommand("Build High Wall to", &CommonCmd::ToggleMode<CursorMode::BuildHighWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildHighWallChainMode>,NoCosts));
 

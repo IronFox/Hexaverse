@@ -388,6 +388,8 @@ Table-Type: Unit
 			void	DigDown();					-- Schedules vertical digging at the vehicle's last queued location. Terrain will be removed, causing the vehicle to drop at least one level down
 			void	ClearAbove(Loc);			-- Schedules clearing the terrain in the specified location. Must be immediately atop or diagonal above the vehicle's last queued location
 			void	DigHorizontally(Loc);		-- Schedules clearing the terrain in the specified horizontal neighborhood
+			void	DigTunnelTo(Loc);			-- Schedules a passage to the specified location along a direct line, whatever the terrain: digs horizontally and down, and cuts drivable steps where the way leads up. Does not bridge gaps
+			void	DigTunnelBridgeTo(Loc);		-- Like DigTunnelTo(), but lays a foundation deck beneath every cell entered horizontally or from above unless solid ground is known there, so the passage also crosses gaps, water and lava. Only if the turret can also add terrain
 		[type.turretType.canConstruct]
 			void	BuildStructure(UnitType);	-- Schedules the construction of the specified type at the end of the local queue, using the last queued location
 			int		PredictRoundsToCompletion(UnitType);	-- Predicts the number of rounds necessary to complete the specified structure type if enough resources are available
