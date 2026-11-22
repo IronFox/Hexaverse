@@ -5926,7 +5926,8 @@ function Military.Combat()
 					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, tostring(goalId), moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer'),
 					okR and reach and #reach or 0));
 			end;
-			if (fGoal and fAttack or fRally) and Sense.round % 10 == 0 and not moved then Passage.Note(v, cell); end;
+			-- (any vehicle of the army that finds no way, in a formation or not)
+			if Sense.round % 10 == 0 and not moved then Passage.Note(v, cell); end;
 			if fRally and Sense.round % 10 == 0 and (not moved or Move.why) then
 				Log(string.format('Gathering: %s at cell %d (region %s) towards cell %d: %s%s', v.niceName, v.location.cell.index,
 					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer')));
