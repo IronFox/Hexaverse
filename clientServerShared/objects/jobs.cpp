@@ -1065,6 +1065,16 @@ namespace Objects
 		/*virtual override*/ BaseJob::continue_t	DigDown::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
 			const Grid::LCellIdI target = focus;
+			//What lies beneath the cell to dig is neither open (the vehicle would fall, as ever) nor ground this vehicle can stand on
+			//(lava, a structure, water for a vehicle that does not float): digging would set the vehicle onto it and destroy it. Refuse instead.
+			{
+				const Grid::LCellIdI beneath = target-1;
+				if (beneath.height >= Grid::CellStack::BottomHeight && !World::actual.LowCellIsClear(beneath) && !v.CanStandOn(World::actual,beneath))
+				{
+					LogEvent(EventClass::Preset::operationAborted,&v,"'"+GetName()+"': nothing to stand on beneath cell "+String(target.stackID)+" at height "+String(target.height)+". Not digging.");
+					return TerminalFailure;
+				}
+			}
 			#ifdef HYBRID_GRID
 				const UINT32 finer = Grid::low.grid.GetCell(target.stackID).higherEquivalent;
 				const auto&c = Grid::high.grid.GetCell(finer);
