@@ -6441,6 +6441,7 @@ function Military.Planes()
 			local fired = Military.Fire(p);
 			if not Move.IsIdle(p) then p.ClearSafeTasks(); end;
 			local goal, dive = nil, false;
+			local spotting = false;
 			if p.type == Types.bomber then
 				goal, dive = Military.BomberGoal();
 			elseif p.type == Types.drone or not p.turret or not p.turret.type.canAttack then
@@ -6459,7 +6460,11 @@ function Military.Planes()
 					if spot then
 						taken[spot.id] = true;
 						best, bs = spot, math.huge;
-						if Sense.round % 10 == 0 then Log('Spotter: '..p.niceName..' keeps region '..spot.id..' in view for the army'); end;
+						spotting = true;
+						if Sense.round % 10 == 0 then
+							local at = Map.RegionOfLoc(p.location);
+							Log('Spotter: '..p.niceName..' goes over region '..spot.id..' for the army (now over region '..tostring(at and at.id)..', cell '..p.location.cell.index..')');
+						end;
 					else
 						hold = true;
 						if Sense.round % 50 == 0 then Log('Spotter: '..p.niceName..' waits over home for the army to go'); end;
@@ -6498,7 +6503,9 @@ function Military.Planes()
 			if goal and not (fired and not p.motionIgnoresAttack) then
 				-- close to the target, accept AA fire; on the way, avoid it
 				local near = Dist2(p.location.world, goal) < 36;
-				Move.Fly(p, goal, not (dive and near));
+				-- (the spotter goes in whatever the air defence there: kept out of its reach, two
+				-- drones "kept region 1 in view" from over the home port for a whole match)
+				Move.Fly(p, goal, not (dive and near) and not spotting);
 			end;
 		end);
 	end;
