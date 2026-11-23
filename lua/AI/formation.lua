@@ -199,8 +199,20 @@ function Formation.Update()
 	for _,f in ipairs(Formation.list) do
 		if f.kind == 'take' and f.stage ~= 'gather' then
 			local let = 0;
+			-- (only a few among many: when most of them find no way, the way is what is missing,
+			-- not the vehicles. 13 hovers of 15 were let go in one round and the advance went
+			-- "on to region 1 with 0 of 0 up")
+			local all, stuckN = 0, 0;
 			for id,_ in pairs(f.members) do
-				if Stuck(id) then
+				all = all + 1;
+				if Stuck(id) then stuckN = stuckN + 1; end;
+			end;
+			local few = stuckN * 3 <= all;
+			if stuckN > 0 and not few and Sense.round % 20 == 0 then
+				Log(Name(f)..': '..stuckN..' of '..all..' find no way at round '..Sense.round..': kept, the way is what is missing');
+			end;
+			for id,_ in pairs(f.members) do
+				if few and Stuck(id) then
 					f.members[id] = nil;
 					Formation.of[id] = nil;
 					Formation.stuckOut[id] = Sense.round;
