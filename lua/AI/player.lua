@@ -6757,6 +6757,7 @@ function Military.Scouts()
 		if f.kind == 'take' and not f.over and Map.regions[f.region] then
 			deepSpot, deepStage = Map.regions[f.region], Map.regions[f.staging];
 			deepForm = f;
+			Military.deepWait = f.route and f.route[math.max(1, #f.route - 2)] or nil;
 			deepNow = f.stage == 'secure' or (f.stage == 'advance' and f.route and f.leg and f.leg >= #f.route - 1) or false;
 			break;
 		end;
@@ -6839,6 +6840,20 @@ function Military.Scouts()
 				if not moved and deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
 					moved = Move.Towards(v, tw, deepSpot.centerCell, false, true);
 				end;
+				-- (it goes ahead to the region two before the one to be taken and waits there for the
+				-- army: following the column it was last out of the gate, and at every entry of
+				-- matches 161 and 162 it was still at home behind my own vehicles)
+				Military.deepWaiting = nil;
+				local wr = Military.deepWait and Map.regions[Military.deepWait];
+				if not moved and not deepNow and wr and van then
+					local wc = Map.WorldCenter(wr);
+					if vd > Dist2(wc, tw) then
+						local atw = Map.RegionOfLoc(v.location);
+						Military.deepWaiting = wr.id;
+						if atw and atw.id == wr.id then moved = true;
+						else moved = Move.Towards(v, wc, wr.centerCell, false, true); end;
+					end;
+				end;
 				if not moved and van and not (ahead and not deepNow) then
 					moved = Move.Towards(v, van.location.world, van.location.cell, false, true);
 				end;
@@ -6858,6 +6873,7 @@ function Military.Scouts()
 					end;
 					local at = Map.RegionOfLoc(v.location);
 					local what = Military.deepFell and ('looks where vehicles of mine fell, cell '..Military.deepFell)
+						or Military.deepWaiting and ('goes ahead to region '..Military.deepWaiting..' and waits there')
 						or (deepNow and (probe or van == nil or ahead)) and ('goes into region '..deepSpot.id)
 						or van and ('keeps with '..tostring(van.niceName)..' at cell '..tostring(van.location.cell.index)..' on the way to region '..deepSpot.id)
 						or ('goes to region '..reg.id);
