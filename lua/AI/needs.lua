@@ -56,6 +56,7 @@ function Needs.Weights()
 		air = 3, planes = 1, research = 2.5, scouting = 1.5, prospecting = 3, builders = 3, army = 1.5,
 	};
 	for k,v in pairs(Cfg.needWeights or {}) do w[k] = v; end;
+	if Needs.eyes then w.planes = math.max(w.planes, 3); end;
 	for k,m in pairs(Needs.adapt) do if w[k] then w[k] = w[k] * m; end; end;
 	return w;
 end;
@@ -226,6 +227,20 @@ function Needs.Update()
 		local have = Economy.Count(pf);
 		if have < want and round >= (Cfg.planeFactoryRound or 0) then
 			v.planes = have == 0 and 0.8 or 0.4;
+		end;
+	end;
+	-- (an army sent to take a region without a sensor drone to see what holds it: the factory, and
+	-- the fuel it runs on, come before more of the same. 500 rounds of a take passed with the
+	-- factory "blocked: needs fuelsupply" at the weight of a nicety)
+	Needs.eyes = false;
+	if pf and Types.IsUnlocked(pf) and Types.drone and Military and Military.SpotRegion and Military.SpotRegion() then
+		local drones = 0;
+		for _,p in ipairs(Sense.my.plane or {}) do
+			if p.type == Types.drone then drones = drones + 1; end;
+		end;
+		if drones == 0 then
+			Needs.eyes = true;
+			v.planes = 1;
 		end;
 	end;
 	-- a factory that still wants planes: the air goal keeps its share for them
