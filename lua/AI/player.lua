@@ -2426,6 +2426,74 @@ function Economy.UraniumCare()
 	end;
 end;
 
+--[[
+Fuel for the army's eyes. A plane factory needs fuel supply to spare to be enabled at all, not
+fuel in store ("Cannot enable Plane Factory: Insufficient resource supply in compound (lacking
+Fuel)" with supply 34 against demand 30, off for a whole match, no drone, and what shot the army
+from below the ground at the region it was sent to take was never seen). Each generator burns
+10 fuel. While a take of mine has no spotter drones and the factory stands off, generators rest
+one by one, as long as the energy carries it; laboratories give way for that. They come back as
+soon as the drones fly or the take is over.
+]]
+function Economy.EyesFuel()
+	Mem.eyesOff = Mem.eyesOff or {};
+	local want = false;
+	local pf = Sense.planeFactories and Sense.planeFactories[1];
+	if pf and Types.drone and Types.IsUnlocked(Types.drone) and Military.SpotRegion and Military.SpotRegion() then
+		local drones = 0;
+		for _,p in ipairs(Sense.my.plane or {}) do
+			if p.type == Types.drone then drones = drones + 1; end;
+		end;
+		want = drones < (Cfg.spotters or 2);
+	end;
+	local cur = Economy.Resources();
+	local energy, fuel = cur.balance.energy or 0, cur.balance.fuel or 0;
+	if not want then
+		-- back on: Economy.Power does it, once they are no longer kept off
+		for id,_ in pairs(Mem.eyesOff) do
+			if Mem.keepOff then Mem.keepOff[id] = nil; end;
+			Mem.eyesOff[id] = nil;
+		end;
+		return;
+	end;
+	local resting = 0;
+	for _ in pairs(Mem.eyesOff) do resting = resting + 1; end;
+	-- (the engine tries to enable it only when it wakes: with fuel to spare now, it is asked again)
+	if pf.isEnabled == false and pf.Enable and fuel >= 10 and Sense.round % 5 == 0 then
+		local okE = pcall(pf.Enable, true);
+		Log(string.format('Plane Factory asked to switch on at round %d with fuel spare %d%s', Sense.round, fuel, okE and '' or ' (refused)'));
+	end;
+	if pf.isEnabled ~= false or fuel >= (Cfg.eyesFuel or 20) or resting >= (Cfg.eyesGenerators or 2) then return; end;
+	if Sense.round - (Mem.eyesRound or -99) < 5 then return; end;
+	if energy >= (Cfg.eyesEnergy or 40) then
+		for _,st in ipairs(Sense.myStructures) do
+			if st.type == Types.generator and st.isEnabled ~= false and st.Enable and not Mem.eyesOff[st.id] then
+				if pcall(st.Enable, false) then
+					Mem.eyesOff[st.id] = Sense.round;
+					Mem.keepOff = Mem.keepOff or {};
+					Mem.keepOff[st.id] = true;
+					Mem.eyesRound = Sense.round;
+					Log(string.format('Generator on cell %d rests from round %d: its fuel is for the Plane Factory, the army has no spotter drone (fuel spare %d, energy spare %d)',
+						st.location.cell.index, Sense.round, fuel, energy));
+				end;
+				return;
+			end;
+		end;
+	elseif Types.lab then
+		for _,st in ipairs(Sense.myStructures) do
+			if st.type == Types.lab and st.isEnabled ~= false and st.Enable then
+				if pcall(st.Enable, false) then
+					Mem.shed = Mem.shed or {};
+					Mem.shed[st.id] = Sense.round;
+					Mem.eyesRound = Sense.round - 3;
+					Log(string.format('Laboratory switched off at round %d: energy for resting a generator, whose fuel the Plane Factory needs', Sense.round));
+				end;
+				return;
+			end;
+		end;
+	end;
+end;
+
 function Economy.Power()
 	if #Sense.off == 0 or not Cfg.powerCare then return; end;
 	Mem.shed = Mem.shed or {};
@@ -6704,6 +6772,7 @@ function Execute()
 	SafeCall('NeedsReport', Needs.Report);
 
 	SafeCall('UraniumCare', Economy.UraniumCare);
+	SafeCall('EyesFuel', Economy.EyesFuel);
 	SafeCall('Power', Economy.Power);
 	SafeCall('Research', Economy.Research);
 	SafeCall('Production', Economy.Production);
