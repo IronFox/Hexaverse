@@ -2317,7 +2317,7 @@ function Economy.Capped(t)
 	-- (towers without a cap from outside: so many of a kind for each region held and no more. With
 	-- minerals at the cap one match put up 22 rocket, 21 missile and 17 radar towers while the
 	-- plants stood blocked)
-	if cap == nil and t.isStructure and t.turretType ~= nil and Cfg.towersPerRegionMax then
+	if cap == nil and t.isStructure and t.turretType ~= nil and Cfg.towersPerRegionMax and t ~= Types.mine and not string.find(t.name, 'Mine', 1, true) then	-- (a mine has a turret too: "173: capped" kept the fuel mine from its one site)
 		local regs = 0;
 		for _ in pairs(Sense.mine or {}) do regs = regs + 1; end;
 		cap = Cfg.towersPerRegionMax * math.max(1, regs) + 1;

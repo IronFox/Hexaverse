@@ -191,7 +191,7 @@ function Formation.Update()
 	Formation.stuckOut = Formation.stuckOut or {};
 	local function Stuck(id)
 		local ps = Passage and Passage.stuck and Passage.stuck[tostring(id)];
-		return ps ~= nil and ps.n >= 3;
+		return ps ~= nil and ps.n >= (Formation.stuckNotes or 6);
 	end;
 	for _,f in ipairs(Formation.list) do
 		if f.kind == 'take' and f.stage ~= 'gather' then
@@ -212,7 +212,7 @@ function Formation.Update()
 	end;
 	for _,u in ipairs(Sense.my.combat) do
 		local out = Formation.stuckOut[u.id];
-		if out and Sense.round - out > 200 then Formation.stuckOut[u.id] = nil; out = nil; end;
+		if out and Sense.round - out > (Formation.stuckOutRounds or 60) then Formation.stuckOut[u.id] = nil; out = nil; end;
 		if Formation.of[u.id] == nil and not Military.stashing[u.id] and not Military.peakGuard[u.id] and not out and not Stuck(u.id) then
 			free[#free+1] = u;
 		end;
@@ -224,7 +224,14 @@ function Formation.Update()
 		local count = 0;
 		for _ in pairs(f.members) do count = count + 1; end;
 		-- while gathering, the size follows what is available
-		if f.stage == 'gather' then f.want = math.max(count, Formation.Want('take', f.region, spare + count)); end;
+		if f.stage == 'gather' then
+			f.want = math.max(count, Formation.Want('take', f.region, spare + count));
+			-- (but not for good more than there is: "members 10 of 22" stood for 650 rounds with an
+			-- army of 20. After 150 rounds of gathering it goes with what can be spared)
+			if f.kind == 'take' and Sense.round - (f.stageSince or Sense.round) > (Formation.gatherMax or 150) then
+				f.want = math.max(count, math.min(f.want, count + math.max(0, spare)));
+			end;
+		end;
 		-- (a take the outside player ordered gets all but the home reserve, whatever the pressure
 		-- at home: 9 of 47 units went for the port, the pressure rule kept the rest, and they
 		-- died at home's edge all the same)
