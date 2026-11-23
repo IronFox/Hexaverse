@@ -3476,9 +3476,17 @@ function Economy.SiteOK(loc, forMine)
 		end;
 	end;
 	-- don't build where remembered or sensed hostiles can hit
-	if Move.IsDangerous(loc) then Economy.siteWhy = 'danger'; return false; end;
+	-- (a fuel mine while fuel is what everything waits for goes up all the same: match 153 knew one
+	-- fuel deposit, "hostiles near" for 487 rounds, and stood all match on two generators, one
+	-- plant and an army of 21. A mine that may be lost beats none)
+	local fuelLock = false;
+	if forMine and Needs.v and (Needs.v.fuel or 0) >= 1 then
+		local okf, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', loc.cell);
+		fuelLock = okf and lvl ~= nil and lvl > 0;
+	end;
+	if Move.IsDangerous(loc) and not fuelLock then Economy.siteWhy = 'danger'; return false; end;
 	-- what is worth something only on ground that is mine (radar and defences push the edge out)
-	if Cfg.useControl and not Economy.fringeOK then
+	if Cfg.useControl and not Economy.fringeOK and not fuelLock then
 		local ok, why = Control.Allows(loc, forMine);
 		if not ok then Economy.siteWhy = why; return false; end;
 	end;
