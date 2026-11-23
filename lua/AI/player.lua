@@ -6176,6 +6176,38 @@ function Passage.Breakout(t, job, target)
 			end;
 		end;
 	end;
+	--[[
+	No rim cell to cut across: what closes the pocket is my own towers (and EMP, which nothing
+	cuts). In match 160 an army of 50 stood at home behind a surveyor tower, a missile tower and
+	two AA towers on the gap cells, every other rim cell under EMP. The tower on the rim nearest the
+	goal is taken down: a tower costs less than an army that cannot leave.
+	]]
+	if best == nil and Cfg.passageDemolish ~= false and Sense.round - (Passage.demolished or -1000) >= (Cfg.passageDemolishEvery or 60) then
+		local pick, pickD = nil, nil;
+		for idx,n in pairs(inside) do
+			local loc = (idx == here.index) and t.location or n.location;
+			for _,nb in ipairs(loc.cell.neighbors or {}) do
+				if not inside[nb.index] and Sense.structureCells[nb.index] then
+					local g = Move.GroundAt(t, nb);
+					local okS, st = pcall(Game.GetStructureAt, g);
+					if g and okS and st and st.isOwnedByMe and st.Destroy and st.type and st.type.turretType ~= nil
+						and st.type ~= Types.mine and not string.find(tostring(st.type.name), 'Mine', 1, true) then
+						local d = Dist2(nb.center, target.center);
+						if pickD == nil or d < pickD then pick, pickD = st, d; end;
+					end;
+				end;
+			end;
+		end;
+		if pick then
+			local okD, errD = pcall(pick.Destroy);
+			Passage.demolished = Sense.round;
+			Mem.blacklist[pick.location.cell.index] = Sense.round + 2000;	-- (and nothing goes up there again)
+			if okD and pick.id and Score and Score.demolished then Score.demolished[pick.id] = true; end;
+			Log(string.format('Passage: no ground to cut across, %s on cell %d closes the pocket towards cell %d: taken down%s', tostring(pick.niceName),
+				pick.location.cell.index, target.index, okD and '' or (' (refused: '..tostring(errD)..')')));
+			return okD;
+		end;
+	end;
 	if best == nil then return false; end;
 	-- (the edge of what the reach search covers is not the rim of a pocket: a cut was ordered
 	-- three times between two cells of open ground a region away from the vehicle it was for, and
