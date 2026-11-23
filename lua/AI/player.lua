@@ -331,7 +331,7 @@ function Types.HeavyStuck()
 			local base = u.type and u.type.vehicleBaseType;
 			if base and base.name == 'Heavy Base' and u.location and not u.storedIn and u.GetReach then
 				n = n + 1;
-				local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed or 1), true, false, false, true);
+				local ok, reach = Move.Reach(u, math.max(2, u.movementSpeed or 1), true, false, false);
 				-- (or finds no way to where it is sent for 30 rounds: an all-heavy army had twice
 				-- the "no path" of a hover one, and 2 of 14 came up where hovers had 8 of 11)
 				local ps = Passage and Passage.stuck and Passage.stuck[tostring(u.id)];
@@ -1909,6 +1909,19 @@ end;
 
 Move = {};
 
+-- The cells a unit can drive to, on ground I have sensed. Where that gives none, the same with
+-- ground I have not sensed allowed: the game counts ground as unknown that the unit stands
+-- next to (30 units in one match had "0 cells in reach" this way, each with a free level
+-- neighbour and a one step path to it), and a unit that has to get off its cell or is asked
+-- whether it can make a step is not helped by an empty answer.
+function Move.Reach(u, range, reversible, hangars, throughMine)
+	local ok, reach = pcall(u.GetReach, nil, range, reversible, hangars, throughMine, true);
+	if ok and reach ~= nil and #reach > 0 then return ok, reach; end;
+	local ok2, reach2 = pcall(u.GetReach, nil, range, reversible, hangars, throughMine, false);
+	if ok2 and reach2 ~= nil then return ok2, reach2; end;
+	return ok, reach;
+end;
+
 -- Ground location a unit could stand on in the given cell, or nil
 function Move.GroundAt(u, cell)
 	local ok, loc = pcall(Game.Grid.FindHighestVehicleGround, u, cell);
@@ -2177,7 +2190,7 @@ function Move.MakeWay()
 		if m and (Move.IsIdle(m) or st.n >= 3) and not a.done then
 			a.done = true;
 			if not Move.IsIdle(m) then pcall(m.ClearSafeTasks); end;
-			local ok, reach = pcall(m.GetReach, nil, math.max(1, (m.movementSpeed or 1) * 2), true, false, false, true);
+			local ok, reach = Move.Reach(m, math.max(1, (m.movementSpeed or 1) * 2), true, false, false);
 			local best = nil;
 			if ok and reach then
 				for _,n in ipairs(reach) do
@@ -3430,7 +3443,7 @@ end;
 
 -- Finds a new ring center near home: a free cell whose neighbors are free and level with it
 function Economy.NewPowerCenter(u)
-	local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed * 3), true, false, false, true);
+	local ok, reach = Move.Reach(u, math.max(2, u.movementSpeed * 3), true, false, false);
 	if not ok or reach == nil then return nil; end;
 	local goal = Sense.baseCenter or u.location.world;
 	local best, bestD = nil, nil;
@@ -4258,7 +4271,7 @@ function Economy.AssignConstructor(u, index)
 		else st = {cell = u.location.cell.index, n = 1}; Economy.stuck[u.id] = st; end;
 		if st.n >= 2 then
 			Mem.jobs[u.id] = nil;
-			local okr, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed or 1), true, false, false, true);
+			local okr, reach = Move.Reach(u, math.max(2, u.movementSpeed or 1), true, false, false);
 			local best, bd = nil, nil;
 			for _,n in ipairs(okr and reach or {}) do
 				local l = n.location;
@@ -4338,7 +4351,7 @@ function Economy.AssignConstructor(u, index)
 				else
 					why = 'a unit of mine ('..tostring(m.type and m.type.name or '?')..' #'..tostring(m.id)..') stands on the cell; it was told to step off, order again next round';
 					pcall(function()
-						local reach = m.GetReach(nil, math.max(2, m.movementSpeed), false, false, false, true);
+						local _, reach = Move.Reach(m, math.max(2, m.movementSpeed), false, false, false);
 						local best, bestC;
 						for _,n in ipairs(reach or {}) do
 							local l = n.location;
@@ -4483,7 +4496,7 @@ function Economy.AssignConstructor(u, index)
 	if want.region then
 		goal = Map.WorldCenter(Map.regions[want.region]);
 	end;
-	local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed * 3), true, false, false, true);
+	local ok, reach = Move.Reach(u, math.max(2, u.movementSpeed * 3), true, false, false);
 	if not ok or reach == nil then
 		return;
 	end;
@@ -4597,7 +4610,7 @@ function Economy.BuildAt(u, loc, t, reachable)
 	-- the game keeps the begun construction for good, "Unable to automatically relocate", 85 rounds
 	-- in one match)
 	if loc.cell.index == u.location.cell.index then
-		local okr, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed or 1), true, false, false, true);
+		local okr, reach = Move.Reach(u, math.max(2, u.movementSpeed or 1), true, false, false);
 		local free = false;
 		for _,n in ipairs(okr and reach or {}) do
 			local l = n.location;
@@ -5450,7 +5463,7 @@ function Military.Stores()
 				end;
 			end;
 			if f and reg and quiet and (reg.id == f.staging or (f.atHome and Sense.mine[reg.id])) and v.CanStandAt and not Military.NeedsStationary(v) then
-				local ok, reach = pcall(v.GetReach, nil, math.max(2, v.movementSpeed * 2), false, true, true, true);
+				local ok, reach = Move.Reach(v, math.max(2, v.movementSpeed * 2), false, true, true);
 				for _,n in ipairs(ok and reach or {}) do
 					local hr = n.hangar and Map.RegionOfLoc(n.location);
 					if n.hangar and hr and (hr.id == f.staging or (f.atHome and Sense.mine[hr.id])) and (not n.hangar.CanStore or n.hangar.CanStore(v)) then
@@ -5598,7 +5611,7 @@ function Military.Stores()
 			local v = Sense.my.combat[i];
 			local reg = Map.RegionOfLoc(v.location);
 			if reg and Sense.Threat(reg) == 0 and v.CanStandAt then
-				local ok, reach = pcall(v.GetReach, nil, math.max(2, v.movementSpeed * 2), false, true, true, true);
+				local ok, reach = Move.Reach(v, math.max(2, v.movementSpeed * 2), false, true, true);
 				if ok and reach then
 					for _,n in ipairs(reach) do
 						if n.hangar and (not n.hangar.CanStore or n.hangar.CanStore(v)) then
@@ -6118,7 +6131,7 @@ function Military.Combat()
 			local moved = Move.Towards(v, goal, cell, avoid, attacking);
 			-- (why a member of a formation on the march does not come up)
 			if fGoal and fAttack and Sense.round % 10 == 0 and (not moved or Move.why) then
-				local okR, reach = pcall(v.GetReach, nil, math.max(2, v.movementSpeed or 1), true, false, false, true);
+				local okR, reach = Move.Reach(v, math.max(2, v.movementSpeed or 1), true, false, false);
 				Log(string.format('March: %s (%s) at cell %d (region %s) towards cell %d (region %s): %s%s; %d cells in reach', v.niceName, tostring(v.type.name), v.location.cell.index,
 					tostring((Map.RegionOfLoc(v.location) or {}).id), cell.index, tostring(goalId), moved and 'moves by sight only, ' or 'does not move, ', tostring(Move.why or 'no step nearer'),
 					okR and reach and #reach or 0));
@@ -6520,7 +6533,7 @@ function Military.ClearPlants()
 		for _,u in ipairs(list) do
 			if (parked[u.id] or 0) >= 2 and (Move.IsIdle(u) or (role ~= 'constructor' and urgent[u.location.cell.index]) or urgentLong[u.location.cell.index]) and u.GetReach then
 				SafeCall('clear plant '..u.niceName, function()
-					local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed * 2), false, false, false, true);
+					local ok, reach = Move.Reach(u, math.max(2, u.movementSpeed * 2), false, false, false);
 					if not ok or reach == nil then return; end;
 					local best, bestC = nil, nil;
 					for _,n in ipairs(reach) do

@@ -691,7 +691,7 @@ function Mole.PickShaftCell(u)
 	local taken = Mole.SurfaceStructureCells(true);
 	-- only cells the digger can drive to (a base on a plateau may have no way down)
 	local reach = {[u.location.cell.index] = true};
-	local okr, nodes = pcall(u.GetReach, nil, math.max(6, (u.movementSpeed or 1) * 6), true, false, false, true);
+	local okr, nodes = Move.Reach(u, math.max(6, (u.movementSpeed or 1) * 6), true, false, false);
 	if okr and nodes then
 		for _,n in ipairs(nodes) do
 			if n.location and not n.location.isSuborbital then reach[n.location.cell.index] = true; end;

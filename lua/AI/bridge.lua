@@ -743,7 +743,7 @@ function Bridge.RunPosted()
 				local stuck = post.at and post.at.cell == u.location.cell.index and Sense.round - post.at.round >= 5;
 				if stuck then
 					local best, bestD;
-					local okR, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed), true, false, false, true);
+					local okR, reach = Move.Reach(u, math.max(2, u.movementSpeed), true, false, false);
 					if okR and reach then
 						for _,n in ipairs(reach) do
 							local l = n.location;
