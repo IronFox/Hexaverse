@@ -5874,12 +5874,22 @@ function Passage.Step(t, s, job)
 		target = goal;
 	end;
 	local at = here;
+	-- (nor through a cell one of my vehicles stands on: it may be as stuck as the one the cut is
+	-- for, and the dig then waits for it round after round. A cut waited 130 rounds that way)
+	local held = {};
+	for _,lst in pairs(Sense.my) do
+		for _,o in ipairs(lst) do
+			if o.location and o.location.cell and not o.storedIn and tostring(o.id) ~= tostring(t.id) then held[o.location.cell.index] = true; end;
+		end;
+	end;
+	held[from.index] = nil;
+	for k,_ in pairs(job.avoid or {}) do held[k] = true; end;
 	for _ = 1, 4 do
 		local best, bestD = nil, nil;
 		for _,nb in ipairs(at.neighbors) do
 			-- (round my own structures: the nearest cell to the goal that holds none)
 			local d = Dist2(nb.center, target.center);
-			if not Sense.structureCells[nb.index] and (bestD == nil or d < bestD) then best, bestD = nb, d; end;
+			if not Sense.structureCells[nb.index] and not held[nb.index] and (bestD == nil or d < bestD) then best, bestD = nb, d; end;
 		end;
 		if best == nil or bestD >= Dist2(at.center, target.center) then break; end;
 		if not beside and best.index == from.index then break; end;
@@ -5945,9 +5955,25 @@ function Passage.Tick()
 					for _,o in ipairs(lst) do
 						if o.location and o.location.cell and o.location.cell.index == at.index and not o.storedIn then
 							Move.AskWay(o, t, {{location = o.location}});
+							job.waitCell = at.index;
 						end;
 					end;
 				end;
+			end;
+			-- (asked and still there after ten rounds: it cannot move. The dig is dropped and the
+			-- next cut goes round that cell)
+			if job.waitCell then
+				job.wait = (job.wait or 0) + 1;
+				if job.wait >= 10 then
+					job.avoid = job.avoid or {};
+					job.avoid[job.waitCell] = true;
+					Log('Passage: the cut waits for a vehicle on cell '..job.waitCell..' that does not move: it goes round that cell');
+					job.wait, job.waitCell, job.to, job.from = 0, nil, nil, nil;
+					pcall(t.ClearTasks);
+				end;
+				job.waitCell = nil;
+			else
+				job.wait = 0;
 			end;
 		end;
 		return;

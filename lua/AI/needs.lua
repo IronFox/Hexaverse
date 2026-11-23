@@ -999,7 +999,9 @@ function Needs.StructureOptions(constructorIndex)
 	Needs.fuelShortForPlanes = fuelShort;
 	local fuelServes = {survivalFuel = 1, fuel = 1, income = 0.3, energy = 0.3};
 	if fuelShort then
-		fuelServes.planes = 1.2;
+		-- (a factory that stands and cannot run for want of fuel, while the army has no eyes: the
+		-- fuel mine scored 0,08, below a store on a peak, for 850 rounds)
+		fuelServes.planes = Needs.eyes and 3 or 1.2;
 		Needs.Block('Plane Factory', 'fuelsupply', math.max(0.6, Needs.v.planes or 0));
 	end;
 	add(Economy.MineReq('Fuel'), fuelServes, 'Mine (fuel)');
