@@ -1540,7 +1540,10 @@ function Needs.NextVehicle(kit)
 	-- (62 surveyors were built and lost in match 151 against 48 tanks: one every surveyorEvery
 	-- rounds at most, what dies in between is not replaced at once)
 	local function isSurveyor(t) return t and string.find(string.lower(tostring(t.name)), 'surveyor', 1, true) ~= nil; end;
-	if Sense.round - (Needs.lastSurveyor or -1000) < (Cfg.surveyorEvery or 80) then
+	-- (but an army on a take with no surveyor at all has no eye below ground: then one every 20)
+	local every = Cfg.surveyorEvery or 80;
+	if #Sense.my.surveyor == 0 and Military and Military.SpotRegion and Military.SpotRegion() then every = Cfg.surveyorEveryTake or 20; end;
+	if Sense.round - (Needs.lastSurveyor or -1000) < every then
 		local keep = {};
 		for _,o in ipairs(opts) do
 			if not isSurveyor(o.want) then keep[#keep+1] = o; end;
