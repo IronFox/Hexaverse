@@ -5525,7 +5525,13 @@ function Military.Fire(v)
 			-- (a ghost does not tell when it is dead: in match 152 the tower was gone after four hits
 			-- and was shelled for 30 rounds more. After buriedShots shells it counts as done, until
 			-- it is sensed again)
-			if Sense.round - b.round > (Cfg.buriedMemory or 60) or (b.shots or 0) >= (Cfg.buriedShots or 12) then
+			-- (... and it stays a target for whoever comes into range for buriedMemory rounds: in match
+			-- 181 the tower at cell 30 was at 3 of 24 when the one gun in range fell silent, the next
+			-- gun was built a round later, and after 60 rounds nobody fired at it any more)
+			if Sense.round - b.round > (Cfg.buriedMemory or 300) or (b.shots or 0) >= (Cfg.buriedShots or 12) then
+				if (b.shots or 0) >= (Cfg.buriedShots or 12) and Military.buriedKnown and Military.buriedKnown[id] then
+					Military.buriedKnown[id].spent = Sense.round;
+				end;
 				Military.buried[id] = nil;
 			elseif not (live and live.health > 0) then
 				local n0 = #candidates;
@@ -7039,7 +7045,12 @@ function Military.Scouts()
 							if close then
 								Log('Deep eye: '..v.niceName..' stands at cell '..here.index..' by '..k.name..' (cell '..k.cell.index..') and senses nothing below: it is gone');
 								Military.buriedKnown[id] = nil;
-							elseif nearArmy and (kd == nil or d < kd) then kb, kd = {k = k, w = w}, d; end;
+							elseif nearArmy then
+								-- (one shelled its fill since it was last seen comes after the others: in
+								-- match 181 the eye kept going back to a tower that was long destroyed)
+								if k.spent then d = d + 1e12; end;
+								if kd == nil or d < kd then kb, kd = {k = k, w = w}, d; end;
+							end;
 						end;
 					end;
 					if kb then
