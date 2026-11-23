@@ -4053,7 +4053,10 @@ function Economy.TryPort(u)
 		local dest = Move.GroundAt(u, nb);
 		if dest and not Economy.claimed[nb.index] and not Sense.structureCells[nb.index] and Game.GetStructureAt(dest) == nil
 				and not Game.Grid.AffectedByEMP(dest) and not Control.hot[nb.index] and not Move.IsDangerous(dest) then
-			if Economy.BuildAt(u, dest, t) then
+			Economy.portBuild = true;
+			local built = Economy.BuildAt(u, dest, t);
+			Economy.portBuild = nil;
+			if built then
 				Economy.claimed[nb.index] = true;
 				Mem.jobs[u.id].port = best.index;
 				Log(string.format('Port %s ordered: %s on cell %d beside the port on cell %d in region %s at round %d',
@@ -4906,11 +4909,13 @@ function Economy.BuildAt(u, loc, t, reachable)
 			-- (a mine site no builder finds a way to gets one cut, like a vehicle that finds none:
 			-- match 158 knew one fuel site, cell 1636 in its home region, tried it 500 times from
 			-- four sides and stood all match on two generators)
-			if Passage and Passage.stuck and string.find(t.name, 'Mine', 1, true) then
+			-- (... and a site beside a port to be claimed: the cells beside the Nexus port were the holes
+			-- its buried towers left, and four builders had no path to them)
+			if Passage and Passage.stuck and (string.find(t.name, 'Mine', 1, true) or Economy.portBuild) then
 				local key = 'site:'..loc.cell.index;
 				local ps = Passage.stuck[key];
 				if ps == nil or Sense.round - ps.last > 60 then
-					ps = {keep = 60, key = key, cell = u.location.cell.index, n = 0, name = u.niceName..' (builder for a mine site)', at = -100};
+					ps = {keep = 60, key = key, cell = u.location.cell.index, n = 0, name = u.niceName..(Economy.portBuild and ' (builder for a site beside a port)' or ' (builder for a mine site)'), at = -100};
 					Passage.stuck[key] = ps;
 				end;
 				if Sense.round - ps.at >= 10 then ps.n = ps.n + 1; ps.at = Sense.round; end;
