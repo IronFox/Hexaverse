@@ -5384,10 +5384,49 @@ function Military.Fire(v)
 			SafeCall('target', ProcessAttackTarget, v, e, candidates, hitsAir, hitsGround);
 		end;
 	end;
+	--[[
+	A tower below ground is sensed for a round or two, while a surveyor is within four cells of
+	it, and it does not move. In match 148 the one sighting of a buried missile tower gave eight
+	of my units an attack order, the surveyor died, the tower was a ghost again and nobody fired
+	any more. So a buried tower once sensed stays a target at the place where it was sensed,
+	and comes first.
+	]]
+	if hitsGround then
+		Military.buried = Military.buried or {};
+		for id,e in pairs(Game.hostileUnits) do
+			if e.health > 0 and e.location and not e.location.isSuborbital and (e.location.height or 0) < 0
+				and e.type and e.type.isStructure and e.type.turretType and e.type.turretType.canAttack then
+				if Military.buried[id] == nil then
+					Log(string.format('Buried tower: %s sensed at cell %s height %s, kept as a target', tostring(e.niceName),
+						tostring(e.location.cell and e.location.cell.index), tostring(e.location.height)));
+				end;
+				Military.buried[id] = {loc = e.location, name = tostring(e.niceName), round = Sense.round, type = e.type};
+			end;
+		end;
+		for id,b in pairs(Military.buried) do
+			local live = Game.hostileUnits[id];
+			if Sense.round - b.round > (Cfg.buriedMemory or 400) then
+				Military.buried[id] = nil;
+			elseif not (live and live.health > 0) then
+				local n0 = #candidates;
+				SafeCall('buried target', ProcessAttackTarget, v, {location = b.loc, niceName = b.name..' (remembered)', health = 1, type = b.type,
+					isOwnedByMe = false, isIndestructible = false}, candidates, hitsAir, hitsGround);
+				for i = n0 + 1, #candidates do candidates[i].priority = (candidates[i].priority or 0) + 1000; candidates[i].buried = b; end;
+			else
+				for _,c in ipairs(candidates) do
+					if c.explosionAt and b.loc and c.explosionAt == b.loc then c.priority = (c.priority or 0) + 1000; c.buried = b; end;
+				end;
+			end;
+		end;
+	end;
 	if #candidates == 0 then
 		return false;
 	end;
 	table.sort(candidates, function(a,b) return a.priority > b.priority end);
+	if candidates[1].buried and (candidates[1].buried.said or -100) + 10 <= Sense.round then
+		candidates[1].buried.said = Sense.round;
+		Log(string.format('Buried tower: %s fires at %s', v.niceName, candidates[1].buried.name));
+	end;
 	local targets = {};
 	for i = 1, math.min(#candidates, t.attacksPerRound or 1) do
 		targets[i] = candidates[i].target;
