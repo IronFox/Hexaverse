@@ -6717,7 +6717,30 @@ function Military.Scouts()
 				-- (tried in match 151 and given up: alone it never got there, 36 surveyors were lost
 				-- on the way. It keeps with the army)
 				local probe = false;
-				if deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
+				-- (where vehicles of mine fell lately on the last stretch and no buried tower is known,
+				-- something unseen is in reach: it looks there, once the army is in that region. In
+				-- match 148 the one sighting came from the cells where the army was being hit)
+				local fell = nil;
+				if van and next(Military.buried or {}) == nil then
+					local vr = Map.RegionOfLoc(van.location);
+					local bd = nil;
+					for idx,d in pairs(Move.deaths or {}) do
+						if d.n >= 2 and Sense.round - d.round < (Cfg.deepFellRounds or 150) then
+							local rid = Map.cellRegion[idx];
+							if rid and (rid == deepSpot.id or (vr and rid == vr.id)) then
+								local c = Economy.Cell(idx);
+								if c then
+									local w = {x=c.center.x*Map.groundRadius, y=c.center.y*Map.groundRadius, z=c.center.z*Map.groundRadius};
+									local dd = Dist2(w, tw);
+									if bd == nil or dd < bd then fell, bd = {cell = c, world = w}, dd; end;
+								end;
+							end;
+						end;
+					end;
+				end;
+				Military.deepFell = fell and fell.cell.index or nil;
+				if fell then moved = Move.Towards(v, fell.world, fell.cell, false, true); end;
+				if not moved and deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
 					moved = Move.Towards(v, tw, deepSpot.centerCell, false, true);
 				end;
 				if not moved and van and not (ahead and not deepNow) then
@@ -6738,7 +6761,8 @@ function Military.Scouts()
 						end;
 					end;
 					local at = Map.RegionOfLoc(v.location);
-					local what = (deepNow and (probe or van == nil or ahead)) and ('goes into region '..deepSpot.id)
+					local what = Military.deepFell and ('looks where vehicles of mine fell, cell '..Military.deepFell)
+						or (deepNow and (probe or van == nil or ahead)) and ('goes into region '..deepSpot.id)
 						or van and ('keeps with '..tostring(van.niceName)..' at cell '..tostring(van.location.cell.index)..' on the way to region '..deepSpot.id)
 						or ('goes to region '..reg.id);
 					local why = '';
