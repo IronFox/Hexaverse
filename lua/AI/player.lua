@@ -4759,8 +4759,9 @@ function Economy.NextPlane()
 	local hostileAir = Sense.AirPressure() > 0;
 	if hostileAir and raptor and n.raptor <= n.bomber and total < Cfg.maxPlanes then return raptor; end;
 	-- (an army sent to take a region needs eyes on it: one drone for that before any other plane)
-	if drone and n.drone < 1 and Military.SpotRegion and Military.SpotRegion() then return drone; end;
-	if drone and n.drone < wantDrones and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then return drone; end;
+	if drone and n.drone < (Cfg.spotters or 2) and Military.SpotRegion and Military.SpotRegion() then return drone; end;
+	-- (none for scouting while a take is on: the fuel that makes them is what the spotters need)
+	if drone and n.drone < wantDrones and not (Military.SpotRegion and Military.SpotRegion()) and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then return drone; end;
 	if total >= Cfg.maxPlanes then return nil; end;
 	--[[
 	Raptors are invaluable: they hunt planes and hit ground targets twice a round on the move.
@@ -6221,7 +6222,8 @@ end;
 -- within rounds, 38 of 39 in one match, so it goes there when its sight is of use)
 function Military.SpotRegion(now)
 	for _,f in ipairs(Formation and Formation.list or {}) do
-		if f.kind == 'take' and Map.regions[f.region] and (not now or f.stage ~= 'gather') then return Map.regions[f.region]; end;
+		if f.kind == 'take' and Map.regions[f.region] and (not now or f.stage == 'secure'
+			or (f.stage == 'advance' and f.route and f.leg and f.leg >= #f.route - 1)) then return Map.regions[f.region]; end;
 	end;
 	if Mem.posture == 'attack' and Mem.attackTarget then return Map.regions[Mem.attackTarget]; end;
 	return nil;
@@ -6245,17 +6247,25 @@ function Military.Planes()
 				-- (the first drone is the army's eye: it keeps the region the army is sent to take
 				-- in view, so that artillery standing off can fire at what holds it. Without eyes
 				-- on it, the towers of a base shoot at an army that cannot shoot back)
-				if not taken.spotter then
+				-- (the first two are kept for that: they wait over home while the army gathers and
+				-- marches, and go over the region on its last leg. Sent scouting, all 13 of one match
+				-- were shot down over the staging region before the army set out, and what hit the
+				-- army from below the ground there was never seen)
+				local hold = false;
+				if (taken.spotters or 0) < (Cfg.spotters or 2) and Military.SpotRegion() then
+					taken.spotters = (taken.spotters or 0) + 1;
 					local spot = Military.SpotRegion(true);
 					if spot then
-						taken.spotter = true;
 						taken[spot.id] = true;
 						best, bs = spot, math.huge;
-						if Sense.round % 50 == 0 then Log('Spotter: '..p.niceName..' keeps region '..spot.id..' in view for the army'); end;
+						if Sense.round % 10 == 0 then Log('Spotter: '..p.niceName..' keeps region '..spot.id..' in view for the army'); end;
+					else
+						hold = true;
+						if Sense.round % 50 == 0 then Log('Spotter: '..p.niceName..' waits over home for the army to go'); end;
 					end;
 				end;
 				for _,reg in ipairs(Map.regions) do
-					if bs ~= math.huge and not taken[reg.id] then
+					if not hold and bs ~= math.huge and not taken[reg.id] then
 						local hops = Sense.hops[reg.id] or 30;
 						local sc = math.min(Sense.Staleness(reg), 60) / (1 + hops * 0.5);
 						if Sense.frontier[reg.id] then sc = sc * 2; end;
