@@ -233,7 +233,8 @@ function Needs.Update()
 	-- the fuel it runs on, come before more of the same. 500 rounds of a take passed with the
 	-- factory "blocked: needs fuelsupply" at the weight of a nicety)
 	Needs.eyes = false;
-	if pf and Types.IsUnlocked(pf) and Types.drone and Military and Military.SpotRegion and Military.SpotRegion() then
+	-- (only once the economy stands: it must not outweigh the first mines and the defence of the home port)
+	if pf and Types.IsUnlocked(pf) and Types.drone and round >= 150 and Economy.Count(Types.mine) >= (Cfg.planeFactoryMines or 4) and Military and Military.SpotRegion and Military.SpotRegion() then
 		local drones = 0;
 		for _,p in ipairs(Sense.my.plane or {}) do
 			if p.type == Types.drone then drones = drones + 1; end;
