@@ -6597,10 +6597,11 @@ function Military.Scouts()
 	target. One surveyor goes with a take: to the staging region while the army gathers and
 	marches, into the region on its last leg.
 	]]
-	local deepSpot, deepStage, deepNow = nil, nil, false;
+	local deepSpot, deepStage, deepNow, deepForm = nil, nil, false, nil;
 	for _,f in ipairs(Formation and Formation.list or {}) do
 		if f.kind == 'take' and not f.over and Map.regions[f.region] then
 			deepSpot, deepStage = Map.regions[f.region], Map.regions[f.staging];
+			deepForm = f;
 			deepNow = f.stage == 'secure' or (f.stage == 'advance' and f.route and f.leg and f.leg >= #f.route - 1) or false;
 			break;
 		end;
@@ -6626,7 +6627,28 @@ function Military.Scouts()
 				if v.isAutomated and v.SetAutomation then pcall(v.SetAutomation, false); end;
 				local reg = deepNow and deepSpot or deepStage or deepSpot;
 				if not Move.IsIdle(v) then v.ClearSafeTasks(); end;
-				local moved = Move.Towards(v, Map.WorldCenter(reg), reg.centerCell, false, true);
+				-- (with the army, not to a fixed cell: it stood three regions behind on a staging cell
+				-- with no ground for it. It keeps to the member nearest the region to be taken, and
+				-- goes on into the region on the last leg)
+				local van, vd = nil, nil;
+				local tw = Map.WorldCenter(deepSpot);
+				for _,m in ipairs(Sense.my.combat) do
+					if deepForm.members[m.id] and m.location and not m.storedIn then
+						local d = Dist2(m.location.world, tw);
+						if vd == nil or d < vd then van, vd = m, d; end;
+					end;
+				end;
+				local moved = false;
+				local ahead = van and Dist2(v.location.world, tw) <= vd;
+				if deepNow and (van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
+					moved = Move.Towards(v, tw, deepSpot.centerCell, false, true);
+				end;
+				if not moved and van and not (ahead and not deepNow) then
+					moved = Move.Towards(v, van.location.world, van.location.cell, false, true);
+				end;
+				if not moved and van == nil then
+					moved = Move.Towards(v, Map.WorldCenter(reg), reg.centerCell, false, true);
+				end;
 				if Sense.round % 10 == 0 then
 					local below = 0;
 					for _,e in pairs(Game.hostileUnits) do
