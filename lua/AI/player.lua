@@ -2157,7 +2157,8 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 				-- (no way at all and every cell around taken by vehicles of mine: they are asked to
 				-- make way. In match 163 the members parked on four home cells had "no path, 0
 				-- cells in reach" for 80 rounds and reach at once with my own vehicles left out)
-				local okR, rch = pcall(u.GetReach, nil, 1, false, false, false, false);
+				-- (reach of 1 is less than one step costs: it read empty for vehicles standing free)
+				local okR, rch = Move.Reach(u, math.max(2, u.movementSpeed or 1), false, false, false);
 				if okR and rch and #rch == 0 then
 					local asked = 0;
 					for _,nb in ipairs(u.location.cell.neighbors or {}) do
