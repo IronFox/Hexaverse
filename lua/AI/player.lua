@@ -6203,9 +6203,11 @@ function Military.BomberGoal()
 end;
 
 -- The region an army of mine is sent to take (or attacks), if any
-function Military.SpotRegion()
+-- (now: only while the army is on its way or there. A drone over a held region is shot down
+-- within rounds, 38 of 39 in one match, so it goes there when its sight is of use)
+function Military.SpotRegion(now)
 	for _,f in ipairs(Formation and Formation.list or {}) do
-		if f.kind == 'take' and Map.regions[f.region] then return Map.regions[f.region]; end;
+		if f.kind == 'take' and Map.regions[f.region] and (not now or f.stage ~= 'gather') then return Map.regions[f.region]; end;
 	end;
 	if Mem.posture == 'attack' and Mem.attackTarget then return Map.regions[Mem.attackTarget]; end;
 	return nil;
@@ -6230,7 +6232,7 @@ function Military.Planes()
 				-- in view, so that artillery standing off can fire at what holds it. Without eyes
 				-- on it, the towers of a base shoot at an army that cannot shoot back)
 				if not taken.spotter then
-					local spot = Military.SpotRegion();
+					local spot = Military.SpotRegion(true);
 					if spot then
 						taken.spotter = true;
 						taken[spot.id] = true;
