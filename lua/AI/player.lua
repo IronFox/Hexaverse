@@ -2250,12 +2250,23 @@ function Move.MakeWay()
 			a.done = true;
 			if not Move.IsIdle(m) then pcall(m.ClearSafeTasks); end;
 			local ok, reach = Move.Reach(m, math.max(1, (m.movementSpeed or 1) * 2), true, false, false);
-			local best = nil;
+			local best, bestS = nil, nil;
 			if ok and reach then
+				-- (aside, but not out of my own ground and not onto cells where vehicles of mine fell:
+				-- in match 169 guns asked aside at home stepped out into the regions under the fire of
+				-- the buried towers and stayed there)
+				local fromReg = Map.cellRegion and Map.cellRegion[m.location.cell.index];
+				local fromMine = fromReg and Sense.mine[fromReg];
 				for _,n in ipairs(reach) do
 					local c = n.location and n.location.cell;
-					if c and c.index ~= m.location.cell.index and not a.avoid[c.index] and not Sense.UnderEMP(c)
-						and (best == nil or n.movementCostsFromRoot < best.movementCostsFromRoot) then best = n; end;
+					if c and c.index ~= m.location.cell.index and not a.avoid[c.index] and not Sense.UnderEMP(c) then
+						local sc = n.movementCostsFromRoot or 0;
+						local rid = Map.cellRegion and Map.cellRegion[c.index];
+						if fromMine and not (rid and Sense.mine[rid]) then sc = sc + 50; end;
+						local d = Move.deaths[c.index];
+						if d and r - d.round < 150 then sc = sc + 100; end;
+						if bestS == nil or sc < bestS then best, bestS = n, sc; end;
+					end;
 				end;
 			end;
 			if best then
