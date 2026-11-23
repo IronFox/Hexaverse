@@ -692,7 +692,7 @@ function Needs.Failed(name)
 	f.n = math.min(6, f.n + 1);
 	f.round = Sense.round;
 	Needs.failed[name] = f;
-	Needs.Note('order for '..name..' came to nothing ('..f.n..'x): weighing it down');
+	Needs.Note('order for '..name..' came to nothing ('..f.n..'x): weighing it down'..((Economy.buildWhy or Economy.siteWhy) and (' (last reason: '..tostring(Economy.buildWhy or Economy.siteWhy)..')') or ''));
 end;
 
 -- A structure order was placed: the pending choice worked out

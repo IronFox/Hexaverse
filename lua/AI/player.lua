@@ -4523,6 +4523,8 @@ function Economy.AssignConstructor(u, index)
 		local l = n.location;
 		if l and not l.isSuborbital and l.cell.index ~= u.location.cell.index and not Sense.structureCells[l.cell.index] then stepOff = true; break; end;
 	end;
+	local tally = {cells = 0, claimed = 0, exits = 0, why = {}};
+	local alt, altExits = nil, nil;
 	for _,n in ipairs(reach) do
 		local loc = n.location;
 		local inReg = stepOff or loc.cell.index ~= u.location.cell.index;
@@ -4530,9 +4532,22 @@ function Economy.AssignConstructor(u, index)
 			local lr = Map.RegionOfLoc(loc);
 			inReg = inReg and lr ~= nil and lr.id == want.region;
 		end;
-		if inReg and not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false)
+		-- (why no site: counted, and said when the order comes to nothing)
+		local siteOK = inReg and not loc.isSuborbital and not Economy.claimed[loc.cell.index] and Economy.SiteOK(loc, false);
+		if inReg and not loc.isSuborbital then
+			tally.cells = tally.cells + 1;
+			if Economy.claimed[loc.cell.index] then tally.claimed = tally.claimed + 1;
+			elseif not siteOK then tally.why[tostring(Economy.siteWhy)] = (tally.why[tostring(Economy.siteWhy)] or 0) + 1; end;
+		end;
+		local exitsHere = siteOK and want.type == Types.plant and Economy.Exits(loc) or nil;
+		if exitsHere and exitsHere < Cfg.plantFreeCells then
+			tally.exits = tally.exits + 1;
+			-- (with no plant standing at all, the site with the most exits in reach will do)
+			if exitsHere >= 1 and (alt == nil or exitsHere > altExits) then alt, altExits = n, exitsHere; end;
+		end;
+		if siteOK
 			-- (a vehicle plant only where its vehicles can leave: level ground beside it)
-			and (want.type ~= Types.plant or Economy.Exits(loc) >= Cfg.plantFreeCells) then
+			and (want.type ~= Types.plant or exitsHere >= Cfg.plantFreeCells) then
 			local d = Dist2(loc.world, goal);
 			-- towers prefer the edge of the base, everything else the middle
 			local score = d;
@@ -4568,6 +4583,18 @@ function Economy.AssignConstructor(u, index)
 		end;
 	end;
 	Economy.fringeOK = false;
+	if best == nil and alt and want.type == Types.plant and Economy.Count(Types.plant) == 0 then
+		best = alt;
+		Needs.Note(u.niceName..': no site with '..Cfg.plantFreeCells..' exits for a Vehicle Plant in reach and none stands: taking cell '..alt.location.cell.index..' with '..altExits);
+	end;
+	if best == nil then
+		local parts = {};
+		for k,c in pairs(tally.why) do parts[#parts+1] = c..' '..k; end;
+		table.sort(parts);
+		Economy.buildWhy = string.format('no site in reach of cell %d: %d cells, %d claimed, %d too few exits, rejected: %s',
+			u.location.cell.index, tally.cells, tally.claimed, tally.exits, table.concat(parts, ', '));
+		if Sense.round % 10 == 0 or want.type == Types.plant then Needs.Note(u.niceName..': '..want.type.name..': '..Economy.buildWhy); end;
+	end;
 	if best then
 		Economy.claimed[best.location.cell.index] = true;
 		local built = Economy.BuildAt(u, best.location, want.type, best);
