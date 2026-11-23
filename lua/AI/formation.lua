@@ -110,7 +110,7 @@ function Formation.Reachable(id)
 	return r;
 end;
 
-function Formation.Staging(regionId)
+function Formation.Staging(regionId, keep)
 	-- (nor where vehicles of mine fell lately: in match 173 the take staged in the region before the
 	-- Nexus port region, where a store of mine stood and the army had been dying all match, and
 	-- gathered there for 450 rounds with 4 of 30 near)
@@ -128,6 +128,10 @@ function Formation.Staging(regionId)
 		return Formation.badStage[id] and Sense.round - Formation.badStage[id] < 150;
 	end;
 	if Formation.stageAt[regionId] and not Bad(Formation.stageAt[regionId]) then return Formation.stageAt[regionId]; end;
+	-- (where the army is gathering it stays, unless that ground has gone bad: in match 182 the
+	-- staging moved 17 times, every 30 rounds to whichever region was nearer just then, and the take
+	-- gathered for 280 rounds without going)
+	if keep and (keep == Mem.homeRegion or Sense.mine[keep]) and not Bad(keep) and Map.EmpShare(keep) < 0.5 and Formation.Reachable(keep) then return keep; end;
 	--[[
 	First choice: the region of mine nearest to the target by the way the army would take. A
 	neighbour of the target that shows no threat is no place to gather: in match 172 the take staged
@@ -579,7 +583,7 @@ function Formation.Update()
 			elseif f.stage == 'gather' then
 				-- (a staging region gone bad while gathering is left for a better one)
 				if Sense.round % 30 == 0 then
-					local s2 = Formation.Staging(f.region);
+					local s2 = Formation.Staging(f.region, f.staging);
 					if s2 ~= f.staging then
 						Log(Name(f)..': staging moves from region '..tostring(f.staging)..' to region '..tostring(s2)..' at round '..Sense.round);
 						f.staging = s2;
