@@ -3446,6 +3446,29 @@ function Economy.SiteOK(loc, forMine)
 			return false;
 		end;
 	end;
+	--[[
+	Never on a cell that is the link between the free cells around it: a structure there can close
+	a way for good. (One base sealed itself in: its pocket of 42 cells had 58 rim sides shut by my
+	own generators, towers, plants and stores, and the army inside found no way to the next region.)
+	The free neighbours of the site must still touch each other once it is taken.
+	]]
+	if not forMine and Cfg.keepWays ~= false then
+		local free, n = {}, 0;
+		for _,nb in ipairs(loc.cell.neighbors) do
+			if not Sense.structureCells[nb.index] and not Economy.claimed[nb.index] and not Sense.UnderEMP(nb) then free[nb.index] = nb; n = n + 1; end;
+		end;
+		if n >= 2 then
+			local first = next(free);
+			local seen, stack, got = {[first] = true}, {free[first]}, 1;
+			while #stack > 0 do
+				local c = table.remove(stack);
+				for _,nb in ipairs(c.neighbors or {}) do
+					if free[nb.index] and not seen[nb.index] then seen[nb.index] = true; got = got + 1; stack[#stack+1] = nb; end;
+				end;
+			end;
+			if got < n then Economy.siteWhy = 'closes a way'; return false; end;
+		end;
+	end;
 	-- don't build where remembered or sensed hostiles can hit
 	if Move.IsDangerous(loc) then Economy.siteWhy = 'danger'; return false; end;
 	-- what is worth something only on ground that is mine (radar and defences push the edge out)
