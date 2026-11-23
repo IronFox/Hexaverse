@@ -6293,7 +6293,53 @@ function Passage.Step(t, s, job)
 	end;
 	local target = from;
 	if beside then
-		if PassageReaches(t, goal) then
+		--[[
+		The terraformer's way is not the vehicle's: a hover terraformer drives where a heavy base finds
+		"no ground". (Match 165: heavy members stood in region 10 with no path at all to the next
+		region, strict or through my vehicles, and the passage ended "the terraformer has a way,
+		ground is not what holds the vehicle".) While the vehicle itself has no way, the cut goes on
+		from beside it towards its goal, a few cuts at most.
+		]]
+		local own = false;
+		if PassageReaches(t, goal) and Cfg.passageOwnWay ~= false and (job.ownCuts or 0) < (Cfg.passageOwnCuts or 6) then
+			local v = nil;
+			for _,lst in pairs(Sense.my) do
+				for _,o in ipairs(lst) do if tostring(o.id) == s.key then v = o; end; end;
+			end;
+			if v and v.location and v.location.cell and v.location.cell.index == from.index and not v.storedIn then
+				local gl = Move.GroundAt(v, goal);
+				local okP, pth = false, nil;
+				if gl then okP, pth = pcall(v.FindShortestPath, gl, nil, true); end;
+				own = not (okP and pth ~= nil and #pth > 0);
+			end;
+			if own then
+				local near = here.index == from.index;
+				for _,nb in ipairs(from.neighbors) do if nb.index == here.index then near = true; end; end;
+				if not near then
+					-- (first to the vehicle: the cut starts where it stands)
+					local best, bestD, bestC = nil, nil, nil;
+					for _,nb in ipairs(from.neighbors) do
+						local g = Move.GroundAt(t, nb);
+						local okm, o = pcall(Game.GetMobileAt, g);
+						local d = Dist2(nb.center, goal.center);
+						if g and not Sense.structureCells[nb.index] and not (okm and o ~= nil) and (bestD == nil or d < bestD) then best, bestD, bestC = g, d, nb; end;
+					end;
+					local okT, went = false, false;
+					if best then okT, went = pcall(Move.Towards, t, best.world, bestC, false, false); end;
+					if okT and went then
+						if not job.ownTold then
+							job.ownTold = true;
+							Log('Passage: '..s.name..' at cell '..s.cell..' has no way of its own to cell '..s.goal..' where '..t.niceName..' has one: the terraformer comes to cut it');
+						end;
+						return;
+					end;
+					own = false;
+				else
+					job.ownCuts = (job.ownCuts or 0) + 1;
+				end;
+			end;
+		end;
+		if PassageReaches(t, goal) and not own then
 			return Passage.End(t, s, 'the terraformer has a way from '..s.name..' at cell '..s.cell..' to cell '..s.goal..(job.cut and ': the passage is open' or ': ground is not what holds the vehicle'));
 		end;
 		target = goal;
