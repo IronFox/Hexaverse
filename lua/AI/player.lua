@@ -6638,6 +6638,7 @@ function Military.Scouts()
 						if vd == nil or d < vd then van, vd = m, d; end;
 					end;
 				end;
+				Move.why = nil;
 				local moved = false;
 				local ahead = van and Dist2(v.location.world, tw) <= vd;
 				if deepNow and (van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
@@ -6650,13 +6651,26 @@ function Military.Scouts()
 					moved = Move.Towards(v, Map.WorldCenter(reg), reg.centerCell, false, true);
 				end;
 				if Sense.round % 10 == 0 then
-					local below = 0;
+					local below, names = 0, {};
 					for _,e in pairs(Game.hostileUnits) do
-						if e.health > 0 and not e.location.isSuborbital and (e.location.height or 0) < 0 then below = below + 1; end;
+						if e.health > 0 and not e.location.isSuborbital and (e.location.height or 0) < 0 then
+							below = below + 1;
+							if #names < 6 then
+								names[#names + 1] = string.format('%s at cell %s height %s', tostring(e.niceName or (e.type and e.type.name)),
+									tostring(e.location.cell and e.location.cell.index), tostring(e.location.height));
+							end;
+						end;
 					end;
 					local at = Map.RegionOfLoc(v.location);
-					Log(string.format('Deep eye: %s goes %s region %d for the army (now in region %s, cell %d%s); %d hostiles sensed below ground', v.niceName,
-						deepNow and 'into' or 'to the staging', reg.id, tostring(at and at.id), v.location.cell.index, moved and '' or (', not moving: '..tostring(Move.why)), below));
+					local what = (deepNow and (van == nil or ahead)) and ('goes into region '..deepSpot.id)
+						or van and ('keeps with '..tostring(van.niceName)..' at cell '..tostring(van.location.cell.index)..' on the way to region '..deepSpot.id)
+						or ('goes to region '..reg.id);
+					local why = '';
+					if not moved then
+						why = (ahead and not deepNow) and ', waiting for the army to come up' or (', not moving: '..tostring(Move.why or 'already there or no step found'));
+					end;
+					Log(string.format('Deep eye: %s %s for the army (now in region %s, cell %d%s); %d hostiles sensed below ground%s', v.niceName,
+						what, tostring(at and at.id), v.location.cell.index, why, below, below > 0 and (': '..table.concat(names, '; ')) or ''));
 				end;
 			end);
 			goto continue;
