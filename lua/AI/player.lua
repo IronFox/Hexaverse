@@ -4414,9 +4414,13 @@ function Economy.AssignConstructor(u, index)
 				-- (a site next to a port is worth a longer way)
 				local portSite = Economy.nearPort and Economy.nearPort[cell.index];
 				local reach = portSite and math.max(3, Cfg.portMineHops) or 3;
-				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat) and (Sense.hops[reg.id] or 99) <= reach;
+				-- (the fuel the plane factory stands idle for, while the army has no eyes: a site on my
+				-- own ground is taken whatever the threat there. "danger 0,73 (Mine (Fuel))" for a
+				-- thousand rounds, with a home that is raided all match, meant no drone ever)
+				local need = Needs.eyes and res == 'Fuel' and reg and Sense.mine[reg.id] and true or false;
+				local safe = reg and (Sense.Threat(reg) <= 0 or Cfg.minesBelowThreat or need) and (Sense.hops[reg.id] or 99) <= reach;
 				-- the builder would turn back from there the round it arrives (see the retreat above)
-				if safe and not Economy.shielded and reg.mobileThreat > reg.myStrength then safe = false; end;
+				if safe and not need and not Economy.shielded and reg.mobileThreat > reg.myStrength then safe = false; end;
 				if dest == nil then why.noGround = why.noGround + 1;
 				elseif not safe then
 					if reg and (Sense.hops[reg.id] or 99) > reach then why.far = why.far + 1; else why.unsafe = why.unsafe + 1; end;
