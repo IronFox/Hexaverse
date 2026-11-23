@@ -2485,9 +2485,11 @@ function Economy.EyesFuel()
 		return;
 	end;
 	local resting = 0;
-	for _ in pairs(Mem.eyesOff) do resting = resting + 1; end;
+	for _,st in ipairs(Sense.myStructures) do
+		if Mem.eyesOff[st.id] and st.type == Types.generator then resting = resting + 1; end;
+	end;
 	-- (the engine tries to enable it only when it wakes: with fuel to spare now, it is asked again)
-	if pf.isEnabled == false and pf.Enable and fuel >= 10 and Sense.round % 5 == 0 then
+	if pf.isEnabled == false and pf.Enable and fuel >= (Cfg.eyesFuel or 20) and Sense.round % 5 == 0 then	-- (the factory draws 20)
 		local okE = pcall(pf.Enable, true);
 		Log(string.format('Plane Factory asked to switch on at round %d with fuel spare %d%s', Sense.round, fuel, okE and '' or ' (refused)'));
 	end;
@@ -2511,8 +2513,12 @@ function Economy.EyesFuel()
 		for _,st in ipairs(Sense.myStructures) do
 			if st.type == Types.lab and st.isEnabled ~= false and st.Enable then
 				if pcall(st.Enable, false) then
-					Mem.shed = Mem.shed or {};
-					Mem.shed[st.id] = Sense.round;
+					-- (kept off like the generators until the drones fly: switched on again by the
+					-- power care two rounds later, 35 laboratories went off and on in one match and
+					-- the second generator never got to rest)
+					Mem.eyesOff[st.id] = Sense.round;
+					Mem.keepOff = Mem.keepOff or {};
+					Mem.keepOff[st.id] = true;
 					Mem.eyesRound = Sense.round - 3;
 					Log(string.format('Laboratory switched off at round %d: energy for resting a generator, whose fuel the Plane Factory needs', Sense.round));
 				end;

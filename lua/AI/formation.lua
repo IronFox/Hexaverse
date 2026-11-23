@@ -109,7 +109,7 @@ local function SetStage(f, stage, note)
 	Log(Name(f)..': '..f.stage..' -> '..stage..' at round '..Sense.round..(note and (' '..note) or ''));
 	f.stage = stage;
 	f.stageSince = Sense.round;
-	if stage == 'gather' then f.gatherSince = Sense.round; end;
+	if stage == 'gather' then f.gatherSince = Sense.round; f.letTotal = 0; end;
 end;
 
 local function Finish(f, how)
@@ -207,7 +207,9 @@ function Formation.Update()
 				all = all + 1;
 				if Stuck(id) then stuckN = stuckN + 1; end;
 			end;
-			local few = stuckN * 3 <= all;
+			-- (and over the whole advance, not round by round: 12 of 18 went three at a time)
+			local gone = f.letTotal or 0;
+			local few = (stuckN + gone) * 3 <= all + gone;
 			if stuckN > 0 and not few and Sense.round % 20 == 0 then
 				Log(Name(f)..': '..stuckN..' of '..all..' find no way at round '..Sense.round..': kept, the way is what is missing');
 			end;
@@ -216,6 +218,7 @@ function Formation.Update()
 					f.members[id] = nil;
 					Formation.of[id] = nil;
 					Formation.stuckOut[id] = Sense.round;
+					f.letTotal = (f.letTotal or 0) + 1;
 					let = let + 1;
 				end;
 			end;
