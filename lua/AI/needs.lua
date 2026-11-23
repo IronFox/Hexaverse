@@ -1007,7 +1007,10 @@ function Needs.StructureOptions(constructorIndex)
 		-- round 168 and 39 drones out of a store of some 300 with supply below demand, the next
 		-- stood "blocked: needs fuelsupply" to the end with 79 supply and no drone at all)
 		local stock = cur.storage.fuel or 0;
-		if not (Needs.eyes and nPf == 0 and stock >= pfFuel * (Cfg.planeFuelStock or 2)) then
+		-- (nor when generators can rest for it: Economy.EyesFuel frees the 20 fuel it draws once
+		-- it stands. Blocked 777 times in one match with no factory and so no drone at all)
+		local canRest = Needs.eyes and nPf == 0 and Types.generator and Economy.Count(Types.generator) >= 3;
+		if not canRest and not (Needs.eyes and nPf == 0 and stock >= pfFuel * (Cfg.planeFuelStock or 2)) then
 			Needs.Block('Plane Factory', 'fuelsupply', math.max(0.6, Needs.v.planes or 0));
 		end;
 	end;
