@@ -2061,7 +2061,8 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 				local whole = path;
 				for _,n in ipairs(path) do
 					local okm, m = pcall(Game.GetMobileAt, n.location);
-					if okm and m ~= nil then
+					-- (the way can begin with the cell the vehicle stands on: that is not a blocker)
+					if okm and m ~= nil and tostring(m.id) ~= tostring(u.id) then
 						-- (who stands in the way and does nothing is asked to step aside)
 						if #free <= 1 then Move.AskWay(m, u, whole); end;
 						break;
@@ -2132,8 +2133,9 @@ the vehicles of mine around it.
 ]]
 Move.asked = {};	-- unit id -> {round, by, avoid = {cell index -> true}, depth}
 Move.aside = {};	-- unit id -> {round, loc, cell}
+Move.stood = {};	-- unit id -> {cell, n, last}: rounds in which it was asked while on the same cell
 function Move.AskWay(m, by, path, depth)
-	if m == nil or m.id == nil or (by and m.id == by.id) then return; end;
+	if m == nil or m.id == nil or (by and tostring(m.id) == tostring(by.id)) then return; end;
 	local key = tostring(m.id);
 	local a = Move.asked[key];
 	if a and a.round == Sense.round then return; end;
@@ -2162,8 +2164,16 @@ function Move.MakeWay()
 		i = i + 1;
 		local key = queue[i];
 		local a, m = Move.asked[key], mine[key];
-		if m and Move.IsIdle(m) and not a.done then
+		-- (who is asked round after round and still stands there is not on its way anywhere, whatever
+		-- orders it holds: a terraformer waited 88 rounds for a tank that was never idle)
+		local st = m and Move.stood[key];
+		if m then
+			if st == nil or st.cell ~= m.location.cell.index or r - st.last > 3 then st = {cell = m.location.cell.index, n = 0}; Move.stood[key] = st; end;
+			if st.last ~= r then st.n = st.n + 1; st.last = r; end;
+		end;
+		if m and (Move.IsIdle(m) or st.n >= 3) and not a.done then
 			a.done = true;
+			if not Move.IsIdle(m) then pcall(m.ClearSafeTasks); end;
 			local ok, reach = pcall(m.GetReach, nil, math.max(1, (m.movementSpeed or 1) * 2), true, false, false, true);
 			local best = nil;
 			if ok and reach then
@@ -2199,7 +2209,7 @@ function Move.MakeWay()
 		local m = mine[key];
 		if m == nil or r - s.round > 40 then
 			Move.aside[key] = nil;
-		elseif r - s.round >= (Cfg.wayBack or 6) and not (Move.asked[key] and r - Move.asked[key].round < (Cfg.wayBack or 6)) then
+		elseif r - s.round >= (Cfg.wayBack or 15) and not (Move.asked[key] and r - Move.asked[key].round < (Cfg.wayBack or 15)) then
 			if m.location.cell.index == s.cell or not Move.IsIdle(m) then
 				Move.aside[key] = nil;	-- (back already, or sent elsewhere by its own orders)
 			else
@@ -5875,10 +5885,18 @@ function Passage.Step(t, s, job)
 	end;
 	local hop = at.index ~= here.index and Move.GroundAt(t, at) or nil;
 	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' (my structures, an EMP zone, or more than '..(Cfg.passageStep or 2)..' levels up or down)'); end;
+	-- (the same cut ordered again from the same cell: the game did not take it or dropped it at once)
+	if job.to == at.index and job.from == here.index then
+		job.same = (job.same or 0) + 1;
+		if job.same >= 3 then return Passage.End(t, s, 'the cut from cell '..here.index..' to cell '..at.index..' was ordered '..(job.same + 1)..' times and did not get on'); end;
+	else
+		job.same = 0;
+	end;
 	local ok, err = pcall(t.DigTunnelBridgeTo, hop);
 	if not ok then return Passage.End(t, s, 'the order was refused: '..tostring(err)); end;
 	job.cut = true;
-	job.to = at.index;
+	job.to, job.from = at.index, here.index;
+	if job.same > 0 then return; end;
 	Log(string.format('Passage: %s cuts from cell %d to cell %d, towards %s', t.niceName, here.index, at.index,
 		beside and ('cell '..s.goal..' where '..s.name..' wants to go') or (s.name..' at cell '..s.cell)));
 end;
