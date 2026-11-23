@@ -5474,6 +5474,10 @@ function Military.Fire(v)
 				end;
 				Military.buried[id] = {id = id, loc = e.location, name = tostring(e.niceName), round = Sense.round, type = e.type,
 					said = Military.buried[id] and Military.buried[id].said};
+				-- (where it stands is known for the rest of the match: it does not move. The eye of the
+				-- army goes back there when the army comes up, see the scouts)
+				Military.buriedKnown = Military.buriedKnown or {};
+				if e.location.cell then Military.buriedKnown[id] = {id = id, cell = e.location.cell, loc = e.location, name = tostring(e.niceName), round = Sense.round}; end;
 			end;
 		end;
 		for id,b in pairs(Military.buried) do
@@ -6896,7 +6900,7 @@ function Military.Scouts()
 						if d.n >= 2 and Sense.round - d.round < (Cfg.deepFellRounds or 150) then
 							local rid = Map.cellRegion[idx];
 							-- (not on my own ground: there it stood at home looking at where raids had hit)
-							if rid and not Sense.mine[rid] and (rid == deepSpot.id or (vr and rid == vr.id)) then
+							if rid and not Sense.mine[rid] then
 								local c = Economy.Cell(idx);
 								if c then
 									local w = {x=c.center.x*Map.groundRadius, y=c.center.y*Map.groundRadius, z=c.center.z*Map.groundRadius};
@@ -6922,9 +6926,43 @@ function Military.Scouts()
 					for _,nb in ipairs(fell.cell.neighbors or {}) do if nb.index == here.index then at = true; end; end;
 					if at then Military.deepFellSeen[fell.cell.index] = Sense.round; end;
 					local seen = Military.deepFellSeen[fell.cell.index];
-					onward = seen ~= nil and Sense.round - seen < (Cfg.deepFellRounds or 150) and deepForm.stage ~= 'gather' and Cfg.deepOnward ~= false;
+					onward = seen ~= nil and Sense.round - seen < (Cfg.deepFellRounds or 150) and Cfg.deepOnward ~= false;
 				end;
 				Military.deepOnward = onward or nil;
+				--[[
+				A buried tower sensed earlier in this match and not in view now: when the army is in its
+				region or the one beside it, the eye goes back to it, so that it is a target again while
+				there is something to fire. Standing two cells from it and sensing nothing, it is gone.
+				]]
+				Military.deepKnown = nil;
+				if not moved and van and Cfg.deepKnown ~= false then
+					local vr = Map.RegionOfLoc(van.location);
+					local kb, kd = nil, nil;
+					for id,k in pairs(Military.buriedKnown or {}) do
+						local live = Game.hostileUnits[id];
+						if not (live and live.health > 0) then
+							local rid = Map.cellRegion[k.cell.index];
+							local nearArmy = vr and rid and (rid == vr.id or (vr.neighbors and vr.neighbors[rid]));
+							local w = {x=k.cell.center.x*Map.groundRadius, y=k.cell.center.y*Map.groundRadius, z=k.cell.center.z*Map.groundRadius};
+							local d = Dist2(v.location.world, w);
+							local here = v.location.cell;
+							local close = here.index == k.cell.index;
+							for _,n1 in ipairs(k.cell.neighbors or {}) do
+								if n1.index == here.index then close = true; end;
+								for _,n2 in ipairs(n1.neighbors or {}) do if n2.index == here.index then close = true; end; end;
+							end;
+							if close then
+								Log('Deep eye: '..v.niceName..' stands at cell '..here.index..' by '..k.name..' (cell '..k.cell.index..') and senses nothing below: it is gone');
+								Military.buriedKnown[id] = nil;
+							elseif nearArmy and (kd == nil or d < kd) then kb, kd = {k = k, w = w}, d; end;
+						end;
+					end;
+					if kb then
+						Military.deepKnown = kb.k.name..' at cell '..kb.k.cell.index;
+						moved = Move.Towards(v, kb.w, kb.k.cell, false, true);
+					end;
+				end;
+				if moved and Military.deepKnown then onward = false; end;
 				if onward then moved = Move.Towards(v, tw, deepSpot.centerCell, false, true); end;
 				if fell and not moved then moved = Move.Towards(v, fell.world, fell.cell, false, true); end;
 				if not moved and deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
@@ -6962,7 +7000,8 @@ function Military.Scouts()
 						end;
 					end;
 					local at = Map.RegionOfLoc(v.location);
-					local what = Military.deepOnward and ('has looked where vehicles of mine fell, cell '..tostring(Military.deepFell)..', and goes on towards region '..deepSpot.id)
+					local what = Military.deepKnown and ('goes back to '..Military.deepKnown..', sensed earlier')
+						or Military.deepOnward and ('has looked where vehicles of mine fell, cell '..tostring(Military.deepFell)..', and goes on towards region '..deepSpot.id)
 						or Military.deepFell and ('looks where vehicles of mine fell, cell '..Military.deepFell)
 						or Military.deepWaiting and ('goes ahead to region '..Military.deepWaiting..' and waits there')
 						or (deepNow and (probe or van == nil or ahead)) and ('goes into region '..deepSpot.id)
