@@ -302,7 +302,10 @@ function Formation.Update()
 			-- (gathering on my own ground: the members stay what they were, the defence of it, and
 			-- count wherever they stand on it. Called to one cell among the base's buildings they
 			-- found no path, stood apart and were picked off by the raids, 23 of them)
-			f.atHome = (Sense.mine[f.staging] or f.staging == Mem.homeRegion) and true or false;
+			-- (... but a staging region of mine that is not the home region is a place to gather: in
+			-- match 167, staged in region 10, the members "gathered" spread over six regions of
+			-- mine, and the advances reached the Nexus region with 7 of 19)
+			f.atHome = (f.staging == Mem.homeRegion or (Sense.mine[f.staging] and Formation.forwardRally == false)) and true or false;
 			if f.atHome then
 				for id,_ in pairs(Sense.mine) do around[id] = true; end;
 			end;
