@@ -5411,6 +5411,14 @@ function Military.Fire(v)
 				local n0 = #candidates;
 				SafeCall('buried target', ProcessAttackTarget, v, {location = b.loc, niceName = b.name..' (remembered)', health = 1, type = b.type,
 					isOwnedByMe = false, isIndestructible = false}, candidates, hitsAir, hitsGround);
+				-- (no clean hit through the ground above it: the shell is sent all the same. Blasts take
+				-- ground away, the crater goes down to the tower)
+				if #candidates == n0 and t.SearchAttackTarget and t.type.trajectoryType == 'Artillery' then
+					local ok, choice = pcall(t.SearchAttackTarget, b.loc);
+					if ok and choice then
+						candidates[#candidates + 1] = {explosionAt = b.loc, priority = 0, target = choice, midflightExplosion = true, crater = true};
+					end;
+				end;
 				for i = n0 + 1, #candidates do candidates[i].priority = (candidates[i].priority or 0) + 1000; candidates[i].buried = b; end;
 			else
 				for _,c in ipairs(candidates) do
@@ -5425,7 +5433,7 @@ function Military.Fire(v)
 	table.sort(candidates, function(a,b) return a.priority > b.priority end);
 	if candidates[1].buried and (candidates[1].buried.said or -100) + 10 <= Sense.round then
 		candidates[1].buried.said = Sense.round;
-		Log(string.format('Buried tower: %s fires at %s', v.niceName, candidates[1].buried.name));
+		Log(string.format('Buried tower: %s fires at %s%s', v.niceName, candidates[1].buried.name, candidates[1].crater and ' through the ground above it' or ''));
 	end;
 	local targets = {};
 	for i = 1, math.min(#candidates, t.attacksPerRound or 1) do
