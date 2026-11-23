@@ -5407,12 +5407,16 @@ function Military.Fire(v)
 					Log(string.format('Buried tower: %s sensed at cell %s height %s, kept as a target', tostring(e.niceName),
 						tostring(e.location.cell and e.location.cell.index), tostring(e.location.height)));
 				end;
-				Military.buried[id] = {loc = e.location, name = tostring(e.niceName), round = Sense.round, type = e.type};
+				Military.buried[id] = {id = id, loc = e.location, name = tostring(e.niceName), round = Sense.round, type = e.type,
+					said = Military.buried[id] and Military.buried[id].said};
 			end;
 		end;
 		for id,b in pairs(Military.buried) do
 			local live = Game.hostileUnits[id];
-			if Sense.round - b.round > (Cfg.buriedMemory or 400) then
+			-- (a ghost does not tell when it is dead: in match 152 the tower was gone after four hits
+			-- and was shelled for 30 rounds more. After buriedShots shells it counts as done, until
+			-- it is sensed again)
+			if Sense.round - b.round > (Cfg.buriedMemory or 400) or (b.shots or 0) >= (Cfg.buriedShots or 12) then
 				Military.buried[id] = nil;
 			elseif not (live and live.health > 0) then
 				local n0 = #candidates;
@@ -5438,6 +5442,10 @@ function Military.Fire(v)
 		return false;
 	end;
 	table.sort(candidates, function(a,b) return a.priority > b.priority end);
+	for i = 1, math.min(#candidates, t.attacksPerRound or 1) do
+		local cb = candidates[i].buried;
+		if cb and not (Game.hostileUnits[cb.id] and Game.hostileUnits[cb.id].health > 0) then cb.shots = (cb.shots or 0) + 1; end;
+	end;
 	if candidates[1].buried and (candidates[1].buried.said or -100) + 10 <= Sense.round then
 		candidates[1].buried.said = Sense.round;
 		Log(string.format('Buried tower: %s fires at %s%s', v.niceName, candidates[1].buried.name, candidates[1].crater and ' through the ground above it' or ''));
