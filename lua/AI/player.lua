@@ -2154,6 +2154,19 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 				Move.why = danger(pick.location) and ('the way to cell '..goalCell.index..' enters danger at once (cell '..pick.location.cell.index..')') or 'the step was tried already';
 			elseif not Move.why then
 				Move.why = 'no path to cell '..goalCell.index;
+				-- (no way at all and every cell around taken by vehicles of mine: they are asked to
+				-- make way. In match 163 the members parked on four home cells had "no path, 0
+				-- cells in reach" for 80 rounds and reach at once with my own vehicles left out)
+				local okR, rch = pcall(u.GetReach, nil, 1, false, false, false, false);
+				if okR and rch and #rch == 0 then
+					local asked = 0;
+					for _,nb in ipairs(u.location.cell.neighbors or {}) do
+						local g = Move.GroundAt(u, nb);
+						local okm, o = pcall(Game.GetMobileAt, g);
+						if g and okm and o ~= nil and o.isOwnedByMe then Move.AskWay(o, u, nil); asked = asked + 1; end;
+					end;
+					if asked > 0 then Move.why = Move.why..', held in by '..asked..' vehicles of mine (asked to make way)'; end;
+				end;
 			end;
 		end;
 	end;
