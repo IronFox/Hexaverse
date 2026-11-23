@@ -6012,6 +6012,60 @@ function Passage.End(t, s, why)
 	Passage.cool = Sense.round + 30;
 end;
 
+--[[
+The way out of a pocket. Where the straight line to the goal is shut at once (my own structures
+on it, a step too high), the cut is made where the pocket is thinnest towards the goal: of all the
+cells the terraformer can drive to, the one with a neighbour outside its reach that is nearest the
+goal, holds no structure and lies no more than three levels off. It drives there and cuts across.
+(One match: home was a closed pocket of 41 cells behind my own towers and the steps of the rim,
+every vehicle in it had "no path" to the next region, and both passages ended at the first cell.)
+]]
+function Passage.Breakout(t, job, target)
+	local ok, reach = pcall(t.GetReach, nil, Cfg.passagePocket or 40, false, false, true, false);
+	if not ok or reach == nil then return false; end;
+	local here = t.location.cell;
+	local inside = {[here.index] = t.location};
+	for _,n in ipairs(reach) do
+		if n.location and not n.location.isSuborbital then inside[n.location.cell.index] = n; end;
+	end;
+	job.avoid = job.avoid or {};
+	local best, bestTo, bestD = nil, nil, nil;
+	for idx,n in pairs(inside) do
+		local loc = (idx == here.index) and t.location or n.location;
+		for _,nb in ipairs(loc.cell.neighbors or {}) do
+			if not inside[nb.index] and not Sense.structureCells[nb.index] and not job.avoid[nb.index] then
+				local d = Dist2(nb.center, target.center);
+				if bestD == nil or d < bestD then
+					local g = Move.GroundAt(t, nb);
+					local okE, emp = pcall(Game.Grid.AffectedByEMP, g);
+					local okM, m = pcall(Game.GetMobileAt, g);
+					if g and not (okE and emp) and not (okM and m ~= nil) and math.abs((g.height or 0) - (loc.height or 0)) <= (Cfg.passageBreak or 3) then
+						best, bestTo, bestD = (idx == here.index) and here or n, g, d;
+					end;
+				end;
+			end;
+		end;
+	end;
+	if best == nil then return false; end;
+	if best == here then
+		local to = bestTo.cell.index;
+		job.btries = job.btries or {};
+		job.btries[to] = (job.btries[to] or 0) + 1;
+		if job.btries[to] > 3 then job.avoid[to] = true; return Passage.Breakout(t, job, target); end;
+		local okD, err = pcall(t.DigTunnelBridgeTo, bestTo);
+		if not okD then job.avoid[to] = true; Log('Passage: the cut out of the pocket to cell '..to..' was refused: '..tostring(err)); return true; end;
+		job.cut = true;
+		Log(string.format('Passage: %s cuts out of the pocket from cell %d to cell %d (%d cells in the pocket)', t.niceName, here.index, to, #reach + 1));
+		return true;
+	end;
+	local okG = pcall(t.DirectTo, best);
+	if not okG then return false; end;
+	if Sense.round % 5 == 0 then
+		Log(string.format('Passage: %s drives to cell %d to cut out of the pocket there', t.niceName, best.location.cell.index));
+	end;
+	return true;
+end;
+
 function Passage.Step(t, s, job)
 	local from, goal = Economy.Cell(s.cell), Economy.Cell(s.goal);
 	if from == nil or goal == nil then return Passage.End(t, s, 'the cells are not known'); end;
@@ -6056,6 +6110,7 @@ function Passage.Step(t, s, job)
 		at = best;
 	end;
 	local hop = at.index ~= here.index and Move.GroundAt(t, at) or nil;
+	if hop == nil and Passage.Breakout(t, job, target) then return; end;
 	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' (my structures, an EMP zone, or more than '..(Cfg.passageStep or 2)..' levels up or down)'); end;
 	-- (the same cut ordered again from the same cell: the game did not take it or dropped it at once)
 	if job.to == at.index and job.from == here.index then
