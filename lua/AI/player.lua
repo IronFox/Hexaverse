@@ -6908,7 +6908,25 @@ function Military.Scouts()
 					end;
 				end;
 				Military.deepFell = fell and fell.cell.index or nil;
-				if fell then moved = Move.Towards(v, fell.world, fell.cell, false, true); end;
+				--[[
+				(... and from there on towards the region to be taken: a tower reaches further than the
+				surveyor sees. In match 168 it stood on the cell where the army fell, "0 hostiles sensed
+				below ground", while three towers 13 levels down at the entry fired 700 times unseen.
+				Once it has stood on or beside the cell it goes on, while the advance is on.)
+				]]
+				Military.deepFellSeen = Military.deepFellSeen or {};
+				local onward = false;
+				if fell then
+					local here = v.location.cell;
+					local at = here.index == fell.cell.index;
+					for _,nb in ipairs(fell.cell.neighbors or {}) do if nb.index == here.index then at = true; end; end;
+					if at then Military.deepFellSeen[fell.cell.index] = Sense.round; end;
+					local seen = Military.deepFellSeen[fell.cell.index];
+					onward = seen ~= nil and Sense.round - seen < (Cfg.deepFellRounds or 150) and deepForm.stage ~= 'gather' and Cfg.deepOnward ~= false;
+				end;
+				Military.deepOnward = onward or nil;
+				if onward then moved = Move.Towards(v, tw, deepSpot.centerCell, false, true); end;
+				if fell and not moved then moved = Move.Towards(v, fell.world, fell.cell, false, true); end;
 				if not moved and deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
 					moved = Move.Towards(v, tw, deepSpot.centerCell, false, true);
 				end;
@@ -6944,7 +6962,8 @@ function Military.Scouts()
 						end;
 					end;
 					local at = Map.RegionOfLoc(v.location);
-					local what = Military.deepFell and ('looks where vehicles of mine fell, cell '..Military.deepFell)
+					local what = Military.deepOnward and ('has looked where vehicles of mine fell, cell '..tostring(Military.deepFell)..', and goes on towards region '..deepSpot.id)
+						or Military.deepFell and ('looks where vehicles of mine fell, cell '..Military.deepFell)
 						or Military.deepWaiting and ('goes ahead to region '..Military.deepWaiting..' and waits there')
 						or (deepNow and (probe or van == nil or ahead)) and ('goes into region '..deepSpot.id)
 						or van and ('keeps with '..tostring(van.niceName)..' at cell '..tostring(van.location.cell.index)..' on the way to region '..deepSpot.id)
