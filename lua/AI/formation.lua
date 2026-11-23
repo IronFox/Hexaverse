@@ -582,7 +582,39 @@ function Formation.Orders(v)
 	if not f or f.over then return nil; end;
 	if f.kind == 'hold' then return f.region, false, f.region; end;
 	if f.stage == 'gather' and f.atHome then return nil; end;
-	if f.stage == 'gather' then return f.staging, false, f.staging, nil, f.rally; end;
+	if f.stage == 'gather' then
+		--[[
+		A cell each around the rally cell, inside the staging region: all sent to the one cell, the
+		first stood on it and those beside it, and the rest had "no path" and held each other in at
+		home. In match 169 a take of 30 gathered for 530 rounds with 3 to 12 near the rally cell,
+		every one of 81 lines "no path to cell 1596, held in by vehicles of mine".
+		]]
+		local spot = f.rally;
+		if f.rally and Formation.rallySpots ~= false then
+			if f.gFor ~= f.rally.index then
+				f.gFor = f.rally.index;
+				f.gspots, f.gslot, f.gnext = {f.rally}, {}, 1;
+				local seen, edge = {[f.rally.index] = true}, {f.rally};
+				while #edge > 0 and #f.gspots < (f.count or 0) + 8 do
+					local c = table.remove(edge, 1);
+					for _,nb in ipairs(c.neighbors or {}) do
+						if not seen[nb.index] then
+							seen[nb.index] = true;
+							local nr = Map.RegionOfLoc({cell = nb, height = 0});
+							if nr and nr.id == f.staging and not Sense.structureCells[nb.index] and not Sense.UnderEMP(nb) then
+								f.gspots[#f.gspots+1] = nb;
+								edge[#edge+1] = nb;
+							end;
+						end;
+					end;
+				end;
+			end;
+			if not f.gslot[v.id] then f.gslot[v.id] = f.gnext; f.gnext = f.gnext + 1; end;
+			spot = f.gspots[((f.gslot[v.id] - 1) % #f.gspots) + 1];
+			-- (who stands in the staging region within two cells of its spot is there)
+		end;
+		return f.staging, false, f.staging, nil, spot;
+	end;
 	if f.stage == 'advance' and f.route and f.entry then
 		-- (short of the last region the whole formation holds at the entry cell of the one it is on)
 		-- (the stationary shooters follow one region behind: posted in the staging region they stayed home)
