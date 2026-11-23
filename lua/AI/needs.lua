@@ -1003,7 +1003,13 @@ function Needs.StructureOptions(constructorIndex)
 		-- (a factory that stands and cannot run for want of fuel, while the army has no eyes: the
 		-- fuel mine scored 0,08, below a store on a peak, for 850 rounds)
 		fuelServes.planes = Needs.eyes and 3 or 1.2;
-		Needs.Block('Plane Factory', 'fuelsupply', math.max(0.6, Needs.v.planes or 0));
+		-- (the first factory for the army's eyes may run on what is stored: one match had it at
+		-- round 168 and 39 drones out of a store of some 300 with supply below demand, the next
+		-- stood "blocked: needs fuelsupply" to the end with 79 supply and no drone at all)
+		local stock = cur.storage.fuel or 0;
+		if not (Needs.eyes and nPf == 0 and stock >= pfFuel * (Cfg.planeFuelStock or 2)) then
+			Needs.Block('Plane Factory', 'fuelsupply', math.max(0.6, Needs.v.planes or 0));
+		end;
 	end;
 	add(Economy.MineReq('Fuel'), fuelServes, 'Mine (fuel)');
 	if Types.generator and Economy.powerOrders < 2 then

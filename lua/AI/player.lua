@@ -4457,9 +4457,10 @@ function Economy.AssignConstructor(u, index)
 					why.build = why.build + 1;
 				elseif Economy.buildWhy == 'unsafe way' then why.unsafe = why.unsafe + 1;
 				else why.build = why.build + 1; end;
+				if Economy.buildWhy and Economy.buildWhy ~= 'unsafe way' then why.bwhy = (why.bwhy or '')..' '..cell.index..': '..tostring(Economy.buildWhy)..';'; end;
 			end;
-			Needs.Note(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed',
-				res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.reasons or '', why.build));
+			Needs.Note(string.format('No mine site for %s: %d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed (%s)',
+				res, why.cands, why.noGround, why.unsafe, why.far, why.site, why.reasons or '', why.build, why.bwhy or ''));
 		end;
 		-- the requirement that is missing: no known site (survey), or the known ones are under
 		-- threat (guard them). Rejected sites and failed orders just weigh the mine down
@@ -4654,6 +4655,7 @@ function Economy.BuildAt(u, loc, t, reachable)
 			end;
 			if not ok or path == nil or #path == 0 then
 				Mem.blacklist[loc.cell.index] = Sense.round + 20;
+				Economy.buildWhy = 'no path from cell '..u.location.cell.index;
 				Needs.Note(u.niceName..': no path to the '..t.name..' site at cell '..loc.cell.index..'/'..tostring(loc.height)
 					..' from '..u.location.cell.index..'/'..tostring(u.location.height)..(ok and '' or (' ('..tostring(path)..')')));
 				return false;
@@ -4678,6 +4680,7 @@ function Economy.BuildAt(u, loc, t, reachable)
 	local ok, err = pcall(u.BuildStructure, t);
 	if not ok then
 		Log('BuildStructure failed: '..tostring(err));
+		Economy.buildWhy = 'order refused: '..tostring(err);
 		return false;
 	end;
 	Needs.Started();
