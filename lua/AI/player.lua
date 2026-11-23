@@ -5134,7 +5134,9 @@ function Economy.NextVehicle()
 		local share = Sense.DeepMatters() and math.max(Cfg.bombShare, Cfg.bombShareDeep) or Cfg.bombShare;
 		if share > 0 and Types.turret.bomb and Types.IsUnlocked(Types.turret.bomb) and #my.bomb < (#my.combat + #my.bomb + 1) * share then
 			local b = Types.Vehicle(Types.turret.bomb, base) or Types.Vehicle(Types.turret.bomb, hover);
-			if b then return b; end;
+			-- (not at its cap: with bombs capped the tank that full stores call for came out a bomb,
+			-- was refused, and four plants stood empty at 1500 minerals for most of match 178)
+			if b and not Economy.UnitCapped(b) then return b; end;
 		end;
 		local nArt = 0;
 		for _,u in ipairs(my.combat) do

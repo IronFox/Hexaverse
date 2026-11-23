@@ -1583,7 +1583,7 @@ function Needs.NextVehicle(kit)
 	-- the constructors are saving for something that matters more: hold back
 	local s = Needs.saving;
 	if s and Sense.round - s.round <= 1 and best.score < s.score * 0.8 and minerals - best.cost < s.cost
-		and Needs.GoalOf(best) == s.goal then
+		and Needs.GoalOf(best) == s.goal and minerals < (Cfg.plantFloorMinerals or 1000) then	-- (nothing is saved for at the cap)
 		return nil;
 	end;
 	Needs.Note(string.format('produce %s (%.2f)', best.name, best.score));
