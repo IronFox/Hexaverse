@@ -390,7 +390,7 @@ function Mole.WalkToward(u, targetCell)
 		local ok, path = false, nil;
 		if loc then ok, path = pcall(u.FindShortestPath, loc, nil, false); end;
 		if ok and path and #path > 0 then
-			u.DirectTo(path[#path]);
+			u.DirectTo(path[math.min(#path, 60)]);
 			Mole.lastMove = {round=Sense.round, from=here.index, to=c.index};
 			Log(u.niceName..': walking to cell '..c.index..' towards '..targetCell.index);
 			return true;
@@ -578,7 +578,7 @@ function Mole.DigToward(u, targetCell)
 		if not failed and not built[best.index] then
 			local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 			if ok and path and #path > 0 then
-				u.DirectTo(path[#path]);
+				u.DirectTo(path[math.min(#path, 60)]);
 				Mole.lastMove = {round=Sense.round, from=here.index, to=best.index};
 				return true;
 			end;
@@ -915,7 +915,7 @@ function Mole.Update()
 			if loc then
 				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 				if ok and path and #path > 0 then
-					u.DirectTo(path[#path]);
+					u.DirectTo(path[math.min(#path, 60)]);
 					moved = true;
 				end;
 			end;
@@ -1121,7 +1121,7 @@ function Mole.Seal(u)
 			if Mole.IsPassable(nb) then
 				local loc = Mole.LocAt(nb);
 				local ok, path = pcall(u.FindShortestPath, loc, nil, false);
-				if ok and path and #path > 0 then u.DirectTo(path[#path]); return; end;
+				if ok and path and #path > 0 then u.DirectTo(path[math.min(#path, 60)]); return; end;
 			end;
 		end;
 		-- no neighbor reachable: try from where it stands if that is close (BuildBlocks reaches 3 terrain cells),
@@ -1135,7 +1135,7 @@ function Mole.Seal(u)
 				if c.index ~= shaft.index and Mole.IsPassable(c) then
 					local loc = Mole.LocAt(c);
 					local ok, path = pcall(u.FindShortestPath, loc, nil, false);
-					if ok and path and #path > 0 then u.DirectTo(path[#path]); return; end;
+					if ok and path and #path > 0 then u.DirectTo(path[math.min(#path, 60)]); return; end;
 				end;
 			end;
 			Mole.SealDiagnose(u, shaft);
@@ -1391,7 +1391,7 @@ function Mole.LavaWatch()
 		if loc then ok, path = pcall(best.FindShortestPath, loc, nil, false); end;
 		if ok and path and #path > 0 then
 			if not Move.IsIdle(best) then best.ClearTasks(); end;
-			best.DirectTo(path[#path]);
+			best.DirectTo(path[math.min(#path, 60)]);
 		end;
 		return;
 	end;
@@ -1568,7 +1568,7 @@ function Mole.Ceiling(u)
 	local loc = Mole.LocAt(best);
 	local ok, path = pcall(u.FindShortestPath, loc, nil, false);
 	if ok and path and #path > 0 then
-		u.DirectTo(path[#path]);
+		u.DirectTo(path[math.min(#path, 60)]);
 		return true;
 	end;
 	Mole.ceilingFailed[best.index] = true;
@@ -1891,7 +1891,7 @@ function Economy.AssignConstructor(u, index)
 			local ok, path = false, nil;
 			if loc then ok, path = pcall(u.FindShortestPath, loc, nil, false); end;
 			if ok and path and #path > 0 then
-				u.DirectTo(path[#path]);
+				u.DirectTo(path[math.min(#path, 60)]);
 				return;
 			end;
 		end;

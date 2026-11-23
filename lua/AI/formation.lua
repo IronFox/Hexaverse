@@ -79,6 +79,33 @@ Formation.badStage = {};	-- region -> round it cost a gathering formation four m
 function Formation.Staging(regionId)
 	local function Bad(id) return Formation.badStage[id] and Sense.round - Formation.badStage[id] < 150; end;
 	if Formation.stageAt[regionId] and not Bad(Formation.stageAt[regionId]) then return Formation.stageAt[regionId]; end;
+	--[[
+	First choice: the region of mine nearest to the target by the way the army would take. A
+	neighbour of the target that shows no threat is no place to gather: in match 172 the take staged
+	in the region beside the Nexus port region, under towers nobody had seen.
+	]]
+	if Formation.stageOwn ~= false and Map.regions[regionId] then
+		local dist, done = {[regionId] = 0}, {};
+		local own, ownD = nil, nil;
+		while true do
+			local at, atD = nil, nil;
+			for id,d in pairs(dist) do
+				if not done[id] and (atD == nil or d < atD) then at, atD = id, d; end;
+			end;
+			if at == nil or (ownD and atD > ownD) then break; end;
+			done[at] = true;
+			if at ~= regionId and Sense.mine[at] and not Bad(at) and Map.EmpShare(at) < 0.5 and (ownD == nil or atD < ownD) then own, ownD = at, atD; end;
+			for nb,_ in pairs(Map.regions[at].neighbors or {}) do
+				local r = Map.regions[nb];
+				if r then
+					local step = 1 + ((Map.EmpShare(nb) >= 0.5) and 1000 or 0) + (((r.staticThreat or 0) > 0) and 1.5 or 0)
+						+ ((Significance.Directed(nb, 'avoid') > 0) and 3 or 0);
+					if dist[nb] == nil or atD + step < dist[nb] then dist[nb] = atD + step; end;
+				end;
+			end;
+		end;
+		if own and ownD < 1000 then return own; end;
+	end;
 	local best, bestH = nil, nil;
 	for nb,_ in pairs(Map.regions[regionId].neighbors) do
 		local reg = Map.regions[nb];

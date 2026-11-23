@@ -2131,7 +2131,9 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 			end;
 			if ok and path and #path > 0 then
 				local limit = math.max(1, u.movementSpeed * 3);
-				local pick = path[#path];
+				-- (the first step if none is within the limit, never the far end: an order over 70
+				-- cells crashed the client in match 172, the game sends at most 64 cells of a way)
+				local pick = path[1];
 				-- don't commit to the full route; re-plan each round as the picture changes
 				for _,n in ipairs(path) do
 					if n.movementCostsFromRoot <= limit then pick = n; end;
@@ -2302,7 +2304,7 @@ function Move.MakeWay()
 				local okm, o = pcall(Game.GetMobileAt, s.loc);
 				if not (okm and o ~= nil) then
 					local ok, path = pcall(m.FindShortestPath, s.loc, nil, false);
-					if ok and path and #path > 0 then m.DirectTo(path[#path]); end;
+					if ok and path and #path > 0 then m.DirectTo(path[math.min(#path, 60)]); end;
 					Move.aside[key] = nil;
 				end;
 			end;
@@ -4231,7 +4233,7 @@ local function WallGate(u, w)
 	if stand then
 		local ok, path = pcall(u.FindShortestPath, stand, nil, false);
 		if ok and path and #path > 0 then
-			u.DirectTo(path[#path]);
+			u.DirectTo(path[math.min(#path, 60)]);
 			Mem.jobs[u.id] = {kind = 'Wall gate', since = Sense.round};
 			return true;
 		end;
@@ -4332,7 +4334,7 @@ function Wall.Try(u)
 	if best then
 		local ok, path = pcall(u.FindShortestPath, best, nil, false);
 		if ok and path and #path > 0 then
-			u.DirectTo(path[#path]);
+			u.DirectTo(path[math.min(#path, 60)]);
 			Mem.jobs[u.id] = {kind = 'Wall', since = Sense.round};
 			Log(string.format('Wall: %s goes to cell %d, %d of %d still open (round %d)', u.niceName, best.cell.index, open, #w.ring, Sense.round));
 			return true;
@@ -5185,7 +5187,7 @@ function Economy.AssignMechanic(u)
 	if dest then
 		local ok, path = pcall(u.FindShortestPath, dest, nil, false);
 		if ok and path and #path > 0 then
-			u.DirectTo(path[#path]);
+			u.DirectTo(path[math.min(#path, 60)]);
 			Log(string.format('%s goes to repair %s on cell %d (%s of %s health)', u.niceName, best.niceName or best.type.name, tc.index, tostring(best.health), tostring(best.maxHealth)));
 			return;
 		end;
@@ -7249,7 +7251,7 @@ function Military.ClearPlants()
 												local okp, path = pcall(u.FindShortestPath, loc, nil, false);
 												if okp and path and #path > 0 then
 													if u.ClearSafeTasks then pcall(u.ClearSafeTasks); end;
-													u.DirectTo(path[#path]);
+													u.DirectTo(path[math.min(#path, 60)]);
 													Log(u.niceName..' leaves the exit of a blocked plant (cell '..u.location.cell.index..') for cell '..n.index);
 													return;
 												end;
