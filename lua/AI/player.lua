@@ -4724,6 +4724,8 @@ function Economy.NextPlane()
 	-- hostile planes around: raptors hunt them
 	local hostileAir = Sense.AirPressure() > 0;
 	if hostileAir and raptor and n.raptor <= n.bomber and total < Cfg.maxPlanes then return raptor; end;
+	-- (an army sent to take a region needs eyes on it: one drone for that before any other plane)
+	if drone and n.drone < 1 and Military.SpotRegion and Military.SpotRegion() then return drone; end;
 	if drone and n.drone < wantDrones and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then return drone; end;
 	if total >= Cfg.maxPlanes then return nil; end;
 	--[[
@@ -6148,6 +6150,15 @@ function Military.BomberGoal()
 	return nil, false;
 end;
 
+-- The region an army of mine is sent to take (or attacks), if any
+function Military.SpotRegion()
+	for _,f in ipairs(Formation and Formation.list or {}) do
+		if f.kind == 'take' and Map.regions[f.region] then return Map.regions[f.region]; end;
+	end;
+	if Mem.posture == 'attack' and Mem.attackTarget then return Map.regions[Mem.attackTarget]; end;
+	return nil;
+end;
+
 function Military.Planes()
 	local bombers = {};
 	for _,p in ipairs(Sense.my.plane) do
@@ -6163,8 +6174,20 @@ function Military.Planes()
 				goal, dive = Military.BomberGoal();
 			elseif p.type == Types.drone or not p.turret or not p.turret.type.canAttack then
 				local best, bs = nil, nil;
+				-- (the first drone is the army's eye: it keeps the region the army is sent to take
+				-- in view, so that artillery standing off can fire at what holds it. Without eyes
+				-- on it, the towers of a base shoot at an army that cannot shoot back)
+				if not taken.spotter then
+					local spot = Military.SpotRegion();
+					if spot then
+						taken.spotter = true;
+						taken[spot.id] = true;
+						best, bs = spot, math.huge;
+						if Sense.round % 50 == 0 then Log('Spotter: '..p.niceName..' keeps region '..spot.id..' in view for the army'); end;
+					end;
+				end;
 				for _,reg in ipairs(Map.regions) do
-					if not taken[reg.id] then
+					if bs ~= math.huge and not taken[reg.id] then
 						local hops = Sense.hops[reg.id] or 30;
 						local sc = math.min(Sense.Staleness(reg), 60) / (1 + hops * 0.5);
 						if Sense.frontier[reg.id] then sc = sc * 2; end;
