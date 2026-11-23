@@ -76,6 +76,40 @@ end;
 Formation.minSize = {};	-- target region -> units wanted at least before going in (Bridge.Take)
 Formation.stageAt = {};	-- target region -> staging region chosen from outside (Bridge.Stage)
 Formation.badStage = {};	-- region -> round it cost a gathering formation four members: no staging there for 150 rounds
+-- Can a combat vehicle of mine drive to that region? (A tower of mine made region 68 "mine" in
+-- match 176; the take staged there twice and no member had a path to its rally, even through my own)
+Formation.reach = {round = -1, at = {}};
+function Formation.Reachable(id)
+	if id == Mem.homeRegion or Formation.stageReach == false then return true; end;
+	if Formation.reach.round ~= Sense.round then Formation.reach = {round = Sense.round, at = {}}; end;
+	local r = Formation.reach.at[id];
+	if r ~= nil then return r; end;
+	r = true;
+	local reg = Map.regions[id];
+	local probe = nil;
+	for _,m in ipairs(Sense.my.combat or {}) do
+		if m.location and not m.storedIn and not m.location.isSuborbital and m.FindShortestPath then
+			local mr = Map.RegionOfLoc(m.location);
+			if mr and mr.id == id then probe = nil; r = true; Formation.reach.at[id] = true; return true; end;
+			if probe == nil or string.find(tostring(m.type and m.type.name), 'Heavy', 1, true) then probe = m; end;
+		end;
+	end;
+	if probe and reg and reg.centerCell and Move and Move.GroundAt then
+		r = false;
+		local tries = {reg.centerCell};
+		for _,nb in ipairs(reg.centerCell.neighbors or {}) do tries[#tries+1] = nb; end;
+		for _,c in ipairs(tries) do
+			local dest = Move.GroundAt(probe, c);
+			if dest then
+				local ok, path = pcall(probe.FindShortestPath, dest, nil, true);
+				if ok and path and #path > 0 then r = true; break; end;
+			end;
+		end;
+	end;
+	Formation.reach.at[id] = r;
+	return r;
+end;
+
 function Formation.Staging(regionId)
 	-- (nor where vehicles of mine fell lately: in match 173 the take staged in the region before the
 	-- Nexus port region, where a store of mine stood and the army had been dying all match, and
@@ -109,7 +143,7 @@ function Formation.Staging(regionId)
 			end;
 			if at == nil or (ownD and atD > ownD) then break; end;
 			done[at] = true;
-			if at ~= regionId and Sense.mine[at] and not Bad(at) and Map.EmpShare(at) < 0.5 and (ownD == nil or atD < ownD) then own, ownD = at, atD; end;
+			if at ~= regionId and Sense.mine[at] and not Bad(at) and Map.EmpShare(at) < 0.5 and (ownD == nil or atD < ownD) and Formation.Reachable(at) then own, ownD = at, atD; end;
 			for nb,_ in pairs(Map.regions[at].neighbors or {}) do
 				local r = Map.regions[nb];
 				if r then
