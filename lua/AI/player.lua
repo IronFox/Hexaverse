@@ -6704,6 +6704,24 @@ function Military.ClearPlants()
 					a plant shut for 90 rounds, a cannon in a dead end another; the army stayed at 3 with
 					minerals at the cap). After ten such rounds the unit is scrapped: one unit for a plant.
 					]]
+					-- (shut in by my own vehicles is not shut in: 28 units of one match were scrapped
+					-- with "0 cells in reach", five in one round, standing in the crowd of a gathering
+					-- army. Whoever has a way once the others are gone asks them to make way)
+					if urgent[u.location.cell.index] and #reach == 0 then
+						local okT, reachT = Move.Reach(u, math.max(2, u.movementSpeed * 2), false, false, true);
+						if okT and reachT and #reachT > 0 then
+							local asked = 0;
+							for _,nb in ipairs(u.location.cell.neighbors or {}) do
+								local l = Move.GroundAt(u, nb);
+								local okM, m = pcall(Game.GetMobileAt, l or nb);
+								if l and okM and m and m.isOwnedByMe then Move.AskWay(m, u, nil, 0); asked = asked + 1; end;
+							end;
+							if Sense.round % 10 == 0 then
+								Log(u.niceName..' on the exit of a blocked plant (cell '..u.location.cell.index..') is held by vehicles of mine: '..asked..' asked to make way');
+							end;
+							return;
+						end;
+					end;
 					if urgentLong[u.location.cell.index] and Cfg.scrapTrapped and u.Destroy then
 						Military.trapped = Military.trapped or {};
 						local t = Military.trapped[u.id];
