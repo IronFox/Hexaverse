@@ -332,7 +332,10 @@ function Types.HeavyStuck()
 			if base and base.name == 'Heavy Base' and u.location and not u.storedIn and u.GetReach then
 				n = n + 1;
 				local ok, reach = pcall(u.GetReach, nil, math.max(2, u.movementSpeed or 1), true, false, false, true);
-				if not ok or reach == nil or #reach == 0 then stuck = stuck + 1; end;
+				-- (or finds no way to where it is sent for 30 rounds: an all-heavy army had twice
+				-- the "no path" of a hover one, and 2 of 14 came up where hovers had 8 of 11)
+				local ps = Passage and Passage.stuck and Passage.stuck[tostring(u.id)];
+				if not ok or reach == nil or #reach == 0 or (ps and ps.n >= 3) then stuck = stuck + 1; end;
 			end;
 		end;
 	end;
@@ -2145,7 +2148,7 @@ function Move.AskWay(m, by, path, depth)
 		if i > 6 then break; end;
 		if n.location and n.location.cell then avoid[n.location.cell.index] = true; end;
 	end;
-	Move.asked[key] = {round = Sense.round, by = by and by.niceName or '?', avoid = avoid, depth = depth or 0};
+	Move.asked[key] = {round = Sense.round, by = by and by.niceName or '?', byId = by and tostring(by.id) or nil, avoid = avoid, depth = depth or 0};
 end;
 
 function Move.MakeWay()
@@ -2193,11 +2196,11 @@ function Move.MakeWay()
 				for _,nb in ipairs(m.location.cell.neighbors or {}) do
 					local g = Move.GroundAt(m, nb);
 					local okm, o = pcall(Game.GetMobileAt, g);
-					if g and okm and o ~= nil and o.id ~= nil and mine[tostring(o.id)] and not (Move.asked[tostring(o.id)] and Move.asked[tostring(o.id)].round == r) then
+					if g and okm and o ~= nil and o.id ~= nil and mine[tostring(o.id)] and tostring(o.id) ~= a.byId and not (Move.asked[tostring(o.id)] and Move.asked[tostring(o.id)].round == r) then
 						local av = {};
 						for k,_ in pairs(a.avoid) do av[k] = true; end;
 						av[m.location.cell.index] = true;
-						Move.asked[tostring(o.id)] = {round = r, by = a.by, avoid = av, depth = a.depth + 1};
+						Move.asked[tostring(o.id)] = {round = r, by = a.by, byId = a.byId, avoid = av, depth = a.depth + 1};
 						queue[#queue+1] = tostring(o.id);
 					end;
 				end;
@@ -5847,7 +5850,9 @@ function Passage.End(t, s, why)
 		Passage.done[s.key..':'..s.cell] = Sense.round;
 	end;
 	if t and Passage.job and not Passage.job.cut then Passage.tired[tostring(t.id)..':'..t.location.cell.index] = Sense.round; end;
-	if t and not Move.IsIdle(t) then pcall(t.ClearSafeTasks); end;
+	-- (a dig that waits for a cell survives ClearSafeTasks: a terraformer stood waiting 100 rounds
+	-- after its passage had been given up)
+	if t and not Move.IsIdle(t) then pcall(t.ClearTasks); end;
 	Passage.job = nil;
 	Passage.cool = Sense.round + 30;
 end;
@@ -5936,9 +5941,13 @@ function Passage.Tick()
 				end;
 				if best == nil then break; end;
 				at = best;
-				local g = Move.GroundAt(t, at);
-				local okm, o = pcall(Game.GetMobileAt, g);
-				if g and okm and o ~= nil then Move.AskWay(o, t, {{location = g}}); end;
+				for _,lst in pairs(Sense.my) do
+					for _,o in ipairs(lst) do
+						if o.location and o.location.cell and o.location.cell.index == at.index and not o.storedIn then
+							Move.AskWay(o, t, {{location = o.location}});
+						end;
+					end;
+				end;
 			end;
 		end;
 		return;
