@@ -5438,7 +5438,7 @@ function Military.Fire(v)
 			-- (a ghost does not tell when it is dead: in match 152 the tower was gone after four hits
 			-- and was shelled for 30 rounds more. After buriedShots shells it counts as done, until
 			-- it is sensed again)
-			if Sense.round - b.round > (Cfg.buriedMemory or 400) or (b.shots or 0) >= (Cfg.buriedShots or 12) then
+			if Sense.round - b.round > (Cfg.buriedMemory or 60) or (b.shots or 0) >= (Cfg.buriedShots or 12) then
 				Military.buried[id] = nil;
 			elseif not (live and live.health > 0) then
 				local n0 = #candidates;
@@ -5466,7 +5466,24 @@ function Military.Fire(v)
 	table.sort(candidates, function(a,b) return a.priority > b.priority end);
 	for i = 1, math.min(#candidates, t.attacksPerRound or 1) do
 		local cb = candidates[i].buried;
-		if cb and not (Game.hostileUnits[cb.id] and Game.hostileUnits[cb.id].health > 0) then cb.shots = (cb.shots or 0) + 1; end;
+		if cb and not (Game.hostileUnits[cb.id] and Game.hostileUnits[cb.id].health > 0) then
+			cb.shots = (cb.shots or 0) + 1;
+			-- (a shell at a ghost seen more than buriedHold rounds ago does not keep the gun in place)
+			if i == 1 and Sense.round - cb.round > (Cfg.buriedHold or 15) then
+				Military.lastBuriedShot = Military.lastBuriedShot or {};
+				Military.lastBuriedShot[v.id] = Sense.round;
+			end;
+		end;
+	end;
+	-- (whoever can hit a buried structure that is in view stays and fires: in match 159 a tank
+	-- took the tower at the entry from 24 to 3 in four rounds, drove on, and the tower lived.
+	-- A remembered one holds nobody for long: the artillery shelling ghosts kept two marches at
+	-- home, "3 of 20 up")
+	Military.holdFire = Military.holdFire or {};
+	do
+		local cb = candidates[1].buried;
+		local live = cb and Game.hostileUnits[cb.id] and Game.hostileUnits[cb.id].health > 0;
+		Military.holdFire[v.id] = (live or (cb and Sense.round - cb.round <= (Cfg.buriedHold or 15))) and Sense.round or nil;
 	end;
 	if candidates[1].buried and (candidates[1].buried.said or -100) + 10 <= Sense.round then
 		candidates[1].buried.said = Sense.round;
@@ -6356,7 +6373,12 @@ function Military.Combat()
 			if Military.stashing[v.id] then
 				return;	-- on its way into a vehicle store
 			end;
-			if fired and not v.motionIgnoresAttack then
+			local held = Military.holdFire and Military.holdFire[v.id] == Sense.round;
+			if fired and held then
+				if not Move.IsIdle(v) then v.ClearSafeTasks(); end;
+				return;	-- a buried structure in view: stay and shoot, whatever the vehicle
+			end;
+			if fired and not v.motionIgnoresAttack and not (Military.holdFire and Military.lastBuriedShot and Military.lastBuriedShot[v.id] == Sense.round) then
 				return;	-- e.g. artillery: stay and shoot
 			end;
 			if not Move.IsIdle(v) and not fired then
