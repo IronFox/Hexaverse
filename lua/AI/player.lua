@@ -3514,9 +3514,29 @@ function Economy.SiteOK(loc, forMine)
 	The free neighbours of the site must still touch each other once it is taken.
 	]]
 	if not forMine and Cfg.keepWays ~= false then
-		local free, n = {}, 0;
+		--[[
+		(... by ground that can be driven: a neighbour a cliff away is no way, and two neighbours
+		side by side with three levels between them do not touch. Counted as free and touching,
+		they let towers go up in every corridor: in match 176 the ground a heavy vehicle could reach
+		from home shrank from 122 cells at round 256 to 32 at round 553, the rim of it Surveyor,
+		Missile Launcher, Rocket Launcher, Radar and AA towers of mine and drops of 2 to 5 levels.)
+		]]
+		local free, n, lvl = {}, 0, {};
+		local h0 = loc.height or 0;
+		local function ClearAt(cell, hh)
+			local ok, c = pcall(Game.Grid.IsClear, {cell = cell, height = hh});
+			return ok and c and true or false;
+		end;
 		for _,nb in ipairs(loc.cell.neighbors) do
-			if not Sense.structureCells[nb.index] and not Economy.claimed[nb.index] and not Sense.UnderEMP(nb) then free[nb.index] = nb; n = n + 1; end;
+			if not Sense.structureCells[nb.index] and not Economy.claimed[nb.index] and not Sense.UnderEMP(nb) then
+				local at = nil;
+				if Cfg.keepWaysLevel ~= false then
+					for j = -1, 1 do
+						if ClearAt(nb, h0 + j) and not ClearAt(nb, h0 + j - 1) then at = h0 + j; break; end;
+					end;
+				else at = h0; end;
+				if at ~= nil then free[nb.index] = nb; lvl[nb.index] = at; n = n + 1; end;
+			end;
 		end;
 		if n >= 2 then
 			local first = next(free);
@@ -3524,7 +3544,7 @@ function Economy.SiteOK(loc, forMine)
 			while #stack > 0 do
 				local c = table.remove(stack);
 				for _,nb in ipairs(c.neighbors or {}) do
-					if free[nb.index] and not seen[nb.index] then seen[nb.index] = true; got = got + 1; stack[#stack+1] = nb; end;
+					if free[nb.index] and not seen[nb.index] and math.abs(lvl[nb.index] - lvl[c.index]) <= 1 then seen[nb.index] = true; got = got + 1; stack[#stack+1] = nb; end;
 				end;
 			end;
 			if got < n then Economy.siteWhy = 'closes a way'; return false; end;
