@@ -2072,6 +2072,30 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 					end;
 				end;
 			end;
+			-- (a far goal the search does not reach, with a way out at hand: 69 of 70 members of an
+			-- advance stood at home with "no path to cell 1588" two regions off, cells in reach,
+			-- and were let go. Then the way goes to a cell some steps along the line to the goal)
+			if not (ok and path and #path > 0) and Dist2(u.location.cell.center, goalCell.center) > 0 then
+				local at, line = u.location.cell, {};
+				for _ = 1, 10 do
+					local nbBest, nbD = nil, Dist2(at.center, goalCell.center);
+					for _,nb in ipairs(at.neighbors or {}) do
+						local d = Dist2(nb.center, goalCell.center);
+						if d < nbD then nbBest, nbD = nb, d; end;
+					end;
+					if nbBest == nil then break; end;
+					at = nbBest;
+					line[#line+1] = at;
+				end;
+				for _,k in ipairs({10, 6, 3}) do
+					local c = line[math.min(k, #line)];
+					local wd = c and Move.GroundAt(u, c);
+					if wd and wd ~= u.location and not Sense.structureCells[c.index] then
+						ok, path = pcall(u.FindShortestPath, wd, price, true);
+						if ok and path and #path > 0 then through = true; break; end;
+					end;
+				end;
+			end;
 			if ok and path and #path > 0 and through then
 				local free = {};
 				local whole = path;
@@ -2122,6 +2146,10 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 		block = danger;
 	end;
 	local ok, reach = pcall(u.GetReach, block, math.max(1, u.movementSpeed * 2), false, false, false, not mayEnterUnknown);
+	-- (ground beside the vehicle that the game counts as unknown, see Move.Reach)
+	if ok and reach ~= nil and #reach == 0 and not mayEnterUnknown then
+		ok, reach = pcall(u.GetReach, block, math.max(1, u.movementSpeed * 2), false, false, false, false);
+	end;
 	if not ok or reach == nil or #reach == 0 then
 		return false;
 	end;
