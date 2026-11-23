@@ -4827,6 +4827,20 @@ function Economy.BuildAt(u, loc, t, reachable)
 			if not ok or path == nil or #path == 0 then
 				Mem.blacklist[loc.cell.index] = Sense.round + 20;
 				Economy.buildWhy = 'no path from cell '..u.location.cell.index;
+			-- (a mine site no builder finds a way to gets one cut, like a vehicle that finds none:
+			-- match 158 knew one fuel site, cell 1636 in its home region, tried it 500 times from
+			-- four sides and stood all match on two generators)
+			if Passage and Passage.stuck and string.find(t.name, 'Mine', 1, true) then
+				local key = 'site:'..loc.cell.index;
+				local ps = Passage.stuck[key];
+				if ps == nil or Sense.round - ps.last > 60 then
+					ps = {keep = 60, key = key, cell = u.location.cell.index, n = 0, name = u.niceName..' (builder for a mine site)', at = -100};
+					Passage.stuck[key] = ps;
+				end;
+				if Sense.round - ps.at >= 10 then ps.n = ps.n + 1; ps.at = Sense.round; end;
+				ps.last = Sense.round;
+				ps.goal = loc.cell.index;
+			end;
 				Needs.Note(u.niceName..': no path to the '..t.name..' site at cell '..loc.cell.index..'/'..tostring(loc.height)
 					..' from '..u.location.cell.index..'/'..tostring(u.location.height)..(ok and '' or (' ('..tostring(path)..')')));
 				return false;
@@ -6241,7 +6255,7 @@ end;
 function Passage.Tick()
 	local r = Sense.round;
 	for k,s in pairs(Passage.stuck) do
-		if r - s.last > 25 then Passage.stuck[k] = nil; end;
+		if r - s.last > (s.keep or 25) then Passage.stuck[k] = nil; end;
 	end;
 	local list = Sense.my.constructor or {};
 	local job = Passage.job;
