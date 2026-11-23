@@ -4924,8 +4924,12 @@ function Economy.NextPlane()
 	local bomberCap = uranium >= Cfg.doomsdayUranium and math.ceil((n.bomber + n.raptor + 1) * Cfg.bomberShare) or
 		(n.raptor >= 4 and 2 or (n.raptor >= 1 and 1 or 0));
 	if not raptor then bomberCap = math.max(bomberCap, 1); end;
-	if bomber and n.bomber < bomberCap then return bomber; end;
-	return raptor or (bomber and n.bomber < bomberCap + 1 and bomber) or drone;
+	-- (39 bombers and 10 raptors were built and lost in match 150 while the army stood at 15 to 23:
+	-- a combat plane at most every planeEvery rounds, the minerals go to the plants)
+	if Sense.round - (Economy.lastCombatPlane or -1000) < (Cfg.planeEvery or 60) then return nil; end;
+	local pick = (bomber and n.bomber < bomberCap and bomber) or raptor or (bomber and n.bomber < bomberCap + 1 and bomber) or nil;
+	if pick then Economy.lastCombatPlane = Sense.round; return pick; end;
+	return drone;
 end;
 
 function Economy.PlaneProduction()
@@ -6688,7 +6692,12 @@ function Military.Scouts()
 				Move.why = nil;
 				local moved = false;
 				local ahead = van and Dist2(v.location.world, tw) <= vd;
-				if deepNow and (van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
+				-- (as long as no buried tower is known it goes ahead of the army into the region: the
+				-- advances of match 150 broke up two regions short of it under fire nobody had seen,
+				-- and one sighting is enough, the place is remembered)
+				local probe = next(Military.buried or {}) == nil;
+				if probe then deepNow = true; end;
+				if deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
 					moved = Move.Towards(v, tw, deepSpot.centerCell, false, true);
 				end;
 				if not moved and van and not (ahead and not deepNow) then
@@ -6709,7 +6718,7 @@ function Military.Scouts()
 						end;
 					end;
 					local at = Map.RegionOfLoc(v.location);
-					local what = (deepNow and (van == nil or ahead)) and ('goes into region '..deepSpot.id)
+					local what = (deepNow and (probe or van == nil or ahead)) and ('goes into region '..deepSpot.id)
 						or van and ('keeps with '..tostring(van.niceName)..' at cell '..tostring(van.location.cell.index)..' on the way to region '..deepSpot.id)
 						or ('goes to region '..reg.id);
 					local why = '';
