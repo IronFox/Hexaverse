@@ -1542,7 +1542,7 @@ function Needs.NextVehicle(kit)
 	local function isSurveyor(t) return t and string.find(string.lower(tostring(t.name)), 'surveyor', 1, true) ~= nil; end;
 	-- (but an army on a take with no surveyor at all has no eye below ground: then one every 20)
 	local every = Cfg.surveyorEvery or 80;
-	if #Sense.my.surveyor == 0 and Military and Military.SpotRegion and Military.SpotRegion() then every = Cfg.surveyorEveryTake or 20; end;
+	if #Sense.my.surveyor < (Cfg.takeSurveyors or 2) and Military and Military.SpotRegion and Military.SpotRegion() then every = Cfg.surveyorEveryTake or 20; end;
 	if Sense.round - (Needs.lastSurveyor or -1000) < every then
 		local keep = {};
 		for _,o in ipairs(opts) do

@@ -6750,7 +6750,17 @@ function Military.Scouts()
 		for _,v in ipairs(Sense.my.surveyor) do
 			if v.turret and v.turret.type.detectsResources or (v.type and v.type.turretType and v.type.turretType.detectsResources) then
 				local d = Dist2(v.location.world, Map.WorldCenter(deepSpot));
-				if Military.deepEyeId and tostring(v.id) == Military.deepEyeId then d = -1; end;
+				if Military.deepEyeId and tostring(v.id) == Military.deepEyeId then
+					d = -1;
+					-- (one that has not left its cell for 30 rounds is no eye: 'Ulm F56' held the job
+					-- stuck in a home region while another surveyor drove past the tower at the entry)
+					local at = Military.deepEyeAt;
+					if at == nil or at.id ~= Military.deepEyeId or at.cell ~= v.location.cell.index then
+						Military.deepEyeAt = {id = Military.deepEyeId, cell = v.location.cell.index, round = Sense.round};
+					elseif Sense.round - at.round > (Cfg.deepEyeStuck or 30) then
+						d = math.huge;
+					end;
+				end;
 				if bd == nil or d < bd then deepEye, bd = v, d; end;
 			end;
 		end;
