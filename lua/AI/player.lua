@@ -5410,7 +5410,7 @@ function Military.Fire(v)
 		Military.buried = Military.buried or {};
 		for id,e in pairs(Game.hostileUnits) do
 			if e.health > 0 and e.location and not e.location.isSuborbital and (e.location.height or 0) < 0
-				and e.type and e.type.isStructure and e.type.turretType and e.type.turretType.canAttack then
+				and e.type and e.type.isStructure then	-- (any structure: a buried radar tower is what gives the others their sight)
 				if Military.buried[id] == nil then
 					Log(string.format('Buried tower: %s sensed at cell %s height %s, kept as a target', tostring(e.niceName),
 						tostring(e.location.cell and e.location.cell.index), tostring(e.location.height)));
@@ -6727,7 +6727,8 @@ function Military.Scouts()
 					for idx,d in pairs(Move.deaths or {}) do
 						if d.n >= 2 and Sense.round - d.round < (Cfg.deepFellRounds or 150) then
 							local rid = Map.cellRegion[idx];
-							if rid and (rid == deepSpot.id or (vr and rid == vr.id)) then
+							-- (not on my own ground: there it stood at home looking at where raids had hit)
+							if rid and not Sense.mine[rid] and (rid == deepSpot.id or (vr and rid == vr.id)) then
 								local c = Economy.Cell(idx);
 								if c then
 									local w = {x=c.center.x*Map.groundRadius, y=c.center.y*Map.groundRadius, z=c.center.z*Map.groundRadius};
