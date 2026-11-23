@@ -95,7 +95,7 @@ function Formation.Ready(f, arrived)
 	local share = (Sense.round - f.stageSince >= Formation.gatherRounds) and Formation.lateShare or Formation.gatherShare;
 	local least = f.kind == 'take' and Formation.minSize[f.region];
 	-- (gathering for longer than gatherMax: what there is has to do, see the want)
-	if least and Sense.round - (f.gatherSince or Sense.round) > (Formation.gatherMax or 150) then least = math.min(least, f.count or least); end;
+	if least and Sense.round - (f.gatherSince or Sense.round) > (Formation.gatherMax or 150) then least = math.min(least, math.max(f.count or least, Formation.goFloor or 12)); end;	-- (but not three or four units: such advances in match 149 only fed the towers)
 	if least and arrived < math.ceil(least * Formation.gatherShare) then return false; end;
 	return arrived >= math.max(2, math.ceil(f.want * share));
 end;
@@ -460,7 +460,7 @@ function Formation.Update()
 				elseif (f.lostGather or 0) >= 4 then
 					f.lostGather = 0;
 				end;
-				if Formation.minSize[f.region] then f.want = math.max(f.want, (Sense.round - (f.gatherSince or Sense.round) > (Formation.gatherMax or 150)) and math.min(Formation.minSize[f.region], f.count) or Formation.minSize[f.region]); f.stageSince = math.max(f.stageSince, Sense.round - Formation.stallRounds + 1); end;
+				if Formation.minSize[f.region] then f.want = math.max(f.want, (Sense.round - (f.gatherSince or Sense.round) > (Formation.gatherMax or 150)) and math.min(Formation.minSize[f.region], math.max(f.count, Formation.goFloor or 12)) or Formation.minSize[f.region]); f.stageSince = math.max(f.stageSince, Sense.round - Formation.stallRounds + 1); end;
 				if Formation.Ready(f, near) and f.parked > 0 then
 					-- (all out first, then all go: Military.Stores empties the stores, six a store a round)
 					if not f.unload then Log(Name(f)..': ready with '..near..' of '..f.want..', '..f.parked..' come out of the stores at round '..Sense.round); end;
