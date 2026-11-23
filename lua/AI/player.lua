@@ -6914,6 +6914,32 @@ function Military.Scouts()
 				-- goes on into the region on the last leg)
 				local van, vd = nil, nil;
 				local tw = Map.WorldCenter(deepSpot);
+				--[[
+				Inside the region to be taken the eye does not make for its middle but walks it: the
+				nearest cell it has not yet stood on or beside. A surveyor sees a tower 13 levels down
+				only from close by: in match 180 one sighting gave the tower at cell 14 and two radars,
+				and the towers at 30, 46 and 62, two cells further round the port, stayed unseen and
+				ground down 19 advances.
+				]]
+				Military.deepSwept = Military.deepSwept or {};
+				local sw, sc = tw, deepSpot.centerCell;
+				do
+					local here = v.location.cell;
+					local hr = Map.cellRegion and Map.cellRegion[here.index];
+					if hr == deepSpot.id and Cfg.deepSweep ~= false then
+						Military.deepSwept[here.index] = Sense.round;
+						for _,nb in ipairs(here.neighbors or {}) do Military.deepSwept[nb.index] = Sense.round; end;
+						local bd = nil;
+						for _,c in ipairs(deepSpot.cells or {}) do
+							local at = Military.deepSwept[c.index];
+							if (at == nil or Sense.round - at > (Cfg.deepSweepAgain or 300)) and not Sense.UnderEMP(c) then
+								local w = {x=c.center.x*Map.groundRadius, y=c.center.y*Map.groundRadius, z=c.center.z*Map.groundRadius};
+								local d = Dist2(v.location.world, w);
+								if bd == nil or d < bd then bd, sw, sc = d, w, c; end;
+							end;
+						end;
+					end;
+				end;
 				for _,m in ipairs(Sense.my.combat) do
 					if deepForm.members[m.id] and m.location and not m.storedIn then
 						local d = Dist2(m.location.world, tw);
@@ -7022,11 +7048,11 @@ function Military.Scouts()
 					end;
 				end;
 				if moved and Military.deepKnown then onward = false; end;
-				if not moved and probe then moved = Move.Towards(v, tw, deepSpot.centerCell, false, true); if moved then onward = false; end; end;
-				if onward then moved = Move.Towards(v, tw, deepSpot.centerCell, false, true); end;
+				if not moved and probe then moved = Move.Towards(v, sw, sc, false, true); if moved then onward = false; end; end;
+				if onward then moved = Move.Towards(v, sw, sc, false, true); end;
 				if fell and not moved then moved = Move.Towards(v, fell.world, fell.cell, false, true); end;
 				if not moved and deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
-					moved = Move.Towards(v, tw, deepSpot.centerCell, false, true);
+					moved = Move.Towards(v, sw, sc, false, true);
 				end;
 				-- (it goes ahead to the region two before the one to be taken and waits there for the
 				-- army: following the column it was last out of the gate, and at every entry of
