@@ -2003,6 +2003,13 @@ end;
 function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 	-- (Move.Stuck is not applied to every unit here: with it the losers against the Nexus died at
 	-- a median of round 67 where it had been 137. It is used where the cause is known, the AA posts.)
+	-- (who has just stepped aside for another stays there for the moment, or it would walk
+	-- straight back into the way)
+	local as = Move.aside and Move.aside[tostring(u.id)];
+	if as and Sense.round - as.round < 3 then
+		Move.why = 'stepped aside for another';
+		return false;
+	end;
 	local tried = Tried(u);
 	local danger = Move.IsDangerous;
 	if avoidThreat == 'arty' then
@@ -2051,9 +2058,14 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 			end;
 			if ok and path and #path > 0 and through then
 				local free = {};
+				local whole = path;
 				for _,n in ipairs(path) do
 					local okm, m = pcall(Game.GetMobileAt, n.location);
-					if okm and m ~= nil then break; end;
+					if okm and m ~= nil then
+						-- (who stands in the way and does nothing is asked to step aside)
+						if #free <= 1 then Move.AskWay(m, u, whole); end;
+						break;
+					end;
 					free[#free+1] = n;
 				end;
 				path = free;
@@ -2109,6 +2121,97 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 		return true;
 	end;
 	return false;
+end;
+
+--[[
+Making way. A vehicle of mine that stands idle on another's next step is asked to step aside
+(there was no way round it, or the way would have been taken). It goes to the nearest cell it
+can come back from that is not on the other's way, and returns to where it stood some rounds
+later if nothing else has sent it on. Who is asked and cannot move itself passes the asking on to
+the vehicles of mine around it.
+]]
+Move.asked = {};	-- unit id -> {round, by, avoid = {cell index -> true}, depth}
+Move.aside = {};	-- unit id -> {round, loc, cell}
+function Move.AskWay(m, by, path, depth)
+	if m == nil or m.id == nil or (by and m.id == by.id) then return; end;
+	local key = tostring(m.id);
+	local a = Move.asked[key];
+	if a and a.round == Sense.round then return; end;
+	local avoid = {};
+	if by then avoid[by.location.cell.index] = true; end;
+	for i,n in ipairs(path or {}) do
+		if i > 6 then break; end;
+		if n.location and n.location.cell then avoid[n.location.cell.index] = true; end;
+	end;
+	Move.asked[key] = {round = Sense.round, by = by and by.niceName or '?', avoid = avoid, depth = depth or 0};
+end;
+
+function Move.MakeWay()
+	local r = Sense.round;
+	local mine = {};
+	for _,list in pairs(Sense.my) do
+		for _,u in ipairs(list) do mine[tostring(u.id)] = u; end;
+	end;
+	local queue = {};
+	for key,a in pairs(Move.asked) do
+		if a.round == r then queue[#queue+1] = key; elseif r - a.round > 5 then Move.asked[key] = nil; end;
+	end;
+	table.sort(queue);
+	local i = 0;
+	while i < #queue do
+		i = i + 1;
+		local key = queue[i];
+		local a, m = Move.asked[key], mine[key];
+		if m and Move.IsIdle(m) and not a.done then
+			a.done = true;
+			local ok, reach = pcall(m.GetReach, nil, math.max(1, (m.movementSpeed or 1) * 2), true, false, false, true);
+			local best = nil;
+			if ok and reach then
+				for _,n in ipairs(reach) do
+					local c = n.location and n.location.cell;
+					if c and c.index ~= m.location.cell.index and not a.avoid[c.index] and not Sense.UnderEMP(c)
+						and (best == nil or n.movementCostsFromRoot < best.movementCostsFromRoot) then best = n; end;
+				end;
+			end;
+			if best then
+				if Move.aside[key] == nil then Move.aside[key] = {round = r, loc = m.location, cell = m.location.cell.index}; end;
+				Move.aside[key].round = r;
+				m.DirectTo(best);
+				if r % 5 == 0 then Log(string.format('Way: %s steps from cell %d to cell %d for %s', m.niceName, m.location.cell.index, best.location.cell.index, a.by)); end;
+			elseif a.depth < 3 then
+				-- (it cannot move either: those around it are asked in turn)
+				for _,nb in ipairs(m.location.cell.neighbors or {}) do
+					local g = Move.GroundAt(m, nb);
+					local okm, o = pcall(Game.GetMobileAt, g);
+					if g and okm and o ~= nil and o.id ~= nil and mine[tostring(o.id)] and not (Move.asked[tostring(o.id)] and Move.asked[tostring(o.id)].round == r) then
+						local av = {};
+						for k,_ in pairs(a.avoid) do av[k] = true; end;
+						av[m.location.cell.index] = true;
+						Move.asked[tostring(o.id)] = {round = r, by = a.by, avoid = av, depth = a.depth + 1};
+						queue[#queue+1] = tostring(o.id);
+					end;
+				end;
+			end;
+		end;
+	end;
+	-- back to where it stood, once the way has been free of asking for a while
+	for key,s in pairs(Move.aside) do
+		local m = mine[key];
+		if m == nil or r - s.round > 40 then
+			Move.aside[key] = nil;
+		elseif r - s.round >= (Cfg.wayBack or 6) and not (Move.asked[key] and r - Move.asked[key].round < (Cfg.wayBack or 6)) then
+			if m.location.cell.index == s.cell or not Move.IsIdle(m) then
+				Move.aside[key] = nil;	-- (back already, or sent elsewhere by its own orders)
+			else
+				local okm, o = pcall(Game.GetMobileAt, s.loc);
+				if not (okm and o ~= nil) then
+					local ok, path = pcall(m.FindShortestPath, s.loc, nil, false);
+					if ok and path and #path > 0 then m.DirectTo(path[#path]); end;
+					Move.aside[key] = nil;
+				end;
+			end;
+		end;
+	end;
 end;
 
 -- A location is dangerous if a sensed or remembered hostile turret could hit it
@@ -5775,6 +5878,7 @@ function Passage.Step(t, s, job)
 	local ok, err = pcall(t.DigTunnelBridgeTo, hop);
 	if not ok then return Passage.End(t, s, 'the order was refused: '..tostring(err)); end;
 	job.cut = true;
+	job.to = at.index;
 	Log(string.format('Passage: %s cuts from cell %d to cell %d, towards %s', t.niceName, here.index, at.index,
 		beside and ('cell '..s.goal..' where '..s.name..' wants to go') or (s.name..' at cell '..s.cell)));
 end;
@@ -5796,7 +5900,27 @@ function Passage.Tick()
 		if s == nil then return Passage.End(t, nil, 'the vehicle it was cut for moves again'); end;
 		if r - job.since > (Cfg.passageRounds or 150) then return Passage.End(t, s, 'not through after '..(r - job.since)..' rounds'); end;
 		table.remove(list, ti);		-- (it is on this job: no other work for it this round)
-		if Move.IsIdle(t) then Passage.Step(t, s, job); end;
+		if Move.IsIdle(t) then
+			Passage.Step(t, s, job);
+		elseif job.to then
+			-- (the dig waits while a vehicle stands in the cell to enter: whoever of mine stands
+			-- between the terraformer and the end of this cut is asked to make way)
+			local to = Economy.Cell(job.to);
+			local at = t.location.cell;
+			for _ = 1, 5 do
+				if to == nil or at.index == to.index then break; end;
+				local best, bestD = nil, nil;
+				for _,nb in ipairs(at.neighbors) do
+					local d = Dist2(nb.center, to.center);
+					if bestD == nil or d < bestD then best, bestD = nb, d; end;
+				end;
+				if best == nil then break; end;
+				at = best;
+				local g = Move.GroundAt(t, at);
+				local okm, o = pcall(Game.GetMobileAt, g);
+				if g and okm and o ~= nil then Move.AskWay(o, t, {{location = g}}); end;
+			end;
+		end;
 		return;
 	end;
 	if r % 10 ~= 0 or r < Passage.cool then return; end;
@@ -6444,6 +6568,7 @@ function Execute()
 	SafeCall('Planes', Military.Planes);
 	SafeCall('Bombs', Military.Bombs);
 	SafeCall('ClearPlants', Military.ClearPlants);
+	SafeCall('MakeWay', Move.MakeWay);
 
 	local cur = Game.myFaction.currentResources;
 	local seen, seenA, seenD = 0, 0, 0;
