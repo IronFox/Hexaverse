@@ -481,7 +481,14 @@ namespace ApplicationInterface
 						//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
 					&& ++numIt < 1000)
 					mod = float3(random.NextFloat(-1,1),random.NextFloat(-1,1),random.NextFloat(-1,1)) * radius;
-				ASSERT1__(numIt < 1000,range);
+				//No blurred source position near the real one could have hit the target (seen with range 11.5, right after a heavy artillery
+				//blew up uncontrolled: the blast is traced from a turret that could not have fired there). That is no reason to end the
+				//match: the trajectory is then sent from the real position.
+				if (numIt >= 1000)
+				{
+					LogEvent(EventSignificance::Common,attack.attackFrom.get(),"No blurred source position found for rough trajectory (range "+String(range)+"). Using the real one");
+					mod = float3(0,0,0);
+				}
 				roughAttack.sourcePosition += mod;
 			}
 		}
