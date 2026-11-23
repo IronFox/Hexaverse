@@ -2026,6 +2026,14 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 		Move.why = 'stepped aside for another';
 		return false;
 	end;
+	-- (where each is going, for the column rule below)
+	Move.goalOf = Move.goalOf or {};
+	if goalCell then
+		local g0 = Move.goalOf[tostring(u.id)];
+		local here = u.location.cell.index;
+		Move.goalOf[tostring(u.id)] = {cell = goalCell.index, region = Map.cellRegion and Map.cellRegion[goalCell.index], round = Sense.round,
+			at = here, since = (g0 and g0.at == here and g0.since) or Sense.round};
+	end;
 	local tried = Tried(u);
 	local danger = Move.IsDangerous;
 	if avoidThreat == 'arty' then
@@ -2104,13 +2112,22 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 					-- (the way can begin with the cell the vehicle stands on: that is not a blocker)
 					if okm and m ~= nil and tostring(m.id) ~= tostring(u.id) then
 						-- (who stands in the way and does nothing is asked to step aside)
-						if #free <= 1 then Move.AskWay(m, u, whole); end;
+						-- (but not one that is on the same march: it moves on by itself as its own
+						-- way clears. A column of 30 asked each other aside in a corridor, each then
+						-- stood three rounds beside the way, and 3 of 19 came up in 90 rounds)
+						local og = Move.goalOf[tostring(m.id)];
+						-- (one that has stood on its cell for five rounds is not moving on: it is asked)
+						local same = og and Sense.round - og.round <= 1 and Sense.round - og.since < (Cfg.columnWait or 5)
+							and (og.cell == goalCell.index or (og.region and og.region == (Map.cellRegion and Map.cellRegion[goalCell.index])));
+						if #free <= 1 and not same then Move.AskWay(m, u, whole); end;
+						if #free == 0 and same then Move.column = true; end;
 						break;
 					end;
 					free[#free+1] = n;
 				end;
 				path = free;
-				if #path == 0 then Move.why = 'a vehicle of mine stands on the next step to cell '..goalCell.index; end;
+				if #path == 0 then Move.why = (Move.column and 'waits for the column ahead, on the way to cell ' or 'a vehicle of mine stands on the next step to cell ')..goalCell.index; end;
+				Move.column = nil;
 			end;
 			if ok and path and #path > 0 then
 				local limit = math.max(1, u.movementSpeed * 3);
