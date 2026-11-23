@@ -3442,6 +3442,14 @@ function Economy.Exits(loc, skipIdx)
 	return n, table.concat(why, '; ');
 end;
 
+-- A mineral cell while mineral mines are what is missing: such a site goes ahead of berth, danger and control
+function Economy.MineralLock(loc, forMine)
+	if not forMine or Cfg.mineralLock == false then return false; end;
+	if (Needs.mineralMines or 99) >= (Cfg.mineralLockMines or 3) then return false; end;
+	local okm, m = pcall(Game.Grid.GetNaturalResourceAt, 'Minerals', loc.cell);
+	return okm and m ~= nil and m >= 5;
+end;
+
 function Economy.SiteOK(loc, forMine)
 	local idx = loc.cell.index;
 	-- a mine may take a reserved lab cell: income beats a lab slot (the reserve once locked a faction out of its last mine sites)
@@ -3459,6 +3467,9 @@ function Economy.SiteOK(loc, forMine)
 				local okf, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', loc.cell);
 				fuelNow = okf and lvl ~= nil and lvl > 0;
 			end;
+			-- (... and a mineral mine while fewer than three stand: match 165 knew one mineral cell,
+			-- beside a foreign port, held 22 minerals a round all match and never raised an army of 25)
+			if not fuelNow and Economy.MineralLock(loc, forMine) then fuelNow = true; end;
 			if not fuelNow and not (Cfg.berthHome and rid and rid == Mem.homeRegion) and not (forMine and Economy.Count(Types.mine) < (Cfg.minMines or 3)) then
 				Economy.siteWhy = 'too close to a foreign port'; return false;
 			end;
@@ -3515,6 +3526,7 @@ function Economy.SiteOK(loc, forMine)
 		local okf, lvl = pcall(Game.Grid.GetNaturalResourceAt, 'Fuel', loc.cell);
 		fuelLock = okf and lvl ~= nil and lvl > 0;
 	end;
+	if not fuelLock and Economy.MineralLock(loc, forMine) then fuelLock = true; end;
 	if Move.IsDangerous(loc) and not fuelLock then Economy.siteWhy = 'danger'; return false; end;
 	-- what is worth something only on ground that is mine (radar and defences push the edge out)
 	if Cfg.useControl and not Economy.fringeOK and not fuelLock then
