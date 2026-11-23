@@ -77,7 +77,22 @@ Formation.minSize = {};	-- target region -> units wanted at least before going i
 Formation.stageAt = {};	-- target region -> staging region chosen from outside (Bridge.Stage)
 Formation.badStage = {};	-- region -> round it cost a gathering formation four members: no staging there for 150 rounds
 function Formation.Staging(regionId)
-	local function Bad(id) return Formation.badStage[id] and Sense.round - Formation.badStage[id] < 150; end;
+	-- (nor where vehicles of mine fell lately: in match 173 the take staged in the region before the
+	-- Nexus port region, where a store of mine stood and the army had been dying all match, and
+	-- gathered there for 450 rounds with 4 of 30 near)
+	if Formation.hotRound ~= Sense.round then
+		Formation.hotRound, Formation.hot = Sense.round, {};
+		for idx,d in pairs(Move and Move.deaths or {}) do
+			if Sense.round - d.round < 150 and d.n >= 2 then
+				local rid = Map.cellRegion and Map.cellRegion[idx];
+				if rid then Formation.hot[rid] = (Formation.hot[rid] or 0) + 1; end;
+			end;
+		end;
+	end;
+	local function Bad(id)
+		if id ~= Mem.homeRegion and (Formation.hot[id] or 0) >= (Formation.hotCells or 3) then return true; end;
+		return Formation.badStage[id] and Sense.round - Formation.badStage[id] < 150;
+	end;
 	if Formation.stageAt[regionId] and not Bad(Formation.stageAt[regionId]) then return Formation.stageAt[regionId]; end;
 	--[[
 	First choice: the region of mine nearest to the target by the way the army would take. A
@@ -528,6 +543,14 @@ function Formation.Update()
 				SetStage(f, 'gather', 'broken off with '..f.count..' of '..f.peak..' left; now wants '..f.want);
 				f.peak = f.count;
 			elseif f.stage == 'gather' then
+				-- (a staging region gone bad while gathering is left for a better one)
+				if Sense.round % 30 == 0 then
+					local s2 = Formation.Staging(f.region);
+					if s2 ~= f.staging then
+						Log(Name(f)..': staging moves from region '..tostring(f.staging)..' to region '..tostring(s2)..' at round '..Sense.round);
+						f.staging = s2;
+					end;
+				end;
 				-- (a staging ground that eats those who gather there is none: the neighbour of the
 				-- target chosen for one match was the road of the enemy's raids, and 36 tanks and six
 				-- stores were lost on it, one by one. Back to my own ground, and all go out together)
