@@ -6076,6 +6076,17 @@ function Passage.Breakout(t, job, target)
 		end;
 	end;
 	if best == nil then return false; end;
+	-- (the edge of what the reach search covers is not the rim of a pocket: a cut was ordered
+	-- three times between two cells of open ground a region away from the vehicle it was for, and
+	-- "completed" each time with nothing to cut. Where a path leads on, the terraformer drives on)
+	do
+		local okP, path = pcall(t.FindShortestPath, bestTo, nil, true);
+		if okP and path and #path > 0 then
+			local okG = pcall(t.DirectTo, path[#path]);
+			if okG and Sense.round % 5 == 0 then Log(string.format('Passage: %s drives on to cell %d, there is a way that far', t.niceName, bestTo.cell.index)); end;
+			return okG;
+		end;
+	end;
 	if best == here then
 		local to = bestTo.cell.index;
 		job.btries = job.btries or {};
