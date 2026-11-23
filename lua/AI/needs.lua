@@ -692,7 +692,15 @@ function Needs.Failed(name)
 	f.n = math.min(6, f.n + 1);
 	f.round = Sense.round;
 	Needs.failed[name] = f;
-	Needs.Note('order for '..name..' came to nothing ('..f.n..'x): weighing it down'..((Economy.buildWhy or Economy.siteWhy) and (' (last reason: '..tostring(Economy.buildWhy or Economy.siteWhy)..')') or ''));
+	-- (for a mine the reason is that of the site search, not of what was tried in its place:
+	-- "Mine (fuel) ... last reason: capped" 283 times in match 153 was the tower built instead)
+	local why = Economy.buildWhy or Economy.siteWhy;
+	local w = Economy.mineWhy;
+	if string.sub(name, 1, 4) == 'Mine' and w then
+		why = string.format('%d candidates, %d no ground, %d unsafe, %d too far, %d site rejected (%s), %d build failed (%s)',
+			w.cands or 0, w.noGround or 0, w.unsafe or 0, w.far or 0, w.site or 0, w.reasons or '', w.build or 0, w.bwhy or '');
+	end;
+	Needs.Note('order for '..name..' came to nothing ('..f.n..'x): weighing it down'..(why and (' (last reason: '..tostring(why)..')') or ''));
 end;
 
 -- A structure order was placed: the pending choice worked out
