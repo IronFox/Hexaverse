@@ -336,10 +336,62 @@ function Formation.Update()
 					end;
 				end;
 				if f.rally == nil then
+					--[[
+					On open ground: the cell of the far half of the region with the most level, free
+					ground around it for the heaviest kind in the formation. (The farthest cell was a
+					corner: in match 164 the heavy members stood on ledges one or two cells wide, three
+					or four of six neighbours no ground for them, the rest held by each other, and 10
+					of 20 came out.)
+					]]
+					local probe = nil;
+					for _,m in ipairs(Sense.my.combat or {}) do
+						if f.members[m.id] and m.location and not m.storedIn then
+							if probe == nil or string.find(tostring(m.type and m.type.name), 'Heavy', 1, true) then probe = m; end;
+						end;
+					end;
+					local cands, maxD = {}, 0;
 					for _,c in ipairs(Map.regions[f.staging].cells or {}) do
 						local w = {x = c.center.x * Map.groundRadius, y = c.center.y * Map.groundRadius, z = c.center.z * Map.groundRadius};
 						local dd = Dist2(w, tc);
-						if not Sense.structureCells[c.index] and not Sense.UnderEMP(c) and (bestD == nil or dd > bestD) then bestD, f.rally = dd, c; end;
+						if not Sense.structureCells[c.index] and not Sense.UnderEMP(c) then
+							cands[#cands + 1] = {c = c, dd = dd};
+							if dd > maxD then maxD = dd; end;
+						end;
+					end;
+					local bestOpen = nil;
+					for _,k in ipairs(cands) do
+						local open = 0;
+						if probe and Formation.openRally ~= false then
+							local g0 = Move.GroundAt(probe, k.c);
+							if g0 == nil then open = -1;
+							else
+								local seen = {[k.c.index] = true};
+								for _,n1 in ipairs(k.c.neighbors or {}) do
+									for _,x in ipairs({n1, table.unpack(n1.neighbors or {})}) do
+										if not seen[x.index] then
+											seen[x.index] = true;
+											if not Sense.structureCells[x.index] and not Sense.UnderEMP(x) then
+												local g = Move.GroundAt(probe, x);
+												if g and math.abs((g.height or 0) - (g0.height or 0)) <= 1 then open = open + 1; end;
+											end;
+										end;
+									end;
+								end;
+							end;
+						end;
+						-- (the far half by distance; among those the most open, then the farthest)
+						if open >= 0 and k.dd >= maxD * 0.5 and (bestOpen == nil or open > bestOpen or (open == bestOpen and k.dd > bestD)) then
+							bestOpen, bestD, f.rally = open, k.dd, k.c;
+						end;
+					end;
+					if f.rally == nil then
+						for _,k in ipairs(cands) do
+							if bestD == nil or k.dd > bestD then bestD, f.rally = k.dd, k.c; end;
+						end;
+					end;
+					if f.rally and f.rallyTold ~= f.rally.index then
+						f.rallyTold = f.rally.index;
+						Log(Name(f)..': gathers at cell '..f.rally.index..' with '..tostring(bestOpen)..' cells of level ground around it');
 					end;
 				end;
 			end;
