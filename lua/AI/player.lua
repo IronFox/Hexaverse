@@ -6590,8 +6590,55 @@ function Military.Scouts()
 	sweeps my own land when something may be digging in, and those a personality keeps
 	(Military.keepScripted: the cave AI's surveyor stays in the cave).
 	]]
+	--[[
+	The army's eyes below the ground. A surveyor sees 20 levels down within its scanning range
+	(4 cells); a sensor drone sees 2 levels down. What broke every advance on the Nexus port region
+	were three missile towers 13 levels below it, never sensed, so the artillery never had a
+	target. One surveyor goes with a take: to the staging region while the army gathers and
+	marches, into the region on its last leg.
+	]]
+	local deepSpot, deepStage, deepNow = nil, nil, false;
+	for _,f in ipairs(Formation and Formation.list or {}) do
+		if f.kind == 'take' and not f.over and Map.regions[f.region] then
+			deepSpot, deepStage = Map.regions[f.region], Map.regions[f.staging];
+			deepNow = f.stage == 'secure' or (f.stage == 'advance' and f.route and f.leg and f.leg >= #f.route - 1) or false;
+			break;
+		end;
+	end;
+	local deepEye = nil;
+	if deepSpot then
+		local bd = nil;
+		for _,v in ipairs(Sense.my.surveyor) do
+			if v.turret and v.turret.type.detectsResources or (v.type and v.type.turretType and v.type.turretType.detectsResources) then
+				local d = Dist2(v.location.world, Map.WorldCenter(deepSpot));
+				if Military.deepEyeId and tostring(v.id) == Military.deepEyeId then d = -1; end;
+				if bd == nil or d < bd then deepEye, bd = v, d; end;
+			end;
+		end;
+		Military.deepEyeId = deepEye and tostring(deepEye.id) or nil;
+	else
+		Military.deepEyeId = nil;
+	end;
 	local sweeper = false;
 	for _,v in ipairs(scouts) do
+		if deepEye and v == deepEye then
+			SafeCall('deep eye '..v.niceName, function()
+				if v.isAutomated and v.SetAutomation then pcall(v.SetAutomation, false); end;
+				local reg = deepNow and deepSpot or deepStage or deepSpot;
+				if not Move.IsIdle(v) then v.ClearSafeTasks(); end;
+				local moved = Move.Towards(v, Map.WorldCenter(reg), reg.centerCell, false, true);
+				if Sense.round % 10 == 0 then
+					local below = 0;
+					for _,e in pairs(Game.hostileUnits) do
+						if e.health > 0 and not e.location.isSuborbital and (e.location.height or 0) < 0 then below = below + 1; end;
+					end;
+					local at = Map.RegionOfLoc(v.location);
+					Log(string.format('Deep eye: %s goes %s region %d for the army (now in region %s, cell %d%s); %d hostiles sensed below ground', v.niceName,
+						deepNow and 'into' or 'to the staging', reg.id, tostring(at and at.id), v.location.cell.index, moved and '' or (', not moving: '..tostring(Move.why)), below));
+				end;
+			end);
+			goto continue;
+		end;
 		local deep = v.turret and v.turret.type.detectsResources;
 		local layer = deep and 'deep' or 'ground';
 		local auto = deep and Cfg.autoSurveyors and v.SetAutomation and not (Military.keepScripted and Military.keepScripted[v.id]);
