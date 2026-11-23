@@ -2026,6 +2026,9 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 		Move.why = 'stepped aside for another';
 		return false;
 	end;
+	-- (... and who is then sent on by its own orders is not called back to where it stood: the
+	-- surveyor scouting ahead in match 181 was still at home in 10 of its 13 reports)
+	if as then Move.aside[tostring(u.id)] = nil; end;
 	-- (where each is going, for the column rule below)
 	Move.goalOf = Move.goalOf or {};
 	if goalCell then
