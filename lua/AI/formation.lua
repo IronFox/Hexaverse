@@ -184,8 +184,36 @@ function Formation.Update()
 	for id,_ in pairs(Formation.of) do
 		if alive[id] == nil then Formation.of[id] = nil; end;
 	end;
+	-- (who finds no way for 30 rounds while the others march is let go: it stays what it was at
+	-- home. Counted on, nine vehicles that never left home made the others wait 90 rounds a leg
+	-- in the enemy's fire, "5 of 14 up", and were then all that was left to go "on to region 1
+	-- with 0 of 9 up", advance after advance)
+	Formation.stuckOut = Formation.stuckOut or {};
+	local function Stuck(id)
+		local ps = Passage and Passage.stuck and Passage.stuck[tostring(id)];
+		return ps ~= nil and ps.n >= 3;
+	end;
+	for _,f in ipairs(Formation.list) do
+		if f.kind == 'take' and f.stage ~= 'gather' then
+			local let = 0;
+			for id,_ in pairs(f.members) do
+				if Stuck(id) then
+					f.members[id] = nil;
+					Formation.of[id] = nil;
+					Formation.stuckOut[id] = Sense.round;
+					let = let + 1;
+				end;
+			end;
+			if let > 0 then
+				f.peak = math.max(0, (f.peak or 0) - let);
+				Log(Name(f)..': '..let..' let go at round '..Sense.round..', no way from where they stand');
+			end;
+		end;
+	end;
 	for _,u in ipairs(Sense.my.combat) do
-		if Formation.of[u.id] == nil and not Military.stashing[u.id] and not Military.peakGuard[u.id] then
+		local out = Formation.stuckOut[u.id];
+		if out and Sense.round - out > 200 then Formation.stuckOut[u.id] = nil; out = nil; end;
+		if Formation.of[u.id] == nil and not Military.stashing[u.id] and not Military.peakGuard[u.id] and not out and not Stuck(u.id) then
 			free[#free+1] = u;
 		end;
 	end;
