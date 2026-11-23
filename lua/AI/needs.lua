@@ -1529,6 +1529,16 @@ function Needs.NextVehicle(kit)
 		end;
 		opts = keep;
 	end;
+	-- (62 surveyors were built and lost in match 151 against 48 tanks: one every surveyorEvery
+	-- rounds at most, what dies in between is not replaced at once)
+	local function isSurveyor(t) return t and string.find(string.lower(tostring(t.name)), 'surveyor', 1, true) ~= nil; end;
+	if Sense.round - (Needs.lastSurveyor or -1000) < (Cfg.surveyorEvery or 80) then
+		local keep = {};
+		for _,o in ipairs(opts) do
+			if not isSurveyor(o.want) then keep[#keep+1] = o; end;
+		end;
+		opts = keep;
+	end;
 	local best, top = Needs.Choose(opts, 'vehicle', minerals);
 	-- no builder at all: nothing can be built or rebuilt. The constructor goes first even if it
 	-- isn't affordable yet: anything cheaper bought meanwhile only delays it
@@ -1554,6 +1564,7 @@ function Needs.NextVehicle(kit)
 	end;
 	Needs.Note(string.format('produce %s (%.2f)', best.name, best.score));
 	Needs.Charge(best);
+	if isSurveyor(best.want) then Needs.lastSurveyor = Sense.round; end;
 	return best.want;
 end;
 

@@ -4911,9 +4911,11 @@ function Economy.NextPlane()
 	local hostileAir = Sense.AirPressure() > 0;
 	if hostileAir and raptor and n.raptor <= n.bomber and total < Cfg.maxPlanes then return raptor; end;
 	-- (an army sent to take a region needs eyes on it: one drone for that before any other plane)
-	if drone and n.drone < (Cfg.spotters or 2) and Military.SpotRegion and Military.SpotRegion() then return drone; end;
+	-- (51 drones in match 151: one every droneEvery rounds at most)
+	if drone and Sense.round - (Economy.lastDrone or -1000) < (Cfg.droneEvery or 30) then drone = nil; end;
+	if drone and n.drone < (Cfg.spotters or 2) and Military.SpotRegion and Military.SpotRegion() then Economy.lastDrone = Sense.round; return drone; end;
 	-- (none for scouting while a take is on: the fuel that makes them is what the spotters need)
-	if drone and n.drone < wantDrones and not (Military.SpotRegion and Military.SpotRegion()) and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then return drone; end;
+	if drone and n.drone < wantDrones and not (Military.SpotRegion and Military.SpotRegion()) and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then Economy.lastDrone = Sense.round; return drone; end;
 	if total >= Cfg.maxPlanes then return nil; end;
 	--[[
 	Raptors are invaluable: they hunt planes and hit ground targets twice a round on the move.
@@ -4929,6 +4931,7 @@ function Economy.NextPlane()
 	if Sense.round - (Economy.lastCombatPlane or -1000) < (Cfg.planeEvery or 60) then return nil; end;
 	local pick = (bomber and n.bomber < bomberCap and bomber) or raptor or (bomber and n.bomber < bomberCap + 1 and bomber) or nil;
 	if pick then Economy.lastCombatPlane = Sense.round; return pick; end;
+	if drone then Economy.lastDrone = Sense.round; end;
 	return drone;
 end;
 
@@ -6695,8 +6698,9 @@ function Military.Scouts()
 				-- (as long as no buried tower is known it goes ahead of the army into the region: the
 				-- advances of match 150 broke up two regions short of it under fire nobody had seen,
 				-- and one sighting is enough, the place is remembered)
-				local probe = next(Military.buried or {}) == nil;
-				if probe then deepNow = true; end;
+				-- (tried in match 151 and given up: alone it never got there, 36 surveyors were lost
+				-- on the way. It keeps with the army)
+				local probe = false;
 				if deepNow and (probe or van == nil or ahead or Dist2(v.location.world, van.location.world) < 9) then
 					moved = Move.Towards(v, tw, deepSpot.centerCell, false, true);
 				end;
