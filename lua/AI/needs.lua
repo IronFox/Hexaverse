@@ -1465,6 +1465,11 @@ function Needs.VehicleOptions(kit)
 		local use = math.ceil(Sense.Pressure() / pot) + 2 * #Needs.DefendedRegions();
 		local target = Mem.attackTarget or Military.ChooseAttackTarget();
 		if target then use = use + Military.RequiredForce(target); end;
+		-- (what a take of mine wants is use too: with formations there is no attack target, and a
+		-- take stood at "members 10 of 22" for 600 rounds while the plants made nothing)
+		for _,f in ipairs(Formation and Formation.list or {}) do
+			if f.kind == 'take' and not f.over then use = use + (f.want or 0); end;
+		end;
 		o.have = (combat + 2 * (Sense.storedByRole.combat or 0)) / 4;
 		o.cap = math.max(1, use / 4);
 		o.swarm = 0.12;
@@ -1527,6 +1532,15 @@ function Needs.NextVehicle(kit)
 	if (Needs.v.survivalBuilder or 0) > 0 and top and top ~= best and top.want == kit.Constructor() then
 		Needs.Note('no builder: queueing '..top.name..' first');
 		return top.want;
+	end;
+	-- (minerals lying at the cap and the army below its own: a tank beats nothing. Two matches
+	-- stood for 600 rounds with every plant asleep, an army of 20 and the store full)
+	if best == nil and minerals >= (Cfg.plantFloorMinerals or 1000) and #Sense.my.combat + #Sense.my.bomb < Cfg.maxArmy then
+		local t = kit.Tank();
+		if t and not Economy.UnitCapped(t) then
+			Needs.Note('produce '..t.name..': '..minerals..' minerals lie unspent and nothing else is wanted');
+			return t;
+		end;
 	end;
 	if best == nil then return nil; end;
 	-- the constructors are saving for something that matters more: hold back
