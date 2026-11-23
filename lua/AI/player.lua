@@ -6649,8 +6649,14 @@ function Military.ClearPlants()
 							local pl = Military.exitOf and Military.exitOf[t.cell];
 							Military.scraps = Military.scraps or {};
 							local k = pl and pl.id;
-							if k then Military.scraps[k] = (Military.scraps[k] or 0) + 1; end;
-							if k and Military.scraps[k] > 2 and pl.Destroy then
+							-- (one unit a plant in 30 rounds: three stood on one plant's exits and went
+							-- in the same round, and the plant after them. All six plants of one match
+							-- were scrapped this way and none could be placed again: the army stood at
+							-- 20 for 350 rounds. So never the last two plants either)
+							Military.scrapAt = Military.scrapAt or {};
+							if k and Military.scrapAt[k] and Sense.round - Military.scrapAt[k] < 30 then return; end;
+							if k then Military.scrapAt[k] = Sense.round; Military.scraps[k] = (Military.scraps[k] or 0) + 1; end;
+							if k and Military.scraps[k] > 2 and pl.Destroy and Types.plant and Economy.Count(Types.plant) > 2 then
 								Log(string.format('%s on cell %d shuts in what it makes (%d units scrapped on its exits): the plant is scrapped at round %d', pl.niceName, pl.location.cell.index, Military.scraps[k] - 1, Sense.round));
 								Economy.Blacklist(pl.location.cell.index, 500);
 								pcall(pl.Destroy);
