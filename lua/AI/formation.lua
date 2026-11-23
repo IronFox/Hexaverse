@@ -172,6 +172,14 @@ end;
 
 -- enough of them together to go in?
 function Formation.Ready(f, arrived)
+	-- (not without its eye below ground: in match 183 seven advances entered the Nexus port region
+	-- and none had a surveyor with it; the buried towers at the entry, never sensed, broke each one
+	-- within 16 rounds. It waits eyeWait rounds for one, not for ever.)
+	if f.kind == 'take' and Military and Military.EyeWith and Sense.round - (f.gatherSince or Sense.round) <= (Formation.eyeWait or 120)
+		and not Military.EyeWith(f) then
+		if Sense.round % 20 == 0 then Log(Name(f)..': waits for a surveyor to go with it'); end;
+		return false;
+	end;
 	local share = (Sense.round - f.stageSince >= Formation.gatherRounds) and Formation.lateShare or Formation.gatherShare;
 	local least = f.kind == 'take' and Formation.minSize[f.region];
 	-- (gathering for longer than gatherMax: what there is has to do, see the want)

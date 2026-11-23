@@ -5593,6 +5593,20 @@ function Military.Fire(v)
 	return true;
 end;
 
+-- Is the army's eye below ground with a take that gathers? True as well when no surveyor can be
+-- had or none matters, so that nothing waits for what will not come.
+function Military.EyeWith(f)
+	if Cfg.takeNeedsEye == false or not (Sense.DeepMatters and Sense.DeepMatters()) then return true; end;
+	local st = Map.regions[f.staging];
+	for _,v in ipairs(Sense.my.surveyor or {}) do
+		if v.location and not v.storedIn then
+			local r = Map.RegionOfLoc(v.location);
+			if r and st and (r.id == st.id or (f.staging == Mem.homeRegion and Sense.mine[r.id])) then return true; end;
+		end;
+	end;
+	return false;
+end;
+
 function Military.ArmyStrength()
 	local n = Sense.storedByRole.combat or 0;
 	for _,u in ipairs(Sense.my.combat) do
@@ -6975,7 +6989,10 @@ function Military.Scouts()
 				if Military.probeId and Military.probeId ~= tostring(v.id) then
 					Military.probeId, Military.probeEnd = nil, Sense.round;
 				end;
-				if Cfg.deepProbe ~= false and deepForm.stage == 'gather' then
+				-- (given up again after matches 181 to 183: 20 and 19 surveyors were lost going out
+				-- alone, most of them in the region before the entry, and at seven entries into the
+				-- Nexus port region the army had no surveyor at all. The eye stays with the army.)
+				if Cfg.deepProbe == true and deepForm.stage == 'gather' then
 					if Military.probeId == tostring(v.id) then probe = true;
 					elseif Sense.round - (Military.probeEnd or -999) >= (Cfg.probeEvery or 60) then
 						Military.probeId = tostring(v.id);
@@ -6987,14 +7004,16 @@ function Military.Scouts()
 				-- something unseen is in reach: it looks there, once the army is in that region. In
 				-- match 148 the one sighting came from the cells where the army was being hit)
 				local fell = nil;
-				if van and next(Military.buried or {}) == nil then
+				if van and next(Military.buried or {}) == nil and deepForm.stage ~= 'gather' then
 					local vr = Map.RegionOfLoc(van.location);
 					local bd = nil;
 					for idx,d in pairs(Move.deaths or {}) do
 						if d.n >= 2 and Sense.round - d.round < (Cfg.deepFellRounds or 150) then
 							local rid = Map.cellRegion[idx];
 							-- (not on my own ground: there it stood at home looking at where raids had hit)
-							if rid and not Sense.mine[rid] then
+							-- (and only where the army is: while it gathered at home the eye drove out alone
+							-- to the cells of the last defeat and was lost there, nine times in match 183)
+							if rid and not Sense.mine[rid] and vr and (rid == vr.id or (vr.neighbors and vr.neighbors[rid])) then
 								local c = Economy.Cell(idx);
 								if c then
 									local w = {x=c.center.x*Map.groundRadius, y=c.center.y*Map.groundRadius, z=c.center.z*Map.groundRadius};
@@ -7073,7 +7092,7 @@ function Military.Scouts()
 				-- matches 161 and 162 it was still at home behind my own vehicles)
 				Military.deepWaiting = nil;
 				local wr = Military.deepWait and Map.regions[Military.deepWait];
-				if not moved and not deepNow and wr and van then
+				if not moved and not deepNow and wr and van and Cfg.deepWaitAhead == true then
 					local wc = Map.WorldCenter(wr);
 					if vd > Dist2(wc, tw) then
 						local atw = Map.RegionOfLoc(v.location);
@@ -7082,9 +7101,20 @@ function Military.Scouts()
 						else moved = Move.Towards(v, wc, wr.centerCell, false, true); end;
 					end;
 				end;
-				if not moved and van and not (ahead and not deepNow) then
+				-- (while the army gathers the eye gathers with it, at the rally: the take does not go
+				-- without it, see Formation.Ready)
+				if not moved and deepForm.stage == 'gather' then
+					local rc = deepForm.rally or (deepStage and deepStage.centerCell);
+					local ar = Map.RegionOfLoc(v.location);
+					Military.deepGather = rc and rc.index or nil;
+					if rc and not (deepForm.rally == nil and ar and deepStage and ar.id == deepStage.id) then
+						local w = {x=rc.center.x*Map.groundRadius, y=rc.center.y*Map.groundRadius, z=rc.center.z*Map.groundRadius};
+						moved = Move.Towards(v, w, rc, false, true);
+					else moved = true; end;
+				elseif not moved and van and not (ahead and not deepNow) then
 					moved = Move.Towards(v, van.location.world, van.location.cell, false, true);
 				end;
+				if deepForm.stage ~= 'gather' then Military.deepGather = nil; end;
 				if not moved and van == nil then
 					moved = Move.Towards(v, Map.WorldCenter(reg), reg.centerCell, false, true);
 				end;
@@ -7105,6 +7135,7 @@ function Military.Scouts()
 						or Military.deepOnward and ('has looked where vehicles of mine fell, cell '..tostring(Military.deepFell)..', and goes on towards region '..deepSpot.id)
 						or Military.deepFell and ('looks where vehicles of mine fell, cell '..Military.deepFell)
 						or Military.deepWaiting and ('goes ahead to region '..Military.deepWaiting..' and waits there')
+						or Military.deepGather and ('gathers with the army at cell '..Military.deepGather)
 						or (deepNow and (probe or van == nil or ahead)) and ('goes into region '..deepSpot.id)
 						or van and ('keeps with '..tostring(van.niceName)..' at cell '..tostring(van.location.cell.index)..' on the way to region '..deepSpot.id)
 						or ('goes to region '..reg.id);
