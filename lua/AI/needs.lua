@@ -354,6 +354,11 @@ function Needs.Update()
 	end;
 	if Mem.posture == 'attack' then v.army = math.max(v.army, 0.3); end;
 	v.army = math.max(v.army, v.defense * 0.8);
+	-- (heavy vehicles of the enemy seen, and only a handful of mine: in match 184 a Heavytank stood
+	-- in my home region at round 48, the army stayed at 4 hover cannons until round 105 while five AA
+	-- towers and four rocket towers went up, the raid outranged the towers and the faction was dead
+	-- at round 115)
+	if (Mem.heavySeen or -1) >= 0 and combat < (Cfg.garrisonHeavy or 8) then v.army = math.max(v.army, Cfg.armyHeavySeen or 0.7); end;
 	--[[
 	An army is also what a take is made of, and what full stores are for. In match 177 all four
 	plants stood off with empty queues, minerals at the cap of 1500, army 0.11, with no hostile in
