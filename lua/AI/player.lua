@@ -2483,9 +2483,18 @@ function Economy.Power()
 	end);
 	local on = 0;
 	local vitalWaits = false;
+	local plantsOn = 0;
+	for _,st in ipairs(Sense.myStructures or {}) do
+		if st.type == Types.plant and st.isEnabled ~= false then plantsOn = plantsOn + 1; end;
+	end;
 	for _,u in ipairs(list) do
 		local isGen = u.type == Types.generator;
+		-- (what the structure itself draws, where the game tells: a plant switched on with 10 to
+		-- spare that draws more goes off again the same round, and is then tried ever more rarely)
 		local need = 10;
+		local dem = u.type.balance and u.type.balance.demand;
+		local own = dem and (isGen and dem.fuel or dem.energy) or nil;
+		if type(own) == 'number' and own > need then need = own; end;
 		local have = isGen and fuel or energy;
 		local shed = Mem.shed[u.id];
 		-- (what went off again right after it was switched on lacks something else, an input for
@@ -2511,7 +2520,9 @@ function Economy.Power()
 				Mem.shed[u.id] = nil;
 				Log(string.format('Switched on again at round %d: %s on cell %d (spare energy left %d, fuel %d)', Sense.round, u.type.name, u.location.cell.index, energy, fuel));
 			end;
-		elseif not isGen and OffRank(u) <= 3 then
+		elseif not isGen and (OffRank(u) <= 3 or (u.type == Types.plant and plantsOn == 0)) then
+			-- (with no vehicle plant running nothing replaces what the army loses: two matches
+			-- stood with all four plants off from round 500 on while three laboratories ran)
 			vitalWaits = true;
 		end;
 	end;
@@ -2521,7 +2532,7 @@ function Economy.Power()
 			if st.type == Types.lab and st.isEnabled ~= false and st.Enable then
 				if pcall(st.Enable, false) then
 					Mem.shed[st.id] = Sense.round;
-					Log(string.format('Laboratory switched off at round %d: a port or mine waits for energy', Sense.round));
+					Log(string.format('Laboratory switched off at round %d: a port, a mine or the only vehicle plant waits for energy', Sense.round));
 				end;
 				return;
 			end;
