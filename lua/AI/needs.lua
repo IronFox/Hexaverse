@@ -354,6 +354,19 @@ function Needs.Update()
 	end;
 	if Mem.posture == 'attack' then v.army = math.max(v.army, 0.3); end;
 	v.army = math.max(v.army, v.defense * 0.8);
+	--[[
+	An army is also what a take is made of, and what full stores are for. In match 177 all four
+	plants stood off with empty queues, minerals at the cap of 1500, army 0.11, with no hostile in
+	sight, while the take on the Nexus region waited for members and the army was 9 to 15.
+	]]
+	if combat < (Cfg.maxArmy or 56) then
+		local taking = false;
+		for _,f in ipairs(Formation and Formation.list or {}) do
+			if f.kind == 'take' and not f.over then taking = true; break; end;
+		end;
+		if taking then v.army = math.max(v.army, Cfg.armyForTake or 0.6); end;
+		if minerals >= (Cfg.armyStock or 800) then v.army = math.max(v.army, Cfg.armyRich or 0.6); end;
+	end;
 
 	Needs.v = v;
 	--[[
