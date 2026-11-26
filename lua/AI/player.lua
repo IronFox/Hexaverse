@@ -3776,11 +3776,13 @@ function Economy.NextToPort()
 	local function IsPort(u)
 		return u.type and u.type.name and string.find(u.type.name, 'Nexus Port', 1, true) and u.location and u.location.cell;
 	end;
+	Economy.portHeight = Economy.portHeight or {};
 	for _,u in pairs(Game.hostileUnits) do
-		if IsPort(u) then Economy.portCells[u.location.cell.index] = u.location.cell; end;
+		if IsPort(u) then Economy.portCells[u.location.cell.index] = u.location.cell; Economy.portHeight[u.location.cell.index] = u.location.height; end;
 	end;
 	local mine = {};
 	for _,u in ipairs(Sense.myStructures or {}) do
+		if IsPort(u) then Economy.portHeight[u.location.cell.index] = u.location.height; end;
 		if IsPort(u) then mine[u.location.cell.index] = true; end;
 	end;
 	local near = {};
@@ -4036,8 +4038,13 @@ function Economy.TryPort(u)
 			local near = (Sense.hops[rid] or 99) <= (econ and maxHops or 1);
 			-- (something of mine beside it already and the port still not mine: more of the same won't help)
 			local beside = false;
+			-- (... where it stands at the port's level: structures connect only within one level, and
+			-- mines on the cells beside the Nexus port, two levels under it, stopped every further try
+			-- for 950 rounds of match 201 without claiming anything)
+			local ph = Economy.portHeight and Economy.portHeight[idx];
 			for _,nb in ipairs(cell.neighbors or {}) do
-				if Sense.structureCells[nb.index] then beside = true; break; end;
+				local st = Sense.structureCells[nb.index] and Sense.structureAt[nb.index];
+				if st and (ph == nil or not st.location or math.abs((st.location.height or 0) - ph) <= 1) then beside = true; break; end;
 			end;
 			-- (never towards hostile towers: the first units lost in the matches against the Nexus
 			-- were builders walking into a missile tower beside a port)
@@ -4067,8 +4074,18 @@ function Economy.TryPort(u)
 		local best, guarding = try[1], try[2];
 		Economy.portTried[best.index] = Sense.round + Cfg.portRetry;
 		local why = 'no free cell beside it';
+		local ph = Economy.portHeight and Economy.portHeight[best.index];
+		local off, offD = nil, nil;
 		for _,nb in ipairs(best.neighbors or {}) do
 			local dest = Move.GroundAt(u, nb);
+			-- (a structure connects to the port only within one level of it: a cell lower or higher is
+			-- no site. The nearest such cell is levelled by a terraformer, see Economy.PortLevel)
+			if dest and ph and math.abs((dest.height or 0) - ph) > 1 then
+				local d = math.abs((dest.height or 0) - ph);
+				if not Sense.structureCells[nb.index] and not Game.Grid.AffectedByEMP(dest) and (offD == nil or d < offD) then off, offD = nb, d; end;
+				why = 'cell '..nb.index..' stands at height '..tostring(dest.height)..', the port at '..tostring(ph)..': nothing built there connects to it';
+				dest = nil;
+			end;
 			if dest and not Economy.claimed[nb.index] and not Sense.structureCells[nb.index] and Game.GetStructureAt(dest) == nil
 					and not Game.Grid.AffectedByEMP(dest) and not Control.hot[nb.index] and not Move.IsDangerous(dest) then
 				Economy.portBuild = true;
@@ -4085,8 +4102,82 @@ function Economy.TryPort(u)
 			end;
 		end;
 		Needs.Note('Port on cell '..best.index..' not claimed: '..why);
+		if off and not guarding and Economy.portLevel == nil and Cfg.portLevel ~= false and Sense.round >= (Economy.portLevelCool or 0) then
+			Economy.portLevel = {port = best.index, cell = off.index, want = ph, since = Sense.round};
+			Log(string.format('Port level: no cell beside the port on cell %d stands within one level of it (height %d): cell %d is to be brought to its level', best.index, ph, off.index));
+		end;
 	end;
 	return false;
+end;
+
+--[[
+A cell beside a port brought to the port's level, so that what is built on it connects. A
+terraformer drives onto the cell and raises it under itself (BuildWallUp) or digs down (DigDown),
+one level at a time, until it stands within one level of the port.
+]]
+function Economy.PortLevel()
+	local job = Economy.portLevel;
+	if job == nil then return; end;
+	local r = Sense.round;
+	local function End(why)
+		Log('Port level: ended, '..why);
+		Economy.portLevel = nil;
+		Economy.portLevelCool = r + (Cfg.portLevelAgain or 100);
+	end;
+	if r - job.since > (Cfg.portLevelRounds or 200) then return End('cell '..job.cell..' not level after '..(r - job.since)..' rounds'); end;
+	local cell = Economy.Cell(job.cell);
+	if cell == nil then return End('the cell is not known'); end;
+	local list = Sense.my.constructor or {};
+	local t, ti;
+	for i,u in ipairs(list) do
+		if job.id and u.id == job.id then t, ti = u, i; end;
+	end;
+	if t == nil then
+		if job.id then return End('the terraformer is gone'); end;
+		local bestD;
+		for i,u in ipairs(list) do
+			if u.BuildWallUp and u.DigDown and Move.IsIdle(u) and not (Mem.jobs and Mem.jobs[u.id]) and not (Passage.job and Passage.job.id == u.id) then
+				local d = Dist2(u.location.cell.center, cell.center);
+				if bestD == nil or d < bestD then t, ti, bestD = u, i, d; end;
+			end;
+		end;
+		if t == nil then return; end;
+		job.id = t.id;
+		Log(string.format('Port level: %s at cell %d goes to cell %d beside the port on cell %d', t.niceName, t.location.cell.index, job.cell, job.port));
+	end;
+	table.remove(list, ti);		-- (on this job: no other work for it this round)
+	if not Move.IsIdle(t) then return; end;
+	if t.location.cell.index ~= cell.index then
+		local g = Move.GroundAt(t, cell);
+		local okT, went = false, false;
+		if g then okT, went = pcall(Move.Towards, t, g.world, cell, false, false); end;
+		if not (okT and went) then
+			job.noWay = (job.noWay or 0) + 1;
+			if job.noWay >= 10 then return End('the terraformer finds no way to cell '..job.cell); end;
+		end;
+		return;
+	end;
+	local h = t.location.height or 0;
+	if math.abs(h - job.want) <= 1 then
+		Log(string.format('Port level: cell %d stands at height %d, the port on cell %d at %d: it can be built on', job.cell, h, job.port, job.want));
+		Economy.portTried[job.port] = nil;
+		Economy.portLevel = nil;
+		-- (off the cell: a neighbour of about this height, not the port's own cell)
+		for _,nb in ipairs(cell.neighbors or {}) do
+			local g = nb.index ~= job.port and not Sense.structureCells[nb.index] and Move.GroundAt(t, nb);
+			if g and math.abs((g.height or 0) - h) <= 1 then
+				local okT, went = pcall(Move.Towards, t, g.world, nb, false, false);
+				if okT and went then break; end;
+			end;
+		end;
+		return;
+	end;
+	job.steps = (job.steps or 0) + 1;
+	if job.steps > (Cfg.portLevelSteps or 12) then return End('cell '..job.cell..' at height '..h..' after '..(job.steps - 1)..' orders, wanted '..job.want); end;
+	local ok, err;
+	if h < job.want then ok, err = pcall(t.BuildWallUp); else ok, err = pcall(t.DigDown); end;
+	if not ok then return End('the order was refused: '..tostring(err)); end;
+	Log(string.format('Port level: %s %s cell %d, at height %d, the port at %d', t.niceName, h < job.want and 'raises' or 'digs down', job.cell, h, job.want));
 end;
 
 --[[
@@ -6630,7 +6721,7 @@ function Passage.Tick()
 	local best, bestD;
 	for _,u in ipairs(list) do
 		local tired = Passage.tired[tostring(u.id)..':'..u.location.cell.index];
-		if u.DigTunnelBridgeTo and Move.IsIdle(u) and not (Mem.jobs and Mem.jobs[u.id]) and not (tired and r - tired < (Cfg.passageAgain or 300)) then
+		if u.DigTunnelBridgeTo and Move.IsIdle(u) and not (Mem.jobs and Mem.jobs[u.id]) and not (Economy.portLevel and Economy.portLevel.id == u.id) and not (tired and r - tired < (Cfg.passageAgain or 300)) then
 			local d = Dist2(u.location.cell.center, from.center);
 			if d <= far and (bestD == nil or d < bestD) then best, bestD = u, d; end;
 		end;
@@ -7619,6 +7710,7 @@ function Execute()
 	SafeCall('Production', Economy.Production);
 	SafeCall('PlaneProduction', Economy.PlaneProduction);
 	SafeCall('Passage', Passage.Tick);
+	SafeCall('PortLevel', Economy.PortLevel);
 	SafeCall('Constructors', Economy.Constructors);
 	SafeCall('Formations', Formation.Update);
 	SafeCall('Posture', Military.UpdatePosture);
