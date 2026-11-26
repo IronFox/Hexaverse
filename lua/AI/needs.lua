@@ -245,7 +245,7 @@ function Needs.Update()
 		end;
 	end;
 	-- a factory that still wants planes: the air goal keeps its share for them
-	if #(Sense.planeFactories or {}) > 0 and Economy.NextPlane and Economy.NextPlane() ~= nil then
+	if #(Sense.planeFactories or {}) > 0 and Economy.NextPlane and Economy.NextPlane(true) ~= nil then
 		v.planes = math.max(v.planes, 0.5);
 		Needs.wantCost.airpower = {cost = 150, round = round};
 	end;

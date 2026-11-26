@@ -4982,7 +4982,10 @@ function Economy.PlaneFactoryNeed()
 end;
 
 -- Next plane for a plane factory
-function Economy.NextPlane()
+-- (peek: asked only what it would be, by the needs; the stamps that space planes out are set
+-- only when the factory really takes one. Asked every round by the needs, the stamp of the drone
+-- was always fresh and the factory itself was never given one.)
+function Economy.NextPlane(peek)
 	local n = {bomber=0, raptor=0, drone=0};
 	local parked = {bomber=0, raptor=0, drone=0};
 	local function count(p, into)
@@ -5013,15 +5016,18 @@ function Economy.NextPlane()
 	local bomber = Types.IsUnlocked(Types.bomber) and Types.bomber or nil;
 	local raptor = Types.IsUnlocked(Types.raptor) and Types.raptor or nil;
 	local drone = Types.IsUnlocked(Types.drone) and Types.drone or nil;
+	-- (an army sent to take a region needs eyes on it: one drone for that before any other plane)
+	-- (51 drones in match 151: one every droneEvery rounds at most)
+	-- (... and before the raptor that hunts hostile planes: the Nexus has drones and bombers about
+	-- all match, so that line always won, and in matches 183 to 188 my faction never owned a
+	-- sensor drone while the factory, its queue empty, was refused 150 times a match)
+	if drone and Sense.round - (Economy.lastDrone or -1000) < (Cfg.droneEvery or 30) then drone = nil; end;
+	if drone and n.drone < (Cfg.spotters or 2) and Military.SpotRegion and Military.SpotRegion() then if not peek then Economy.lastDrone = Sense.round; end; return drone; end;
 	-- hostile planes around: raptors hunt them
 	local hostileAir = Sense.AirPressure() > 0;
 	if hostileAir and raptor and n.raptor <= n.bomber and total < Cfg.maxPlanes then return raptor; end;
-	-- (an army sent to take a region needs eyes on it: one drone for that before any other plane)
-	-- (51 drones in match 151: one every droneEvery rounds at most)
-	if drone and Sense.round - (Economy.lastDrone or -1000) < (Cfg.droneEvery or 30) then drone = nil; end;
-	if drone and n.drone < (Cfg.spotters or 2) and Military.SpotRegion and Military.SpotRegion() then Economy.lastDrone = Sense.round; return drone; end;
 	-- (none for scouting while a take is on: the fuel that makes them is what the spotters need)
-	if drone and n.drone < wantDrones and not (Military.SpotRegion and Military.SpotRegion()) and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then Economy.lastDrone = Sense.round; return drone; end;
+	if drone and n.drone < wantDrones and not (Military.SpotRegion and Military.SpotRegion()) and (n.bomber + n.raptor >= 1 or (blind > 0 and Sense.round >= 60)) then if not peek then Economy.lastDrone = Sense.round; end; return drone; end;
 	if total >= Cfg.maxPlanes then return nil; end;
 	--[[
 	Raptors are invaluable: they hunt planes and hit ground targets twice a round on the move.
@@ -5036,8 +5042,8 @@ function Economy.NextPlane()
 	-- a combat plane at most every planeEvery rounds, the minerals go to the plants)
 	if Sense.round - (Economy.lastCombatPlane or -1000) < (Cfg.planeEvery or 60) then return nil; end;
 	local pick = (bomber and n.bomber < bomberCap and bomber) or raptor or (bomber and n.bomber < bomberCap + 1 and bomber) or nil;
-	if pick then Economy.lastCombatPlane = Sense.round; return pick; end;
-	if drone then Economy.lastDrone = Sense.round; end;
+	if pick then if not peek then Economy.lastCombatPlane = Sense.round; end; return pick; end;
+	if drone then if not peek then Economy.lastDrone = Sense.round; end; end;
 	return drone;
 end;
 
