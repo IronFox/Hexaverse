@@ -2022,7 +2022,9 @@ function Move.Towards(u, goalWorld, goalCell, avoidThreat, mayEnterUnknown)
 	-- (who has just stepped aside for another stays there for the moment, or it would walk
 	-- straight back into the way)
 	local as = Move.aside and Move.aside[tostring(u.id)];
-	if as and Sense.round - as.round < 3 then
+	-- (not the army's eye below ground: in a column it was asked aside again and again, 10 and 14
+	-- times in the advances of matches 187 and 188, and no surveyor was up at any entry)
+	if as and Sense.round - as.round < 3 and not (Military and Military.deepEyeId == tostring(u.id)) then
 		Move.why = 'stepped aside for another';
 		return false;
 	end;
@@ -5617,9 +5619,10 @@ end;
 -- alive or none matters: nothing waits for what will not come.
 function Military.EyeIn(regs)
 	if Cfg.takeNeedsEye == false or not (Sense.DeepMatters and Sense.DeepMatters()) then return true; end;
+	-- (the eye itself, not any surveyor: one out prospecting in a region ahead counted as up)
 	local any = false;
 	for _,v in ipairs(Sense.my.surveyor or {}) do
-		if v.location and not v.storedIn then
+		if v.location and not v.storedIn and Military.deepEyeId == tostring(v.id) then
 			any = true;
 			local r = Map.RegionOfLoc(v.location);
 			if r and regs[r.id] then return true; end;
