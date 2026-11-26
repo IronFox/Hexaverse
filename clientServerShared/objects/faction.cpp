@@ -1520,8 +1520,10 @@ namespace Objects
 						}
 					}
 				}
-				else
-					ASSERT_IS_NULL__(newContacts);
+				// (sensory still invalid here, e.g. under a sensor lock while several units are destroyed and
+				// relocated in one movement step: the contacts cannot be collected now and turn up with the
+				// next CheckSensory(). This used to assert that no contact list was asked for, which took
+				// the server down when a vehicle dropped into a crater in the same step as a sensor tower died)
 			}
 			#ifndef NO_SATELLITES
 				if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
