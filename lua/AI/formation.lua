@@ -192,7 +192,9 @@ function Formation.Ready(f, arrived)
 		if reg and ((reg.staticThreat or 0) > 0 or (reg.hostileStructures or 0) > 0 or (f.lost or 0) >= 5) then
 			local guns = 0;
 			for _,u in ipairs(Sense.my.combat or {}) do
-				if Formation.of[u.id] == f and u.turret and u.turret.type and u.turret.type.trajectoryType == 'Artillery' then guns = guns + 1; end;
+				-- (the artillery turret, not the trajectory: cannons shoot in an arc too and were all counted)
+				local tt = u.turret and u.turret.type;
+				if Formation.of[u.id] == f and tt and (string.find(tostring(tt.name), 'Artillery', 1, true) or string.find(tostring(u.type and u.type.name), 'Artillery', 1, true)) then guns = guns + 1; end;
 			end;
 			f.gunSince = f.gunSince or Sense.round;
 			if guns < (Cfg.takeGuns or 6) and Sense.round - f.gunSince <= (Formation.gunWait or 300) then
