@@ -180,6 +180,17 @@ function Formation.Ready(f, arrived)
 		if Sense.round % 20 == 0 then Log(Name(f)..': waits for a surveyor to go with it'); end;
 		return false;
 	end;
+	-- (gathering for gatherForce rounds and still not together: it goes from where its members stand,
+	-- the legs of the march bring them together. In match 194 the towers of the Nexus port region
+	-- were gone by round 504 and the take then gathered for 450 rounds, 30 of 30 members, 4 to 8 at
+	-- the rally, the rest held in the crowd at home or standing further forward than the rally)
+	if f.kind == 'take' and Sense.round - (f.gatherSince or Sense.round) > (Formation.gatherForce or 250) and (f.count or 0) >= (Formation.goFloor or 12) then
+		if f.forcedTold ~= f.gatherSince then
+			f.forcedTold = f.gatherSince;
+			Log(Name(f)..': gathered for '..(Sense.round - f.gatherSince)..' rounds with '..tostring(arrived)..' at the rally: it goes from where its members stand');
+		end;
+		return true;
+	end;
 	local share = (Sense.round - f.stageSince >= Formation.gatherRounds) and Formation.lateShare or Formation.gatherShare;
 	local least = f.kind == 'take' and Formation.minSize[f.region];
 	-- (gathering for longer than gatherMax: what there is has to do, see the want)
