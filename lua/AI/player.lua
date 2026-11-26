@@ -6631,7 +6631,9 @@ function Military.Combat()
 					if tried and tried.n >= (Cfg.shellTries or 25) and Sense.round - tried.round > (Cfg.shellAgain or 200) then Military.shellTry[tk] = nil; tried = nil; end;
 					if tr and (tr == fGoal or Map.regions[fGoal].neighbors[tr]) and k.loc.world and not (tried and tried.n >= (Cfg.shellTries or 25)) then
 						local d = Dist2(v.location.world, k.loc.world);
-						if bd == nil or d < bd then bb, bd = k, d; end;
+						-- (only those near it: in match 191 the 44 guns sent for one tower stood 11 to 22
+						-- cells away in the crowd of the gathering and blocked each other)
+						if d <= (Cfg.shellReach or 12) ^ 2 and (bd == nil or d < bd) then bb, bd = k, d; end;
 					end;
 				end;
 				if bb then
