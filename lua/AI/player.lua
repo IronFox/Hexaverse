@@ -2538,7 +2538,9 @@ function Economy.EyesFuel()
 		if Mem.eyesOff[st.id] and st.type == Types.generator then resting = resting + 1; end;
 	end;
 	-- (the engine tries to enable it only when it wakes: with fuel to spare now, it is asked again)
-	if pf.isEnabled == false and pf.Enable and fuel >= (Cfg.eyesFuel or 20) and Sense.round % 5 == 0 then	-- (the factory draws 20)
+	if pf.isEnabled == false and pf.Enable and fuel >= (Cfg.eyesFuel or 20) and Sense.round % 5 == 0
+		and pf.productionQueue and #pf.productionQueue > 0 then	-- (with an empty queue the server refuses: 97 times in match 189)
+			-- (the factory draws 20)
 		local okE = pcall(pf.Enable, true);
 		Log(string.format('Plane Factory asked to switch on at round %d with fuel spare %d%s', Sense.round, fuel, okE and '' or ' (refused)'));
 	end;
