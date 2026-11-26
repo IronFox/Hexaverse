@@ -4924,6 +4924,44 @@ function Economy.AssignConstructor(u, index)
 		Economy.buildWhy = string.format('no site in reach of cell %d: %d cells, %d claimed, %d too few exits, rejected: %s',
 			u.location.cell.index, tally.cells, tally.claimed, tally.exits, table.concat(parts, ', '));
 		if Sense.round % 10 == 0 or want.type == Types.plant then Needs.Note(u.niceName..': '..want.type.name..': '..Economy.buildWhy); end;
+		--[[
+		No site where the builder stands: it goes to open ground of mine and looks again from there.
+		Sites are picked from what the builder reaches in three moves, and a builder in the middle
+		of a full base reaches nothing free: in match 207 the third plant and the reactor core were
+		asked for 250 times ("67 of 85 cells close a way") with 2000 minerals and 500 uranium unspent.
+		]]
+		Economy.roamed = Economy.roamed or {};
+		if not want.inRegion and want.kind ~= 'tower' and Cfg.roamForSite ~= false and tally.cells > 0
+				and Sense.round - (Economy.roamed[u.id] or -100) >= (Cfg.roamEvery or 25) then
+			Economy.roamed[u.id] = Sense.round;
+			local inReach = {};
+			for _,n in ipairs(reach) do if n.location and n.location.cell then inReach[n.location.cell.index] = true; end; end;
+			local open, openD = nil, nil;
+			for rid,_ in pairs(Sense.mine or {}) do
+				local reg = Map.regions[rid];
+				if reg and Sense.Threat(reg) <= 0 and Map.EmpShare(rid) < 0.5 then
+					for _,c in ipairs(reg.cells or {}) do
+						if not inReach[c.index] and not Sense.structureCells[c.index] and not Economy.claimed[c.index] and Wall.Inside(c.index) then
+							local free = true;
+							for _,nb in ipairs(c.neighbors or {}) do
+								if Sense.structureCells[nb.index] or Economy.claimed[nb.index] then free = false; break; end;
+							end;
+							if free then
+								local d = Dist2(c.center, u.location.cell.center);
+								if openD == nil or d < openD then open, openD = c, d; end;
+							end;
+						end;
+					end;
+				end;
+			end;
+			if open then
+				local w = {x = open.center.x * Map.groundRadius, y = open.center.y * Map.groundRadius, z = open.center.z * Map.groundRadius};
+				local okT, went = pcall(Move.Towards, u, w, open, true, false);
+				if okT and went then
+					Needs.Note(u.niceName..': no site for '..want.type.name..' in reach of cell '..u.location.cell.index..': it goes to open ground at cell '..open.index..' in region '..tostring(Map.cellRegion[open.index])..' to look from there');
+				end;
+			end;
+		end;
 	end;
 	if best then
 		Economy.claimed[best.location.cell.index] = true;
