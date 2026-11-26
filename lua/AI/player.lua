@@ -4082,7 +4082,11 @@ function Economy.TryPort(u)
 			-- no site. The nearest such cell is levelled by a terraformer, see Economy.PortLevel)
 			if dest and ph and math.abs((dest.height or 0) - ph) > 1 then
 				local d = math.abs((dest.height or 0) - ph);
-				if not Sense.structureCells[nb.index] and not Game.Grid.AffectedByEMP(dest) and (offD == nil or d < offD) then off, offD = nb, d; end;
+				-- (not a cell a terraformer has just found level or could not reach: the builder's ground
+				-- there is another, and the same cell was asked for round after round)
+				local was = Economy.portLevelled and Economy.portLevelled[nb.index];
+				if not Sense.structureCells[nb.index] and not Game.Grid.AffectedByEMP(dest) and not (was and Sense.round - was < (Cfg.portLevelAgain or 300))
+						and (offD == nil or d < offD) then off, offD = nb, d; end;
 				why = 'cell '..nb.index..' stands at height '..tostring(dest.height)..', the port at '..tostring(ph)..': nothing built there connects to it';
 				dest = nil;
 			end;
@@ -4121,6 +4125,8 @@ function Economy.PortLevel()
 	local r = Sense.round;
 	local function End(why)
 		Log('Port level: ended, '..why);
+		Economy.portLevelled = Economy.portLevelled or {};
+		Economy.portLevelled[job.cell] = r;
 		Economy.portLevel = nil;
 		Economy.portLevelCool = r + (Cfg.portLevelAgain or 100);
 	end;
@@ -4161,6 +4167,8 @@ function Economy.PortLevel()
 	if math.abs(h - job.want) <= 1 then
 		Log(string.format('Port level: cell %d stands at height %d, the port on cell %d at %d: it can be built on', job.cell, h, job.port, job.want));
 		Economy.portTried[job.port] = nil;
+		Economy.portLevelled = Economy.portLevelled or {};
+		Economy.portLevelled[job.cell] = r;
 		Economy.portLevel = nil;
 		-- (off the cell: a neighbour of about this height, not the port's own cell)
 		for _,nb in ipairs(cell.neighbors or {}) do
