@@ -4025,7 +4025,12 @@ function Economy.TryPort(u)
 	end;
 	for idx,cell in pairs(Economy.portCells or {}) do
 		local rid = Map.cellRegion[idx];
-		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round and not Sense.UnderEMP(cell) and Wall.Inside(idx)
+		-- (outside the wall as well where my army holds the region: in match 196 the Nexus port region
+		-- was held from round 1420 with nothing hostile left in it, and no builder was ever sent,
+		-- because nothing is built outside the wall)
+		local hreg = rid and Map.regions[rid];
+		local heldOut = hreg and (hreg.myStrength or 0) > 0 and (hreg.myStrength or 0) > (hreg.staticThreat or 0) + (hreg.mobileThreat or 0);
+		if not mine[idx] and not busy[idx] and (Economy.portTried[idx] or 0) <= Sense.round and not Sense.UnderEMP(cell) and (Wall.Inside(idx) or heldOut)
 				and rid then
 			local reg = Map.regions[rid];
 			local near = (Sense.hops[rid] or 99) <= (econ and maxHops or 1);
