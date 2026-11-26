@@ -6413,7 +6413,12 @@ function Passage.Step(t, s, job)
 		if PassageReaches(t, goal) and Cfg.passageOwnWay ~= false and (job.ownCuts or 0) < (Cfg.passageOwnCuts or 6) then
 			local v = nil;
 			for _,lst in pairs(Sense.my) do
-				for _,o in ipairs(lst) do if tostring(o.id) == s.key then v = o; end; end;
+				for _,o in ipairs(lst) do
+					if tostring(o.id) == s.key then v = o; end;
+					-- (a site no builder finds a way to: the builder is whoever of mine stands where it was noted)
+					if v == nil and string.sub(s.key, 1, 5) == 'site:' and tostring(o.id) ~= tostring(t.id) and not o.storedIn
+						and o.location and o.location.cell and o.location.cell.index == from.index then v = o; end;
+				end;
 			end;
 			if v and v.location and v.location.cell and v.location.cell.index == from.index and not v.storedIn then
 				local gl = Move.GroundAt(v, goal);
@@ -6464,6 +6469,7 @@ function Passage.Step(t, s, job)
 	end;
 	held[from.index] = nil;
 	for k,_ in pairs(job.avoid or {}) do held[k] = true; end;
+	local gap = false;
 	for _ = 1, 4 do
 		local best, bestD = nil, nil;
 		for _,nb in ipairs(at.neighbors) do
@@ -6477,10 +6483,42 @@ function Passage.Step(t, s, job)
 		-- terraformer that dug itself five levels down towards a cell at h-12 was destroyed by its own dig)
 		local g = Move.GroundAt(t, best);
 		local okE, emp = pcall(Game.Grid.AffectedByEMP, g);
+		if g ~= nil and not (okE and emp) and (t.location.height or 0) - (g.height or 0) > (Cfg.passageStep or 2) then gap = true; end;
 		if g == nil or (okE and emp) or math.abs((g.height or 0) - (t.location.height or 0)) > (Cfg.passageStep or 2) then break; end;
 		at = best;
 	end;
 	local hop = at.index ~= here.index and Move.GroundAt(t, at) or nil;
+	--[[
+	A hole ahead (a crater, a pit shelling dug, the hollow a buried tower left): nothing is dug down
+	into it. A level bridge is laid across at the height the terraformer stands on, cell by cell in
+	a gap-free line, until ground comes up to the deck again or the cell wanted is reached. What is
+	built is a road deck one level under the vehicle, so what comes after drives on it.
+	]]
+	local deckPath = nil;
+	if hop == nil and gap and t.BuildBridge and Cfg.passageBridge ~= false then
+		local deck = t.location.height or 0;
+		local c, path = here, {};
+		for _ = 1, (Cfg.bridgeMax or 8) do
+			local best, bestD = nil, nil;
+			for _,nb in ipairs(c.neighbors) do
+				local d = Dist2(nb.center, target.center);
+				if not Sense.structureCells[nb.index] and (bestD == nil or d < bestD) then best, bestD = nb, d; end;
+			end;
+			if best == nil or bestD >= Dist2(c.center, target.center) then break; end;
+			local g = Move.GroundAt(t, best);
+			local okE, emp = pcall(Game.Grid.AffectedByEMP, g or {cell = best, height = deck});
+			if okE and emp then break; end;
+			-- (ground above the deck: the bridge ends before it, and the next cut makes the step up)
+			if g and (g.height or 0) > deck then break; end;
+			path[#path+1] = best;
+			c = best;
+			if best.index == target.index then break; end;
+			-- (ground up to a step under the deck: landed)
+			if g and deck - (g.height or 0) <= 1 then break; end;
+		end;
+		if #path > 0 then deckPath, at = path, path[#path]; end;
+	end;
+	if deckPath then hop = true; end;
 	if hop == nil and Passage.Breakout(t, job, target) then return; end;
 	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' (my structures, an EMP zone, or more than '..(Cfg.passageStep or 2)..' levels up or down)'); end;
 	-- (the same cut ordered again from the same cell: the game did not take it or dropped it at once)
@@ -6490,11 +6528,21 @@ function Passage.Step(t, s, job)
 	else
 		job.same = 0;
 	end;
-	local ok, err = pcall(t.DigTunnelBridgeTo, hop);
+	local ok, err;
+	if deckPath then
+		ok, err = pcall(t.BuildBridge, deckPath, t.location.height or 0);
+	else
+		ok, err = pcall(t.DigTunnelBridgeTo, hop);
+	end;
 	if not ok then return Passage.End(t, s, 'the order was refused: '..tostring(err)); end;
 	job.cut = true;
 	job.to, job.from = at.index, here.index;
 	if job.same > 0 then return; end;
+	if deckPath then
+		Log(string.format('Passage: %s bridges %d cells from cell %d to cell %d at height %d, across a hole towards %s', t.niceName, #deckPath, here.index, at.index, t.location.height or 0,
+			beside and ('cell '..s.goal..' where '..s.name..' wants to go') or (s.name..' at cell '..s.cell)));
+		return;
+	end;
 	Log(string.format('Passage: %s cuts from cell %d to cell %d, towards %s', t.niceName, here.index, at.index,
 		beside and ('cell '..s.goal..' where '..s.name..' wants to go') or (s.name..' at cell '..s.cell)));
 end;
