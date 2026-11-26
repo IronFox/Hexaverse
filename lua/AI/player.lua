@@ -6601,6 +6601,27 @@ function Military.Combat()
 			end;
 			local fGoal, fAttack, fPost, fEntry, fRally, fHold = Formation.Orders(v);
 			if fGoal then goalId = fGoal; end;
+			--[[
+			A gun on a take that has nothing to fire at goes to where it can shell a buried tower
+			sensed earlier: the tower reaches 9 cells and the gun 7, so waiting for it to come into
+			range by itself means never. In match 186 the tower at the entry was sensed once and one
+			gun fired one round; every other gun was on its way somewhere else.
+			]]
+			if fGoal and not fired and Cfg.gunsToBuried ~= false and v.turret and v.turret.type.trajectoryType == 'Artillery' and Map.regions[fGoal] then
+				local bb, bd = nil, nil;
+				for _,k in pairs(Military.buried or {}) do
+					local c = k.loc and k.loc.cell;
+					local tr = c and Map.cellRegion and Map.cellRegion[c.index];
+					if tr and (tr == fGoal or Map.regions[fGoal].neighbors[tr]) and k.loc.world then
+						local d = Dist2(v.location.world, k.loc.world);
+						if bd == nil or d < bd then bb, bd = k, d; end;
+					end;
+				end;
+				if bb and Move.Towards(v, bb.loc.world, bb.loc.cell, false, true) then
+					if Sense.round % 10 == 0 then Log(string.format('Buried tower: %s goes to shell %s at cell %d', v.niceName, bb.name, bb.loc.cell.index)); end;
+					return;
+				end;
+			end;
 			-- offloaded onto a peak: hold it while anything is near, then go back into storage
 			local peak = Military.peakGuard[v.id];
 			if peak then
