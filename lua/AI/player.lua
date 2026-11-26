@@ -5607,6 +5607,21 @@ function Military.EyeWith(f)
 	return false;
 end;
 
+-- Is a surveyor of mine in one of these regions (a set by region id)? True as well when none is
+-- alive or none matters: nothing waits for what will not come.
+function Military.EyeIn(regs)
+	if Cfg.takeNeedsEye == false or not (Sense.DeepMatters and Sense.DeepMatters()) then return true; end;
+	local any = false;
+	for _,v in ipairs(Sense.my.surveyor or {}) do
+		if v.location and not v.storedIn then
+			any = true;
+			local r = Map.RegionOfLoc(v.location);
+			if r and regs[r.id] then return true; end;
+		end;
+	end;
+	return not any;
+end;
+
 function Military.ArmyStrength()
 	local n = Sense.storedByRole.combat or 0;
 	for _,u in ipairs(Sense.my.combat) do

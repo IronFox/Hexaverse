@@ -540,7 +540,15 @@ function Formation.Update()
 					local waited = Sense.round - f.legSince;
 					-- (not on with a handful because time is up: "on to region 38 with 5 of 19 up" fed the last
 					-- leg half a group at a time, six advances in a row)
-					if arrived >= math.ceil(f.count * 0.7) or (waited >= (Cfg.marchWait or 30) and arrived >= math.ceil(f.count * 0.5)) or waited >= (Cfg.marchWaitMax or 90) then
+					local go = arrived >= math.ceil(f.count * 0.7) or (waited >= (Cfg.marchWait or 30) and arrived >= math.ceil(f.count * 0.5)) or waited >= (Cfg.marchWaitMax or 90);
+					-- (and not on without its eye below ground: in match 186 the surveyor gathered with the
+					-- army, and at each of eleven entries into the Nexus port region it was two or three
+					-- regions behind. Each leg waits eyeLegWait rounds for it.)
+					if go and f.kind == 'take' and Military and Military.EyeIn and waited < (Cfg.eyeLegWait or 45) and not Military.EyeIn(ahead) then
+						go = false;
+						if Sense.round % 10 == 0 then Log(Name(f)..': waits in region '..tostring(f.route[f.leg])..' for its surveyor to come up'); end;
+					end;
+					if go then
 						f.leg = f.leg + 1;
 						f.legSince = Sense.round;
 						Log(Name(f)..': on to region '..f.route[f.leg]..' at round '..Sense.round..' with '..arrived..' of '..f.count..' up');
