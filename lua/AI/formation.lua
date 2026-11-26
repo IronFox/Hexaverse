@@ -180,6 +180,28 @@ function Formation.Ready(f, arrived)
 		if Sense.round % 20 == 0 then Log(Name(f)..': waits for a surveyor to go with it'); end;
 		return false;
 	end;
+	--[[
+	Not against towers without guns. The towers round the Nexus port region outrange everything and
+	were what broke the advances: in match 208 73 of 103 vehicles lost before round 600 were take
+	members on the march, and match 207 sent 23 hover tanks with no artillery at all (17 lost in 14
+	rounds). Every take that held the region had 9 to 18 artillery pieces with it. It waits for
+	takeGuns of them, gunWait rounds at most.
+	]]
+	if f.kind == 'take' and Cfg.takeGuns ~= 0 then
+		local reg = Map.regions[f.region];
+		if reg and ((reg.staticThreat or 0) > 0 or (reg.hostileStructures or 0) > 0 or (f.lost or 0) >= 5) then
+			local guns = 0;
+			for _,u in ipairs(Sense.my.combat or {}) do
+				if Formation.of[u.id] == f and u.turret and u.turret.type and u.turret.type.trajectoryType == 'Artillery' then guns = guns + 1; end;
+			end;
+			f.gunSince = f.gunSince or Sense.round;
+			if guns < (Cfg.takeGuns or 6) and Sense.round - f.gunSince <= (Formation.gunWait or 300) then
+				Formation.needGuns = Sense.round;
+				if Sense.round % 20 == 0 then Log(Name(f)..': waits for artillery to go with it ('..guns..' of '..(Cfg.takeGuns or 6)..', '..(Sense.round - f.gunSince)..' rounds)'); end;
+				return false;
+			end;
+		end;
+	end;
 	-- (gathering for gatherForce rounds and still not together: it goes from where its members stand,
 	-- the legs of the march bring them together. In match 194 the towers of the Nexus port region
 	-- were gone by round 504 and the take then gathered for 450 rounds, 30 of 30 members, 4 to 8 at
@@ -208,7 +230,7 @@ local function SetStage(f, stage, note)
 	Log(Name(f)..': '..f.stage..' -> '..stage..' at round '..Sense.round..(note and (' '..note) or ''));
 	f.stage = stage;
 	f.stageSince = Sense.round;
-	if stage == 'gather' then f.gatherSince = Sense.round; f.letTotal = 0; end;
+	if stage == 'gather' then f.gatherSince = Sense.round; f.letTotal = 0; f.gunSince = nil; end;
 end;
 
 local function Finish(f, how)
