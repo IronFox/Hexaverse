@@ -1072,7 +1072,11 @@ function Needs.StructureOptions(constructorIndex)
 			add(Economy.MineReq('Uranium'), {energy = 0.4}, 'Mine (uranium)');
 		end;
 	elseif Types.reactor and Types.IsUnlocked(Types.reactor) and Economy.Count(Types.reactor) < 1
-		and (cur.storage.uranium or 0) >= 100 and (max.balance.uranium or 0) >= 5 and (cur.balance.fuel or 0) < 10 then
+		and (cur.storage.uranium or 0) >= 100 and ((max.balance.uranium or 0) >= 5 or (cur.storage.uranium or 0) >= 300)
+		and ((cur.balance.fuel or 0) < 10 or Economy.FuelForGenerator() < 10 or (cur.balance.energy or 0) < (Cfg.spareEnergy or 15)) then
+		-- (... or no energy to spare while the fuel refuses a further generator: match 209 stood on
+		-- 3 generators and 60 energy for 1000 rounds, three labs never on, no research past the
+		-- hover cannon, with 500 uranium in store and the core unlocked from round 0)
 		-- no generator ring to put it into, the fuel carries no further generator and uranium lies
 		-- in store: one reactor core on plain ground (40 energy for 5 uranium a round)
 		add({type = Types.reactor, kind = 'base'}, {energy = 1.5, spend = 0.3}, 'Reactor Core (plain site)');
