@@ -4055,30 +4055,37 @@ function Economy.TryPort(u)
 		end;
 	end;
 	-- a new port first; with none in reach, a second structure beside a port of mine
-	local guarding = false;
-	if guard and last then best, guarding = guard, true;
-	elseif best == nil and econ then best, guarding = guard, true; end;
-	if best == nil then return false; end;
-	Economy.portTried[best.index] = Sense.round + Cfg.portRetry;
-	local why = 'no free cell beside it';
-	for _,nb in ipairs(best.neighbors or {}) do
-		local dest = Move.GroundAt(u, nb);
-		if dest and not Economy.claimed[nb.index] and not Sense.structureCells[nb.index] and Game.GetStructureAt(dest) == nil
-				and not Game.Grid.AffectedByEMP(dest) and not Control.hot[nb.index] and not Move.IsDangerous(dest) then
-			Economy.portBuild = true;
-			local built = Economy.BuildAt(u, dest, t);
-			Economy.portBuild = nil;
-			if built then
-				Economy.claimed[nb.index] = true;
-				Mem.jobs[u.id].port = best.index;
-				Log(string.format('Port %s ordered: %s on cell %d beside the port on cell %d in region %s at round %d',
-					guarding and 'guard' or 'structure', t.name, nb.index, best.index, tostring(Map.cellRegion[best.index]), Sense.round));
-				return true;
+	-- (the guard of the last port comes before a new port, but when it cannot be built the new port
+	-- is tried all the same: with no free cell beside the home port the guard was asked for every
+	-- time, and in match 196 no builder went to the Nexus port in a region held for 90 rounds)
+	local tries = {};
+	if guard and last then tries[#tries+1] = {guard, true}; end;
+	if best then tries[#tries+1] = {best, false}; end;
+	if #tries == 0 and guard and econ then tries[#tries+1] = {guard, true}; end;
+	if #tries == 0 then return false; end;
+	for _,try in ipairs(tries) do
+		local best, guarding = try[1], try[2];
+		Economy.portTried[best.index] = Sense.round + Cfg.portRetry;
+		local why = 'no free cell beside it';
+		for _,nb in ipairs(best.neighbors or {}) do
+			local dest = Move.GroundAt(u, nb);
+			if dest and not Economy.claimed[nb.index] and not Sense.structureCells[nb.index] and Game.GetStructureAt(dest) == nil
+					and not Game.Grid.AffectedByEMP(dest) and not Control.hot[nb.index] and not Move.IsDangerous(dest) then
+				Economy.portBuild = true;
+				local built = Economy.BuildAt(u, dest, t);
+				Economy.portBuild = nil;
+				if built then
+					Economy.claimed[nb.index] = true;
+					Mem.jobs[u.id].port = best.index;
+					Log(string.format('Port %s ordered: %s on cell %d beside the port on cell %d in region %s at round %d',
+						guarding and 'guard' or 'structure', t.name, nb.index, best.index, tostring(Map.cellRegion[best.index]), Sense.round));
+					return true;
+				end;
+				why = Economy.buildWhy or 'no path';
 			end;
-			why = Economy.buildWhy or 'no path';
 		end;
+		Needs.Note('Port on cell '..best.index..' not claimed: '..why);
 	end;
-	Needs.Note('Port on cell '..best.index..' not claimed: '..why);
 	return false;
 end;
 
