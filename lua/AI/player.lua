@@ -6616,15 +6616,29 @@ function Military.Combat()
 			range by itself means never. In match 186 the tower at the entry was sensed once and one
 			gun fired one round; every other gun was on its way somewhere else.
 			]]
+			Military.shellTry = Military.shellTry or {};
 			if fGoal and not fired and Cfg.gunsToBuried ~= false and v.turret and v.turret.type.trajectoryType == 'Artillery' and Map.regions[fGoal] then
 				local bb, bd = nil, nil;
 				for _,k in pairs(Military.buried or {}) do
 					local c = k.loc and k.loc.cell;
 					local tr = c and Map.cellRegion and Map.cellRegion[c.index];
-					if tr and (tr == fGoal or Map.regions[fGoal].neighbors[tr]) and k.loc.world then
+					-- (a gun that has been on its way to one for shellTries rounds without firing leaves it
+					-- be: in match 191 the guns went for one tower 77 times in 400 rounds, it was never hit,
+					-- and three advances went "on to region 1" with 0 or 1 up because the guns were not on
+					-- the march)
+					local tk = tostring(v.id)..':'..tostring(k.id);
+					local tried = Military.shellTry[tk];
+					if tried and tried.n >= (Cfg.shellTries or 25) and Sense.round - tried.round > (Cfg.shellAgain or 200) then Military.shellTry[tk] = nil; tried = nil; end;
+					if tr and (tr == fGoal or Map.regions[fGoal].neighbors[tr]) and k.loc.world and not (tried and tried.n >= (Cfg.shellTries or 25)) then
 						local d = Dist2(v.location.world, k.loc.world);
 						if bd == nil or d < bd then bb, bd = k, d; end;
 					end;
+				end;
+				if bb then
+					local tk = tostring(v.id)..':'..tostring(bb.id);
+					local tried = Military.shellTry[tk] or {n = 0};
+					tried.n, tried.round = tried.n + 1, Sense.round;
+					Military.shellTry[tk] = tried;
 				end;
 				if bb and Move.Towards(v, bb.loc.world, bb.loc.cell, false, true) then
 					if Sense.round % 10 == 0 then Log(string.format('Buried tower: %s goes to shell %s at cell %d', v.niceName, bb.name, bb.loc.cell.index)); end;
