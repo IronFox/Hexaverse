@@ -6469,7 +6469,7 @@ function Passage.Step(t, s, job)
 	end;
 	held[from.index] = nil;
 	for k,_ in pairs(job.avoid or {}) do held[k] = true; end;
-	local gap = false;
+	local gap, why = false, nil;
 	for _ = 1, 4 do
 		local best, bestD = nil, nil;
 		for _,nb in ipairs(at.neighbors) do
@@ -6477,15 +6477,23 @@ function Passage.Step(t, s, job)
 			local d = Dist2(nb.center, target.center);
 			if not Sense.structureCells[nb.index] and not held[nb.index] and (bestD == nil or d < bestD) then best, bestD = nb, d; end;
 		end;
-		if best == nil or bestD >= Dist2(at.center, target.center) then break; end;
-		if not beside and best.index == from.index then break; end;
+		if best == nil or bestD >= Dist2(at.center, target.center) then why = 'my structures or vehicles on every cell nearer to it'; break; end;
+		if not beside and best.index == from.index then why = 'the next cell is the vehicle\'s own'; break; end;
 		-- (not into an EMP zone, where the game places no vehicle, and not down or up a shaft: a
 		-- terraformer that dug itself five levels down towards a cell at h-12 was destroyed by its own dig)
 		local g = Move.GroundAt(t, best);
 		local okE, emp = pcall(Game.Grid.AffectedByEMP, g);
 		if g ~= nil and not (okE and emp) and (t.location.height or 0) - (g.height or 0) > (Cfg.passageStep or 2) then gap = true; end;
+		why = 'cell '..best.index..': '..((g == nil and 'no ground there') or ((okE and emp) and 'an EMP zone')
+			or ('ground at height '..tostring(g.height)..', the terraformer at '..tostring(t.location.height)));
 		if g == nil or (okE and emp) or math.abs((g.height or 0) - (t.location.height or 0)) > (Cfg.passageStep or 2) then break; end;
-		at = best;
+		at = best; why = nil;
+	end;
+	-- (a cut ordered three times from the same cell to the same cell did not get on, also when it
+	-- took turns with another: a terraformer ordered 2203 to 2191 and 2203 to 2197 in turn eight times)
+	job.pairs = job.pairs or {};
+	if at.index ~= here.index and (job.pairs[here.index..'>'..at.index] or 0) >= 3 then
+		return Passage.End(t, s, 'the cut from cell '..here.index..' to cell '..at.index..' was ordered '..job.pairs[here.index..'>'..at.index]..' times and did not get on');
 	end;
 	local hop = at.index ~= here.index and Move.GroundAt(t, at) or nil;
 	--[[
@@ -6520,7 +6528,7 @@ function Passage.Step(t, s, job)
 	end;
 	if deckPath then hop = true; end;
 	if hop == nil and Passage.Breakout(t, job, target) then return; end;
-	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' (my structures, an EMP zone, or more than '..(Cfg.passageStep or 2)..' levels up or down)'); end;
+	if hop == nil then return Passage.End(t, s, 'no next cell to cut from cell '..here.index..' towards cell '..target.index..' ('..(why or 'no cell nearer')..(gap and (deckPath == nil) and ', and no bridge line found' or '')..')'); end;
 	-- (the same cut ordered again from the same cell: the game did not take it or dropped it at once)
 	if job.to == at.index and job.from == here.index then
 		job.same = (job.same or 0) + 1;
@@ -6537,6 +6545,7 @@ function Passage.Step(t, s, job)
 	if not ok then return Passage.End(t, s, 'the order was refused: '..tostring(err)); end;
 	job.cut = true;
 	job.to, job.from = at.index, here.index;
+	job.pairs[here.index..'>'..at.index] = (job.pairs[here.index..'>'..at.index] or 0) + 1;
 	if job.same > 0 then return; end;
 	if deckPath then
 		Log(string.format('Passage: %s bridges %d cells from cell %d to cell %d at height %d, across a hole towards %s', t.niceName, #deckPath, here.index, at.index, t.location.height or 0,
