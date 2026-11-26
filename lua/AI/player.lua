@@ -5517,10 +5517,14 @@ function Military.Fire(v)
 	if hitsGround then
 		Military.buried = Military.buried or {};
 		for id,e in pairs(Game.hostileUnits) do
-			if e.health > 0 and e.location and not e.location.isSuborbital and (e.location.height or 0) < 0
-				and e.type and e.type.isStructure then	-- (any structure: a buried radar tower is what gives the others their sight)
+			-- (... and a tower on the surface as well: in match 189 a drone brought the missile tower
+			-- that flanks the road into view ten times, for two or three rounds each, no gun was in
+			-- range just then, and it was never shot at; the other one, seen with two guns near, was
+			-- gone in three rounds. The AA tower that shot down eight drones is such a target too.)
+			if e.health > 0 and e.location and not e.location.isSuborbital and e.type and e.type.isStructure
+				and ((e.location.height or 0) < 0 or (Cfg.towersKept ~= false and string.find(tostring(e.type.name), 'Tower', 1, true) ~= nil)) then	-- (any structure below ground: a buried radar tower is what gives the others their sight)
 				if Military.buried[id] == nil then
-					Log(string.format('Buried tower: %s sensed at cell %s height %s, kept as a target', tostring(e.niceName),
+					Log(string.format('%s: %s sensed at cell %s height %s, kept as a target', (e.location.height or 0) < 0 and 'Buried tower' or 'Tower', tostring(e.niceName),
 						tostring(e.location.cell and e.location.cell.index), tostring(e.location.height)));
 				end;
 				Military.buried[id] = {id = id, loc = e.location, name = tostring(e.niceName), round = Sense.round, type = e.type,
@@ -5528,7 +5532,7 @@ function Military.Fire(v)
 				-- (where it stands is known for the rest of the match: it does not move. The eye of the
 				-- army goes back there when the army comes up, see the scouts)
 				Military.buriedKnown = Military.buriedKnown or {};
-				if e.location.cell then Military.buriedKnown[id] = {id = id, cell = e.location.cell, loc = e.location, name = tostring(e.niceName), round = Sense.round}; end;
+				if e.location.cell and (e.location.height or 0) < 0 then Military.buriedKnown[id] = {id = id, cell = e.location.cell, loc = e.location, name = tostring(e.niceName), round = Sense.round}; end;
 			end;
 		end;
 		for id,b in pairs(Military.buried) do
