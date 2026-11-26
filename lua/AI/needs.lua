@@ -1561,6 +1561,10 @@ function Needs.NextVehicle(kit)
 	-- (but an army on a take with no surveyor at all has no eye below ground: then one every 20)
 	local every = Cfg.surveyorEvery or 80;
 	if #Sense.my.surveyor < (Cfg.takeSurveyors or 2) and Military and Military.SpotRegion and Military.SpotRegion() then every = Cfg.surveyorEveryTake or 20; end;
+	-- (nor is one waited 80 rounds for when no mineral site is known at all: match 205 knew none for
+	-- 500 rounds with no surveyor from round 200 to 300, stood on 1 to 3 mines and had no army till round 890)
+	if #Sense.my.surveyor < (Cfg.prospectSurveyors or 2) and Economy.noMineSite and Economy.noMineSite['Minerals']
+			and Sense.round - Economy.noMineSite['Minerals'] <= 10 then every = math.min(every, Cfg.surveyorEveryProspect or 20); end;
 	if Sense.round - (Needs.lastSurveyor or -1000) < every then
 		local keep = {};
 		for _,o in ipairs(opts) do

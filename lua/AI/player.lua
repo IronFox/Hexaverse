@@ -7137,6 +7137,12 @@ function Military.Scouts()
 		end;
 	end;
 	local deepEye = nil;
+	-- (the only surveyor stays prospecting while no mineral site is known: without income there is
+	-- no army for it to be the eye of)
+	if deepSpot and #Sense.my.surveyor < 2 and Economy.noMineSite and Economy.noMineSite['Minerals']
+			and Sense.round - Economy.noMineSite['Minerals'] <= 10 and Cfg.eyeBeforeMines ~= true then
+		deepSpot = nil;
+	end;
 	if deepSpot then
 		local bd = nil;
 		for _,v in ipairs(Sense.my.surveyor) do
