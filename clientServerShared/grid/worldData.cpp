@@ -1793,9 +1793,11 @@ namespace World
 
 	void					Data::AwaitValidSensors()
 	{
-		if (!PaintingSensorsConcurrently())
-			return;
-		concurrentPainting.onComplete.Wait();
+		// Polled rather than waiting on concurrentPainting.onComplete: when the painting thread finished between
+		// the check above and the wait, the wait never returned. The AI client's main thread then hung in
+		// 'Validate sensory' and the server dropped it by ping timeout (seen twice at the start of a round).
+		for (int i = 0; i < 5000 && PaintingSensorsConcurrently(); i++)
+			Sleep(1);
 	}
 
 	void					Data::PaintSensorsConcurrently(BasicVector<Sensor>&sensors)
